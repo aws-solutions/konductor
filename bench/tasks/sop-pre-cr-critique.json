@@ -1,0 +1,125 @@
+{
+  "id": "sop-pre-cr-critique",
+  "class": "sop",
+  "target": "k-pre-cr-critique",
+  "prompt": "I am about to send src/handlers, src/services and src/repository for review. Do a pre-submission critique of those folders. It is read-only, and there is no git history, so just read the files. Check correctness, performance, security, maintainability, architecture and testing. For each issue give a severity (Critical, Important or Minor), a dimension tag, the file, a code snippet, the problem, a suggested fix, and a decision of fix, won't fix or defer with a one-line reason. Write it to critique/critique-001.md with the sections Executive Summary, Critical Issues, Important Issues and Minor Issues and a severity count table. Do not modify any source file. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 900,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "critique/critique-001.md"
+    },
+    {
+      "type": "contains",
+      "path": "critique/critique-001.md",
+      "pattern": "^#+\\s.*executive summary"
+    },
+    {
+      "type": "contains",
+      "path": "critique/critique-001.md",
+      "pattern": "^#+\\s.*critical"
+    },
+    {
+      "type": "contains",
+      "path": "critique/critique-001.md",
+      "pattern": "^#+\\s.*important"
+    },
+    {
+      "type": "contains",
+      "path": "critique/critique-001.md",
+      "pattern": "^#+\\s.*minor"
+    },
+    {
+      "type": "cmd",
+      "cmd": "awk -v pat='critical' -v min=2 'function hl(s,m){if(s~/^#+[ \\t]/){m=s;sub(/[^#].*/,\"\",m);return length(m)}if(s~/^[ \\t]*\\*\\*[^*]+\\*\\*:?[ \\t]*$/)return 9;return 0}{l=hl($0);low=tolower($0);if(l>0){if(on&&l<=sl)on=0;if(!on&&low~pat){on=1;sl=l;next}if(on)n++;next}if(on&&$0~/^[ \\t]*([-*+]|[0-9]+[.)])[ \\t]+[^ \\t]/)n++;else if(on&&$0~/^[ \\t]*\\|/&&$0!~/^[ \\t]*\\|[-: |\\t]*$/)n++}END{exit !(n>=min)}' critique/critique-001.md",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "awk -v pat='important' -v min=2 'function hl(s,m){if(s~/^#+[ \\t]/){m=s;sub(/[^#].*/,\"\",m);return length(m)}if(s~/^[ \\t]*\\*\\*[^*]+\\*\\*:?[ \\t]*$/)return 9;return 0}{l=hl($0);low=tolower($0);if(l>0){if(on&&l<=sl)on=0;if(!on&&low~pat){on=1;sl=l;next}if(on)n++;next}if(on&&$0~/^[ \\t]*([-*+]|[0-9]+[.)])[ \\t]+[^ \\t]/)n++;else if(on&&$0~/^[ \\t]*\\|/&&$0!~/^[ \\t]*\\|[-: |\\t]*$/)n++}END{exit !(n>=min)}' critique/critique-001.md",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "awk -v pat='minor' -v min=1 'function hl(s,m){if(s~/^#+[ \\t]/){m=s;sub(/[^#].*/,\"\",m);return length(m)}if(s~/^[ \\t]*\\*\\*[^*]+\\*\\*:?[ \\t]*$/)return 9;return 0}{l=hl($0);low=tolower($0);if(l>0){if(on&&l<=sl)on=0;if(!on&&low~pat){on=1;sl=l;next}if(on)n++;next}if(on&&$0~/^[ \\t]*([-*+]|[0-9]+[.)])[ \\t]+[^ \\t]/)n++;else if(on&&$0~/^[ \\t]*\\|/&&$0!~/^[ \\t]*\\|[-: |\\t]*$/)n++}END{exit !(n>=min)}' critique/critique-001.md",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "critique/critique-001.md",
+      "pattern": "decision[\\s*_:|-]{0,10}(fix|won.?t fix|will not fix|defer)",
+      "min": 4
+    },
+    {
+      "type": "contains",
+      "path": "critique/critique-001.md",
+      "pattern": "^\\s*\\|[^\\n]*critical[^\\n]*\\|"
+    },
+    {
+      "type": "min_matches",
+      "path": "critique/critique-001.md",
+      "pattern": "^\\s*```|`[^`\\n]{8,}`",
+      "min": 8
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e '(function refsCheck(c) { const fs = require(\"fs\"); let text = \"\"; try { text = fs.readFileSync(c.file, \"utf8\"); } catch (e) { process.exit(1); } const files = []; const walk = (d) => { let es = []; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; } for (const e of es) { if (e.name === \"node_modules\" || e.name === \".git\") continue; const p = d === \".\" ? e.name : d + \"/\" + e.name; if (e.isDirectory()) walk(p); else files.push(p); } }; walk(\".\"); const re = /([A-Za-z0-9_\\/.-]+\\.js)[`)*\\]]*(?::|#L|,?\\s*\\(?lines?\\s*)(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?/gi; const seen = new Set(); const refs = []; const found = [...text.matchAll(re)].map((m) => ({ name: m[1], a: m[2], b: m[3] })); if (c.defaultFile) { for (const m of text.matchAll(/\\blines?\\s+(\\d+)(?:\\s*[-\\u2013]\\s*(\\d+))?/gi)) found.push({ name: c.defaultFile, a: m[1], b: m[2] }); } for (const m of found) { const f = files.find((x) => x === m.name.replace(/^\\.\\//, \"\") || x.endsWith(\"/\" + m.name.replace(/^\\.\\//, \"\"))); if (!f) continue; const a = Number(m.a); const b = m.b ? Number(m.b) : a; const lines = fs.readFileSync(f, \"utf8\").split(\"\\n\"); if (a < 1 || a > lines.length) continue; if (c.lineRe && !new RegExp(c.lineRe, \"i\").test(lines[a - 1])) continue; if (seen.has(f + \":\" + a)) continue; seen.add(f + \":\" + a); refs.push({ f, a, b }); } let hits = 0; for (const s of c.seeds || []) { if (refs.some((r) => r.f.endsWith(s.f) && [r.a, r.b].some((n) => n >= s.lo - 2 && n <= s.hi + 2))) hits++; } process.exit(refs.length >= c.min && hits >= (c.minSeeds || 0) ? 0 : 1); })({\"file\":\"critique/critique-001.md\",\"min\":5,\"seeds\":[{\"f\":\"repository/itemRepo.js\",\"lo\":22,\"hi\":22},{\"f\":\"handlers/items.js\",\"lo\":25,\"hi\":27},{\"f\":\"handlers/items.js\",\"lo\":21,\"hi\":21},{\"f\":\"services/inventoryService.js\",\"lo\":19,\"hi\":25},{\"f\":\"handlers/items.js\",\"lo\":8,\"hi\":8},{\"f\":\"services/inventoryService.js\",\"lo\":31,\"hi\":31}],\"minSeeds\":4})'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'inject|concatenat|string.built|parameteri[sz]|bound param|placeholder|prepared' 'admin.token|x-admin|authori[sz]ation|authenticat|isAdmin|token check|no token' 'validat|NaN|not a number|non.integer|fraction|negative' 'race|lost update|concurren|atomic|read.modify.write|interleav' 'at or below|<=|boundary|reorder' 'stack'; do cat critique/critique-001.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'correctness' 'performance' 'security' 'maintainability' 'architecture' 'testing'; do cat critique/critique-001.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' critique/critique-001.md)\" -ge 25 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "injection",
+      "criterion": "Lists the string-built SQL in itemRepo.searchByName as a Critical security issue with a bound-parameter fix.",
+      "weight": 3
+    },
+    {
+      "id": "adjust",
+      "criterion": "Reports that adjustStock has no admin-token check and no delta validation (NaN, fractions, negative stock), at Critical or Important.",
+      "weight": 3
+    },
+    {
+      "id": "race",
+      "criterion": "Reports the read-then-write lost update in the service adjustStock.",
+      "weight": 2
+    },
+    {
+      "id": "boundary",
+      "criterion": "Reports that reorderReport uses < where the README says at or below.",
+      "weight": 2
+    },
+    {
+      "id": "format",
+      "criterion": "Every finding has severity, dimension tag, file, snippet, suggested fix and a decision with a reason, and the count table matches the findings listed.",
+      "weight": 2
+    },
+    {
+      "id": "no-style",
+      "criterion": "Has no praise-only or formatting-only findings.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

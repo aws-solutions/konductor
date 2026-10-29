@@ -1,0 +1,5 @@
+[
+  { "displayName": "Ada Lovelace", "email": "ada@example.com", "phone": "+44 20 7946 0000" },
+  { "displayName": "grace hopper", "email": "grace@example.com" },
+  { "displayName": "Alan Turing", "email": "alan@example.com", "phone": null }
+]

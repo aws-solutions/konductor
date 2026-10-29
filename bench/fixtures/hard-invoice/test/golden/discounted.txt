@@ -1,0 +1,12 @@
+INVOICE INV-1002
+Date: 01 Dec 2025
+Bill to: Contoso Ltd
+------------------------------------------------------------------------
+SKU       Description                     Qty                     Amount
+S-1       Support plan, annual, pre...      1                  £1,050.00
+            discount 12.5%                                      -£150.00
+S-2       Training day                      3                  £1,350.00
+------------------------------------------------------------------------
+Subtotal                                                       £2,400.00
+Tax (20%)                                                        £210.00
+Total                                                          £2,610.00

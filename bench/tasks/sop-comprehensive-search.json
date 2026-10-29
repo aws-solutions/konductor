@@ -1,0 +1,95 @@
+{
+  "id": "sop-comprehensive-search",
+  "class": "sop",
+  "target": "k-comprehensive-search",
+  "prompt": "Find every place in this codebase that reads or changes an item's stock quantity (look for qty, quantity, stock, delta and similar names), including tests. Search the code only, no web. Write the results to search-results.md grouped by file, with path:line and a short snippet for each match, followed by a short list of the most important findings. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "search-results.md"
+    },
+    {
+      "type": "contains",
+      "path": "search-results.md",
+      "pattern": "inventoryService\\.js"
+    },
+    {
+      "type": "contains",
+      "path": "search-results.md",
+      "pattern": "itemRepo\\.js"
+    },
+    {
+      "type": "contains",
+      "path": "search-results.md",
+      "pattern": "handlers/items\\.js"
+    },
+    {
+      "type": "contains",
+      "path": "search-results.md",
+      "pattern": "test/"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e '(function refsCheck(c) { const fs = require(\"fs\"); let text = \"\"; try { text = fs.readFileSync(c.file, \"utf8\"); } catch (e) { process.exit(1); } const files = []; const walk = (d) => { let es = []; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; } for (const e of es) { if (e.name === \"node_modules\" || e.name === \".git\") continue; const p = d === \".\" ? e.name : d + \"/\" + e.name; if (e.isDirectory()) walk(p); else files.push(p); } }; walk(\".\"); const re = /([A-Za-z0-9_\\/.-]+\\.js)[`)*\\]]*(?::|#L|,?\\s*\\(?lines?\\s*)(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?/gi; const seen = new Set(); const refs = []; const found = [...text.matchAll(re)].map((m) => ({ name: m[1], a: m[2], b: m[3] })); if (c.defaultFile) { for (const m of text.matchAll(/\\blines?\\s+(\\d+)(?:\\s*[-\\u2013]\\s*(\\d+))?/gi)) found.push({ name: c.defaultFile, a: m[1], b: m[2] }); } for (const m of found) { const f = files.find((x) => x === m.name.replace(/^\\.\\//, \"\") || x.endsWith(\"/\" + m.name.replace(/^\\.\\//, \"\"))); if (!f) continue; const a = Number(m.a); const b = m.b ? Number(m.b) : a; const lines = fs.readFileSync(f, \"utf8\").split(\"\\n\"); if (a < 1 || a > lines.length) continue; if (c.lineRe && !new RegExp(c.lineRe, \"i\").test(lines[a - 1])) continue; if (seen.has(f + \":\" + a)) continue; seen.add(f + \":\" + a); refs.push({ f, a, b }); } let hits = 0; for (const s of c.seeds || []) { if (refs.some((r) => r.f.endsWith(s.f) && [r.a, r.b].some((n) => n >= s.lo - 2 && n <= s.hi + 2))) hits++; } process.exit(refs.length >= c.min && hits >= (c.minSeeds || 0) ? 0 : 1); })({\"file\":\"search-results.md\",\"min\":12,\"lineRe\":\"qty|quantity|stock|delta|reorderLevel\"})'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'inventoryService\\.test' 'itemRepo\\.test'; do cat search-results.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 2 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'db\\.js' 'format\\.js' 'config\\.js' 'server\\.js'; do cat search-results.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 2 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "search-results.md",
+      "pattern": "important|key finding|summary|notable|takeaway|most relevant"
+    },
+    {
+      "type": "min_matches",
+      "path": "search-results.md",
+      "pattern": "^[ \\t]*(?:[-*+]|\\d+[.)]|\\|)?[ \\t]*[`*]*[A-Za-z0-9_/.-]+\\.js[`*]*:\\d+",
+      "min": 12
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' search-results.md)\" -ge 20 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "service",
+      "criterion": "Lists services/inventoryService.js entries for createItem qty, the adjustStock line item.qty += delta, and the reorderReport comparison of qty with reorderLevel.",
+      "weight": 3
+    },
+    {
+      "id": "handler",
+      "criterion": "Lists handlers/items.js entries for Number(req.body.delta) and the qty returned by getItem.",
+      "weight": 2
+    },
+    {
+      "id": "tests",
+      "criterion": "Lists qty usage in test/inventoryService.test.js and test/itemRepo.test.js.",
+      "weight": 2
+    },
+    {
+      "id": "other",
+      "criterion": "Lists at least two of: db.js seed rows, itemRepo.js SQL selecting qty, util/format.js getQty, config.js reorderLevel.",
+      "weight": 2
+    },
+    {
+      "id": "line-numbers",
+      "criterion": "At least three sampled path:line references point at lines that really contain the quoted snippet.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

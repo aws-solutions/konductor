@@ -1,0 +1,67 @@
+{
+  "id": "simple-fix-failing-test",
+  "class": "simple",
+  "target": null,
+  "prompt": "The tests in this project are failing. Find out why and fix the code. Do not change or delete the tests. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "textkit",
+  "timeoutSec": 420,
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "test/slug.test.js",
+      "pattern": "hello-world"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(node --test --test-reporter=tap 2>&1 | sed -n 's/^# tests //p')\" -ge 15 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/slug.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/csv.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/strings.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/words.test.js"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "cause",
+      "criterion": "Names slugify in src/slug.js as the cause and explains that every whitespace character is replaced on its own and hyphens at the ends are not removed.",
+      "weight": 3
+    },
+    {
+      "id": "product-code-only",
+      "criterion": "Changes product code only (src/slug.js); test files are unchanged and the final test run shows 15 tests with 0 failing.",
+      "weight": 3
+    },
+    {
+      "id": "no-regression",
+      "criterion": "The fix keeps slugify('Hello World') and slugify('Hello, World!') returning hello-world.",
+      "weight": 1
+    },
+    {
+      "id": "brief",
+      "criterion": "The final answer states what changed in about 10 lines or fewer.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "lite",
+    "full"
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "id": "orch-patch-release",
+  "class": "orchestration",
+  "target": "konductor",
+  "prompt": "Prepare a 0.1.1 patch release of textkit. The slugify tests are failing: fix the cause without changing the tests, add a changelog entry for 0.1.1, bump the version in package.json, and confirm that the full test suite passes. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "textkit",
+  "timeoutSec": 480,
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "package.json",
+      "pattern": "\"version\":\\s*\"0\\.1\\.1\""
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "^##\\s*\\[?0\\.1\\.1[\\s\\S]*^##\\s*\\[?0\\.1\\.0"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "0\\.1\\.1[\\s\\S]{0,300}(slug|hyphen|whitespace)"
+    },
+    {
+      "type": "contains",
+      "path": "test/slug.test.js",
+      "pattern": "hello-world"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(node --test --test-reporter=tap 2>&1 | sed -n 's/^# tests //p')\" -ge 15 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/slug.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/csv.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/strings.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/words.test.js"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "cause",
+      "criterion": "Identifies that slugify in src/slug.js replaces each whitespace character separately and leaves hyphens at the ends.",
+      "weight": 3
+    },
+    {
+      "id": "fix",
+      "criterion": "Fixes src/slug.js, leaves the tests unchanged, and both previously failing tests now pass.",
+      "weight": 3
+    },
+    {
+      "id": "changelog",
+      "criterion": "CHANGELOG.md has a 0.1.1 entry above 0.1.0 that describes the slugify fix.",
+      "weight": 2
+    },
+    {
+      "id": "version",
+      "criterion": "package.json version is 0.1.1 and no other version strings were edited.",
+      "weight": 1
+    },
+    {
+      "id": "evidence",
+      "criterion": "The final message reports a real test run with counts (15 tests, 0 failing).",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

@@ -1,0 +1,4 @@
+The files under overlay/ are test files of tj/commander.js (https://github.com/tj/commander.js), copied unchanged
+from the merge commit 46c6f6b12829496c1bab71ab11fe00f140d4b3ff of pull request #2637 (https://github.com/tj/commander.js/pull/2637).
+They serve as hidden acceptance tests for one benchmark task.
+Upstream license: MIT; the license text is in the file LICENSE next to this one.

@@ -1,0 +1,43 @@
+{
+  "loosened": [
+    6
+  ],
+  "cases": [
+    {
+      "name": "7 days in REQ-3, after 5 in REQ-6",
+      "check": 6,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "plan.md": "REQ-3 says the copy is held 7 days; REQ-6 releases it after 5.\n"
+      }
+    },
+    {
+      "name": "seven versus five days",
+      "check": 6,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "plan.md": "Open question: seven days or five days for the reservation?\n"
+      }
+    },
+    {
+      "name": "only 7 days",
+      "check": 6,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "plan.md": "Reservation window: 7 days.\n"
+      }
+    },
+    {
+      "name": "five holds, 7 days",
+      "check": 6,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "plan.md": "Limit of 5 active holds. Reservation window: 7 days.\n"
+      }
+    }
+  ]
+}

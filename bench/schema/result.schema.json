@@ -1,0 +1,623 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Konductor benchmark run result",
+  "type": "object",
+  "required": [
+    "armId",
+    "ref",
+    "commitSha",
+    "harness",
+    "model",
+    "effort",
+    "taskId",
+    "replicate",
+    "status",
+    "exitCode",
+    "runFinishedStatus",
+    "wallClockMs",
+    "turnDurationMs",
+    "credits",
+    "modelCalls",
+    "toolCalls",
+    "subagentCalls",
+    "contextUsagePercentage",
+    "transcriptBytes",
+    "estTokens",
+    "checks",
+    "kiroCliVersion",
+    "modelListSnapshotPath"
+  ],
+  "properties": {
+    "armId": {
+      "type": "string"
+    },
+    "armLabel": {
+      "type": "string"
+    },
+    "ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "commitSha": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "harness": {
+      "enum": [
+        "kiro-cli",
+        "opencode"
+      ]
+    },
+    "model": {
+      "type": "string"
+    },
+    "effort": {
+      "type": "string"
+    },
+    "taskId": {
+      "type": "string"
+    },
+    "replicate": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "enum": [
+        "success",
+        "timeout",
+        "error",
+        "budget_skipped"
+      ]
+    },
+    "exitCode": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "runFinishedStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "wallClockMs": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "turnDurationMs": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "credits": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "modelCalls": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "meteringEntries",
+        "totalRequestCount"
+      ],
+      "properties": {
+        "meteringEntries": {
+          "type": "integer"
+        },
+        "totalRequestCount": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "toolCalls": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "subagentCalls": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "contextUsagePercentage": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "transcriptBytes": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "estTokens": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "value",
+        "isEstimate"
+      ],
+      "properties": {
+        "value": {
+          "type": "integer"
+        },
+        "isEstimate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "passed"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "cmd": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "min": {
+            "type": "integer"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tests": {
+            "type": "object",
+            "required": [
+              "passed",
+              "total"
+            ],
+            "properties": {
+              "passed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unparsed": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "kiroCliVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "modelListSnapshotPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sessionModel": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sessionId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agentEngine": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "stopReason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "creditsCensored": {
+      "type": "boolean"
+    },
+    "creditsLowerBound": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "creditsCharged": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "creditsSessionTotal": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "workToolCalls": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "toolNames": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "transcriptPartial": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "finalText": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "finalTextTruncated": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "askedUser": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "skillsMcpOk": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "modelNormalized": {
+      "type": "boolean"
+    },
+    "rewrittenAgents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mcpSha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "isolation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "homeTripwireHits": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "inFlightAtStart": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "infraError": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "installHarness": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "harnessVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tokens": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "input",
+        "output",
+        "reasoning",
+        "cacheRead",
+        "cacheWrite",
+        "total"
+      ],
+      "properties": {
+        "input": {
+          "type": "integer"
+        },
+        "output": {
+          "type": "integer"
+        },
+        "reasoning": {
+          "type": "integer"
+        },
+        "cacheRead": {
+          "type": "integer"
+        },
+        "cacheWrite": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "costUsd": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "costCensored": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "costUsdCharged": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "sessionsRolledUp": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "region": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runStartedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "skillsLoaded": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "via",
+          "count"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "via": {
+            "enum": [
+              "get_skill",
+              "skill-tool"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "skillQueries": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "sopsLoaded": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "via",
+          "count"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "via": {
+            "enum": [
+              "get_skill",
+              "skill-tool"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "skillBytesLoaded": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "skillCallsFailed": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "findSkillsCalls": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "findSkillsEmpty": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "startupResourceCount": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "targetLoaded": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "targetAttempted": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "targetReachable": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "sopNameSource": {
+      "enum": [
+        "listing",
+        "agent-filter",
+        "convention",
+        null
+      ]
+    },
+    "skillsScope": {
+      "enum": [
+        "all-sessions",
+        "parent-session",
+        null
+      ]
+    },
+    "hiddenTests": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "passed",
+        "total"
+      ],
+      "properties": {
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unparsed": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

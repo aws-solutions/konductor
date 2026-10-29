@@ -1,0 +1,77 @@
+{
+  "id": "hard-billing-reconcile",
+  "class": "hard",
+  "target": null,
+  "prompt": "The billing rules R1 to R10 are written down twice, in docs/REQUIREMENTS.md and in docs/API.md, and the two documents disagree on some of them. The code in src/billing implements a mix of the two. Settle every disagreement with this rule: the entry with the later `updated` date wins; an entry marked [regulatory] wins over one that is not; if both are regulatory, or the dates are equal, docs/REQUIREMENTS.md wins. Then make the code follow the winning values everywhere they apply (including every place an amount is prorated), edit the losing entries so both documents state the same value for every rule, and write docs/DECISIONS.md with one row per rule that was in conflict, giving the rule id, both values, the winner and the reason. Rules on which the documents agree are not conflicts. Do not edit the existing tests (they cover only rules that are not in dispute) and do not add dependencies. Add tests for the resolved rules in a new file under test/, make sure `node --test` passes, and add an entry to CHANGELOG.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "hard-billing",
+  "hidden": "hard-billing-reconcile",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 23
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/grace-seats.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/quote.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/proration.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=(f)=>{const o={};for(const l of fs.readFileSync(f,\"utf8\").split(\"\\n\")){const c=l.split(\"|\").map(x=>x.trim());if(/^R[0-9]+$/.test(c[1]||\"\"))o[c[1]]=c[3];}return o;};const a=t(\"docs/REQUIREMENTS.md\"),b=t(\"docs/API.md\");const ids=Object.keys(a);process.exit(ids.length>=10&&ids.every(i=>a[i]===b[i])?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "for i in R1 R2 R3 R5 R6 R7 R9 R10; do grep -q \"$i\" docs/DECISIONS.md || exit 1; done",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "R[0-9]|DECISIONS|trial|refund"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "Finds every conflicting rule by comparing the two documents row by row (not only the ones it happened to notice in code), and runs the tests after the change, reporting the result.",
+      "weight": 2
+    },
+    {
+      "id": "rule-applied",
+      "criterion": "Applies the stated resolution rule faithfully, including the regulatory and equal-date cases, applies the winning values in every place an amount is prorated, and does not list rules the documents agree on as conflicts.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "Existing tests and package.json are unchanged, no dependency was added, dead code is left alone, and both documents, DECISIONS.md and CHANGELOG.md agree with the code.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "hard"
+  ]
+}

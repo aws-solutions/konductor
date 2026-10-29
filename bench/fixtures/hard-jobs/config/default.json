@@ -1,0 +1,6 @@
+{
+  "concurrency": 4,
+  "maxRetries": 3,
+  "retryDelayMs": 200,
+  "dedupeTtlMs": 3600
+}

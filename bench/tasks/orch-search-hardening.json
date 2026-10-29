@@ -1,0 +1,94 @@
+{
+  "id": "orch-search-hardening",
+  "class": "orchestration",
+  "target": "konductor",
+  "prompt": "A security scan flagged the search endpoint. Fix the underlying problem, add tests that include an attack-style search term, then re-read the rest of src/ for related input-handling problems and list what remains in remaining-risks.md. Only list the remaining problems; do not fix them in this change. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'require(\"./src/repository/itemRepo\").searchByName(\"zzz%\\x27 OR \\x271\\x27=\\x271\\x27 --\").then(r=>process.exit(r.length===0?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'require(\"./src/repository/itemRepo\").searchByName(\"gad\").then(r=>process.exit(r.length===1&&r[0].name===\"Gadget\"?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(node --test --test-reporter=tap 2>&1 | sed -n 's/^# tests //p')\" -gt 8 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "file_exists",
+      "path": "remaining-risks.md"
+    },
+    {
+      "type": "contains",
+      "path": "src/handlers/items.js",
+      "pattern": "Number\\(req\\.body\\.delta\\)"
+    },
+    {
+      "type": "contains",
+      "path": "src/server.js",
+      "pattern": "err\\.stack"
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'delta|validat' 'createItem|input validation|unvalidated' 'stack' 'token|auth' 'fallback|hard.?cod|ADMIN_TOKEN|default token' 'body size|size limit|payload|unbounded|no limit|413' 'race|lost update|concurren|atomic|read.modify.write|interleav'; do cat remaining-risks.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -oiE '[A-Za-z0-9_/.-]+[.]js' remaining-risks.md | sort -u | wc -l)\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "remaining-risks.md",
+      "pattern": "^[ \\t]*(?:[-*+]|\\d+[.)])[ \\t]+\\S",
+      "min": 4
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' remaining-risks.md)\" -ge 6 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/config.js"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "fix",
+      "criterion": "searchByName no longer concatenates the term into SQL; it uses a bound parameter or an equivalent that keeps the term as data, and a normal search still returns Gadget.",
+      "weight": 3
+    },
+    {
+      "id": "attack-test",
+      "criterion": "Adds a test using a term with a quote and OR that asserts no extra rows are returned, and the suite passes.",
+      "weight": 3
+    },
+    {
+      "id": "risks",
+      "criterion": "remaining-risks.md lists at least: missing token check on adjustStock, unvalidated delta or createItem input, stack trace in the 500 response, and the fallback admin token, each with a file reference.",
+      "weight": 2
+    },
+    {
+      "id": "scope",
+      "criterion": "The listed risks are left unfixed, as requested, and the final message says so.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

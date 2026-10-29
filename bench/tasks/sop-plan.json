@@ -1,0 +1,118 @@
+{
+  "id": "sop-plan",
+  "class": "sop",
+  "target": "k-plan",
+  "prompt": "We are about to build the hold-requests feature described in docs/. Make an implementation plan and save it to plan.md. I need: measurable success criteria, a prioritized task breakdown where every task has an effort estimate in days and a priority of High, Medium or Low, which tasks block which and which can run in parallel, which role should do each task, a phased timeline with a total that includes a buffer, and a final execution plan with a verification phase and a documentation phase. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "product-spec",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "plan.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; h=$(grep -E '^[[:space:]]*(#+[[:space:]]|[*][*][^*]+[*][*]:?[[:space:]]*$)' plan.md 2>/dev/null); for p in 'success|criteria' 'task|breakdown' 'depend|block|parallel' 'role|owner|assign' 'timeline|phase|schedule'; do printf '%s\\n' \"$h\" | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "plan.md",
+      "pattern": "\\b\\d+(\\.\\d+)?\\s*(d|days?|pd|person.days?)\\b",
+      "min": 8
+    },
+    {
+      "type": "min_matches",
+      "path": "plan.md",
+      "pattern": "\\b(high|medium|low)\\b",
+      "min": 8
+    },
+    {
+      "type": "min_matches",
+      "path": "plan.md",
+      "pattern": "(depends on|blocked by|blocks|after|requires|prerequisite|none)",
+      "min": 4
+    },
+    {
+      "type": "contains",
+      "path": "plan.md",
+      "pattern": "parallel|concurrent|simultaneous"
+    },
+    {
+      "type": "contains",
+      "path": "plan.md",
+      "pattern": "(?:\\b(?:7|seven)[ -]?(?:calendar[ -])?days?\\b|\\b(?:7|seven)\\b(?=\\s*(?:or|vs\\.?|versus|and|/|,)\\s*(?:5|five)[ -]?days?\\b)|\\b(?:7|seven)\\b[^.\\n]{0,12}\\bREQ-?3\\b|\\bREQ-?3\\b[^.\\n]{0,60}\\b(?:7|seven)\\b)[\\s\\S]{0,400}(?:\\b(?:5|five)[ -]?(?:calendar[ -])?days?\\b|\\b(?:5|five)\\b[^.\\n]{0,12}\\bREQ-?6\\b|\\bREQ-?6\\b[^.\\n]{0,60}\\b(?:5|five)\\b(?!\\s*(?:active\\s+)?holds?)|\\bafter\\s+(?:5|five)\\b(?!\\s*(?:active\\s+)?(?:holds?|attempts?|retries|tries|minutes?|hours?|seconds?)))|(?:\\b(?:5|five)[ -]?(?:calendar[ -])?days?\\b|\\b(?:5|five)\\b[^.\\n]{0,12}\\bREQ-?6\\b|\\bREQ-?6\\b[^.\\n]{0,60}\\b(?:5|five)\\b(?!\\s*(?:active\\s+)?holds?)|\\bafter\\s+(?:5|five)\\b(?!\\s*(?:active\\s+)?(?:holds?|attempts?|retries|tries|minutes?|hours?|seconds?)))[\\s\\S]{0,400}(?:\\b(?:7|seven)[ -]?(?:calendar[ -])?days?\\b|\\b(?:7|seven)\\b(?=\\s*(?:or|vs\\.?|versus|and|/|,)\\s*(?:5|five)[ -]?days?\\b)|\\b(?:7|seven)\\b[^.\\n]{0,12}\\bREQ-?3\\b|\\bREQ-?3\\b[^.\\n]{0,60}\\b(?:7|seven)\\b)"
+    },
+    {
+      "type": "contains",
+      "path": "plan.md",
+      "pattern": "conflict|inconsisten|discrepan|mismatch|contradict|differ"
+    },
+    {
+      "type": "contains",
+      "path": "plan.md",
+      "pattern": "(buffer|contingency|reserve)[^\\n]{0,80}\\d+\\s*(%|percent|days?)|\\d+\\s*%[^\\n]{0,40}(buffer|contingency)"
+    },
+    {
+      "type": "contains",
+      "path": "plan.md",
+      "pattern": "(phase|stage|step)[^\\n]{0,60}verif|verif[^\\n]{0,60}(phase|stage)"
+    },
+    {
+      "type": "contains",
+      "path": "plan.md",
+      "pattern": "(phase|stage|step)[^\\n]{0,60}document|document[^\\n]{0,60}(phase|stage)"
+    },
+    {
+      "type": "min_matches",
+      "path": "plan.md",
+      "pattern": "\\b\\d+\\s*(ms|req(uest)?s?(/s| per second)|rps|holds?|emails?|seconds)\\b|per second",
+      "min": 2
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'backend|engineer|developer' 'qa|test engineer|tester|quality' 'devops|sre|operations|platform' 'product|pm|owner' 'design|ux|frontend|front.end'; do cat plan.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' plan.md)\" -ge 30 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "criteria",
+      "criterion": "Success criteria are measurable pass/fail statements that cover placing a hold, first-come queue order, email on return, cancel, and expiry.",
+      "weight": 3
+    },
+    {
+      "id": "tasks",
+      "criterion": "Every task has an effort estimate in days and a High, Medium or Low priority.",
+      "weight": 2
+    },
+    {
+      "id": "dependencies",
+      "criterion": "States which tasks block others and names at least one pair of tasks that can run in parallel, with no circular dependency.",
+      "weight": 2
+    },
+    {
+      "id": "conflict",
+      "criterion": "Notes the 7-day (REQ-3) versus 5-day (REQ-6) reservation conflict as an assumption or open item.",
+      "weight": 2
+    },
+    {
+      "id": "buffer",
+      "criterion": "The total effort is shown as a serial sum plus an explicit buffer percentage.",
+      "weight": 1
+    },
+    {
+      "id": "phases",
+      "criterion": "The execution plan has separate verification and documentation phases.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "id": "design-hold-service",
+  "class": "design",
+  "target": "k-architect",
+  "prompt": "From the requirements in docs/, write a short design for the hold service (about two pages) at docs/design/hold-service.md. Cover components and responsibilities, the data model, the API, how queue ordering and the reservation window work, what happens when a copy is returned (including two returns at once), notification failures, and how you would test it. Call out anything in the requirements that conflicts or is missing, and say what you assumed. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "product-spec",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/design/hold-service.md"
+    },
+    {
+      "type": "contains",
+      "path": "docs/design/hold-service.md",
+      "pattern": "(?:\\b(?:7|seven)[ -]?(?:calendar[ -])?days?\\b|\\b(?:7|seven)\\b(?=\\s*(?:or|vs\\.?|versus|and|/|,)\\s*(?:5|five)[ -]?days?\\b)|\\b(?:7|seven)\\b[^.\\n]{0,12}\\bREQ-?3\\b|\\bREQ-?3\\b[^.\\n]{0,60}\\b(?:7|seven)\\b)[\\s\\S]{0,400}(?:\\b(?:5|five)[ -]?(?:calendar[ -])?days?\\b|\\b(?:5|five)\\b[^.\\n]{0,12}\\bREQ-?6\\b|\\bREQ-?6\\b[^.\\n]{0,60}\\b(?:5|five)\\b(?!\\s*(?:active\\s+)?holds?)|\\bafter\\s+(?:5|five)\\b(?!\\s*(?:active\\s+)?(?:holds?|attempts?|retries|tries|minutes?|hours?|seconds?)))|(?:\\b(?:5|five)[ -]?(?:calendar[ -])?days?\\b|\\b(?:5|five)\\b[^.\\n]{0,12}\\bREQ-?6\\b|\\bREQ-?6\\b[^.\\n]{0,60}\\b(?:5|five)\\b(?!\\s*(?:active\\s+)?holds?)|\\bafter\\s+(?:5|five)\\b(?!\\s*(?:active\\s+)?(?:holds?|attempts?|retries|tries|minutes?|hours?|seconds?)))[\\s\\S]{0,400}(?:\\b(?:7|seven)[ -]?(?:calendar[ -])?days?\\b|\\b(?:7|seven)\\b(?=\\s*(?:or|vs\\.?|versus|and|/|,)\\s*(?:5|five)[ -]?days?\\b)|\\b(?:7|seven)\\b[^.\\n]{0,12}\\bREQ-?3\\b|\\bREQ-?3\\b[^.\\n]{0,60}\\b(?:7|seven)\\b)"
+    },
+    {
+      "type": "contains",
+      "path": "docs/design/hold-service.md",
+      "pattern": "conflict|inconsisten|contradict|discrepan|mismatch|disagree"
+    },
+    {
+      "type": "contains",
+      "path": "docs/design/hold-service.md",
+      "pattern": "(two|concurrent|simultaneous|same time|at once)[\\s\\S]{0,500}(atomic|transaction|lock|conditional update|for update|skip locked|compare.and)|(atomic|transaction|lock|conditional update|for update|skip locked|compare.and)[\\s\\S]{0,500}(two|concurrent|simultaneous|same time|at once)"
+    },
+    {
+      "type": "contains",
+      "path": "docs/design/hold-service.md",
+      "pattern": "(?:bounce[sd]?|no (?:email|e-mail)|no (?:email )?address|without an? (?:email )?address|missing (?:email )?address|delivery fail\\w*|undeliverable)[\\s\\S]{0,400}(?:not block|never block|(?:does not|doesn.t|do not|don.t) (?:block|prevent|affect|stop)|still|regardless|independent|retr(?:y|ies|ied|ying))"
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'queued' 'reserved' 'fulfilled' 'cancel(l)?ed' 'expired'; do cat docs/design/hold-service.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'title.?id' 'member.?id' 'status' 'created.?at' 'reserved.?(until|at|end)'; do cat docs/design/hold-service.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/design/hold-service.md",
+      "pattern": "\\b(GET|POST|DELETE|PUT|PATCH)\\b[ \\t|`*]*/\\w",
+      "min": 4
+    },
+    {
+      "type": "contains",
+      "path": "docs/design/hold-service.md",
+      "pattern": "\\b(409|422|429|400)\\b"
+    },
+    {
+      "type": "contains",
+      "path": "docs/design/hold-service.md",
+      "pattern": "\\b(?:5|five)\\b[^\\n]{0,30}(?:active )?holds?|holds?[^\\n]{0,40}\\b(?:5|five)\\b|(?:limit|maximum|max|at most|cap)\\b[^\\n]{0,40}\\b(?:5|five)\\b"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/design/hold-service.md",
+      "pattern": "\\bassum",
+      "min": 2
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/design/hold-service.md",
+      "pattern": "\\b(unit|integration|concurrency|load|contract|end.to.end|e2e|fake|mock)\\b",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; h=$(grep -E '^[[:space:]]*(#+[[:space:]]|[*][*][^*]+[*][*]:?[[:space:]]*$)' docs/design/hold-service.md 2>/dev/null); for p in 'component|responsib' 'data|model|schema' 'api|endpoint' 'order|queue|reserv|window' 'return|concurren' 'notif' 'test' 'assum|conflict|gap'; do printf '%s\\n' \"$h\" | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 6 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/design/hold-service.md",
+      "pattern": "^(?![^\\n]*(out of scope|not in scope|excluded|deferred|later feature|later release|not included|non-goal))[^\\n]*weekly[^\\n]*report"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/design/hold-service.md)\" -ge 40 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(wc -l < docs/design/hold-service.md)\" -le 200 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "conflict",
+      "criterion": "Names the conflict between REQ-3 (7 days) and REQ-6 (5 days) and resolves it: picks one value, or makes the window configurable with a stated default, and gives a reason. Partial credit if the conflict is named but no value is chosen or no reason is given.",
+      "weight": 3
+    },
+    {
+      "id": "concurrency",
+      "criterion": "Handles two copies returned at once with an atomic claim of the queue head (transaction, row lock or conditional update) so one member cannot receive both copies.",
+      "weight": 3
+    },
+    {
+      "id": "data-model",
+      "criterion": "Defines a Hold entity with the status flow queued, reserved, then fulfilled, cancelled or expired, and defines the queue order as first come, first served (by creation time or an equivalent sequence number or position).",
+      "weight": 2
+    },
+    {
+      "id": "notifications",
+      "criterion": "Defines what happens when an email bounces or a member has no address, and shows the failure cannot leave a hold stuck: the reservation is still made and the hold still ends (expires or is fulfilled) so the next member is served. A design that retries, flags staff, or expires the hold early meets this; one that leaves the hold reserved with no end, or does not say, does not.",
+      "weight": 2
+    },
+    {
+      "id": "limit",
+      "criterion": "Enforces the 5 active holds limit (REQ-7) with a defined error response in the API.",
+      "weight": 2
+    },
+    {
+      "id": "scope",
+      "criterion": "Does not add a weekly report component (US-6 is out of scope).",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "lite",
+    "full"
+  ]
+}

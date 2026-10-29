@@ -1,0 +1,84 @@
+{
+  "id": "sop-context-gathering",
+  "class": "sop",
+  "target": "k-context-gathering",
+  "prompt": "I am about to change how stock adjustments work in this service (POST /items/:id/stock). Before I touch anything, gather context and write it to context-report.md. Cover how the flow works today, the patterns and conventions in use, dependencies and integration points, constraints I must respect, which tests exist, and your recommended approach. Use a separate heading for each of these topics. Also say whether this change is risky enough that a senior architect should look at it first. Do not change any code. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 900,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "context-report.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; h=$(grep -E '^[[:space:]]*(#+[[:space:]]|[*][*][^*]+[*][*]:?[[:space:]]*$)' context-report.md 2>/dev/null); for p in 'current|flow|how|today' 'pattern|convention' 'dependenc|integration' 'constraint' 'test' 'recommend|approach' 'risk|escalat|architect'; do printf '%s\\n' \"$h\" | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 6 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'adjustStock' 'handlers/items|items\\.js' 'inventoryService' 'itemRepo|repository' 'server\\.js'; do cat context-report.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e '(function refsCheck(c) { const fs = require(\"fs\"); let text = \"\"; try { text = fs.readFileSync(c.file, \"utf8\"); } catch (e) { process.exit(1); } const files = []; const walk = (d) => { let es = []; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; } for (const e of es) { if (e.name === \"node_modules\" || e.name === \".git\") continue; const p = d === \".\" ? e.name : d + \"/\" + e.name; if (e.isDirectory()) walk(p); else files.push(p); } }; walk(\".\"); const re = /([A-Za-z0-9_\\/.-]+\\.js)[`)*\\]]*(?::|#L|,?\\s*\\(?lines?\\s*)(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?/gi; const seen = new Set(); const refs = []; const found = [...text.matchAll(re)].map((m) => ({ name: m[1], a: m[2], b: m[3] })); if (c.defaultFile) { for (const m of text.matchAll(/\\blines?\\s+(\\d+)(?:\\s*[-\\u2013]\\s*(\\d+))?/gi)) found.push({ name: c.defaultFile, a: m[1], b: m[2] }); } for (const m of found) { const f = files.find((x) => x === m.name.replace(/^\\.\\//, \"\") || x.endsWith(\"/\" + m.name.replace(/^\\.\\//, \"\"))); if (!f) continue; const a = Number(m.a); const b = m.b ? Number(m.b) : a; const lines = fs.readFileSync(f, \"utf8\").split(\"\\n\"); if (a < 1 || a > lines.length) continue; if (c.lineRe && !new RegExp(c.lineRe, \"i\").test(lines[a - 1])) continue; if (seen.has(f + \":\" + a)) continue; seen.add(f + \":\" + a); refs.push({ f, a, b }); } let hits = 0; for (const s of c.seeds || []) { if (refs.some((r) => r.f.endsWith(s.f) && [r.a, r.b].some((n) => n >= s.lo - 2 && n <= s.hi + 2))) hits++; } process.exit(refs.length >= c.min && hits >= (c.minSeeds || 0) ? 0 : 1); })({\"file\":\"context-report.md\",\"min\":4,\"lineRe\":\".\"})'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'validat|NaN|not a number|non.integer|fraction|negative' 'admin.token|x-admin|authori[sz]ation|authenticat|isAdmin|token check|no token' 'race|lost update|concurren|atomic|read.modify.write|interleav' 'no test|untested|not tested|no (unit )?tests?|only one|single test|happy.path'; do cat context-report.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "context-report.md",
+      "pattern": "(recommend|should|need|no need|not need|does not need|required|unnecessary|warrant|yes)[^\\n]{0,100}architect|architect[^\\n]{0,100}(review|recommend|not (needed|required)|unnecessary|should|warrant|escalat)"
+    },
+    {
+      "type": "min_matches",
+      "path": "context-report.md",
+      "pattern": "^[ \\t]*(?:[-*+]|\\d+[.)])[ \\t]+\\S",
+      "min": 10
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' context-report.md)\" -ge 20 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "flow",
+      "criterion": "Traces the flow from the route in src/server.js through handlers/items.js adjustStock, services/inventoryService.js adjustStock and repository/itemRepo.js get and save to db.rows.",
+      "weight": 3
+    },
+    {
+      "id": "gaps",
+      "criterion": "States that delta is not validated and that adjustStock has no admin-token check, unlike the README rules.",
+      "weight": 3
+    },
+    {
+      "id": "race",
+      "criterion": "Identifies the read-then-write lost-update risk in the service adjustStock.",
+      "weight": 2
+    },
+    {
+      "id": "tests",
+      "criterion": "States which tests exist for adjustStock (one happy-path service test) and that handlers have no tests.",
+      "weight": 2
+    },
+    {
+      "id": "escalation",
+      "criterion": "Gives an explicit proceed or escalate recommendation with a reason.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

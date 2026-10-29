@@ -1,0 +1,81 @@
+{
+  "id": "hard-batch-flaky",
+  "class": "hard",
+  "target": null,
+  "prompt": "The nightly batch in this repository (ledger-batch) has an open incident described in docs/OPERATIONS.md: customer totals sometimes differ from the ledger by a few events, a re-run charged some events twice, and some events never reached the ledger. It looks random. Find the causes and fix them so that `runBatch` and `createDedupeStore` behave as the Behavior section of README.md says; that section is the contract and its defaults table is correct. Keep the public API of src/index.js backward compatible, do not add dependencies, and do not edit the existing tests. Add a regression test for each cause in a new test file under test/, make sure `node --test` passes, and add entries under Unreleased in CHANGELOG.md. Update docs/OPERATIONS.md so it no longer contains claims that turned out to be wrong. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "hard-jobs",
+  "hidden": "hard-batch-flaky",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 26
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/batch.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/retry.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/pool.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/helpers.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "retry|retries|attempt"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "dedupe|ttl"
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/OPERATIONS.md",
+      "pattern": "two workers can pick the same index"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "Adds a regression test for each cause it fixed, runs the whole suite and reports the result, and shows or states that the new tests failed before the fixes.",
+      "weight": 2
+    },
+    {
+      "id": "root-causes",
+      "criterion": "Fixes the causes in the code (shared state, a check-then-act race on ids, expiry handling, the retry count, the TTL unit in the config) instead of masking symptoms with sleeps, lower concurrency or looser assertions.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "Existing tests and package.json are unchanged, the public API is unchanged, and README, CHANGELOG and docs/OPERATIONS.md agree with the final behavior.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "hard"
+  ]
+}

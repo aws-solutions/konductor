@@ -1,0 +1,91 @@
+{
+  "id": "orch-input-validation",
+  "class": "orchestration",
+  "target": "konductor",
+  "prompt": "The inventory API trusts whatever clients send. Add input validation that follows the rules in the README for POST /items and POST /items/:id/stock, rejecting bad input with a 400 and a clear message. Add tests for the new validation, keep the existing tests passing, and update the README to document the 400 responses. Do not change the authentication behavior. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'require(\"./src/handlers/items\").adjustStock({params:{id:\"1\"},body:{delta:\"abc\"},headers:{}}).then(r=>process.exit(r.status===400?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'require(\"./src/handlers/items\").adjustStock({params:{id:\"1\"},body:{delta:1.5},headers:{}}).then(r=>process.exit(r.status===400?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'require(\"./src/handlers/items\").adjustStock({params:{id:\"1\"},body:{delta:-1000},headers:{}}).then(r=>process.exit([400,409,422].includes(r.status)?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'require(\"./src/handlers/items\").adjustStock({params:{id:\"1\"},headers:{}}).then(r=>process.exit(r.status===400?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const c=require(\"./src/config\");const h=require(\"./src/handlers/items\");const hd={\"x-admin-token\":c.adminToken};Promise.all([h.createItem({params:{},body:{name:\"\",qty:1},headers:hd}),h.createItem({params:{},body:{name:\"x\",qty:-1},headers:hd}),h.createItem({params:{},body:{name:\"x\",qty:1.5},headers:hd})]).then(rs=>process.exit(rs.every(r=>r.status===400)?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const c=require(\"./src/config\");const h=require(\"./src/handlers/items\");Promise.all([h.adjustStock({params:{id:\"1\"},body:{delta:2},headers:{}}),h.createItem({params:{},body:{name:\"Valid\",qty:3},headers:{\"x-admin-token\":c.adminToken}})]).then(rs=>process.exit(rs[0].status===200&&rs[1].status===201?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(node --test --test-reporter=tap 2>&1 | sed -n 's/^# tests //p')\" -gt 8 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c 400 README.md)\" -ge 2 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "delta",
+      "criterion": "adjustStock rejects a missing body, a non-numeric delta and a fractional delta with status 400 and a message that names the delta field.",
+      "weight": 3
+    },
+    {
+      "id": "negative",
+      "criterion": "adjustStock rejects an adjustment that would make stock negative.",
+      "weight": 3
+    },
+    {
+      "id": "create",
+      "criterion": "createItem validates name (non-empty string, at most 100 characters) and qty (non-negative integer).",
+      "weight": 2
+    },
+    {
+      "id": "tests",
+      "criterion": "Adds handler-level tests for each rule, the suite passes, and the test count rises above 8.",
+      "weight": 2
+    },
+    {
+      "id": "readme",
+      "criterion": "README documents the 400 responses for both routes.",
+      "weight": 1
+    },
+    {
+      "id": "auth-unchanged",
+      "criterion": "adjustStock still has no token check and createItem still requires the admin token.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "lite",
+    "full"
+  ]
+}

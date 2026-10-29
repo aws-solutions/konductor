@@ -1,0 +1,50 @@
+{
+  "id": "simple-rename",
+  "class": "simple",
+  "target": null,
+  "prompt": "Rename the function cnt to countWords everywhere it is used: source, tests and README. Behavior must not change and the existing tests must keep passing. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "textkit",
+  "timeoutSec": 300,
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "! grep -rqw cnt src test README.md",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'process.exit(require(\"./src\").countWords(\"a b c\")===3?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/words.test.js",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "all-sites",
+      "criterion": "cnt is renamed in src/words.js, src/index.js, test/words.test.js and README.md, with no leftover references.",
+      "weight": 3
+    },
+    {
+      "id": "behavior",
+      "criterion": "Only the name changes; the function body and return values are identical.",
+      "weight": 2
+    },
+    {
+      "id": "evidence",
+      "criterion": "Runs the tests after the rename and reports the result.",
+      "weight": 2
+    },
+    {
+      "id": "no-collateral",
+      "criterion": "Does not rename unrelated identifiers such as longestWord or capitalize.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

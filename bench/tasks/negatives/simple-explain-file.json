@@ -1,0 +1,180 @@
+{
+  "loosened": [
+    5,
+    6,
+    7
+  ],
+  "cases": [
+    {
+      "name": "same line",
+      "check": 5,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "It splits on commas, except commas inside double quotes.\n"
+      }
+    },
+    {
+      "name": "adjacent lines",
+      "check": 5,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "- A double quote switches an \"inside quotes\" flag on or off.\n- While the flag is on, commas are part of the field.\n"
+      }
+    },
+    {
+      "name": "comma first, quotes later",
+      "check": 5,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "Commas separate fields.\nOnly commas outside the quote marks count.\n"
+      }
+    },
+    {
+      "name": "commas only",
+      "check": 5,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "explanation.md": "parseLine splits a line on commas into fields.\n"
+      }
+    },
+    {
+      "name": "quotes only",
+      "check": 5,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "explanation.md": "Double quote characters are removed from the output.\n"
+      }
+    },
+    {
+      "name": "concepts 600 characters apart",
+      "check": 5,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "explanation.md": "Fields are separated by commas.\nx x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x \nQuote characters are removed.\n"
+      }
+    },
+    {
+      "name": "skips lines that are exactly empty",
+      "check": 6,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "parseCsv skips lines that are exactly empty.\n"
+      }
+    },
+    {
+      "name": "drops empty lines",
+      "check": 6,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "It splits the text on newlines, drops empty lines and parses the rest.\n"
+      }
+    },
+    {
+      "name": "verb and noun on adjacent lines",
+      "check": 6,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "Blank lines are\nignored by parseCsv.\n"
+      }
+    },
+    {
+      "name": "skips a line only when empty",
+      "check": 6,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "parseCsv skips a line only when it is exactly the empty string.\n"
+      }
+    },
+    {
+      "name": "empty field dropped, nothing on blank lines",
+      "check": 6,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "explanation.md": "An empty last field is dropped: a,b, gives two fields.\n"
+      }
+    },
+    {
+      "name": "blank lines, no handling stated",
+      "check": 6,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "explanation.md": "Blank lines exist in many CSV files and are a common source of confusion.\n"
+      }
+    },
+    {
+      "name": "nothing on blank lines",
+      "check": 6,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "explanation.md": "parseCsv returns an array of rows.\n"
+      }
+    },
+    {
+      "name": "splits on newline escape",
+      "check": 7,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "It splits the text on `\\n`.\n"
+      }
+    },
+    {
+      "name": "each line",
+      "check": 7,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "Each line is parsed on its own.\n"
+      }
+    },
+    {
+      "name": "splits into lines",
+      "check": 7,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "parseCsv splits the text into lines first.\n"
+      }
+    },
+    {
+      "name": "split across lines",
+      "check": 7,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "explanation.md": "The text is split\non line breaks.\n"
+      }
+    },
+    {
+      "name": "no mention of how rows are formed",
+      "check": 7,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "explanation.md": "parseLine handles quotes and commas.\n"
+      }
+    },
+    {
+      "name": "split without a line unit",
+      "check": 7,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "explanation.md": "parseLine splits fields on commas. Quotes are removed.\n"
+      }
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "loosened": [
+    5,
+    6
+  ],
+  "cases": [
+    {
+      "name": "seven source files",
+      "check": 5,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "test-coverage-review/test-gap-analysis.md": "The service has seven source files.\n"
+      }
+    },
+    {
+      "name": "7 source files",
+      "check": 5,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "test-coverage-review/test-gap-analysis.md": "Source files: 7\n"
+      }
+    },
+    {
+      "name": "a different count",
+      "check": 5,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "test-coverage-review/test-gap-analysis.md": "The service has 12 source files.\n"
+      }
+    },
+    {
+      "name": "seven with no source reference",
+      "check": 5,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "test-coverage-review/test-gap-analysis.md": "Seven bugs were found in review.\n"
+      }
+    },
+    {
+      "name": "two test files",
+      "check": 6,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "test-coverage-review/test-gap-analysis.md": "There are two test files.\n"
+      }
+    },
+    {
+      "name": "test files: 2",
+      "check": 6,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "test-coverage-review/test-gap-analysis.md": "Test files: 2\n"
+      }
+    },
+    {
+      "name": "a different count of test files",
+      "check": 6,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "test-coverage-review/test-gap-analysis.md": "There are 5 test files.\n"
+      }
+    },
+    {
+      "name": "two with no test reference",
+      "check": 6,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "test-coverage-review/test-gap-analysis.md": "Two handlers are untested.\n"
+      }
+    }
+  ]
+}

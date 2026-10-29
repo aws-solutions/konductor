@@ -1,0 +1,4 @@
+The files under overlay/ are test files of pallets/click (https://github.com/pallets/click), copied unchanged
+from the merge commit c48021040a50c659b74e24ac2b11c9c9c6620a21 of pull request #3473 (https://github.com/pallets/click/pull/3473).
+They serve as hidden acceptance tests for one benchmark task.
+Upstream license: BSD-3-Clause; the license text is in the file LICENSE next to this one.

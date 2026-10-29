@@ -1,0 +1,4 @@
+The files under overlay/ are test files of Textualize/rich (https://github.com/Textualize/rich), copied unchanged
+from the merge commit 3286095ff8b70e093dbbc4136ff7ba7d51944bec of pull request #3938 (https://github.com/Textualize/rich/pull/3938).
+They serve as hidden acceptance tests for one benchmark task.
+Upstream license: MIT; the license text is in the file LICENSE next to this one.

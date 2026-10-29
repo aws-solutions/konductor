@@ -1,0 +1,7 @@
+{
+  "number": "INV-2001",
+  "customer": { "name": "Example GmbH", "country": "DE" },
+  "currency": "USD",
+  "issuedAt": "2025-02-10T08:00:00Z",
+  "lines": [{ "sku": "X-1", "description": "Widget", "qty": 4, "unitPrice": 19.99 }]
+}

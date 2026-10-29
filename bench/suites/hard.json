@@ -1,0 +1,22 @@
+{
+  "tasks": [
+    "hard-quota-service",
+    "hard-batch-flaky",
+    "hard-invoice-refactor",
+    "hard-contacts-rename",
+    "hard-migrate-orders",
+    "hard-billing-reconcile"
+  ],
+  "arms": [
+    "vanilla",
+    "v1.2.0",
+    "main"
+  ],
+  "replicates": 3,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "parallel": 1
+}

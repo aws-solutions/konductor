@@ -1,0 +1,10 @@
+{
+  "name": "order-migrator",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Migrates order files from schema 1 to schema 2",
+  "bin": { "order-migrate": "bin/migrate.js" },
+  "scripts": {
+    "test": "node --test"
+  }
+}

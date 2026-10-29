@@ -1,0 +1,79 @@
+{
+  "loosened": [
+    5
+  ],
+  "cases": [
+    {
+      "name": "severity only in section headings",
+      "check": 5,
+      "type": "labelled_findings",
+      "expect": "pass",
+      "files": {
+        "review.md": "# Review\n## Critical\n### 1. SQL injection\nx\n### 2. No auth\nx\n## Important\n### 3. Leak\nx\n## Minor\n### 4. Timing\nx\n"
+      }
+    },
+    {
+      "name": "severity in a table",
+      "check": 5,
+      "type": "labelled_findings",
+      "expect": "pass",
+      "files": {
+        "review.md": "| # | Severity | Finding |\n|---|---|---|\n| 1 | Critical | SQLi |\n| 2 | Critical | No auth |\n| 3 | Important | Leak |\n| 4 | Minor | Timing |\n"
+      }
+    },
+    {
+      "name": "severity label per finding",
+      "check": 5,
+      "type": "labelled_findings",
+      "expect": "pass",
+      "files": {
+        "review.md": "### 1. SQLi\n- Severity: Critical\n### 2. Auth\n- Severity: Critical\n### 3. Leak\n- Severity: Important\n### 4. Timing\n- Severity: Minor\n"
+      }
+    },
+    {
+      "name": "inline labels",
+      "check": 5,
+      "type": "labelled_findings",
+      "expect": "pass",
+      "files": {
+        "review.md": "- Critical: SQL injection\n- Critical: no auth\n- Important: stack leak\n- Minor: timing\n"
+      }
+    },
+    {
+      "name": "severity words in prose only",
+      "check": 5,
+      "type": "labelled_findings",
+      "expect": "fail",
+      "files": {
+        "review.md": "Critical issues should be fixed first. Important issues next, then minor ones. This critical review found important problems; minor items are listed elsewhere. Critical. Important. Minor.\n"
+      }
+    },
+    {
+      "name": "two labelled findings",
+      "check": 5,
+      "type": "labelled_findings",
+      "expect": "fail",
+      "files": {
+        "review.md": "## Critical\n### 1. SQLi\n## Minor\n### 2. Timing\n"
+      }
+    },
+    {
+      "name": "severity counts only",
+      "check": 5,
+      "type": "labelled_findings",
+      "expect": "fail",
+      "files": {
+        "review.md": "| Severity | Count |\n|---|---|\n| Critical | 3 |\n| Important | 4 |\n| Minor | 2 |\n"
+      }
+    },
+    {
+      "name": "findings without any severity",
+      "check": 5,
+      "type": "labelled_findings",
+      "expect": "fail",
+      "files": {
+        "review.md": "### 1. SQLi\n### 2. Auth\n### 3. Leak\n### 4. Timing\n### 5. Body size\n"
+      }
+    }
+  ]
+}

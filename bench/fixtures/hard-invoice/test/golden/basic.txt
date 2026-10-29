@@ -1,0 +1,16 @@
+INVOICE INV-1001
+Date: 14 Mar 2025
+Bill to: Northwind Traders (VAT DE123456789)
+------------------------------------------------------------------------
+SKU       Description                     Qty                     Amount
+A-100     Cable tray                       10                     $42.50
+B-200     Standing desk frame               2                    $699.00
+------------------------------------------------------------------------
+Subtotal                                                         $741.50
+Tax (19%)                                                        $140.89
+Shipping                                                            free
+Total                                                            $882.39
+
+Notes:
+  Payment due within 30 days of the invoice date. Late
+  payments accrue interest.

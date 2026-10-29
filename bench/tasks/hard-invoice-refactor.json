@@ -1,0 +1,99 @@
+{
+  "id": "hard-invoice-refactor",
+  "class": "hard",
+  "target": null,
+  "prompt": "src/report.js in this repository (invoice-text) has grown into one long function. Refactor it into smaller modules: at least a calculation module and a separate module for each output format. Then add the two additions described in docs/REPORT.md (CSV output and euro formatting). For every invoice that renders today, the text output must stay identical byte for byte. test/golden pins a few examples but is not exhaustive, so preserve the existing behavior rather than tidying it, even where it looks odd. `renderReport` must stay exported from both `src/index.js` and `src/report.js`. When you are done, `src/report.js` must be 40 lines or fewer and no file under src/ may be longer than 120 lines. Do not edit the existing tests or golden files and do not add dependencies. Add tests for the new capabilities in a new file under test/, make sure `node --test` passes, and update README.md and CHANGELOG.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "hard-invoice",
+  "hidden": "hard-invoice-refactor",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 32
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/report.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/invoices.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/golden/basic.txt"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/golden/discounted.txt"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/golden/yen.txt"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/golden/credit.txt"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(wc -l < src/report.js)\" -le 40 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(find src -name '*.js' ! -path 'src/legacy/*' | wc -l)\" -ge 6 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "for f in $(find src -name '*.js'); do [ \"$(wc -l < \"$f\")\" -le 120 ] || exit 1; done",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 2 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "csv"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "csv"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "Runs the existing golden tests and the full suite after the refactor and again after adding the features, and reports the results; compares the refactored output with the original for inputs beyond the golden files.",
+      "weight": 2
+    },
+    {
+      "id": "behavior-preserved",
+      "criterion": "Moves logic without changing its behavior: odd existing behavior (rounding, notes wrapping, date handling, padding by string length) is kept as is, and the final message does not claim behavior was fixed or improved.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "Existing tests, goldens and package.json are unchanged, the new modules have clear single responsibilities, and README and CHANGELOG describe the new formats.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "hard"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "textkit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Small text helpers",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

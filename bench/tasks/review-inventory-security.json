@@ -1,0 +1,90 @@
+{
+  "id": "review-inventory-security",
+  "class": "review",
+  "target": "backend-review",
+  "prompt": "Do a security-focused review of this service, covering the whole src folder. Write review.md with each finding's severity (Critical, Important or Minor), file and line, why it matters, and a concrete fix, ordered by severity. Only report real problems you can point to in the code. Do not change any code. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "review.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e '(function refsCheck(c) { const fs = require(\"fs\"); let text = \"\"; try { text = fs.readFileSync(c.file, \"utf8\"); } catch (e) { process.exit(1); } const files = []; const walk = (d) => { let es = []; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; } for (const e of es) { if (e.name === \"node_modules\" || e.name === \".git\") continue; const p = d === \".\" ? e.name : d + \"/\" + e.name; if (e.isDirectory()) walk(p); else files.push(p); } }; walk(\".\"); const re = /([A-Za-z0-9_\\/.-]+\\.js)[`)*\\]]*(?::|#L|,?\\s*\\(?lines?\\s*)(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?/gi; const seen = new Set(); const refs = []; const found = [...text.matchAll(re)].map((m) => ({ name: m[1], a: m[2], b: m[3] })); if (c.defaultFile) { for (const m of text.matchAll(/\\blines?\\s+(\\d+)(?:\\s*[-\\u2013]\\s*(\\d+))?/gi)) found.push({ name: c.defaultFile, a: m[1], b: m[2] }); } for (const m of found) { const f = files.find((x) => x === m.name.replace(/^\\.\\//, \"\") || x.endsWith(\"/\" + m.name.replace(/^\\.\\//, \"\"))); if (!f) continue; const a = Number(m.a); const b = m.b ? Number(m.b) : a; const lines = fs.readFileSync(f, \"utf8\").split(\"\\n\"); if (a < 1 || a > lines.length) continue; if (c.lineRe && !new RegExp(c.lineRe, \"i\").test(lines[a - 1])) continue; if (seen.has(f + \":\" + a)) continue; seen.add(f + \":\" + a); refs.push({ f, a, b }); } let hits = 0; for (const s of c.seeds || []) { if (refs.some((r) => r.f.endsWith(s.f) && [r.a, r.b].some((n) => n >= s.lo - 2 && n <= s.hi + 2))) hits++; } process.exit(refs.length >= c.min && hits >= (c.minSeeds || 0) ? 0 : 1); })({\"file\":\"review.md\",\"min\":6,\"seeds\":[{\"f\":\"repository/itemRepo.js\",\"lo\":22,\"hi\":22},{\"f\":\"handlers/items.js\",\"lo\":25,\"hi\":27},{\"f\":\"handlers/items.js\",\"lo\":21,\"hi\":21},{\"f\":\"src/server.js\",\"lo\":50,\"hi\":50},{\"f\":\"services/inventoryService.js\",\"lo\":19,\"hi\":25},{\"f\":\"src/config.js\",\"lo\":6,\"hi\":6},{\"f\":\"handlers/items.js\",\"lo\":8,\"hi\":8},{\"f\":\"src/server.js\",\"lo\":36,\"hi\":37},{\"f\":\"services/inventoryService.js\",\"lo\":31,\"hi\":31}],\"minSeeds\":5})'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'inject|concatenat|string.built|parameteri[sz]|bound param|placeholder|prepared' 'admin.token|x-admin|authori[sz]ation|authenticat|isAdmin|token check|no token' 'validat|NaN|not a number|non.integer|fraction|negative' 'stack' 'race|lost update|concurren|atomic|read.modify.write|interleav' 'hardcod|hard.cod|fallback|default (admin )?token|fail closed' 'body size|size limit|payload|unbounded|no limit|413' 'timing|constant.time|timingSafeEqual'; do cat review.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "review.md",
+      "pattern": "critical[\\s\\S]{0,300}inject|inject[\\s\\S]{0,300}critical"
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'itemRepo' 'items\\.js|handlers' 'server\\.js'; do cat review.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "labelled_findings",
+      "path": "review.md",
+      "min": 4
+    },
+    {
+      "type": "min_matches",
+      "path": "review.md",
+      "pattern": "\\b(fix|remediation|recommend\\w*|suggested|use|add|validate|replace|return|limit|bind|parameteri[sz]\\w*|check|reject)\\b",
+      "min": 8
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review.md)\" -ge 15 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "sqli",
+      "criterion": "Reports the string-built SQL in itemRepo.searchByName (line 22) as Critical, with a bound-parameter fix.",
+      "weight": 3
+    },
+    {
+      "id": "authz",
+      "criterion": "Reports that POST /items/:id/stock has no admin-token check although the README requires it.",
+      "weight": 3
+    },
+    {
+      "id": "validation",
+      "criterion": "Reports unvalidated delta (NaN, fractions, negative stock) and unvalidated createItem input.",
+      "weight": 2
+    },
+    {
+      "id": "leak",
+      "criterion": "Reports that the 500 response in server.js returns err.stack to the client.",
+      "weight": 2
+    },
+    {
+      "id": "secrets-race",
+      "criterion": "Reports at least one of: the hardcoded fallback admin token in config.js, the lost update in the service adjustStock.",
+      "weight": 2
+    },
+    {
+      "id": "no-false-positives",
+      "criterion": "Does not report path traversal, XSS or eval, which the code does not contain.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "lite",
+    "full"
+  ]
+}

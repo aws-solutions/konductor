@@ -1,0 +1,81 @@
+{
+  "id": "hard-migrate-orders",
+  "class": "hard",
+  "target": null,
+  "prompt": "docs/SCHEMA.md specifies the migration of order files from schema 1 to schema 2 and the contract of the command line tool. Make `bin/migrate.js` implement it: `up` must follow the field rules, the file rules and the exit codes, must be idempotent and must write atomically, and the missing `down`, `--dry-run` and `--force` must be added. The repository already contains a first attempt at `up`; the spec is the contract, not the existing code. Do not edit the existing tests or data/orders.jsonl and do not add dependencies. Add tests for the new behavior in new files under test/, make sure `node --test` passes, and update README.md (it must no longer say that down is missing) and CHANGELOG.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "hard-migrate",
+  "hidden": "hard-migrate-orders",
+  "timeoutSec": 1500,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 29
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/money.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/schema.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/migrate.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "data/orders.jsonl"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "down"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "dry-run"
+    },
+    {
+      "type": "not_contains",
+      "path": "README.md",
+      "pattern": "not implemented yet"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "Exercises the command line tool itself on realistic data (up twice, down, rejects, dry-run) and reports what it observed, rather than only running unit tests of the helpers.",
+      "weight": 2
+    },
+    {
+      "id": "spec-fidelity",
+      "criterion": "Follows docs/SCHEMA.md where the existing code disagreed (cents rounding, calendar dates without time zone shifts, addresses, backup handling, idempotency, atomic writes) and does not claim behavior the spec does not describe.",
+      "weight": 2
+    },
+    {
+      "id": "minimal",
+      "criterion": "Existing tests and sample data are unchanged, no dependency was added, dead code is left alone, and README and CHANGELOG match the final behavior.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "hard"
+  ]
+}

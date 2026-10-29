@@ -1,0 +1,136 @@
+{
+  "id": "sop-spec-workflow",
+  "class": "sop",
+  "target": "kiro-spec-workflow",
+  "prompt": "Turn the hold-requests feature into a Kiro spec. The scoped stories and components are in docs/feature-scope.md, the full user stories are in docs/user-stories.md and design artifacts are in docs/design/. Write requirements.md (EARS-style acceptance criteria), design.md (Overview, Architecture, Components and Interfaces, Data Models, Error Handling, Testing Strategy) and tasks.md (numbered checkbox tasks, at most two levels, each referencing the requirements it satisfies) to .kiro/specs/hold-requests/. Do not wait for approval between steps. End with a short traceability summary from requirements to design to tasks. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "product-spec",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": ".kiro/specs/hold-requests/requirements.md"
+    },
+    {
+      "type": "file_exists",
+      "path": ".kiro/specs/hold-requests/design.md"
+    },
+    {
+      "type": "file_exists",
+      "path": ".kiro/specs/hold-requests/tasks.md"
+    },
+    {
+      "type": "min_matches",
+      "path": ".kiro/specs/hold-requests/requirements.md",
+      "pattern": "\\b(WHEN|IF|WHILE|WHERE)\\b[^\\n]*\\bSHALL\\b",
+      "min": 15
+    },
+    {
+      "type": "min_matches",
+      "path": ".kiro/specs/hold-requests/requirements.md",
+      "pattern": "^#+\\s*(requirement\\s*\\d+|REQ-?\\d+|US-?\\d+)",
+      "min": 5
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'US-?1|place a hold|hold on a title' 'US-?2|position|place in line' 'US-?3|email|notif' 'US-?4|cancel' 'US-?5|librarian|staff'; do cat .kiro/specs/hold-requests/requirements.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; h=$(grep -E '^[[:space:]]*(#+[[:space:]]|[*][*][^*]+[*][*]:?[[:space:]]*$)' .kiro/specs/hold-requests/design.md 2>/dev/null); for p in 'overview' 'architecture' 'components' 'data model' 'error' 'testing'; do printf '%s\\n' \"$h\" | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 6 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'HoldService' 'HoldQueueStore' 'Notifier'; do cat .kiro/specs/hold-requests/design.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'queued' 'reserved' 'fulfilled' 'cancel(l)?ed' 'expired'; do cat .kiro/specs/hold-requests/design.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' .kiro/specs/hold-requests/design.md)\" -ge 30 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": ".kiro/specs/hold-requests/tasks.md",
+      "pattern": "^\\s*- \\[[ xX]\\]"
+    },
+    {
+      "type": "min_matches",
+      "path": ".kiro/specs/hold-requests/tasks.md",
+      "pattern": "^\\s*- \\[[ xX]\\]",
+      "min": 8
+    },
+    {
+      "type": "not_contains",
+      "path": ".kiro/specs/hold-requests/tasks.md",
+      "pattern": "^(\\t\\t| {4,})[-*] \\[[ xX]\\]"
+    },
+    {
+      "type": "min_matches",
+      "path": ".kiro/specs/hold-requests/tasks.md",
+      "pattern": "requirements?\\s*:?\\s*[_*]*\\s*\\d|REQ-?\\d|US-?\\d",
+      "min": 8
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");const t=[\".kiro/specs/hold-requests/requirements.md\",\".kiro/specs/hold-requests/design.md\",\".kiro/specs/hold-requests/tasks.md\"].map(f=>{try{return fs.readFileSync(f,\"utf8\")}catch(e){return \"\"}}).join(\"\\n\");process.exit(new RegExp(\"(?:\\\\b(?:7|seven)[ -]?(?:calendar[ -])?days?\\\\b|\\\\b(?:7|seven)\\\\b(?=\\\\s*(?:or|vs\\\\.?|versus|and|/|,)\\\\s*(?:5|five)[ -]?days?\\\\b)|\\\\b(?:7|seven)\\\\b[^.\\\\n]{0,12}\\\\bREQ-?3\\\\b|\\\\bREQ-?3\\\\b[^.\\\\n]{0,60}\\\\b(?:7|seven)\\\\b)[\\\\s\\\\S]{0,400}(?:\\\\b(?:5|five)[ -]?(?:calendar[ -])?days?\\\\b|\\\\b(?:5|five)\\\\b[^.\\\\n]{0,12}\\\\bREQ-?6\\\\b|\\\\bREQ-?6\\\\b[^.\\\\n]{0,60}\\\\b(?:5|five)\\\\b(?!\\\\s*(?:active\\\\s+)?holds?)|\\\\bafter\\\\s+(?:5|five)\\\\b(?!\\\\s*(?:active\\\\s+)?(?:holds?|attempts?|retries|tries|minutes?|hours?|seconds?)))|(?:\\\\b(?:5|five)[ -]?(?:calendar[ -])?days?\\\\b|\\\\b(?:5|five)\\\\b[^.\\\\n]{0,12}\\\\bREQ-?6\\\\b|\\\\bREQ-?6\\\\b[^.\\\\n]{0,60}\\\\b(?:5|five)\\\\b(?!\\\\s*(?:active\\\\s+)?holds?)|\\\\bafter\\\\s+(?:5|five)\\\\b(?!\\\\s*(?:active\\\\s+)?(?:holds?|attempts?|retries|tries|minutes?|hours?|seconds?)))[\\\\s\\\\S]{0,400}(?:\\\\b(?:7|seven)[ -]?(?:calendar[ -])?days?\\\\b|\\\\b(?:7|seven)\\\\b(?=\\\\s*(?:or|vs\\\\.?|versus|and|/|,)\\\\s*(?:5|five)[ -]?days?\\\\b)|\\\\b(?:7|seven)\\\\b[^.\\\\n]{0,12}\\\\bREQ-?3\\\\b|\\\\bREQ-?3\\\\b[^.\\\\n]{0,60}\\\\b(?:7|seven)\\\\b)\",\"im\").test(t)?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "cat .kiro/specs/hold-requests/requirements.md .kiro/specs/hold-requests/design.md .kiro/specs/hold-requests/tasks.md | grep -qiE 'conflict|inconsisten|discrepan|contradict|mismatch|open (item|decision|question)'",
+      "expectExit": 0
+    },
+    {
+      "type": "not_contains",
+      "path": ".kiro/specs/hold-requests/requirements.md",
+      "pattern": "^(?![^\\n]*(out of scope|not in scope|excluded|deferred|later feature|later release|not included|non-goal))[^\\n]*weekly[^\\n]*report"
+    },
+    {
+      "type": "not_contains",
+      "path": ".kiro/specs/hold-requests/design.md",
+      "pattern": "^(?![^\\n]*(out of scope|not in scope|excluded|deferred|later feature|later release|not included|non-goal))[^\\n]*weekly[^\\n]*report"
+    },
+    {
+      "type": "not_contains",
+      "path": ".kiro/specs/hold-requests/tasks.md",
+      "pattern": "^(?![^\\n]*(out of scope|not in scope|excluded|deferred|later feature|later release|not included|non-goal))[^\\n]*weekly[^\\n]*report"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "ears",
+      "criterion": "requirements.md acceptance criteria use WHEN, IF or WHILE with SHALL and cover US-1 to US-5; US-6 is not specified.",
+      "weight": 3
+    },
+    {
+      "id": "design",
+      "criterion": "design.md defines HoldService, HoldQueueStore and Notifier and the Hold entity with the statuses queued, reserved, fulfilled, cancelled and expired.",
+      "weight": 3
+    },
+    {
+      "id": "tasks",
+      "criterion": "tasks.md uses numbered checkboxes with at most two levels, each task cites requirement numbers, and every requirement is cited by at least one task.",
+      "weight": 2
+    },
+    {
+      "id": "conflict",
+      "criterion": "The 7-day versus 5-day reservation conflict is resolved explicitly or flagged as open, not silently picked.",
+      "weight": 2
+    },
+    {
+      "id": "traceability",
+      "criterion": "The final message has a traceability summary linking requirement to design section to task.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

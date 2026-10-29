@@ -1,0 +1,100 @@
+{
+  "id": "orch-wrap-feature",
+  "class": "orchestration",
+  "target": "konductor",
+  "prompt": "Add a wrapText(text, width) function to textkit that breaks text into lines no longer than width, splitting on spaces; a single word longer than width stays alone on its own line. It returns an array of lines. Put it in src/wrap.js, export it from the package entry point, add tests in test/wrap.test.js, document it in the README, then review your own change and write what you would flag in review to review-notes.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "textkit",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "src/wrap.js"
+    },
+    {
+      "type": "file_exists",
+      "path": "test/wrap.test.js"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const w=require(\"./src\").wrapText;const j=JSON.stringify;const ok=typeof w===\"function\"&&j(w(\"the quick brown fox\",10))===j([\"the quick\",\"brown fox\"])&&j(w(\"a extraordinarily b\",5))===j([\"a\",\"extraordinarily\",\"b\"])&&j(w(\"\",10))===\"[]\";process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/wrap.test.js",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "wrapText"
+    },
+    {
+      "type": "file_exists",
+      "path": "review-notes.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const w=require(\"./src\").wrapText;const j=JSON.stringify;process.exit(j(w(\"abc def\",7))===j([\"abc def\"])&&j(w(\"abc def\",3))===j([\"abc\",\"def\"])?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "test/wrap.test.js",
+      "pattern": "^\\s*(test|it)\\(",
+      "min": 4
+    },
+    {
+      "type": "min_matches",
+      "path": "README.md",
+      "pattern": "wrapText",
+      "min": 2
+    },
+    {
+      "type": "min_matches",
+      "path": "review-notes.md",
+      "pattern": "^[ \\t]*(?:[-*+]|\\d+[.)])[ \\t]+\\S",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review-notes.md)\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'whitespace|newline|tab|space' 'width.{0,12}(0|zero|negative|less)|non.?positive' 'long(er)? word|overflow|exceed' 'null|undefined|non.?string|not a string|type'; do cat review-notes.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 2 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "impl",
+      "criterion": "wrapText in src/wrap.js is exported from src/index.js, wraps greedily, returns an array, and no line exceeds width unless it is a single longer word.",
+      "weight": 3
+    },
+    {
+      "id": "tests",
+      "criterion": "test/wrap.test.js covers a normal wrap, a word longer than width, an empty string and a line exactly equal to width, and passes.",
+      "weight": 2
+    },
+    {
+      "id": "readme",
+      "criterion": "README documents the signature and shows an example whose output is correct.",
+      "weight": 2
+    },
+    {
+      "id": "review",
+      "criterion": "review-notes.md gives specific, true observations tied to the code, such as handling of repeated spaces or newlines, width of 0 or less, or the long-word policy.",
+      "weight": 3
+    },
+    {
+      "id": "evidence",
+      "criterion": "The final message reports the test run result.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

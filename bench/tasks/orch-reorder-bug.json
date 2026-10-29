@@ -1,0 +1,89 @@
+{
+  "id": "orch-reorder-bug",
+  "class": "orchestration",
+  "target": "konductor",
+  "prompt": "Operations says the reorder report is missing items that are exactly at their reorder level, for example a Gadget with 5 units and a level of 5 never shows up. Find the cause, add a test that reproduces it, fix it, make sure the whole test suite passes, and write a short note to investigation.md covering the root cause, the change and the test results. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'require(\"./src/services/inventoryService\").reorderReport().then(r=>process.exit(r.items.map(i=>i.id).sort().join()===\"2,3\"?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(node --test --test-reporter=tap 2>&1 | sed -n 's/^# tests //p')\" -gt 8 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "file_exists",
+      "path": "investigation.md"
+    },
+    {
+      "type": "contains",
+      "path": "investigation.md",
+      "pattern": "root cause|caused by|the cause|because"
+    },
+    {
+      "type": "contains",
+      "path": "investigation.md",
+      "pattern": "<=|at or below|equal"
+    },
+    {
+      "type": "contains",
+      "path": "investigation.md",
+      "pattern": "inventoryService"
+    },
+    {
+      "type": "contains",
+      "path": "investigation.md",
+      "pattern": "(before|without|prior)[^\\n]{0,80}(fail|red)|(fail|red)[^\\n]{0,80}(before|without|prior)"
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'root cause|caused by|the cause' 'change|fix' 'test result|tests? (run|pass|fail)|passing'; do cat investigation.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' investigation.md)\" -ge 6 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "cause",
+      "criterion": "Names the comparison i.qty < i.reorderLevel in services/inventoryService.js reorderReport as the cause and cites the README rule \"at or below\".",
+      "weight": 3
+    },
+    {
+      "id": "repro-test",
+      "criterion": "Adds a test where qty equals reorderLevel (the Gadget, id 2) and states that it failed before the fix.",
+      "weight": 3
+    },
+    {
+      "id": "fix",
+      "criterion": "After the fix the report lists items 2 and 3 and not item 1, and the full suite passes with more than 8 tests.",
+      "weight": 2
+    },
+    {
+      "id": "note",
+      "criterion": "investigation.md contains the root cause, the change made and the test results.",
+      "weight": 2
+    },
+    {
+      "id": "scope",
+      "criterion": "Only the comparison and the new test are changed; no unrelated files are edited.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

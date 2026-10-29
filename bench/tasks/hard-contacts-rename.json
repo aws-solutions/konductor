@@ -1,0 +1,106 @@
+{
+  "id": "hard-contacts-rename",
+  "class": "hard",
+  "target": null,
+  "prompt": "In this repository (contacts-core), rename the contact field `fullName` to `displayName` and add a `locale` field, across the whole codebase: the service, validation, search, CSV export, the request handler, the seed data, the examples, the README, docs/API.md and the CHANGELOG. `displayName` keeps the rules of the old field. `locale` is a string that defaults to `en` and must look like `xx` or `xx-XX` (for example `pt-BR`); a bad value is a `ValidationError` on the `locale` field. The old name must keep working: it is still accepted on input (create, update, list sorting and the update route), and if both names are given with different values that is a `ValidationError`. Every contact returned by the service and by the handler still carries `fullName` with the same value as `displayName`. The default CSV output and its header stay exactly as they are; CSV version 2, selected with `exportCsv({ version: 2 })` or `?version=2` on the export route, has the columns id,displayName,email,phone,locale. docs/API.md describes the existing conventions (for example how errors report `field`); follow them and make the code match what it documents. Do not edit the existing tests, which must keep passing, and do not add dependencies. Add tests for the new behavior in new files under test/. Update the docs, examples and changelog so they agree with the code. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "hard-contacts",
+  "hidden": "hard-contacts-rename",
+  "timeoutSec": 1500,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 29
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/model.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/service.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/serialize.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/http.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "displayName"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "locale"
+    },
+    {
+      "type": "contains",
+      "path": "docs/API.md",
+      "pattern": "displayName"
+    },
+    {
+      "type": "contains",
+      "path": "docs/API.md",
+      "pattern": "locale"
+    },
+    {
+      "type": "not_contains",
+      "path": "README.md",
+      "pattern": "fullName:\\s*'"
+    },
+    {
+      "type": "not_contains",
+      "path": "examples/add-contact.js",
+      "pattern": "fullName"
+    },
+    {
+      "type": "not_contains",
+      "path": "data/seed.json",
+      "pattern": "fullName"
+    },
+    {
+      "type": "not_contains",
+      "path": "src/cli.js",
+      "pattern": "fullName"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "Runs the existing tests after the rename (they must keep passing unedited) and the full suite at the end, and reports the results; checks behavior such as search after an update, not only the happy path.",
+      "weight": 2
+    },
+    {
+      "id": "compat-and-docs",
+      "criterion": "Keeps the old name working as the prompt requires without editing existing tests, and makes the docs, README, examples, seed data and CHANGELOG agree with the code, including the documented conventions the code did not follow.",
+      "weight": 2
+    },
+    {
+      "id": "minimal",
+      "criterion": "Changes are limited to the rename, the new field and the documented behavior the code violated; dead code and unrelated modules are left alone and no dependency was added.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "hard"
+  ]
+}

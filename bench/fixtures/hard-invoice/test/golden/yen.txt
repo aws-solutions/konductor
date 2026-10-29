@@ -1,0 +1,11 @@
+INVOICE INV-1003
+Date: 31 Jan 2025
+Bill to: Tokyo Parts KK
+------------------------------------------------------------------------
+SKU       Description                     Qty                     Amount
+P-9       Bearing                          12                    ¥17,760
+------------------------------------------------------------------------
+Subtotal                                                         ¥17,760
+Tax (10%)                                                         ¥1,776
+Shipping                                                            free
+Total                                                            ¥19,536

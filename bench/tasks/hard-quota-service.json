@@ -1,0 +1,77 @@
+{
+  "id": "hard-quota-service",
+  "class": "hard",
+  "target": null,
+  "prompt": "This repository (quota-kit) has a single-window limiter. Implement the multi-window quota service specified in docs/QUOTA-SPEC.md. `createQuotaService` must be exported from `src/index.js` and take a `clock` (an object with `now()` returning epoch milliseconds) and an optional `plans` object; `consume(key, options)` must behave exactly as the spec describes, including the plan limits in the spec table. The existing `createLimiter` API must keep working unchanged and no dependencies may be added. Do not edit the existing tests under test/. Add tests for the new service in a new file under test/ and make sure `node --test` passes. Update README.md so it describes the service and says which time zone windows use, and add an entry under Unreleased in CHANGELOG.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "hard-quota",
+  "hidden": "hard-quota-service",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "TZ=America/New_York node --test hidden/*.test.js",
+      "min": 36
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/limiter.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/window.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/plans.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "quota"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "createQuotaService"
+    },
+    {
+      "type": "not_contains",
+      "path": "README.md",
+      "pattern": "aligned to the server'?s local time"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "verified",
+      "criterion": "The final message reports that the test suite was run and its result, and the new tests cover boundary behavior of the service (a window boundary, a denied request charging nothing, a repeated request id).",
+      "weight": 2
+    },
+    {
+      "id": "constraints",
+      "criterion": "The existing test files and package.json are unchanged, createLimiter behaves as before and no dependency was added.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "Changes are limited to what the spec needs plus the defects it exposes in existing modules and config; the README no longer says windows follow local time and the CHANGELOG entry covers the new service and each fix made to an existing module.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "hard"
+  ]
+}

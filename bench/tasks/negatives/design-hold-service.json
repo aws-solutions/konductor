@@ -1,0 +1,189 @@
+{
+  "loosened": [
+    1,
+    4,
+    9
+  ],
+  "cases": [
+    {
+      "name": "5 after, 7 days, flagged",
+      "check": 1,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "REQ-3 reserves the copy for 7 days but REQ-6 puts it back on the shelf after 5. These conflict.\n"
+      }
+    },
+    {
+      "name": "7 in REQ-3 and 5 in REQ-6",
+      "check": 1,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "The reservation is 7 days in REQ-3 and 5 in REQ-6.\n"
+      }
+    },
+    {
+      "name": "spelled out",
+      "check": 1,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "The requirements disagree: seven days (REQ-3) versus five days (REQ-6).\n"
+      }
+    },
+    {
+      "name": "hyphenated",
+      "check": 1,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "REQ-3 gives a 7-day hold and REQ-6 gives a 5-day window.\n"
+      }
+    },
+    {
+      "name": "shared unit",
+      "check": 1,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "Is the window 7 or 5 days? REQ-3 and REQ-6 differ.\n"
+      }
+    },
+    {
+      "name": "only the 7-day value",
+      "check": 1,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "The copy is reserved for 7 days. The member is emailed when it is ready.\n"
+      }
+    },
+    {
+      "name": "five holds is not five days",
+      "check": 1,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "Members may have at most 5 active holds. A reserved copy is held for 7 days.\n"
+      }
+    },
+    {
+      "name": "only the 5-day value",
+      "check": 1,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "A reserved copy not collected within 5 days goes back on the shelf.\n"
+      }
+    },
+    {
+      "name": "values 500 characters apart",
+      "check": 1,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "The copy is reserved for 7 days.\nx x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x \nLater, an unrelated retry runs for 5 days.\n"
+      }
+    },
+    {
+      "name": "no email address, retries",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "A member with no email address skips retries and the hold expires.\n"
+      }
+    },
+    {
+      "name": "bounce, retry",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "If the email bounces we retry three times.\n"
+      }
+    },
+    {
+      "name": "bounce, does not block",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "A bounced email does not block the reservation.\n"
+      }
+    },
+    {
+      "name": "bounce only logged",
+      "check": 4,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "Emails may bounce. We log the bounce and use the email relay for delivery.\n"
+      }
+    },
+    {
+      "name": "handling words 500 characters away",
+      "check": 4,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "A member may have no email address.\nx x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x \nThe hold is still a queue entry.\n"
+      }
+    },
+    {
+      "name": "no mention of delivery problems",
+      "check": 4,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "The Notifier sends the ready email and records the send time.\n"
+      }
+    },
+    {
+      "name": "max active holds constant",
+      "check": 9,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "MAX_ACTIVE_HOLDS = 5, enforced on insert with HTTP 409.\n"
+      }
+    },
+    {
+      "name": "five holds",
+      "check": 9,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "A member can have at most five holds at once.\n"
+      }
+    },
+    {
+      "name": "5 active holds",
+      "check": 9,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "Limit: 5 active holds per member.\n"
+      }
+    },
+    {
+      "name": "no number",
+      "check": 9,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "There is a limit on how many holds a member can have, set by configuration.\n"
+      }
+    },
+    {
+      "name": "unrelated number",
+      "check": 9,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "The reservation window is 7 days. Peak load is 50 requests per second.\n"
+      }
+    }
+  ]
+}

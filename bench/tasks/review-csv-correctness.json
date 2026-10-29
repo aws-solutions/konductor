@@ -1,0 +1,107 @@
+{
+  "id": "review-csv-correctness",
+  "class": "review",
+  "target": "k-developer",
+  "prompt": "Review src/csv.js for correctness bugs. Test it on tricky inputs by running it instead of guessing. Write your findings to review.md, ordered by severity, each with the line in src/csv.js, a failing input, the actual output, the expected output and a suggested fix. Do not change the code. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "textkit",
+  "timeoutSec": 480,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "review.md"
+    },
+    {
+      "type": "contains",
+      "path": "review.md",
+      "pattern": "doubled|escaped|\"\"|double(d)? quote|two quotes"
+    },
+    {
+      "type": "contains",
+      "path": "review.md",
+      "pattern": "trailing (empty )?(field|comma|column)|empty (last|final|trailing)|last (field|column) (is|was) empty|missing (last|final|trailing)"
+    },
+    {
+      "type": "contains",
+      "path": "review.md",
+      "pattern": "CRLF|\\\\r|carriage return|windows (line|newline)"
+    },
+    {
+      "type": "contains",
+      "path": "review.md",
+      "pattern": "(quoted|embedded|inside|within)[^\\n]{0,50}(newline|line break)|(newline|line break)[^\\n]{0,50}(inside|within|quoted|embedded)|multi.?line"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e '(function refsCheck(c) { const fs = require(\"fs\"); let text = \"\"; try { text = fs.readFileSync(c.file, \"utf8\"); } catch (e) { process.exit(1); } const files = []; const walk = (d) => { let es = []; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; } for (const e of es) { if (e.name === \"node_modules\" || e.name === \".git\") continue; const p = d === \".\" ? e.name : d + \"/\" + e.name; if (e.isDirectory()) walk(p); else files.push(p); } }; walk(\".\"); const re = /([A-Za-z0-9_\\/.-]+\\.js)[`)*\\]]*(?::|#L|,?\\s*\\(?lines?\\s*)(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?/gi; const seen = new Set(); const refs = []; const found = [...text.matchAll(re)].map((m) => ({ name: m[1], a: m[2], b: m[3] })); if (c.defaultFile) { for (const m of text.matchAll(/\\blines?\\s+(\\d+)(?:\\s*[-\\u2013]\\s*(\\d+))?/gi)) found.push({ name: c.defaultFile, a: m[1], b: m[2] }); } for (const m of found) { const f = files.find((x) => x === m.name.replace(/^\\.\\//, \"\") || x.endsWith(\"/\" + m.name.replace(/^\\.\\//, \"\"))); if (!f) continue; const a = Number(m.a); const b = m.b ? Number(m.b) : a; const lines = fs.readFileSync(f, \"utf8\").split(\"\\n\"); if (a < 1 || a > lines.length) continue; if (c.lineRe && !new RegExp(c.lineRe, \"i\").test(lines[a - 1])) continue; if (seen.has(f + \":\" + a)) continue; seen.add(f + \":\" + a); refs.push({ f, a, b }); } let hits = 0; for (const s of c.seeds || []) { if (refs.some((r) => r.f.endsWith(s.f) && [r.a, r.b].some((n) => n >= s.lo - 2 && n <= s.hi + 2))) hits++; } process.exit(refs.length >= c.min && hits >= (c.minSeeds || 0) ? 0 : 1); })({\"file\":\"review.md\",\"min\":3,\"defaultFile\":\"src/csv.js\",\"seeds\":[{\"f\":\"csv.js\",\"lo\":10,\"hi\":11},{\"f\":\"csv.js\",\"lo\":19,\"hi\":19},{\"f\":\"csv.js\",\"lo\":26,\"hi\":26}],\"minSeeds\":2})'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "review.md",
+      "pattern": "\\bexpected\\b",
+      "min": 3
+    },
+    {
+      "type": "min_matches",
+      "path": "review.md",
+      "pattern": "\\b(actual|got|returns?|outputs?|gives|yields?|result)\\b",
+      "min": 3
+    },
+    {
+      "type": "min_matches",
+      "path": "review.md",
+      "pattern": "\\binputs?\\b",
+      "min": 3
+    },
+    {
+      "type": "min_matches",
+      "path": "review.md",
+      "pattern": "\\b(fix|suggest\\w*|instead|should)\\b",
+      "min": 4
+    },
+    {
+      "type": "labelled_findings",
+      "path": "review.md",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review.md)\" -ge 10 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "escaped-quote",
+      "criterion": "Reports that a doubled quote inside a quoted field is dropped: input \"say \"\"hi\"\"\" gives say hi, expected say \"hi\".",
+      "weight": 3
+    },
+    {
+      "id": "trailing-field",
+      "criterion": "Reports that a trailing empty field is dropped: \"a,b,\" gives two fields, expected three.",
+      "weight": 3
+    },
+    {
+      "id": "crlf",
+      "criterion": "Reports that CRLF input leaves a \\r on the last field of each row.",
+      "weight": 2
+    },
+    {
+      "id": "embedded-newline",
+      "criterion": "Reports that a quoted field containing a newline is split across rows by parseCsv.",
+      "weight": 2
+    },
+    {
+      "id": "truthful",
+      "criterion": "Every actual output shown matches what the code really returns, the cited lines point at the right code, and the review does not claim a bug for commas inside quotes, which work.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

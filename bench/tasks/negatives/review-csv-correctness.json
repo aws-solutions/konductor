@@ -1,0 +1,43 @@
+{
+  "loosened": [
+    10
+  ],
+  "cases": [
+    {
+      "name": "severity in parentheses",
+      "check": 10,
+      "type": "labelled_findings",
+      "expect": "pass",
+      "files": {
+        "review.md": "## 1. Doubled quotes dropped (high)\n## 2. Trailing field dropped (high)\n## 3. Embedded newline (medium)\n"
+      }
+    },
+    {
+      "name": "severity headings",
+      "check": 10,
+      "type": "labelled_findings",
+      "expect": "pass",
+      "files": {
+        "review.md": "## High\n### 1. A\n### 2. B\n## Low\n### 3. C\n"
+      }
+    },
+    {
+      "name": "severity never stated",
+      "check": 10,
+      "type": "labelled_findings",
+      "expect": "fail",
+      "files": {
+        "review.md": "## 1. Doubled quotes dropped\n## 2. Trailing field dropped\n## 3. Embedded newline\n## 4. CRLF\n"
+      }
+    },
+    {
+      "name": "severity mentioned in one sentence",
+      "check": 10,
+      "type": "labelled_findings",
+      "expect": "fail",
+      "files": {
+        "review.md": "Findings are ordered by severity, from most to least severe. High and medium issues come first, then low ones.\n"
+      }
+    }
+  ]
+}

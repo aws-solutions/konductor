@@ -1,0 +1,153 @@
+{
+  "id": "sop-test-coverage-review",
+  "class": "sop",
+  "target": "k-test-coverage-review",
+  "prompt": "Review the test coverage of this service. Source is in src/ and tests are in test/. There are no story or design files. Find the gaps by severity (critical journeys untested, error paths untested, edge cases), plan the end-to-end tests for those gaps, and draft a security test plan covering authentication, input validation, API security, data protection, session management, error handling and infrastructure. Plan end-to-end tests for whatever gaps you find. Put everything in test-coverage-review/ as test-gap-analysis.md, e2e-test-strategy.md and a final test-coverage-review-report.md that has a line reading `Verdict: READY FOR RELEASE` or `Verdict: NOT READY`, followed by the reasons. Do not change source or tests. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 1500,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "test-coverage-review/test-gap-analysis.md"
+    },
+    {
+      "type": "file_exists",
+      "path": "test-coverage-review/e2e-test-strategy.md"
+    },
+    {
+      "type": "file_exists",
+      "path": "test-coverage-review/test-coverage-review-report.md"
+    },
+    {
+      "type": "contains",
+      "path": "test-coverage-review/test-coverage-review-report.md",
+      "pattern": "^[\\s>*_#-]*(final\\s+)?verdict[\\s*_]*:[\\s*_`]*(not ready)"
+    },
+    {
+      "type": "not_contains",
+      "path": "test-coverage-review/test-coverage-review-report.md",
+      "pattern": "^[\\s>*_#-]*(final\\s+)?verdict[\\s*_]*:[\\s*_`]*(ready for release)"
+    },
+    {
+      "type": "contains",
+      "path": "test-coverage-review/test-gap-analysis.md",
+      "pattern": "\\b(?:7|seven)\\b[^\\n]{0,40}(?:source|src)|(?:source|src)[^\\n]{0,40}\\b(?:7|seven)\\b"
+    },
+    {
+      "type": "contains",
+      "path": "test-coverage-review/test-gap-analysis.md",
+      "pattern": "\\b(?:2|two)\\b[^\\n]{0,40}test (?:files?|suites?)|test (?:files?|suites?)[^\\n]{0,40}\\b(?:2|two)\\b"
+    },
+    {
+      "type": "contains",
+      "path": "test-coverage-review/test-gap-analysis.md",
+      "pattern": "(handlers?|items\\.js)[^\\n]{0,100}(no tests?|untested|not tested|no coverage|uncovered|missing)|(no tests?|untested|not tested|no coverage|uncovered)[^\\n]{0,100}(handlers?|items\\.js)"
+    },
+    {
+      "type": "contains",
+      "path": "test-coverage-review/test-gap-analysis.md",
+      "pattern": "server(\\.js)?[^\\n]{0,100}(no tests?|untested|not tested|no coverage|uncovered|missing)|(no tests?|untested|not tested|no coverage|uncovered)[^\\n]{0,100}server"
+    },
+    {
+      "type": "min_matches",
+      "path": "test-coverage-review/test-gap-analysis.md",
+      "pattern": "\\b(critical|important|suggestion)\\b",
+      "min": 4
+    },
+    {
+      "type": "min_matches",
+      "path": "test-coverage-review/test-gap-analysis.md",
+      "pattern": "^[ \\t]*(?:[-*+]|\\d+[.)])[ \\t]+\\S|^\\s*\\|",
+      "min": 10
+    },
+    {
+      "type": "min_matches",
+      "path": "test-coverage-review/e2e-test-strategy.md",
+      "pattern": "\\bP[0-3]\\b",
+      "min": 6
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'P0' 'P1' 'P2' 'P3'; do cat test-coverage-review/e2e-test-strategy.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "test-coverage-review/e2e-test-strategy.md",
+      "pattern": "P0[\\s\\S]{0,800}(stock|adjust)"
+    },
+    {
+      "type": "contains",
+      "path": "test-coverage-review/e2e-test-strategy.md",
+      "pattern": "P0[\\s\\S]{0,800}search"
+    },
+    {
+      "type": "contains",
+      "path": "test-coverage-review/e2e-test-strategy.md",
+      "pattern": "execut|ci\\b|pipeline|environment|framework|order of work"
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'authentication' 'input validation' 'api security' 'data protection' 'session' 'error handling' 'infrastructure'; do cat test-coverage-review/*.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 6 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "grep -rqiE 'inject' test-coverage-review",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' test-coverage-review/test-gap-analysis.md)\" -ge 15 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' test-coverage-review/e2e-test-strategy.md)\" -ge 12 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' test-coverage-review/test-coverage-review-report.md)\" -ge 10 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "counts",
+      "criterion": "The gap analysis reports 7 source files and 2 test files (ratio about 0.29) and names handlers/items.js and server.js as having no tests.",
+      "weight": 3
+    },
+    {
+      "id": "severity",
+      "criterion": "Gaps are labelled CRITICAL, IMPORTANT or SUGGESTION, and the critical ones include invalid-delta handling on adjustStock and the search injection path.",
+      "weight": 3
+    },
+    {
+      "id": "e2e",
+      "criterion": "The E2E strategy assigns P0 to P3 priorities, puts stock adjustment and search in P0, and names an execution strategy.",
+      "weight": 2
+    },
+    {
+      "id": "security",
+      "criterion": "The security plan covers all 7 domains and includes a SQL injection test for search and an authentication test for create and adjust.",
+      "weight": 2
+    },
+    {
+      "id": "verdict",
+      "criterion": "The final report says NOT READY and its gap counts agree with test-gap-analysis.md.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "tasks": [
+    "simple-fix-failing-test",
+    "simple-add-function",
+    "simple-explain-file",
+    "simple-rename",
+    "simple-readme-section",
+    "simple-refactor",
+    "sop-plan",
+    "sop-context-gathering",
+    "sop-verify",
+    "sop-comprehensive-search",
+    "sop-codebase-analysis",
+    "sop-pre-cr-critique",
+    "sop-code-review-workflow",
+    "sop-test-coverage-review",
+    "sop-spec-workflow",
+    "sop-code-cleanup",
+    "orch-patch-release",
+    "orch-reorder-bug",
+    "orch-input-validation",
+    "orch-search-hardening",
+    "orch-wrap-feature",
+    "review-csv-correctness",
+    "review-inventory-security",
+    "design-hold-service"
+  ],
+  "arms": [
+    "vanilla",
+    "v1.0.0",
+    "v1.1.0",
+    "v1.2.0",
+    "main"
+  ],
+  "replicates": 3,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ]
+}

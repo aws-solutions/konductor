@@ -1,0 +1,10 @@
+{
+  "name": "quota-kit",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Small request limiter and quota helpers",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

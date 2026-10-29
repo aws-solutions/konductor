@@ -1,0 +1,1178 @@
+[
+ {
+  "name": "fixture basic",
+  "invoice": {
+   "number": "INV-1001",
+   "customer": {
+    "name": "Northwind Traders",
+    "country": "DE",
+    "vatId": "DE123456789"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-03-14T09:30:00Z",
+   "lines": [
+    {
+     "sku": "B-200",
+     "description": "Standing desk frame",
+     "qty": 2,
+     "unitPrice": 349.5
+    },
+    {
+     "sku": "A-100",
+     "description": "Cable tray",
+     "qty": 10,
+     "unitPrice": 4.25
+    }
+   ],
+   "shipping": 15,
+   "notes": "Payment due within 30 days of the invoice date. Late payments accrue interest."
+  },
+  "options": null,
+  "expected": "INVOICE INV-1001\nDate: 14 Mar 2025\nBill to: Northwind Traders (VAT DE123456789)\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA-100     Cable tray                       10                     $42.50\nB-200     Standing desk frame               2                    $699.00\n------------------------------------------------------------------------\nSubtotal                                                         $741.50\nTax (19%)                                                        $140.89\nShipping                                                            free\nTotal                                                            $882.39\n\nNotes:\n  Payment due within 30 days of the invoice date. Late\n  payments accrue interest.\n"
+ },
+ {
+  "name": "fixture discounted",
+  "invoice": {
+   "number": "INV-1002",
+   "customer": {
+    "name": "Contoso Ltd",
+    "country": "GB"
+   },
+   "currency": "GBP",
+   "issuedAt": "2025-12-01T00:00:00Z",
+   "lines": [
+    {
+     "sku": "S-1",
+     "description": "Support plan, annual, premium tier with extended hours",
+     "qty": 1,
+     "unitPrice": 1200,
+     "discountPct": 12.5
+    },
+    {
+     "sku": "S-2",
+     "description": "Training day",
+     "qty": 3,
+     "unitPrice": 450,
+     "taxable": false
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE INV-1002\nDate: 01 Dec 2025\nBill to: Contoso Ltd\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nS-1       Support plan, annual, pre...      1                  £1,050.00\n            discount 12.5%                                      -£150.00\nS-2       Training day                      3                  £1,350.00\n------------------------------------------------------------------------\nSubtotal                                                       £2,400.00\nTax (20%)                                                        £210.00\nTotal                                                          £2,610.00\n"
+ },
+ {
+  "name": "fixture yen",
+  "invoice": {
+   "number": "INV-1003",
+   "customer": {
+    "name": "Tokyo Parts KK",
+    "country": "JP"
+   },
+   "currency": "JPY",
+   "issuedAt": "2025-01-31T23:59:59Z",
+   "lines": [
+    {
+     "sku": "P-9",
+     "description": "Bearing",
+     "qty": 12,
+     "unitPrice": 1480
+    }
+   ],
+   "shipping": 800
+  },
+  "options": null,
+  "expected": "INVOICE INV-1003\nDate: 31 Jan 2025\nBill to: Tokyo Parts KK\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nP-9       Bearing                          12                    ¥17,760\n------------------------------------------------------------------------\nSubtotal                                                         ¥17,760\nTax (10%)                                                         ¥1,776\nShipping                                                            free\nTotal                                                            ¥19,536\n"
+ },
+ {
+  "name": "fixture credit",
+  "invoice": {
+   "number": "CN-77",
+   "customer": {
+    "name": "Fabrikam"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-06-30T12:00:00Z",
+   "lines": [
+    {
+     "sku": "R-1",
+     "description": "Returned adapter",
+     "qty": -3,
+     "unitPrice": 2.5
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE CN-77\nDate: 30 Jun 2025\nBill to: Fabrikam\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nR-1       Returned adapter                 -3                     -$7.50\n------------------------------------------------------------------------\nSubtotal                                                          -$7.50\nTax (0%)                                                           $0.00\nTotal                                                             -$7.50\n"
+ },
+ {
+  "name": "half cent rounds down through float error",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "x",
+     "qty": 3,
+     "unitPrice": 0.335
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         x                                 3                      $1.01\n------------------------------------------------------------------------\nSubtotal                                                           $1.01\nTax (0%)                                                           $0.00\nTotal                                                              $1.01\n"
+ },
+ {
+  "name": "half cent 2.675",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "x",
+     "qty": 1,
+     "unitPrice": 2.675
+    },
+    {
+     "sku": "B",
+     "description": "y",
+     "qty": 1,
+     "unitPrice": 1.005
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         x                                 1                      $2.68\nB         y                                 1                      $1.00\n------------------------------------------------------------------------\nSubtotal                                                           $3.68\nTax (0%)                                                           $0.00\nTotal                                                              $3.68\n"
+ },
+ {
+  "name": "negative half cent rounds toward positive infinity",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "credit",
+     "qty": -1,
+     "unitPrice": 0.125
+    },
+    {
+     "sku": "B",
+     "description": "credit",
+     "qty": -1,
+     "unitPrice": 0.135
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         credit                           -1                     -$0.12\nB         credit                           -1                     -$0.13\n------------------------------------------------------------------------\nSubtotal                                                          -$0.25\nTax (0%)                                                           $0.00\nTotal                                                             -$0.25\n"
+ },
+ {
+  "name": "tax rounded once on the taxable sum",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "D",
+    "country": "DE"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 1,
+     "unitPrice": 0.07
+    },
+    {
+     "sku": "B",
+     "description": "b",
+     "qty": 1,
+     "unitPrice": 0.07
+    },
+    {
+     "sku": "C",
+     "description": "c",
+     "qty": 1,
+     "unitPrice": 0.07
+    },
+    {
+     "sku": "D",
+     "description": "d",
+     "qty": 1,
+     "unitPrice": 10.05
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: D\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 1                      $0.07\nB         b                                 1                      $0.07\nC         c                                 1                      $0.07\nD         d                                 1                     $10.05\n------------------------------------------------------------------------\nSubtotal                                                          $10.26\nTax (19%)                                                          $1.95\nTotal                                                             $12.21\n"
+ },
+ {
+  "name": "tax skips non taxable lines",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "F",
+    "country": "FR"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 2,
+     "unitPrice": 50,
+     "taxable": false
+    },
+    {
+     "sku": "B",
+     "description": "b",
+     "qty": 1,
+     "unitPrice": 33.33
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: F\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 2                    $100.00\nB         b                                 1                     $33.33\n------------------------------------------------------------------------\nSubtotal                                                         $133.33\nTax (20%)                                                          $6.67\nTotal                                                            $140.00\n"
+ },
+ {
+  "name": "canadian rate",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "C",
+    "country": "CA"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 7,
+     "unitPrice": 13.13
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: C\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 7                     $91.91\n------------------------------------------------------------------------\nSubtotal                                                          $91.91\nTax (5%)                                                           $4.60\nTotal                                                             $96.51\n"
+ },
+ {
+  "name": "unknown country pays no tax",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Z",
+    "country": "ZZ"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Z\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n"
+ },
+ {
+  "name": "no customer",
+  "invoice": {
+   "number": "T-1",
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: n/a\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n"
+ },
+ {
+  "name": "customer without country and with empty vat id",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "N",
+    "vatId": ""
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: N\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n"
+ },
+ {
+  "name": "customer without name",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "country": "GB"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: undefined\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (20%)                                                          $2.00\nTotal                                                             $12.00\n"
+ },
+ {
+  "name": "discount rounding",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 1,
+     "unitPrice": 19.99,
+     "discountPct": 33.333
+    },
+    {
+     "sku": "B",
+     "description": "b",
+     "qty": 3,
+     "unitPrice": 7.77,
+     "discountPct": 15
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 1                     $13.33\n            discount 33.333%                                      -$6.66\nB         b                                 3                     $19.81\n            discount 15%                                          -$3.50\n------------------------------------------------------------------------\nSubtotal                                                          $33.14\nTax (0%)                                                           $0.00\nTotal                                                             $33.14\n"
+ },
+ {
+  "name": "discount 100 percent and 0 percent",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 1,
+     "unitPrice": 50,
+     "discountPct": 100
+    },
+    {
+     "sku": "B",
+     "description": "b",
+     "qty": 1,
+     "unitPrice": 50,
+     "discountPct": 0
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 1                      $0.00\n            discount 100%                                        -$50.00\nB         b                                 1                     $50.00\n------------------------------------------------------------------------\nSubtotal                                                          $50.00\nTax (0%)                                                           $0.00\nTotal                                                             $50.00\n"
+ },
+ {
+  "name": "negative discount is a surcharge row",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 2,
+     "unitPrice": 20,
+     "discountPct": -10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 2                     $44.00\n            discount -10%                                          $4.00\n------------------------------------------------------------------------\nSubtotal                                                          $44.00\nTax (0%)                                                           $0.00\nTotal                                                             $44.00\n"
+ },
+ {
+  "name": "shipping not waived at exactly 100",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 1,
+     "unitPrice": 100
+    }
+   ],
+   "shipping": 9.5
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 1                    $100.00\n------------------------------------------------------------------------\nSubtotal                                                         $100.00\nTax (0%)                                                           $0.00\nShipping                                                           $9.50\nTotal                                                            $109.50\n"
+ },
+ {
+  "name": "shipping waived above 100",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 1,
+     "unitPrice": 100.01
+    }
+   ],
+   "shipping": 9.5
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 1                    $100.01\n------------------------------------------------------------------------\nSubtotal                                                         $100.01\nTax (0%)                                                           $0.00\nShipping                                                            free\nTotal                                                            $100.01\n"
+ },
+ {
+  "name": "shipping charged below 100",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 1,
+     "unitPrice": 99.99
+    }
+   ],
+   "shipping": 9.5
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 1                     $99.99\n------------------------------------------------------------------------\nSubtotal                                                          $99.99\nTax (0%)                                                           $0.00\nShipping                                                           $9.50\nTotal                                                            $109.49\n"
+ },
+ {
+  "name": "shipping on a credit note",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": -2,
+     "unitPrice": 30
+    }
+   ],
+   "shipping": 5
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                -2                    -$60.00\n------------------------------------------------------------------------\nSubtotal                                                         -$60.00\nTax (0%)                                                           $0.00\nShipping                                                           $5.00\nTotal                                                            -$55.00\n"
+ },
+ {
+  "name": "zero shipping hides the row",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ],
+   "shipping": 0
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n"
+ },
+ {
+  "name": "empty lines",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": []
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\n------------------------------------------------------------------------\nSubtotal                                                           $0.00\nTax (0%)                                                           $0.00\nTotal                                                              $0.00\n"
+ },
+ {
+  "name": "fraction quantity and zero price",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "half",
+     "qty": 0.5,
+     "unitPrice": 33.33
+    },
+    {
+     "sku": "B",
+     "description": "free",
+     "qty": 4,
+     "unitPrice": 0
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         half                            0.5                     $16.67\nB         free                              4                      $0.00\n------------------------------------------------------------------------\nSubtotal                                                          $16.67\nTax (0%)                                                           $0.00\nTotal                                                             $16.67\n"
+ },
+ {
+  "name": "description length 28 and 29",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "abcdefghijklmnopqrstuvwxyz12",
+     "qty": 1,
+     "unitPrice": 1
+    },
+    {
+     "sku": "B",
+     "description": "abcdefghijklmnopqrstuvwxyz123",
+     "qty": 1,
+     "unitPrice": 1
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         abcdefghijklmnopqrstuvwxyz12      1                      $1.00\nB         abcdefghijklmnopqrstuvwxy...      1                      $1.00\n------------------------------------------------------------------------\nSubtotal                                                           $2.00\nTax (0%)                                                           $0.00\nTotal                                                              $2.00\n"
+ },
+ {
+  "name": "unicode and emoji descriptions",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Café crème 日本語 ☕",
+     "qty": 1,
+     "unitPrice": 4.5
+    },
+    {
+     "sku": "B",
+     "description": "🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉",
+     "qty": 2,
+     "unitPrice": 3
+    },
+    {
+     "sku": "C",
+     "description": "éééééééééééééé",
+     "qty": 1,
+     "unitPrice": 1
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Café crème 日本語 ☕                  1                      $4.50\nB         🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉\ud83c...      2                      $6.00\nC         éééééééééééééé      1                      $1.00\n------------------------------------------------------------------------\nSubtotal                                                          $11.50\nTax (0%)                                                           $0.00\nTotal                                                             $11.50\n"
+ },
+ {
+  "name": "long sku overflows its column",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "LONG-SKU-123456",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 12.5
+    },
+    {
+     "sku": "S",
+     "description": "Short",
+     "qty": 1,
+     "unitPrice": 1
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nLONG-SKU-123456Item                              1                     $12.50\nS         Short                             1                      $1.00\n------------------------------------------------------------------------\nSubtotal                                                          $13.50\nTax (0%)                                                           $0.00\nTotal                                                             $13.50\n"
+ },
+ {
+  "name": "sku sort is by code unit and stable",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "b",
+     "description": "lower b",
+     "qty": 1,
+     "unitPrice": 1
+    },
+    {
+     "sku": "B",
+     "description": "upper b 1",
+     "qty": 1,
+     "unitPrice": 2
+    },
+    {
+     "sku": "a",
+     "description": "lower a",
+     "qty": 1,
+     "unitPrice": 3
+    },
+    {
+     "sku": "B",
+     "description": "upper b 2",
+     "qty": 1,
+     "unitPrice": 4
+    },
+    {
+     "sku": "10",
+     "description": "ten",
+     "qty": 1,
+     "unitPrice": 5
+    },
+    {
+     "sku": "9",
+     "description": "nine",
+     "qty": 1,
+     "unitPrice": 6
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\n10        ten                               1                      $5.00\n9         nine                              1                      $6.00\nB         upper b 1                         1                      $2.00\nB         upper b 2                         1                      $4.00\na         lower a                           1                      $3.00\nb         lower b                           1                      $1.00\n------------------------------------------------------------------------\nSubtotal                                                          $21.00\nTax (0%)                                                           $0.00\nTotal                                                             $21.00\n"
+ },
+ {
+  "name": "thousands separators",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "big",
+     "qty": 1,
+     "unitPrice": 1234567.891
+    },
+    {
+     "sku": "B",
+     "description": "mid",
+     "qty": 3,
+     "unitPrice": 4321.1
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         big                               1              $1,234,567.89\nB         mid                               3                 $12,963.30\n------------------------------------------------------------------------\nSubtotal                                                   $1,247,531.19\nTax (0%)                                                           $0.00\nTotal                                                      $1,247,531.19\n"
+ },
+ {
+  "name": "yen rounding and discount",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "J",
+    "country": "JP"
+   },
+   "currency": "JPY",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 3,
+     "unitPrice": 333.5,
+     "discountPct": 7
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: J\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 3                       ¥931\n            discount 7%                                             -¥70\n------------------------------------------------------------------------\nSubtotal                                                            ¥931\nTax (10%)                                                            ¥93\nTotal                                                             ¥1,024\n"
+ },
+ {
+  "name": "pound with tax and shipping",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "G",
+    "country": "GB"
+   },
+   "currency": "GBP",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 1,
+     "unitPrice": 20.2
+    }
+   ],
+   "shipping": 4.99
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: G\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 1                     £20.20\n------------------------------------------------------------------------\nSubtotal                                                          £20.20\nTax (20%)                                                          £4.04\nShipping                                                           £4.99\nTotal                                                             £29.23\n"
+ },
+ {
+  "name": "unknown currency falls back to the code",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "CHF",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 2,
+     "unitPrice": 12.345
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 2                  CHF 24.69\n------------------------------------------------------------------------\nSubtotal                                                       CHF 24.69\nTax (0%)                                                        CHF 0.00\nTotal                                                          CHF 24.69\n"
+ },
+ {
+  "name": "lower case currency code",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "usd",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                  usd 10.00\n------------------------------------------------------------------------\nSubtotal                                                       usd 10.00\nTax (0%)                                                        usd 0.00\nTotal                                                          usd 10.00\n"
+ },
+ {
+  "name": "missing currency means USD",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n"
+ },
+ {
+  "name": "negative zero never prints a sign",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "a",
+     "qty": 1,
+     "unitPrice": -0.001
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         a                                 1                      $0.00\n------------------------------------------------------------------------\nSubtotal                                                           $0.00\nTax (0%)                                                           $0.00\nTotal                                                              $0.00\n"
+ },
+ {
+  "name": "notes wrap at 60 columns",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ],
+   "notes": "Thank you for your business. Please remit payment by bank transfer using the invoice number as the reference so that we can match it quickly."
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n\nNotes:\n  Thank you for your business. Please remit payment by bank\n  transfer using the invoice number as the reference so that\n  we can match it quickly.\n"
+ },
+ {
+  "name": "notes with blank and spaced input",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ],
+   "notes": "  first   line\n\nsecond\tline  "
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n\nNotes:\n  first line second line\n"
+ },
+ {
+  "name": "empty and whitespace notes",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ],
+   "notes": "   "
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n\nNotes:\n"
+ },
+ {
+  "name": "a first word longer than 60 characters",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ],
+   "notes": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx then words follow"
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n\nNotes:\n  \n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n  then words follow\n"
+ },
+ {
+  "name": "a word of exactly 60 characters then another",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ],
+   "notes": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy z"
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n\nNotes:\n  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n  z\n"
+ },
+ {
+  "name": "width 60",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Widget",
+     "qty": 2,
+     "unitPrice": 5
+    }
+   ],
+   "notes": "short"
+  },
+  "options": {
+   "width": 60
+  },
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n------------------------------------------------------------\nSKU       Description                     Qty         Amount\nA         Widget                            2         $10.00\n------------------------------------------------------------\nSubtotal                                              $10.00\nTax (0%)                                               $0.00\nTotal                                                 $10.00\n\nNotes:\n  short\n"
+ },
+ {
+  "name": "width 100",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Widget",
+     "qty": 2,
+     "unitPrice": 5
+    }
+   ]
+  },
+  "options": {
+   "width": 100
+  },
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n----------------------------------------------------------------------------------------------------\nSKU       Description                     Qty                                                 Amount\nA         Widget                            2                                                 $10.00\n----------------------------------------------------------------------------------------------------\nSubtotal                                                                                      $10.00\nTax (0%)                                                                                       $0.00\nTotal                                                                                         $10.00\n"
+ },
+ {
+  "name": "width 45 leaves no amount column",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-05-05T10:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Widget",
+     "qty": 2,
+     "unitPrice": 5
+    }
+   ]
+  },
+  "options": {
+   "width": 45
+  },
+  "expected": "INVOICE T-1\nDate: 05 May 2025\nBill to: Acme\n---------------------------------------------\nSKU       Description                     QtyAmount\nA         Widget                            2$10.00\n---------------------------------------------\nSubtotal                               $10.00\nTax (0%)                                $0.00\nTotal                                  $10.00\n"
+ },
+ {
+  "name": "missing issue date",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: NaN undefined NaN\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n"
+ },
+ {
+  "name": "unparsable issue date",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "yesterday",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: NaN undefined NaN\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n"
+ },
+ {
+  "name": "issue date with an offset is shown in UTC",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2025-03-31T23:30:00-05:00",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 01 Apr 2025\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n"
+ },
+ {
+  "name": "leap day",
+  "invoice": {
+   "number": "T-1",
+   "customer": {
+    "name": "Acme",
+    "country": "US"
+   },
+   "currency": "USD",
+   "issuedAt": "2024-02-29T00:00:00Z",
+   "lines": [
+    {
+     "sku": "A",
+     "description": "Item",
+     "qty": 1,
+     "unitPrice": 10
+    }
+   ]
+  },
+  "options": null,
+  "expected": "INVOICE T-1\nDate: 29 Feb 2024\nBill to: Acme\n------------------------------------------------------------------------\nSKU       Description                     Qty                     Amount\nA         Item                              1                     $10.00\n------------------------------------------------------------------------\nSubtotal                                                          $10.00\nTax (0%)                                                           $0.00\nTotal                                                             $10.00\n"
+ }
+]

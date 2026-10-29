@@ -1,0 +1,5 @@
+{
+  "free": { "minute": 10, "day": 200, "month": 3000 },
+  "pro": { "minute": 100, "day": 5000, "month": 10000 },
+  "internal": {}
+}

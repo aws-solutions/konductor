@@ -1,0 +1,16 @@
+{
+  "id": "_smoke",
+  "class": "simple",
+  "target": null,
+  "prompt": "Create a file named hello.txt in the current directory containing the single word hello. Do nothing else.",
+  "fixture": "_smoke",
+  "timeoutSec": 300,
+  "checks": [
+    { "type": "file_exists", "path": "hello.txt" },
+    { "type": "contains", "path": "hello.txt", "pattern": "hello" }
+  ],
+  "rubric": [
+    { "id": "creates-file", "criterion": "hello.txt exists and contains the word hello", "weight": 1 }
+  ],
+  "tiers": ["lite"]
+}

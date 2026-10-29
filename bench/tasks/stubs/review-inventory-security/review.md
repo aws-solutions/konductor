@@ -1,0 +1,1 @@
+Critical: SQL injection in itemRepo.js. Important: stack trace leak in server.js, adjustStock lacks the admin token check, no input validation, race condition, hardcoded fallback token. Minor: timing, body size.

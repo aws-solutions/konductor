@@ -1,0 +1,96 @@
+{
+  "id": "sop-codebase-analysis",
+  "class": "sop",
+  "target": "k-codebase-analysis",
+  "prompt": "Produce an architecture and quality assessment of this service for a new team member and write it to codebase-analysis.md. Include: an executive summary, a codebase map and architecture overview with Mermaid diagrams, a SOLID evaluation, design patterns found, dependencies and integrations (with a Mermaid diagram), code quality and test assessment, security and performance, technical debt, and recommendations prioritized P0 to P2. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "codebase-analysis.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; h=$(grep -E '^[[:space:]]*(#+[[:space:]]|[*][*][^*]+[*][*]:?[[:space:]]*$)' codebase-analysis.md 2>/dev/null); for p in 'executive|summary' 'map|structure|overview|architecture' 'solid' 'pattern' 'dependenc|integration' 'quality|test' 'security|performance' 'debt' 'recommend'; do printf '%s\\n' \"$h\" | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 8 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "codebase-analysis.md",
+      "pattern": "^\\s*```mermaid",
+      "min": 2
+    },
+    {
+      "type": "contains",
+      "path": "codebase-analysis.md",
+      "pattern": "```mermaid(?:(?!```)[\\s\\S])*?repo(?:(?!```)[\\s\\S])*?```"
+    },
+    {
+      "type": "contains",
+      "path": "codebase-analysis.md",
+      "pattern": "```mermaid(?:(?!```)[\\s\\S])*?(handler|server)(?:(?!```)[\\s\\S])*?```"
+    },
+    {
+      "type": "min_matches",
+      "path": "codebase-analysis.md",
+      "pattern": "\\bP[012]\\b",
+      "min": 3
+    },
+    {
+      "type": "contains",
+      "path": "codebase-analysis.md",
+      "pattern": "P0[\\s\\S]{0,400}(inject|parameteri)|(inject|parameteri)[\\s\\S]{0,200}P0"
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'server\\.js' 'handlers/items|items\\.js' 'inventoryService' 'itemRepo' 'db\\.js' 'config\\.js' 'format\\.js'; do cat codebase-analysis.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'at or below|<=|boundary|reorder' 'race|lost update|concurren|atomic|read.modify.write|interleav' 'fallback|hard.?cod' 'stack'; do cat codebase-analysis.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "codebase-analysis.md",
+      "pattern": "(handler|server)[^\\n]{0,80}(no tests?|untested|not (covered|tested)|without tests?|no coverage)|(no tests?|untested|not (covered|tested)|no coverage)[^\\n]{0,80}(handler|server)"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' codebase-analysis.md)\" -ge 40 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "layers",
+      "criterion": "Describes the layers server.js to handlers to services to repository to db, and the Mermaid architecture diagram uses those component names.",
+      "weight": 3
+    },
+    {
+      "id": "p0",
+      "criterion": "The P0 recommendations include the SQL injection in itemRepo.searchByName and the missing input validation or admin-token check on adjustStock.",
+      "weight": 3
+    },
+    {
+      "id": "tests",
+      "criterion": "States that two test files cover only the service and repository, and that handlers and server are untested.",
+      "weight": 2
+    },
+    {
+      "id": "debt",
+      "criterion": "Technical debt lists at least two of: reorder boundary bug, lost update, hardcoded fallback token, stack trace in 500 response.",
+      "weight": 2
+    },
+    {
+      "id": "summary",
+      "criterion": "The executive summary is 3 to 5 sentences and mentions overall health, a strength and the most serious issue.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

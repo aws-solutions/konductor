@@ -1,0 +1,282 @@
+[
+ {
+  "judge": "gpt-5.6-luna",
+  "armId": "main",
+  "taskId": "design-hold-service",
+  "criterion": "conflict",
+  "quote": "**Conflicts and gaps in the requirements**\n- **Reservation length:** REQ-3 says 7 days and REQ-6 says 5.\n...\n- **Window length:** one configurable window, defaulting to 7 days.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "Conflicts and gaps in the requirements**\n- **Reservation length:** REQ-3 says 7 days and REQ-6 says 5.\n[omitted]\n- **Window length:** one configurable window, defaulting to 7 days."
+ },
+ {
+  "judge": "gpt-5.6-luna",
+  "armId": "main",
+  "taskId": "design-hold-service",
+  "criterion": "notifications",
+  "quote": "No email address, permanent relay rejection, or hard bounce: no retry, give up immediately. ... Give up: the hold becomes expired with `closedReason = NOTIFY_FAILED` and the copy passes to the next member",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "No email address, permanent relay rejection, or hard bounce: no retry, give up immediately.\n[omitted]\nGive up: the hold becomes expired with `closedReason = NOTIFY_FAILED` and the copy passes to the next member"
+ },
+ {
+  "judge": "gpt-5.6-luna",
+  "armId": "main",
+  "taskId": "design-hold-service",
+  "criterion": "limit",
+  "quote": "Hold limit (REQ-7): count and insert run under a per-member advisory lock, so six parallel POSTs cannot all pass. ... 409 `HOLD_LIMIT` (REQ-7).",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": false,
+  "haystack": "Hold limit (REQ-7): count and insert run under a per-member advisory lock, so six parallel POSTs cannot all pass."
+ },
+ {
+  "judge": "gpt-5.6-luna",
+  "armId": "main",
+  "taskId": "simple-fix-failing-test",
+  "criterion": "cause",
+  "quote": "**Cause:** Two `slugify` tests were failing. `slugify` turned each whitespace character into its own hyphen... It also kept hyphens at the ends",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "Cause:** Two `slugify` tests were failing. `slugify` turned each whitespace character into its own hyphen\n[omitted]\nIt also kept hyphens at the ends"
+ },
+ {
+  "judge": "gpt-5.6-luna",
+  "armId": "main",
+  "taskId": "simple-fix-failing-test",
+  "criterion": "product-code-only",
+  "quote": "The fix was one change in `src/slug.js`... no test files were touched.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "The fix was one change in `src/slug.js\n[omitted]\nno test files were touched."
+ },
+ {
+  "judge": "gpt-5.6-luna",
+  "armId": "v1.2.0",
+  "taskId": "design-hold-service",
+  "criterion": "limit",
+  "quote": "409 if a copy is available ..., the member has 5 active holds (REQ-7; checked under `pg_advisory_xact_lock(memberId)` ...), or already holds this title.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "409 if a copy is available\n[omitted]\n, the member has 5 active holds (REQ-7; checked under `pg_advisory_xact_lock(memberId)\n[omitted]\n), or already holds this title."
+ },
+ {
+  "judge": "gpt-5.6-luna",
+  "armId": "v1.2.0",
+  "taskId": "review-inventory-security",
+  "criterion": "sqli",
+  "quote": "SQL injection in search (`src/repository/itemRepo.js:22`). The query is built by string concatenation... Fix: use a placeholder.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "SQL injection in search (`src/repository/itemRepo.js:22`). The query is built by string concatenation\n[omitted]\nFix: use a placeholder."
+ },
+ {
+  "judge": "gpt-5.6-luna",
+  "armId": "v1.2.0",
+  "taskId": "review-inventory-security",
+  "criterion": "authz",
+  "quote": "`POST /items/:id/stock` has no admin check (`src/handlers/items.js:25-30`). ... The README requires `X-Admin-Token` on both mutating routes.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "POST /items/:id/stock` has no admin check (`src/handlers/items.js:25-30`).\n[omitted]\nThe README requires `X-Admin-Token` on both mutating routes."
+ },
+ {
+  "judge": "gpt-5.6-luna",
+  "armId": "v1.2.0",
+  "taskId": "review-inventory-security",
+  "criterion": "validation",
+  "quote": "`delta` is coerced with `Number()` and never validated... `\"abc\"` stores NaN... Stock can go below zero... POST /items does not validate `name` or `qty`.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": false,
+  "haystack": "abc\"` stores NaN\n[omitted]\nStock can go below zero\n[omitted]\ndelta` is coerced with `Number()` and never validated"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "orch-input-validation",
+  "criterion": "delta",
+  "quote": "adjustStock returns 400 for floats, NaN, Infinity, strings and other types... assert.deepStrictEqual(res, { status: 400, body: { error: 'delta must be a finite integer' } })",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "adjustStock returns 400 for floats, NaN, Infinity, strings and other types\n[omitted]\nassert.deepStrictEqual(res, { status: 400, body: { error: 'delta must be a finite integer' } })"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "orch-input-validation",
+  "criterion": "create",
+  "quote": "createItem returns 400 with the name message for bad names... createItem returns 400 with the qty message for bad quantities",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "createItem returns 400 with the name message for bad names\n[omitted]\ncreateItem returns 400 with the qty message for bad quantities"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "orch-input-validation",
+  "criterion": "readme",
+  "quote": "## 400 responses... ### POST /items... ### POST /items/:id/stock",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "## 400 responses\n[omitted]\n### POST /items\n[omitted]\n### POST /items/:id/stock"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "orch-input-validation",
+  "criterion": "auth-unchanged",
+  "quote": "The admin check and the 403 path in createItem are untouched... adjustStock({params:{id:\"1\"},body:{delta:2},headers:{}})... rs[0].status===200",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "The admin check and the 403 path in `createItem` are untouched\n[omitted]\nadjustStock({params:{id:\"1\"},body:{delta:2},headers:{}})\n[omitted]\nrs[0].status===200"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "review-inventory-security",
+  "criterion": "sqli",
+  "quote": "1. SQL injection in item search... src/repository/itemRepo.js:22... Fix: Pass the term as a bound parameter",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "1. SQL injection in item search\n[omitted]\nsrc/repository/itemRepo.js:22\n[omitted]\nFix:** Pass the term as a bound parameter"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "review-inventory-security",
+  "criterion": "authz",
+  "quote": "2. POST /items/:id/stock has no authentication check... src/handlers/items.js:25-30... Fix: Add the same guard that createItem uses",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "2. `POST /items/:id/stock` has no authentication check\n[omitted]\nsrc/handlers/items.js:25-30\n[omitted]\nFix:** Add the same guard that `createItem` uses"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "review-inventory-security",
+  "criterion": "validation",
+  "quote": "3. delta is not validated, so stock can go negative, become NaN... 4. POST /items stores unvalidated input",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "3. `delta` is not validated, so stock can go negative, become NaN\n[omitted]\n4. `POST /items` stores unvalidated input"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "review-inventory-security",
+  "criterion": "leak",
+  "quote": "5. Error responses leak the exception message and stack trace... src/server.js:50... send(res, 500, { error: err.message, stack: err.stack });",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "5. Error responses leak the exception message and stack trace\n[omitted]\nsrc/server.js:50\n[omitted]\nsend(res, 500, { error: err.message, stack: err.stack });"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "review-inventory-security",
+  "criterion": "secrets-race",
+  "quote": "7. src/config.js:6: the service falls back to a hardcoded admin token... 8. src/services/inventoryService.js:21-25: stock adjustment reads, changes and writes without atomicity",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "7. `src/config.js:6`: the service falls back to a hardcoded admin token\n[omitted]\n8. `src/services/inventoryService.js:21-25`: stock adjustment reads, changes and writes without atomicity"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "simple-fix-failing-test",
+  "criterion": "cause",
+  "quote": "Cause: Two slugify tests were failing. slugify turned each whitespace character into its own hyphen... It also kept hyphens at the ends",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "Cause:** Two `slugify` tests were failing. `slugify` turned each whitespace character into its own hyphen\n[omitted]\nIt also kept hyphens at the ends"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "main",
+  "taskId": "simple-fix-failing-test",
+  "criterion": "brief",
+  "quote": "**Cause:** Two slugify tests were failing... **Fix:** slugify now collapses any run of whitespace or hyphens into a single hyphen.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "Cause:** Two `slugify` tests were failing\n[omitted]\nFix:** `slugify` now collapses any run of whitespace or hyphens into a single hyphen."
+ },
+ {
+  "judge": "glm-5",
+  "armId": "v1.2.0",
+  "taskId": "design-hold-service",
+  "criterion": "limit",
+  "quote": "409 if ... the member has 5 active holds (REQ-7; checked under `pg_advisory_xact_lock(memberId)` so parallel requests cannot exceed it)",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "409 if\n[omitted]\nthe member has 5 active holds (REQ-7; checked under `pg_advisory_xact_lock(memberId)` so parallel requests cannot exceed it)"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "v1.2.0",
+  "taskId": "orch-input-validation",
+  "criterion": "tests",
+  "quote": "`npm test` passes 30 of 30... 22 new tests in `test/validation.test.js`... the 8 existing tests are unchanged",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "npm test` passes 30 of 30\n[omitted]\n22 new tests in `test/validation.test.js\n[omitted]\nthe 8 existing tests are unchanged"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "v1.2.0",
+  "taskId": "orch-input-validation",
+  "criterion": "auth-unchanged",
+  "quote": "`adjustStock` has no token check... `POST /items` still returns 403 before any validation",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": false,
+  "haystack": "POST /items` still returns 403 before any validation"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "v1.2.0",
+  "taskId": "review-inventory-security",
+  "criterion": "sqli",
+  "quote": "SQL injection in the name search... The user-supplied `q` is concatenated into the SQL text... Fix: use a placeholder.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "SQL injection in the name search\n[omitted]\nThe user-supplied `q` is concatenated into the SQL text\n[omitted]\nFix: use a placeholder."
+ },
+ {
+  "judge": "glm-5",
+  "armId": "v1.2.0",
+  "taskId": "review-inventory-security",
+  "criterion": "authz",
+  "quote": "POST /items/:id/stock does not check the admin token... Severity: Critical... any client that can reach the port can change stock for any item with no credentials.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "POST /items/:id/stock does not check the admin token\n[omitted]\nSeverity: Critical\n[omitted]\nany client that can reach the port can change stock for any item with no credentials."
+ },
+ {
+  "judge": "glm-5",
+  "armId": "v1.2.0",
+  "taskId": "review-inventory-security",
+  "criterion": "validation",
+  "quote": "`delta` is coerced with `Number()` and never validated... `delta: \"abc\"` gave 200 with `qty: null`... POST /items does not validate `name` or `qty`",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": false,
+  "haystack": "POST /items does not validate `name` or `qty\n[omitted]\ndelta` is coerced with `Number()` and never validated\n[omitted]\ndelta: \"abc\"` gave 200 with `qty: null"
+ },
+ {
+  "judge": "glm-5",
+  "armId": "v1.2.0",
+  "taskId": "review-inventory-security",
+  "criterion": "leak",
+  "quote": "The catch block sends `{ error: err.message, stack: err.stack }` to the client... Fix: log server side, return a generic body.",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": true,
+  "haystack": "The catch block sends `{ error: err.message, stack: err.stack }` to the client\n[omitted]\nFix: log server side, return a generic body."
+ },
+ {
+  "judge": "glm-5",
+  "armId": "v1.2.0",
+  "taskId": "review-inventory-security",
+  "criterion": "secrets-race",
+  "quote": "The admin token falls back to a hardcoded default (`src/config.js:6`). Finding 7... The reorder report uses `<` instead of `<=`",
+  "verbatimMatchedInOriginalRun": false,
+  "foundByEllipsisAwareRule": false,
+  "haystack": "The reorder report uses `<` instead of `<="
+ }
+]

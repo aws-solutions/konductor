@@ -1,0 +1,4 @@
+The files under overlay/ are test files of executablebooks/markdown-it-py (https://github.com/executablebooks/markdown-it-py), copied unchanged
+from the merge commit 49043e4445d233598fb893bed6949f7b25ae4e27 of pull request #379 (https://github.com/executablebooks/markdown-it-py/pull/379).
+They serve as hidden acceptance tests for one benchmark task.
+Upstream license: MIT; the license text is in the file LICENSE next to this one.

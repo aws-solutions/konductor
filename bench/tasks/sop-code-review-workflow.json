@@ -1,0 +1,114 @@
+{
+  "id": "sop-code-review-workflow",
+  "class": "sop",
+  "target": "k-code-review-workflow",
+  "prompt": "Run a full code review of the src folder of this service. There is no git history, so treat every file as changed. Review the backend code, drop weak or speculative findings, then write the consolidated report to code-review-report.md with a Summary (counts by severity), Critical Issues, Important Issues and Suggestions, each finding with file:line. End the report with a line that reads `Verdict: READY FOR CR` or `Verdict: NEEDS FIXES`. Do not change source files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "code-review-report.md"
+    },
+    {
+      "type": "contains",
+      "path": "code-review-report.md",
+      "pattern": "^#+\\s.*summary"
+    },
+    {
+      "type": "contains",
+      "path": "code-review-report.md",
+      "pattern": "^#+\\s.*critical"
+    },
+    {
+      "type": "contains",
+      "path": "code-review-report.md",
+      "pattern": "^#+\\s.*important"
+    },
+    {
+      "type": "contains",
+      "path": "code-review-report.md",
+      "pattern": "^#+\\s.*(suggestion|minor|nit)"
+    },
+    {
+      "type": "cmd",
+      "cmd": "awk -v pat='critical' -v min=2 'function hl(s,m){if(s~/^#+[ \\t]/){m=s;sub(/[^#].*/,\"\",m);return length(m)}if(s~/^[ \\t]*\\*\\*[^*]+\\*\\*:?[ \\t]*$/)return 9;return 0}{l=hl($0);low=tolower($0);if(l>0){if(on&&l<=sl)on=0;if(!on&&low~pat){on=1;sl=l;next}if(on)n++;next}if(on&&$0~/^[ \\t]*([-*+]|[0-9]+[.)])[ \\t]+[^ \\t]/)n++;else if(on&&$0~/^[ \\t]*\\|/&&$0!~/^[ \\t]*\\|[-: |\\t]*$/)n++}END{exit !(n>=min)}' code-review-report.md",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "awk -v pat='important' -v min=3 'function hl(s,m){if(s~/^#+[ \\t]/){m=s;sub(/[^#].*/,\"\",m);return length(m)}if(s~/^[ \\t]*\\*\\*[^*]+\\*\\*:?[ \\t]*$/)return 9;return 0}{l=hl($0);low=tolower($0);if(l>0){if(on&&l<=sl)on=0;if(!on&&low~pat){on=1;sl=l;next}if(on)n++;next}if(on&&$0~/^[ \\t]*([-*+]|[0-9]+[.)])[ \\t]+[^ \\t]/)n++;else if(on&&$0~/^[ \\t]*\\|/&&$0!~/^[ \\t]*\\|[-: |\\t]*$/)n++}END{exit !(n>=min)}' code-review-report.md",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "awk -v pat='suggest|minor|nit' -v min=1 'function hl(s,m){if(s~/^#+[ \\t]/){m=s;sub(/[^#].*/,\"\",m);return length(m)}if(s~/^[ \\t]*\\*\\*[^*]+\\*\\*:?[ \\t]*$/)return 9;return 0}{l=hl($0);low=tolower($0);if(l>0){if(on&&l<=sl)on=0;if(!on&&low~pat){on=1;sl=l;next}if(on)n++;next}if(on&&$0~/^[ \\t]*([-*+]|[0-9]+[.)])[ \\t]+[^ \\t]/)n++;else if(on&&$0~/^[ \\t]*\\|/&&$0!~/^[ \\t]*\\|[-: |\\t]*$/)n++}END{exit !(n>=min)}' code-review-report.md",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "code-review-report.md",
+      "pattern": "(critical|important|suggestions?|minor)\\W{0,6}\\d+|\\d+\\W{0,4}(critical|important|suggestions?|minor)",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e '(function refsCheck(c) { const fs = require(\"fs\"); let text = \"\"; try { text = fs.readFileSync(c.file, \"utf8\"); } catch (e) { process.exit(1); } const files = []; const walk = (d) => { let es = []; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; } for (const e of es) { if (e.name === \"node_modules\" || e.name === \".git\") continue; const p = d === \".\" ? e.name : d + \"/\" + e.name; if (e.isDirectory()) walk(p); else files.push(p); } }; walk(\".\"); const re = /([A-Za-z0-9_\\/.-]+\\.js)[`)*\\]]*(?::|#L|,?\\s*\\(?lines?\\s*)(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?/gi; const seen = new Set(); const refs = []; const found = [...text.matchAll(re)].map((m) => ({ name: m[1], a: m[2], b: m[3] })); if (c.defaultFile) { for (const m of text.matchAll(/\\blines?\\s+(\\d+)(?:\\s*[-\\u2013]\\s*(\\d+))?/gi)) found.push({ name: c.defaultFile, a: m[1], b: m[2] }); } for (const m of found) { const f = files.find((x) => x === m.name.replace(/^\\.\\//, \"\") || x.endsWith(\"/\" + m.name.replace(/^\\.\\//, \"\"))); if (!f) continue; const a = Number(m.a); const b = m.b ? Number(m.b) : a; const lines = fs.readFileSync(f, \"utf8\").split(\"\\n\"); if (a < 1 || a > lines.length) continue; if (c.lineRe && !new RegExp(c.lineRe, \"i\").test(lines[a - 1])) continue; if (seen.has(f + \":\" + a)) continue; seen.add(f + \":\" + a); refs.push({ f, a, b }); } let hits = 0; for (const s of c.seeds || []) { if (refs.some((r) => r.f.endsWith(s.f) && [r.a, r.b].some((n) => n >= s.lo - 2 && n <= s.hi + 2))) hits++; } process.exit(refs.length >= c.min && hits >= (c.minSeeds || 0) ? 0 : 1); })({\"file\":\"code-review-report.md\",\"min\":6,\"seeds\":[{\"f\":\"repository/itemRepo.js\",\"lo\":22,\"hi\":22},{\"f\":\"handlers/items.js\",\"lo\":25,\"hi\":27},{\"f\":\"handlers/items.js\",\"lo\":21,\"hi\":21},{\"f\":\"src/server.js\",\"lo\":50,\"hi\":50},{\"f\":\"services/inventoryService.js\",\"lo\":19,\"hi\":25},{\"f\":\"src/config.js\",\"lo\":6,\"hi\":6},{\"f\":\"handlers/items.js\",\"lo\":8,\"hi\":8},{\"f\":\"src/server.js\",\"lo\":36,\"hi\":37},{\"f\":\"services/inventoryService.js\",\"lo\":31,\"hi\":31}],\"minSeeds\":5})'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'inject|concatenat|string.built|parameteri[sz]|bound param|placeholder|prepared' 'admin.token|x-admin|authori[sz]ation|authenticat|isAdmin|token check|no token' 'validat|NaN|not a number|non.integer|fraction|negative' 'stack' 'race|lost update|concurren|atomic|read.modify.write|interleav' 'hardcod|hard.cod|fallback|default (admin )?token|fail closed' 'body size|size limit|payload|unbounded|no limit|413' 'timing|constant.time|timingSafeEqual'; do cat code-review-report.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "code-review-report.md",
+      "pattern": "^[\\s>*_#-]*(final\\s+)?verdict[\\s*_]*:[\\s*_`]*(needs fixes)"
+    },
+    {
+      "type": "not_contains",
+      "path": "code-review-report.md",
+      "pattern": "^[\\s>*_#-]*(final\\s+)?verdict[\\s*_]*:[\\s*_`]*(ready)"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' code-review-report.md)\" -ge 15 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "injection",
+      "criterion": "Reports the SQL injection at itemRepo.js line 22 as Critical with a parameterized-query fix.",
+      "weight": 3
+    },
+    {
+      "id": "auth-leak",
+      "criterion": "Reports the missing admin-token check on adjustStock and the stack trace returned in the 500 response of server.js.",
+      "weight": 2
+    },
+    {
+      "id": "validation",
+      "criterion": "Reports unvalidated delta, name and qty input.",
+      "weight": 2
+    },
+    {
+      "id": "counts",
+      "criterion": "The Summary counts match the number of findings listed in each section.",
+      "weight": 2
+    },
+    {
+      "id": "verdict",
+      "criterion": "The verdict is NEEDS FIXES, consistent with the Critical count, and findings give concrete fixes with file:line.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

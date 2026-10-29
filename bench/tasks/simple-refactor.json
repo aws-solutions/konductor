@@ -1,0 +1,55 @@
+{
+  "id": "simple-refactor",
+  "class": "simple",
+  "target": null,
+  "prompt": "src/strings.js repeats the same whitespace clean-up in three functions. Extract it into one helper named normalizeSpace and use it from all three, without changing behavior or the public exports of the module. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "textkit",
+  "timeoutSec": 300,
+  "checks": [
+    {
+      "type": "contains",
+      "path": "src/strings.js",
+      "pattern": "(function|const) normalizeSpace"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 's=require(\"fs\").readFileSync(\"src/strings.js\",\"utf8\");process.exit(s.split(\".replace(/\\\\s+/g\").length-1===1?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'k=Object.keys(require(\"./src/strings\")).sort().join();process.exit(k===\"capitalize,initials,truncate\"?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test test/strings.test.js",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "helper",
+      "criterion": "A single normalizeSpace helper in src/strings.js is called by capitalize, truncate and initials.",
+      "weight": 3
+    },
+    {
+      "id": "single-regex",
+      "criterion": "The whitespace-collapsing replace appears once in src/strings.js.",
+      "weight": 2
+    },
+    {
+      "id": "exports-and-tests",
+      "criterion": "Public exports are still capitalize, truncate and initials, and the 5 tests in test/strings.test.js pass.",
+      "weight": 3
+    },
+    {
+      "id": "scope",
+      "criterion": "No files other than src/strings.js are changed.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

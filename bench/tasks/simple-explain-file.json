@@ -1,0 +1,88 @@
+{
+  "id": "simple-explain-file",
+  "class": "simple",
+  "target": null,
+  "prompt": "I am new to this project. Explain what src/csv.js does, including how it treats quotes and blank lines. Write the explanation to explanation.md in plain language, at most about 40 lines. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "textkit",
+  "timeoutSec": 420,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "explanation.md"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "parseLine"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "parseCsv"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(wc -l < explanation.md)\" -le 60 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' explanation.md)\" -ge 8 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "quot[\\s\\S]{0,300}comma|comma[\\s\\S]{0,300}quot"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "(?:(?:blank|empty)[ -](?:lines?|rows?|strings?)|lines?[^.\\n]{0,40}(?:blank|empty))[\\s\\S]{0,120}(?:skip|ignor|drop|filter|discard|omit|remov)\\w*|(?:skip|ignor|drop|filter|discard|omit|remov)\\w*[\\s\\S]{0,120}(?:(?:blank|empty)[ -](?:lines?|rows?|strings?)|lines?[^.\\n]{0,40}(?:blank|empty))"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "split\\w*[\\s\\S]{0,60}(?:newlines?|line ?breaks?|\\\\n|lines)|(?:newlines?|line ?breaks?|\\\\n|lines)[\\s\\S]{0,60}split|each line|every line|one (?:row )?per line|line[ -]by[ -]line"
+    },
+    {
+      "type": "not_contains",
+      "path": "explanation.md",
+      "pattern": "trailing[^\\n]{0,40}(is|are|gets|get) (kept|preserved|included|retained)"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "quoted-commas",
+      "criterion": "States that parseLine splits a line on commas but not on commas inside double quotes.",
+      "weight": 3
+    },
+    {
+      "id": "parsecsv",
+      "criterion": "States that parseCsv splits text on newlines, skips empty lines and runs each line through parseLine.",
+      "weight": 2
+    },
+    {
+      "id": "quote-chars",
+      "criterion": "States that the quote characters themselves are not kept in the output fields.",
+      "weight": 1
+    },
+    {
+      "id": "no-false-claims",
+      "criterion": "Every statement about doubled quotes (\"\") and about a trailing empty field matches the code: a doubled quote is not turned into a literal quote (the pair is dropped), and a trailing empty field is not kept (it is dropped). Pass if it states these correctly or does not mention them. Fail only if it states the opposite, or if another limit it mentions does not match the code.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "lite",
+    "full"
+  ]
+}

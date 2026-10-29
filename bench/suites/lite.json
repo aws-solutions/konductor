@@ -1,0 +1,21 @@
+{
+  "tasks": [
+    "simple-fix-failing-test",
+    "simple-explain-file",
+    "orch-input-validation",
+    "review-inventory-security",
+    "design-hold-service"
+  ],
+  "arms": [
+    "vanilla",
+    "v1.2.0",
+    "main"
+  ],
+  "replicates": 1,
+  "parallel": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ]
+}

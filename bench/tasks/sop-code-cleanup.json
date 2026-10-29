@@ -1,0 +1,140 @@
+{
+  "id": "sop-code-cleanup",
+  "class": "sop",
+  "target": "k-code-cleanup",
+  "prompt": "Clean up AI-style slop in src/ before I open a review. There is no git history here, so treat every file under src as changed. Remove comments that only restate the next line, needless wrappers and duplicate guards, but keep comments that explain why, TODOs, logging and error handling. Do not change behavior or function signatures. Run the tests afterwards. Write cleanup-report.md with the sections Removed Items, Preserved Items and Review Findings, including counts of what you removed. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "inventory-api",
+  "timeoutSec": 900,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "cleanup-report.md"
+    },
+    {
+      "type": "not_contains",
+      "path": "src/util/format.js",
+      "pattern": "// Format the label for display"
+    },
+    {
+      "type": "not_contains",
+      "path": "src/util/format.js",
+      "pattern": "// Trim the name"
+    },
+    {
+      "type": "not_contains",
+      "path": "src/util/format.js",
+      "pattern": "// Return the result"
+    },
+    {
+      "type": "not_contains",
+      "path": "src/services/inventoryService.js",
+      "pattern": "// Get the item from the repository"
+    },
+    {
+      "type": "not_contains",
+      "path": "src/services/inventoryService.js",
+      "pattern": "// Increment the quantity"
+    },
+    {
+      "type": "contains",
+      "path": "src/util/format.js",
+      "pattern": "Label printer truncates at 12 chars"
+    },
+    {
+      "type": "contains",
+      "path": "src/util/format.js",
+      "pattern": "TODO\\(lead\\)"
+    },
+    {
+      "type": "contains",
+      "path": "src/server.js",
+      "pattern": "console\\.error"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'process.exit(require(\"./src/util/format\").formatLabel(\"  Extraordinarily big\")===\"Extraordinar\"?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'require(\"./src/handlers/items\").getItem({params:{id:\"1\"}}).then(r=>process.exit(r.status===200&&r.body.qty===10?0:1),()=>process.exit(1))'",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "cleanup-report.md",
+      "pattern": "^#+\\s.*removed"
+    },
+    {
+      "type": "contains",
+      "path": "cleanup-report.md",
+      "pattern": "^#+\\s.*(preserved|kept|retained)"
+    },
+    {
+      "type": "contains",
+      "path": "cleanup-report.md",
+      "pattern": "^#+\\s.*(review findings|findings)"
+    },
+    {
+      "type": "cmd",
+      "cmd": "awk -v pat='removed' -v min=3 'function hl(s,m){if(s~/^#+[ \\t]/){m=s;sub(/[^#].*/,\"\",m);return length(m)}if(s~/^[ \\t]*\\*\\*[^*]+\\*\\*:?[ \\t]*$/)return 9;return 0}{l=hl($0);low=tolower($0);if(l>0){if(on&&l<=sl)on=0;if(!on&&low~pat){on=1;sl=l;next}if(on)n++;next}if(on&&$0~/^[ \\t]*([-*+]|[0-9]+[.)])[ \\t]+[^ \\t]/)n++;else if(on&&$0~/^[ \\t]*\\|/&&$0!~/^[ \\t]*\\|[-: |\\t]*$/)n++}END{exit !(n>=min)}' cleanup-report.md",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "awk -v pat='preserved|kept|retained' -v min=2 'function hl(s,m){if(s~/^#+[ \\t]/){m=s;sub(/[^#].*/,\"\",m);return length(m)}if(s~/^[ \\t]*\\*\\*[^*]+\\*\\*:?[ \\t]*$/)return 9;return 0}{l=hl($0);low=tolower($0);if(l>0){if(on&&l<=sl)on=0;if(!on&&low~pat){on=1;sl=l;next}if(on)n++;next}if(on&&$0~/^[ \\t]*([-*+]|[0-9]+[.)])[ \\t]+[^ \\t]/)n++;else if(on&&$0~/^[ \\t]*\\|/&&$0!~/^[ \\t]*\\|[-: |\\t]*$/)n++}END{exit !(n>=min)}' cleanup-report.md",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "cleanup-report.md",
+      "pattern": "\\b\\d+\\b[^\\n]{0,40}(comment|wrapper|guard|item)",
+      "min": 2
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'getQty' 'Label printer|12.char' 'TODO' 'console[.]error|JSON' 'Format the label|Trim the name|Return the result|Get the item|Increment the quantity'; do cat cleanup-report.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' cleanup-report.md)\" -ge 8 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "removed",
+      "criterion": "Removes the five restating comments in util/format.js and services/inventoryService.js and nothing of substance beyond slop.",
+      "weight": 3
+    },
+    {
+      "id": "preserved",
+      "criterion": "Keeps the 12-character label comment, the TODO(lead) comment and the JSON parse error handling with console.error.",
+      "weight": 2
+    },
+    {
+      "id": "behavior",
+      "criterion": "Behavior and signatures are unchanged; formatLabel still caps at 12 characters and the handler getItem still returns qty.",
+      "weight": 2
+    },
+    {
+      "id": "report-counts",
+      "criterion": "The Removed Items counts match what was actually removed and Preserved Items names what was kept.",
+      "weight": 2
+    },
+    {
+      "id": "findings",
+      "criterion": "Review Findings reports real issues (for example unvalidated delta) or says there are none; it does not invent problems.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

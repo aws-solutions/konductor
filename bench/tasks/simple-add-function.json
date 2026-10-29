@@ -1,0 +1,50 @@
+{
+  "id": "simple-add-function",
+  "class": "simple",
+  "target": null,
+  "prompt": "Add a titleCase(text) function to textkit. It should upper-case the first letter of every word and lower-case the rest, and return an empty string for empty input. Export it from the package entry point and add tests for it. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "textkit",
+  "timeoutSec": 300,
+  "checks": [
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"./src\").titleCase;const ok=typeof t===\"function\"&&t(\"\")===\"\"&&t(\"hello big world\")===\"Hello Big World\"&&t(\"hELLO wORLD\")===\"Hello World\";process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "grep -rq titleCase test && node --test $(grep -rl titleCase test)",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "src/index.js",
+      "pattern": "titleCase"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "exported",
+      "criterion": "titleCase is implemented in src/ and exported from src/index.js.",
+      "weight": 3
+    },
+    {
+      "id": "behavior",
+      "criterion": "titleCase(\"hELLO wORLD\") returns \"Hello World\" and titleCase(\"\") returns \"\".",
+      "weight": 2
+    },
+    {
+      "id": "tests",
+      "criterion": "Adds tests for titleCase covering mixed-case input and the empty string, in a file under test/, and they pass.",
+      "weight": 2
+    },
+    {
+      "id": "scope",
+      "criterion": "Does not change the behavior of existing exported functions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

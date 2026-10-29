@@ -1,0 +1,30 @@
+{
+ "sessions": [
+  {
+   "id": "ses_e7b047669ffea6BvJf34zDKxOm",
+   "parent_id": null,
+   "agent": "build",
+   "model": "{\"id\":\"global.anthropic.claude-sonnet-5-5\",\"providerID\":\"amazon-bedrock\",\"variant\":\"low\"}",
+   "cost": 0.029051300000000002,
+   "tokens_input": 6,
+   "tokens_output": 127,
+   "tokens_reasoning": 0,
+   "tokens_cache_read": 10568,
+   "tokens_cache_write": 10685,
+   "title": "bench"
+  }
+ ],
+ "messages": [
+  {
+   "session_id": "ses_e7b047669ffea6BvJf34zDKxOm",
+   "n": 2
+  }
+ ],
+ "tools": [
+  {
+   "session_id": "ses_e7b047669ffea6BvJf34zDKxOm",
+   "tool": "write",
+   "n": 1
+  }
+ ]
+}

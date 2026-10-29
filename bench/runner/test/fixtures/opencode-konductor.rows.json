@@ -1,0 +1,62 @@
+{
+ "sessions": [
+  {
+   "id": "ses_e7b054e3effeoNkTB9235JQROu",
+   "parent_id": null,
+   "agent": "konductor",
+   "model": "{\"id\":\"global.anthropic.claude-sonnet-5-5\",\"providerID\":\"amazon-bedrock\",\"variant\":\"low\"}",
+   "cost": 0.0978844,
+   "tokens_input": 6,
+   "tokens_output": 380,
+   "tokens_reasoning": 0,
+   "tokens_cache_read": 35749,
+   "tokens_cache_write": 36199,
+   "title": "bench"
+  },
+  {
+   "id": "ses_e7b0535d2ffeLu9c2IfTCS4VMp",
+   "parent_id": "ses_e7b054e3effeoNkTB9235JQROu",
+   "agent": "k-developer",
+   "model": "{\"id\":\"global.anthropic.claude-sonnet-5-5\",\"providerID\":\"amazon-bedrock\",\"variant\":\"default\"}",
+   "cost": 0.08021990000000001,
+   "tokens_input": 8,
+   "tokens_output": 385,
+   "tokens_reasoning": 0,
+   "tokens_cache_read": 55864,
+   "tokens_cache_write": 28307,
+   "title": "child"
+  }
+ ],
+ "messages": [
+  {
+   "session_id": "ses_e7b054e3effeoNkTB9235JQROu",
+   "n": 2
+  },
+  {
+   "session_id": "ses_e7b0535d2ffeLu9c2IfTCS4VMp",
+   "n": 3
+  }
+ ],
+ "tools": [
+  {
+   "session_id": "ses_e7b054e3effeoNkTB9235JQROu",
+   "tool": "task",
+   "n": 1
+  },
+  {
+   "session_id": "ses_e7b0535d2ffeLu9c2IfTCS4VMp",
+   "tool": "write",
+   "n": 1
+  },
+  {
+   "session_id": "ses_e7b0535d2ffeLu9c2IfTCS4VMp",
+   "tool": "read",
+   "n": 1
+  },
+  {
+   "session_id": "ses_e7b0535d2ffeLu9c2IfTCS4VMp",
+   "tool": "bash",
+   "n": 1
+  }
+ ]
+}
