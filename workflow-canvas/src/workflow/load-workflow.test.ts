@@ -601,14 +601,14 @@ describe('loadWorkflow with a kept session', () => {
     });
     const { memory } = memoryWith(STORED);
     const loading = loadWorkflow(api, undefined, memory);
-    memory.remember({ token: 'newer-token', harness: 'kiro-cli' });
+    memory.remember({ token: 'newer-token', harness: STORED.harness });
 
     refuse();
     await loading;
 
     expect(memory.recall()).toEqual({
       token: 'newer-token',
-      harness: 'kiro-cli',
+      harness: STORED.harness,
     });
   });
 });
@@ -740,6 +740,269 @@ describe('loadOnOpen', () => {
     await loadOnOpen(api, undefined, memoryWith(STORED).memory);
 
     expect(api.getWorkflow).toHaveBeenCalledWith('stored-token');
+  });
+});
+
+const PASTED = { token: 'token-1', harness: 'kiro-cli' };
+const PENDING = { token: 'pending-token', harness: 'pending-harness' };
+
+const serverError = () => new ApiError('Server error.', 500);
+const unknownSession = () => new ApiError('Wrong.', 401);
+
+function apiByToken(failures: Record<string, ApiError>): WorkflowApi {
+  return fakeApi({
+    getWorkflow: vi.fn((token: string) =>
+      failures[token]
+        ? Promise.reject(failures[token])
+        : Promise.resolve(HELLO_DOCUMENT),
+    ),
+  });
+}
+
+function memoryWithPending(kept?: typeof STORED) {
+  const { memory } = memoryWith(kept);
+  memory.holdPending(PENDING);
+  return memory;
+}
+
+describe('loadWorkflow with a pasted code over a kept session', () => {
+  it('holds the session of the code as pending at once, so a failed load does not lose it', async () => {
+    const { memory } = memoryWith(STORED);
+
+    const result = await loadWorkflow(
+      apiByToken({ 'token-1': serverError() }),
+      'code-1',
+      memory,
+    );
+
+    expect(result).toMatchObject({ ok: false });
+    expect(memory.recall()).toEqual(STORED);
+    expect(memory.recallPending()).toEqual(PASTED);
+  });
+
+  it('holds nothing when the code is refused', async () => {
+    const api = fakeApi({
+      createSession: vi.fn().mockRejectedValue(unknownSession()),
+    });
+    const { memory } = memoryWith(STORED);
+
+    await loadWorkflow(api, 'spent', memory);
+
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('keeps the session and holds nothing once told to', async () => {
+    const { memory } = memoryWith(STORED);
+    const result = await loadWorkflow(fakeApi(), 'code-1', memory);
+    if (!result.ok) throw new Error('The load failed.');
+
+    result.remember();
+
+    expect(memory.recall()).toEqual(PASTED);
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('drops the pending session when its load answers 401', async () => {
+    const { memory } = memoryWith(STORED);
+
+    await loadWorkflow(
+      apiByToken({ 'token-1': unknownSession() }),
+      'code-1',
+      memory,
+    );
+
+    expect(memory.recallPending()).toBeUndefined();
+    expect(memory.recall()).toEqual(STORED);
+  });
+});
+
+describe('loadWorkflow with a pending session', () => {
+  it('opens the pending session before the kept one', async () => {
+    const api = fakeApi();
+
+    const result = await loadWorkflow(
+      api,
+      undefined,
+      memoryWithPending(STORED),
+    );
+
+    expect(api.getWorkflow).toHaveBeenCalledExactlyOnceWith('pending-token');
+    expect(result).toMatchObject({
+      ok: true,
+      workflow: { harness: 'pending-harness' },
+    });
+    expect(result).not.toHaveProperty('refused');
+  });
+
+  it('keeps it in place of the kept session once told to', async () => {
+    const memory = memoryWithPending(STORED);
+    const result = await loadWorkflow(fakeApi(), undefined, memory);
+    if (!result.ok) throw new Error('The load failed.');
+
+    result.remember();
+
+    expect(memory.recall()).toEqual(PENDING);
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('opens it when no session is kept', async () => {
+    const result = await loadWorkflow(
+      fakeApi(),
+      undefined,
+      memoryWithPending(),
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      workflow: { harness: 'pending-harness' },
+    });
+  });
+
+  it('opens the kept session and tells why when the server refuses the pending one', async () => {
+    const memory = memoryWithPending(STORED);
+
+    const result = await loadWorkflow(
+      apiByToken({ 'pending-token': unknownSession() }),
+      undefined,
+      memory,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      workflow: { harness: 'stored-harness' },
+      refused: expect.stringMatching(/server no longer knows this session/),
+    });
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('opens the kept session when the pending one fails to load, and holds the pending one', async () => {
+    const memory = memoryWithPending(STORED);
+
+    const result = await loadWorkflow(
+      apiByToken({ 'pending-token': serverError() }),
+      undefined,
+      memory,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      workflow: { harness: 'stored-harness' },
+      refused: expect.stringMatching(/^Server error\./),
+    });
+    expect(memory.recallPending()).toEqual(PENDING);
+  });
+
+  it('shows the error of the pending session when the kept one fails too, and holds the pending one', async () => {
+    const memory = memoryWithPending(STORED);
+
+    const result = await loadWorkflow(
+      apiByToken({
+        'pending-token': serverError(),
+        'stored-token': unknownSession(),
+      }),
+      undefined,
+      memory,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      message: expect.stringMatching(/^Server error\./),
+    });
+    expect(memory.recall()).toBeUndefined();
+    expect(memory.recallPending()).toEqual(PENDING);
+  });
+});
+
+describe('loadOnOpen after a pasted code whose first load failed', () => {
+  it('resumes the pasted session on a reload, though the kept session is dead', async () => {
+    const { memory } = memoryWith(STORED);
+    const api = fakeApi({
+      getWorkflow: vi
+        .fn()
+        .mockRejectedValueOnce(serverError())
+        .mockResolvedValue(HELLO_DOCUMENT),
+    });
+    await loadWorkflow(api, 'code-1', memory);
+    vi.mocked(api.getWorkflow).mockImplementation((token) =>
+      token === 'stored-token'
+        ? Promise.reject(unknownSession())
+        : Promise.resolve(HELLO_DOCUMENT),
+    );
+
+    const result = await loadOnOpen(api, undefined, memory);
+
+    expect(result).toMatchObject({
+      ok: true,
+      workflow: { harness: 'kiro-cli' },
+    });
+    expect(api.getWorkflow).toHaveBeenLastCalledWith('token-1');
+  });
+});
+
+describe('loadOnOpen sessions', () => {
+  it('resumes the session kept when the open began, not the one the open just made', async () => {
+    const api = apiByToken({ 'token-1': serverError() });
+    const { memory } = memoryWith(STORED);
+
+    const result = await loadOnOpen(api, 'code-1', memory);
+
+    expect(vi.mocked(api.getWorkflow).mock.calls).toEqual([
+      ['token-1'],
+      ['stored-token'],
+    ]);
+    expect(result).toMatchObject({
+      ok: true,
+      workflow: { harness: 'stored-harness' },
+      refused: expect.stringMatching(/^Server error\./),
+    });
+    if (!result.ok) throw new Error('The load failed.');
+    result.remember();
+    expect(memory.recall()).toEqual(STORED);
+  });
+
+  it('drops a pending session when the session of the address is kept', async () => {
+    const memory = memoryWithPending(STORED);
+
+    await loadOnOpen(fakeApi(), 'code-1', memory);
+
+    expect(memory.recall()).toEqual(PASTED);
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('opens the pending session when the code of the address is refused', async () => {
+    const api = fakeApi({
+      createSession: vi.fn().mockRejectedValue(unknownSession()),
+    });
+
+    const result = await loadOnOpen(api, 'spent', memoryWithPending(STORED));
+
+    expect(result).toMatchObject({
+      ok: true,
+      workflow: { harness: 'pending-harness' },
+      refused: 'Wrong.',
+    });
+  });
+
+  it('does not overwrite a newer session that has the same harness, nor hold the session of the address', async () => {
+    let open!: () => void;
+    const api = fakeApi({
+      createSession: vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            open = () => resolve({ ...HELLO_SESSION, harness: STORED.harness });
+          }),
+      ),
+    });
+    const { memory } = memoryWith(STORED);
+    const loading = loadOnOpen(api, 'code-1', memory);
+    const newer = { token: 'newer-token', harness: STORED.harness };
+    memory.remember(newer);
+
+    open();
+    await loading;
+
+    expect(memory.recall()).toEqual(newer);
+    expect(memory.recallPending()).toBeUndefined();
   });
 });
 

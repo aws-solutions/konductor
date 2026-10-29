@@ -232,3 +232,52 @@ test('resumes after a reload when a fresh address opens over a dead session and 
 
   await canvas.expectWorkflowDrawn();
 });
+
+// The tab shows a workflow, but the server has since forgotten its session. A
+// pasted address opens a fresh session whose first load fails. A reload must
+// resume the pasted session, since the address cannot be used again.
+test('resumes a pasted address after a reload when its first load failed and the shown session is dead', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  const shown = sharedSession();
+  const pastedAuthorization = 'Bearer pasted-token';
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: { ...shown, token: 'pasted-token' } }),
+  );
+  const authorizations: string[] = [];
+  let pastedLoads = 0;
+  await page.route('**/api/workflow', async (route) => {
+    const authorization = route.request().headers()['authorization'] ?? '';
+    authorizations.push(authorization);
+    if (authorization !== pastedAuthorization) {
+      return route.fulfill({
+        status: 401,
+        json: { error: 'The session token is missing or wrong.' },
+      });
+    }
+    if ((pastedLoads += 1) === 1) {
+      return route.fulfill({
+        status: 500,
+        json: { error: 'Server error.' },
+      });
+    }
+    return route.fulfill({
+      response: await route.fetch({
+        headers: {
+          ...route.request().headers(),
+          authorization: `Bearer ${shown.token}`,
+        },
+      }),
+    });
+  });
+  await page.evaluate((code) => (window.location.hash = code), NEW_CODE);
+  await expect(page.getByTestId('launch-notice')).toBeVisible();
+  authorizations.length = 0;
+
+  await page.reload();
+
+  await canvas.expectWorkflowDrawn();
+  expect(authorizations).toEqual([pastedAuthorization]);
+});

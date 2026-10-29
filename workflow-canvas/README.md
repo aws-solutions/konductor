@@ -261,15 +261,19 @@ The rest wraps the core, so the rules can be tested without a browser:
   one that works wins.
 - `launch/session-memory.ts` is the port through which the page keeps its
   session (the token and the harness, never the launch code) in the session
-  storage of its tab, under one key. A load with no code in the address uses it,
-  so a reload resumes the open workflow although the code is spent. A code in
-  the address that fails (a spent one) falls back to the kept session with a
-  notice that says why, and its error is shown as the page's only if that fails
-  too. The session of a code in the address is kept as soon as the code opens
-  it, in place of a kept one, so a first load that fails can be retried by a
-  reload. A 401 on the kept token, on any call (the server was started again),
-  clears it and asks for a fresh launch address (an address works once). A
-  pasted code replaces it only once the workflow of that code is on the page.
+  storage of its tab. A load with no code in the address uses it, so a reload
+  resumes the open workflow although the code is spent. A code in the address
+  that fails (a spent one) falls back to the kept session with a notice that
+  says why, and its error is shown as the page's only if that fails too. The
+  session of a code in the address is kept as soon as the code opens it, in
+  place of a kept one unless a newer one was kept meanwhile, so a first load
+  that fails can be retried by a reload. A 401 on the kept token, on any call
+  (the server was started again), clears it and asks for a fresh launch address
+  (an address works once). A pasted code replaces the kept session only once
+  the workflow of that code is on the page. Until then its session waits under
+  a second key as the pending one, and a reload tries it before the kept
+  session, so a pasted address whose first load failed is not lost. Showing a
+  workflow keeps its session and clears the pending one.
   The token lasts for the life of the tab, including copies made by Duplicate
   tab or `window.open`, and a browser may restore it with the tab. Script on the
   page can read it, so `index.html` carries a Content-Security-Policy that lets
