@@ -35,8 +35,10 @@ info:
       request body with a field this document does not name is refused with
       400 `bad_request`.
     - Every call but `POST /api/session` carries `Authorization: Bearer <token>`.
-      A missing or wrong token is 401 `unauthorized`. A client keeps the token
-      in memory only.
+      A missing or wrong token is 401 `unauthorized`. A client may keep the
+      token for the life of its browser tab (such as in `sessionStorage`). The
+      token survives a reload, so a reload needs no new code. The client drops
+      it on any 401.
     - The `Host` must be `127.0.0.1:<port>` or `localhost:<port>`, with the
       port the server listens on, or the call is 403 `forbidden_host`. The
       server's own `Origin` is `http://` and that `Host`. A `PUT` or `POST`

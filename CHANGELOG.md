@@ -14,6 +14,11 @@ not per individual commit.
 - Playwright end-to-end tests and screenshots for `workflow-canvas/`, run in CI.
 - HTTP API contract for the workflow canvas (`workflow-canvas/api/openapi.yaml`), checked by `npm run api:lint`.
 - Stub API for the workflow canvas (`npm run stub`, `npm run dev:stub`); `WC_API_TARGET` points the page at a real server.
+- The Designer tab draws the workflow as a read-only graph.
+- The Designer says when a pasted launch address is refused, and shows error names as code instead of in backticks.
+- Pasting a launch address into the open tab opens the new workflow without a reload, fitted to the canvas, and keeps the open one if the code is refused.
+- Reloading the canvas page resumes the open workflow from a session kept for the tab; a restarted server asks for a fresh launch address.
+- A spent launch address in the tab falls back to the kept session and says so, and a first load that failed, of an opened or a pasted address, can be retried with a reload.
 
 ### Changed
 

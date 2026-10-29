@@ -4,13 +4,18 @@ A browser UI for designing and running Konductor workflows. This folder is an
 independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
-The page is a shell with Designer and Execution tabs. It does not call the
-API; the contract, the stub that serves it and the tests around both are in
-this folder.
+The page has Designer and Execution tabs. The Designer tab loads the workflow
+from the API and draws it, read-only: the intent, each stage in list order
+(name, agent and harness) and the end, joined by run-order edges. It shows a
+loading message, an error message or an empty message when there is nothing to
+draw. The Execution tab is still a placeholder. The contract, the stub that
+serves it and the tests around both are in this folder.
 
 ## Layout
 
-- `src/`: the UI.
+- `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
+  IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
+  session and load the workflow; `designer/` and `canvas/` draw it.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -101,19 +106,21 @@ npm run stub
 ```
 
 The launch code is new each time and works once, within 60 seconds of the
-moment the stub starts listening. `POST /api/session` trades it for the token
-that the other calls send as `Authorization: Bearer <token>`. `STUB_PORT`
-sets the port (a whole number from 1 to 65535; anything else stops the command
+moment the stub starts listening. A used address is dead: get a fresh launch
+address from the server (the stub prints one each time it starts).
+`POST /api/session` trades the code for the token that the other calls send as
+`Authorization: Bearer <token>`. `STUB_PORT` sets the port (a whole number from 1 to 65535; anything else stops the command
 with a one-line error). `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
 weaker than the contract asks.
 
-The contract has the code work once. That would make a reload of the page a
-dead end when you develop: the reload drops the token and the code from the page,
-and the printed address no longer works. So the stub of `npm run dev:stub` (it
-gets `--with-dev-server`) and the one that Playwright starts take the code
-again, with no time limit, and give the same token. Open the printed address
-again after a reload. `npm run stub` on its own follows the contract: once,
-within 60 seconds.
+The contract has the code work once, and the page copes: it keeps the session in
+the storage of its tab, so a reload resumes without the code (see
+[The canvas](#the-canvas)). The stub of `npm run dev:stub` (it gets
+`--with-dev-server`) still takes the code again, with no time limit, and gives
+the same token, so opening the printed address twice is not a dead end. Set
+`STUB_STRICT=1` (for example `STUB_STRICT=1 npm run dev:stub`) to make it follow
+the contract: the code works once, within 60 seconds. `npm run stub` on its own
+and the stub that Playwright starts always follow the contract.
 
 The data covers the first release: a workflow of an intent and stages, and the
 `kiro-cli` harness. It is a `hello` workflow with a `draft` stage
@@ -131,8 +138,11 @@ origin. The stub sends no CORS headers and accepts only its own `Origin`, so
 the proxy swaps the page's `Origin` (`http://127.0.0.1:5173` or
 `http://localhost:5173`) for the stub's. Any other `Origin`, or none, goes
 through unchanged and the stub refuses a POST or PUT with a 403, so a page on
-another origin cannot use the dev server to call the API. The page does not
-call the API, so try it with `curl`, and send the `Origin` of the page:
+another origin cannot use the dev server to call the API. The page reads the
+launch code from the address (`#<launch code>`), removes it from the address
+bar, trades it for a token with `POST /api/session` and loads the workflow with
+`GET /api/workflow`. The token is kept in the session storage of the tab, so a
+reload resumes; see [The canvas](#the-canvas). To try the calls by hand, send the `Origin` of the page:
 
 ```bash
 curl -s -X POST http://127.0.0.1:5173/api/session \
@@ -163,18 +173,18 @@ that reads it.
 
 `dev:stub` ignores `WC_API_TARGET`, since it starts the stub. For real e2e,
 Playwright does not start the stub, so start the real server first with the
-launch code `e2e-launch-code`, and run the tests within 60 seconds of it
-listening. The launch code works once, so restart the server before each run;
+launch code `e2e-launch-code-0123456789`, and run the tests within 60 seconds
+of it listening. The launch code works once, so restart the server before each run;
 a second run against the same server fails with a 401.
 
 The proxy sends the `Origin` of the target in place of the page's own, and
 forwards any other `Origin` unchanged. A real server must pass the same Origin
 check as the stub (refuse a POST or PUT from any other `Origin`), and the same
 `POST /api/session` step from `api/openapi.yaml`, where the launch code is
-traded for the token that the other calls send. The e2e and contract tests then show whether the real server
-answers as the stub does.
+traded for the token that the other calls send. The e2e and contract tests then
+show whether the real server answers as the stub does.
 
-### Code
+### Code of the stub
 
 The code is in two parts, so the rules can be tested without a server:
 
@@ -192,9 +202,75 @@ compares the error codes, diagnostic codes, limits and patterns of the stub
 with the contract, so a change to one without the other fails.
 
 Playwright starts the stub beside the app (`stub-api/web-servers.ts` holds its
-launch code and the server list), with `--with-dev-server` so that a test can
-open the page again with the same code. So an end-to-end test can call it. With
-`WC_API_TARGET` set it does not, and the same tests call that server instead.
+launch code and the server list), so an end-to-end test can call it. Its launch
+code works once, as the contract has it. With `WC_API_TARGET` set Playwright
+does not start it, and the same tests call that server instead.
+
+## The canvas
+
+`src/graph/` is the core of the canvas. `buildGraph(workflow, harness)` turns
+the workflow view into nodes (the intent, one per stage, the end) and edges
+(one from each node to the next, from its `S` out port at the bottom right to
+the `S` in port at the top right of the next), placed in one column. It imports
+only its own modules. A test (`test-support/graph-purity.test.ts`) fails if it
+imports anything else, or reads a clock, randomness, the environment or the
+network, and the stub core is held to the same rule by the same scan
+(`test-support/purity.ts`). The scan parses each file as TypeScript, so it
+catches an alias such as `const f = fetch`, `XMLHttpRequest`, `WebSocket`,
+`sendBeacon`, storage, `import.meta`, animation frames and dynamic imports,
+and it ignores a word in a comment or a string. It guards against accidents;
+it is not a sandbox.
+
+The rest wraps the core, so the rules can be tested without a browser:
+
+- `api/`: `WorkflowApi` is the port with the two calls the page makes;
+  `createHttpApi` is its adapter over `fetch`. It ignores fields it does not
+  know and turns a failed call into an `ApiError` with a message fit to show.
+- `launch/launch-code.ts` and `workflow/` take the launch code from the
+  address and load the workflow. `loadWorkflow` never rejects: it returns
+  `{ ok: true, workflow }` or `{ ok: false, message }`. `createWorkflowSource`
+  starts the first load once, before React renders, because a launch code
+  works once and strict mode runs effects twice. Pasting a launch address into
+  the open tab does not reload the page: when the fragment is shaped like a
+  launch code (16 to 256 characters, no whitespace; the API sets no alphabet)
+  the page opens a session with it and changes to the new workflow only if
+  that works, and fits the graph to it. A refused code leaves the workflow on
+  the page. A short anchor such as `#top` changes nothing; a longer one is
+  offered as a code and refused. When several codes are in flight, the latest
+  one that works wins.
+- `launch/session-memory.ts` is the port through which the page keeps its
+  session (the token and the harness, never the launch code) in the session
+  storage of its tab. A load with no code in the address uses it, so a reload
+  resumes the open workflow although the code is spent. A code in the address
+  that fails (a spent one) falls back to the kept session with a notice that
+  says why, and its error is shown as the page's only if that fails too. The
+  session of a code in the address is kept as soon as the code opens it, in
+  place of a kept one unless a newer one was kept meanwhile, so a first load
+  that fails can be retried by a reload. A 401 on the kept token, on any call
+  (the server was started again), clears it and asks for a fresh launch address
+  (an address works once). A pasted code replaces the kept session only once
+  the workflow of that code is on the page. Until then its session waits under
+  a second key as the pending one, and a reload tries it before the kept
+  session, so a pasted address whose first load failed is not lost. A session
+  that answers after a newer one was kept is neither kept nor held. A pending
+  session that fails to load stays until the server refuses it (a 401) or a
+  newer session replaces it. Showing a workflow keeps its session and clears
+  the pending one.
+  The token lasts for the life of the tab, including copies made by Duplicate
+  tab or `window.open`, and a browser may restore it with the tab. Script on the
+  page can read it, so `index.html` carries a Content-Security-Policy that lets
+  the page run only its own files and allows no `<base>` or form target; a
+  server that sends the page should send the same policy as a header.
+- `designer/` shows the result: loading, error, empty (no file yet, or a file
+  with errors, with their messages), or the canvas.
+- `canvas/` draws the graph with [React Flow](https://reactflow.dev)
+  (`@xyflow/react`). Nodes cannot be moved, selected or connected; the view
+  can be panned, and zoomed with the controls. Each node can be reached with
+  the Tab key and has a name for screen readers. The view starts zoomed out
+  far enough to show the longest workflow the API allows (40 stages), where the
+  text is small; use the zoom controls to read it. A node cuts a long name or
+  outcome short, and keeps the whole text in its `title`; an outcome too long
+  for the node is also written out in full under the graph.
 
 ## End-to-end tests
 
@@ -203,8 +279,15 @@ The tests in `e2e/tests/` drive the production build in headless Chromium.
 http://127.0.0.1:4173, so no server needs to be running first. Its `webServer`
 list is where a backing service starts when the app needs one.
 
-Port 4173 must be free. The config never reuses a server, so a `vite preview`
-you left running there makes the run fail at startup; stop it first.
+A launch code works once, so `e2e/global-setup.ts` trades the code of the
+config for a session once per run, and the `canvas` fixture answers the page's
+own `POST /api/session` with that session. Every other call, such as
+`GET /api/workflow`, reaches the API. A test that needs the error state opens
+the page with a wrong code or none.
+
+Port 4173 must be free, or set `WC_APP_PORT` to another port (`WC_APP_PORT=4300
+npm run test:e2e`). The config never reuses a server, so a `vite preview` you
+left running on that port makes the run fail at startup; stop it first.
 
 Install the browser once (on Linux add `--with-deps` to also install system
 libraries):
@@ -215,7 +298,7 @@ npx playwright install chromium
 
 Then `npm run test:e2e`. The HTML report is written to `playwright-report/`;
 open it with `npx playwright show-report`. Accessibility is checked with
-axe-core on each tab.
+axe-core on each tab and on the error state.
 
 Shared page objects and helpers live in `e2e/support/`. New tests should
 extend them rather than repeat selectors: import `test` and `expect` from
@@ -225,9 +308,9 @@ the app.
 ## Screenshots
 
 `npm run screenshots` saves a full-page PNG of each tab to
-`e2e/screenshots/`, in the light theme at 1280x800 with animations frozen.
-Pull request descriptions embed these files, so regenerate and commit them
-when the UI changes.
+`e2e/screenshots/`, with the Designer tab drawn from the stub, in the light
+theme at 1280x800 with animations frozen. Pull request descriptions embed these
+files, so regenerate and commit them when the UI changes.
 
 Only that script writes the PNGs. It uses its own config,
 `playwright.screenshots.config.ts`, so `npm run test:e2e`, a bare
