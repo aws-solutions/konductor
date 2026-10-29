@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { inlineScriptOf } from './inline-script.ts';
+import { inlineScriptOf, inlineScriptsOf } from './inline-script.ts';
 
 describe('inlineScriptOf', () => {
   it.each([
@@ -30,5 +30,19 @@ describe('inlineScriptOf', () => {
 
   it('is empty when there is no script', () => {
     expect(inlineScriptOf('<p>none</p>')).toBe('');
+  });
+});
+
+describe('inlineScriptsOf', () => {
+  it('lists every inline script in order, and skips one that loads a file', () => {
+    expect(
+      inlineScriptsOf(
+        '<script>a()</script><script src="/x.js"></script><script>b()</script>',
+      ),
+    ).toEqual(['a()', 'b()']);
+  });
+
+  it('is empty when there is no inline script', () => {
+    expect(inlineScriptsOf('<script src="/x.js"></script>')).toEqual([]);
   });
 });
