@@ -411,10 +411,7 @@ describe('createWorkflowSource session memory', () => {
   });
 
   it('tells that the code in the address was refused when it opens the kept session', async () => {
-    const api = {
-      createSession: vi.fn().mockImplementation(refused),
-      getWorkflow: vi.fn().mockResolvedValue(HELLO_DOCUMENT),
-    };
+    const api = apiWith(vi.fn().mockImplementation(refused));
     const source = createWorkflowSource(api, 'spent', memoryWith(KEPT));
 
     await source.current();
