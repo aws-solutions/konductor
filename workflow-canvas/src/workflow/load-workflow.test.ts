@@ -359,6 +359,7 @@ describe('loadWorkflow', () => {
 
     expect(result).toMatchObject({ ok: false });
     expect(result.ok === false && result.message).toContain('launch code');
+    expect(result.ok === false && result.message).toContain('works once');
     expect(api.createSession).not.toHaveBeenCalled();
   });
 
@@ -484,7 +485,7 @@ describe('loadWorkflow with a launch code', () => {
 
     expect(memory.recall()).toBeUndefined();
     expect(result.ok === false && result.message).toMatch(
-      /server no longer knows this session/,
+      /server no longer knows this session.*An address works once\./s,
     );
   });
 
@@ -656,6 +657,27 @@ describe('loadOnOpen', () => {
     expect(memory.recall()).toEqual(STORED);
   });
 
+  it('tells why the code was not opened when it resumes the kept session', async () => {
+    const api = fakeApi({ createSession: refusedCode() });
+
+    const result = await loadOnOpen(api, 'spent', memoryWith(STORED).memory);
+
+    expect(result).toMatchObject({
+      ok: true,
+      refused: 'The launch code is not valid.',
+    });
+  });
+
+  it('tells nothing when the code opens the workflow', async () => {
+    const result = await loadOnOpen(
+      fakeApi(),
+      'code-1',
+      memoryWith(STORED).memory,
+    );
+
+    expect(result).not.toHaveProperty('refused');
+  });
+
   it('shows the error of the code when the kept session fails too', async () => {
     const api = fakeApi({
       createSession: refusedCode(),
@@ -692,6 +714,24 @@ describe('loadOnOpen', () => {
     await loadOnOpen(api, 'code-1', memory);
 
     expect(api.getWorkflow).toHaveBeenCalledExactlyOnceWith('token-1');
+  });
+
+  it('keeps the session of the code when its first load fails and the kept session is dead', async () => {
+    const api = fakeApi({
+      getWorkflow: vi.fn((token: string) =>
+        Promise.reject(
+          token === 'stored-token'
+            ? new ApiError('Wrong.', 401)
+            : new ApiError('Server error.', 500),
+        ),
+      ),
+    });
+    const { memory } = memoryWith(STORED);
+
+    const result = await loadOnOpen(api, 'code-1', memory);
+
+    expect(result).toMatchObject({ ok: false });
+    expect(memory.recall()).toEqual({ token: 'token-1', harness: 'kiro-cli' });
   });
 
   it('resumes the kept session when there is no code', async () => {

@@ -194,5 +194,41 @@ test('opens the kept session when the code in the address is spent', async ({
   await page.goto(`/?again#${NEW_CODE}`);
 
   await canvas.expectWorkflowDrawn();
-  await expect(page.getByText('The launch code is not valid')).toHaveCount(0);
+  await expect(page.getByTestId('launch-notice')).toContainText(
+    'The launch code is not valid. The open workflow is unchanged.',
+  );
+});
+
+// The tab holds a session from an earlier server run. The fresh address works,
+// but its first load fails and the dead session answers 401: a reload must
+// still resume with the session of the fresh address.
+test('resumes after a reload when a fresh address opens over a dead session and its first load fails', async ({
+  page,
+}) => {
+  const canvas = new WorkflowCanvasPage(page);
+  await page.goto('/?dead');
+  await page.evaluate(() =>
+    window.sessionStorage.setItem(
+      'konductor-workflow-canvas-session',
+      JSON.stringify({ token: 'dead-token', harness: 'old-harness' }),
+    ),
+  );
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', (route) =>
+    route.request().headers()['authorization'] === 'Bearer dead-token'
+      ? route.fulfill({
+          status: 401,
+          json: { error: 'The session token is missing or wrong.' },
+        })
+      : route.fulfill({ status: 500, json: { error: 'Server error.' } }),
+  );
+  await page.goto(`/?fresh#${STUB_LAUNCH_CODE}`);
+  await expect(page.getByText('The workflow did not load')).toBeVisible();
+  await page.unroute('**/api/workflow');
+
+  await page.reload();
+
+  await canvas.expectWorkflowDrawn();
 });

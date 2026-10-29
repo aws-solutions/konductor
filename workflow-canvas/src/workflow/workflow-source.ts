@@ -70,7 +70,9 @@ export function createWorkflowSource(
     if (shownWorkflowOffer === 0 && offer > shownOffer) show(offer, next);
   };
   void current.then((first) => {
-    if (first.ok && shownWorkflowOffer === 0) first.remember();
+    if (!first.ok || shownWorkflowOffer !== 0) return;
+    first.remember();
+    setNotice(first.refused);
   });
   return {
     current: () => current,

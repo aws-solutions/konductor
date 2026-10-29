@@ -37,16 +37,23 @@ export interface LoadedWorkflow {
  * The result of a load. It never rejects, so a caller cannot miss a failure.
  * `remember` keeps the session for a reload; the page calls it once it shows
  * the workflow, so a load that is not shown does not replace the kept session.
+ * `refused` tells why the code in the address was not opened, when the kept
+ * session was opened in its place.
  */
 export type LoadResult =
-  | { ok: true; workflow: LoadedWorkflow; remember: () => void }
+  | {
+      ok: true;
+      workflow: LoadedWorkflow;
+      remember: () => void;
+      refused?: string;
+    }
   | { ok: false; message: string };
 
 const NO_LAUNCH_CODE =
-  'There is no launch code in the address. Get a fresh launch address from the server; it ends in #<launch code>.';
+  'There is no launch code in the address. Get a fresh launch address from the server; it ends in #<launch code>. An address works once.';
 
 const SESSION_UNKNOWN =
-  'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server.';
+  'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server. An address works once.';
 
 /** The major version of the API that this page reads. */
 export const SUPPORTED_API_VERSION = 1;
@@ -216,18 +223,29 @@ async function loadWith(
   };
 }
 
-// A new session is kept as soon as it exists, when none is kept: a load that
-// fails then (a timeout, a 5xx) does not lose the code that was just spent.
+function isKept(
+  memory: SessionMemory,
+  expected: SessionRecord | undefined,
+): boolean {
+  return memory.recall()?.token === expected?.token;
+}
+
+// A new session is kept as soon as it exists: a load that fails then (a
+// timeout, a 5xx) does not lose the code that was just spent. It replaces
+// only `replaces`, the session that was kept when the load began (none, for
+// a pasted code, as the page still shows the kept one), so it never
+// overwrites a session that was kept meanwhile.
 async function openWithCode(
   api: WorkflowApi,
   launchCode: string,
   memory: SessionMemory,
+  replaces: SessionRecord | undefined,
 ): Promise<LoadResult> {
   try {
     const { token, harness, apiVersion } = await api.createSession(launchCode);
     if (apiVersion !== SUPPORTED_API_VERSION) return failure(UNSUPPORTED_API);
     const session = { token, harness };
-    if (memory.recall() === undefined) memory.remember(session);
+    if (isKept(memory, replaces)) memory.remember(session);
     return await loadWith(api, session, memory);
   } catch (error) {
     return failure(messageOf(error, LOAD_FAILED));
@@ -256,7 +274,9 @@ export async function loadWorkflow(
   launchCode: string | undefined,
   memory: SessionMemory,
 ): Promise<LoadResult> {
-  if (launchCode !== undefined) return openWithCode(api, launchCode, memory);
+  if (launchCode !== undefined) {
+    return openWithCode(api, launchCode, memory, undefined);
+  }
   const kept = memory.recall();
   return kept === undefined
     ? failure(NO_LAUNCH_CODE)
@@ -264,8 +284,9 @@ export async function loadWorkflow(
 }
 
 /**
- * The load when the page opens. It is `loadWorkflow`, except that a code in
- * the address that fails (as a spent one does) falls back to a session kept
+ * The load when the page opens. It is `loadWorkflow`, except that the session
+ * of the code replaces the kept one at once, as no workflow is on the page
+ * yet, and a code that fails (as a spent one does) falls back to the session kept
  * before it. The error of the code is shown only if that fails too.
  */
 export async function loadOnOpen(
@@ -273,13 +294,12 @@ export async function loadOnOpen(
   launchCode: string | undefined,
   memory: SessionMemory,
 ): Promise<LoadResult> {
+  if (launchCode === undefined) return loadWorkflow(api, undefined, memory);
   const kept = memory.recall();
-  const result = await loadWorkflow(api, launchCode, memory);
-  if (result.ok || launchCode === undefined || kept === undefined) {
-    return result;
-  }
+  const result = await openWithCode(api, launchCode, memory, kept);
+  if (result.ok || kept === undefined) return result;
   const resumed = await resume(api, kept, memory);
-  return resumed.ok ? resumed : result;
+  return resumed.ok ? { ...resumed, refused: result.message } : result;
 }
 
 /** The name of the workflow that a load drew, or `undefined` if none is open. */
