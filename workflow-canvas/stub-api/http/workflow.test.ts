@@ -63,16 +63,8 @@ describe('GET /api/workflow', () => {
           },
         },
         stages: [
-          {
-            name: 'draft',
-            agent: 'k-developer',
-            prompt: 'Write the greeting to README.md.',
-          },
-          {
-            name: 'review',
-            agent: 'k-quality-assurance',
-            prompt_file: 'review.md',
-          },
+          { name: 'draft', agent: 'k-developer' },
+          { name: 'review', agent: 'k-quality-assurance' },
         ],
       },
       diagnostics: [],
@@ -112,6 +104,28 @@ describe('GET /api/workflow when the root has no file', () => {
     const reply = await stub().client.get(PATH);
     expectContract(reply, 'GET', PATH);
     expect(reply.body).toEqual(responseExample('GET', PATH, 200, 'new'));
+  });
+});
+
+describe('GET /api/workflow for a fixture with stage keys', () => {
+  const stub = useStub({ root: 'blocked' });
+
+  it('shows the prompt and the prompt_file of a stage in the view', async () => {
+    const reply = await stub().client.get(PATH);
+    expectContract(reply, 'GET', PATH);
+    expect((reply.body as Loaded).view?.stages).toEqual([
+      {
+        name: 'draft',
+        agent: 'k-developer',
+        prompt: 'Write the greeting to README.md.',
+      },
+      {
+        name: 'review',
+        agent: 'k-quality-assurance',
+        prompt_file: 'review.md',
+      },
+      { name: 'wrap-up', agent: 'k-developer' },
+    ]);
   });
 });
 

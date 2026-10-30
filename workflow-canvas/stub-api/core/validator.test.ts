@@ -2,11 +2,12 @@
 /** Checks the rules of the workflow check, one problem per case. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { SAMPLE_FILES, SAMPLE_ROOT } from './sample.ts';
+import { SAMPLE_FILES } from './sample.ts';
 import { suggestKey } from './suggest.ts';
 import { checkWorkflowText } from './validator.ts';
 
-const VALID = SAMPLE_FILES[SAMPLE_ROOT] ?? '';
+// The fixture with a prompt and a prompt_file, under the name the tests use.
+const VALID = (SAMPLE_FILES['busy'] ?? '').replace('name: busy', 'name: hello');
 const FORMAT = 'format: konductor/1\n';
 const NAME = 'name: hello\n';
 const VERSION = 'version: 0.1.0\n';

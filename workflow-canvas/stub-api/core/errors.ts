@@ -15,6 +15,7 @@ export const ERROR_CODES = [
   'conflict',
   'already_running',
   'harness_unavailable',
+  'trust_required',
   'too_large',
   'invalid_workflow',
   'bad_params',

@@ -92,8 +92,27 @@ export interface SaveResult {
   diagnostics: Diagnostic[];
 }
 
+/** Why a stage is blocked. */
+export const STAGE_REASONS = [
+  'RESULT_MISSING',
+  'RESULT_INVALID',
+  'RESULT_FAILURE',
+  'SESSION_FAILED',
+  'TIMEOUT',
+  'OUTPUT_MISSING',
+  'OUTPUT_UNCHANGED',
+  'CHECK_FAILED',
+] as const;
+
+export type StageReason = (typeof STAGE_REASONS)[number];
 export type StageStatus = 'pending' | 'running' | 'passed' | 'blocked';
 export type RunStatus = 'running' | 'passed' | 'halted';
+
+export interface RunStage {
+  status: StageStatus;
+  /** Present when the stage is `blocked`. */
+  reason?: StageReason;
+}
 
 export interface Run {
   run_id: string;
@@ -104,5 +123,5 @@ export interface Run {
   finished_at: string | null;
   exit_code: number | null;
   order: string[];
-  stages: Record<string, { status: StageStatus }>;
+  stages: Record<string, RunStage>;
 }
