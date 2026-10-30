@@ -73,6 +73,8 @@ instructions.
   `SKILL.md` over 500 lines or 32 KiB that is not in `tests/skill-quality-baseline.json`, which
   may only shrink. `make test-py` only checks each skill against its entry; CI rejects a raised or
   added entry, and so does `python3 tests/skill_quality.py --print-baseline` when you regenerate.
+  Renaming a skill counts as adding an entry, so bring an oversized skill under every threshold
+  before you rename it.
 - Orchestrators are named `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`; 
   every specialist uses a `k-*` name. Skills are unprefixed unless avoiding a known collision.
 - **License headers:** All code files must carry an SPDX short-form identifier as the very first line

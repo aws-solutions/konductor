@@ -39,7 +39,8 @@ BASELINE_COMMENT = (
     "Shrink-only ratchet read by tests/test_skill_quality.py. An entry is the exact "
     "measured value of a dimension that is over its threshold. Lower or delete an entry "
     "when you slim a skill; never raise one; never add one for an existing skill unless "
-    "the threshold above was lowered in the same change. Regenerate with: "
+    "the threshold above was lowered in the same change. Renaming a skill adds an entry, so "
+    "bring a renamed skill under every threshold first. Regenerate with: "
     "python3 tests/skill_quality.py --print-baseline"
 )
 
