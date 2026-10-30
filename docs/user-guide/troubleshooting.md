@@ -137,8 +137,9 @@ means the invocation itself was malformed.
 
 ## 3. The orchestrator does the work itself instead of delegating
 
-**Symptom.** You asked `konductor` to implement something and it started editing files and
-running shell commands directly, rather than handing off to `k-developer`.
+**Symptom.** You asked `konductor-mux-orchestrator` or `konductor-cmux-orchestrator` to implement
+something and it started editing files and running shell commands directly, rather than handing off
+to `k-developer`.
 
 **Cause.** The orchestrator is supposed to be read-only. That rule lives in
 `context/k-orchestrator-routing-rules.md`, loaded at session start. If the context file did not
@@ -172,7 +173,7 @@ Look at the `context files` line — it should report `2 registered`.
 konductor install --harness kiro-cli-v2
 ```
 
-3. Confirm you actually started an orchestrator. Only the three orchestrators load this file;
+3. Confirm you actually started an orchestrator. Only the mux and cmux orchestrators load this file;
    `k-developer` is *supposed* to write files, so if you invoked it directly this is correct
    behaviour rather than a bug.
 

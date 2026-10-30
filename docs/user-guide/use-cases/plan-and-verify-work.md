@@ -17,13 +17,15 @@ All three are declared by all three orchestrators. This page uses the plain
 
 ## What "owned by the orchestrator" actually means
 
-The orchestrators are dispatchers by design — but no runtime enforces it. In Kiro CLI
+The mux and cmux orchestrators are dispatchers by design, and `konductor` does the work itself; no
+runtime enforces either shape. In Kiro CLI
 `konductor`'s `allowedTools` is `fs_read` alone, which pre-approves reads and nothing else; a write
 or a shell command still reaches you as a permission prompt, because `@builtin` grants both. In
 **Claude Code it is granted `Bash` and `Write`** with no prompt of its own, alongside `Read`, `Glob`, `Grep`,
 `WebFetch`, `WebSearch`, `TodoWrite`, `Workflow`, `Skill`, `SendMessage`, and an `Agent(...)` tool
-scoped to the eight specialists. Only its routing rules stop it using them, so the dispatcher
-behaviour you see there is a convention rather than a wall.
+scoped to the eight specialists. `konductor` uses them as its direct-work rules allow. For the mux and cmux orchestrators only the
+routing rules stop them, so the dispatcher behaviour you see there is a convention rather than a
+wall.
 
 `k-context-gathering` says this out loud:
 

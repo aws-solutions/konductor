@@ -57,9 +57,9 @@ A few things stand out and are worth knowing before you pick an agent:
   `k-browser`, and `k-media-analyzer`. They are skill-driven — you ask for an outcome and
   they apply the relevant skills, rather than following a scripted procedure.
 
-Every agent declares the `context/k-core-rules.md` context file. Only the three orchestrators
+Every agent declares the `context/k-core-rules.md` context file. The mux and cmux orchestrators
 also declare `context/k-orchestrator-routing-rules.md`, which is what makes them behave as
-dispatchers.
+dispatchers; `konductor` declares `context/k-direct-work.md` and does the work itself.
 
 ---
 
@@ -221,8 +221,10 @@ Code the distinction disappears — all three declare `Bash` there.
 
 ## The three orchestrators
 
-All three load `context/k-orchestrator-routing-rules.md` at session start, which is what makes
-them behave as dispatchers rather than implementers. Treat that as intent, not enforcement: it
+The mux and cmux orchestrators load `context/k-orchestrator-routing-rules.md` at session start,
+which is what makes them behave as dispatchers rather than implementers. `konductor` loads
+`context/k-direct-work.md` instead and writes, runs commands and commits itself. Treat the
+dispatcher rule as intent, not enforcement: it
 is a prompt rule, and the tool configuration does not back it up in either runtime. Kiro CLI
 pre-approves reads only, so a mutating call stops to ask you rather than being refused, and
 Claude Code grants all three `Write` and `Bash` outright.
