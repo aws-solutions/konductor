@@ -42,15 +42,16 @@ BASELINE_COMMENT = (
     "python3 tests/skill_quality.py --print-baseline"
 )
 
-# Activation signals. Any one passing is enough; the verb proxy alone only warns.
-# "Use/load/run ... when/for/before ..." within one short clause.
+# Activation signals. These are heuristics: any one passing is enough, and the
+# verb proxy alone only warns.
+# "Use/load/run ... when/for/before ..." where the verb starts a clause.
 TRIGGER_CLAUSE = re.compile(
-    r"\b(use|invoke|run|load|apply|read)\b.{0,60}?"
+    r"(?:^|[.;:!?,]\s+)(use|invoke|run|load|apply)\b.{0,60}?"
     r"\b(when|for|after|before|whenever|to|if|during|on)\b",
     re.IGNORECASE,
 )
 # A condition word anywhere in the description.
-CONDITION_WORD = re.compile(r"\b(when|whenever|before|after|triggers?|if)\b", re.IGNORECASE)
+CONDITION_WORD = re.compile(r"\b(when|whenever|before|after|triggers?)\b", re.IGNORECASE)
 # Passive applicability, e.g. "Loaded only in Claude Code sessions".
 SCOPE_CLAUSE = re.compile(r"\bonly (in|for|when|on)\b|\bapplies to\b", re.IGNORECASE)
 # An explicit mandate.

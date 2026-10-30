@@ -154,6 +154,29 @@ def test_description_without_activation_condition_fails(tmp_path):
     assert "activation" in _rules(skill)
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Reference to use for DynamoDB tables, keys and indexes in general.",
+        "DynamoDB patterns, and what to do if you are unsure about keys.",
+    ],
+    ids=["verb-mid-clause", "bare-if"],
+)
+def test_loose_activation_wording_fails(tmp_path, description):
+    assert "activation" in _rules(_skill(tmp_path, description=description))
+
+
+def test_read_verb_is_not_a_trigger(tmp_path):
+    skill = _skill(tmp_path, description="Notes on how to read DynamoDB tables to plan capacity units.")
+    findings = sq.check_skill_content(skill).findings
+    assert [f.rule for f in findings if f.severity == "warning"] == ["activation"]
+
+
+def test_trigger_verb_after_a_sentence_passes(tmp_path):
+    skill = _skill(tmp_path, description="Widget estimates for agent teams. Use to re-baseline a widget plan here.")
+    assert _rules(skill) == set()
+
+
 def test_stoplist_first_word_is_not_a_behavior_summary(tmp_path):
     skill = _skill(tmp_path, description="This skill covers DynamoDB tables, keys, indexes and capacity planning.")
     assert "activation" in _rules(skill)
