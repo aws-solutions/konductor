@@ -38,8 +38,9 @@ not per individual commit.
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
   `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor` or `.konductor/memory`; orchestrators never bypass a denial or read unnamed secrets.
-- Orchestrator review fixes CRITICAL and IMPORTANT findings once, re-reviews only that fix, and
-  lists what remains and all suggestions for you.
+- Orchestrator review fixes CRITICAL and IMPORTANT findings once, reruns the build and tests,
+  re-reviews that fix and the code that uses it, and lists what remains and all suggestions for
+  you. A CRITICAL that survives the re-review is reported as unresolved, not as done.
 
 ### Fixed
 
