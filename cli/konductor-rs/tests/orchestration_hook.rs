@@ -381,6 +381,41 @@ fn kiro_v3_wires_its_own_hook_document_under_no_telemetry_and_uninstall_removes_
 }
 
 #[test]
+fn claude_uninstall_removes_the_context_files_and_keeps_memory() {
+    let home = scratch_dir("claude-context-home");
+    let project = scratch_dir("claude-context-project");
+    std::fs::create_dir_all(project.join(".konductor/memory")).unwrap();
+    std::fs::write(project.join(".konductor/memory/MEMORY.md"), "- a fact\n").unwrap();
+    install_with(
+        &home,
+        &project,
+        &["konductor"],
+        &["--harness", "claude", "--no-telemetry"],
+    );
+    let context = project.join(".konductor/context");
+    assert!(context.join("k-orchestrator-routing-rules.md").is_file());
+
+    let sink = TelemetrySink::start();
+    let uninstall = konductor(&home, &project, &sink)
+        .args(["uninstall", "--harness", "claude", "--target"])
+        .arg(&project)
+        .output()
+        .unwrap();
+    assert!(
+        uninstall.status.success(),
+        "uninstall: {}",
+        String::from_utf8_lossy(&uninstall.stderr)
+    );
+    assert!(!context.exists(), "{} must be gone", context.display());
+    assert_eq!(
+        std::fs::read_to_string(project.join(".konductor/memory/MEMORY.md")).unwrap(),
+        "- a fact\n"
+    );
+    std::fs::remove_dir_all(&home).ok();
+    std::fs::remove_dir_all(&project).ok();
+}
+
+#[test]
 fn kiro_v2_wires_the_hook_on_konductor_only() {
     for flags in [
         &["--harness", "kiro-cli-v2"][..],
