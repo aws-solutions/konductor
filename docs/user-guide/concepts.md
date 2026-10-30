@@ -262,8 +262,8 @@ Reading the diagram in words:
 3. It spawns a specialist only for a tool it lacks or for parallel work on disjoint files.
 4. The specialist loads whichever skills and SOPs the task needs, does the work, and applies
    its own maker-checker pass.
-5. When a phase closes, `konductor` spawns a fresh `k-*` reviewer, fixes what comes back, and
-   re-reviews only the change.
+5. When a phase closes, `konductor` spawns a fresh `k-*` reviewer, fixes the CRITICAL and
+   IMPORTANT findings once, and re-reviews the fix plus the code that uses it.
 
 ---
 
