@@ -186,7 +186,7 @@ Before a phase closes, run one review of everything it produced:
 
 1. Collect the phase's artifacts: the git diff for code, paths for documents and design artifacts.
 2. Spawn one fresh reviewer for the phase (for example `k-developer` with `backend-review` or `frontend-review`, `k-architect` with `design-evaluation` and `threat-modeling`). One reviewer brief per phase (per artifact owner, when a phase has more than one) lists every artifact of that phase and the checker skill for each.
-3. Address all CRITICAL findings, and IMPORTANT ones only when Verification Protocol item 6 says so. Never put SUGGESTIONs in a fix brief. Before any second round, triage the findings against the user's request, the project's house rules and the spec; rework CRITICAL findings that survive triage, and list the rest.
+3. Address all CRITICAL findings, and IMPORTANT ones only when Verification Protocol item 6 says so. Never put SUGGESTIONs in a fix brief. Before any second round, triage the findings against the user's request, the project's house rules and the spec; rework CRITICAL and IMPORTANT findings that survive triage, and list the findings triage rejects and any SUGGESTIONs.
 4. Re-review only what the fix changed, once. What that re-review still finds goes to the user, not to another fix.
 
 ## Failure Recovery
