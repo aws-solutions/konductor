@@ -162,11 +162,11 @@ flate2 = "=1.1.5"
 # crates.io mirror.
 ureq = "=2.10.1"
 # Direct dependency pinning `ureq`'s transitive `rustls` (open range) to
-# the newest patch confirmed on the internal mirror, so both resolve to
-# one build instead of two. Features match what `ureq` itself requests.
-# Exact-pinned per repo convention; verified fetchable against the
-# internal crates.io mirror.
-rustls = { version = "=0.23.45", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+# one patch release, so both resolve to one build instead of two. Features
+# match what `ureq` itself requests. Exact-pinned per repo convention;
+# 0.23.46 fixes the advisories against 0.23.45. Confirm a new pin is
+# fetchable from the crates.io mirror before merging.
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "logging", "std", "tls12"] }
 # Percent-encoding for path segments in `install::github_branch`'s GitHub
 # Contents API URLs. Already resolved transitively via `url`; promoted to
 # a direct dependency rather than hand-rolling escaping. Exact-pinned per

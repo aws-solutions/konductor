@@ -39,7 +39,7 @@ path = "src/lib.rs"
 # crate's own Cargo.toml) rather than the default `aws-lc-rs` backend,
 # which needs a cmake/C build this offline mirror has no cached
 # tarball for.
-rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 # Generates this sink's throwaway self-signed certificate + key
 # in-process (src/lib.rs's `generate_self_signed_cert`) -- no `openssl`
 # CLI subprocess, and no assumption that the build environment has an
