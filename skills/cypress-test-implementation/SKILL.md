@@ -521,18 +521,13 @@ Read `references/cypress-patterns.md` when writing or reviewing test code; its E
 
 ---
 
-**Report Location:** [output_file_path]
-**Analysis Duration:** [X] seconds
-
-```
-
 **Save Report:**
 
 Write report to user-specified output file path (default: `testing-quality-assurance/outputs/cypress-implementation-plan.md`).
 
 **Final Output Message:**
 
-```
+```text
 
 ✅ Cypress Implementation Plan Complete!
 
@@ -575,4 +570,3 @@ Next Steps:
 - Could configure parallel execution for faster CI runs
 
 Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
-```

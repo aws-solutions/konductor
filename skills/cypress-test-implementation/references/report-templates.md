@@ -732,6 +732,11 @@ module.exports = defineConfig({
   },
 });
 ```
+
+---
+
+**Report Location:** [output_file_path]
+**Analysis Duration:** [X] seconds
 ````
 
 **package.json scripts:**
