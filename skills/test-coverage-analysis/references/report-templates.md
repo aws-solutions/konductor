@@ -252,7 +252,7 @@ Next Steps:
 
 **Report Location:** `test-analysis-reports/coverage-[timestamp].md`
 **Analysis Duration:** [X] seconds
-````
+```
 
 ### Readiness Report Format
 
