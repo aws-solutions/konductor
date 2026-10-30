@@ -70,7 +70,7 @@ Follow stages sequentially based on selected mode:
 
 **Mode Branching:**
 
-- **Coverage**: Stages 0, 1, 2, 3, 4, 5, 6, 7, 8 → Report
+- **Coverage**: Stages 0, 1, 2, 3, 4, 5, 6, 7, 8 → Report (lightweight fallback: Stages 0, 1, 2, 4, 5, 6, 7 → Report, see Scope and fallback)
 - **Readiness**: Stages 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 → Report
 
 ---
@@ -669,11 +669,11 @@ After completing mode-specific stages, finalize the consolidated report:
 
 **Executive Summary:** Overall coverage, readiness status (if applicable), critical gaps count, manual tests required.
 
-**Validation Results:** Include completed stages based on mode (Coverage: 0, 1, 2, 3, 4, 5, 6, 7, 8 | Readiness: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10).
+**Validation Results:** Include completed stages based on mode (Coverage: 0, 1, 2, 3, 4, 5, 6, 7, 8, or 0, 1, 2, 4, 5, 6, 7 on the lightweight fallback | Readiness: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10).
 
 **Consolidated Recommendations:** Critical actions (must fix), warnings (should fix), manual testing requirements, quality improvements.
 
-**Next Steps:** Mode-specific guidance (Coverage: address gaps, align distribution with philosophy, implement recommended test types | Readiness: fix blocking issues, complete checklist, ensure test distribution alignment).
+**Next Steps:** Mode-specific guidance (Coverage: address gaps, align distribution with philosophy after a full run, implement recommended test types | Readiness: fix blocking issues, complete checklist, ensure test distribution alignment).
 
 **Update Progress Tracker:** Mark "Report finalized" as complete and update timestamp.
 

@@ -54,6 +54,10 @@ _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 # not a way to silence this script -- see docs/user-guide/notes.md.
 WITHDRAWN_COMMANDS = {"config"}
 
+# The description wording that lets a skill sit in clientConfig.claudeCli.skills
+# without skillNames (docs/user-guide/appendix/contributing.md, "Adding a skill").
+CLAUDE_ONLY_MARKER = re.compile(r"\bClaude Code only\b|\bonly in Claude Code\b")
+
 
 def html_pages_for_flags(root: Path):
     return [p for p in (root / "docs" / "site" / "user-guide.html",
@@ -293,6 +297,30 @@ def main() -> int:
         ok(f"per-agent skill counts agree outside the roster tables "
            f"({len(cards_seen)} agents.md cards, {len(guide_bundles)} bundle(s))")
 
+    # The prose sums up the per-agent preloads as a range ("1 to 4 skills").
+    # Nothing above reads that phrase, so a preload trim would leave it stale.
+    sizes = [len(spec["claude_skills"]) for spec in specs.values()]
+    want_range = f"{min(sizes)} to {max(sizes)}"
+    range_texts = [(f"docs/user-guide/{n}", read(guide / n)) for n in ("notes.md", "reference.md")]
+    for page in guide_bundles:
+        try:
+            range_texts.append((str(page.relative_to(root)), load_template(page)))
+        except (ValueError, json.JSONDecodeError):
+            continue
+    range_fails, range_seen = [], 0
+    for rel, text in range_texts:
+        for m in re.finditer(r"\b(\d+ to \d+) (?:skills|of them)\b", text):
+            if not re.search(r"preload|inject", text[max(0, m.start() - 120):m.end() + 120]):
+                continue
+            range_seen += 1
+            if m.group(1) != want_range:
+                range_fails.append(f"{rel}: preload range says {m.group(1)!r}, specs give "
+                                   f"{want_range!r}")
+    for msg in range_fails:
+        fail(msg)
+    if not range_fails:
+        ok(f"preload range {want_range!r} matches the specs ({range_seen} mention(s))")
+
     # ---- 2. Named skills, not just counts -----------------------------------
     # Counts are not the whole story. Two renderings name INDIVIDUAL skills, and
     # nothing checked those names against the specs: `agents.md`'s per-agent cards
@@ -309,11 +337,12 @@ def main() -> int:
     for name, spec in specs.items():
         for skill in set(spec["skill_names"]) | set(spec["claude_skills"]):
             declared_by.setdefault(skill, set()).add(name)
-        # Only a skill whose description says it is for Claude Code may skip skillNames.
+        # Only a skill whose description marks it Claude Code only may skip skillNames.
+        # A bare mention of Claude Code is not enough: general skills mention it too.
         for skill in sorted(set(spec["claude_skills"]) - set(spec["skill_names"])):
             skill_md = root / "skills" / skill / "SKILL.md"
             desc = re.search(r"^description:\s*(.*)$", read(skill_md), re.M) if skill_md.is_file() else None
-            if not desc or "Claude Code" not in desc.group(1):
+            if not desc or not CLAUDE_ONLY_MARKER.search(desc.group(1)):
                 named_fails.append(
                     f"agents/{name}.agent-spec.json: preloads `{skill}` on Claude Code without "
                     f"declaring it in skillNames, and its description does not mark it Claude Code only"
