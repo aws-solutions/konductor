@@ -97,7 +97,8 @@ function overlayFiles(overlayDir, dest) {
 function runRealTests(root, spec, { overlayDir, env, wrapCmd, scratchDir } = {}) {
   const parent = scratchDir || os.tmpdir();
   fs.mkdirSync(parent, { recursive: true });
-  const scratch = fs.mkdtempSync(path.join(parent, 'real-'));
+  // Canonical, so the cwd matches the paths the test processes report (macOS /var is /private/var).
+  const scratch = fs.realpathSync(fs.mkdtempSync(path.join(parent, 'real-')));
   try {
     copyRegular(root, scratch);
     if (overlayDir) overlayFiles(overlayDir, scratch);

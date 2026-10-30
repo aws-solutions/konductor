@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { makeRealBench, tmp, write } = require('./real-helpers.js');
+const { makeRealBench, tmp, write, PYTEST_SKIP } = require('./real-helpers.js');
 const { loadTasks } = require('../lib/tasks.js');
 const real = require('../lib/real.js');
 const { runChecks } = require('../lib/checks.js');
@@ -31,7 +31,7 @@ function setup() {
 
 const fixIt = (work) => write(path.join(work, 'pkg/mod.py'), 'def add(a, b):\n    return a + b\n');
 
-test('on the unfixed tree FAIL_TO_PASS fails, the regression figure is full, and the hidden file never reaches the workspace', () => {
+test('on the unfixed tree FAIL_TO_PASS fails, the regression figure is full, and the hidden file never reaches the workspace', { skip: PYTEST_SKIP }, () => {
   const s = setup();
   try {
     const [r] = runChecks(s.work, [CHECK], s.opts());
@@ -43,7 +43,7 @@ test('on the unfixed tree FAIL_TO_PASS fails, the regression figure is full, and
   } finally { s.b.done(); }
 });
 
-test('with the fix both figures are full and the check passes', () => {
+test('with the fix both figures are full and the check passes', { skip: PYTEST_SKIP }, () => {
   const s = setup();
   try {
     fixIt(s.work);
@@ -54,7 +54,7 @@ test('with the fix both figures are full and the check passes', () => {
   } finally { s.b.done(); }
 });
 
-test('breaking an existing test keeps FAIL_TO_PASS but is counted as a regression and fails the check', () => {
+test('breaking an existing test keeps FAIL_TO_PASS but is counted as a regression and fails the check', { skip: PYTEST_SKIP }, () => {
   const s = setup();
   try {
     fixIt(s.work);
@@ -66,7 +66,7 @@ test('breaking an existing test keeps FAIL_TO_PASS but is counted as a regressio
   } finally { s.b.done(); }
 });
 
-test('the PR test file the agent wrote at the same path is replaced by the real one', () => {
+test('the PR test file the agent wrote at the same path is replaced by the real one', { skip: PYTEST_SKIP }, () => {
   const s = setup();
   try {
     write(path.join(s.work, 'tests/test_add.py'), 'def test_add():\n    assert True\n');

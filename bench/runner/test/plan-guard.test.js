@@ -38,7 +38,7 @@ test('run aborts before building anything when the plan is large and has no budg
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('--isolate auto aborts when the namespace cannot be set up; --isolate none goes on', () => {
+test('--isolate auto aborts when OS isolation cannot be set up; --isolate none goes on', () => {
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
@@ -46,9 +46,9 @@ test('--isolate auto aborts when the namespace cannot be set up; --isolate none 
     const args = (iso) => [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--tasks', 't1', '--bench-dir', bench, '--out', path.join(root, 'out'), '--isolate', iso];
     const auto = spawnSync(process.execPath, args('auto'), { encoding: 'utf8', env });
     assert.equal(auto.status, 1);
-    assert.match(auto.stderr, /namespace isolation is unavailable.*--isolate none/);
+    assert.match(auto.stderr, /isolation is unavailable.*--isolate none/);
     const none = spawnSync(process.execPath, args('none'), { encoding: 'utf8', env });
-    assert.doesNotMatch(none.stderr, /namespace isolation is unavailable/);
+    assert.doesNotMatch(none.stderr, /isolation is unavailable/);
     assert.match(none.stderr, /isolation: none \(requested\)/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

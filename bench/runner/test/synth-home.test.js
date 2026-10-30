@@ -57,3 +57,28 @@ test('synthArm removes the scratch HOME and reports the failure when synth exits
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('installInto runs the arm install with the run HOME and the allowlisted environment', () => {
+  const root = tmp();
+  const home = path.join(root, 'home');
+  const bin = fakeKonductor(root);
+  try {
+    sandbox.installInto(home, { bin, exportDir: path.join(root, 'src') });
+    assert.equal(fs.readFileSync(path.join(root, 'out', 'home'), 'utf8').trim(), home);
+    assert.match(fs.readFileSync(path.join(root, 'out', 'args'), 'utf8'), /^install --harness kiro-cli-v2 /);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('runKonductor refuses the real HOME, so ~/.konductor/installs is never written', () => {
+  const root = tmp();
+  const bin = fakeKonductor(root);
+  try {
+    assert.throws(() => sandbox.runKonductor(bin, ['install'], { home: os.homedir() }), /refused to run with the real HOME/);
+    assert.throws(() => sandbox.runKonductor(bin, ['install'], {}), /needs a scratch HOME/);
+    assert.equal(fs.existsSync(path.join(root, 'out')), false, 'the binary never started');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

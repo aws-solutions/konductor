@@ -16,7 +16,7 @@ const real = require('./real.js');
 const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, requireBudget, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
 const { buildChildEnv, describeEnv } = require('./env.js');
-const { resolveIsolation } = require('./isolate.js');
+const { resolveIsolation, ISOLATE_MODES } = require('./isolate.js');
 const { DEFAULT_EXCLUDES, REPO_EXCLUDES } = require('./tripwire.js');
 const procs = require('./procs.js');
 const sandbox = require('./sandbox.js');
@@ -137,7 +137,7 @@ async function cmdRun(opts) {
   if (!(censoredFloor >= 0)) throw new Error('--censored-floor must be a non-negative number');
   const seed = opts.seed === undefined ? Date.now() % 2147483647 : intOpt(opts.seed, 'seed', 0);
   const isolate = opts.isolate || 'auto';
-  if (!['auto', 'unshare', 'none'].includes(isolate)) throw new Error('--isolate must be unshare, none or auto');
+  if (!ISOLATE_MODES.includes(isolate)) throw new Error(`--isolate must be one of ${ISOLATE_MODES.join(', ')}`);
   const envKeep = list(opts['env-keep']);
 
   const log = (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`);

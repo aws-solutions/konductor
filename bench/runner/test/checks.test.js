@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { runChecks } = require('../lib/checks.js');
 
 function workspace(files) {
@@ -86,7 +87,8 @@ test('cmd checks run under sh, not bash', () => {
   const dir = workspace({});
   try {
     const [r] = runChecks(dir, [{ type: 'cmd', cmd: '[[ a == a ]]', expectExit: 0 }]);
-    const shIsBash = require('node:fs').realpathSync('/bin/sh').endsWith('bash');
+    // macOS /bin/sh is a separate binary that runs bash in POSIX mode, so ask the shell rather than its path.
+    const shIsBash = spawnSync('sh', ['-c', 'echo "${BASH_VERSION:-}"'], { encoding: 'utf8' }).stdout.trim() !== '';
     assert.equal(r.passed, shIsBash);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

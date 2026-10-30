@@ -15,7 +15,7 @@ const { completedWithoutHelp } = require('./autonomy.js');
 const { buildCheckEnv } = require('./env.js');
 const { loadTasks, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
-const { makeIsolation, probeUnshare } = require('./isolate.js');
+const { makeIsolation, workingMode } = require('./isolate.js');
 const { loadRun } = require('../../report/load.js');
 
 const checksRevision = (task) => crypto.createHash('sha256').update(JSON.stringify(task.checks)).digest('hex').slice(0, 12);
@@ -38,10 +38,11 @@ function evaluate(dir, task) {
     fs.mkdirSync(env.TMPDIR, { recursive: true });
     const opts = { pristineDir: task.fixtureDir, env, hiddenDir: task.hiddenDir, scratchDir: path.join(scratch, 'check-scratch') };
     if (task.real) {
-      // Same conditions as a run: no network and the host copies of the project hidden, when the namespace works here.
+      // Same conditions as a run: no network and the host copies of the project hidden, when the OS isolation works here.
       opts.real = real.testSpec(task);
-      if (probeUnshare().ok) {
-        const iso = makeIsolation({ mode: 'unshare', scratchRoot: scratch, hide: real.hidePaths(task), offline: true });
+      const mode = workingMode();
+      if (mode) {
+        const iso = makeIsolation({ mode, scratchRoot: scratch, hide: real.hidePaths(task), offline: true });
         opts.wrapCmd = (cmd) => iso.wrap('sh', ['-c', cmd]);
       }
     }

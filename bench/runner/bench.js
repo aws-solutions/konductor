@@ -24,7 +24,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
-       [--seed N] [--isolate unshare|none|auto] [--allow-partial] [--censored-floor X] [--hide DIR,DIR]
+       [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-partial] [--censored-floor X] [--hide DIR,DIR]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
@@ -35,7 +35,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js judge --run DIR [--judges a,b] [--mode rubric,pairwise] [--baseline vanilla|ARM]
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
-       [--isolate unshare|none|auto] [--hide DIR,DIR] [--auth-db FILE]
+       [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE]
   node bench/runner/bench.js report --run DIR [--baseline vanilla|ARM] [--out report.md] [--bench-dir DIR]
   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--bench-dir DIR]
        (each head arm against the base arm, overall and per task class; writes contrast.md and contrast.json

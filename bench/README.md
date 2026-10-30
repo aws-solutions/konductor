@@ -18,7 +18,7 @@ node bench/tasks/validate-tasks.js                                  # tasks vs r
 ```
 Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--budget-credits X`,
 `--model ID` (default claude-sonnet-5.5), `--effort LEVEL` (default high), `--agent-engine v2|v3` (default v2), `--seed N`,
-`--isolate unshare|none|auto`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
+`--isolate auto|unshare|sandbox-exec|none`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
 `--hide PATH,..`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
 `--suite lite|full|hard|real|autonomy|pilot`.
@@ -132,6 +132,18 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
 - Site-specific cookie or token paths: `--hide PATH,..` or env `BENCH_HIDE_EXTRA=a,b` (names relative
   to the home, or absolute; files and directories). Not network isolated: the agent can reach any host
   the machine can, and sibling runs' scratch dirs stay readable when `--parallel` is above 1.
+- macOS has no `unshare`, so there `--isolate auto` picks `--isolate sandbox-exec` and aborts when its
+  probe fails. The runner wraps each command in `sandbox-exec -p <profile>` with a profile generated per
+  run: writes to the real home (also through `/System/Volumes/Data`), `/tmp`, `/var/tmp`, the user temp
+  dir and user-writable trees are denied, except `~/Library` (system frameworks write caches and
+  keychains there) and the run's scratch root. The same hidden paths and masks as above are denied for
+  reading as well as writing (a denied read fails with "Operation not permitted" instead of showing an
+  empty directory), plus the kiro-cli auth database under `~/Library/Application Support/kiro-cli`, and
+  `open` and `osascript` cannot run. Capabilities and the pid namespace have no equivalent, so a
+  process the agent detaches with `setsid` can outlive the run. Offline checks deny outbound
+  connections except to localhost.
+- Every `konductor` CLI call (synth, install) runs with a scratch HOME and the allowlisted environment,
+  and refuses to start with the real HOME, so `~/.konductor/installs` and `~/.konductor/logs` are never written.
 - Tripwire (always on): after each run the real HOME (depth 3), the repository and `--tripwire-dir` are
   scanned for entries newer than a marker. Hits go to `homeTripwireHits`; the `homeTripwire` flag is
   raised only with `--isolate none`, because inside the namespace a hit is another process (an IDE).

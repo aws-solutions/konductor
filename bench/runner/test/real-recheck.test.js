@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { makeRealBench, tmp, write } = require('./real-helpers.js');
+const { makeRealBench, tmp, write, PYTEST_SKIP } = require('./real-helpers.js');
 const { loadTasks } = require('../lib/tasks.js');
 const real = require('../lib/real.js');
 const { recheckAll } = require('../lib/recheck.js');
@@ -26,7 +26,7 @@ function savedRun(b, { fixed }) {
   return { runDir, dir };
 }
 
-test('recheck recomputes FAIL_TO_PASS into hiddenTests and PASS_TO_PASS into regressionTests', () => {
+test('recheck recomputes FAIL_TO_PASS into hiddenTests and PASS_TO_PASS into regressionTests', { skip: PYTEST_SKIP }, () => {
   const b = makeRealBench({ useEnv: true });
   const saved = savedRun(b, { fixed: true });
   try {
@@ -40,7 +40,7 @@ test('recheck recomputes FAIL_TO_PASS into hiddenTests and PASS_TO_PASS into reg
   } finally { b.done(); fs.rmSync(saved.runDir, { recursive: true, force: true }); }
 });
 
-test('recheck of an unfixed snapshot keeps the regression figure and a zero score', () => {
+test('recheck of an unfixed snapshot keeps the regression figure and a zero score', { skip: PYTEST_SKIP }, () => {
   const b = makeRealBench({ useEnv: true });
   const saved = savedRun(b, { fixed: false });
   try {

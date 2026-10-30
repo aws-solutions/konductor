@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { makeRealBench, tmp, FIXED_MOD } = require('./real-helpers.js');
+const { makeRealBench, tmp, FIXED_MOD, PYTEST_SKIP } = require('./real-helpers.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
@@ -56,7 +56,7 @@ async function runWith(agent, { isolation = { mode: 'none' }, fetched = true, tw
   }
 }
 
-test('an agent that fixes the bug scores FAIL_TO_PASS and regression separately, with no contamination flag', async () => {
+test('an agent that fixes the bug scores FAIL_TO_PASS and regression separately, with no contamination flag', { skip: PYTEST_SKIP }, async () => {
   const { result: r, started } = await runWith({ files: { 'pkg/mod.py': 'def add(a, b):\n    return a + b\n' } });
   assert.equal(r.error, null);
   assert.equal(r.infraError, null);
@@ -80,14 +80,14 @@ test('the agent works on the base tree copied from the cache: no .git, no PR tes
   assert.ok(started.cwd.includes('/work'));
 });
 
-test('an unfixed tree fails FAIL_TO_PASS but keeps the regression figure full', async () => {
+test('an unfixed tree fails FAIL_TO_PASS but keeps the regression figure full', { skip: PYTEST_SKIP }, async () => {
   const { result: r } = await runWith({});
   assert.equal(r.hiddenTests.passed, 0);
   assert.deepEqual(r.regressionTests, { passed: 1, total: 1 });
   assert.equal(r.checks.find((c) => c.type === 'tests').passed, false);
 });
 
-test('fetching from the network raises externalFetch and keeps the evidence', async () => {
+test('fetching from the network raises externalFetch and keeps the evidence', { skip: PYTEST_SKIP }, async () => {
   const { result: r } = await runWith({
     files: { 'pkg/mod.py': 'def add(a, b):\n    return a + b\n' },
     toolCalls: [{ toolName: 'shell', rawInput: { command: 'git clone https://github.com/example/demo /tmp/x', working_dir: '/w' } }],

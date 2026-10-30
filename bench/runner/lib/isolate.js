@@ -11,6 +11,12 @@
 // cannot remount anything. --kill-child ends every process in the namespace (including
 // setsid grandchildren) when the first one exits. The network is not isolated, except with
 // `offline`, which adds a network namespace (loopback only) for check commands that must run without one.
+//
+// On macOS, where there is no unshare, `sandbox-exec` applies a generated profile with the same
+// layout: writes to the real home, /tmp and the user temp dir are denied (except ~/Library, where
+// system frameworks keep caches and keychains), the scratch root stays writable, the same
+// credential paths and masks are denied for reading too, and GUI launchers cannot run.
+// `offline` denies outbound connections except to localhost.
 
 const fs = require('node:fs');
 const os = require('node:os');
@@ -26,7 +32,13 @@ const HIDE_IN_HOME = [
   '.bash_history', '.zsh_history', '.zhistory', '.sh_history', '.python_history', '.node_repl_history',
   '.psql_history', '.mysql_history', '.lesshst', '.viminfo',
 ];
-const MASK_IN_HOME = ['.local/share/kiro-cli/data.sqlite3', '.local/share/kiro-cli/data.sqlite3-wal', '.local/share/kiro-cli/data.sqlite3-shm'];
+// kiro-cli keeps its auth database under ~/.local/share on Linux and ~/Library/Application Support on macOS.
+const MASK_IN_HOME = ['.local/share/kiro-cli', 'Library/Application Support/kiro-cli']
+  .flatMap((d) => ['data.sqlite3', 'data.sqlite3-wal', 'data.sqlite3-shm'].map((f) => `${d}/${f}`));
+const SANDBOX_BIN = 'sandbox-exec';
+const GUI_LAUNCHERS = ['/usr/bin/open', '/usr/bin/osascript', '/usr/bin/xdg-open', '/usr/local/bin/xdg-open', '/opt/homebrew/bin/xdg-open'];
+// macOS also reaches every path under /Users through the data volume.
+const DATA_VOLUME = '/System/Volumes/Data';
 const RO_SYSTEM_DIRS = ['/tmp', '/var/tmp', '/dev/shm'];
 const SOCKET_DIRS = ['/run', '/var/run'];
 const SOCKET_RE = /docker|containerd|podman|crio|buildkit/i;
@@ -130,17 +142,44 @@ function findIp() {
   return null;
 }
 
-function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, offline = false }) {
-  const lines = ['set -e', 'ro() { mount --rbind "$1" "$1" && mount -o remount,ro,bind "$1"; }'];
-  for (const d of [...homes, ...systemDirs, ...readOnlyTrees]) lines.push(`ro ${shq(d)}`);
-  lines.push(`mount --bind ${shq(scratchRoot)} ${shq(scratchRoot)} && mount -o remount,rw,bind ${shq(scratchRoot)}`);
+function hideTargets(homes, hide, masks) {
   const targets = [];
   for (const h of homes) {
     for (const d of [...HIDE_IN_HOME, ...hide]) targets.push(path.isAbsolute(d) ? d : path.join(h, d));
     for (const f of MASK_IN_HOME) targets.push(path.join(h, f));
   }
-  targets.push(...masks);
-  for (const t of uniq(targets)) {
+  return uniq([...targets, ...masks]);
+}
+
+const sbq = (s) => `"${String(s).replace(/[\\"]/g, '\\$&')}"`;
+const withDataVolume = (p) => (p.startsWith('/Users/') ? [p, DATA_VOLUME + p] : [p]);
+const subpaths = (ps) => uniq(ps.flatMap(withDataVolume)).map((p) => `  (subpath ${sbq(p)})`);
+const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// The last matching rule wins, so each allow follows the deny it carves out of, and the read denies come last.
+function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, offline = false }) {
+  const block = (head, ps) => (ps.length ? [`(${head}`, ...subpaths(ps), ')'] : []);
+  const hidden = hideTargets(homes, hide, masks);
+  // A Time Machine local snapshot exposes another copy of the home's dot-dirs under /private/var/folders.
+  const snapshotRe = homes.map((h) => `  (regex #"^(${reEscape(DATA_VOLUME)})?/private/var/folders/.*/persist-com\\.apple\\.TimeMachine[^/]*${reEscape(h)}/\\.(claude|kiro|konductor)(/|$)")`);
+  return [
+    '(version 1)',
+    '(allow default)',
+    ...block('deny file-write*', [...homes, ...systemDirs, ...readOnlyTrees]),
+    ...block('allow file-write*', homes.map((h) => path.join(h, 'Library'))),
+    ...block('allow file-write*', [scratchRoot]),
+    ...block('deny file-read* file-write*', hidden),
+    ...(homes.length ? ['(deny file-read* file-write*', ...snapshotRe, ')'] : []),
+    '(deny process-exec', ...GUI_LAUNCHERS.map((p) => `  (literal ${sbq(p)})`), ')',
+    ...(offline ? ['(deny network-outbound (remote ip "*:*"))', '(allow network-outbound (remote ip "localhost:*"))'] : []),
+  ].join('\n');
+}
+
+function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, offline = false }) {
+  const lines = ['set -e', 'ro() { mount --rbind "$1" "$1" && mount -o remount,ro,bind "$1"; }'];
+  for (const d of [...homes, ...systemDirs, ...readOnlyTrees]) lines.push(`ro ${shq(d)}`);
+  lines.push(`mount --bind ${shq(scratchRoot)} ${shq(scratchRoot)} && mount -o remount,rw,bind ${shq(scratchRoot)}`);
+  for (const t of hideTargets(homes, hide, masks)) {
     const line = maskLine(t);
     if (line) lines.push(line);
   }
@@ -159,7 +198,7 @@ function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTree
  * paths that must stay visible (the agent binary). `offline` also gives the command an empty network namespace.
  */
 function makeIsolation({ mode, scratchRoot, home, hide = [], mask = [], keyRoots = [], keep = [], socketDirs, sshTmp, offline = false }) {
-  if (mode !== 'unshare') return { mode: 'none', wrap: (file, args) => ({ file, args }) };
+  if (mode !== 'unshare' && mode !== SANDBOX_BIN) return { mode: 'none', wrap: (file, args) => ({ file, args }) };
   const scratch = fs.realpathSync(scratchRoot);
   const homes = realHomes(home);
   const systemDirs = realDirs([...RO_SYSTEM_DIRS, os.tmpdir()]);
@@ -180,6 +219,10 @@ function makeIsolation({ mode, scratchRoot, home, hide = [], mask = [], keyRoots
   const dirMasks = mask.map((m) => realOrNull(m)).filter((m) => m && !inside(scratch, m) && !inside(m, scratch));
   const keys = uniq([...mask, ...keyRoots].flatMap((m) => findAnswerKeys(m))).filter((k) => !dirMasks.some((d) => inside(k, d)));
   const masks = uniq([...tmpMasks, ...dirMasks, ...keys]).filter((m) => !inside(scratch, m));
+  if (mode === SANDBOX_BIN) {
+    const profile = buildProfile({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, offline });
+    return { mode, profile, wrap: (file, args) => ({ file: SANDBOX_BIN, args: ['-p', profile, file, ...args] }) };
+  }
   const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, offline });
   return {
     mode,
@@ -213,16 +256,56 @@ function probeUnshare(home = os.homedir()) {
   }
 }
 
-/**
- * Resolves --isolate. `auto` uses the namespace and aborts when the probe fails: an unattended
- * trust-all-tools agent must not silently run uncontained. `none` is the explicit opt-out.
- */
-function resolveIsolation(requested, home, probeFn = probeUnshare) {
-  if (requested === 'none') return { mode: 'none', reason: 'requested' };
-  const probe = probeFn(home);
-  if (probe.ok) return { mode: 'unshare', reason: requested === 'unshare' ? 'requested' : 'auto: probe passed' };
-  if (requested === 'unshare') throw new Error(`--isolate unshare is not usable here: ${probe.reason}`);
-  throw new Error(`mount namespace isolation is unavailable (${probe.reason}). Fix that, or pass --isolate none to run without containment.`);
+// Same proof under the sandbox profile. access(2) honours the profile, so nothing is written outside scratch.
+function probeSandboxExec(home = os.homedir()) {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
+  try {
+    const iso = makeIsolation({ mode: SANDBOX_BIN, scratchRoot: scratch, home });
+    const homeDir = realHomes(home)[0];
+    const test = [
+      `touch ${shq(path.join(fs.realpathSync(scratch), 'ok'))} || exit 2`,
+      `if [ -w ${shq(homeDir)} ]; then exit 3; fi`,
+      `if [ -w ${shq(fs.realpathSync(os.tmpdir()))} ]; then exit 4; fi`,
+      'exit 0',
+    ].join('; ');
+    const w = iso.wrap('/bin/sh', ['-c', test]);
+    const r = spawnSync(w.file, w.args, { encoding: 'utf8', timeout: 20000 });
+    const reasons = { 2: 'scratch dir not writable', 3: 'real home still writable', 4: 'tmp still writable' };
+    if (r.status === 0) return { ok: true, reason: null };
+    const why = r.error ? r.error.message : (reasons[r.status] || (r.stderr || '').trim().split('\n').pop() || `exit ${r.status}`);
+    return { ok: false, reason: why };
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
 }
 
-module.exports = { makeIsolation, probeUnshare, resolveIsolation, realHomes, writableTrees, runtimeSockets, findAnswerKeys, UNSHARE_FLAGS, HIDE_IN_HOME };
+const ISOLATE_MODES = ['auto', 'unshare', SANDBOX_BIN, 'none'];
+const PROBES = { unshare: probeUnshare, [SANDBOX_BIN]: probeSandboxExec };
+const LABELS = { unshare: 'mount namespace', [SANDBOX_BIN]: 'sandbox-exec' };
+const autoMode = (platform = process.platform) => (platform === 'darwin' ? SANDBOX_BIN : 'unshare');
+
+/**
+ * Resolves --isolate. `auto` uses sandbox-exec on macOS and the namespace elsewhere, and aborts when
+ * the probe fails: an unattended trust-all-tools agent must not silently run uncontained.
+ * `none` is the explicit opt-out. `probeFn` replaces the probe of the chosen mode (for tests).
+ */
+function resolveIsolation(requested, home, probeFn) {
+  if (requested === 'none') return { mode: 'none', reason: 'requested' };
+  if (!ISOLATE_MODES.includes(requested)) throw new Error(`--isolate must be one of ${ISOLATE_MODES.join(', ')}`);
+  const mode = requested === 'auto' ? autoMode() : requested;
+  const probe = (probeFn || PROBES[mode])(home);
+  if (probe.ok) return { mode, reason: requested === 'auto' ? 'auto: probe passed' : 'requested' };
+  if (requested !== 'auto') throw new Error(`--isolate ${mode} is not usable here: ${probe.reason}`);
+  throw new Error(`${LABELS[mode]} isolation is unavailable (${probe.reason}). Fix that, or pass --isolate none to run without containment.`);
+}
+
+// The mode `auto` would pick, or null when its probe fails here (recheck then runs uncontained, as before).
+function workingMode(home) {
+  const mode = autoMode();
+  return PROBES[mode](home).ok ? mode : null;
+}
+
+module.exports = {
+  makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, runtimeSockets, findAnswerKeys,
+  UNSHARE_FLAGS, HIDE_IN_HOME, ISOLATE_MODES,
+};

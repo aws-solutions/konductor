@@ -22,6 +22,8 @@ const git = (cwd, ...args) => {
 
 // The fix adds a long docstring line so a verbatim copy is long enough for the recall check.
 const FIXED_MOD = 'def add(a, b):\n    """Return the sum of a and b, computed with the plus operator on the two given arguments."""\n    return a + b\n';
+// The fake upstream project's tests run under pytest; without it these tests can only report "unparsed".
+const PYTEST_SKIP = spawnSync('python3', ['-m', 'pytest', '--version'], { encoding: 'utf8' }).status === 0 ? false : 'python3 -m pytest is not installed';
 const RUBRIC = [1, 2, 3].map((n) => ({ id: `c${n}`, criterion: `Criterion ${n}.`, weight: 1 }));
 
 // useEnv points BENCH_REAL_CACHE at the cache until done() runs, as `--real-cache` does for a run.
@@ -78,4 +80,4 @@ function makeRealBench({ fetched = true, useEnv = false } = {}) {
   return { up, bench, cache, entry, id, done };
 }
 
-module.exports = { makeRealBench, tmp, write, git, RUBRIC, FIXED_MOD };
+module.exports = { makeRealBench, tmp, write, git, RUBRIC, FIXED_MOD, PYTEST_SKIP };

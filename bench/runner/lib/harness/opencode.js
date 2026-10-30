@@ -236,10 +236,7 @@ function prepareArm(arm, ctx) {
   sandbox.exportArm(arm, ctx, exportDir);
   sandbox.buildCli(exportDir, bin, ctx);
   sandbox.synthArm(bin, exportDir);
-  const home = path.join(dir, 'home');
-  fs.mkdirSync(home, { recursive: true });
-  const e = { ...process.env, HOME: home };
-  sandbox.run(bin, ['install', '--harness', 'claude', '--from', exportDir, '--target', path.join(dir, 'claude-install'), '--no-telemetry'], { env: e });
+  sandbox.runKonductor(bin, ['install', '--harness', 'claude', '--from', exportDir, '--target', path.join(dir, 'claude-install'), '--no-telemetry'], { home: path.join(dir, 'home') });
   const cliSha256 = sandbox.sha256File(bin);
   fs.writeFileSync(readyFile, JSON.stringify({ commitSha: arm.commitSha, contentHash: arm.contentHash ?? null, cliSha256 }) + '\n');
   return { exportDir, bin, claudeDir, mcpSha256: null, cliSha256, cached: false };

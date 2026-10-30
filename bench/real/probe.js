@@ -59,6 +59,8 @@ function prepare(dir, { runner, modules, existing = {} }) {
   return { env, out };
 }
 
+const realOrSelf = (p) => { try { return fs.realpathSync(p); } catch { return p; } };
+
 // Returns {ok, problems, seen}. Python: each watched module must have been imported, from under `root`.
 // Node: a watched package must never load from a node_modules directory, and some project file outside
 // tests/ must have loaded from under `root`.
@@ -67,19 +69,21 @@ function evaluate(file, { runner, modules, root }) {
     ? fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t'))
     : [];
   const problems = [];
-  const base = root.endsWith(path.sep) ? root : root + path.sep;
-  const rel = (f) => (f.startsWith(base) ? f.slice(base.length) : f);
+  // The interpreters report canonical paths, so a root behind a symlink (macOS /var is /private/var) counts both ways.
+  const bases = [...new Set([root, realOrSelf(root)])].map((r) => (r.endsWith(path.sep) ? r : r + path.sep));
+  const baseOf = (f) => bases.find((b) => f.startsWith(b));
+  const rel = (f) => { const b = baseOf(f); return b ? f.slice(b.length) : f; };
   if (runner === 'pytest') {
-    for (const [, name, f] of rows) if (!f.startsWith(base)) problems.push(`${name} was loaded from ${f}, outside the task tree`);
+    for (const [, name, f] of rows) if (!baseOf(f)) problems.push(`${name} was loaded from ${f}, outside the task tree`);
     for (const m of modules) {
       if (!rows.some(([, name]) => name === m)) problems.push(`module ${m} was never imported, so its location is unproven`);
     }
   } else {
     for (const [, , f] of rows) {
       const hit = modules.find((m) => f.includes(`/node_modules/${m}/`));
-      if (hit && !f.startsWith(base)) problems.push(`${hit} was loaded from ${f}, outside the task tree`);
+      if (hit && !baseOf(f)) problems.push(`${hit} was loaded from ${f}, outside the task tree`);
     }
-    if (!rows.some(([, , f]) => f.startsWith(base) && !rel(f).startsWith('tests/') && !f.includes('/node_modules/'))) {
+    if (!rows.some(([, , f]) => baseOf(f) && !rel(f).startsWith('tests/') && !f.includes('/node_modules/'))) {
       problems.push('no project source file was recorded as loaded, so its location is unproven');
     }
   }

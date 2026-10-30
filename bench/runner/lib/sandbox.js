@@ -10,6 +10,7 @@ const { buildCheckEnv } = require('./env.js');
 const { ANSWER_KEY } = require('./check-matcher.js');
 const armSource = require('./arm-source.js');
 const { kiroInstallHarness } = require('./harness/runtime.js');
+const { realHomes } = require('./isolate.js');
 
 function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts });
@@ -85,12 +86,21 @@ function readyMatches(ready, arm) {
   return arm.source === 'dir' ? ready.contentHash === arm.contentHash : ready.commitSha === arm.commitSha;
 }
 
+// The konductor CLI logs each call and records every install under $HOME/.konductor, so it only
+// ever runs with a scratch HOME and the allowlisted environment, never the invoking user's home.
+function runKonductor(bin, args, { home, cwd } = {}) {
+  if (!home) throw new Error(`konductor ${args[0]} needs a scratch HOME`);
+  fs.mkdirSync(home, { recursive: true });
+  if (realHomes().includes(fs.realpathSync(home))) throw new Error(`konductor ${args[0]} refused to run with the real HOME ${home}`);
+  const { env } = buildCheckEnv(process.env, { home });
+  return run(bin, args, { cwd, env });
+}
+
 // The arm's own binary logs each call under $HOME, so synth gets a throwaway HOME instead of the invoking user's.
 function synthArm(bin, exportDir) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
   try {
-    const { env } = buildCheckEnv(process.env, { home });
-    run(bin, ['synth', '--from', exportDir], { cwd: exportDir, env });
+    runKonductor(bin, ['synth', '--from', exportDir], { home, cwd: exportDir });
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }
@@ -129,9 +139,7 @@ function prepareArm(arm, ctx) {
 
 // Agent JSON embeds absolute install paths, so each run installs into its own HOME.
 function installInto(home, prepared, agentEngine) {
-  fs.mkdirSync(home, { recursive: true });
-  const { env } = buildCheckEnv(process.env, { home });
-  return run(prepared.bin, ['install', '--harness', kiroInstallHarness(agentEngine), '--from', prepared.exportDir, '--no-telemetry'], { env }).stdout.trim();
+  return runKonductor(prepared.bin, ['install', '--harness', kiroInstallHarness(agentEngine), '--from', prepared.exportDir, '--no-telemetry'], { home }).stdout.trim();
 }
 
 // Old releases pin older models in their agent specs. Rewrites `model` in every installed
@@ -218,6 +226,6 @@ function resolveKiroCli(pathEnv = process.env.PATH) {
 }
 
 module.exports = {
-  prepareArm, synthArm, installInto, normalizeAgentModels, emptyKiroHome, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
+  prepareArm, synthArm, installInto, runKonductor, normalizeAgentModels, emptyKiroHome, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
   exportRef, exportArm, readyMatches, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
 };

@@ -18,8 +18,8 @@ const procs = require('../runner/lib/procs.js');
 const sha12 = (text) => crypto.createHash('sha256').update(text).digest('hex').slice(0, 12);
 
 // Runs the judge as its own headless kiro-cli call: scratch HOME with no agents,
-// steering, skills or memories, an empty cwd, and no tools trusted. With isolation
-// {mode: 'unshare'} the call runs in the same read-only namespace as the agent runs, so the
+// steering, skills or memories, an empty cwd, and no tools trusted. With an isolation
+// mode (unshare or sandbox-exec) the call runs under the same containment as the agent runs, so the
 // only credentials it can see are its own scratch auth copy. Each call's raw stream is kept
 // under rawDir for audit. The scratch root is registered so an interrupted judge phase removes it.
 function makeKiroCaller({ authDb, timeoutMs, scratchRoot = os.tmpdir(), kiroBin = sandbox.resolveKiroCli().bin, isolation = { mode: 'none' }, rawDir = null }) {
