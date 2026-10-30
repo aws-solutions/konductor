@@ -10,8 +10,8 @@ not per individual commit.
 
 ### Added
 
-- `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml`; nothing
-  acts on it until the session hook lands.
+- `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml`, and
+  `config set` keeps the section; a malformed one now fails `config` and `doctor` on that file.
 
 ### Changed
 
