@@ -37,7 +37,8 @@ not per individual commit.
   a prompt asks it to. The block does not cover shell: a specialist with shell access could
   still run `kiro-cli` or `claude`. The Kiro CLI v3 block uses `excludedTools`, tested with
   kiro-cli 2.35.0. Kiro CLI v2 output is not covered yet: its `@builtin` still
-  includes the `subagent` tool.
+  includes the `subagent` tool. `k-code-review-workflow` step 6 now returns the adversarial
+  pass as a handoff for `k-architect` instead of skipping it.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked

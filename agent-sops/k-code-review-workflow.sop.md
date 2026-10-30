@@ -84,11 +84,11 @@ Validate each finding to eliminate false positives. When in doubt, reject — fa
 
 ### 6. Adversarial Review
 
-If `k-adversarial-pull-request-review` is available, spawn `k-architect` in adversarial mode with it, passing the same diff used in Step 1 as `diff_input`, to surface gaps missed by standard review.
+Spawn `k-architect` in adversarial mode with `k-adversarial-pull-request-review`, passing the same diff used in Step 1 as `diff_input`, to surface gaps missed by standard review. If you cannot spawn `k-architect`, return step 6 as a handoff naming `k-architect`, `k-adversarial-pull-request-review`, this SOP, and step 6 as the step to resume at, per the core rules' specialist handoffs.
 
 **Constraints:**
 
-- You MUST skip this step if `k-adversarial-pull-request-review` is unavailable, or if `review_type` is `frontend` only (adversarial review targets backend/infra gaps)
+- You MUST skip this step only if `review_type` is `frontend` only (adversarial review targets backend/infra gaps)
 - You MUST pass the same diff used in Step 1 as `diff_input`
 - If the k-code-review-workflow was invoked with a CR URL, You MUST also pass it to `k-adversarial-pull-request-review` as its `pr_url` parameter — that is the name that SOP declares, and passing `cr_url` instead leaves it unset so the review degrades to diff-only. Do not send it to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
 - You MUST apply the same false-positive criteria from Step 5 to adversarial findings before merging them
