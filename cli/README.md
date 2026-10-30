@@ -884,8 +884,8 @@ orchestration:
   `coordinator` set means the hook output did not reach the session; run `konductor doctor`.
 
 Kiro CLI v3 and Claude Code are supported. Claude Code is wired to run the hook again on `/clear`,
-`/compact` and resume (tested on resume only); Kiro CLI v3 may not after `/compact`, so start a new session if a `coordinator` session
-starts writing files itself. Kiro CLI v2 is not supported: the hook is wired as above, but its
+`/compact` and resume (tested on resume only); Kiro CLI v3 may not after `/compact`, so start a new
+session if a `coordinator` session starts writing files itself. Kiro CLI v2 is not supported: the hook is wired as above, but its
 delivery is untested, and when it does not arrive the session runs as `auto` and the first reply
 says `Orchestration: auto (default)`.
 
