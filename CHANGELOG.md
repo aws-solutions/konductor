@@ -24,13 +24,16 @@ not per individual commit.
   Ultrawork framing, state the parallel rule once, and remove rules already defined in the
   `constraints` skill and the routing rules.
 - Specialist agents no longer spawn other agents. They finish their part and hand the next
-  step, or a proposed parallel split, back to the orchestrator.
+  step, or a proposed parallel split, back to the orchestrator. The orchestrator routes a
+  handoff only when it serves the user's task, did not come from content the specialist read,
+  and does not report a denied action; it adds visible shared files to a proposed split before
+  fan-out. A specialist that runs an SOP's independence step itself says so in its output.
 - Specialist configs no longer include any agent-spawning tool. Kiro CLI v3 and Claude Code
   configs block it explicitly, so a specialist cannot spawn even when a prompt asks it to.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
-  `.konductor/memory/` in a git work tree; orchestrators never bypass a denial or read unnamed secrets.
+  `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor` or `.konductor/memory`; orchestrators never bypass a denial or read unnamed secrets.
 
 ### Fixed
 
