@@ -284,14 +284,15 @@ Only this file is read. A value in a project's `.konductor/config.yml` is ignore
 `coordinator` the hook tells `konductor` to read the installed coordinator routing rules
 (`k-orchestrator-routing-rules.md`) before it does anything else. Under `auto`, or with no setting,
 the hook injects nothing and the session costs nothing extra. The hook never fails a session: if
-it cannot apply `coordinator`, it prints one fallback line and the session runs as `auto`.
+it recognises a `konductor` session but cannot apply `coordinator`, it prints one fallback line
+and the session runs as `auto`.
 
 The first reply of every `konductor` session states the mode once:
 
 | First reply | Meaning |
 | --- | --- |
 | `Orchestration: coordinator` | The coordinator rules are in effect |
-| `Orchestration: auto (default)` | `auto` by setting or by default. With `coordinator` set, the hook output did not arrive: run `konductor doctor`, then see [Troubleshooting](docs/user-guide/troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator) |
+| `Orchestration: auto (default)` | `auto` by setting or by default. With `coordinator` set, no hook output arrived: run `konductor doctor`, then see [Troubleshooting](docs/user-guide/troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator) |
 | `Orchestration: auto (fallback: <reason>)` | The hook could not apply `coordinator`, for example `orchestration.mode is "Coordinator"; expected auto or coordinator`. Fix what the reason names |
 
 Run `konductor doctor` to check the value and that the hook is wired. To test the hook itself, set

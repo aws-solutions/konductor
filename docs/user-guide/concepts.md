@@ -187,8 +187,8 @@ stays until you edit the file again. A session-start hook that `install` wires r
 
 The first reply of every `konductor` session states the mode: `Orchestration: coordinator`,
 `Orchestration: auto (default)`, or `Orchestration: auto (fallback: <reason>)` when the hook could
-not apply `coordinator`. `Orchestration: auto (default)` with `coordinator` set means the hook
-output did not arrive; run `konductor doctor`, then see
+not apply `coordinator`. `Orchestration: auto (default)` with `coordinator` set means no hook
+output arrived; run `konductor doctor`, then see
 [Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
 Kiro CLI v3 and Claude Code are supported. Kiro CLI v2 is not: the hook is wired there but untested,
 and a v2 session the hook does not reach runs as `auto`.

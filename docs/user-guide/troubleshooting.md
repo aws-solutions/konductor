@@ -354,8 +354,9 @@ always wins over the user layer. Full precedence rules are in the
 a `konductor` session reads `Orchestration: auto (default)` or `Orchestration: auto (fallback: ...)`,
 and `konductor` writes files itself.
 
-**Cause.** `Orchestration: auto (default)` with `coordinator` set means the session-start hook's
-output did not arrive. `Orchestration: auto (fallback: <reason>)` means the hook ran but could not
+**Cause.** `Orchestration: auto (default)` with `coordinator` set means no session-start hook
+output arrived. Either the harness did not deliver it, or the hook did not recognise the session as
+a `konductor` session from a Konductor install and printed nothing. `Orchestration: auto (fallback: <reason>)` means the hook ran but could not
 apply `coordinator`; the reason names why, for example an unknown value or a missing rules file.
 Either way the session runs as `auto`.
 
@@ -368,7 +369,8 @@ konductor doctor
 - The value must be exactly `auto` or `coordinator`, in `~/.konductor/config.yml`. A project
   `.konductor/config.yml` value is ignored; `doctor` reports it as `info`.
 - A missing hook or rules file: run `konductor update`.
-- `doctor` passes but the line still does not arrive: check the harness. Kiro CLI v3 and Claude Code
+- `doctor` passes but the line still does not arrive: check that the session runs the `konductor`
+  agent of the install `doctor` checked, then check the harness. Kiro CLI v3 and Claude Code
   are supported. Kiro CLI v2 is not; its hook is wired but untested, so use v3 or Claude Code for
   `coordinator` sessions.
 - On Kiro CLI v3 the rules may not come back after `/compact`. A `coordinator` session that starts

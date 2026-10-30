@@ -199,7 +199,7 @@ orchestration:
 Only `~/.konductor/config.yml` is read; a value in a project's `.konductor/config.yml` is ignored,
 and `konductor doctor` reports it. The next `konductor` session picks it up, with no reinstall. Its
 first reply should read `Orchestration: coordinator`. `Orchestration: auto (default)` with
-`coordinator` set means the hook output did not arrive: run `konductor doctor`, then see
+`coordinator` set means no hook output arrived: run `konductor doctor`, then see
 [Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
 This works on Kiro CLI v3 and Claude Code. Kiro CLI v2 is not supported: the hook is wired but
 untested there, and a session it does not reach runs as `auto`.
