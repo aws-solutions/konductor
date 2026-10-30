@@ -247,6 +247,11 @@ test('tripwire hits are flags without the namespace and informational inside it'
   assert.deepEqual(tripwireFlags(hit, 'none'), ['homeTripwire', 'homeTripwireTruncated']);
   assert.deepEqual(tripwireFlags(hit, 'unshare'), []);
   assert.deepEqual(tripwireFlags({ hits: [], total: 0, truncated: false }, 'none'), []);
+  const lib = path.join(os.tmpdir(), 'h', 'Library');
+  const libHit = { hits: [path.join(lib, 'Preferences', 'x.plist')], total: 1, truncated: false };
+  assert.deepEqual(tripwireFlags(libHit, 'sandbox-exec', [lib]), ['homeTripwire'], 'a write the profile allowed is flagged');
+  assert.deepEqual(tripwireFlags({ hits: [path.join(os.tmpdir(), 'h', '.zshrc')], total: 1, truncated: false }, 'sandbox-exec', [lib]), []);
+  assert.deepEqual(tripwireFlags(libHit, 'unshare', [lib]), []);
 });
 
 test('realHomes finds the account home from the password database even when HOME points at a scratch directory', () => {

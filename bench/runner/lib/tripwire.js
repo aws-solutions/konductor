@@ -80,11 +80,19 @@ function createTripwire({ markerPath, roots, extraExcludes = [], absExclude = []
   };
 }
 
+const realOr = (p) => { try { return fs.realpathSync(p); } catch { return p; } };
+const under = (p, dir) => p === dir || p.startsWith(dir + path.sep);
+
 // Inside the mount namespace the real home is read-only, so a hit is another process writing
-// (an IDE, a shell) and only informational. Without the namespace it is the signal it was built for.
-function tripwireFlags(trip, isolationMode) {
-  if (isolationMode !== 'none') return [];
-  return [...(trip.total > 0 ? ['homeTripwire'] : []), ...(trip.truncated ? ['homeTripwireTruncated'] : [])];
+// (an IDE, a shell) and only informational. sandbox-exec leaves `writableInHome` (~/Library) open,
+// so a hit there may be the agent and is flagged. Without isolation every hit is flagged.
+function tripwireFlags(trip, isolationMode, writableInHome = []) {
+  if (isolationMode === 'none') {
+    return [...(trip.total > 0 ? ['homeTripwire'] : []), ...(trip.truncated ? ['homeTripwireTruncated'] : [])];
+  }
+  if (isolationMode !== 'sandbox-exec') return [];
+  const open = trip.hits.some((h) => writableInHome.some((w) => under(h, w) || under(realOr(h), w)));
+  return open ? ['homeTripwire'] : [];
 }
 
 module.exports = { createTripwire, tripwireFlags, DEFAULT_EXCLUDES, REPO_EXCLUDES };

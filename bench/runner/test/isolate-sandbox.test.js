@@ -47,6 +47,13 @@ test('the profile denies home writes, allows the scratch root and ~/Library, and
     for (const p of ['.ssh', '.kiro', '.konductor', '.site-token', 'Library/Application Support/kiro-cli/data.sqlite3']) {
       assert.ok(at(`(subpath "${path.join(homeReal, p)}")`) > at('(deny file-read* file-write*'), p);
     }
+    const launchAgents = at(`(subpath "${path.join(homeReal, 'Library/LaunchAgents')}")`);
+    assert.ok(launchAgents > at(`(subpath "${path.join(homeReal, 'Library')}")`), 'the LaunchAgents deny follows the ~/Library allow');
+    assert.ok(profile.lastIndexOf('(deny file-write*', launchAgents) > at('(allow file-write*'), 'LaunchAgents sits in a write deny');
+    const snapshot = profile.split('\n').find((l) => l.includes('TimeMachine'));
+    for (const n of ['ssh', 'aws', 'gnupg', 'netrc', 'zsh_history', 'site-token', 'claude', 'kiro', 'konductor']) {
+      assert.ok(snapshot.includes(`\\.${n}`), `the snapshot deny covers .${n}`);
+    }
     assert.match(profile, /\(deny process-exec\n {2}\(literal "\/usr\/bin\/open"\)/);
     assert.doesNotMatch(profile, /network-outbound/);
     assert.deepEqual(wrap('a', ['b']), { file: 'sandbox-exec', args: ['-p', profile, 'a', 'b'] });
@@ -67,7 +74,7 @@ test('a home under /Users is also denied through the data volume path', () => {
   }
 });
 
-test('inside the sandbox the scratch root is writable and the real home and temp dir are not', { skip }, () => {
+test('inside the sandbox the scratch root is writable and the real home, temp dir and LaunchAgents are not', { skip }, () => {
   const scratch = makeScratchRoot();
   try {
     const s = fs.realpathSync(scratch);
@@ -76,6 +83,7 @@ test('inside the sandbox the scratch root is writable and the real home and temp
       `touch ${s}/ok || exit 2`,
       `touch "${home}/.bench-sb-probe" 2>/dev/null && exit 3`,
       `touch "${fs.realpathSync(os.tmpdir())}/bench-sb-probe" 2>/dev/null && exit 4`,
+      `[ -d "${home}/Library/LaunchAgents" ] && [ -w "${home}/Library/LaunchAgents" ] && exit 5`,
       'exit 0',
     ].join('; '));
     assert.equal(r.status, 0, r.stderr);

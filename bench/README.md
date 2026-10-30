@@ -23,6 +23,9 @@ Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--b
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
 `--suite lite|full|hard|real|autonomy|pilot`.
 More than 10 planned runs need `--budget-credits`; `run` prints the worst-case wall clock and the cap first.
+The unit tests for the real-task track run a fake project's pytest suite. Without `python3 -m pytest`
+those 9 tests are skipped, not failed, and the summary shows them in its `skipped` count; install
+pytest (`python3 -m pip install --user pytest`) to cover them.
 An unknown or mistyped flag is an error (exit 2) that lists the known flags, and nothing runs. `--help` and `-h` print the usage.
 
 `--agent-engine` selects the kiro-cli agent engine for every arm of the run and installs agents that engine loads:
@@ -136,7 +139,8 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   probe fails. The runner wraps each command in `sandbox-exec -p <profile>` with a profile generated per
   run: writes to the real home (also through `/System/Volumes/Data`), `/tmp`, `/var/tmp`, the user temp
   dir and user-writable trees are denied, except `~/Library` (system frameworks write caches and
-  keychains there) and the run's scratch root. The same hidden paths and masks as above are denied for
+  keychains there, but `~/Library/LaunchAgents` stays denied so no login item can be left behind) and the
+  run's scratch root. The same hidden paths and masks as above are denied for
   reading as well as writing (a denied read fails with "Operation not permitted" instead of showing an
   empty directory), plus the kiro-cli auth database under `~/Library/Application Support/kiro-cli`, and
   `open` and `osascript` cannot run. Capabilities and the pid namespace have no equivalent, so a
@@ -145,8 +149,9 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
 - Every `konductor` CLI call (synth, install) runs with a scratch HOME and the allowlisted environment,
   and refuses to start with the real HOME, so `~/.konductor/installs` and `~/.konductor/logs` are never written.
 - Tripwire (always on): after each run the real HOME (depth 3), the repository and `--tripwire-dir` are
-  scanned for entries newer than a marker. Hits go to `homeTripwireHits`; the `homeTripwire` flag is
-  raised only with `--isolate none`, because inside the namespace a hit is another process (an IDE).
+  scanned for entries newer than a marker. Hits go to `homeTripwireHits`. The `homeTripwire` flag is
+  raised for any hit with `--isolate none`, for hits under `~/Library` with `--isolate sandbox-exec` (the
+  profile leaves it writable), and never with `--isolate unshare`, where a hit is another process (an IDE).
 - SIGINT/SIGTERM/SIGHUP kills every agent group, removes scratch dirs and auth copies, writes
   `summary.json` with `interrupted`, and exits non-zero. The judge phase does the same for its calls.
 
