@@ -336,6 +336,22 @@ def test_link_inside_list_nested_fence_ignored(tmp_path):
     assert _rules(_skill(tmp_path, body=body)) == set()
 
 
+def test_top_level_indented_fence_marker_is_code_not_a_fence(tmp_path):
+    body = (
+        "Example of a fence, shown as an indented code block:\n\n    ```\n\n"
+        "Read [guide](missing.md) first.\n\n```bash\necho hi\n```\ntail\n"
+    )
+    assert "link" in _rules(_skill(tmp_path, body=body))
+
+
+def test_fence_under_a_wrapped_list_item_is_a_fence(tmp_path):
+    body = (
+        "- Step one,\n  continued\n\n      ```bash\n      echo [n](missing.md)\n"
+        "      ```\n\nafter\n"
+    )
+    assert _rules(_skill(tmp_path, body=body)) == set()
+
+
 def test_fence_closer_indented_past_the_opener_does_not_close(tmp_path):
     body = "```bash\necho hi\n    ```\n"
     assert "fence" in _rules(_skill(tmp_path, body=body))
