@@ -300,6 +300,28 @@ def test_url_and_anchor_links_skipped(tmp_path):
     assert _rules(_skill(tmp_path, body="[a](https://example.com/x) [b](#usage)\n")) == set()
 
 
+@pytest.mark.parametrize("body", ["Run `[n](missing.md)` literally.\n", "Run ``a ` [n](missing.md)`` now.\n"])
+def test_link_inside_inline_code_ignored(tmp_path, body):
+    assert _rules(_skill(tmp_path, body=body)) == set()
+
+
+def test_reference_definition_to_missing_file_fails(tmp_path):
+    assert "link" in _rules(_skill(tmp_path, body="See [n].\n\n[n]: missing.md\n"))
+
+
+def test_reference_definition_to_existing_file_passes(tmp_path):
+    skill = _skill(tmp_path, body="See [n].\n\n[n]: <notes.md> \"Notes\"\n")
+    (skill / "notes.md").write_text("x\n", encoding="utf-8")
+    assert _rules(skill) == set()
+
+
+def test_link_target_with_parentheses_is_read_whole(tmp_path):
+    skill = _skill(tmp_path, body="See [n](notes(1).md).\n")
+    assert "'notes(1).md'" in _messages(skill)
+    (skill / "notes(1).md").write_text("x\n", encoding="utf-8")
+    assert _rules(skill) == set()
+
+
 def test_link_inside_fence_ignored(tmp_path):
     assert _rules(_skill(tmp_path, body="```markdown\n[n](missing.md)\n```\n")) == set()
 

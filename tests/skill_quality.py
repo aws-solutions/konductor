@@ -62,7 +62,10 @@ VERB_PROXY_STOPLIST = frozenset({"This", "Has", "Was", "Its", "Is", "Does", "Thu
 
 FENCE_OPEN = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 FENCE_CLOSE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
-INLINE_LINK = re.compile(r"\]\(([^)]*)\)")
+# The destination may hold one level of balanced parentheses, e.g. "a(1).md".
+INLINE_LINK = re.compile(r"\]\(((?:[^()]|\([^()]*\))*)\)")
+REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*(\S+)")
+CODE_SPAN = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 URL_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 BARE_PATH = re.compile(r"(?<![\w/.-])((?:references|scripts|evals|templates|assets)/[\w./-]+)")
 READ_VERB = re.compile(r"\b(read|open|consult|load)\b", re.IGNORECASE)
@@ -259,10 +262,23 @@ def _resolves_to_file(target: Path, root: Path) -> str | None:
     return None
 
 
+def blank_code_spans(line: str) -> str:
+    """Replace each inline code span with spaces of the same length."""
+    return CODE_SPAN.sub(lambda match: " " * len(match.group(0)), line)
+
+
+def _link_destinations(line: str) -> list[str]:
+    destinations = [match.group(1) for match in INLINE_LINK.finditer(line)]
+    definition = REFERENCE_DEFINITION.match(line)
+    if definition:
+        destinations.append(definition.group(1))
+    return destinations
+
+
 def _check_links(report: SkillReport, skill_dir: Path, unfenced: list[str], start: int) -> None:
     for offset, line in enumerate(unfenced):
-        for match in INLINE_LINK.finditer(line):
-            target = link_target(match.group(1))
+        for destination in _link_destinations(blank_code_spans(line)):
+            target = link_target(destination)
             if URL_SCHEME.match(target) or target.startswith("#"):
                 continue
             path = target.split("#", 1)[0]
