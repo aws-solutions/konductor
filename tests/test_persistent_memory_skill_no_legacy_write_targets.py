@@ -56,3 +56,11 @@ def test_skill_body_carries_no_memory_provenance_check():
     text = SKILL_MD.read_text()
     found = [s for s in REMOVED_CHECK_STRINGS if s in text]
     assert not found, f"{SKILL_MD} still carries {found}"
+
+
+def test_bootstrap_leaves_directory_creation_to_the_validator():
+    """A `mkdir` before the validator runs would follow a symlinked
+    `.konductor` and create `memory/` wherever it points."""
+    text = SKILL_MD.read_text()
+    assert "create the directory, then" not in text
+    assert "Do not create the directory yourself" in text

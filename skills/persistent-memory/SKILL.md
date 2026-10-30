@@ -84,7 +84,7 @@ Re-read file → delete the matching bullet line → pipe full content through v
 
 ### First-session bootstrap
 
-If `.konductor/memory/` doesn't exist, create the directory, then pass initial content through the validator as normal.
+If `.konductor/memory/` doesn't exist, pass initial content through the validator as normal. Do not create the directory yourself: the validator creates it after its symlink check, and a `mkdir` through a symlinked `.konductor` would create it somewhere else.
 
 - On first write, if `.konductor/memory/` is not in `.gitignore`, add the glob so each clone keeps its own memory by default. A project that wants shared memory removes the line; trust does not depend on it.
 
