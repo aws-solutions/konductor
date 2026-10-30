@@ -55,7 +55,7 @@ _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 WITHDRAWN_COMMANDS = {"config"}
 
 # The description wording that lets a skill sit in clientConfig.claudeCli.skills
-# without skillNames (docs/user-guide/appendix/contributing.md, "Adding a skill").
+# without skillNames (docs/user-guide/appendix/contributing.md, "Adding a skill to an agent").
 CLAUDE_ONLY_MARKER = re.compile(r"\bClaude Code only\b|\bonly in Claude Code\b")
 
 
@@ -309,13 +309,19 @@ def main() -> int:
             continue
     range_fails, range_seen = [], 0
     for rel, text in range_texts:
+        seen_here = 0
         for m in re.finditer(r"\b(\d+ to \d+) (?:skills|of them)\b", text):
             if not re.search(r"preload|inject", text[max(0, m.start() - 120):m.end() + 120]):
                 continue
-            range_seen += 1
+            seen_here += 1
             if m.group(1) != want_range:
                 range_fails.append(f"{rel}: preload range says {m.group(1)!r}, specs give "
                                    f"{want_range!r}")
+        range_seen += seen_here
+        # A rewording the pattern misses must fail, not pass with nothing checked.
+        if seen_here == 0:
+            range_fails.append(f"{rel}: no preload range phrase found (\"N to M skills\"); "
+                               f"update this check if the prose changed")
     for msg in range_fails:
         fail(msg)
     if not range_fails:
