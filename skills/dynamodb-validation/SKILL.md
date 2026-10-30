@@ -9,7 +9,7 @@ tags: [skill, dynamodb, database-design, validation, checker, aws]
 
 ## Overview
 
-Reviews DynamoDB designs across 13 categories: partition key distribution, GSI coverage, capacity planning, cost optimization, security, operational readiness, backup strategy, TTL configuration, access pattern coverage, item size, consistency model, encryption, and monitoring.
+Reviews DynamoDB designs across 13 categories: partition key design, index coverage, data model consistency, cost optimization, security and compliance, backup and disaster recovery, anti-patterns and use case fit, global tables, streams, transactions and consistency, critical pitfalls, design smells, and operational readiness.
 
 ## Scope and fallback
 
@@ -31,7 +31,7 @@ Use this skill when:
 
 ### 13 Validation Categories
 
-Partition key distribution, GSI coverage, capacity planning, cost optimization, security (encryption, IAM), operational readiness (alarms, backups), backup strategy, TTL configuration, access pattern coverage, item size, consistency model, encryption, and monitoring.
+The 13 categories are listed, with what each checks, under Validation Framework below.
 
 ### Production Readiness Gates
 
