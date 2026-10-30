@@ -83,6 +83,9 @@ pub fn parse_canonical(source_dir: &Path) -> Result<CanonicalModel, ParseError> 
     for warning in check_claude_preload_budget(&agents, &skills) {
         eprintln!("konductor: warning: {warning}");
     }
+    for warning in check_claude_skill_tool_grant(&agents) {
+        eprintln!("konductor: warning: {warning}");
+    }
     for warning in super::skill_index::every_task_skill_warnings(&skills) {
         eprintln!("konductor: warning: {warning}");
     }
@@ -418,13 +421,46 @@ fn check_claude_preload_budget(
             continue;
         }
         warnings.push(format!(
-            "agent '{}' preloads {} B over {} clientConfig.claudeCli.skills on Claude Code \
-             (budget {} B). Move skills not needed at the first turn to \
+            "agent '{}' preloads {} B across {} skill(s) in clientConfig.claudeCli.skills on \
+             Claude Code (budget {} B). Move skills not needed at the first turn to \
              dependencies.skills.skillNames only; they stay loadable with the Skill tool.",
             agent.name,
             group_thousands(preload.bytes),
             preload.names.len(),
             group_thousands(CLAUDE_PRELOAD_BUDGET_BYTES)
+        ));
+    }
+    warnings
+}
+
+/// Warns when an agent's Claude Code file would list skills to load on
+/// demand while its explicit `clientConfig.claudeCli.tools` list does not
+/// grant the `Skill` tool, so the agent could not load any of them.
+fn check_claude_skill_tool_grant(agents: &[parser::ParsedAgentSpec]) -> Vec<String> {
+    let mut warnings = Vec::new();
+    for agent in agents {
+        let Some(claude_cli) = &agent.client_config.claude_cli else {
+            continue;
+        };
+        let Some(tools) = &claude_cli.tools else {
+            continue;
+        };
+        if tools.iter().any(|tool| tool == "Skill") {
+            continue;
+        }
+        let on_demand: Vec<&str> = skill_names_from_dependencies(&agent.dependencies.skills)
+            .filter(|name| !claude_cli.skills.iter().any(|p| p == name))
+            .collect();
+        if on_demand.is_empty() {
+            continue;
+        }
+        warnings.push(format!(
+            "agent '{}' has {} declared skill(s) that are not preloaded on Claude Code, but its \
+             clientConfig.claudeCli.tools does not list Skill, so it cannot load them: {}. \
+             Add Skill to clientConfig.claudeCli.tools.",
+            agent.name,
+            on_demand.len(),
+            on_demand.join(", ")
         ));
     }
     warnings
@@ -1398,7 +1434,7 @@ mod tests {
         let agent = agent_spec_with_claude_cli_skills("k-fat", &["fat"]);
         let warnings = check_claude_preload_budget(&[agent], &skills);
         assert_eq!(warnings.len(), 1, "got: {warnings:?}");
-        assert!(warnings[0].contains("agent 'k-fat' preloads 40,000 B over 1 "));
+        assert!(warnings[0].contains("agent 'k-fat' preloads 40,000 B across 1 skill(s) in "));
         assert!(warnings[0].contains("(budget 32,768 B)"));
         assert!(!warnings[0].contains("would be dropped"));
     }
@@ -1484,6 +1520,62 @@ mod tests {
         let warnings = check_claude_preload_budget(std::slice::from_ref(&agent), &skills);
         assert!(warnings.is_empty(), "got: {warnings:?}");
         assert!(check_claude_preload_name_cap(&[agent], &skills).is_ok());
+    }
+
+    fn agent_spec_with_claude_tools(
+        name: &str,
+        declared: &[&str],
+        preloaded: &[&str],
+        tools: Option<&[&str]>,
+    ) -> parser::ParsedAgentSpec {
+        let json_list = |items: &[&str]| {
+            items
+                .iter()
+                .map(|n| format!("\"{n}\""))
+                .collect::<Vec<_>>()
+                .join(",")
+        };
+        let tools_json = tools.map_or(String::new(), |t| format!(",\"tools\":[{}]", json_list(t)));
+        let content = format!(
+            r#"{{"schemaVersion":"1","name":"{name}","config":{{"description":"d","systemPrompt":"s","model":"m"}},"dependencies":{{"skills":{{"skillNames":[{}]}}}},"clientConfig":{{"claudeCli":{{"skills":[{}]{tools_json}}}}}}}"#,
+            json_list(declared),
+            json_list(preloaded)
+        );
+        parser::parse_agent_spec_str(&content, "agents/test.agent-spec.json").unwrap()
+    }
+
+    #[test]
+    fn claude_skill_tool_grant_warns_when_on_demand_skills_lack_the_skill_tool() {
+        let agent = agent_spec_with_claude_tools("k-noskill", &["a", "b"], &["a"], Some(&["Read"]));
+        let warnings = check_claude_skill_tool_grant(&[agent]);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        assert!(
+            warnings[0].contains("agent 'k-noskill' has 1 declared skill(s)"),
+            "got: {}",
+            warnings[0]
+        );
+        assert!(
+            warnings[0].contains("cannot load them: b."),
+            "got: {}",
+            warnings[0]
+        );
+    }
+
+    #[test]
+    fn claude_skill_tool_grant_warns_on_an_explicit_empty_tools_list() {
+        let agent = agent_spec_with_claude_tools("k-empty", &["a"], &[], Some(&[]));
+        assert_eq!(check_claude_skill_tool_grant(&[agent]).len(), 1);
+    }
+
+    #[test]
+    fn claude_skill_tool_grant_is_silent_when_skill_is_granted_or_nothing_is_on_demand() {
+        let granted =
+            agent_spec_with_claude_tools("k-granted", &["a", "b"], &["a"], Some(&["Skill"]));
+        let inherited = agent_spec_with_claude_tools("k-inherit", &["a", "b"], &["a"], None);
+        let all_preloaded =
+            agent_spec_with_claude_tools("k-preloaded", &["a"], &["a"], Some(&["Read"]));
+        let warnings = check_claude_skill_tool_grant(&[granted, inherited, all_preloaded]);
+        assert!(warnings.is_empty(), "got: {warnings:?}");
     }
 
     #[test]
