@@ -15,10 +15,10 @@
 // pointers, and its `skills:` frontmatter already carries the resolved
 // skill content synth produced.
 //
-// Context has no separate install phase or on-disk directory on this
-// runtime: context content is spliced into the agent's rendered body at
-// synth time (see `synth/claude.rs`'s `render_agent_md`), not written as
-// a sibling file.
+// Context content is spliced into the agent's rendered body at synth
+// time (see `synth/claude.rs`'s `render_agent_md`). The context files are
+// also copied to `.konductor/context/`, where the orchestration hook finds
+// the routing rules and coordinator digest; no agent loads them from there.
 //
 // SOPs ARE in scope, via `install_sop_skills`: each staged `<name>.sop.md`
 // is converted into a `sop-<name>/SKILL.md` under `.claude/skills/`, not
@@ -34,9 +34,9 @@
 use std::path::Path;
 
 use super::kiro_cli::{
-    attach_provenance, copy_agent_files, copy_skill_dir_recursive, list_agent_files_like,
-    list_skill_dirs, plan_claude_hooks_file, plan_skill_dir_recursive, reject_unsafe_file_name,
-    PlannedFile,
+    attach_provenance, copy_agent_files, copy_skill_dir_recursive, install_context_into,
+    list_agent_files_like, list_skill_dirs, plan_claude_hooks_file, plan_context_files_into,
+    plan_skill_dir_recursive, reject_unsafe_file_name, PlannedFile, KONDUCTOR_DESTINATION_ROOT,
 };
 use super::manifest::{classify_provenance, ManifestFile, Status, StrategyManifest};
 use super::phases::{run_all_phases, InstallPhase, PhaseOutputs, SopInstallPhase};
@@ -148,7 +148,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
                 repo_root.display()
             )));
         }
-        // Additive telemetry-hook wiring, scoped to its own plan
+        // Additive hook wiring, scoped to its own plan
         // function (not folded into `plan_all_files` above): that
         // function also backs `would_fail_as_noop`'s "nothing to
         // install" check, which must stay empty whenever there is
@@ -156,7 +156,6 @@ impl InstallStrategy for ClaudeInstallStrategy {
         // check above, so it can never mask a real no-op.
         plan.extend(plan_claude_settings_hooks_only(
             target_dir,
-            no_telemetry,
             prior_manifest.as_ref(),
         ));
 
@@ -187,9 +186,9 @@ impl InstallStrategy for ClaudeInstallStrategy {
             no_telemetry,
         )?;
 
-        // Additive, gated only on `!no_telemetry`: writes the
-        // `SessionStart`/`SubagentStart` telemetry hooks into this
-        // target's hooks settings file. See
+        // Additive: writes the Konductor hooks (the orchestration hook
+        // alone under `--no-telemetry`) into this target's hooks
+        // settings file. See
         // `apply_claude_settings_hooks_only`'s own doc comment for
         // what it covers and why it is separate from the combined
         // grant+hooks function the Kiro CLI V2/V3 dual-marker paths use.
@@ -202,8 +201,8 @@ impl InstallStrategy for ClaudeInstallStrategy {
         // target where Konductor previously created this file is
         // recorded as `ReplacedOurs`, not hardcoded to `Created`. Every
         // run first strips an earlier release's hooks from the shared
-        // `.claude/settings.json`; under `--no-telemetry` it instead
-        // strips a prior install's hooks and writes none.
+        // `.claude/settings.json`; under `--no-telemetry` it also
+        // strips a prior install's telemetry hooks.
         if let Some(claude_settings_file) =
             apply_claude_settings_hooks_only(target_dir, no_telemetry)
         {
@@ -243,8 +242,37 @@ pub(super) fn standard_claude_install_phases() -> Vec<Box<dyn InstallPhase>> {
     vec![
         Box::new(ClaudeSkillInstallPhase),
         Box::new(SopInstallPhase),
+        Box::new(ClaudeContextInstallPhase),
         Box::new(ClaudeAgentInstallPhase),
     ]
+}
+
+// ── Phase: context ─────────────────────────────────────────────────────────
+
+/// Copies `<staged_root>/context/*.md` into `<target_dir>/.konductor/context/`
+/// for the orchestration hook. A missing source directory installs nothing.
+pub(super) struct ClaudeContextInstallPhase;
+
+impl InstallPhase for ClaudeContextInstallPhase {
+    fn name(&self) -> &'static str {
+        "claude-context"
+    }
+
+    fn run(
+        &self,
+        staged_root: &Path,
+        target_dir: &Path,
+        _repo_root: Option<&Path>,
+        _prior_manifest: Option<&StrategyManifest>,
+        _phase_outputs: &PhaseOutputs,
+        _no_telemetry: bool,
+    ) -> Result<Vec<ManifestFile>, InstallError> {
+        Ok(install_context_into(
+            staged_root,
+            target_dir,
+            KONDUCTOR_DESTINATION_ROOT,
+        )?)
+    }
 }
 
 // ── Phase: skills ──────────────────────────────────────────────────────────
@@ -300,19 +328,16 @@ impl InstallPhase for ClaudeAgentInstallPhase {
 }
 
 /// Predicts the write-ahead-plan entry for `apply_claude_settings_hooks_only`
-/// (the target's hooks settings file) when `!no_telemetry`, without
-/// touching disk. Kept out of `plan_all_files`: that function backs
+/// (the target's hooks settings file), without touching disk. Always
+/// planned: the orchestration hook is wired even under `--no-telemetry`. Kept out of `plan_all_files`: that function backs
 /// `would_fail_as_noop`'s "nothing to install" check, which must stay
 /// empty whenever there is genuinely nothing to install.
 fn plan_claude_settings_hooks_only(
     target_dir: &Path,
-    no_telemetry: bool,
     prior_manifest: Option<&StrategyManifest>,
 ) -> Vec<PlannedFile> {
     let mut plan = Vec::new();
-    if !no_telemetry {
-        plan_claude_hooks_file(&mut plan, target_dir, prior_manifest);
-    }
+    plan_claude_hooks_file(&mut plan, target_dir, prior_manifest);
     plan
 }
 
@@ -331,6 +356,12 @@ fn plan_all_files(
     plan.extend(plan_sop_skill_files(
         harness_dir,
         target_dir,
+        prior_manifest,
+    )?);
+    plan.extend(plan_context_files_into(
+        harness_dir,
+        target_dir,
+        KONDUCTOR_DESTINATION_ROOT,
         prior_manifest,
     )?);
     plan.extend(plan_agent_files(harness_dir, target_dir, prior_manifest)?);
@@ -1370,8 +1401,11 @@ mod tests {
             serde_json::json!([{
                 "matcher": "startup|clear",
                 "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
+            }, {
+                "matcher": "startup|clear|resume|compact",
+                "hooks": [{"type": "command", "command": format!("{exe} __orchestration-hook{root}")}]
             }]),
-            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
+            "SessionStart must carry the telemetry and orchestration hooks"
         );
         assert_eq!(
             claude_settings["hooks"]["SubagentStart"],
@@ -1407,12 +1441,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The `--no-telemetry` regression counterpart: the same fresh
-    /// Claude-only install, run end to end with `no_telemetry: true`,
-    /// must still copy the agent (unaffected -- not a telemetry side
-    /// effect) but must write neither Claude settings file.
+    /// The `--no-telemetry` counterpart: the same fresh Claude-only
+    /// install still copies the agent and wires the orchestration hook
+    /// alone into `.claude/settings.local.json`, planned and tracked in
+    /// the manifest, with no telemetry hook anywhere.
     #[test]
-    fn install_from_local_no_telemetry_skips_claude_hook_wiring_for_claude_only_install() {
+    fn install_from_local_no_telemetry_wires_only_the_orchestration_hook() {
         let target_dir = scratch_dir("install-no-telemetry-hooks-target");
         let repo_root = scratch_dir("install-no-telemetry-hooks-repo");
         seed_synthed_agent(
@@ -1430,19 +1464,65 @@ mod tests {
             )
             .expect("install must succeed with --no-telemetry");
 
-        assert!(
-            target_dir.join(".claude/agents/k-example.md").is_file(),
-            "the agent copy is unaffected by --no-telemetry"
+        assert!(target_dir.join(".claude/agents/k-example.md").is_file());
+        assert!(!target_dir.join(".claude/settings.json").exists());
+        let settings: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".claude/settings.local.json")).unwrap(),
+        )
+        .unwrap();
+        let hooks = settings["hooks"].to_string();
+        assert!(hooks.contains("__orchestration-hook"), "{hooks}");
+        assert!(!hooks.contains("__telemetry-hook"), "{hooks}");
+
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .unwrap();
+        let entry = manifest.strategies[0]
+            .files
+            .iter()
+            .find(|f| f.path == ".claude/settings.local.json")
+            .expect("the hooks file must be tracked under --no-telemetry");
+        assert_eq!(
+            entry.provenance,
+            super::super::manifest::Provenance::Created
         );
-        assert!(
-            !target_dir.join(".claude/settings.json").exists(),
-            "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
-             wiring entirely, leaving no .claude/settings.json at all on this install path"
-        );
-        assert!(
-            !target_dir.join(".claude/settings.local.json").exists(),
-            "--no-telemetry must not write the hooks settings file either"
-        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_from_local_copies_context_files_under_konductor() {
+        let target_dir = scratch_dir("install-context-target");
+        let repo_root = scratch_dir("install-context-repo");
+        seed_synthed_agent(&repo_root, "konductor", b"---\nname: konductor\n---\n");
+        let context = repo_root
+            .join("dist")
+            .join(CLAUDE_HARNESS_DIR)
+            .join("context");
+        fs::create_dir_all(&context).unwrap();
+        fs::write(context.join("k-orchestrator-routing-rules.md"), "# Rules\n").unwrap();
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                true,
+            )
+            .expect("install must succeed");
+
+        let installed = target_dir.join(".konductor/context/k-orchestrator-routing-rules.md");
+        assert_eq!(fs::read_to_string(&installed).unwrap(), "# Rules\n");
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .unwrap();
+        let entry = manifest.strategies[0]
+            .files
+            .iter()
+            .find(|f| f.path == ".konductor/context/k-orchestrator-routing-rules.md")
+            .expect("the context file must be tracked");
+        assert!(entry.sha256.is_some());
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -1625,15 +1705,16 @@ mod tests {
     }
 
     #[test]
-    fn standard_claude_install_phases_returns_three_phases_with_unique_names() {
+    fn standard_claude_install_phases_returns_four_phases_with_unique_names() {
         let phases = standard_claude_install_phases();
         let names: Vec<&str> = phases.iter().map(|p| p.name()).collect();
-        assert_eq!(names.len(), 3);
+        assert_eq!(names.len(), 4);
         let unique: std::collections::HashSet<&str> = names.iter().copied().collect();
         assert_eq!(names.len(), unique.len());
         assert!(names.contains(&"claude-skills"));
         assert!(names.contains(&"claude-agents"));
         assert!(names.contains(&"sops"));
+        assert!(names.contains(&"claude-context"));
     }
 
     #[test]

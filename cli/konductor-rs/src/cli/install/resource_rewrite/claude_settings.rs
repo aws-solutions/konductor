@@ -469,7 +469,7 @@ pub(super) fn apply_claude_settings_grant(
 // Both first strip hooks this run must not keep (`strip_hooks_not_owned_this_run`):
 // every hook under `--no-telemetry`, or an earlier release's hooks in the
 // shared `settings.json`. Uninstall strips them via
-// `remove_claude_telemetry_hooks` once no remaining strategy tracks the
+// `remove_claude_konductor_hooks` once no remaining strategy tracks the
 // hooks file. Kiro's own hooks live in `telemetry_hook_pass.rs`.
 
 /// A Konductor telemetry hook to keep in the hooks settings file.
@@ -515,6 +515,14 @@ const KONDUCTOR_HOOK_ENTRIES: &[KonductorHookEntry] = &[
         matcher: HookMatcher::InstalledAgents,
         id: HookId::Telemetry(crate::cli::telemetry_hook::SUBAGENT_INVOCATION),
         always: false,
+    },
+    KonductorHookEntry {
+        event: "SessionStart",
+        // Its own block: the persona must come back after `/clear`,
+        // `/compact` and resume, which telemetry must not count.
+        matcher: HookMatcher::Fixed("startup|clear|resume|compact"),
+        id: HookId::OrchestrationMode,
+        always: true,
     },
 ];
 
@@ -774,6 +782,8 @@ fn konductor_hook_is_current(
 /// shared advisory lock, and skip-write-when-unchanged mirror
 /// `merge_claude_settings_permissions`.
 ///
+/// Under `no_telemetry` only the `always` entries are wired.
+///
 /// `agent_names` builds the `SubagentStart` matcher. With no names that
 /// hook is removed rather than wired to match everything.
 ///
@@ -784,6 +794,7 @@ fn merge_claude_settings_hooks_with_exe(
     target_dir: &Path,
     relative: &str,
     entries: &[KonductorHookEntry],
+    no_telemetry: bool,
     exe: &str,
     agent_names: &[String],
 ) -> Result<Vec<u8>, ClaudeGrantError> {
@@ -822,7 +833,7 @@ fn merge_claude_settings_hooks_with_exe(
     let quoted_exe = shell_quote_for_hook_command(exe);
 
     let mut any_changed = false;
-    for entry in entries {
+    for entry in entries.iter().filter(|entry| entry.always || !no_telemetry) {
         let matcher = match entry.matcher {
             HookMatcher::Fixed(matcher) => Some(matcher.to_string()),
             HookMatcher::InstalledAgents => installed_agents_matcher(agent_names),
@@ -886,16 +897,21 @@ fn merge_claude_settings_hooks_with_exe(
     write_settings_file(&settings_path, &claude_dir, &root, original_mode)
 }
 
-/// Wires the telemetry hooks into `target_dir`'s hooks settings file
+/// Wires the Konductor hooks (only the `always` ones under
+/// `no_telemetry`) into `target_dir`'s hooks settings file
 /// (`claude_hooks_settings_relative_path`) and returns that file's
 /// manifest path and content hash.
-fn apply_claude_settings_hooks(target_dir: &Path) -> Result<(String, String), ClaudeGrantError> {
+fn apply_claude_settings_hooks(
+    target_dir: &Path,
+    no_telemetry: bool,
+) -> Result<(String, String), ClaudeGrantError> {
     let relative = claude_hooks_settings_relative_path(target_dir);
     let agent_names = crate::cli::telemetry_hook::installed_agent_names(target_dir);
     let bytes = merge_claude_settings_hooks_with_exe(
         target_dir,
         relative,
         KONDUCTOR_HOOK_ENTRIES,
+        no_telemetry,
         &resolve_konductor_exe_path(),
         &agent_names,
     )?;
@@ -967,7 +983,8 @@ fn exclude_from_git(target_dir: &Path, relative: &str) {
     }
 }
 
-/// Strips the Konductor telemetry hooks from `<target_dir>/<relative>`,
+/// Strips the Konductor hooks in `entries` (without the `always` ones
+/// unless `include_always`) from `<target_dir>/<relative>`,
 /// leaving every other hook, event and key untouched, and removing any
 /// `hooks` scaffolding left empty. Matches on the command's event
 /// argument, so hooks wired by a moved binary or with an old matcher are
@@ -977,6 +994,7 @@ fn remove_claude_settings_hooks(
     target_dir: &Path,
     relative: &str,
     entries: &[KonductorHookEntry],
+    include_always: bool,
 ) -> Result<bool, ClaudeGrantError> {
     let (settings_path, claude_dir) = settings_paths(target_dir, relative)?;
     if !settings_path.is_file() {
@@ -1016,7 +1034,7 @@ fn remove_claude_settings_hooks(
         .into());
     };
 
-    let removed = strip_entries_from_hooks(hooks_obj, entries, &settings_path)?;
+    let removed = strip_entries_from_hooks(hooks_obj, entries, include_always, &settings_path)?;
     if removed == 0 {
         return Ok(false);
     }
@@ -1028,7 +1046,8 @@ fn remove_claude_settings_hooks(
     Ok(true)
 }
 
-/// Removes every Konductor telemetry hook listed in `entries` from
+/// Removes every Konductor hook listed in `entries` (skipping `always`
+/// entries unless `include_always`) from
 /// `hooks_obj` (a settings file's parsed `"hooks"` object), dropping an
 /// event's array once it has no blocks left. Returns how many hooks were
 /// removed in total, across every event. Errors if an event's value is
@@ -1036,10 +1055,14 @@ fn remove_claude_settings_hooks(
 fn strip_entries_from_hooks(
     hooks_obj: &mut serde_json::Map<String, serde_json::Value>,
     entries: &[KonductorHookEntry],
+    include_always: bool,
     settings_path: &Path,
 ) -> Result<usize, ClaudeGrantError> {
     let mut removed = 0;
-    for entry in entries {
+    for entry in entries
+        .iter()
+        .filter(|entry| include_always || !entry.always)
+    {
         let Some(event_val) = hooks_obj.get_mut(entry.event) else {
             continue;
         };
@@ -1059,17 +1082,29 @@ fn strip_entries_from_hooks(
     Ok(removed)
 }
 
-/// Strips the Konductor telemetry hooks from both Claude settings files at
-/// `target_dir`, for `--no-telemetry` and `uninstall`. Returns the files it
-/// changed; every file is attempted even when an earlier one fails.
-pub(crate) fn remove_claude_telemetry_hooks(target_dir: &Path) -> (Vec<String>, Vec<String>) {
+/// Strips every Konductor hook from both Claude settings files at
+/// `target_dir`, for `uninstall`. Returns the files it changed; every file
+/// is attempted even when an earlier one fails.
+pub(crate) fn remove_claude_konductor_hooks(target_dir: &Path) -> (Vec<String>, Vec<String>) {
+    remove_claude_hooks_from_both_files(target_dir, true)
+}
+
+fn remove_claude_hooks_from_both_files(
+    target_dir: &Path,
+    include_always: bool,
+) -> (Vec<String>, Vec<String>) {
     let mut changed = Vec::new();
     let mut errors = Vec::new();
     for relative in [
         CLAUDE_SETTINGS_RELATIVE_PATH,
         CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH,
     ] {
-        match remove_claude_settings_hooks(target_dir, relative, KONDUCTOR_HOOK_ENTRIES) {
+        match remove_claude_settings_hooks(
+            target_dir,
+            relative,
+            KONDUCTOR_HOOK_ENTRIES,
+            include_always,
+        ) {
             Ok(true) => changed.push(target_dir.join(relative).display().to_string()),
             Ok(false) => {}
             Err(err) => errors.push(err.to_string()),
@@ -1078,59 +1113,56 @@ pub(crate) fn remove_claude_telemetry_hooks(target_dir: &Path) -> (Vec<String>, 
     (changed, errors)
 }
 
-/// Removes hooks that must not stay after this run: from both settings
-/// files under `--no-telemetry`, otherwise only an earlier release's hooks
-/// in the shared `settings.json` when this target's hooks now live in
-/// `settings.local.json`. Runs before any other write to `settings.json`
+/// Removes hooks that must not stay after this run: an earlier release's
+/// hooks in the shared `settings.json` when this target's hooks now live
+/// in `settings.local.json`, and under `--no-telemetry` the telemetry
+/// hooks from both files. Runs before any other write to `settings.json`
 /// so the hash recorded for the grant is the final one. Non-fatal.
 fn strip_hooks_not_owned_this_run(target_dir: &Path, no_telemetry: bool) {
-    if no_telemetry {
-        let (changed, errors) = remove_claude_telemetry_hooks(target_dir);
-        for path in changed {
+    if claude_hooks_settings_relative_path(target_dir) != CLAUDE_SETTINGS_RELATIVE_PATH {
+        if let Err(err) = remove_claude_settings_hooks(
+            target_dir,
+            CLAUDE_SETTINGS_RELATIVE_PATH,
+            KONDUCTOR_HOOK_ENTRIES,
+            true,
+        ) {
             eprintln!(
-                "konductor install: removed a previously-installed telemetry hook from {path} \
-                 (--no-telemetry)"
+                "warning: could not move the Konductor hooks out of this target's shared \
+                 {CLAUDE_SETTINGS_RELATIVE_PATH}: {err}"
             );
         }
-        for err in errors {
-            eprintln!(
-                "warning: could not remove a previously-installed telemetry hook from this \
-                 Claude Code install: {err}"
-            );
-        }
+    }
+    if !no_telemetry {
         return;
     }
-    if claude_hooks_settings_relative_path(target_dir) == CLAUDE_SETTINGS_RELATIVE_PATH {
-        return;
-    }
-    if let Err(err) = remove_claude_settings_hooks(
-        target_dir,
-        CLAUDE_SETTINGS_RELATIVE_PATH,
-        KONDUCTOR_HOOK_ENTRIES,
-    ) {
+    let (changed, errors) = remove_claude_hooks_from_both_files(target_dir, false);
+    for path in changed {
         eprintln!(
-            "warning: could not move the telemetry hooks out of this target's shared \
-             {CLAUDE_SETTINGS_RELATIVE_PATH}: {err}"
+            "konductor install: removed a previously-installed telemetry hook from {path} \
+             (--no-telemetry)"
+        );
+    }
+    for err in errors {
+        eprintln!(
+            "warning: could not remove a previously-installed telemetry hook from this \
+             Claude Code install: {err}"
         );
     }
 }
 
-/// Wires only the telemetry hooks (no `permissions.allow` grant), for
+/// Wires only the Konductor hooks (no `permissions.allow` grant), for
 /// `ClaudeInstallStrategy`: that path never registers `konductor-skills`
 /// for Claude Code, so the grant would be inert there. Under
-/// `no_telemetry` it strips hooks a prior install wired instead and
-/// returns `None`, since this run owns no hook file. Non-fatal: a
-/// symlinked or malformed settings file must not abort an otherwise
-/// successful install.
+/// `no_telemetry` it strips the telemetry hooks a prior install wired and
+/// wires the orchestration hook alone. Non-fatal: a symlinked or
+/// malformed settings file must not abort an otherwise successful
+/// install.
 pub(in crate::cli::install) fn apply_claude_settings_hooks_only(
     target_dir: &Path,
     no_telemetry: bool,
 ) -> Option<ManifestFile> {
     strip_hooks_not_owned_this_run(target_dir, no_telemetry);
-    if no_telemetry {
-        return None;
-    }
-    match apply_claude_settings_hooks(target_dir) {
+    match apply_claude_settings_hooks(target_dir, no_telemetry) {
         Ok((path, sha256)) => Some(ManifestFile {
             path,
             sha256: Some(sha256),
@@ -1138,7 +1170,7 @@ pub(in crate::cli::install) fn apply_claude_settings_hooks_only(
         }),
         Err(message) => {
             eprintln!(
-                "warning: telemetry hooks were not wired for this Claude Code install: \
+                "warning: Konductor hooks were not wired for this Claude Code install: \
                  {message}"
             );
             None
@@ -1147,8 +1179,8 @@ pub(in crate::cli::install) fn apply_claude_settings_hooks_only(
 }
 
 /// Performs the `.claude`-marker-gated `permissions.allow` grant
-/// (`apply_claude_settings_grant`) plus, unless `no_telemetry`, the
-/// telemetry-hook wiring, for a whole install run. Returns one
+/// (`apply_claude_settings_grant`) plus the Konductor hook wiring (the
+/// orchestration hook alone under `no_telemetry`), for a whole install run. Returns one
 /// `ManifestFile` per settings file written: `settings.json` for the
 /// grant, and the hooks file when it differs (a project install). Empty
 /// when the grant is skipped.
@@ -1174,21 +1206,18 @@ pub(in crate::cli::install) fn apply_claude_settings_grant_and_hooks(
     match apply_claude_settings_grant(target_dir) {
         Ok(grant) => {
             written.push(grant);
-            if !no_telemetry {
-                match apply_claude_settings_hooks(target_dir) {
-                    Ok((hooks_path, hooks_sha256)) => {
-                        // A `$HOME` install shares one file, so the hooks
-                        // write supersedes the grant's hash.
-                        written.retain(|(path, _)| *path != hooks_path);
-                        written.push((hooks_path, hooks_sha256));
-                    }
-                    Err(message) => {
-                        eprintln!(
-                            "warning: Claude Code telemetry hook wiring skipped \
-                             ({message}) -- the {strategy_label} portion of this install is \
-                             unaffected"
-                        );
-                    }
+            match apply_claude_settings_hooks(target_dir, no_telemetry) {
+                Ok((hooks_path, hooks_sha256)) => {
+                    // A `$HOME` install shares one file, so the hooks
+                    // write supersedes the grant's hash.
+                    written.retain(|(path, _)| *path != hooks_path);
+                    written.push((hooks_path, hooks_sha256));
+                }
+                Err(message) => {
+                    eprintln!(
+                        "warning: Claude Code hook wiring skipped ({message}) -- the \
+                         {strategy_label} portion of this install is unaffected"
+                    );
                 }
             }
         }
@@ -1635,8 +1664,15 @@ mod tests {
 
     fn wire(dir: &Path, relative: &str, exe: &str, agents: &[&str]) {
         let agents: Vec<String> = agents.iter().map(|name| name.to_string()).collect();
-        merge_claude_settings_hooks_with_exe(dir, relative, KONDUCTOR_HOOK_ENTRIES, exe, &agents)
-            .expect("hook wiring must succeed");
+        merge_claude_settings_hooks_with_exe(
+            dir,
+            relative,
+            KONDUCTOR_HOOK_ENTRIES,
+            false,
+            exe,
+            &agents,
+        )
+        .expect("hook wiring must succeed");
     }
 
     fn read_json(path: &Path) -> serde_json::Value {
@@ -1654,12 +1690,32 @@ mod tests {
         serde_json::json!({"matcher": matcher, "hooks": [{"type": "command", "command": command}]})
     }
 
+    /// An event's blocks without the orchestration hook's, so telemetry
+    /// assertions stay about telemetry.
+    fn telemetry_blocks(event: &serde_json::Value) -> serde_json::Value {
+        let blocks = event.as_array().cloned().unwrap_or_default();
+        serde_json::Value::Array(
+            blocks
+                .into_iter()
+                .filter(|block| !block.to_string().contains("__orchestration-hook"))
+                .collect(),
+        )
+    }
+
+    fn orchestration_block(dir: &Path, exe: &str) -> serde_json::Value {
+        hook_block(
+            "startup|clear|resume|compact",
+            &format!("{exe} __orchestration-hook{}", root_arg(dir)),
+        )
+    }
+
     #[test]
     fn project_install_wires_hooks_into_settings_local_json() {
         let dir = scratch_dir("claude-hooks-project-local");
         fs::create_dir_all(dir.join(".claude")).unwrap();
 
-        let (path, sha256) = apply_claude_settings_hooks(&dir).expect("hook wiring must succeed");
+        let (path, sha256) =
+            apply_claude_settings_hooks(&dir, false).expect("hook wiring must succeed");
 
         assert_eq!(path, LOCAL);
         assert_eq!(sha256.len(), 64);
@@ -1668,10 +1724,13 @@ mod tests {
         let root = root_arg(&dir);
         assert_eq!(
             read_json(&dir.join(LOCAL))["hooks"]["SessionStart"],
-            serde_json::json!([hook_block(
-                "startup|clear",
-                &format!("{quoted_exe} __telemetry-hook agent-invocation{root}")
-            )])
+            serde_json::json!([
+                hook_block(
+                    "startup|clear",
+                    &format!("{quoted_exe} __telemetry-hook agent-invocation{root}")
+                ),
+                orchestration_block(&dir, &quoted_exe)
+            ])
         );
         fs::remove_dir_all(&dir).ok();
     }
@@ -1753,7 +1812,7 @@ mod tests {
         let root = root_arg(&dir);
         let hooks = &read_json(&dir.join(LOCAL))["hooks"];
         assert_eq!(
-            hooks["SessionStart"],
+            telemetry_blocks(&hooks["SessionStart"]),
             serde_json::json!([hook_block(
                 "startup|clear",
                 &format!("/opt/konductor __telemetry-hook agent-invocation{root}")
@@ -1789,7 +1848,7 @@ mod tests {
 
         wire(&dir, LOCAL, "/opt/konductor", &[]);
 
-        let session_start = read_json(&dir.join(LOCAL))["hooks"]["SessionStart"].clone();
+        let session_start = telemetry_blocks(&read_json(&dir.join(LOCAL))["hooks"]["SessionStart"]);
         assert_eq!(
             session_start.as_array().unwrap().len(),
             1,
@@ -1832,7 +1891,7 @@ mod tests {
         wire(&dir, LOCAL, "konductor", &[]);
 
         assert_eq!(
-            read_json(&dir.join(LOCAL))["hooks"]["SessionStart"],
+            telemetry_blocks(&read_json(&dir.join(LOCAL))["hooks"]["SessionStart"]),
             serde_json::json!([hook_block("startup|clear", good)])
         );
         fs::remove_dir_all(&dir).ok();
@@ -1887,7 +1946,7 @@ mod tests {
         wire(&dir, LOCAL, space_exe, &[]);
         wire(&dir, LOCAL, space_exe, &[]);
 
-        let session_start = read_json(&dir.join(LOCAL))["hooks"]["SessionStart"].clone();
+        let session_start = telemetry_blocks(&read_json(&dir.join(LOCAL))["hooks"]["SessionStart"]);
         assert_eq!(session_start.as_array().unwrap().len(), 1);
         assert_eq!(
             session_start[0]["hooks"][0]["command"],
@@ -2014,6 +2073,7 @@ mod tests {
                 &hooks_target,
                 CLAUDE_SETTINGS_RELATIVE_PATH,
                 KONDUCTOR_HOOK_ENTRIES,
+                false,
                 "/opt/konductor",
                 &[],
             )
@@ -2044,7 +2104,7 @@ mod tests {
         let dir = scratch_dir("claude-hooks-non-object-hooks-key");
         fs::create_dir_all(dir.join(".claude")).unwrap();
         fs::write(dir.join(LOCAL), r#"{"hooks": "not-an-object"}"#).unwrap();
-        let err = apply_claude_settings_hooks(&dir)
+        let err = apply_claude_settings_hooks(&dir, false)
             .expect_err("a non-object \"hooks\" key must be rejected, not overwritten");
         assert!(err.contains("\"hooks\""));
         fs::remove_dir_all(&dir).ok();
@@ -2059,7 +2119,7 @@ mod tests {
             r#"{"hooks": {"SessionStart": "not-an-array"}}"#,
         )
         .unwrap();
-        let err = apply_claude_settings_hooks(&dir)
+        let err = apply_claude_settings_hooks(&dir, false)
             .expect_err("a non-array \"hooks.SessionStart\" key must be rejected");
         assert!(err.contains("hooks.SessionStart"));
         fs::remove_dir_all(&dir).ok();
@@ -2072,7 +2132,7 @@ mod tests {
         let real_elsewhere = scratch_dir("claude-hooks-symlink-dir-target");
         std::os::unix::fs::symlink(&real_elsewhere, dir.join(".claude")).unwrap();
 
-        let err = apply_claude_settings_hooks(&dir)
+        let err = apply_claude_settings_hooks(&dir, false)
             .expect_err("a symlinked .claude directory must be rejected, never written through");
         assert!(err.contains("symlink"));
         assert!(!real_elsewhere.join("settings.local.json").exists());
@@ -2094,7 +2154,7 @@ mod tests {
         root["permissions"] = serde_json::json!({"allow": ["Read(*)"]});
         fs::write(dir.join(LOCAL), serde_json::to_vec_pretty(&root).unwrap()).unwrap();
 
-        assert!(remove_claude_settings_hooks(&dir, LOCAL, KONDUCTOR_HOOK_ENTRIES).unwrap());
+        assert!(remove_claude_settings_hooks(&dir, LOCAL, KONDUCTOR_HOOK_ENTRIES, true).unwrap());
 
         let after = read_json(&dir.join(LOCAL));
         assert_eq!(
@@ -2117,7 +2177,7 @@ mod tests {
         let dir = scratch_dir("claude-hooks-remove-scaffold");
         wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
 
-        assert!(remove_claude_settings_hooks(&dir, LOCAL, KONDUCTOR_HOOK_ENTRIES).unwrap());
+        assert!(remove_claude_settings_hooks(&dir, LOCAL, KONDUCTOR_HOOK_ENTRIES, true).unwrap());
 
         let after = read_json(&dir.join(LOCAL));
         assert!(after.get("hooks").is_none(), "got: {after}");
@@ -2127,18 +2187,18 @@ mod tests {
     #[test]
     fn remove_claude_settings_hooks_is_a_noop_when_no_file_exists() {
         let dir = scratch_dir("claude-hooks-remove-absent");
-        assert!(!remove_claude_settings_hooks(&dir, LOCAL, KONDUCTOR_HOOK_ENTRIES).unwrap());
+        assert!(!remove_claude_settings_hooks(&dir, LOCAL, KONDUCTOR_HOOK_ENTRIES, true).unwrap());
         assert!(!dir.join(".claude").exists(), "nothing may be created");
         fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
-    fn remove_claude_telemetry_hooks_strips_both_settings_files() {
+    fn remove_claude_konductor_hooks_strips_both_settings_files() {
         let dir = scratch_dir("claude-hooks-remove-both");
         wire(&dir, CLAUDE_SETTINGS_RELATIVE_PATH, "/opt/konductor", &[]);
         wire(&dir, LOCAL, "/opt/konductor", &[]);
 
-        let (changed, errors) = remove_claude_telemetry_hooks(&dir);
+        let (changed, errors) = remove_claude_konductor_hooks(&dir);
 
         assert!(errors.is_empty(), "{errors:?}");
         assert_eq!(changed.len(), 2, "{changed:?}");
@@ -2151,15 +2211,21 @@ mod tests {
     // ── install entry points ─────────────────────────────────────────
 
     #[test]
-    fn apply_claude_settings_hooks_only_with_no_telemetry_strips_a_prior_hook() {
+    fn apply_claude_settings_hooks_only_with_no_telemetry_keeps_only_the_orchestration_hook() {
         let dir = scratch_dir("claude-hooks-only-transition");
         fs::create_dir_all(dir.join(".claude")).unwrap();
         let tracked = apply_claude_settings_hooks_only(&dir, false)
             .expect("telemetry-on wiring must produce an entry");
         assert_eq!(tracked.path, LOCAL);
 
-        assert!(apply_claude_settings_hooks_only(&dir, true).is_none());
-        assert!(read_json(&dir.join(LOCAL)).get("hooks").is_none());
+        let tracked = apply_claude_settings_hooks_only(&dir, true)
+            .expect("the orchestration hook is wired under --no-telemetry");
+        assert_eq!(tracked.path, LOCAL);
+        let quoted_exe = shell_quote_for_hook_command(&resolve_konductor_exe_path());
+        assert_eq!(
+            read_json(&dir.join(LOCAL))["hooks"],
+            serde_json::json!({"SessionStart": [orchestration_block(&dir, &quoted_exe)]})
+        );
         fs::remove_dir_all(&dir).ok();
     }
 
@@ -2207,7 +2273,7 @@ mod tests {
     }
 
     #[test]
-    fn grant_and_hooks_with_no_telemetry_strips_prior_hooks_from_both_files() {
+    fn grant_and_hooks_with_no_telemetry_strips_telemetry_hooks_from_both_files() {
         let dir = scratch_dir("claude-grant-and-hooks-no-telemetry");
         fs::create_dir_all(dir.join(".claude")).unwrap();
         wire(
@@ -2221,11 +2287,86 @@ mod tests {
         let files = apply_claude_settings_grant_and_hooks(&dir, true, "Kiro CLI");
 
         let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
-        assert_eq!(paths, [CLAUDE_SETTINGS_RELATIVE_PATH]);
+        assert_eq!(paths, [CLAUDE_SETTINGS_RELATIVE_PATH, LOCAL]);
         let shared = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
         assert!(shared.get("hooks").is_none(), "got: {shared}");
         assert!(shared["permissions"]["allow"].is_array());
+        let quoted_exe = shell_quote_for_hook_command(&resolve_konductor_exe_path());
+        assert_eq!(
+            read_json(&dir.join(LOCAL))["hooks"],
+            serde_json::json!({"SessionStart": [orchestration_block(&dir, &quoted_exe)]})
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn a_project_install_moves_both_hook_kinds_out_of_shared_settings_json() {
+        let dir = scratch_dir("claude-hooks-move-both-kinds");
+        wire(
+            &dir,
+            CLAUDE_SETTINGS_RELATIVE_PATH,
+            "/opt/konductor",
+            &["k-architect"],
+        );
+        let shared = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+        assert_eq!(shared["hooks"]["SessionStart"].as_array().unwrap().len(), 2);
+
+        apply_claude_settings_hooks_only(&dir, false).expect("wiring must succeed");
+
+        assert!(read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH))
+            .get("hooks")
+            .is_none());
+        let local = &read_json(&dir.join(LOCAL))["hooks"]["SessionStart"];
+        assert_eq!(local.as_array().unwrap().len(), 2, "got: {local}");
+        assert!(local.to_string().contains("__orchestration-hook"));
+        assert!(local.to_string().contains("__telemetry-hook"));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn no_telemetry_reinstall_keeps_the_orchestration_hook() {
+        let dir = scratch_dir("claude-hooks-no-telemetry-reinstall");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        apply_claude_settings_hooks_only(&dir, false).unwrap();
+        apply_claude_settings_hooks_only(&dir, true).unwrap();
+        let hooks = &read_json(&dir.join(LOCAL))["hooks"];
+        assert!(hooks.get("SubagentStart").is_none());
+        assert!(hooks.to_string().contains("__orchestration-hook"));
+        assert!(!hooks.to_string().contains("__telemetry-hook"));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn uninstall_strips_the_orchestration_hook_too() {
+        let dir = scratch_dir("claude-hooks-uninstall-all");
+        wire(&dir, LOCAL, "/opt/konductor", &[]);
+        let (changed, errors) = remove_claude_konductor_hooks(&dir);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(changed.len(), 1);
         assert!(read_json(&dir.join(LOCAL)).get("hooks").is_none());
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn orchestration_hook_commands_are_recognized_by_subcommand() {
+        let command = orchestration_hook_command("/opt/k", None, None);
+        assert_eq!(command, "/opt/k __orchestration-hook");
+        assert!(command_is_hook(&command, HookId::OrchestrationMode));
+        assert!(command_is_hook(
+            "'/a b/k' __orchestration-hook --install-root /x",
+            HookId::OrchestrationMode
+        ));
+        assert!(!command_is_hook(
+            "/opt/k __orchestration-hookx",
+            HookId::OrchestrationMode
+        ));
+        assert!(!command_is_hook(
+            "/opt/k __telemetry-hook agent-invocation",
+            HookId::OrchestrationMode
+        ));
+        assert_eq!(
+            orchestration_hook_command("k", Some("konductor"), None),
+            "k __orchestration-hook --agent konductor"
+        );
     }
 }

@@ -190,10 +190,11 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // Must run after the bin plan is folded in, since it checks
         // `plan` for the MCP binary's planned path to predict whether
         // the Claude grant applies. The hooks settings file is planned
-        // only when the grant is and telemetry is on.
+        // whenever the grant is: the orchestration hook is wired even
+        // under `--no-telemetry`.
         let claude_plan =
             plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
-        let wires_claude_hooks = !no_telemetry && !claude_plan.is_empty();
+        let wires_claude_hooks = !claude_plan.is_empty();
         plan.extend(claude_plan);
         if wires_claude_hooks {
             plan_claude_hooks_file(&mut plan, target_dir, prior_manifest.as_ref());
@@ -315,14 +316,14 @@ mod plan;
 // `kiro_cli/{plan,copy,fs_util}.rs`.
 pub(super) use copy::{
     copy_agent_files, copy_skill_dir_recursive, install_agents, install_context,
-    install_kiro_sop_skills, install_skills, install_sops, list_agent_files, list_agent_files_like,
-    list_skill_dirs, CONTEXT_RESOURCE_PREFIX,
+    install_context_into, install_kiro_sop_skills, install_skills, install_sops, list_agent_files,
+    list_agent_files_like, list_skill_dirs, CONTEXT_RESOURCE_PREFIX,
 };
 pub(super) use fs_util::{reject_unsafe_file_name, set_executable};
 pub(super) use plan::{
     attach_provenance, content_manifest_path, plan_additive_claude_sop_skill_files, plan_all_files,
-    plan_claude_hooks_file, plan_claude_settings_grant, plan_skill_dir_recursive,
-    read_skill_scopes_sidecar, read_sop_scopes_sidecar, PlannedFile,
+    plan_claude_hooks_file, plan_claude_settings_grant, plan_context_files_into,
+    plan_skill_dir_recursive, read_skill_scopes_sidecar, read_sop_scopes_sidecar, PlannedFile,
 };
 
 #[cfg(test)]
@@ -3119,6 +3120,9 @@ mod tests {
             serde_json::json!([{
                 "matcher": "startup|clear",
                 "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
+            }, {
+                "matcher": "startup|clear|resume|compact",
+                "hooks": [{"type": "command", "command": format!("{exe} __orchestration-hook{root}")}]
             }]),
             "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
         );
@@ -3170,7 +3174,8 @@ mod tests {
     /// land (neither is a telemetry side effect), but no telemetry-hook
     /// block or `.claude/settings.local.json` may be written.
     #[test]
-    fn install_from_local_no_telemetry_skips_claude_hook_wiring_but_keeps_permission_grant() {
+    fn install_from_local_no_telemetry_wires_only_the_orchestration_hook_and_keeps_permission_grant(
+    ) {
         let target_dir = scratch_dir("no-telemetry-skips-hooks-target");
         fs::create_dir_all(target_dir.join(".kiro")).unwrap();
         fs::create_dir_all(target_dir.join(".claude")).unwrap();
@@ -3217,23 +3222,28 @@ mod tests {
             "--no-telemetry must not affect the unrelated MCP permission grant"
         );
 
-        // The telemetry hook wiring itself must be completely absent:
-        // no `hooks` key in the shared file, and no personal settings
-        // file at all.
+        // No telemetry hook anywhere; the orchestration hook alone lands
+        // in the personal settings file, never the shared one.
         assert!(
             claude_settings.get("hooks").is_none(),
-            "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
-             wiring entirely; got: {claude_settings:?}"
+            "the shared settings.json must carry no hooks; got: {claude_settings:?}"
         );
-        assert!(!target_dir.join(".claude/settings.local.json").exists());
+        let local: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".claude/settings.local.json")).unwrap(),
+        )
+        .unwrap();
+        let hooks = local["hooks"].to_string();
+        assert!(hooks.contains("__orchestration-hook"), "{hooks}");
+        assert!(!hooks.contains("__telemetry-hook"), "{hooks}");
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 
     /// A `--no-telemetry` reinstall over a dual-marker target strips the
-    /// hooks a prior install wired, from the current `settings.local.json`
-    /// and from an earlier release's shared `settings.json`.
+    /// telemetry hooks a prior install wired, from the current
+    /// `settings.local.json` and from an earlier release's shared
+    /// `settings.json`, and keeps the orchestration hook.
     #[test]
     fn no_telemetry_reinstall_strips_prior_claude_hooks_on_dual_marker_target() {
         let target_dir = scratch_dir("no-telemetry-reinstall-strips-hooks-target");
@@ -3270,10 +3280,10 @@ mod tests {
 
         install(true);
 
-        for relative in [".claude/settings.json", ".claude/settings.local.json"] {
-            let settings = read(relative);
-            assert!(settings.get("hooks").is_none(), "{relative}: {settings}");
-        }
+        assert!(read(".claude/settings.json").get("hooks").is_none());
+        let local = read(".claude/settings.local.json")["hooks"].to_string();
+        assert!(!local.contains("__telemetry-hook"), "{local}");
+        assert!(local.contains("__orchestration-hook"), "{local}");
         assert!(read(".claude/settings.json")["permissions"]["allow"].is_array());
 
         fs::remove_dir_all(&target_dir).ok();

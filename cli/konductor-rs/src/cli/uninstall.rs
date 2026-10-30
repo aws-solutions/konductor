@@ -36,7 +36,7 @@ use super::install::kiro_cli::{
 };
 use super::install::manifest::{self, ManifestError, Provenance, StrategyManifest};
 use super::install::resource_rewrite::{
-    claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_telemetry_hooks,
+    claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_konductor_hooks,
     V3_STANDALONE_HOOKS_RELATIVE_PATH, V3_STANDALONE_HOOK_LOCK_FILE_NAME,
 };
 use crate::cli::output::ColorMode;
@@ -1288,7 +1288,7 @@ fn uninstall_one_impl(
                     .any(|file| file.path == hooks_path)
             });
     if !hooks_still_owned {
-        let (_, hook_errors) = remove_claude_telemetry_hooks(target_path);
+        let (_, hook_errors) = remove_claude_konductor_hooks(target_path);
         for err in hook_errors {
             eprintln!("konductor uninstall: warning: could not remove a telemetry hook: {err}");
         }

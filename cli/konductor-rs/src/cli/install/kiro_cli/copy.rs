@@ -54,6 +54,17 @@ pub(in crate::cli::install) fn install_context(
     harness_dir: &Path,
     target_dir: &Path,
 ) -> Result<Vec<ManifestFile>, String> {
+    install_context_into(harness_dir, target_dir, KIRO_DESTINATION_ROOT)
+}
+
+/// `install_context` into `<target_dir>/<destination_root>/context/`.
+/// Claude Code uses `.konductor`, where the orchestration hook finds the
+/// routing rules file through the manifest.
+pub(in crate::cli::install) fn install_context_into(
+    harness_dir: &Path,
+    target_dir: &Path,
+    destination_root: &str,
+) -> Result<Vec<ManifestFile>, String> {
     let source_dir = harness_dir.join(CONTEXT_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
     if entries.is_empty() {
@@ -61,15 +72,14 @@ pub(in crate::cli::install) fn install_context(
     }
 
     let destination = target_dir
-        .join(KIRO_DESTINATION_ROOT)
+        .join(destination_root)
         .join(CONTEXT_CONTENT_TYPE_DIR);
     std::fs::create_dir_all(&destination)
         .map_err(|e| format!("failed to create {}: {e}", destination.display()))?;
 
     let mut files = copy_agent_files(&source_dir, &destination, entries)?;
     for file in &mut files {
-        file.path =
-            content_manifest_path(KIRO_DESTINATION_ROOT, CONTEXT_CONTENT_TYPE_DIR, &file.path);
+        file.path = content_manifest_path(destination_root, CONTEXT_CONTENT_TYPE_DIR, &file.path);
     }
     Ok(files)
 }
