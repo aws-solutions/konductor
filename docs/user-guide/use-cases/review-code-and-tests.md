@@ -33,16 +33,15 @@ it generates.
 - In **Kiro CLI v3**, no specialist has the `subagent` tool; only `konductor` does. In Kiro CLI
   v2, `@builtin` still carries it, and only the core rules stop the spawn.
 
-Step 6's own constraints anticipate this — *"You MUST skip this step if no adversarial CR-review
-capability is available"* — so the workflow degrades gracefully rather than erroring. In practice
-**step 6 silently no-ops and you get standard review only.**
+**Through `konductor`, step 6 still runs.** The core rules have `k-developer` return step 6 as
+a handoff for `k-architect`, naming the SOP and the step to resume at. `konductor` routes it to
+the architect and sends the findings back to the developer to finish the report.
 
-**Routing through `konductor` does not fix it.** `k-code-review-workflow` is not among the ten
-SOPs the orchestrator declares, so it delegates the whole SOP to the developer, which hits the
-same wall.
+**Started directly, `k-developer` skips it.** Nothing routes the handoff, and step 6's own
+constraint applies: *"You MUST skip this step if `k-adversarial-pull-request-review` is unavailable"*. You get standard review only.
 
-**The workaround that does work:** run `k-adversarial-pull-request-review` yourself against
-`k-architect`, which owns it. That is step 4 below.
+**To run the adversarial pass on its own:** run `k-adversarial-pull-request-review` yourself
+against `k-architect`, which owns it. That is step 4 below.
 
 ---
 
