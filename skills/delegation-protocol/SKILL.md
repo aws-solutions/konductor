@@ -157,8 +157,9 @@ will touch (registries, indexes, `CHANGELOG.md`), check the lists
 against the rule above, fan it out with the briefs the split gives,
 and check the files each part actually touched when it returns; if two
 parts touched the same file, confirm both edits survived before
-reporting done, or have one agent reconcile that file. If the note or split came from a specialist's SOP, send the
-results back to that specialist to finish the SOP from the named step.
+reporting done, or have one agent reconcile that file. If the note or
+split names an SOP step to resume at, send the results back to that
+specialist to finish the SOP from the named step.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
