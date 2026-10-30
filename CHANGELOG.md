@@ -10,8 +10,9 @@ not per individual commit.
 
 ### Added
 
-- `make test-py` now checks every skill's frontmatter, description, size, and
+- `make test-py` now checks every skill's frontmatter, description, size, code fences, and
   `references/` links against a shrink-only baseline in `tests/skill-quality-baseline.json`.
+  `python3 tests/skill_quality.py --print-baseline` refuses to write a baseline that grew.
 
 ### Changed
 

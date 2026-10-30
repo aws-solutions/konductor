@@ -154,6 +154,29 @@ def test_description_without_activation_condition_fails(tmp_path):
     assert "activation" in _rules(skill)
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Reference to use for DynamoDB tables, keys and indexes in general.",
+        "DynamoDB patterns, and what to do if you are unsure about keys.",
+    ],
+    ids=["verb-mid-clause", "bare-if"],
+)
+def test_loose_activation_wording_fails(tmp_path, description):
+    assert "activation" in _rules(_skill(tmp_path, description=description))
+
+
+def test_read_verb_is_not_a_trigger(tmp_path):
+    skill = _skill(tmp_path, description="Notes on how to read DynamoDB tables to plan capacity units.")
+    findings = sq.check_skill_content(skill).findings
+    assert [f.rule for f in _errors(findings)] == ["activation"]
+
+
+def test_trigger_verb_after_a_sentence_passes(tmp_path):
+    skill = _skill(tmp_path, description="Widget estimates for agent teams. Use to re-baseline a widget plan here.")
+    assert _rules(skill) == set()
+
+
 def test_stoplist_first_word_is_not_a_behavior_summary(tmp_path):
     skill = _skill(tmp_path, description="This skill covers DynamoDB tables, keys, indexes and capacity planning.")
     assert "activation" in _rules(skill)
@@ -277,6 +300,28 @@ def test_url_and_anchor_links_skipped(tmp_path):
     assert _rules(_skill(tmp_path, body="[a](https://example.com/x) [b](#usage)\n")) == set()
 
 
+@pytest.mark.parametrize("body", ["Run `[n](missing.md)` literally.\n", "Run ``a ` [n](missing.md)`` now.\n"])
+def test_link_inside_inline_code_ignored(tmp_path, body):
+    assert _rules(_skill(tmp_path, body=body)) == set()
+
+
+def test_reference_definition_to_missing_file_fails(tmp_path):
+    assert "link" in _rules(_skill(tmp_path, body="See [n].\n\n[n]: missing.md\n"))
+
+
+def test_reference_definition_to_existing_file_passes(tmp_path):
+    skill = _skill(tmp_path, body="See [n].\n\n[n]: <notes.md> \"Notes\"\n")
+    (skill / "notes.md").write_text("x\n", encoding="utf-8")
+    assert _rules(skill) == set()
+
+
+def test_link_target_with_parentheses_is_read_whole(tmp_path):
+    skill = _skill(tmp_path, body="See [n](notes(1).md).\n")
+    assert "'notes(1).md'" in _messages(skill)
+    (skill / "notes(1).md").write_text("x\n", encoding="utf-8")
+    assert _rules(skill) == set()
+
+
 def test_link_inside_fence_ignored(tmp_path):
     assert _rules(_skill(tmp_path, body="```markdown\n[n](missing.md)\n```\n")) == set()
 
@@ -284,6 +329,13 @@ def test_link_inside_fence_ignored(tmp_path):
 def test_link_inside_longer_tilde_fence_ignored(tmp_path):
     body = "~~~~\n```\n[n](missing.md)\n~~~\n~~~~\n"
     assert _rules(_skill(tmp_path, body=body)) == set()
+
+
+def test_unclosed_fence_fails_closed(tmp_path):
+    body = "Intro.\n\n```bash\necho hi\n\nSee [n](missing.md).\n"
+    skill = _skill(tmp_path, body=body)
+    assert "fence" in _rules(skill)
+    assert "line 7: code fence opened here is never closed" in _messages(skill)
 
 
 def test_bare_reference_path_without_directory_ignored(tmp_path):
@@ -389,6 +441,37 @@ def test_print_baseline_round_trips():
     parsed = json.loads(result.stdout)
     assert sq.render_baseline(parsed) == result.stdout
     assert parsed["_comment"] == sq.BASELINE_COMMENT
+
+
+def _grown_tree(tmp_path, monkeypatch):
+    """A tree whose 'big' skill is over the committed ceiling of 110 lines."""
+    skills = tmp_path / "skills"
+    _skill(skills, name="big", body="x\n" * 120)
+    baseline_path = tmp_path / "baseline.json"
+    baseline_path.write_text(sq.render_baseline(_baseline({"big": {"lines": 110}})), encoding="utf-8")
+    monkeypatch.setattr(sq, "SKILLS_DIR", skills)
+    monkeypatch.setattr(sq, "BASELINE_PATH", baseline_path)
+    return baseline_path
+
+
+def test_print_baseline_refuses_growth(tmp_path, monkeypatch, capsys):
+    _grown_tree(tmp_path, monkeypatch)
+    assert sq.main(["--print-baseline"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "skills.big.lines raised from 110 to 124" in captured.err
+
+
+def test_print_baseline_allow_growth_prints(tmp_path, monkeypatch, capsys):
+    _grown_tree(tmp_path, monkeypatch)
+    assert sq.main(["--print-baseline", "--allow-growth"]) == 0
+    assert json.loads(capsys.readouterr().out)["skills"] == {"big": {"lines": 124}}
+
+
+def test_print_baseline_refuses_a_truncated_baseline(tmp_path, monkeypatch, capsys):
+    _grown_tree(tmp_path, monkeypatch).write_text("", encoding="utf-8")
+    assert sq.main(["--print-baseline"]) == 1
+    assert "temp file" in capsys.readouterr().err
 
 
 def test_build_baseline_records_exact_over_threshold_values(tmp_path):
