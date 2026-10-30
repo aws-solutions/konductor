@@ -59,7 +59,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (must fix before proceeding):**
+**IMPORTANT (fix before proceeding, or list for the user where the orchestrator's Verification Protocol item 6 allows):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts
