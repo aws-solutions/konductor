@@ -148,7 +148,7 @@ For Kiro CLI v3 and Claude Code this is enforced in config, not just in the prom
 - Kiro CLI: no specialist spec grants the `subagent` tool or `toolsSettings.subagent`. For
   Kiro CLI v3, synth also writes `excludedTools: ["invoke_sub_agent", "run_workflow"]` into every
   specialist, because `@builtin` carries `run_workflow`, which can start any agent. This was
-  tested with kiro-cli 2.35.0 and later; an older client that rejects unknown agent-file fields
+  tested with kiro-cli 2.35.0; an older client that rejects unknown agent-file fields
   may fail to load the specialists.
 - Claude Code: synth drops `Agent(...)`, `Task` and `Workflow` from every specialist's `tools`
   list. A specialist with no `tools` list gets them as `disallowedTools` instead.

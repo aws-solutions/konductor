@@ -32,7 +32,7 @@ not per individual commit.
   configs block the runtime's spawn tools explicitly, so a specialist cannot call one even when
   a prompt asks it to. The block does not cover shell: a specialist with shell access could
   still run `kiro-cli` or `claude`. The Kiro CLI v3 block uses `excludedTools`, tested with
-  kiro-cli 2.35.0 and later. Kiro CLI v2 output is not covered yet: its `@builtin` still
+  kiro-cli 2.35.0. Kiro CLI v2 output is not covered yet: its `@builtin` still
   includes the `subagent` tool.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
