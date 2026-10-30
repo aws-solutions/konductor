@@ -473,15 +473,25 @@ pub(super) fn apply_claude_settings_grant(
 // hooks file. Kiro's own hooks live in `telemetry_hook_pass.rs`.
 
 /// A Konductor telemetry hook to keep in the hooks settings file.
-/// `event_type_arg` comes from `telemetry_hook.rs`'s constants, so a
-/// rename there is a compile error here. The command is built at merge
-/// time because it embeds the resolved exe path and install root. A hook
-/// is identified by its event argument, so a reinstall replaces a stale
-/// block (moved binary, changed agent set) instead of adding another.
-struct TelemetryHookEntry {
+/// Which Konductor hook a command is. A telemetry hook's event argument
+/// comes from `telemetry_hook.rs`'s constants, so a rename there is a
+/// compile error here. A hook is identified by its subcommand (and event
+/// argument), never by exe path, so a reinstall replaces a stale block
+/// (moved binary, changed agent set) instead of adding another.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HookId {
+    Telemetry(&'static str),
+    OrchestrationMode,
+}
+
+/// One hook block Konductor wires. The command is built at merge time
+/// because it embeds the resolved exe path and install root. `always`
+/// entries are wired even under `--no-telemetry`.
+struct KonductorHookEntry {
     event: &'static str,
     matcher: HookMatcher,
-    event_type_arg: &'static str,
+    id: HookId,
+    always: bool,
 }
 
 enum HookMatcher {
@@ -491,18 +501,20 @@ enum HookMatcher {
     InstalledAgents,
 }
 
-const TELEMETRY_HOOK_ENTRIES: &[TelemetryHookEntry] = &[
-    TelemetryHookEntry {
+const KONDUCTOR_HOOK_ENTRIES: &[KonductorHookEntry] = &[
+    KonductorHookEntry {
         event: "SessionStart",
         // A genuine session start or a `/clear` both count as a fresh
         // `agent_invocation`.
         matcher: HookMatcher::Fixed("startup|clear"),
-        event_type_arg: crate::cli::telemetry_hook::AGENT_INVOCATION,
+        id: HookId::Telemetry(crate::cli::telemetry_hook::AGENT_INVOCATION),
+        always: false,
     },
-    TelemetryHookEntry {
+    KonductorHookEntry {
         event: "SubagentStart",
         matcher: HookMatcher::InstalledAgents,
-        event_type_arg: crate::cli::telemetry_hook::SUBAGENT_INVOCATION,
+        id: HookId::Telemetry(crate::cli::telemetry_hook::SUBAGENT_INVOCATION),
+        always: false,
     },
 ];
 
@@ -619,21 +631,36 @@ pub(super) fn shell_quote_for_hook_command(exe: &str) -> String {
     }
 }
 
-/// The `__telemetry-hook ...` part of a hook command, without the leading
-/// exe path, so commands that differ only in where the binary lives (or
-/// in the bare-`"konductor"` fallback) are recognized as the same hook.
-/// `None` when `command` is not a telemetry hook.
+const TELEMETRY_HOOK_MARKER: &str = "__telemetry-hook ";
+const ORCHESTRATION_HOOK_MARKER: &str = "__orchestration-hook";
+
+/// The `__telemetry-hook ...` or `__orchestration-hook ...` part of a
+/// hook command, without the leading exe path, so commands that differ
+/// only in where the binary lives (or in the bare-`"konductor"` fallback)
+/// are recognized as the same hook. `None` when `command` is neither.
 pub(super) fn stable_hook_command_suffix(command: &str) -> Option<&str> {
-    const MARKER: &str = "__telemetry-hook ";
-    let idx = command.find(MARKER)?;
-    Some(&command[idx..])
+    if let Some(idx) = command.find(TELEMETRY_HOOK_MARKER) {
+        return Some(&command[idx..]);
+    }
+    let idx = command.find(ORCHESTRATION_HOOK_MARKER)?;
+    let rest = &command[idx + ORCHESTRATION_HOOK_MARKER.len()..];
+    (rest.is_empty() || rest.starts_with(' ')).then(|| &command[idx..])
+}
+
+/// Whether `command` is the Konductor hook `id`.
+fn command_is_hook(command: &str, id: HookId) -> bool {
+    match id {
+        HookId::Telemetry(event) => telemetry_hook_event(command) == Some(event),
+        HookId::OrchestrationMode => stable_hook_command_suffix(command)
+            .is_some_and(|suffix| suffix.starts_with(ORCHESTRATION_HOOK_MARKER)),
+    }
 }
 
 /// The event argument of a telemetry hook command, so two commands that
 /// differ only in exe path or trailing arguments identify the same hook.
 pub(super) fn telemetry_hook_event(command: &str) -> Option<&str> {
     stable_hook_command_suffix(command)?
-        .strip_prefix("__telemetry-hook ")?
+        .strip_prefix(TELEMETRY_HOOK_MARKER)?
         .split_whitespace()
         .next()
 }
@@ -646,7 +673,24 @@ pub(super) fn telemetry_hook_command(
     agent: Option<&str>,
     install_root: Option<&Path>,
 ) -> String {
-    let mut command = format!("{quoted_exe} __telemetry-hook {event_type}");
+    let mut command = format!("{quoted_exe} {TELEMETRY_HOOK_MARKER}{event_type}");
+    append_hook_args(&mut command, agent, install_root);
+    command
+}
+
+/// `<exe> __orchestration-hook [--agent <name>] [--install-root <dir>]`.
+/// `quoted_exe` is already shell-quoted; the other values are quoted here.
+pub(super) fn orchestration_hook_command(
+    quoted_exe: &str,
+    agent: Option<&str>,
+    install_root: Option<&Path>,
+) -> String {
+    let mut command = format!("{quoted_exe} {ORCHESTRATION_HOOK_MARKER}");
+    append_hook_args(&mut command, agent, install_root);
+    command
+}
+
+fn append_hook_args(command: &mut String, agent: Option<&str>, install_root: Option<&Path>) {
     if let Some(agent) = agent {
         command.push_str(" --agent ");
         command.push_str(&shell_quote_for_hook_command(agent));
@@ -656,13 +700,23 @@ pub(super) fn telemetry_hook_command(
         command.push_str(" --install-root ");
         command.push_str(&shell_quote_for_hook_command(&root.display().to_string()));
     }
-    command
 }
 
-/// Removes every Konductor telemetry hook for `event_type_arg` from one
-/// event's block array, dropping blocks left empty. Returns how many hooks
-/// it removed.
-fn strip_telemetry_hooks(event_array: &mut Vec<serde_json::Value>, event_type_arg: &str) -> usize {
+/// The command for `id`, wired for the install at `install_root`.
+fn hook_command(quoted_exe: &str, id: HookId, install_root: &Path) -> String {
+    match id {
+        HookId::Telemetry(event) => {
+            telemetry_hook_command(quoted_exe, event, None, Some(install_root))
+        }
+        HookId::OrchestrationMode => {
+            orchestration_hook_command(quoted_exe, None, Some(install_root))
+        }
+    }
+}
+
+/// Removes every Konductor hook `id` from one event's block array,
+/// dropping blocks left empty. Returns how many hooks it removed.
+fn strip_konductor_hooks(event_array: &mut Vec<serde_json::Value>, id: HookId) -> usize {
     let mut removed = 0;
     for block in event_array.iter_mut() {
         let Some(inner) = block.get_mut("hooks").and_then(|h| h.as_array_mut()) else {
@@ -670,10 +724,10 @@ fn strip_telemetry_hooks(event_array: &mut Vec<serde_json::Value>, event_type_ar
         };
         let before = inner.len();
         inner.retain(|hook| {
-            hook.get("command")
+            !hook
+                .get("command")
                 .and_then(|c| c.as_str())
-                .and_then(telemetry_hook_event)
-                != Some(event_type_arg)
+                .is_some_and(|command| command_is_hook(command, id))
         });
         removed += before - inner.len();
     }
@@ -688,11 +742,11 @@ fn strip_telemetry_hooks(event_array: &mut Vec<serde_json::Value>, event_type_ar
     removed
 }
 
-/// Whether `event_array` holds exactly one Konductor hook for
-/// `event_type_arg`, and it already has `matcher` and `command`.
-fn telemetry_hook_is_current(
+/// Whether `event_array` holds exactly one Konductor hook `id`, and it
+/// already has `matcher` and `command`.
+fn konductor_hook_is_current(
     event_array: &[serde_json::Value],
-    event_type_arg: &str,
+    id: HookId,
     matcher: &str,
     command: &str,
 ) -> bool {
@@ -703,7 +757,7 @@ fn telemetry_hook_is_current(
             .into_iter()
             .flatten()
             .filter_map(|hook| hook.get("command").and_then(|c| c.as_str()))
-            .filter(|existing| telemetry_hook_event(existing) == Some(event_type_arg))
+            .filter(|existing| command_is_hook(existing, id))
             .map(move |existing| (block.get("matcher").and_then(|m| m.as_str()), existing))
     });
     matches!(
@@ -729,7 +783,7 @@ fn telemetry_hook_is_current(
 fn merge_claude_settings_hooks_with_exe(
     target_dir: &Path,
     relative: &str,
-    entries: &[TelemetryHookEntry],
+    entries: &[KonductorHookEntry],
     exe: &str,
     agent_names: &[String],
 ) -> Result<Vec<u8>, ClaudeGrantError> {
@@ -773,8 +827,7 @@ fn merge_claude_settings_hooks_with_exe(
             HookMatcher::Fixed(matcher) => Some(matcher.to_string()),
             HookMatcher::InstalledAgents => installed_agents_matcher(agent_names),
         };
-        let command =
-            telemetry_hook_command(&quoted_exe, entry.event_type_arg, None, Some(target_dir));
+        let command = hook_command(&quoted_exe, entry.id, target_dir);
         let event_array = hooks_obj
             .entry(entry.event)
             .or_insert_with(|| serde_json::Value::Array(Vec::new()));
@@ -790,15 +843,10 @@ fn merge_claude_settings_hooks_with_exe(
 
         match &matcher {
             Some(matcher)
-                if telemetry_hook_is_current(
-                    event_array,
-                    entry.event_type_arg,
-                    matcher,
-                    &command,
-                ) => {}
+                if konductor_hook_is_current(event_array, entry.id, matcher, &command) => {}
             Some(matcher) => {
                 let removed = if exe_is_absolute {
-                    strip_telemetry_hooks(event_array, entry.event_type_arg)
+                    strip_konductor_hooks(event_array, entry.id)
                 } else {
                     0
                 };
@@ -807,7 +855,7 @@ fn merge_claude_settings_hooks_with_exe(
                     .filter_map(|block| block.get("hooks").and_then(|h| h.as_array()))
                     .flatten()
                     .filter_map(|hook| hook.get("command").and_then(|c| c.as_str()))
-                    .any(|existing| telemetry_hook_event(existing) == Some(entry.event_type_arg));
+                    .any(|existing| command_is_hook(existing, entry.id));
                 if !has_existing {
                     event_array.push(serde_json::json!({
                         "matcher": matcher,
@@ -818,7 +866,7 @@ fn merge_claude_settings_hooks_with_exe(
                 any_changed |= removed > 0;
             }
             None => {
-                any_changed |= strip_telemetry_hooks(event_array, entry.event_type_arg) > 0;
+                any_changed |= strip_konductor_hooks(event_array, entry.id) > 0;
             }
         }
         if event_array.is_empty() {
@@ -847,7 +895,7 @@ fn apply_claude_settings_hooks(target_dir: &Path) -> Result<(String, String), Cl
     let bytes = merge_claude_settings_hooks_with_exe(
         target_dir,
         relative,
-        TELEMETRY_HOOK_ENTRIES,
+        KONDUCTOR_HOOK_ENTRIES,
         &resolve_konductor_exe_path(),
         &agent_names,
     )?;
@@ -928,7 +976,7 @@ fn exclude_from_git(target_dir: &Path, relative: &str) {
 fn remove_claude_settings_hooks(
     target_dir: &Path,
     relative: &str,
-    entries: &[TelemetryHookEntry],
+    entries: &[KonductorHookEntry],
 ) -> Result<bool, ClaudeGrantError> {
     let (settings_path, claude_dir) = settings_paths(target_dir, relative)?;
     if !settings_path.is_file() {
@@ -987,7 +1035,7 @@ fn remove_claude_settings_hooks(
 /// present but not a JSON array.
 fn strip_entries_from_hooks(
     hooks_obj: &mut serde_json::Map<String, serde_json::Value>,
-    entries: &[TelemetryHookEntry],
+    entries: &[KonductorHookEntry],
     settings_path: &Path,
 ) -> Result<usize, ClaudeGrantError> {
     let mut removed = 0;
@@ -1003,7 +1051,7 @@ fn strip_entries_from_hooks(
             )
             .into());
         };
-        removed += strip_telemetry_hooks(event_array, entry.event_type_arg);
+        removed += strip_konductor_hooks(event_array, entry.id);
         if event_array.is_empty() {
             hooks_obj.remove(entry.event);
         }
@@ -1021,7 +1069,7 @@ pub(crate) fn remove_claude_telemetry_hooks(target_dir: &Path) -> (Vec<String>, 
         CLAUDE_SETTINGS_RELATIVE_PATH,
         CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH,
     ] {
-        match remove_claude_settings_hooks(target_dir, relative, TELEMETRY_HOOK_ENTRIES) {
+        match remove_claude_settings_hooks(target_dir, relative, KONDUCTOR_HOOK_ENTRIES) {
             Ok(true) => changed.push(target_dir.join(relative).display().to_string()),
             Ok(false) => {}
             Err(err) => errors.push(err.to_string()),
@@ -1058,7 +1106,7 @@ fn strip_hooks_not_owned_this_run(target_dir: &Path, no_telemetry: bool) {
     if let Err(err) = remove_claude_settings_hooks(
         target_dir,
         CLAUDE_SETTINGS_RELATIVE_PATH,
-        TELEMETRY_HOOK_ENTRIES,
+        KONDUCTOR_HOOK_ENTRIES,
     ) {
         eprintln!(
             "warning: could not move the telemetry hooks out of this target's shared \
@@ -1587,7 +1635,7 @@ mod tests {
 
     fn wire(dir: &Path, relative: &str, exe: &str, agents: &[&str]) {
         let agents: Vec<String> = agents.iter().map(|name| name.to_string()).collect();
-        merge_claude_settings_hooks_with_exe(dir, relative, TELEMETRY_HOOK_ENTRIES, exe, &agents)
+        merge_claude_settings_hooks_with_exe(dir, relative, KONDUCTOR_HOOK_ENTRIES, exe, &agents)
             .expect("hook wiring must succeed");
     }
 
@@ -1965,7 +2013,7 @@ mod tests {
             merge_claude_settings_hooks_with_exe(
                 &hooks_target,
                 CLAUDE_SETTINGS_RELATIVE_PATH,
-                TELEMETRY_HOOK_ENTRIES,
+                KONDUCTOR_HOOK_ENTRIES,
                 "/opt/konductor",
                 &[],
             )
@@ -2046,7 +2094,7 @@ mod tests {
         root["permissions"] = serde_json::json!({"allow": ["Read(*)"]});
         fs::write(dir.join(LOCAL), serde_json::to_vec_pretty(&root).unwrap()).unwrap();
 
-        assert!(remove_claude_settings_hooks(&dir, LOCAL, TELEMETRY_HOOK_ENTRIES).unwrap());
+        assert!(remove_claude_settings_hooks(&dir, LOCAL, KONDUCTOR_HOOK_ENTRIES).unwrap());
 
         let after = read_json(&dir.join(LOCAL));
         assert_eq!(
@@ -2069,7 +2117,7 @@ mod tests {
         let dir = scratch_dir("claude-hooks-remove-scaffold");
         wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
 
-        assert!(remove_claude_settings_hooks(&dir, LOCAL, TELEMETRY_HOOK_ENTRIES).unwrap());
+        assert!(remove_claude_settings_hooks(&dir, LOCAL, KONDUCTOR_HOOK_ENTRIES).unwrap());
 
         let after = read_json(&dir.join(LOCAL));
         assert!(after.get("hooks").is_none(), "got: {after}");
@@ -2079,7 +2127,7 @@ mod tests {
     #[test]
     fn remove_claude_settings_hooks_is_a_noop_when_no_file_exists() {
         let dir = scratch_dir("claude-hooks-remove-absent");
-        assert!(!remove_claude_settings_hooks(&dir, LOCAL, TELEMETRY_HOOK_ENTRIES).unwrap());
+        assert!(!remove_claude_settings_hooks(&dir, LOCAL, KONDUCTOR_HOOK_ENTRIES).unwrap());
         assert!(!dir.join(".claude").exists(), "nothing may be created");
         fs::remove_dir_all(&dir).ok();
     }
