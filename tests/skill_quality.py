@@ -2,15 +2,16 @@
 """Static quality checks for skills/*/SKILL.md, used by tests/test_skill_quality.py.
 
 Checks each skill for: frontmatter `name` matching its directory; a description
-with an activation condition and a length window; line and byte ceilings; and
-link, bare-path and `references/` integrity. Sizes over a threshold must be
+with an activation condition and a length window; line and byte ceilings; no
+unclosed code fence; and link, bare-path and `references/` integrity. Sizes over a threshold must be
 carried by tests/skill-quality-baseline.json, which may only shrink.
 
 Needs PyYAML. Without it, run: uvx --with pyyaml pytest -q tests/
 
 CLI (run from anywhere):
   python3 tests/skill_quality.py --scorecard
-  python3 tests/skill_quality.py --print-baseline > tests/skill-quality-baseline.json
+  python3 tests/skill_quality.py --print-baseline > /tmp/b.json && mv /tmp/b.json tests/skill-quality-baseline.json
+  python3 tests/skill_quality.py --print-baseline --allow-growth   (only after lowering a threshold)
   python3 tests/skill_quality.py --check-ratchet OLD_BASELINE.json
 """
 from __future__ import annotations
@@ -38,30 +39,36 @@ BASELINE_COMMENT = (
     "Shrink-only ratchet read by tests/test_skill_quality.py. An entry is the exact "
     "measured value of a dimension that is over its threshold. Lower or delete an entry "
     "when you slim a skill; never raise one; never add one for an existing skill unless "
-    "the threshold above was lowered in the same change. Regenerate with: "
+    "the threshold above was lowered in the same change. Renaming a skill adds an entry, so "
+    "bring a renamed skill under every threshold first. Regenerate with: "
     "python3 tests/skill_quality.py --print-baseline"
 )
 
-# Activation signals. Any one passing is enough; the verb proxy alone only warns.
-# "Use/load/run ... when/for/before ..." within one short clause.
+# Activation signals. These are heuristics: any one passing is enough, and the
+# verb proxy alone only warns.
+# "Use/load/run ... when/for/before ..." where the verb starts a clause.
 TRIGGER_CLAUSE = re.compile(
-    r"\b(use|invoke|run|load|apply|read)\b.{0,60}?"
+    r"(?:^|[.;:!?,]\s+)(use|invoke|run|load|apply)\b.{0,60}?"
     r"\b(when|for|after|before|whenever|to|if|during|on)\b",
     re.IGNORECASE,
 )
 # A condition word anywhere in the description.
-CONDITION_WORD = re.compile(r"\b(when|whenever|before|after|triggers?|if)\b", re.IGNORECASE)
+CONDITION_WORD = re.compile(r"\b(when|whenever|before|after|triggers?)\b", re.IGNORECASE)
 # Passive applicability, e.g. "Loaded only in Claude Code sessions".
 SCOPE_CLAUSE = re.compile(r"\bonly (in|for|when|on)\b|\bapplies to\b", re.IGNORECASE)
 # An explicit mandate.
 MUST_USE = re.compile(r"\bMUST USE\b", re.IGNORECASE)
 # Behavior-summary form: a capitalised third-person verb first ("Validates ...").
-VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b")
+# A plural noun before a preposition ("Notes on ...") is not a verb.
+VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b(?!\s+(?:on|of|for|about|in|to|from|with|at|by)\b)")
 VERB_PROXY_STOPLIST = frozenset({"This", "Has", "Was", "Its", "Is", "Does", "Thus", "Plus"})
 
 FENCE_OPEN = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 FENCE_CLOSE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
-INLINE_LINK = re.compile(r"\]\(([^)]*)\)")
+# The destination may hold one level of balanced parentheses, e.g. "a(1).md".
+INLINE_LINK = re.compile(r"\]\(((?:[^()]|\([^()]*\))*)\)")
+REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*(\S+)")
+CODE_SPAN = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 URL_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 BARE_PATH = re.compile(r"(?<![\w/.-])((?:references|scripts|evals|templates|assets)/[\w./-]+)")
 READ_VERB = re.compile(r"\b(read|open|consult|load)\b", re.IGNORECASE)
@@ -113,15 +120,20 @@ def split_frontmatter(text: str) -> tuple[str, list[str], int]:
     raise ValueError("frontmatter has no closing '---' line")
 
 
-def blank_fenced_lines(lines: list[str]) -> list[str]:
-    """Replace every line of a CommonMark fenced block (fences included) with ''."""
+def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
+    """Replace every line of a CommonMark fenced block (fences included) with ''.
+
+    Also return the 0-based index of a fence still open at the end, else None.
+    """
     out = []
     fence = None
-    for line in lines:
+    opened_at = None
+    for index, line in enumerate(lines):
         if fence is None:
             match = FENCE_OPEN.match(line)
             if match and not (match.group(1)[0] == "`" and "`" in match.group(2)):
                 fence = match.group(1)
+                opened_at = index
                 out.append("")
             else:
                 out.append(line)
@@ -130,7 +142,7 @@ def blank_fenced_lines(lines: list[str]) -> list[str]:
             if match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence):
                 fence = None
             out.append("")
-    return out
+    return out, (opened_at if fence is not None else None)
 
 
 def link_target(destination: str) -> str:
@@ -194,7 +206,10 @@ def check_skill_content(skill_dir: Path) -> SkillReport:
     }
     _check_name(report, meta["name"])
     _check_description(report, description)
-    unfenced = blank_fenced_lines(body)
+    unfenced, open_fence = blank_fenced_lines(body)
+    if open_fence is not None:
+        # Fail closed: an unclosed fence would hide every later line from the checks below.
+        report.fail("fence", f"line {body_start + open_fence}: code fence opened here is never closed")
     _check_links(report, skill_dir, unfenced, body_start)
     _check_bare_paths(report, skill_dir, unfenced, body_start)
     _check_references(report, skill_dir, text, unfenced, body_start)
@@ -250,10 +265,23 @@ def _resolves_to_file(target: Path, root: Path) -> str | None:
     return None
 
 
+def blank_code_spans(line: str) -> str:
+    """Replace each inline code span with spaces of the same length."""
+    return CODE_SPAN.sub(lambda match: " " * len(match.group(0)), line)
+
+
+def _link_destinations(line: str) -> list[str]:
+    destinations = [match.group(1) for match in INLINE_LINK.finditer(line)]
+    definition = REFERENCE_DEFINITION.match(line)
+    if definition:
+        destinations.append(definition.group(1))
+    return destinations
+
+
 def _check_links(report: SkillReport, skill_dir: Path, unfenced: list[str], start: int) -> None:
     for offset, line in enumerate(unfenced):
-        for match in INLINE_LINK.finditer(line):
-            target = link_target(match.group(1))
+        for destination in _link_destinations(blank_code_spans(line)):
+            target = link_target(destination)
             if URL_SCHEME.match(target) or target.startswith("#"):
                 continue
             path = target.split("#", 1)[0]
@@ -353,7 +381,8 @@ def _positive_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
-def load_baseline(path: Path = BASELINE_PATH) -> dict:
+def load_baseline(path: Path | None = None) -> dict:
+    path = path or BASELINE_PATH
     try:
         baseline = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
@@ -464,14 +493,37 @@ def _scorecard() -> int:
     return 0
 
 
-def _print_baseline() -> int:
+def _print_baseline(allow_growth: bool) -> int:
     thresholds, tolerance = _baseline_limits()
     try:
-        output = render_baseline(build_baseline(SKILLS_DIR, thresholds, tolerance))
+        built = build_baseline(SKILLS_DIR, thresholds, tolerance)
     except (BaselineError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    sys.stdout.write(output)
+    if not allow_growth:
+        if not BASELINE_PATH.exists():
+            violations = []
+        else:
+            try:
+                violations = check_ratchet(load_baseline(), built)
+            except BaselineError as error:
+                # Redirecting straight onto the baseline truncates it before it is read.
+                print(
+                    f"error: committed baseline is unreadable ({error}); write the output "
+                    "to a temp file, then move it into place",
+                    file=sys.stderr,
+                )
+                return 1
+        if violations:
+            for line in violations:
+                print(f"ratchet: {line}", file=sys.stderr)
+            print(
+                "error: the new baseline would grow; slim the skill instead, or pass "
+                "--allow-growth if a threshold was lowered on purpose",
+                file=sys.stderr,
+            )
+            return 1
+    sys.stdout.write(render_baseline(built))
     return 0
 
 
@@ -498,11 +550,18 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--scorecard", action="store_true", help="print per-skill sizes")
     mode.add_argument("--print-baseline", action="store_true", help="print a baseline built from the tree")
     mode.add_argument("--check-ratchet", metavar="OLD", type=Path, help="fail if the baseline grew vs OLD")
+    parser.add_argument(
+        "--allow-growth",
+        action="store_true",
+        help="with --print-baseline, print even when an entry would be raised or added",
+    )
     args = parser.parse_args(argv)
+    if args.allow_growth and not args.print_baseline:
+        parser.error("--allow-growth only applies to --print-baseline")
     if args.scorecard:
         return _scorecard()
     if args.print_baseline:
-        return _print_baseline()
+        return _print_baseline(args.allow_growth)
     return _check_ratchet(args.check_ratchet)
 
 

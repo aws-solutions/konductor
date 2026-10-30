@@ -114,6 +114,20 @@ fn shipped_skill_bytes(dir: &Path, name: &str) -> u64 {
         .len()
 }
 
+/// Writes a skill whose SKILL.md is over the 32 KiB preload budget, so the
+/// budget test does not depend on any shipped skill staying large.
+fn write_oversized_fixture_skill(dir: &Path, name: &str) {
+    let skill_dir = dir.join("skills").join(name);
+    std::fs::create_dir_all(&skill_dir).unwrap();
+    let mut text = format!(
+        "---\nname: {name}\ndescription: Use when testing the preload byte budget with an oversized fixture skill.\n---\n# Fixture\n\n"
+    );
+    while text.len() <= 40 * 1024 {
+        text.push_str("Filler line that pads this fixture skill past the preload budget.\n");
+    }
+    std::fs::write(skill_dir.join("SKILL.md"), text).unwrap();
+}
+
 fn write_fixture_agent(dir: &Path, name: &str, claude_skills: &[String]) {
     let spec = serde_json::json!({
         "schemaVersion": "1",
@@ -139,7 +153,8 @@ fn synth_emits_no_preload_warning_for_this_repo() {
 #[test]
 fn synth_warns_when_a_fixture_agent_exceeds_the_byte_budget() {
     let dir = repo_copy("fat");
-    write_fixture_agent(&dir, "k-fixture-fat", &["infra-validation".to_string()]);
+    write_oversized_fixture_skill(&dir, "fixture-fat-skill");
+    write_fixture_agent(&dir, "k-fixture-fat", &["fixture-fat-skill".to_string()]);
     let output = synth(&dir, &["--json"]);
     let summary: serde_json::Value =
         serde_json::from_str(String::from_utf8_lossy(&output.stdout).trim()).unwrap();
@@ -151,7 +166,7 @@ fn synth_warns_when_a_fixture_agent_exceeds_the_byte_budget() {
         .expect("no claude_preload entry for k-fixture-fat");
     assert_eq!(
         entry["bytes"].as_u64(),
-        Some(shipped_skill_bytes(&dir, "infra-validation"))
+        Some(shipped_skill_bytes(&dir, "fixture-fat-skill"))
     );
     let stderr = String::from_utf8_lossy(&output.stderr);
     let warning = stderr

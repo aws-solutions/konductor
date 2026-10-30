@@ -4,7 +4,7 @@ Read this when creating the report file in Stage 1 and, for the current mode onl
 
 # Common report structures
 
-### Data Structures
+## Data Structures
 
 **Test Coverage Map:**
 
@@ -63,7 +63,7 @@ coverage_map: Map<
 }
 ```
 
-### Standard Report Template
+## Standard Report Template
 
 All reports follow this structure (customize sections per mode):
 
@@ -153,9 +153,9 @@ Next Steps:
 
 ```
 
-## Output Formats
+# Output formats
 
-### Coverage Report Format
+## Coverage Report Format
 
 ```markdown
 # Test Coverage Analysis Report
@@ -252,9 +252,9 @@ Next Steps:
 
 **Report Location:** `test-analysis-reports/coverage-[timestamp].md`
 **Analysis Duration:** [X] seconds
-````
+```
 
-### Readiness Report Format
+## Readiness Report Format
 
 ```markdown
 # Release Readiness Assessment
