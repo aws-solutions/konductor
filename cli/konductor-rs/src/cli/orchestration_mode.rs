@@ -4,20 +4,21 @@
 // `~/.konductor/config.yml`. The session hook and `doctor` share this one
 // reader. Only the user layer is read; a project file's value is ignored.
 
+// Callers arrive with the session hook; delete this line then.
+#![allow(dead_code)]
+
 use std::path::{Path, PathBuf};
 
 use crate::cli::config::{self, user_config_path, ConfigError};
 
-#[allow(dead_code)] // Callers arrive with the session hook.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Mode {
     Auto,
     Coordinator,
 }
 
-#[allow(dead_code)]
 impl Mode {
-    /// The only place the allowed values are listed. Case-sensitive.
+    /// The only place that decides which values are accepted. Case-sensitive.
     pub(crate) fn parse(value: &str) -> Option<Mode> {
         match value {
             "auto" => Some(Mode::Auto),
@@ -34,7 +35,6 @@ impl Mode {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ModeResolution {
     /// No `~/.konductor/config.yml`, or no `orchestration.mode` in it.
@@ -45,7 +45,6 @@ pub(crate) enum ModeResolution {
     Fallback(FallbackReason),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FallbackReason {
     HomeUnresolved,
@@ -62,7 +61,6 @@ pub(crate) enum FallbackReason {
     },
 }
 
-#[allow(dead_code)]
 /// `home` comes from `index::env_home_dir`, which treats an empty `HOME`
 /// as unset. Only `NotFound` (which covers a dangling symlink) counts as no
 /// file. Unlike the gate loader's `is_file()` check, a path that cannot be
@@ -95,6 +93,12 @@ pub(crate) fn resolve_user_mode(home: Option<&Path>) -> ModeResolution {
     }
     let raw = match config::load_raw_config(&path) {
         Ok(raw) => raw,
+        // Removed between the stat and the read: same as never there.
+        Err(ConfigError::ProjectConfigNotReadable { source, .. })
+            if source.kind() == std::io::ErrorKind::NotFound =>
+        {
+            return ModeResolution::Default
+        }
         Err(error) => return ModeResolution::Fallback(load_failure(path, error)),
     };
     let Some(section) = raw.orchestration else {
@@ -121,7 +125,6 @@ pub(crate) fn resolve_user_mode(home: Option<&Path>) -> ModeResolution {
     }
 }
 
-#[allow(dead_code)]
 fn load_failure(path: PathBuf, error: ConfigError) -> FallbackReason {
     match error {
         ConfigError::ProjectConfigNotReadable { source, .. } => FallbackReason::Unreadable {
@@ -132,6 +135,8 @@ fn load_failure(path: PathBuf, error: ConfigError) -> FallbackReason {
             path,
             message: first_line(&source.to_string()),
         },
+        // Unreachable today: `load_raw_config` returns only the two errors
+        // above. Kept so a new error is still shown, not dropped.
         other => FallbackReason::Malformed {
             path,
             message: first_line(&other.to_string()),
@@ -139,7 +144,6 @@ fn load_failure(path: PathBuf, error: ConfigError) -> FallbackReason {
     }
 }
 
-#[allow(dead_code)]
 fn first_line(text: &str) -> String {
     text.lines().next().unwrap_or_default().to_string()
 }
