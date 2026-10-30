@@ -14,6 +14,8 @@ not per individual commit.
   acts on it until the session hook lands.
 - `konductor` runs as a coordinator when `orchestration.mode` is `coordinator`: `install` wires a
   session-start hook, even under `--no-telemetry`, that points it at the routing rules.
+- `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
+  config value is valid.
 
 ### Changed
 
