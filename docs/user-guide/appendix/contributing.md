@@ -61,7 +61,14 @@ Both runtimes then load it on demand:
 
 Add it to `clientConfig.claudeCli.skills` as well only if a Claude Code subagent needs it in
 context before its first turn. Claude Code injects every skill in that list into each spawned
-subagent, so `konductor synth` warns when an agent's list passes 32 KiB or 32 names.
+subagent, so `konductor synth` warns when an agent's list passes 32 KiB and fails when it passes
+32 names. Claude Code silently drops the names past 32.
+
+`skillNames` is the set of skills an agent can load on demand, on both runtimes.
+`claudeCli.skills` is the Claude Code preload, so it is normally a subset of `skillNames`. The one
+exception is a skill that applies only on Claude Code and says so in its description. It goes in
+`claudeCli.skills` alone and is not declared for Kiro CLI. Today that is `claude-teams-behavior`
+on `konductor`.
 
 There is no per-skill entry under `clientConfig.kiroCli.resources`. Kiro CLI reaches installed
 skills through the bundled `skill-lookup` MCP server, not through its own `.kiro/skills/` scan —
