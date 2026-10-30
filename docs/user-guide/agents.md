@@ -199,7 +199,9 @@ Code:
 Step 6 has `k-developer` return it as a handoff for `k-architect` when it cannot spawn, naming
 the SOP and the step to resume at. Under `konductor`, `konductor` routes it to the architect and
 sends the findings back to the developer to finish steps 6 and 7. When `k-developer` is started
-directly, nothing routes the handoff, and it comes back to you.
+directly, nothing routes the handoff, and it comes back to you. To finish the report, run
+`k-adversarial-pull-request-review` with `k-architect`, then pass its findings and the handoff to
+`k-developer` and ask it to resume `k-code-review-workflow` at step 6.
 
 To be sure the adversarial pass runs, run
 [`k-adversarial-pull-request-review`](sop-workflows/code-review.md#k-adversarial-pull-request-review)
