@@ -346,10 +346,18 @@ def test_top_level_indented_fence_marker_is_code_not_a_fence(tmp_path):
 
 def test_fence_under_a_wrapped_list_item_is_a_fence(tmp_path):
     body = (
-        "- Step one,\n  continued\n\n      ```bash\n      echo [n](missing.md)\n"
-        "      ```\n\nafter\n"
+        "- Step one,\n  continued\n\n    ```bash\n    echo [n](missing.md)\n"
+        "    ```\n\nafter\n"
     )
     assert _rules(_skill(tmp_path, body=body)) == set()
+
+
+def test_fence_marker_four_past_the_list_content_column_is_code(tmp_path):
+    body = (
+        "- Step\n\n          ```\n\n  Read [g](missing.md)\n\n"
+        "```bash\nx\n```\ntail\n"
+    )
+    assert "link" in _rules(_skill(tmp_path, body=body))
 
 
 def test_list_ended_by_a_top_level_fence_does_not_hold_a_later_marker(tmp_path):
