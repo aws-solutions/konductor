@@ -491,12 +491,21 @@ fn render_agent_md(
 
     let model = claude_model_id(&config.model);
     let merged_mcp_servers = merge_mcp_servers(mcp_registry, &claude.mcp_servers);
+    // Ship the same distinct list the preload lint measures, so its name
+    // cap counts exactly what Claude Code reads.
+    let preload_names: Vec<String> = claude
+        .skills
+        .iter()
+        .cloned()
+        .collect::<indexmap::IndexSet<String>>()
+        .into_iter()
+        .collect();
     let frontmatter = ClaudeAgentFrontmatter {
         name,
         description: &config.description,
         model: &model,
         tools: claude.tools.as_deref(),
-        skills: &claude.skills,
+        skills: &preload_names,
         allowed_tools: &claude.allowed_tools,
         hooks: hooks_to_yaml(&claude.hooks),
         mcp_servers: render_mcp_servers(&merged_mcp_servers),
@@ -1686,6 +1695,34 @@ mod tests {
         .unwrap();
         assert!(!rendered.contains("<Context:"));
         assert!(rendered.ends_with("You are a test agent."));
+    }
+
+    #[test]
+    fn render_agent_md_emits_each_preload_name_once_in_first_occurrence_order() {
+        let claude = ClaudeCliConfig {
+            skills: ["b", "a", "b", "a"].iter().map(|s| s.to_string()).collect(),
+            ..Default::default()
+        };
+        let agent = agent_with_claude("k-example", claude);
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let skill_names: HashSet<&str> = ["a", "b"].into_iter().collect();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &skill_names,
+            &[],
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        let frontmatter_yaml = rendered.splitn(3, "---\n").nth(1).unwrap();
+        let parsed: serde_yaml::Value = serde_yaml::from_str(frontmatter_yaml).unwrap();
+        assert_eq!(
+            parsed["skills"],
+            serde_yaml::to_value(vec!["b", "a"]).unwrap()
+        );
     }
 
     fn preloaded(names: &[&str]) -> Vec<String> {
