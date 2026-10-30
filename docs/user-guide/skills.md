@@ -264,7 +264,8 @@ come back thinner. `k-media-analyzer` carries `constraints` and `humanize-writin
 only `constraints`. Its capability is the model's ability to interpret PDFs and images, not a
 skill library.
 
-The declared column is `dependencies.skills.skillNames`; the preloaded column is `clientConfig.claudeCli.skills`, the skills Claude Code injects when the agent runs as a subagent.
+The declared column is `dependencies.skills.skillNames`; the preloaded column is
+`clientConfig.claudeCli.skills`, the skills Claude Code injects when the agent runs as a subagent.
 
 ---
 
