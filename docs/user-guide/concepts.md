@@ -251,18 +251,19 @@ flowchart LR
     classDef muted fill:#f4f4f5,stroke:#8a8a8a,stroke-width:1.2px,color:#0f172a,stroke-dasharray:4 3;
 ```
 
-*Hub-and-spoke: you talk only to `konductor`; routing rules are always active; skills
+*Hub-and-spoke: you talk only to `konductor`; its direct-work rules are always active; skills
 and SOPs load on demand.*
 
 Reading the diagram in words:
 
 1. You describe what you want to the `konductor` agent.
-2. The always-active routing rules tell it which specialist owns that kind of work.
-3. It writes a 7-section delegation and hands the work over.
+2. Its always-active direct-work rules have it do the work itself, or name an SOP for a
+   multi-phase request.
+3. It spawns a specialist only for a tool it lacks or for parallel work on disjoint files.
 4. The specialist loads whichever skills and SOPs the task needs, does the work, and applies
    its own maker-checker pass.
-5. `konductor` verifies the result against the delegation's expected outcome — and
-   re-delegates if it falls short, up to twice.
+5. When a phase closes, `konductor` spawns a fresh `k-*` reviewer, fixes what comes back, and
+   re-reviews only the change.
 
 ---
 
