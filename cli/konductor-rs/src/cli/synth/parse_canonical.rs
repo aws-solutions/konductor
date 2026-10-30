@@ -15,7 +15,11 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::cli::synth::model::{AuxiliaryFile, CanonicalModel, ContextDef, SkillDef, SopDef};
+use crate::cli::synth::claude::is_spawn_tool;
+use crate::cli::synth::kiro_cli_v3::{is_subagent_tag, map_tool_tag, SUBAGENT_CAPABILITY};
+use crate::cli::synth::model::{
+    is_specialist, AuxiliaryFile, CanonicalModel, ContextDef, SkillDef, SopDef,
+};
 use crate::cli::synth::parser::{self, ParseError};
 use crate::cli::synth::path_safety::case_insensitive_fold_key;
 
@@ -77,6 +81,9 @@ pub fn parse_canonical(source_dir: &Path) -> Result<CanonicalModel, ParseError> 
     check_dangling_skill_references(&agents, &skills)?;
     check_dangling_sop_references(&agents, &sops)?;
     for warning in check_skill_scope_consistency(&agents) {
+        eprintln!("konductor: warning: {warning}");
+    }
+    for warning in check_specialist_spawn_grants(&agents) {
         eprintln!("konductor: warning: {warning}");
     }
 
@@ -305,6 +312,41 @@ fn check_skill_scope_consistency(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
                 agent.name,
                 missing.into_iter().collect::<Vec<_>>(),
                 skill_names.into_iter().collect::<Vec<_>>()
+            ));
+        }
+    }
+    warnings
+}
+
+/// Warns, one line per specialist (`k-*`) agent, when its spec grants a spawn
+/// tool that the harness transformers strip from its output, so the spec
+/// and the synthed config cannot disagree unnoticed.
+fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<String> {
+    let mut warnings = Vec::new();
+    for agent in agents.iter().filter(|agent| is_specialist(&agent.name)) {
+        let mut grants = Vec::new();
+        if let Some(kiro) = &agent.client_config.kiro_cli {
+            let is_kiro_spawn = |id: &String| is_subagent_tag(&map_tool_tag(id));
+            grants.extend(kiro.tools.iter().filter(|id| is_kiro_spawn(id)).cloned());
+            grants.extend(
+                kiro.allowed_tools
+                    .iter()
+                    .filter(|id| is_kiro_spawn(id))
+                    .cloned(),
+            );
+            if kiro.tools_settings.get(SUBAGENT_CAPABILITY).is_some() {
+                grants.push(format!("toolsSettings.{SUBAGENT_CAPABILITY}"));
+            }
+        }
+        if let Some(claude) = &agent.client_config.claude_cli {
+            let tools = claude.tools.iter().flatten();
+            grants.extend(tools.filter(|tool| is_spawn_tool(tool)).cloned());
+        }
+        if !grants.is_empty() {
+            warnings.push(format!(
+                "agent '{}' is a specialist (k-* name) but its spec grants spawn tools {grants:?}; \
+                 synth strips them from its output, so remove them from the spec",
+                agent.name
             ));
         }
     }
@@ -1151,6 +1193,53 @@ mod tests {
             r#"{{"schemaVersion":"1","name":"{name}","config":{{"description":"d","systemPrompt":"s","model":"m"}},"dependencies":{{"skills":{{"skillNames":[{names_json}]}}}},"clientConfig":{{"kiroCli":{{"resources":[{resources_json}]}}}}}}"#
         );
         parser::parse_agent_spec_str(&content, "agents/test.agent-spec.json").unwrap()
+    }
+
+    fn agent_spec_with_client_config(
+        name: &str,
+        client_config_json: &str,
+    ) -> parser::ParsedAgentSpec {
+        let content = format!(
+            r#"{{"schemaVersion":"1","name":"{name}","config":{{"description":"d","systemPrompt":"s","model":"m"}},"clientConfig":{client_config_json}}}"#
+        );
+        parser::parse_agent_spec_str(&content, "agents/test.agent-spec.json").unwrap()
+    }
+
+    #[test]
+    fn check_specialist_spawn_grants_warns_on_each_stripped_grant() {
+        let agent = agent_spec_with_client_config(
+            "k-example",
+            r#"{"kiroCli":{"tools":["@builtin","use_subagent"],"allowedTools":["subagent"],"toolsSettings":{"subagent":{}}},"claudeCli":{"tools":["Read","Agent(k-developer)","Task"]}}"#,
+        );
+        let warnings = check_specialist_spawn_grants(&[agent]);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        for expected in [
+            "k-example",
+            "use_subagent",
+            "\"subagent\"",
+            "toolsSettings.subagent",
+            "Agent(k-developer)",
+            "Task",
+        ] {
+            assert!(
+                warnings[0].contains(expected),
+                "missing {expected}: {}",
+                warnings[0]
+            );
+        }
+    }
+
+    #[test]
+    fn check_specialist_spawn_grants_ignores_orchestrators_and_clean_specialists() {
+        let orchestrator = agent_spec_with_client_config(
+            "konductor",
+            r#"{"kiroCli":{"tools":["@builtin","subagent"]},"claudeCli":{"tools":["Agent(k-developer)"]}}"#,
+        );
+        let specialist = agent_spec_with_client_config(
+            "k-example",
+            r#"{"kiroCli":{"tools":["@builtin"]},"claudeCli":{"tools":["Read","Bash"]}}"#,
+        );
+        assert!(check_specialist_spawn_grants(&[orchestrator, specialist]).is_empty());
     }
 
     /// Clean case: every `skill://` resource entry's name already
