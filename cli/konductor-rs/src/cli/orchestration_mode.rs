@@ -64,14 +64,34 @@ pub(crate) enum FallbackReason {
 
 #[allow(dead_code)]
 /// `home` comes from `index::env_home_dir`, which treats an empty `HOME`
-/// as unset. A dangling symlink counts as no file.
+/// as unset. Only `NotFound` (which covers a dangling symlink) counts as no
+/// file. Unlike the gate loader's `is_file()` check, a path that cannot be
+/// stat'ed or is not a file is a `Fallback`, so a set mode is never lost
+/// without a reason shown.
 pub(crate) fn resolve_user_mode(home: Option<&Path>) -> ModeResolution {
     let Some(home) = home else {
         return ModeResolution::Fallback(FallbackReason::HomeUnresolved);
     };
     let path = user_config_path(home);
-    if !path.is_file() {
-        return ModeResolution::Default;
+    match std::fs::metadata(&path) {
+        Ok(metadata) if metadata.is_file() => {}
+        Ok(metadata) => {
+            let kind = if metadata.is_dir() {
+                std::io::ErrorKind::IsADirectory
+            } else {
+                std::io::ErrorKind::Unsupported
+            };
+            return ModeResolution::Fallback(FallbackReason::Unreadable { path, kind });
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return ModeResolution::Default
+        }
+        Err(error) => {
+            return ModeResolution::Fallback(FallbackReason::Unreadable {
+                path,
+                kind: error.kind(),
+            })
+        }
     }
     let raw = match config::load_raw_config(&path) {
         Ok(raw) => raw,
@@ -191,6 +211,49 @@ mod tests {
         }
         let resolution = resolve_user_mode(Some(&home));
         fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+        fs::remove_dir_all(&home).ok();
+        assert_eq!(
+            resolution,
+            ModeResolution::Fallback(FallbackReason::Unreadable {
+                path,
+                kind: std::io::ErrorKind::PermissionDenied,
+            })
+        );
+    }
+
+    #[test]
+    fn directory_at_path_is_unreadable() {
+        let home = scratch_home("directory");
+        let path = user_config_path(&home);
+        fs::create_dir(&path).unwrap();
+        let resolution = resolve_user_mode(Some(&home));
+        fs::remove_dir_all(&home).ok();
+        assert_eq!(
+            resolution,
+            ModeResolution::Fallback(FallbackReason::Unreadable {
+                path,
+                kind: std::io::ErrorKind::IsADirectory,
+            })
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn untraversable_konductor_dir_is_unreadable() {
+        use std::os::unix::fs::PermissionsExt;
+        let home = scratch_home("untraversable");
+        let path = user_config_path(&home);
+        fs::write(&path, "orchestration:\n  mode: coordinator\n").unwrap();
+        let dir = home.join(KONDUCTOR_DIR_NAME);
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o000)).unwrap();
+        if fs::metadata(&path).is_ok() {
+            // Running as root: permissions do not block the stat.
+            fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
+            fs::remove_dir_all(&home).ok();
+            return;
+        }
+        let resolution = resolve_user_mode(Some(&home));
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
         fs::remove_dir_all(&home).ok();
         assert_eq!(
             resolution,
