@@ -17,7 +17,7 @@ Reviews DynamoDB designs across 13 categories: partition key design, index cover
 
 **Not for:** creating a design (use `dynamodb-design`).
 
-**Lightweight fallback:** for a single table with no GSIs, run categories 1, 5, 7 and 11 in full and report findings without the scored report. Still check every Quality Gate item, which covers index coverage (for example a "list all" pattern served by a Scan), the backup strategy and throttling alarms.
+**Lightweight fallback:** for a single table with no GSIs, run categories 1, 5, 7 and 11 in full, plus category 8, 9 or 10 when the design configures global tables, streams or transactions, and report findings without the scored report. Still check every Quality Gate item, which covers index coverage (for example a "list all" pattern served by a Scan), the backup strategy and throttling alarms.
 
 ## Usage
 
