@@ -256,7 +256,7 @@ Continue with Design Table Schema, Design Indexes, and Generate Deliverables ste
 
 The AWS best practices catalogue holds two kinds of subsection.
 
-Core subsections apply to every design that runs the full workflow, so always read them then (the lightweight fallback reads only the two key-design subsections):
+Core subsections apply to every design that runs the full workflow, so always read them then (the lightweight fallback reads only the two key-design subsections, plus any feature subsection below whose condition its design meets, such as GSI vs LSI for its one GSI):
 
 - Partition Key Design
 - Sort Key Design
