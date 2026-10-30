@@ -215,7 +215,7 @@ Based on test specifications, identify common patterns:
 
 **Recommend Cypress Structure:**
 
-Read the Example project layout in `references/cypress-patterns.md` (relative to this file) when the project has no `cypress/` directory yet; it holds the recommended directory tree.
+Read the Example project layout in `references/cypress-patterns.md` (relative to this file) when recommending the Cypress structure; it holds the recommended directory tree.
 
 **Output:** `🏗️ Cypress Structure Analyzed: [Installed/Not Installed] | Existing tests: [N] | Custom commands: [M] | Page objects: [P]`
 
