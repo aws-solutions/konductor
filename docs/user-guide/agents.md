@@ -143,7 +143,7 @@ Only the orchestrators delegate. A specialist (any `k-*` agent) never spawns ano
 it does its own part and returns to its caller, with a handoff note naming the next role or a
 proposed parallel split. The orchestrator routes that note.
 
-For Kiro CLI v3 and Claude Code this is enforced in config, not just in the prompt:
+This is enforced in config, not just in the prompt:
 
 - Kiro CLI: no specialist spec grants the `subagent` tool or `toolsSettings.subagent`. For
   Kiro CLI v3, synth also writes `excludedTools: ["invoke_sub_agent", "run_workflow"]` into every
@@ -152,8 +152,10 @@ For Kiro CLI v3 and Claude Code this is enforced in config, not just in the prom
   may fail to load the specialists.
 - Claude Code: synth drops `Agent(...)`, `Task` and `Workflow` from every specialist's `tools`
   list. A specialist with no `tools` list gets them as `disallowedTools` instead.
-- Kiro CLI v2 is not covered. Its `@builtin` includes the `subagent` tool, and the v2 output does
-  not remove it, so there only the prompt rule stops a specialist from spawning.
+- Kiro CLI v2 ignores `excludedTools`, and its `@builtin` includes the `subagent` tool. Synth
+  therefore replaces a specialist's `@builtin` with the v2 built-in tools listed one by one,
+  without `subagent`, and drops `toolsSettings.subagent`. The list matches kiro-cli 2.36.0; a
+  built-in tool added in a later release does not reach v2 specialists until the list is updated.
 
 The block covers the runtime's agent-spawning tools only, not shell. A specialist with shell
 access could still start a new agent session by running `kiro-cli` or `claude` from the shell.
@@ -190,10 +192,9 @@ flowchart LR
 ### Why this matters: a real consequence
 
 `k-code-review-workflow` step 6 says to *"spawn `k-architect` in adversarial mode"*. That SOP
-is declared only by `k-developer`, which **cannot spawn `k-architect`** in Kiro CLI v3 or Claude
-Code:
+is declared only by `k-developer`, which **cannot spawn `k-architect` in either runtime**:
 
-- Specialists hold no spawn tool there (see above; Kiro CLI v2 relies on the prompt rule).
+- Specialists hold no spawn tool in either runtime (see above).
 - The core rules tell a specialist to do such steps itself or return them to its caller.
 
 The SOP anticipates this — *"You MUST skip this step if no adversarial CR-review capability is
@@ -375,7 +376,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | Difference | Kiro CLI | Claude Code |
 | --- | --- | --- |
 | Agent name | `konductor` | `konductor` |
-| Cross-agent delegation | only `konductor` declares `subagent`; the mux orchestrators use shell. v3 specialists also have the built-in spawn tools excluded; v2 specialists still get `subagent` from `@builtin` | only `konductor` holds `Agent(...)` |
+| Cross-agent delegation | only `konductor` has `subagent`; the mux orchestrators use shell. Synth also keeps the built-in spawn tools out of specialists (`excludedTools` on v3, an explicit built-in list on v2) | only `konductor` holds `Agent(...)` |
 | MCP servers | declared and launched from `dependencies.mcpRegistry` | requested via tool globs (`mcp__aws-mcp__*`); you configure the server yourself |
 | Tool naming | `fs_read`, `fs_write`, `shell` | `Read`, `Write`, `Edit`, `Bash` |
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |

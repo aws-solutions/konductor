@@ -211,8 +211,7 @@ transmitted. Delete it whenever you like.
 
 Because it always does. `k-code-review-workflow` step 6 tries to spawn `k-architect` for an
 adversarial pass, and **the only agent that owns the SOP cannot spawn the architect**: no
-specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and the core rules forbid it in
-Kiro CLI v2.
+specialist holds a spawn tool in either runtime.
 The SOP is written to skip the step quietly when the capability is missing, so you get standard
 review with no error.
 

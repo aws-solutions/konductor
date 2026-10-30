@@ -182,8 +182,8 @@ The chain itself is runtime-agnostic. What differs is dispatch mechanics:
 
 Functionally the same three SOPs run either way.
 
-Specialists never spawn each other. Kiro CLI v3 and Claude Code enforce this in config; Kiro CLI
-v2 relies on the core rules. A specialist returns to the orchestrator, which routes the next step.
+Specialists never spawn each other in either runtime. A specialist returns to the orchestrator,
+which routes the next step.
 
 ---
 
