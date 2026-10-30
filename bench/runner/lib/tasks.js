@@ -17,6 +17,8 @@ const SUITE_DEFAULTS = {
   autonomy: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 3, parallel: 1 },
   // Tasks borrowed from the other suites; each keeps its own tier and gains "pilot".
   pilot: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 1, parallel: 1 },
+  // Capability trigger and lift runs. `cap` commands always name their arms; this default is only a fallback.
+  cap: { arms: ['v1.2.0'], replicates: 1, parallel: 1 },
 };
 const SUITE_NAMES = Object.keys(SUITE_DEFAULTS);
 
@@ -72,7 +74,7 @@ function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR) {
-  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy or pilot)`);
+  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot or cap)`);
   const file = path.join(benchDir, 'suites', `${name}.json`);
   const fromFile = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks

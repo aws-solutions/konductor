@@ -89,6 +89,8 @@ function armRecords(arms, prepared, errors) {
     warnings: a.warnings,
     mcpSha256: prepared.get(a.id)?.mcpSha256 ?? null,
     modelRewrittenAgents: prepared.get(a.id)?.rewrittenAgents ?? null,
+    armPrefix: a.prefixInfo ?? null,
+    armAgent: a.agentOverride ?? null,
     startupResources: a.vanilla ? builtinStartup(a.runtime ?? 'kiro-cli') : prepared.get(a.id)?.skillInfo?.startup ?? null,
     sopNameSource: prepared.get(a.id)?.skillInfo?.catalog?.sopSource ?? null,
     prepareError: errors.get(a.id) ?? null,

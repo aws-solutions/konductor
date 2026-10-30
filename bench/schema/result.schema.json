@@ -808,6 +808,166 @@
         "boolean",
         "null"
       ]
+    },
+    "capInvocation": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "delegatedTo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "agent",
+              "count"
+            ],
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "findSkillsBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "firstDecision": {
+          "type": "object",
+          "required": [
+            "kind",
+            "name"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "find_skills",
+                "get_skill",
+                "skill",
+                "subagent",
+                "none"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "identified": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requested": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "triggerQuery": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "capId",
+        "queryId",
+        "expect",
+        "rep"
+      ],
+      "properties": {
+        "capId": {
+          "type": "string"
+        },
+        "queryId": {
+          "type": "string"
+        },
+        "split": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expect": {
+          "enum": [
+            "load",
+            "none"
+          ]
+        },
+        "rep": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "variant": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "baseRef": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "baseSha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tree": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "variantHash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ops": {
+          "type": "array"
+        }
+      }
+    },
+    "armPrefix": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "sha256": {
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     }
   }
 }

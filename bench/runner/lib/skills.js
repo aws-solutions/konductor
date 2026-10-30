@@ -6,7 +6,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { SKILLS_SERVER } = require('./stream.js');
+const { SKILLS_SERVER, SUBAGENT_TOOL, subagentTargets } = require('./stream.js');
 const { frontmatter, fmValue } = require('./frontmatter.js');
 
 const SKILL_FIELDS = [
@@ -81,6 +81,44 @@ function queriesOf(input) {
   return Object.entries(input ?? {}).filter(([k, v]) => !k.startsWith('__') && typeof v === 'string' && v.trim()).map(([, v]) => v.trim());
 }
 
+// Merges every rawInput the stream gave one tool call (the call event and its updates).
+function inputsById(events, id) {
+  let input = {};
+  for (const ev of events ?? []) {
+    const u = ev?.type === 'sessionUpdate' ? ev.data?.update : null;
+    if (u?.toolCallId === id && u.rawInput && typeof u.rawInput === 'object') input = { ...input, ...u.rawInput };
+  }
+  return input;
+}
+
+/**
+ * The first capability call of a run, in stream order: a skills-server tool or a subagent call on kiro, the skill or
+ * task tool on opencode. { kind: 'find_skills'|'get_skill'|'skill'|'subagent'|'none', name }.
+ */
+function firstDecisionOf(events, runtime) {
+  const none = { kind: 'none', name: null };
+  if (runtime === 'opencode') {
+    for (const ev of events ?? []) {
+      const p = ev?.type === 'tool_use' ? ev.part : null;
+      if (p?.tool === 'skill') return { kind: 'skill', name: p.state?.input?.name ?? p.state?.input?.skill_name ?? null };
+      if (p?.tool === 'task') return { kind: 'subagent', name: p.state?.input?.subagent_type ?? null };
+    }
+    return none;
+  }
+  for (const ev of events ?? []) {
+    const u = ev?.type === 'sessionUpdate' ? ev.data?.update : null;
+    if (u?.sessionUpdate !== 'tool_call') continue;
+    const meta = u._meta?.kiro;
+    const skillsCall = KIRO_TOOLS.has(meta?.toolName) && meta?.mcpServerName === SKILLS_SERVER;
+    if (!skillsCall && meta?.toolName !== SUBAGENT_TOOL) continue;
+    const input = u.toolCallId ? inputsById(events, u.toolCallId) : u.rawInput ?? {};
+    if (meta.toolName === SUBAGENT_TOOL) { const [n] = subagentTargets(input); return { kind: 'subagent', name: n === '(unnamed)' ? null : n }; }
+    if (meta.toolName === 'get_skill') return { kind: 'get_skill', name: typeof input.name === 'string' ? input.name.trim() || null : null };
+    return { kind: 'find_skills', name: queriesOf(input)[0] ?? null };
+  }
+  return none;
+}
+
 /**
  * What a run loaded, from its event stream. `runtime` is 'kiro-cli' or 'opencode'.
  * A load counts only when the call returned text; errors, empty results and calls with no answer are failures.
@@ -88,7 +126,7 @@ function queriesOf(input) {
  */
 function extractSkills(events, runtime) {
   const oc = runtime === 'opencode';
-  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, requested: [] };
+  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], firstDecision: firstDecisionOf(events, runtime) };
   const byName = new Map();
   const requested = new Set();
   const load = (rawName, via, bytes) => {
@@ -104,6 +142,7 @@ function extractSkills(events, runtime) {
       out.skillQueries.push(...queriesOf(c.input));
       if (c.output == null || kiroErrored(c)) { out.skillCallsFailed++; continue; }
       const texts = textsOf(c.output);
+      out.findSkillsBytes += bytesOfTexts(texts);
       let parsed = null;
       try { parsed = JSON.parse(texts[0]); } catch { /* not JSON: any text counts as a result */ }
       if (!texts.length || (Array.isArray(parsed) && parsed.length === 0)) out.findSkillsEmpty++;
@@ -289,9 +328,9 @@ const safe = (fn) => { try { return fn(); } catch { return null; } };
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
 // Per-arm facts read once from a trial install: where the agent definition is, and what the arm's source tree lists.
-function kiroSkillInfo(home, exportDir) {
+function kiroSkillInfo(home, exportDir, agentName = 'konductor') {
   return safe(() => {
-    const agent = readJson(path.join(home, '.kiro/agents/konductor.json'));
+    const agent = readJson(path.join(home, '.kiro/agents', `${agentName}.json`));
     return {
       catalog: catalogFrom(listCatalogDir(exportDir), agent),
       startup: startupKiro(agent, { contextDirs: [path.join(home, '.kiro/context'), ...(exportDir ? [path.join(exportDir, 'context')] : [])] }),
@@ -306,6 +345,26 @@ function opencodeSkillInfo(cfgDir, exportDir) {
 /** Called by a harness after the stream is parsed. Never throws: tracking must not affect a run. */
 function captureSkills({ runtime, events, arm, ctx }) {
   return safe(() => ({ extraction: extractSkills(events, runtime), info: arm?.vanilla ? null : ctx?.skillInfo?.get(arm?.id) ?? null }));
+}
+
+/** SOPs whose name appears in the final text next to an `@` or `/sop-` invocation: the pointer the orchestrator is told to give. */
+function identifiedSops(finalText, sopNames) {
+  if (typeof finalText !== 'string' || !finalText) return [];
+  const esc = (n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (sopNames ?? []).filter((n) => new RegExp(`(?:@[\\w./:-]*|/sop-)${esc(n)}(?![\\w-])`, 'i').test(finalText));
+}
+
+/** The result.json `capInvocation` block; null when neither the stream aggregate nor the skills extraction exists. */
+function capInvocationOf({ agg, extraction, sops = [] }) {
+  if (!agg && !extraction) return null;
+  const delegatedTo = Object.entries(agg?.delegatedTo ?? {}).map(([agent, count]) => ({ agent, count })).sort((a, b) => b.count - a.count || (a.agent < b.agent ? -1 : 1));
+  return {
+    delegatedTo,
+    findSkillsBytes: extraction?.findSkillsBytes ?? 0,
+    requested: extraction?.requested ?? [],
+    firstDecision: extraction?.firstDecision ?? { kind: 'none', name: null },
+    identified: identifiedSops(agg?.finalText, sops),
+  };
 }
 
 /** The result.json fields. All null when nothing was captured. */
@@ -331,4 +390,5 @@ function resultFields({ extraction, info, task, arm }) {
 module.exports = {
   SKILL_FIELDS, extractSkills, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
   startupKiro, startupOpencode, builtinStartup, kiroSkillInfo, opencodeSkillInfo, captureSkills, resultFields, normalizeUri, has,
+  firstDecisionOf, identifiedSops, capInvocationOf,
 };

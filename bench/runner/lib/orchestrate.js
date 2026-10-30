@@ -165,6 +165,7 @@ function prepareAll({ arms, ctx, log, allowPartial = false }) {
     try {
       const harness = harnessFor(arm);
       const p = harness.prepareArm(arm, ctx);
+      p.entryAgent = arm.agentOverride ?? null;
       p.rewrittenAgents = harness.trialInstall(p, ctx);
       (ctx.skillInfo ??= new Map()).set(arm.id, p.skillInfo ?? null);
       prepared.set(arm.id, p);

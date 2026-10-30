@@ -33,6 +33,18 @@ function mcpOutputIsError(update) {
   return Array.isArray(items) && items.some((i) => i?.Json?.isError === true);
 }
 
+// The agents a subagent call hands work to: the role of each pipeline stage, else a single role/agent field.
+// A call that names none is counted as (unnamed) so delegatedTo adds up to subagentCalls.
+function subagentTargets(input) {
+  const names = [];
+  const pick = (o) => [o?.role, o?.agent, o?.agent_name, o?.agentName].find((v) => typeof v === 'string' && v.trim());
+  if (input && typeof input === 'object') {
+    if (Array.isArray(input.stages)) for (const st of input.stages) { const n = pick(st); if (n) names.push(n.trim()); }
+    if (!names.length) { const n = pick(input); if (n) names.push(n.trim()); }
+  }
+  return names.length ? names : ['(unnamed)'];
+}
+
 const APPROVAL_PHRASE = /\b(shall i|should i|would you like|do you want|want me to|please confirm|please let me know (which|whether|if)|before i proceed|awaiting your)\b/i;
 // A lead-in such as "A few questions before I start:" makes the list under it an ask.
 const ANNOUNCES_ASK = /\b(questions?|clarif\w+|need to know|need your input|please (confirm|tell me|let me know|specify|choose|pick))\b[^?]*:\s*$/i;
@@ -100,6 +112,7 @@ function aggregateStream(events) {
     toolCalls: 0,
     workToolCalls: 0,
     subagentCalls: 0,
+    delegatedTo: {},
     toolNames: {},
     skillsMcp: { calls: 0, errors: 0 },
     skillsMcpOk: null,
@@ -111,6 +124,10 @@ function aggregateStream(events) {
   const seenToolCalls = new Set();
   const skillCallIds = new Set();
   const skillErrorIds = new Set();
+  const subagentInputs = new Map();
+  const addInput = (id, input) => {
+    if (id && subagentInputs.has(id) && input && typeof input === 'object') subagentInputs.set(id, { ...subagentInputs.get(id), ...input });
+  };
   let lastTurnDurationMs = null;
   for (const ev of events) {
     const d = ev.data || {};
@@ -135,16 +152,20 @@ function aggregateStream(events) {
       case 'sessionUpdate': {
         const u = d.update || {};
         if (u.sessionUpdate === 'tool_call_update') {
+          addInput(u.toolCallId, u.rawInput);
           if (skillCallIds.has(u.toolCallId) && (u.status === 'failed' || mcpOutputIsError(u))) skillErrorIds.add(u.toolCallId);
           break;
         }
         if (u.sessionUpdate !== 'tool_call') break;
-        if (u.toolCallId && seenToolCalls.has(u.toolCallId)) break;
+        if (u.toolCallId && seenToolCalls.has(u.toolCallId)) { addInput(u.toolCallId, u.rawInput); break; }
         if (u.toolCallId) seenToolCalls.add(u.toolCallId);
         const name = toolNameOf(u);
         out.toolCalls++;
         out.toolNames[name ?? 'unknown'] = (out.toolNames[name ?? 'unknown'] || 0) + 1;
-        if (name === SUBAGENT_TOOL) out.subagentCalls++;
+        if (name === SUBAGENT_TOOL) {
+          out.subagentCalls++;
+          subagentInputs.set(u.toolCallId ?? `anon-${out.subagentCalls}`, u.rawInput && typeof u.rawInput === 'object' ? { ...u.rawInput } : {});
+        }
         if (!OVERHEAD_TOOLS.has(name)) out.workToolCalls++;
         if (SKILL_TOOLS.has(name) && u._meta?.kiro?.mcpServerName === SKILLS_SERVER) {
           out.skillsMcp.calls++;
@@ -163,6 +184,7 @@ function aggregateStream(events) {
   }
   out.sessionId = out.sessionIds[0] ?? null;
   out.turnDurationMs = out.runFinishedStatus === null ? null : lastTurnDurationMs;
+  for (const input of subagentInputs.values()) for (const n of subagentTargets(input)) out.delegatedTo[n] = (out.delegatedTo[n] || 0) + 1;
   out.skillsMcp.errors = skillErrorIds.size;
   if (out.skillsMcp.calls > 0) out.skillsMcpOk = out.skillsMcp.errors < out.skillsMcp.calls;
   out.askedUser = detectAskedUser(out);
@@ -178,6 +200,8 @@ function mergeAggregates(aggs) {
   const last = aggs.at(-1);
   const toolNames = {};
   for (const a of aggs) for (const [k, v] of Object.entries(a.toolNames)) toolNames[k] = (toolNames[k] || 0) + v;
+  const delegatedTo = {};
+  for (const a of aggs) for (const [k, v] of Object.entries(a.delegatedTo || {})) delegatedTo[k] = (delegatedTo[k] || 0) + v;
   const sessionIds = [...new Set(aggs.flatMap((a) => a.sessionIds))];
   const durations = aggs.map((a) => a.turnDurationMs).filter((v) => typeof v === 'number');
   const skillsMcp = { calls: aggs.reduce((n, a) => n + a.skillsMcp.calls, 0), errors: aggs.reduce((n, a) => n + a.skillsMcp.errors, 0) };
@@ -193,6 +217,7 @@ function mergeAggregates(aggs) {
     toolCalls: sumOf(aggs, 'toolCalls'),
     workToolCalls: sumOf(aggs, 'workToolCalls'),
     subagentCalls: sumOf(aggs, 'subagentCalls'),
+    delegatedTo,
     toolNames,
     skillsMcp,
     skillsMcpOk: skillsMcp.calls > 0 ? skillsMcp.errors < skillsMcp.calls : null,
@@ -221,4 +246,4 @@ function sessionModels(session) {
   return (session?.session_state?.conversation_metadata?.user_turn_metadatas || []).map((t) => t.model ?? null);
 }
 
-module.exports = { sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
+module.exports = { subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };

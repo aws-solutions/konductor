@@ -17,18 +17,20 @@ const { parseStream } = require('./stream.js');
 const { scanStream, fixRecall, contaminationFlags } = require('./contamination.js');
 const { newConversation } = require('./autonomy.js');
 const { makeCreditMeter } = require('./credit-watch.js');
+const { makeStopWatcher } = require('./stop-watch.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
 // Spawns in its own process group so a timeout kills child tools too. The group is
 // registered so a runner interrupted by a signal can kill it.
-function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, creditLimit = null, creditPollMs = 1000 }) {
+function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, creditLimit = null, creditPollMs = 1000, stop = null }) {
   return new Promise((resolve) => {
     const out = fs.openSync(stdoutPath, 'w');
     const err = fs.openSync(stderrPath, 'w');
     const started = Date.now();
     let timedOut = false;
     let limitHit = false;
+    let stopped = null;
     let metered = null;
     let child;
     try {
@@ -44,17 +46,19 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
       if (child.pid) procs.untrackGroup(child.pid);
       clearInterval(watcher);
       fs.closeSync(out); fs.closeSync(err);
-      resolve({ ...result, credits: meter ? meter.poll() : null, creditLimitHit: limitHit });
+      resolve({ ...result, credits: meter ? meter.poll() : null, creditLimitHit: limitHit, stopped });
     };
-    // Kills the process group once the credits metered so far pass the limit. The run is then recorded as censored.
+    // Kills the process group once the credits metered so far pass the limit, or the stop watcher has a decision.
+    // The run is then recorded as censored.
     const meter = creditLimit == null ? null : makeCreditMeter(stdoutPath);
-    const watcher = meter ? setInterval(() => {
-      if (limitHit || meter.poll() <= creditLimit) return;
-      limitHit = true;
-      metered = meter.poll();
+    const watcher = meter || stop ? setInterval(() => {
+      if (limitHit || stopped) return;
+      if (stop) stopped = stop.poll();
+      if (!stopped && (!meter || meter.poll() <= creditLimit)) return;
+      if (!stopped) { limitHit = true; metered = meter.poll(); }
       kill('SIGTERM');
       setTimeout(() => kill('SIGKILL'), 5000).unref();
-    }, creditPollMs) : null;
+    }, stop ? Math.min(creditPollMs, 250) : creditPollMs) : null;
     const timer = setTimeout(() => {
       timedOut = true;
       kill('SIGTERM');
@@ -201,15 +205,24 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
         fs.appendFileSync(path.join(outDir, 'command.txt'), `--- turn ${turn} (resumed) ---\n${cmd.display}\n`);
       }
       const w = iso.wrap(cmd.file, cmd.args);
+      const stopFile = path.join(outDir, streamFile(multi, turn));
+      const stop = ctx.stopOn || ctx.maxToolCalls ? makeStopWatcher(stopFile, { runtime: harness.id, stopOn: ctx.stopOn ?? 'end_turn', maxToolCalls: ctx.maxToolCalls ?? null }) : null;
       const exec = await spawnWithTimeout(w.file, w.args, {
         cwd, env, timeoutMs: Math.max(1, remaining),
         stdoutPath: path.join(outDir, streamFile(multi, turn)), stderrPath: path.join(outDir, stderrFile(multi, turn)),
-        creditLimit: ctx.runCreditLimit == null ? null : Math.max(0, ctx.runCreditLimit - spent), creditPollMs: ctx.creditPollMs,
+        creditLimit: ctx.runCreditLimit == null ? null : Math.max(0, ctx.runCreditLimit - spent), creditPollMs: ctx.creditPollMs, stop,
       });
       spent += exec.credits ?? 0;
+      if (exec.stopped?.reason === 'end_turn') {
+        // The turn was complete; only leftover processes were stopped.
+        exec.exitCode = 0;
+        exec.error = null;
+      } else if (exec.stopped) {
+        exec.error = `stopped early: ${exec.stopped.reason} (${exec.stopped.detail})`;
+      }
       if (exec.creditLimitHit) exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${spent.toFixed(3)} credits`;
       execs.push(exec);
-      if (exec.creditLimitHit) break;
+      if (exec.creditLimitHit || (exec.stopped && exec.stopped.reason !== 'end_turn')) break;
       if (!multi) break;
       const clean = exec.exitCode === 0 && !exec.timedOut && !exec.error;
       const summary = clean ? harness.turnSummary(readIfPresent(path.join(outDir, streamFile(multi, turn)))) : null;
@@ -230,6 +243,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
     exitCode: last.exitCode,
     timedOut: execs.some((e) => e.timedOut),
     creditLimitHit: execs.some((e) => e.creditLimitHit),
+    stopped: execs.map((e) => e.stopped).find((x) => x && x.reason !== 'end_turn') ?? null,
     wallClockMs: execs.reduce((n, e) => n + (e.wallClockMs ?? 0), 0),
     error: last.error ?? null,
     startedAt,
@@ -293,6 +307,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
         }
       }
       if (exec?.creditLimitHit) meta.flags.push('creditLimit');
+      if (exec?.stopped) meta.flags.push('earlyStopped');
       if (harness.finalize && harness.finalize(outDir, ctx) > 0) meta.flags.push('credsRedacted');
       result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
     }

@@ -13,6 +13,7 @@ const { crossCheckCredits } = require('../result.js');
 const { buildChildEnv } = require('../env.js');
 const sandbox = require('../sandbox.js');
 const skills = require('../skills.js');
+const { promptFor } = require('../arm-opts.js');
 
 const id = 'kiro-cli';
 
@@ -30,7 +31,7 @@ function kiroArgs({ arm, task, config, resume = null }) {
   // Exit 3 instead of running without the skills server.
   if (!arm.vanilla) args.push('--require-mcp-startup');
   if (resume) args.push(...(resume.sessionId ? ['--resume-id', resume.sessionId] : ['--resume']));
-  args.push(resume ? resume.prompt : task.prompt);
+  args.push(resume ? resume.prompt : promptFor(arm, task));
   return args;
 }
 
@@ -114,7 +115,10 @@ function trialInstall(prepared, ctx) {
   try {
     sandbox.installInto(home, prepared, ctx.config.agentEngine);
     const rewritten = sandbox.normalizeAgentModels(home, ctx.config.model);
-    prepared.skillInfo = skills.kiroSkillInfo(home, prepared.exportDir);
+    if (prepared.entryAgent && !fs.existsSync(path.join(home, '.kiro/agents', `${prepared.entryAgent}.json`))) {
+      throw new Error(`--arm-agent: agent "${prepared.entryAgent}" is not installed by this arm`);
+    }
+    prepared.skillInfo = skills.kiroSkillInfo(home, prepared.exportDir, prepared.entryAgent ?? 'konductor');
     return rewritten;
   } finally {
     fs.rmSync(home, { recursive: true, force: true });

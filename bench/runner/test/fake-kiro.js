@@ -32,7 +32,10 @@ for (const [f, text] of Object.entries(tc.files || {})) { fs.mkdirSync(path.dirn
 const sid = cfg.sessionId || 's1';
 const finish = () => {
   ev('runStarted', { engine: 'v2' });
-  (tc.toolCalls || []).forEach((c, i) => ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'tool_call', toolCallId: 'fake-' + i, title: 'x', rawInput: c.rawInput, _meta: { kiro: { toolName: c.toolName } } } }));
+  (tc.toolCalls || []).forEach((c, i) => {
+    ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'tool_call', toolCallId: 'fake-' + i, title: 'x', rawInput: c.rawInput, _meta: { kiro: { toolName: c.toolName, ...(c.mcpServerName ? { mcpServerName: c.mcpServerName } : {}) } } } });
+    if (c.rawOutput !== undefined) ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'tool_call_update', toolCallId: 'fake-' + i, status: 'completed', rawInput: c.rawInput, rawOutput: c.rawOutput } });
+  });
   ev('metadata', { sessionId: sid, turnDurationMs: 100, meteringUsage: [{ value: tc.credits ?? 0.5, unit: 'credit' }] });
   if (tc.hangAfterMetering) { setTimeout(() => {}, 60000); return; }
   ev('runFinished', { sessionId: sid, status: 'success', stopReason: tc.stopReason ?? 'end_turn', finalText: tc.finalText ?? 'done', finalTextTruncated: false });

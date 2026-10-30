@@ -8,6 +8,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { resolveArm } = require('./arms.js');
+const { applyArmOptions, attachVariant } = require('./arm-opts.js');
+const { STOP_ON } = require('./stop-watch.js');
 const { harnessFor, opencode: oc } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE } = require('./harness/runtime.js');
 const { readProfile } = require('./harness/opencode-creds.js');
@@ -129,6 +131,8 @@ async function cmdRun(opts) {
   const parallel = opts.parallel ? intOpt(opts.parallel, 'parallel') : suite.parallel;
   const REPO = repoRootOf(opts);
   const arms = armIds.map((id) => resolveArm(id, REPO));
+  const armOpts = applyArmOptions(arms, opts);
+  const variants = arms.map(attachVariant).filter(Boolean);
   const runtimes = [...new Set(arms.map((a) => harnessFor(a).id))];
   const agentEngine = engineOpt(opts, runtimes);
   if (prepareOnly) return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
@@ -147,6 +151,12 @@ async function cmdRun(opts) {
     if (opts['run-credit-limit'] === true || !(runCreditLimit > 0)) throw new Error('--run-credit-limit must be a positive number');
     if (isOc) throw new Error('--run-credit-limit applies to kiro-cli arms only; opencode runs are costed in USD');
   }
+  let stopOn = null;
+  if (opts['stop-on'] !== undefined) {
+    stopOn = opts['stop-on'];
+    if (!STOP_ON.includes(stopOn)) throw new Error(`--stop-on takes ${STOP_ON.slice(0, -1).join(', ')} or ${STOP_ON.at(-1)}`);
+  }
+  const maxToolCalls = opts['max-tool-calls'] === undefined ? null : intOpt(opts['max-tool-calls'], 'max-tool-calls');
   const seed = opts.seed === undefined ? Date.now() % 2147483647 : intOpt(opts.seed, 'seed', 0);
   const isolate = opts.isolate || 'auto';
   if (!ISOLATE_MODES.includes(isolate)) throw new Error(`--isolate must be one of ${ISOLATE_MODES.join(', ')}`);
@@ -165,7 +175,7 @@ async function cmdRun(opts) {
   const outDir = path.resolve(opts.out || path.join(REPO, 'bench', 'results', new Date().toISOString().replace(/[:.]/g, '-')));
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
-  const authDb = isOc ? null : sandbox.defaultAuthDb();
+  const authDb = isOc ? null : opts['auth-db'] && opts['auth-db'] !== true ? path.resolve(opts['auth-db']) : sandbox.defaultAuthDb();
   if (authDb && !fs.existsSync(authDb)) throw new Error(`kiro-cli auth database not found: ${authDb} (log in with kiro-cli first)`);
   const awsCredsFile = isOc ? path.resolve(need(opts, 'aws-creds-file')) : null;
   const awsProfile = isOc ? (opts['aws-profile'] && opts['aws-profile'] !== true ? opts['aws-profile'] : 'bench') : null;
@@ -209,6 +219,8 @@ async function cmdRun(opts) {
     ctx.hide = [...list(opts.hide), ...list(process.env.BENCH_HIDE_EXTRA)];
     ctx.mask = maskPaths({ benchDir, extraDirs, outDir, awsCredsFile });
     ctx.runCreditLimit = runCreditLimit;
+    ctx.stopOn = stopOn;
+    ctx.maxToolCalls = maxToolCalls;
     ctx.keyRoots = [benchDir];
     ctx.tripwire = {
       roots: [
@@ -231,7 +243,8 @@ async function cmdRun(opts) {
     const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main');
     runConfig = {
       suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, [isOc ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
-      runCreditLimit, extraTasks: extraDirs,
+      runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent,
+      variants: variants.map((v) => ({ ...v })),
       order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
       timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
       ...config, ...ctx.envInfo,
@@ -270,6 +283,10 @@ async function cmdRun(opts) {
       startedAt: new Date().toISOString(),
     };
     fs.writeFileSync(path.join(outDir, 'run-config.json'), JSON.stringify(runConfig, null, 2) + '\n');
+    if (variants.length) {
+      fs.mkdirSync(path.join(outDir, 'variants'), { recursive: true });
+      for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
+    }
     const envFor = (konductor) => (isOc
       ? oc.envSetup({ arm: { vanilla: !konductor }, config, ctx, home: '<run-home>' })
       : buildChildEnv(process.env, { home: '<run-home>', agentEngine: config.agentEngine, keep: envKeep, konductor }));

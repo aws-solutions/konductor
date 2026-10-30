@@ -27,7 +27,8 @@
         "design",
         "hard",
         "real",
-        "autonomy"
+        "autonomy",
+        "trigger"
       ]
     },
     "target": {
@@ -140,7 +141,8 @@
           "hard",
           "real",
           "autonomy",
-          "pilot"
+          "pilot",
+          "cap"
         ]
       }
     },
@@ -211,6 +213,52 @@
         },
         "noQuestionNeeded": {
           "type": "boolean"
+        }
+      }
+    },
+    "triggerQuery": {
+      "type": "object",
+      "required": [
+        "capId",
+        "queryId",
+        "expect"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "capId": {
+          "type": "string",
+          "pattern": "^(skill|agent|sop|context):[a-z0-9][a-z0-9._-]*$"
+        },
+        "queryId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "split": {
+          "enum": [
+            "train",
+            "heldout",
+            "reserve"
+          ]
+        },
+        "expect": {
+          "enum": [
+            "load",
+            "none"
+          ]
+        }
+      }
+    },
+    "bundleLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxFileChars": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "maxBundleChars": {
+          "type": "integer",
+          "minimum": 1000
         }
       }
     }

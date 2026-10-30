@@ -16,6 +16,7 @@ const { aggregateEvents, queryRollup, totalTokens, zeroTokens } = require('./ope
 const { installCredentials, removeCredentials, readProfile } = require('./opencode-creds.js');
 const { scrubTree } = require('../hygiene.js');
 const skills = require('../skills.js');
+const { promptFor } = require('../arm-opts.js');
 
 const id = 'opencode';
 const VERSION = '1.19.5';
@@ -147,7 +148,7 @@ function buildCommand({ arm, task, config, ctx, cwd, resume = null }) {
   const args = ['run', '--dir', cwd, '-m', `${PROVIDER}/${config.model}`, '--variant', variantOf(config.effort), '--format', 'json', '--auto', '--title', TITLE];
   if (arm.agent) args.push('--agent', arm.agent);
   if (resume) args.push(...(resume.sessionId ? ['-s', resume.sessionId] : ['-c']));
-  args.push(resume ? resume.prompt : task.prompt);
+  args.push(resume ? resume.prompt : promptFor(arm, task));
   return { file: ctx.opencode.bin, args, display: `opencode ${args.map((a) => JSON.stringify(a)).join(' ')}` };
 }
 
@@ -191,7 +192,18 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
   const toolCalls = rollup ? rollup.toolCalls : a.toolCalls;
   const subagentCalls = rollup ? rollup.subagentCalls : (a.toolNames.task || 0);
   const finalText = a.finalText === null ? null : a.finalText.slice(0, 20000);
+  // Only the parent session is in the stream; delegations by subagents are not visible here.
+  const delegatedTo = {};
+  const seenTasks = new Set();
+  for (const ev of events) {
+    const p = ev?.type === 'tool_use' ? ev.part : null;
+    if (p?.tool !== 'task' || (p.callID && seenTasks.has(p.callID))) continue;
+    if (p.callID) seenTasks.add(p.callID);
+    const n = p.state?.input?.subagent_type ?? '(unnamed)';
+    delegatedTo[n] = (delegatedTo[n] || 0) + 1;
+  }
   acc.agg = {
+    delegatedTo,
     sessionId: a.sessionId, sessionIds: a.sessionId ? [a.sessionId] : [], runFinishedStatus: a.runFinishedStatus, stopReason: a.stopReason,
     credits: 0, meteringEntries: 0, nonCreditUnits: [], turnDurationMs: a.turnDurationMs, contextUsagePercentage: null,
     toolCalls, workToolCalls: toolCalls - subagentCalls, subagentCalls, toolNames, skillsMcpOk: null,

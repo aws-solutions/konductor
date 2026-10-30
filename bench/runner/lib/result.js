@@ -2,7 +2,7 @@
 'use strict';
 
 const { loadSchema, validate } = require('./schema.js');
-const { resultFields } = require('./skills.js');
+const { resultFields, capInvocationOf } = require('./skills.js');
 const { aggregateHidden, aggregateRegression, aggregateGroup } = require('./check-matcher.js');
 const { autonomyFields } = require('./autonomy.js');
 const { provenanceOf } = require('./runconfig.js');
@@ -138,6 +138,10 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     infraError: meta.infraError ?? null,
     error,
     ...resultFields({ extraction: skills?.extraction ?? null, info: skills?.info ?? null, task, arm }),
+    capInvocation: capInvocationOf({ agg, extraction: skills?.extraction ?? null, sops: skills?.info?.catalog?.sops ?? [] }),
+    triggerQuery: task.triggerQuery ? { ...task.triggerQuery, rep: replicate } : null,
+    variant: arm.variant ?? null,
+    armPrefix: arm.prefixInfo ? { ...arm.prefixInfo } : null,
     ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),
   };
 }
