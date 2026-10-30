@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // synth_claude_preload_e2e.rs: runs the real `konductor synth` over a
-// copy of this repository's own agents/skills tree and checks the
-// Claude Code skill preload (`clientConfig.claudeCli.skills`) of every
-// agent. Claude Code injects each preloaded SKILL.md into every spawned
-// subagent, so this test fails if any agent grows past the budget the
-// synth lint warns about.
+// copy of this repository's own agents/skills tree, adds fixture agents
+// whose Claude Code skill preload (`clientConfig.claudeCli.skills`) is
+// too large, and checks what the synth preload lint reports for them.
+// It also fails if any agent in this repo grows past the lint's limits.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-
-const BUDGET_BYTES: u64 = 32_768;
-const NAME_CAP: usize = 32;
 
 fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_konductor")
@@ -118,18 +114,6 @@ fn shipped_skill_bytes(dir: &Path, name: &str) -> u64 {
         .len()
 }
 
-fn group_thousands(n: u64) -> String {
-    let digits = n.to_string();
-    let mut out = String::new();
-    for (i, ch) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            out.push(',');
-        }
-        out.push(ch);
-    }
-    out
-}
-
 fn write_fixture_agent(dir: &Path, name: &str, claude_skills: &[String]) {
     let spec = serde_json::json!({
         "schemaVersion": "1",
@@ -145,26 +129,6 @@ fn write_fixture_agent(dir: &Path, name: &str, claude_skills: &[String]) {
 }
 
 #[test]
-fn every_agent_preload_is_under_budget_and_cap() {
-    let dir = repo_copy("budget");
-    synth(&dir, &[]);
-    let preloads = claude_preloads(&dir);
-    assert!(!preloads.is_empty(), "expected Claude agents in the repo");
-    for (agent, names) in preloads {
-        let bytes: u64 = names.iter().map(|n| shipped_skill_bytes(&dir, n)).sum();
-        assert!(
-            bytes <= BUDGET_BYTES,
-            "agent '{agent}' preloads {bytes} B, over the {BUDGET_BYTES} B budget"
-        );
-        assert!(
-            names.len() <= NAME_CAP,
-            "agent '{agent}' preloads {} names, over the {NAME_CAP}-name cap",
-            names.len()
-        );
-    }
-}
-
-#[test]
 fn synth_emits_no_preload_warning_for_this_repo() {
     let dir = repo_copy("no-warning");
     let output = synth(&dir, &[]);
@@ -176,18 +140,29 @@ fn synth_emits_no_preload_warning_for_this_repo() {
 fn synth_warns_when_a_fixture_agent_exceeds_the_byte_budget() {
     let dir = repo_copy("fat");
     write_fixture_agent(&dir, "k-fixture-fat", &["infra-validation".to_string()]);
-    let output = synth(&dir, &[]);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    let expected = group_thousands(shipped_skill_bytes(&dir, "infra-validation"));
-    assert!(
-        stderr.contains(&format!("agent 'k-fixture-fat' preloads {expected} B")),
-        "got: {stderr}"
+    let output = synth(&dir, &["--json"]);
+    let summary: serde_json::Value =
+        serde_json::from_str(String::from_utf8_lossy(&output.stdout).trim()).unwrap();
+    let entry = summary["claude_preload"]
+        .as_array()
+        .expect("claude_preload array")
+        .iter()
+        .find(|e| e["agent"] == "k-fixture-fat")
+        .expect("no claude_preload entry for k-fixture-fat");
+    assert_eq!(
+        entry["bytes"].as_u64(),
+        Some(shipped_skill_bytes(&dir, "infra-validation"))
     );
-    assert!(stderr.contains("budget 32,768 B"), "got: {stderr}");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let warning = stderr
+        .lines()
+        .find(|line| line.contains("agent 'k-fixture-fat' preloads"))
+        .unwrap_or_else(|| panic!("no preload warning for k-fixture-fat, got: {stderr}"));
+    assert!(warning.contains("budget"), "got: {warning}");
 }
 
 #[test]
-fn synth_warns_and_names_dropped_skills_past_the_name_cap() {
+fn synth_fails_and_names_dropped_skills_past_the_name_cap() {
     let dir = repo_copy("wide");
     let mut skill_names: Vec<String> = std::fs::read_dir(dir.join("skills"))
         .unwrap()
@@ -199,8 +174,15 @@ fn synth_warns_and_names_dropped_skills_past_the_name_cap() {
     skill_names.truncate(33);
     assert_eq!(skill_names.len(), 33, "repo needs at least 33 skills");
     write_fixture_agent(&dir, "k-fixture-wide", &skill_names);
-    let output = synth(&dir, &[]);
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let from = dir.display().to_string();
+    let output = run_konductor(&dir, &sink, &["synth", "--from", from.as_str()]);
     let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(64),
+        "expected EX_USAGE; stderr: {stderr}"
+    );
     assert!(
         stderr.contains(&format!("1 would be dropped: {}", skill_names[32])),
         "got: {stderr}"
