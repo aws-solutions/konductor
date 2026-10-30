@@ -7,6 +7,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { SKILLS_SERVER } = require('./stream.js');
+const { frontmatter, fmValue } = require('./frontmatter.js');
 
 const SKILL_FIELDS = [
   'skillsLoaded', 'skillQueries', 'sopsLoaded', 'skillBytesLoaded', 'skillCallsFailed', 'findSkillsCalls', 'findSkillsEmpty',
@@ -249,9 +250,6 @@ function startupKiro(agent, { contextDirs = [] } = {}) {
     note: 'AGENTS.md and skill globs resolve against the run cwd, so their size is not recorded',
   }, resources);
 }
-
-const frontmatter = (text) => /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? '';
-const fmValue = (fm, key) => new RegExp(`^${key}:\\s*(.*)$`, 'm').exec(fm)?.[1].trim() ?? '';
 
 /**
  * opencode loads the primary agent file and a skill index (name and description of every skill) at spawn.
