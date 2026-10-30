@@ -252,8 +252,6 @@ Based on artifact analysis:
 
 Continue with Design Table Schema, Design Indexes, and Generate Deliverables steps from Standalone Mode workflow.
 
-Read `references/aws-best-practices.md` before choosing keys and indexes. Always read its core subsections, and read a feature subsection only when the design uses that feature; both lists are under AWS Best Practices below.
-
 ## AWS Best Practices
 
 The AWS best practices catalogue holds two kinds of subsection.
@@ -282,8 +280,6 @@ Feature subsections apply only when the design uses the feature:
 - Global Tables (Multi-Region Replication)
 
 **Design Rule:** Design tables so ALL production queries use GetItem or Query, NEVER Scan.
-
-Read `references/aws-best-practices.md` before choosing keys and indexes. Always read its core subsections, and read a feature subsection only when the design uses that feature; both lists are under AWS Best Practices below.
 
 ## Output Format Template
 
