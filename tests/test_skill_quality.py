@@ -443,6 +443,37 @@ def test_print_baseline_round_trips():
     assert parsed["_comment"] == sq.BASELINE_COMMENT
 
 
+def _grown_tree(tmp_path, monkeypatch):
+    """A tree whose 'big' skill is over the committed ceiling of 110 lines."""
+    skills = tmp_path / "skills"
+    _skill(skills, name="big", body="x\n" * 120)
+    baseline_path = tmp_path / "baseline.json"
+    baseline_path.write_text(sq.render_baseline(_baseline({"big": {"lines": 110}})), encoding="utf-8")
+    monkeypatch.setattr(sq, "SKILLS_DIR", skills)
+    monkeypatch.setattr(sq, "BASELINE_PATH", baseline_path)
+    return baseline_path
+
+
+def test_print_baseline_refuses_growth(tmp_path, monkeypatch, capsys):
+    _grown_tree(tmp_path, monkeypatch)
+    assert sq.main(["--print-baseline"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "skills.big.lines raised from 110 to 124" in captured.err
+
+
+def test_print_baseline_allow_growth_prints(tmp_path, monkeypatch, capsys):
+    _grown_tree(tmp_path, monkeypatch)
+    assert sq.main(["--print-baseline", "--allow-growth"]) == 0
+    assert json.loads(capsys.readouterr().out)["skills"] == {"big": {"lines": 124}}
+
+
+def test_print_baseline_refuses_a_truncated_baseline(tmp_path, monkeypatch, capsys):
+    _grown_tree(tmp_path, monkeypatch).write_text("", encoding="utf-8")
+    assert sq.main(["--print-baseline"]) == 1
+    assert "temp file" in capsys.readouterr().err
+
+
 def test_build_baseline_records_exact_over_threshold_values(tmp_path):
     _skill(tmp_path, name="big", body="x\n" * 120)
     _skill(tmp_path, name="small")

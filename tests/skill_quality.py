@@ -10,7 +10,8 @@ Needs PyYAML. Without it, run: uvx --with pyyaml pytest -q tests/
 
 CLI (run from anywhere):
   python3 tests/skill_quality.py --scorecard
-  python3 tests/skill_quality.py --print-baseline > tests/skill-quality-baseline.json
+  python3 tests/skill_quality.py --print-baseline > /tmp/b.json && mv /tmp/b.json tests/skill-quality-baseline.json
+  python3 tests/skill_quality.py --print-baseline --allow-growth   (only after lowering a threshold)
   python3 tests/skill_quality.py --check-ratchet OLD_BASELINE.json
 """
 from __future__ import annotations
@@ -378,7 +379,8 @@ def _positive_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
-def load_baseline(path: Path = BASELINE_PATH) -> dict:
+def load_baseline(path: Path | None = None) -> dict:
+    path = path or BASELINE_PATH
     try:
         baseline = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
@@ -489,14 +491,37 @@ def _scorecard() -> int:
     return 0
 
 
-def _print_baseline() -> int:
+def _print_baseline(allow_growth: bool) -> int:
     thresholds, tolerance = _baseline_limits()
     try:
-        output = render_baseline(build_baseline(SKILLS_DIR, thresholds, tolerance))
+        built = build_baseline(SKILLS_DIR, thresholds, tolerance)
     except (BaselineError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    sys.stdout.write(output)
+    if not allow_growth:
+        if not BASELINE_PATH.exists():
+            violations = []
+        else:
+            try:
+                violations = check_ratchet(load_baseline(), built)
+            except BaselineError as error:
+                # Redirecting straight onto the baseline truncates it before it is read.
+                print(
+                    f"error: committed baseline is unreadable ({error}); write the output "
+                    "to a temp file, then move it into place",
+                    file=sys.stderr,
+                )
+                return 1
+        if violations:
+            for line in violations:
+                print(f"ratchet: {line}", file=sys.stderr)
+            print(
+                "error: the new baseline would grow; slim the skill instead, or pass "
+                "--allow-growth if a threshold was lowered on purpose",
+                file=sys.stderr,
+            )
+            return 1
+    sys.stdout.write(render_baseline(built))
     return 0
 
 
@@ -523,11 +548,18 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--scorecard", action="store_true", help="print per-skill sizes")
     mode.add_argument("--print-baseline", action="store_true", help="print a baseline built from the tree")
     mode.add_argument("--check-ratchet", metavar="OLD", type=Path, help="fail if the baseline grew vs OLD")
+    parser.add_argument(
+        "--allow-growth",
+        action="store_true",
+        help="with --print-baseline, print even when an entry would be raised or added",
+    )
     args = parser.parse_args(argv)
+    if args.allow_growth and not args.print_baseline:
+        parser.error("--allow-growth only applies to --print-baseline")
     if args.scorecard:
         return _scorecard()
     if args.print_baseline:
-        return _print_baseline()
+        return _print_baseline(args.allow_growth)
     return _check_ratchet(args.check_ratchet)
 
 
