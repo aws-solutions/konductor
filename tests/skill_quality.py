@@ -59,7 +59,8 @@ SCOPE_CLAUSE = re.compile(r"\bonly (in|for|when|on)\b|\bapplies to\b", re.IGNORE
 # An explicit mandate.
 MUST_USE = re.compile(r"\bMUST USE\b", re.IGNORECASE)
 # Behavior-summary form: a capitalised third-person verb first ("Validates ...").
-VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b")
+# A plural noun before a preposition ("Notes on ...") is not a verb.
+VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b(?!\s+(?:on|of|for|about|in|to|from|with|at|by)\b)")
 VERB_PROXY_STOPLIST = frozenset({"This", "Has", "Was", "Its", "Is", "Does", "Thus", "Plus"})
 
 FENCE_OPEN = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")

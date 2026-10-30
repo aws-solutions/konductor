@@ -169,7 +169,7 @@ def test_loose_activation_wording_fails(tmp_path, description):
 def test_read_verb_is_not_a_trigger(tmp_path):
     skill = _skill(tmp_path, description="Notes on how to read DynamoDB tables to plan capacity units.")
     findings = sq.check_skill_content(skill).findings
-    assert [f.rule for f in findings if f.severity == "warning"] == ["activation"]
+    assert [f.rule for f in _errors(findings)] == ["activation"]
 
 
 def test_trigger_verb_after_a_sentence_passes(tmp_path):
