@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+[workspace]
+resolver = "2"
+members = ["core"]
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+rust-version = "1.88"
+
+[workspace.lints.rust]
+# Kept in sync with shared/Cargo.toml. On aarch64 the GNU linker prints a
+# harmless note about a hardening property it does not know; this one lint
+# surfaces that note as a warning. Every other lint, including
+# `cargo clippy -- -D warnings`, stays at full strength.
+linker_messages = "allow"
