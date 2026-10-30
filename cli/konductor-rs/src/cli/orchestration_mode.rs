@@ -6,7 +6,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::cli::config::{self, ConfigError, CONFIG_FILE_NAME, KONDUCTOR_DIR_NAME};
+use crate::cli::config::{self, user_config_path, ConfigError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Mode {
@@ -15,7 +15,7 @@ pub(crate) enum Mode {
 }
 
 impl Mode {
-    /// The only place the allowed values are listed. Case-sensitive.
+    /// The only place that decides which values are accepted. Case-sensitive.
     pub(crate) fn parse(value: &str) -> Option<Mode> {
         match value {
             "auto" => Some(Mode::Auto),
@@ -59,25 +59,62 @@ pub(crate) enum FallbackReason {
     },
 }
 
-pub(crate) fn user_config_path(home: &Path) -> PathBuf {
-    home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME)
-}
-
 /// `home` comes from `index::env_home_dir`, which treats an empty `HOME`
-/// as unset. A dangling symlink counts as no file.
+/// as unset. Only `NotFound` (which covers a dangling symlink) counts as no
+/// file. Unlike the gate loader's `is_file()` check, a path that cannot be
+/// stat'ed or is not a file is a `Fallback`, so a set mode is never lost
+/// without a reason shown.
 pub(crate) fn resolve_user_mode(home: Option<&Path>) -> ModeResolution {
     let Some(home) = home else {
         return ModeResolution::Fallback(FallbackReason::HomeUnresolved);
     };
     let path = user_config_path(home);
-    if !path.is_file() {
-        return ModeResolution::Default;
+    match std::fs::metadata(&path) {
+        Ok(metadata) if metadata.is_file() => {}
+        Ok(metadata) => {
+            let kind = if metadata.is_dir() {
+                std::io::ErrorKind::IsADirectory
+            } else {
+                std::io::ErrorKind::Unsupported
+            };
+            return ModeResolution::Fallback(FallbackReason::Unreadable { path, kind });
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return ModeResolution::Default
+        }
+        Err(error) => {
+            return ModeResolution::Fallback(FallbackReason::Unreadable {
+                path,
+                kind: error.kind(),
+            })
+        }
     }
     let raw = match config::load_raw_config(&path) {
         Ok(raw) => raw,
+        // Removed between the stat and the read: same as never there.
+        Err(ConfigError::ProjectConfigNotReadable { source, .. })
+            if source.kind() == std::io::ErrorKind::NotFound =>
+        {
+            return ModeResolution::Default
+        }
         Err(error) => return ModeResolution::Fallback(load_failure(path, error)),
     };
-    match raw.orchestration.and_then(|section| section.mode) {
+    let Some(section) = raw.orchestration else {
+        return ModeResolution::Default;
+    };
+    match section.mode {
+        // A misspelled `mode` must not read as "no mode set". A known `mode`
+        // next to an unknown key is a newer sibling and is left alone.
+        None if !section.unknown_keys.is_empty() => {
+            let keys: Vec<&str> = section.unknown_keys.keys().map(String::as_str).collect();
+            ModeResolution::Fallback(FallbackReason::Malformed {
+                path,
+                message: format!(
+                    "unknown key {} under orchestration (expected mode)",
+                    keys.join(", ")
+                ),
+            })
+        }
         None => ModeResolution::Default,
         Some(value) => match Mode::parse(&value) {
             Some(mode) => ModeResolution::Explicit(mode),
@@ -96,6 +133,8 @@ fn load_failure(path: PathBuf, error: ConfigError) -> FallbackReason {
             path,
             message: first_line(&source.to_string()),
         },
+        // Unreachable today: `load_raw_config` returns only the two errors
+        // above. Kept so a new error is still shown, not dropped.
         other => FallbackReason::Malformed {
             path,
             message: first_line(&other.to_string()),
@@ -110,6 +149,7 @@ fn first_line(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::config::KONDUCTOR_DIR_NAME;
     use std::fs;
 
     fn scratch_home(name: &str) -> PathBuf {
@@ -199,6 +239,49 @@ mod tests {
     }
 
     #[test]
+    fn directory_at_path_is_unreadable() {
+        let home = scratch_home("directory");
+        let path = user_config_path(&home);
+        fs::create_dir(&path).unwrap();
+        let resolution = resolve_user_mode(Some(&home));
+        fs::remove_dir_all(&home).ok();
+        assert_eq!(
+            resolution,
+            ModeResolution::Fallback(FallbackReason::Unreadable {
+                path,
+                kind: std::io::ErrorKind::IsADirectory,
+            })
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn untraversable_konductor_dir_is_unreadable() {
+        use std::os::unix::fs::PermissionsExt;
+        let home = scratch_home("untraversable");
+        let path = user_config_path(&home);
+        fs::write(&path, "orchestration:\n  mode: coordinator\n").unwrap();
+        let dir = home.join(KONDUCTOR_DIR_NAME);
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o000)).unwrap();
+        if fs::metadata(&path).is_ok() {
+            // Running as root: permissions do not block the stat.
+            fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
+            fs::remove_dir_all(&home).ok();
+            return;
+        }
+        let resolution = resolve_user_mode(Some(&home));
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::remove_dir_all(&home).ok();
+        assert_eq!(
+            resolution,
+            ModeResolution::Fallback(FallbackReason::Unreadable {
+                path,
+                kind: std::io::ErrorKind::PermissionDenied,
+            })
+        );
+    }
+
+    #[test]
     fn non_yaml_is_malformed() {
         assert_malformed(resolve_with("non-yaml", "not: valid: yaml: ["));
     }
@@ -231,6 +314,33 @@ mod tests {
         assert_eq!(
             resolve_with("empty-section", "orchestration: {}\n"),
             ModeResolution::Default
+        );
+    }
+
+    #[test]
+    fn misspelled_mode_key_is_malformed() {
+        for (name, contents) in [
+            ("typo", "orchestration:\n  mdoe: coordinator\n"),
+            ("case", "orchestration:\n  Mode: coordinator\n"),
+        ] {
+            match resolve_with(name, contents) {
+                ModeResolution::Fallback(FallbackReason::Malformed { message, .. }) => {
+                    assert!(message.contains("unknown key"), "{message}");
+                    assert!(message.contains("under orchestration"), "{message}");
+                }
+                other => panic!("{name}: expected Malformed, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn unknown_sibling_of_a_valid_mode_is_ignored() {
+        assert_eq!(
+            resolve_with(
+                "sibling",
+                "orchestration:\n  mode: coordinator\n  later: 1\n"
+            ),
+            ModeResolution::Explicit(Mode::Coordinator)
         );
     }
 
