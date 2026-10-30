@@ -77,18 +77,20 @@ Include at the top of the report file and update as stages complete:
 - [x] Analysis started
 - [ ] Testing philosophy detected
 - [ ] Artifacts parsed
-- [ ] Test distribution analyzed (or: skipped, lightweight fallback)
+- [ ] Test distribution analyzed
 - [ ] Functional test coverage calculated
 - [ ] Non-functional test coverage analyzed
 - [ ] Integration points analyzed
 - [ ] Gaps identified (with subagent analysis)
-- [ ] Pattern analysis complete (or: skipped, lightweight fallback)
+- [ ] Pattern analysis complete
 - [ ] Readiness assessment complete (Readiness mode only)
 - [ ] Risk evaluation complete (Readiness mode only)
 - [ ] Report finalized
 
 **Last Updated:** [TIMESTAMP]
 ```
+
+On the lightweight fallback, replace the Test distribution and Pattern analysis items with `- [x] Test distribution analyzed: skipped (lightweight fallback)` and `- [x] Pattern analysis complete: skipped (lightweight fallback)`.
 
 **Report Structure:**
 
