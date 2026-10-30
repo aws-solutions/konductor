@@ -236,9 +236,8 @@ it. Contributors adding a skill should see
 > `kiro-*-generation` skills — which `kiro-spec-workflow` explicitly instructs the agent to run —
 > and `security-remediation`. The three Kiro skills are now declared by all three orchestrators
 > (the agents that own `kiro-spec-workflow`), and `security-remediation` by `k-developer`.
-> Both runtimes were wired: the skill name in `dependencies.skills.skillNames`, which is what
-> `konductor synth` reads for either harness, and in `clientConfig.claudeCli.skills`, which is what
-> Claude Code lists in the rendered agent's `skills:` frontmatter.
+> Each is declared in `dependencies.skills.skillNames`, which `konductor synth` reads for either
+> harness, and both runtimes load it on demand.
 
 ---
 
