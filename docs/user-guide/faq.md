@@ -216,9 +216,9 @@ transmitted. Delete it whenever you like.
 agent that owns the SOP cannot spawn the architect**: no specialist holds a spawn tool in Kiro CLI
 v3 or Claude Code, and the core rules forbid it in Kiro CLI v2.
 
-Under `konductor`, the developer returns step 6 as a handoff for `k-architect`, and `konductor`
-routes it and sends the findings back for the report. If you started `k-developer` directly,
-nothing routes the handoff, so the SOP skips the step and you get standard review with no error.
+Step 6 tells the developer to return it as a handoff for `k-architect` when it cannot spawn.
+Under `konductor`, `konductor` routes the handoff and sends the findings back for the report. If
+you started `k-developer` directly, nothing routes the handoff, and it comes back to you.
 
 To run the adversarial pass on its own, ask the agent that owns it:
 
