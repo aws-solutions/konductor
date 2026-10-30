@@ -196,7 +196,7 @@ Example: `architect-system-design.md`, `developer-task-breakdown.md`
 Before a phase closes, run one review of everything it produced:
 
 1. Collect the phase's artifacts: the git diff for code, paths for documents and design artifacts.
-2. Spawn one fresh reviewer for the phase (for example `k-developer` with `backend-review` or `frontend-review`, `k-architect` with `design-evaluation` and `threat-modeling`). One reviewer brief per phase (per artifact owner, when a phase has more than one) lists every artifact of that phase and the checker skill for each.
+2. Spawn the reviewers your Verification Protocol names (for `konductor`, one per phase; for the mux and cmux orchestrators, one per artifact), for example `k-developer` with `backend-review` or `frontend-review`, `k-architect` with `design-evaluation` and `threat-modeling`. Each reviewer brief lists every artifact that reviewer covers and the checker skill for each.
 3. Address all CRITICAL and IMPORTANT findings (Review ceilings in the Verification Protocol). Never put SUGGESTIONs in a fix brief. Before the fix, triage the findings against the user's request, the project's house rules and the spec; rework CRITICAL and IMPORTANT findings that survive triage, and list the findings triage rejects and any SUGGESTIONs.
 4. Run the build and tests again for code, then re-review what the fix changed plus what calls, uses or depends on it, once. List what that re-review still finds for the user, not for another fix; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix. A CRITICAL or IMPORTANT finding that survives the re-review blocks done: stop and report it to the user as unresolved instead of proceeding.
 
