@@ -13,11 +13,11 @@ Generates DynamoDB table designs from access patterns and system requirements. C
 
 ## Scope and fallback
 
-**Applies to:** designing a new DynamoDB data model, keys, or indexes from access patterns.
+**Applies to:** designing a new DynamoDB data model, keys, or indexes from access patterns, or changing an existing table to serve new access patterns.
 
-**Not for:** reviewing an existing design (use `dynamodb-validation`), relational schema design, or a one-off key question.
+**Not for:** auditing an existing design without changing it (use `dynamodb-validation`), relational schema design, or a one-off key question.
 
-**Lightweight fallback:** for a single table with one or two access patterns, state the partition key, sort key, and at most one GSI with a one-paragraph rationale; do not run the full workflow or produce the report.
+**Lightweight fallback:** for a single table with one or two access patterns, state the partition key, sort key, and at most one GSI with a one-paragraph rationale; do not run the full workflow or produce the report. Still check the Quality Gate's CRITICAL items and state any that apply.
 
 ## Usage
 
@@ -120,7 +120,7 @@ Once you have the information:
 
 ### STEP 3: Design Table Schema
 
-Read `references/aws-best-practices.md` (relative to this file) before choosing keys and indexes; read only the subsections for features the design uses (GSI vs LSI, Global Tables, Streams).
+Read `references/aws-best-practices.md` (relative to this file) before choosing keys and indexes. Always read its core subsections, and read a feature subsection only when the design uses that feature; both lists are under AWS Best Practices below.
 
 Based on the analysis:
 
@@ -153,7 +153,7 @@ For queries not supported by the primary key:
 6. **Estimate Capacity**: Calculate RCU/WCU requirements for each index
    - Ensure GSI write capacity ≥ base table write capacity
    - Document cost implications (2× write cost per GSI)
-7. **Validate Against Checklist**: Run through Index Design Validation Checklist
+7. **Validate Against Checklist**: Run through the Index Design Validation Checklist (in `references/aws-best-practices.md`)
    - Check for common pitfalls (low cardinality, over-indexing)
    - Validate monitoring and operational readiness
    - Document red flags and mitigation strategies
@@ -252,35 +252,34 @@ Based on artifact analysis:
 
 Continue with Design Table Schema, Design Indexes, and Generate Deliverables steps from Standalone Mode workflow.
 
-Read `references/aws-best-practices.md` before choosing keys and indexes; read only the subsections for features the design uses (GSI vs LSI, Global Tables, Streams).
-
 ## AWS Best Practices
 
-Apply these DynamoDB best practices to all designs:
+The AWS best practices catalogue holds two kinds of subsection.
 
-The AWS best practices catalogue holds these subsections:
+Core subsections apply to every design, so always read them:
 
 - Partition Key Design
 - Sort Key Design
 - Single Table vs Multiple Tables
 - GSI Strategy
-- GSI vs LSI: Decision Framework
-- How to Handle "List All Items" Requirements
 - Common Index Pitfalls and Anti-Patterns
 - Index Design Validation Checklist
 - Capacity Planning
-- DynamoDB Streams
-- Transactions (ACID Operations)
-- TTL (Time-To-Live)
-- DAX (DynamoDB Accelerator)
 - Backup and Disaster Recovery
-- Global Tables (Multi-Region Replication)
 - When NOT to Use DynamoDB
 - Data That Shouldn't Be in DynamoDB
 
-**Design Rule:** Design tables so ALL production queries use GetItem or Query, NEVER Scan.
+Feature subsections apply only when the design uses the feature:
 
-Read `references/aws-best-practices.md` before choosing keys and indexes; read only the subsections for features the design uses (GSI vs LSI, Global Tables, Streams).
+- GSI vs LSI: Decision Framework (when an LSI is an option)
+- How to Handle "List All Items" Requirements (when a pattern lists every item)
+- DynamoDB Streams
+- Transactions (ACID Operations)
+- TTL (Time-To-Live) (when any data is time-bounded)
+- DAX (DynamoDB Accelerator)
+- Global Tables (Multi-Region Replication)
+
+**Design Rule:** Design tables so ALL production queries use GetItem or Query, NEVER Scan.
 
 ## Output Format Template
 

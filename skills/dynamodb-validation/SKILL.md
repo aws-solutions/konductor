@@ -9,7 +9,7 @@ tags: [skill, dynamodb, database-design, validation, checker, aws]
 
 ## Overview
 
-Reviews DynamoDB designs across 13 categories: partition key distribution, GSI coverage, capacity planning, cost optimization, security, operational readiness, backup strategy, TTL configuration, access pattern coverage, item size, consistency model, encryption, and monitoring.
+Reviews DynamoDB designs across 13 categories: partition key design, index coverage, data model consistency, cost optimization, security and compliance, backup and disaster recovery, anti-patterns and use case fit, global tables, streams, transactions and consistency, critical pitfalls, design smells, and operational readiness.
 
 ## Scope and fallback
 
@@ -17,7 +17,7 @@ Reviews DynamoDB designs across 13 categories: partition key distribution, GSI c
 
 **Not for:** creating a design (use `dynamodb-design`).
 
-**Lightweight fallback:** for a single table with no GSIs, run categories 1, 5, 7 and 11 only and report findings without the scored report.
+**Lightweight fallback:** for a single table with no GSIs, run categories 1, 5, 7 and 11 in full and report findings without the scored report. Still check every Quality Gate item, which covers index coverage (for example a "list all" pattern served by a Scan), the backup strategy and throttling alarms.
 
 ## Usage
 
@@ -31,7 +31,7 @@ Use this skill when:
 
 ### 13 Validation Categories
 
-Partition key distribution, GSI coverage, capacity planning, cost optimization, security (encryption, IAM), operational readiness (alarms, backups), backup strategy, TTL configuration, access pattern coverage, item size, consistency model, encryption, and monitoring.
+The 13 categories are listed, with what each checks, under Validation Framework below.
 
 ### Production Readiness Gates
 
@@ -178,7 +178,7 @@ Read `references/finding-templates.md` when writing each finding and copy the te
 
 1. **Title**: Clear, specific description of the issue
 2. **Priority**: Critical/High/Medium/Low with emoji indicator
-3. **Category**: Which validation category (1-10)
+3. **Category**: Which validation category (1-13)
 4. **Problem**: Detailed explanation of what's wrong
 5. **Impact**: Specific consequences (performance degradation, cost increase, security risk)
 6. **Current State**: Code snippet showing current design

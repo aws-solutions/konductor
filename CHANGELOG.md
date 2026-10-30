@@ -10,17 +10,22 @@ not per individual commit.
 
 ### Added
 
-- `make test-py` now checks every skill's frontmatter, description, size, and
+- `make test-py` now checks every skill's frontmatter, description, size, code fences, and
   `references/` links against a shrink-only baseline in `tests/skill-quality-baseline.json`.
+  `python3 tests/skill_quality.py --print-baseline` refuses to write a baseline that grew.
 
 ### Changed
 
 - `dynamodb-design` moved its best-practices catalogue, report templates, and checklists into
-  `skills/dynamodb-design/references/` (SKILL.md 75.5 KB to 15.7 KB); instructions are unchanged.
+  `skills/dynamodb-design/references/` (SKILL.md 75.5 KB to 15.8 KB). It also gains a scope
+  section and a short answer path for a single table with one or two access patterns.
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
-  `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 29.9 KB); instructions are unchanged.
+  `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 30.2 KB). It also gains a
+  scope section and a shorter Coverage-mode path for one module or one PR, and drops the
+  compatibility and roadmap lists.
 - `dynamodb-validation` moved its validation framework, finding templates, and report template into
-  `skills/dynamodb-validation/references/` (SKILL.md 64.7 KB to 13.4 KB); instructions are unchanged.
+  `skills/dynamodb-validation/references/` (SKILL.md 64.7 KB to 13.4 KB). It also gains a scope
+  section and a shorter path for a single table with no GSIs that still runs the Quality Gate.
 - `cypress-test-implementation` moved its task breakdown, Cypress patterns, and report templates into
   `skills/cypress-test-implementation/references/` (SKILL.md 53.9 KB to 19.2 KB). It also gains a
   scope section and a short path that writes the specs directly for one or two flows, and its
