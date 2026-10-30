@@ -81,7 +81,12 @@ const ERROR_CODES_BY_STATUS: Record<string, string[]> = {
   '403': ['forbidden_host', 'forbidden_origin', 'read_only_workflow'],
   '404': ['not_found'],
   '405': ['method_not_allowed'],
-  '409': ['conflict', 'already_running', 'harness_unavailable'],
+  '409': [
+    'conflict',
+    'already_running',
+    'harness_unavailable',
+    'trust_required',
+  ],
   '413': ['too_large'],
   '422': ['invalid_workflow', 'bad_params'],
   '500': ['io_error'],
@@ -413,7 +418,10 @@ function listTextsAndAnswers(spec: Spec): TextAndAnswer[] {
 // What a run promises about its own fields. Returns the broken promises.
 function runProblems(run: Record<string, unknown>): string[] {
   const order = run['order'] as string[];
-  const stages = run['stages'] as Record<string, { status: string }>;
+  const stages = run['stages'] as Record<
+    string,
+    { status: string; reason?: string }
+  >;
   const letters = order.map((name) => STAGE_LETTER[stages[name]?.status ?? '']);
   const allowed = STAGE_SEQUENCE_BY_RUN_STATUS[run['status'] as string];
   const problems: string[] = [];
@@ -425,6 +433,11 @@ function runProblems(run: Record<string, unknown>): string[] {
   }
   if (new Set(order).size !== order.length) problems.push('order repeats');
   if (!allowed?.test(letters.join(''))) problems.push('stage statuses');
+  // Only a blocked stage has a reason, and it has one.
+  const reasoned = Object.values(stages).every(
+    (stage) => (stage.status === 'blocked') === (stage.reason !== undefined),
+  );
+  if (!reasoned) problems.push('reason');
   return problems;
 }
 
@@ -896,6 +909,122 @@ describe('workflow canvas API contract', () => {
       expect(description).toMatch(/limits `version` to a semantic version/);
       expect(description).toMatch(/drops the string form of `intent`/);
       expect(description).toMatch(/`api_version` stays 1/);
+    });
+  });
+
+  describe('a run', () => {
+    const schema = (name: string) => spec.components.schemas[name]!;
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+    const REASONS = [
+      'RESULT_MISSING',
+      'RESULT_INVALID',
+      'RESULT_FAILURE',
+      'SESSION_FAILED',
+      'TIMEOUT',
+      'OUTPUT_MISSING',
+      'OUTPUT_UNCHANGED',
+      'CHECK_FAILED',
+    ];
+
+    it('names the three harnesses, one of them for tests', () => {
+      expect(schema('Harness')['enum']).toEqual(['kiro-cli', 'claude', 'fake']);
+      expect(String(schema('Harness')['description'])).toMatch(
+        /`fake` is for tests only/,
+      );
+    });
+
+    it('has the reasons of a blocked stage, each described', () => {
+      expect(schema('StageReason')['enum']).toEqual(REASONS);
+      for (const reason of REASONS) {
+        expect(spec.info.description, reason).toMatch(
+          new RegExp(`^\\s*- \`${reason}\`: `, 'm'),
+        );
+      }
+    });
+
+    it('gives a blocked stage a reason, and no other stage one', () => {
+      const stage = schema('RunStage');
+      const ok = [
+        { status: 'blocked', reason: 'TIMEOUT' },
+        { status: 'passed' },
+        { status: 'pending' },
+        { status: 'running' },
+      ];
+      const bad = [
+        { status: 'blocked' },
+        { status: 'blocked', reason: 'OOPS' },
+        { status: 'passed', reason: 'TIMEOUT' },
+        { status: 'running', reason: 'TIMEOUT' },
+      ];
+      for (const value of ok) {
+        expect(valueMatchesSchema(stage, value), JSON.stringify(value)).toBe(
+          true,
+        );
+      }
+      for (const value of bad) {
+        expect(valueMatchesSchema(stage, value), JSON.stringify(value)).toBe(
+          false,
+        );
+      }
+    });
+
+    it('passes a stage on evidence, and links the specification for it', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(
+        /A stage passes on evidence, not on the exit status of its session/,
+      );
+      expect(description).toMatch(
+        /\(\.\.\/\.\.\/docs\/design\/workflows-spec\.md#stage-result\)/,
+      );
+      expect(description).not.toMatch(/is `passed` when its session ends/);
+    });
+
+    it('covers a run started by any process in the workspace', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(
+        /`already_running` covers a run started by any process in the workspace/,
+      );
+    });
+
+    it('checks trust after the workflow and before the active run and the harness', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(
+        /after the body its order is 404 for the file, then 422 `invalid_workflow`, then 409 `trust_required`, then 409 `already_running`, then 409 `harness_unavailable`/,
+      );
+      const run = spec.paths['/api/run']?.['post']?.responses?.['409'];
+      const text = words(
+        (run as unknown as { description: string }).description,
+      );
+      expect(text).toMatch(
+        /`trust_required`.*`already_running`.*`harness_unavailable`/,
+      );
+      expect(text).toMatch(/in this order/);
+    });
+
+    it('has a trust answer whose fix holds the exact command and nothing else in backticks', () => {
+      const body = jsonBodyOf(spec, 'POST /api/run', '409');
+      const { fix } = namedExample(body, 'untrusted') as { fix: string };
+      const quoted = [...fix.matchAll(/`([^`]*)`/g)].map((match) => match[1]);
+      expect(quoted).toEqual(['konductor flow trust hello']);
+      expect(namedExample(body, 'untrusted')['code']).toBe('trust_required');
+    });
+
+    it('has no operation that grants trust', () => {
+      const paths = Object.keys(spec.paths).join(' ');
+      expect(paths).not.toMatch(/trust/);
+      expect(words(spec.info.description)).toMatch(
+        /no operation that grants trust/,
+      );
+    });
+
+    it('has an answer for a missing claude as well as for kiro-cli', () => {
+      const body = jsonBodyOf(spec, 'POST /api/run', '409');
+      expect(namedExample(body, 'missingClaude')).toMatchObject({
+        code: 'harness_unavailable',
+      });
+      expect(namedExample(body, 'missingHarness')).toMatchObject({
+        code: 'harness_unavailable',
+      });
     });
   });
 

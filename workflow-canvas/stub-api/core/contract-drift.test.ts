@@ -9,6 +9,7 @@ import {
 } from '../test-support/contract.ts';
 import {
   FORMAT,
+  HARNESS,
   HASH_PATTERN,
   MAX_GOAL_CHARS,
   MAX_INTENT_CHARS,
@@ -23,7 +24,7 @@ import {
 } from './contract.ts';
 import { ERROR_CODES, type ErrorCode } from './errors.ts';
 import { KEY_TABLES } from './keys.ts';
-import { DIAGNOSTIC_CODES } from './model.ts';
+import { DIAGNOSTIC_CODES, STAGE_REASONS } from './model.ts';
 
 type Json = Record<string, unknown>;
 
@@ -93,6 +94,16 @@ describe('the stub and api/openapi.yaml', () => {
     expect(schemaOf('RunId').pattern).toBe(RUN_ID_PATTERN.source);
     expect(schemaOf('Version').pattern).toBe(VERSION_PATTERN.source);
     expect(schemaOf('Path').pattern).toBe(PATH_PATTERN_SOURCE);
+  });
+
+  it('have the same reasons for a blocked stage', () => {
+    expect([...STAGE_REASONS].sort()).toEqual(
+      [...(schemaOf('StageReason').enum as string[])].sort(),
+    );
+  });
+
+  it('report a harness that the contract names', () => {
+    expect(schemaOf('Harness').enum).toContain(HARNESS);
   });
 
   it('have the same format', () => {

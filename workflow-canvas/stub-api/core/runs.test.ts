@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { countingSuffix, FakeClock } from '../test-support/fake-clock.ts';
 import { RUN_ID_PATTERN } from './contract.ts';
+import { STAGE_REASONS } from './model.ts';
 import { RunSimulator } from './runs.ts';
 
 const STAGE_MS = 1000;
@@ -93,5 +94,94 @@ describe('a simulated run', () => {
     const first = runs.start('hello', ['draft']);
     const second = runs.start('hello', ['draft']);
     expect(second).not.toBe(first);
+  });
+});
+
+describe('a simulated run that is blocked', () => {
+  const STAGES = ['plan', 'build', 'review'];
+  const block = { at: 1, reason: 'RESULT_MISSING' } as const;
+
+  it('runs the stages before the blocked one, then halts there', () => {
+    const runId = runs.start('hello', STAGES, { block });
+    const seen = [statusesOf(runId)];
+    for (let step = 0; step < 2; step++) {
+      clock.advance(STAGE_MS);
+      seen.push(statusesOf(runId));
+    }
+    expect(seen).toEqual([
+      ['running', 'pending', 'pending'],
+      ['passed', 'running', 'pending'],
+      ['passed', 'blocked', 'pending'],
+    ]);
+  });
+
+  it('halts with exit code 1 when the blocked stage ends', () => {
+    const runId = runs.start('hello', STAGES, { block });
+    clock.advance(2 * STAGE_MS - 1);
+    expect(runs.get(runId)).toMatchObject({
+      status: 'running',
+      finished_at: null,
+      exit_code: null,
+    });
+    expect(runs.activeRunId()).toBe(runId);
+    clock.advance(1);
+    expect(runs.get(runId)).toMatchObject({
+      status: 'halted',
+      started_at: '2026-10-24T04:12:05Z',
+      finished_at: '2026-10-24T04:12:07Z',
+      exit_code: 1,
+      stages: {
+        plan: { status: 'passed' },
+        build: { status: 'blocked', reason: 'RESULT_MISSING' },
+        review: { status: 'pending' },
+      },
+    });
+    expect(runs.activeRunId()).toBeUndefined();
+  });
+
+  it('gives only the blocked stage a reason, and keeps it as time goes on', () => {
+    const runId = runs.start('hello', STAGES, { block });
+    clock.advance(60 * STAGE_MS);
+    const stages = runs.get(runId)?.stages ?? {};
+    expect(Object.keys(stages.plan ?? {})).toEqual(['status']);
+    expect(Object.keys(stages.review ?? {})).toEqual(['status']);
+    expect(stages.build).toEqual({
+      status: 'blocked',
+      reason: 'RESULT_MISSING',
+    });
+  });
+
+  it.each(STAGE_REASONS)('can end with the reason %s', (reason) => {
+    const runId = runs.start('hello', STAGES, { block: { at: 0, reason } });
+    clock.advance(STAGE_MS);
+    expect(runs.get(runId)?.stages['plan']).toEqual({
+      status: 'blocked',
+      reason,
+    });
+  });
+
+  it('blocks the last stage when the place is past the end', () => {
+    const runId = runs.start('hello', ['only'], {
+      block: { at: 5, reason: 'TIMEOUT' },
+    });
+    clock.advance(STAGE_MS);
+    expect(runs.get(runId)).toMatchObject({
+      status: 'halted',
+      stages: { only: { status: 'blocked', reason: 'TIMEOUT' } },
+    });
+  });
+});
+
+describe('a simulated run that never ends', () => {
+  it('stays in its first stage, and is the active run', () => {
+    const runId = runs.start('hello', ['draft', 'review'], { neverEnds: true });
+    clock.advance(1000 * STAGE_MS);
+    expect(runs.get(runId)).toMatchObject({
+      status: 'running',
+      finished_at: null,
+      exit_code: null,
+      stages: { draft: { status: 'running' }, review: { status: 'pending' } },
+    });
+    expect(runs.activeRunId()).toBe(runId);
   });
 });

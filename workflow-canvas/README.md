@@ -64,6 +64,13 @@ a plain file is handled, and what a run does stage by stage. A client follows a
 run by polling `GET /api/runs/{id}`. The format itself is described in
 [`docs/design/workflows-spec.md`](../docs/design/workflows-spec.md).
 
+A run uses the `kiro-cli` or `claude` harness, or `fake` in tests. A stage
+passes on evidence, not on the exit status of its session, and a blocked stage
+carries a `reason`. Only one run is active per workspace, whichever process
+started it. `POST /api/run` answers `trust_required` for a workflow that is not
+trusted, with the command that the user runs in a terminal. The contract has no
+call that grants trust.
+
 The contract is the one source of truth for the API. Every server of the API
 follows it, so a change to the API starts as a change to this file. Responses
 may gain fields without a new version, so clients ignore fields they do not
@@ -128,6 +135,15 @@ saved change lasts until the stub stops. The stub reads no files, so for a
 `prompt_file` it checks only the path rules: it accepts a path to a file that
 does not exist. A run is faked and calls no agent: its stages run for 3 seconds
 each, one after the other, and all of them pass.
+
+`STUB_WORKFLOW` picks the workflow of the session, to show the other answers of
+`POST /api/run`. `untrusted` refuses a run with `trust_required`. `blocked`
+ends a run with a blocked stage and its `reason`, and the stage after it stays
+`pending`. `busy` has a run that another program started, so a run answers
+`already_running` with its id. `hello`, the default, passes. The stub has no
+real trust record: `untrusted` stays untrusted, because the canvas cannot grant
+trust. A name that is not one of these stops the command with a one-line
+error.
 
 ### Run the page against the stub
 

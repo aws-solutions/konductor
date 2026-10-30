@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
+  HARNESS,
   HASH_PATTERN,
   isName,
   MAX_TEXT_BYTES,
@@ -12,7 +13,8 @@ import type {
   SaveResult,
   WorkflowDocument,
 } from './model.ts';
-import type { RunSimulator } from './runs.ts';
+import type { RunPlan, RunSimulator } from './runs.ts';
+import type { Behavior } from './sample.ts';
 import type { WorkflowStore } from './store.ts';
 import { checkWorkflowText } from './validator.ts';
 
@@ -21,6 +23,8 @@ export interface WorkflowApiOptions {
   root: string;
   store: WorkflowStore;
   runs: RunSimulator;
+  /** How a run of the root is answered. The default is a run that passes. */
+  behavior?: Behavior;
 }
 
 /**
@@ -31,11 +35,13 @@ export class WorkflowApi {
   readonly root: string;
   private readonly store: WorkflowStore;
   private readonly runs: RunSimulator;
+  private readonly behavior: Behavior;
 
   constructor(options: WorkflowApiOptions) {
     this.root = options.root;
     this.store = options.store;
     this.runs = options.runs;
+    this.behavior = options.behavior ?? {};
   }
 
   loadWorkflow(name: string | undefined): WorkflowDocument {
@@ -81,7 +87,11 @@ export class WorkflowApi {
     return checkText(request.text, this.writableName(request.name));
   }
 
-  /** Starts a run of the saved root workflow and returns its id. */
+  /**
+   * Starts a run of the saved root workflow and returns its id. The refusals
+   * come in the order of the contract: the file, the workflow, trust, a run
+   * that is active, the harness.
+   */
   startRun(): { run_id: string } {
     const file = this.store.read(this.root);
     if (!file) {
@@ -89,20 +99,44 @@ export class WorkflowApi {
     }
     const check = checkWorkflowText(file.text, this.root);
     if (!check.view) throw invalidWorkflow(check);
-    const active = this.runs.activeRunId();
-    if (active) {
-      throw new ApiError('already_running', 'A run is already active.', {
-        run_id: active,
-      });
-    }
     const stageNames = check.view.stages.map((stage) => stage.name);
-    return { run_id: this.runs.start(this.root, stageNames) };
+    if (this.behavior.untrusted) throw untrusted(this.root);
+    // Another program holds the workspace: its run is there from the start.
+    const active =
+      this.runs.activeRunId() ??
+      (this.behavior.busy
+        ? this.runs.start(this.root, stageNames, { neverEnds: true })
+        : undefined);
+    if (active) {
+      throw new ApiError(
+        'already_running',
+        'A run is already active in this workspace.',
+        {
+          run_id: active,
+        },
+      );
+    }
+    if (this.behavior.harnessUnavailable) {
+      throw new ApiError(
+        'harness_unavailable',
+        `${HARNESS} is not installed.`,
+        {
+          fix: `Install ${HARNESS} and sign in, then try again.`,
+        },
+      );
+    }
+    return { run_id: this.runs.start(this.root, stageNames, this.planOfRun()) };
   }
 
   getRun(runId: string): Run {
     const run = RUN_ID_PATTERN.test(runId) ? this.runs.get(runId) : undefined;
     if (!run) throw new ApiError('not_found', 'There is no run with this id.');
     return run;
+  }
+
+  private planOfRun(): RunPlan {
+    const { blocks } = this.behavior;
+    return blocks ? { block: { at: blocks.stage, reason: blocks.reason } } : {};
   }
 
   // A missing name is the root; a malformed one is refused.
@@ -140,6 +174,13 @@ function checkText(text: string, name: string): CheckResult {
     throw new ApiError('too_large', 'The workflow text is too large.');
   }
   return checkWorkflowText(text, name);
+}
+
+// The fix names the exact command, and it is the only text in backticks.
+function untrusted(name: string): ApiError {
+  return new ApiError('trust_required', 'The workflow is not trusted yet.', {
+    fix: `Run \`konductor flow trust ${name}\` in a terminal, then try again.`,
+  });
 }
 
 function invalidWorkflow(check: CheckResult): ApiError {

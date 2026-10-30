@@ -13,8 +13,9 @@ info:
 
     This version covers the first release of the workflow format. A file has a
     `format`, a `version`, an `intent`, optional `params` and a list of
-    `stages`, and each stage is done by one agent. A run uses the `kiro-cli`
-    harness. Anything not described here is not part of the contract yet.
+    `stages`, and each stage is done by one agent. A run uses one harness:
+    `kiro-cli` or `claude`, and `fake` in tests. Anything not described here is
+    not part of the contract yet.
 
     **How this version changes.** After a server ships this contract, a later
     version only adds: response fields, operations, error codes and diagnostic
@@ -24,11 +25,7 @@ info:
     version and drops the string form of `intent`. None of these is an
     addition, so a file written for 1.0.0 fails the check. `api_version` stays
     1 and `info.version` moves from 1.0.0 to 1.1.0: there is no client of 1.0.0
-    to break, so there is no reason to start a second major version. One later
-    change is not an addition either. This version starts every run without
-    asking anyone to trust the workflow. A later version refuses a run with 409
-    `trust_required` until trust is recorded, so a client shows a 409 with a
-    code it does not know as a failure and does not crash.
+    to break, so there is no reason to start a second major version.
 
     **Conventions**
 
@@ -84,9 +81,11 @@ info:
     of a run, so a bad `goal` is 422 `bad_params` before anything about the
     run is looked at. `POST /api/run` has no text in its body: it reads the
     saved file, so after the body its order is 404 for the file, then 422
-    `invalid_workflow`, then 409 `already_running`, then 409
-    `harness_unavailable`. These orders are normative, so that two servers
-    answer one bad call with one status.
+    `invalid_workflow`, then 409 `trust_required`, then 409 `already_running`,
+    then 409 `harness_unavailable`. A workflow that is not trusted is refused
+    before anything about the runs is looked at, so a refused call neither
+    reveals nor touches the state of a run. These orders are normative, so that
+    two servers answer one bad call with one status.
 
     **Session.** The server is started with a one-time launch code, which
     whoever started it gives to the client. The server prints a launch address
@@ -144,26 +143,69 @@ info:
 
     **How a run goes.** A run is of the root workflow, as saved when
     `POST /api/run` was called. The stages run one at a time, in the order of
-    the file. Each stage is a fresh `kiro-cli` session for the stage's agent,
-    given the `outcome` of the intent and the `goal` of the run. Stages share
-    the working folder and nothing else: a stage does not see another stage's
-    session. A stage is `passed` when its session ends with exit status 0.
-    Any other end is `blocked`: a non-zero exit status, a session that cannot
-    be started, or an agent id that no agent has, which is not looked up at
-    check time. A blocked stage ends the run as `halted`, with `exit_code` 1
-    in this version. The stages after it stay `pending`. When every stage has
-    passed, the run is `passed` with `exit_code` 0. If the server stops while
-    a run is `running`, the run reads as `halted` after the server starts
-    again: the stage that was running (or the next `pending` one if none was)
-    is `blocked`, `exit_code` is 1, and `finished_at` is the time the server
-    found it. If every stage had `passed`, there is none to block, and the run
-    reads as `passed` with `exit_code` 0. A `running` run is never left
-    behind.
+    the file. Each stage is a fresh session of the harness of the run
+    (`kiro-cli`, `claude`, or `fake`, which is for tests only), for the stage's
+    agent. The server builds the prompt of the stage from the `outcome` of the
+    intent, the `goal` of the run and the prompt of the stage, as [the
+    specification](../../docs/design/workflows-spec.md#stage-prompts) says.
+    Stages share the working folder and nothing else: a stage does not see
+    another stage's session.
+
+    A stage passes on evidence, not on the exit status of its session, because
+    a session whose only tool call was denied can still exit with status 0. The
+    evidence is a valid stage result in the final message of the session, every
+    output that the stage declares and its `done_when` checks. [Stage
+    result](../../docs/design/workflows-spec.md#stage-result) says what a valid
+    result is and how the outputs and checks are judged. A stage without that
+    evidence is `blocked`, and its `reason` says why:
+
+    - `RESULT_MISSING`: the final message has no result line.
+    - `RESULT_INVALID`: the result line is not valid.
+    - `RESULT_FAILURE`: the result line reports a failure.
+    - `SESSION_FAILED`: the session could not be started, the agent id has no
+      agent (which is not looked up at check time), or the session ended with
+      a non-zero exit status.
+    - `TIMEOUT`: the stage, or one of its checks, ran out of time.
+    - `OUTPUT_MISSING`: a declared output does not exist.
+    - `OUTPUT_UNCHANGED`: a declared output exists but the stage did not create
+      or change it.
+    - `CHECK_FAILED`: a `done_when` check failed.
+
+    A blocked stage ends the run as `halted`, with `exit_code` 1 in this
+    version. The stages after it stay `pending`. When every stage has passed,
+    the run is `passed` with `exit_code` 0.
+
+    **One run per workspace.** Only one run is active at a time in a
+    workspace. A run holds a lock on the workspace that records the PID and the
+    start time of the process that owns it, so `already_running` covers a run
+    started by any process in the workspace, such as `konductor flow run` in a
+    terminal, and not only a run started through this API. When the owner
+    exits, its sessions and checks are killed with their process group. If the
+    owner stops while a run is `running`, the run reads as `halted` the next
+    time anything in the workspace looks at it: the stage that was running (or
+    the next `pending` one if none was) is `blocked` with the reason
+    `SESSION_FAILED`, `exit_code` is 1, and `finished_at` is the time it was
+    found. If every stage had `passed`, there is none to block, and the run
+    reads as `passed` with `exit_code` 0. A `running` run is never left behind.
+
+    **Trust.** A project workflow runs only after the user confirms it in a
+    terminal, with `konductor flow trust <name>`. `POST /api/run` answers 409
+    `trust_required` for a workflow that is not trusted, and its `fix` is a
+    sentence that holds the exact command between backticks, such as
+    `konductor flow trust hello-plan`. That command is the only text between
+    backticks in `fix`. This contract has no operation that grants trust, and
+    the canvas never grants it. A save that changes the `agent` of a stage, or
+    that adds a command to a `run` check (a later slice adds those checks),
+    ends the trust of the workflow, so the next run answers `trust_required`.
+    [The trust rules](../../docs/design/workflows-spec.md#trust) say which
+    workflows need trust and what a save keeps.
 
     **Following a run.** Poll `GET /api/runs/{id}` about once a second until
     `status` is `passed` or `halted`. A finished run stays readable. A client
     that does not know the `run_id`, such as a second tab, gets it from the
     409 `already_running` that `POST /api/run` answers while a run is active.
+    The `run_id` is that of the active run, whichever process started it, and
+    `GET /api/runs/{id}` reads it.
 
     **Workflow text.** A workflow is one YAML file, `<name>.yml`. The text is
     YAML 1.2 read with the core schema. So only `true` and `false` (in the
@@ -947,8 +989,8 @@ paths:
         Starts a run of the root workflow and returns at once with its id.
         The run works from the file as last saved, so a client saves first. A
         save after this call does not change the run. Follow the run with
-        `GET /api/runs/{id}`. Only one run can be active at a time. See **How
-        a run goes** for what the run does.
+        `GET /api/runs/{id}`. Only one run can be active at a time in a
+        workspace. See **How a run goes** for what the run does.
       tags: [Run]
       requestBody:
         required: true
@@ -999,17 +1041,25 @@ paths:
             X-Konductor-Api:
               $ref: '#/components/headers/XKonductorApi'
           description: |
-            Another run is active (`already_running`, with the `run_id` of
-            that run), or a stage needs a harness that is not installed or not
-            signed in (`harness_unavailable`, with `fix` saying what to do).
+            The workflow is not trusted (`trust_required`, with `fix` naming the
+            command to run in a terminal), another run is active in the
+            workspace (`already_running`, with the `run_id` of that run), or the
+            harness is not installed or not signed in (`harness_unavailable`,
+            with `fix` saying what to do, or the harness is `fake` and the
+            server was not started for tests). They are checked in this order.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
+                untrusted:
+                  value:
+                    error: The workflow is not trusted yet.
+                    code: trust_required
+                    fix: Run `konductor flow trust hello` in a terminal, then try again.
                 busy:
                   value:
-                    error: A run is already active.
+                    error: A run is already active in this workspace.
                     code: already_running
                     run_id: 20261024-0412-a7b3c
                 missingHarness:
@@ -1017,6 +1067,11 @@ paths:
                     error: kiro-cli is not installed.
                     code: harness_unavailable
                     fix: Install kiro-cli and sign in, then try again.
+                missingClaude:
+                  value:
+                    error: claude is not signed in.
+                    code: harness_unavailable
+                    fix: Sign in to claude, then try again.
         '413':
           $ref: '#/components/responses/TooLarge'
         '422':
@@ -1120,6 +1175,7 @@ paths:
                       stages:
                         write:
                           status: blocked
+                          reason: RESULT_MISSING
                         review:
                           status: pending
         '401':
@@ -1635,6 +1691,7 @@ components:
           $ref: '#/components/schemas/Name'
         harness:
           $ref: '#/components/schemas/Harness'
+          description: The harness that the runs of this server use.
         api_version:
           type: integer
           minimum: 1
@@ -1719,7 +1776,9 @@ components:
           type: object
           additionalProperties: false
           required: [goal]
-          description: The inputs of the run.
+          description: |
+            The inputs of the run. This version takes the goal only. Slice 2
+            adds the params that a workflow declares.
           properties:
             goal:
               type: string
@@ -1734,20 +1793,53 @@ components:
           $ref: '#/components/schemas/RunId'
     Harness:
       type: string
-      enum: [kiro-cli]
-      description: The tool that runs each stage's agent.
+      enum: [kiro-cli, claude, fake]
+      description: |
+        The program that runs each stage's agent. `fake` is for tests only, and
+        a server that was not started for tests answers `harness_unavailable`
+        for it.
     StageStatus:
       type: string
       enum: [pending, running, passed, blocked]
       description: |
         `pending` has not started. `running` is in progress. `passed` finished
         well. `blocked` failed and stopped the run.
+    StageReason:
+      type: string
+      enum:
+        - RESULT_MISSING
+        - RESULT_INVALID
+        - RESULT_FAILURE
+        - SESSION_FAILED
+        - TIMEOUT
+        - OUTPUT_MISSING
+        - OUTPUT_UNCHANGED
+        - CHECK_FAILED
+      description: |
+        Why a stage is `blocked`, as a stable code. The list under **How a run
+        goes** says when each is used. A later release may add reasons, so a
+        client treats an unknown reason like any other blocked stage.
     RunStage:
       type: object
       required: [status]
+      description: The state of one stage. A `blocked` stage has a `reason`, and no other stage has one.
       properties:
         status:
           $ref: '#/components/schemas/StageStatus'
+        reason:
+          $ref: '#/components/schemas/StageReason'
+      if:
+        properties:
+          status:
+            const: blocked
+      then:
+        required: [reason]
+        properties:
+          reason:
+            $ref: '#/components/schemas/StageReason'
+      else:
+        properties:
+          reason: false
     Timestamp:
       type: string
       format: date-time
@@ -1782,6 +1874,7 @@ components:
         - A `running` run has no `finished_at` or `exit_code`.
         - A `passed` run has every stage `passed` and `exit_code` 0.
         - A `halted` run has exactly one stage `blocked` and `exit_code` above 0.
+        - A `blocked` stage has a `reason`, and no other stage has one.
       properties:
         run_id:
           $ref: '#/components/schemas/RunId'
@@ -1874,6 +1967,7 @@ components:
         - conflict
         - already_running
         - harness_unavailable
+        - trust_required
         - too_large
         - invalid_workflow
         - bad_params
@@ -1904,4 +1998,7 @@ components:
             $ref: '#/components/schemas/Diagnostic'
         fix:
           type: string
-          description: With `harness_unavailable`. What to do about it.
+          description: |
+            With `harness_unavailable` and `trust_required`. What to do about
+            it. For `trust_required` it holds the exact command between
+            backticks.

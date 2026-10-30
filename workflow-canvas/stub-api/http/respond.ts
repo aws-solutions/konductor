@@ -19,6 +19,7 @@ export const STATUS_BY_CODE: Record<ErrorCode, number> = {
   conflict: 409,
   already_running: 409,
   harness_unavailable: 409,
+  trust_required: 409,
   too_large: 413,
   invalid_workflow: 422,
   bad_params: 422,
