@@ -867,12 +867,6 @@ mod tests {
         );
     }
 
-    /// Regression guard: an agent whose `claudeCli` sets
-    /// `allowedTools`/`hooks`/`mcpServers` must render all three as
-    /// their own frontmatter keys, grounded against the real Claude Code
-    /// materialization cited in the module docstring -- `mcpServers` in
-    /// particular as a sequence of single-key maps, not a plain map
-    /// keyed by server name.
     fn render_frontmatter(name: &str, tools: Option<Vec<&str>>) -> serde_yaml::Value {
         let claude = ClaudeCliConfig {
             tools: tools.map(|t| t.into_iter().map(String::from).collect()),
@@ -934,6 +928,12 @@ mod tests {
             .is_none());
     }
 
+    /// Regression guard: an agent whose `claudeCli` sets
+    /// `allowedTools`/`hooks`/`mcpServers` must render all three as
+    /// their own frontmatter keys, grounded against the real Claude Code
+    /// materialization cited in the module docstring -- `mcpServers` in
+    /// particular as a sequence of single-key maps, not a plain map
+    /// keyed by server name.
     #[test]
     fn render_agent_md_renders_allowed_tools_hooks_and_mcp_servers_when_set() {
         let mut hooks = IndexMap::new();
