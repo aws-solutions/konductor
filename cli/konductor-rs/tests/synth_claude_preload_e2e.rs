@@ -178,9 +178,10 @@ fn synth_fails_and_names_dropped_skills_past_the_name_cap() {
     let from = dir.display().to_string();
     let output = run_konductor(&dir, &sink, &["synth", "--from", from.as_str()]);
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !output.status.success(),
-        "synth succeeded; stderr: {stderr}"
+    assert_eq!(
+        output.status.code(),
+        Some(64),
+        "expected EX_USAGE; stderr: {stderr}"
     );
     assert!(
         stderr.contains(&format!("1 would be dropped: {}", skill_names[32])),
