@@ -15,7 +15,7 @@
 
 use std::path::PathBuf;
 
-use crate::cli::{config, init, output::ColorMode, Commands, ConfigAction};
+use crate::cli::{config, flow, init, output::ColorMode, Commands, ConfigAction};
 
 /// Entry point called by `cli::run()` once argument parsing has produced a
 /// concrete `command` to dispatch. `Init`, `Config`, `Install`, `Synth`,
@@ -134,6 +134,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             no_version_check,
             color,
         ),
+        Commands::Flow { action } => flow::dispatch_flow(action, json, color),
         Commands::Config { action } => {
             if !config_dispatch_allowed() {
                 print_not_currently_available("config");
