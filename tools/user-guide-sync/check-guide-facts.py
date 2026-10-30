@@ -55,7 +55,7 @@ _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 WITHDRAWN_COMMANDS = {"config"}
 
 # The description wording that lets a skill sit in clientConfig.claudeCli.skills
-# without skillNames (docs/user-guide/appendix/contributing.md, "Adding a skill").
+# without skillNames (docs/user-guide/appendix/contributing.md, "Adding a skill to an agent").
 CLAUDE_ONLY_MARKER = re.compile(r"\bClaude Code only\b|\bonly in Claude Code\b")
 
 
