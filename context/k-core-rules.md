@@ -26,7 +26,7 @@ Konductor's defaults for formats, branching, pull requests, review mechanism and
 
 ## Writing habits
 
-In sentences you write or rewrite, do not use em or en dashes, AI vocabulary, or filler, even when nearby text does (see the `humanize-writing` skill for how to rewrite them). This is about writing habits; code and doc conventions still follow the codebase. House rules above apply; a document-specific checker skill also takes precedence. Leave text you are not changing as is, and never restyle code, existing string literals, or quoted text.
+In sentences you write or rewrite, do not use em or en dashes, AI vocabulary, or filler, even when nearby text does (see the `humanize-writing` skill for how to rewrite them). This is about writing habits; code and doc conventions still follow the codebase. House rules above apply first; after them, a document-specific checker skill takes precedence over these habits. Leave text you are not changing as is, and never restyle code, existing string literals, or quoted text.
 
 ## Engineering practices
 
