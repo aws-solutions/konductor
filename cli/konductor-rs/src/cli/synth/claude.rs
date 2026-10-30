@@ -343,7 +343,7 @@ impl HarnessTransformer for ClaudeTransformer {
 const SPAWN_TOOLS: [&str; 3] = ["Agent", "Task", "Workflow"];
 
 /// Matches a bare spawn tool or its scoped form, e.g. `Agent(k-developer)`.
-fn is_spawn_tool(tool: &str) -> bool {
+pub(crate) fn is_spawn_tool(tool: &str) -> bool {
     let base = tool.split('(').next().unwrap_or(tool).trim();
     SPAWN_TOOLS.contains(&base)
 }

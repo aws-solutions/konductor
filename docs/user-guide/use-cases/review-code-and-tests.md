@@ -30,7 +30,8 @@ it generates.
 **`k-developer`, the SOP's only owner, cannot do that spawn**, verified against the agent specs:
 
 - In **Claude Code**, no specialist has an `Agent(...)` tool; only `konductor` does.
-- In **Kiro CLI**, no specialist has the `subagent` tool; only `konductor` does.
+- In **Kiro CLI v3**, no specialist has the `subagent` tool; only `konductor` does. In Kiro CLI
+  v2, `@builtin` still carries it, and only the core rules stop the spawn.
 
 Step 6's own constraints anticipate this — *"You MUST skip this step if no adversarial CR-review
 capability is available"* — so the workflow degrades gracefully rather than erroring. In practice

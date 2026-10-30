@@ -412,7 +412,7 @@ impl HarnessTransformer for KiroCliV3Transformer {
 /// collective markers (`@builtin`, `*`), and any server-scoped
 /// `@<server-name>` entry, none of which this module's four source
 /// pages confirm a rename for.
-fn map_tool_tag(id: &str) -> String {
+pub(crate) fn map_tool_tag(id: &str) -> String {
     TOOL_ID_TO_TAG
         .iter()
         .find(|(old, _)| *old == id)
@@ -1162,7 +1162,7 @@ fn convert_hook_entry(
     Some(serde_json::Value::Object(doc))
 }
 
-const SUBAGENT_CAPABILITY: &str = "subagent";
+pub(crate) const SUBAGENT_CAPABILITY: &str = "subagent";
 
 /// Dropping the `subagent` tag is not enough: `@builtin` also carries
 /// `run_workflow`, which runs any agent via `agent://<name>`, and no
@@ -1170,7 +1170,7 @@ const SUBAGENT_CAPABILITY: &str = "subagent";
 /// `--trust-all-tools` (checked against kiro-cli 2.35.0, engine v3).
 const SPECIALIST_EXCLUDED_TOOLS: [&str; 2] = ["invoke_sub_agent", "run_workflow"];
 
-fn is_subagent_tag(tag: &str) -> bool {
+pub(crate) fn is_subagent_tag(tag: &str) -> bool {
     tag == SUBAGENT_CAPABILITY || tag.starts_with("subagent/")
 }
 
