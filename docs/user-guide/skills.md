@@ -49,7 +49,7 @@ Loaded to shape *how* an agent works rather than what it produces. Several are o
 | `sdlc-navigator` | Guidance on which agent to use next and how artifacts connect across SDLC phases. | You are unsure what comes next, or which agent owns the thing you want. | `konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`, `k-architect`, `k-browser`, `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm` |
 | `pre-planning-analysis` | Classifies an ambiguous request into 6 intent types, names the ambiguities, bounds scope, and recommends an agent chain. | Your request is vague and you would rather be asked good questions than get a confident wrong answer. | all 3 orchestrators |
 | `socratic-elicitation` | Interactive Socratic questioning in two modes — Mode A intake (before work) and Mode B challenge (stress-testing a plan you already hold). | You want assumptions surfaced before anything gets built, or you want your own plan attacked. | `konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`, `k-architect`, `k-developer`, `k-product-manager`, `k-researcher` |
-| `verification` | TDD workflow and evidence-collection protocol; nothing is declared complete without proof. | Orchestrators carry it, and on Claude Code it is preloaded into `k-architect`, `k-developer` and `k-quality-assurance` subagents. It is what makes "done" mean something. | all 3 orchestrators |
+| `verification` | TDD workflow and evidence-collection protocol; nothing is declared complete without proof. | Orchestrators carry it, and on Claude Code it is preloaded into `k-architect`, `k-developer` and `k-quality-assurance` subagents. It is what makes "done" mean something. | `konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`, `k-architect`, `k-developer`, `k-quality-assurance` |
 | `claude-teams-behavior` | Claude Code Agent Teams patterns: hub-and-spoke contract, when to use SendMessage, background spawning, agent-name resolution. | Claude Code only. Preloaded when `konductor` is spawned as a subagent on Claude Code; relevant if you are debugging why teammates behave a certain way. | `konductor` |
 | `mux-dispatch` 📎 | Dispatches specialists into parallel tmux or zellij panes. Auto-detects the active multiplexer. Ships five shell scripts. | You want to watch each specialist work in its own pane. | `konductor-mux-orchestrator` |
 | `cmux-dispatch` 📎 | Same as `mux-dispatch` but for cmux surfaces. Ships two shell scripts. | You use cmux and want parallel surfaces. | `konductor-cmux-orchestrator` |
@@ -236,9 +236,8 @@ it. Contributors adding a skill should see
 > `kiro-*-generation` skills — which `kiro-spec-workflow` explicitly instructs the agent to run —
 > and `security-remediation`. The three Kiro skills are now declared by all three orchestrators
 > (the agents that own `kiro-spec-workflow`), and `security-remediation` by `k-developer`.
-> Both runtimes were wired: the skill name in `dependencies.skills.skillNames`, which is what
-> `konductor synth` reads for either harness, and in `clientConfig.claudeCli.skills`, which is what
-> Claude Code lists in the rendered agent's `skills:` frontmatter.
+> Each is declared in `dependencies.skills.skillNames`, which `konductor synth` reads for either
+> harness, and both runtimes load it on demand.
 
 ---
 
@@ -265,7 +264,8 @@ come back thinner. `k-media-analyzer` carries `constraints` and `humanize-writin
 only `constraints`. Its capability is the model's ability to interpret PDFs and images, not a
 skill library.
 
-The declared column is `dependencies.skills.skillNames`; the preloaded column is `clientConfig.claudeCli.skills`, the skills Claude Code injects when the agent runs as a subagent.
+The declared column is `dependencies.skills.skillNames`; the preloaded column is
+`clientConfig.claudeCli.skills`, the skills Claude Code injects when the agent runs as a subagent.
 
 ---
 
