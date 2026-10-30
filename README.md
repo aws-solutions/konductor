@@ -36,7 +36,7 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
 
 - 🎼 **One request, the whole lifecycle.** Requirements, design, code, tests and docs, without
   hand-carrying artifacts between chats.
-- ✅ **Every deliverable gets checked.** Work passes a maker-checker gate, and failed checks
+- ✅ **Every phase gets checked.** Each phase's work passes one review gate, and failed checks
   go back for up to two fix cycles.
 - 🧠 **Expertise built in.** 82 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
@@ -231,12 +231,15 @@ for the full fallback chain.
 
 ## Meet the team
 
-`konductor` is where you start. It never writes code itself: it delegates, verifies, and re-delegates
-when a quality gate fails (up to two fix cycles).
+`konductor` is where you start. It does the work in your session and brings in one fresh specialist
+reviewer at each phase gate; it spawns a specialist to do work only for a tool it lacks or for parallel
+work on disjoint files. A failed review gets up to two fix cycles. On Kiro CLI it trusts only reads, so
+each write and shell command asks you first; widen `allowedTools` in your agent config if you want
+fewer prompts.
 
 | Agent | What it does |
 | --- | --- |
-| `konductor` | Coordinates every specialist across the lifecycle, tracks progress and enforces quality gates |
+| `konductor` | Takes a request through the lifecycle, tracks progress and enforces review gates |
 | `konductor-mux-orchestrator` | Same job, with specialists running in parallel tmux or zellij panes (auto-detected) |
 | `konductor-cmux-orchestrator` | Same job, with specialists in parallel [cmux](https://github.com/manaflow-ai/cmux) surfaces |
 | `k-product-manager` | User stories, requirements summaries and decision research, validated before handoff |

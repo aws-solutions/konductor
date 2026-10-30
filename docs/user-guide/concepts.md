@@ -62,7 +62,7 @@ Konductor ships 11. Three are orchestrators (coordinators); eight are specialist
 
 | Agent | What it does |
 | --- | --- |
-| `konductor` | The main entry point. Coordinates everything, delegates all work, never implements directly. |
+| `konductor` | The main entry point. Does the work itself and spawns one reviewer per phase gate; spawns specialists for tools it lacks or parallel work. |
 | `konductor-mux-orchestrator` | Same coordination, but dispatches specialists into parallel tmux or zellij terminal panes. |
 | `konductor-cmux-orchestrator` | Same coordination, but dispatches specialists into parallel cmux surfaces. |
 | `k-product-manager` | User stories, requirements, decision research, sprint planning. |
@@ -153,16 +153,25 @@ A **context file** is Markdown loaded into an agent's memory *at session start* 
 active for the whole session — unlike a skill, which loads on demand. Context files are for
 rules that must never be missed.
 
-There are two today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
-rule, and the engineering practices, and all 11 agents load it. `context/k-orchestrator-routing-rules.md` is loaded by all three
-orchestrators. The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
+There are three today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
+rule, and the engineering practices, and all 11 agents load it. `context/k-direct-work.md` is loaded by `konductor`;
+`context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators (and by
+`konductor` in coordinator mode, see Orchestration shapes). The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
 rules, including this one:
 
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You NEVER
 > directly execute mutating operations or shell commands.
 
-That is why the orchestrator hands file edits and shell commands to `k-developer` rather
-than doing them itself.
+That is why the mux and cmux orchestrators hand file edits and shell commands to `k-developer`
+rather than doing them themselves.
+
+## Orchestration shapes
+
+`konductor` ships in its single-writer shape: it reads, writes and runs commands itself and spawns a
+fresh `k-*` reviewer when a phase closes. This is the shape the current release calls `auto`. The
+coordinator shape, where the orchestrator never writes and every change goes to a specialist, is
+what `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` still use, and what a later
+release will expose as a setting.
 
 ## Orchestrator and delegation
 

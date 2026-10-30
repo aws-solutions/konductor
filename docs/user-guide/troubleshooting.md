@@ -144,6 +144,8 @@ running shell commands directly, rather than handing off to `k-developer`.
 `context/k-orchestrator-routing-rules.md`, loaded at session start. If the context file did not
 load, the behaviour is gone — the system prompt alone does not carry it.
 
+This block is in `k-orchestrator-routing-rules.md`, loaded by the mux and cmux orchestrators (and by `konductor` in coordinator mode); `konductor`'s default shape loads `k-direct-work.md` instead.
+
 The rule itself:
 
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You MUST NOT

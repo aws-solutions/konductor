@@ -21,7 +21,7 @@ This constraint keeps multi-agent behavior portable across runtimes. This skill 
 
 ## Tool Usage: Direct Reads and Read-only Bash
 
-What you do yourself is defined once, in the Orchestrator Direct Work table of `k-orchestrator-routing-rules.md`. On Claude Code that means `Read`, `Glob`, and `Grep` for files and search, and `Bash` only for the read-only commands that table lists. Before dispatching a write agent, read `.wt-ledger.json` and run `git worktree list` this way (see Worktree Scoping below). `git worktree add`, `git worktree remove`, and every other state-changing command stay delegated to the write agent.
+What you do yourself is defined once, in your Direct Work rules: the context file your orchestrator loads (`k-direct-work.md` for `konductor`, `k-orchestrator-routing-rules.md` for the mux and cmux orchestrators). On Claude Code that means `Read`, `Glob`, and `Grep` for files and search, and `Bash` only for the read-only commands that table lists. Before dispatching a write agent, read `.wt-ledger.json` and run `git worktree list` this way (see Worktree Scoping below). `git worktree add`, `git worktree remove`, and every other state-changing command stay delegated to the write agent.
 
 ## Worktree Scoping
 

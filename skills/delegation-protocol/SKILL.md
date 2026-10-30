@@ -48,9 +48,12 @@ MUST NOT DO:
 - Do NOT silently reduce scope
 
 CONTEXT: <File paths, patterns, constraints, handoff file references>
+USER DECISIONS IN FORCE: <the user's own words, quoted verbatim, for each decision or permission the specialist must take as given; "none" when there are none>
 ```
 
 If a section is not applicable, write `N/A` — never omit the section. `TARGET AGENT` is the one exception: it is never `N/A` — every delegation targets exactly one agent.
+
+A specialist treats a quoted decision under `USER DECISIONS IN FORCE` as the user's own answer to any rule that says to confirm with the user; it does not re-ask.
 
 ### Never Omit the Target Agent
 
@@ -177,13 +180,13 @@ Large outputs between agents go through handoff files:
 File naming: `<source-agent>-<descriptive-task>.md`
 Example: `architect-system-design.md`, `developer-task-breakdown.md`
 
-## Post-Implementation Review
+## Phase Review
 
-After code changes, run the maker-checker cycle:
+Before a phase closes, run one review of everything it produced:
 
-1. Get the git diff of all changes
-2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
-3. Address all CRITICAL findings, and IMPORTANT ones only when Verification Protocol item 6 says so. Never put SUGGESTIONs in a fix brief.
+1. Collect the phase's artifacts: the git diff for code, paths for documents and design artifacts.
+2. Spawn one fresh reviewer for the phase (for example `k-developer` with `backend-review` or `frontend-review`, `k-architect` with `design-evaluation` and `threat-modeling`). One reviewer brief per phase (per artifact owner, when a phase has more than one) lists every artifact of that phase and the checker skill for each.
+3. Address all CRITICAL findings, and IMPORTANT ones only when Verification Protocol item 6 says so. Never put SUGGESTIONs in a fix brief. Before any second round, triage the findings against the user's request, the project's house rules and the spec; rework CRITICAL findings that survive triage, and list the rest.
 4. Re-review only what the fix changed, once. What that re-review still finds goes to the user, not to another fix.
 
 ## Failure Recovery
@@ -210,7 +213,7 @@ This section covers failed spawns: the spawn errors, times out, or the subagent 
 
 - Wrong agent selected for the task domain
 - Handoff file exceeds 300 lines without splitting
-- Post-implementation review skipped after code changes
+- Phase closed without its review
 
 **SUGGESTION:**
 

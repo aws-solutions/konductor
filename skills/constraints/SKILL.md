@@ -25,7 +25,7 @@ The NEVER DO rules live in the core rules, which every agent loads at session st
 
 1. **Read before edit**: see Engineering practices in the core rules
 2. **Follow existing patterns**: see Engineering practices and Writing habits in the core rules
-3. **Maker-checker** — Always run the maker-checker pattern: generate artifact → validate with the corresponding checker skill before presenting to the user
+3. **Maker-checker**: a separate reviewer runs when the orchestrator's Verification Protocol says so (once per phase, on everything the phase produced). Before you return an artifact, apply its checker skill yourself.
 4. **Backward compatibility**: see Engineering practices in the core rules
 5. **Comment complex logic**: see Engineering practices in the core rules
 6. **Structured logging**: see Engineering practices in the core rules
@@ -55,7 +55,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 **CRITICAL (immediate stop):**
 
 - Any NEVER DO rule violated (see the core rules)
-- Artifact presented to user without checker validation (maker-checker bypass)
+- Artifact returned without the maker applying its checker skill, or a phase closed without the review the orchestrator's Verification Protocol requires
 - Code left in non-compiling state
 - Secrets or credentials in source code
 

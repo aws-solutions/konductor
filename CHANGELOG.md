@@ -10,6 +10,8 @@ not per individual commit.
 
 ### Changed
 
+- `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate; it
+  spawns a specialist to do work only for a tool it lacks or for parallel work on disjoint files.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)

@@ -72,6 +72,8 @@ visible parallel panes rather than as background subagents.
 
 ## Why does `konductor` (or the other orchestrators) refuse to edit files itself?
 
+This block is in `k-orchestrator-routing-rules.md`, loaded by the mux and cmux orchestrators (and by `konductor` in coordinator mode); `konductor`'s default shape loads `k-direct-work.md` instead.
+
 By design. `context/k-orchestrator-routing-rules.md` makes it read-only:
 
 > You are a read-only orchestrator. You MUST NOT directly execute mutating operations.
