@@ -359,28 +359,27 @@ All 11, with the model each declares and the SOPs it makes available. For write 
 per runtime, delegation targets, and the full per-agent breakdown, see the
 [Agents reference](agents.md).
 
-| Agent | Model | SOPs declared | Skills | MCP registry |
-| --- | --- | --- | --- | --- |
-| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 13 | — |
-| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | `aws-mcp` |
-| `k-developer` | `claude-sonnet-5.5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | `aws-mcp` |
-| `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 12 | — |
-| `k-product-manager` | `claude-sonnet-5.5` | — | 16 | — |
-| `k-tpm` | `claude-sonnet-5.5` | — | 14 | — |
-| `k-researcher` | `claude-sonnet-5.5` | — | 8 | — |
-| `k-browser` | `claude-sonnet-5.5` | — | 4 | `playwright-mcp` |
-| `k-media-analyzer` | `claude-sonnet-5.5` | — | 1 | — |
+| Agent | Model | SOPs declared | Skills | Preloaded on Claude Code | MCP registry |
+| --- | --- | --- | --- | --- | --- |
+| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 13 | 2 | none |
+| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 11 | 1 | none |
+| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 11 | 1 | none |
+| `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | 2 | `aws-mcp` |
+| `k-developer` | `claude-sonnet-5.5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | 4 | `aws-mcp` |
+| `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 13 | 2 | none |
+| `k-product-manager` | `claude-sonnet-5.5` | none | 16 | 1 | none |
+| `k-tpm` | `claude-sonnet-5.5` | none | 14 | 1 | none |
+| `k-researcher` | `claude-sonnet-5.5` | none | 9 | 2 | none |
+| `k-browser` | `claude-sonnet-5.5` | none | 5 | 4 | `playwright-mcp` |
+| `k-media-analyzer` | `claude-sonnet-5.5` | none | 2 | 1 | none |
 
 Every agent runs `claude-sonnet-5.5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
-`clientConfig.claudeCli.skills`. Claude Code preloads that list only when the agent runs as a
-subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand.
-The list differs from `dependencies.skills.skillNames` in two places. `konductor` declares
-`claude-teams-behavior` for Claude Code only. Seven agents (the three orchestrators,
-`k-quality-assurance`, `k-researcher`, `k-browser`, `k-media-analyzer`) declare
-`humanize-writing` in `skillNames` only, so no runtime preloads it for them. Every skill is catalogued in the
+`dependencies.skills.skillNames`, every skill the agent may load. The preload column is
+`clientConfig.claudeCli.skills`, the 1 to 4 skills Claude Code injects when the agent runs as a
+subagent; everything else loads on demand through the `Skill` tool. A top-level Claude Code
+agent, and every agent on Kiro CLI, loads skills on demand. `konductor` additionally preloads
+`claude-teams-behavior`, which is not in its `skillNames`. Every skill is catalogued in the
 [Skills catalog](skills.md).
 
 Every agent declares `context/k-core-rules.md`. Only the three orchestrators also declare
