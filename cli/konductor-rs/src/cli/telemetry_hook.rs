@@ -27,6 +27,11 @@
 // |         |                                    | `tool_input.stages[].role`            |
 // | Claude  | `SessionStart` `agent_type`        | `SubagentStart` `agent_type`; parent  |
 // |         | (only when run with `--agent`)     | from env `CLAUDE_CODE_AGENT`          |
+//
+// Shared hook runtime: `HookPayload`, `read_capped`, the Kiro session
+// store lookup, `candidate_install_roots`, `InstallIndex`, `same_dir` and
+// `env_non_empty` are `pub(crate)` so `orchestration_hook.rs` reads
+// payloads and finds the owning install the same way.
 
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -48,13 +53,13 @@ pub(crate) const KIRO_ORCHESTRATE_TOOL: &str = "orchestrate_subagent";
 /// harness sends is ignored; only names and a session id ever leave
 /// this process, the session id one-way hashed.
 #[derive(Debug, Default, serde::Deserialize)]
-struct HookPayload {
+pub(crate) struct HookPayload {
     #[serde(default, alias = "sessionId")]
-    session_id: Option<String>,
+    pub(crate) session_id: Option<String>,
     /// Claude Code: the session's agent on `SessionStart`, the delegated
     /// agent on `SubagentStart`.
     #[serde(default, alias = "agent_name")]
-    agent_type: Option<String>,
+    pub(crate) agent_type: Option<String>,
     /// Kiro v3 `PreToolUse`: the delegation tool's name.
     #[serde(default)]
     tool_name: Option<String>,
@@ -67,17 +72,17 @@ struct HookPayload {
 /// The environment variables the resolver reads, gathered once so tests
 /// can supply them directly.
 #[derive(Debug, Default)]
-struct HookEnv {
+pub(crate) struct HookEnv {
     /// Kiro: the root session. Inside a v2 delegated child's hook this
     /// still holds the parent's session id.
-    kiro_session_id: Option<String>,
+    pub(crate) kiro_session_id: Option<String>,
     /// Claude Code: the session's `--agent`, also set inside a
     /// sub-agent's hooks, so it names the delegating agent there.
-    claude_agent: Option<String>,
+    pub(crate) claude_agent: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum InvocationKind {
+pub(crate) enum InvocationKind {
     Agent,
     Subagent,
 }
@@ -85,22 +90,22 @@ enum InvocationKind {
 /// One event this hook firing should report, before the Konductor-agent
 /// filter is applied.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Invocation {
-    kind: InvocationKind,
-    agent: String,
+pub(crate) struct Invocation {
+    pub(crate) kind: InvocationKind,
+    pub(crate) agent: String,
     session_id: Option<String>,
     parent_session_id: Option<String>,
     parent_agent: Option<String>,
 }
 
-fn non_empty(value: Option<String>) -> Option<String> {
+pub(crate) fn non_empty(value: Option<String>) -> Option<String> {
     value.filter(|name| !name.is_empty())
 }
 
 /// Returns an empty `Vec` when no name resolves, so nothing is reported
 /// rather than `<unknown>`. `kiro_session_agent` maps a Kiro v3 session
 /// id to its agent.
-fn resolve_invocations(
+pub(crate) fn resolve_invocations(
     event_type: &str,
     payload: HookPayload,
     agent_arg: Option<&str>,
@@ -200,14 +205,22 @@ fn is_safe_session_id(id: &str) -> bool {
 /// Largest KAS session.json this will parse; real ones are a few KB.
 const MAX_SESSION_FILE_BYTES: u64 = 1024 * 1024;
 
+/// KAS's store root: `$KIRO_HOME` when set and non-empty, else
+/// `<home>/.kiro`.
+pub(crate) fn kiro_store_root(home: &Path) -> PathBuf {
+    env_non_empty("KIRO_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join(".kiro"))
+}
+
 /// Kiro v3's agent for `session_id`, read from KAS's own session store at
-/// `<home>/.kiro/sessions/<workspace-hash>/<session_id>/session.json`.
+/// `<store_root>/sessions/<workspace-hash>/<session_id>/session.json`.
 /// The store is KAS-internal, so any failure is a silent `None`.
-fn kiro_session_agent_mode(home: &Path, session_id: &str) -> Option<String> {
+pub(crate) fn kiro_session_agent_mode(store_root: &Path, session_id: &str) -> Option<String> {
     if !is_safe_session_id(session_id) {
         return None;
     }
-    let entries = std::fs::read_dir(home.join(".kiro").join("sessions")).ok()?;
+    let entries = std::fs::read_dir(store_root.join("sessions")).ok()?;
     for entry in entries.flatten() {
         let path = entry.path().join(session_id).join("session.json");
         let Ok(metadata) = std::fs::metadata(&path) else {
@@ -257,7 +270,7 @@ pub(crate) fn installed_agent_names(root: &Path) -> Vec<String> {
 /// Install roots to check, local first: `cwd` and each ancestor that
 /// carries a `.konductor` directory, nearest first, then `$HOME` (the
 /// default global install target) if it wasn't already found on the way.
-fn candidate_install_roots(cwd: &Path, home: Option<&Path>) -> Vec<PathBuf> {
+pub(crate) fn candidate_install_roots(cwd: &Path, home: Option<&Path>) -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = cwd
         .ancestors()
         .filter(|dir| dir.join(".konductor").is_dir())
@@ -273,12 +286,12 @@ fn candidate_install_roots(cwd: &Path, home: Option<&Path>) -> Vec<PathBuf> {
 
 /// The candidate roots with their installed agent names, each manifest
 /// read at most once per hook firing.
-struct InstallIndex {
+pub(crate) struct InstallIndex {
     roots: Vec<(PathBuf, Vec<String>)>,
 }
 
 impl InstallIndex {
-    fn new(roots: Vec<PathBuf>) -> Self {
+    pub(crate) fn new(roots: Vec<PathBuf>) -> Self {
         let roots = roots
             .into_iter()
             .map(|root| {
@@ -290,7 +303,7 @@ impl InstallIndex {
     }
 
     /// The nearest install that has `agent` in its manifest.
-    fn install_for(&self, agent: &str) -> Option<&Path> {
+    pub(crate) fn install_for(&self, agent: &str) -> Option<&Path> {
         self.roots
             .iter()
             .find(|(_, names)| names.iter().any(|name| name == agent))
@@ -298,20 +311,20 @@ impl InstallIndex {
     }
 }
 
-/// Hard cap on a `__telemetry-hook` stdin payload's size, checked
+/// Hard cap on a hook's stdin payload size, checked
 /// BEFORE any JSON parsing. A real hook payload (a session id, an
 /// agent name, and a handful of other short fields -- see
 /// `HookPayload`) is at most a few hundred bytes; this bound exists
 /// purely as a guardrail against an oversized or malicious piped
 /// payload driving an unbounded `String` allocation, not because any
 /// real payload approaches it.
-const MAX_HOOK_PAYLOAD_BYTES: u64 = 64 * 1024;
+pub(crate) const MAX_HOOK_PAYLOAD_BYTES: u64 = 64 * 1024;
 
 /// Reads at most `MAX_HOOK_PAYLOAD_BYTES + 1` bytes from `reader` and
 /// returns the buffer only if it did not exceed the cap. The `+1` lets
 /// this detect an over-limit input rather than silently truncating it.
 /// Returns `None` on a read error or on exceeding the cap.
-fn read_capped<R: std::io::Read>(mut reader: R) -> Option<String> {
+pub(crate) fn read_capped<R: std::io::Read>(mut reader: R) -> Option<String> {
     let mut buf = String::new();
     let mut limited = (&mut reader).take(MAX_HOOK_PAYLOAD_BYTES + 1);
     limited.read_to_string(&mut buf).ok()?;
@@ -321,12 +334,12 @@ fn read_capped<R: std::io::Read>(mut reader: R) -> Option<String> {
     Some(buf)
 }
 
-fn env_non_empty(name: &str) -> Option<String> {
+pub(crate) fn env_non_empty(name: &str) -> Option<String> {
     non_empty(std::env::var(name).ok())
 }
 
 /// Compares through symlinks (macOS `/tmp` is `/private/tmp`).
-fn same_dir(a: &Path, b: &Path) -> bool {
+pub(crate) fn same_dir(a: &Path, b: &Path) -> bool {
     let canonical =
         |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
     canonical(a) == canonical(b)
@@ -368,9 +381,11 @@ pub(crate) fn dispatch_telemetry_hook(
         kiro_session_id: env_non_empty("KIRO_SESSION_ID"),
         claude_agent: env_non_empty("CLAUDE_CODE_AGENT"),
     };
+    let store_root = home.as_deref().map(kiro_store_root);
     let kiro_session_agent = |session_id: &str| {
-        home.as_deref()
-            .and_then(|home| kiro_session_agent_mode(home, session_id))
+        store_root
+            .as_deref()
+            .and_then(|root| kiro_session_agent_mode(root, session_id))
     };
     let invocations =
         resolve_invocations(event_type, payload, agent_arg, &env, &kiro_session_agent);
@@ -656,10 +671,10 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            kiro_session_agent_mode(&home, "sess_abc-123"),
+            kiro_session_agent_mode(&home.join(".kiro"), "sess_abc-123"),
             Some("konductor".to_string())
         );
-        assert_eq!(kiro_session_agent_mode(&home, "sess_missing"), None);
+        assert_eq!(kiro_session_agent_mode(&home.join(".kiro"), "sess_missing"), None);
         std::fs::remove_dir_all(&home).ok();
     }
 
@@ -667,7 +682,7 @@ mod tests {
     fn kiro_session_agent_mode_rejects_path_like_session_ids() {
         let home = scratch_dir("session-store-unsafe");
         for id in ["../etc", "a/b", "", "sess.json"] {
-            assert_eq!(kiro_session_agent_mode(&home, id), None, "{id:?}");
+            assert_eq!(kiro_session_agent_mode(&home.join(".kiro"), id), None, "{id:?}");
         }
         std::fs::remove_dir_all(&home).ok();
     }
