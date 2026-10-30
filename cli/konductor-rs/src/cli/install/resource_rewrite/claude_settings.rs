@@ -640,7 +640,7 @@ pub(super) fn shell_quote_for_hook_command(exe: &str) -> String {
 }
 
 const TELEMETRY_HOOK_MARKER: &str = "__telemetry-hook ";
-const ORCHESTRATION_HOOK_MARKER: &str = "__orchestration-hook";
+pub(crate) const ORCHESTRATION_HOOK_MARKER: &str = "__orchestration-hook";
 
 /// The `__telemetry-hook ...` or `__orchestration-hook ...` part of a
 /// hook command, without the leading exe path, so commands that differ
@@ -696,6 +696,66 @@ pub(super) fn orchestration_hook_command(
     let mut command = format!("{quoted_exe} {ORCHESTRATION_HOOK_MARKER}");
     append_hook_args(&mut command, agent, install_root);
     command
+}
+
+/// The exe path a hook command runs, when the command's first word is
+/// followed by `marker`. Reverses both quoting forms of
+/// `shell_quote_for_hook_command`, so a command written on either
+/// platform reads back the same path.
+pub(crate) fn hook_command_exe(command: &str, marker: &str) -> Option<String> {
+    let (exe, rest) = split_first_word(command)?;
+    let rest = rest.strip_prefix(' ')?.strip_prefix(marker)?;
+    (rest.is_empty() || rest.starts_with(' ')).then_some(exe)
+}
+
+/// The first shell word of `command`, unquoted, and the text after it.
+fn split_first_word(command: &str) -> Option<(String, &str)> {
+    match command.chars().next()? {
+        '\'' => split_single_quoted(command),
+        '"' => split_double_quoted(command),
+        _ => {
+            let end = command.find(' ').unwrap_or(command.len());
+            Some((command[..end].to_string(), &command[end..]))
+        }
+    }
+}
+
+/// `'a'\''b'` reads as `a'b`.
+fn split_single_quoted(command: &str) -> Option<(String, &str)> {
+    let mut word = String::new();
+    let mut rest = command;
+    loop {
+        let inner = rest.strip_prefix('\'')?;
+        let close = inner.find('\'')?;
+        word.push_str(&inner[..close]);
+        rest = &inner[close + 1..];
+        match rest.strip_prefix("\\'") {
+            Some(after) => {
+                word.push('\'');
+                rest = after;
+            }
+            None => return Some((word, rest)),
+        }
+    }
+}
+
+/// `"a""b"` reads as `a"b`.
+fn split_double_quoted(command: &str) -> Option<(String, &str)> {
+    let mut word = String::new();
+    let mut chars = command[1..].char_indices().peekable();
+    while let Some((index, c)) = chars.next() {
+        if c != '"' {
+            word.push(c);
+            continue;
+        }
+        if chars.peek().is_some_and(|&(_, next)| next == '"') {
+            chars.next();
+            word.push('"');
+            continue;
+        }
+        return Some((word, &command[index + 2..]));
+    }
+    None
 }
 
 fn append_hook_args(command: &mut String, agent: Option<&str>, install_root: Option<&Path>) {
@@ -2367,6 +2427,69 @@ mod tests {
         assert_eq!(
             orchestration_hook_command("k", Some("konductor"), None),
             "k __orchestration-hook --agent konductor"
+        );
+    }
+
+    #[test]
+    fn hook_command_exe_round_trips_the_quoted_exe() {
+        for exe in [
+            "/opt/konductor/bin/konductor",
+            "/Users/a b/bin/konductor",
+            "/tmp/it's/konductor",
+            "/tmp/ends-with-quote'",
+        ] {
+            let command = orchestration_hook_command(
+                &shell_quote_for_hook_command(exe),
+                Some("konductor"),
+                Some(Path::new("/x y")),
+            );
+            assert_eq!(
+                hook_command_exe(&command, ORCHESTRATION_HOOK_MARKER).as_deref(),
+                Some(exe),
+                "{command}"
+            );
+        }
+    }
+
+    #[test]
+    fn hook_command_exe_reads_both_quoting_forms() {
+        let marker = ORCHESTRATION_HOOK_MARKER;
+        assert_eq!(
+            hook_command_exe("'/a'\\''b/k' __orchestration-hook", marker).as_deref(),
+            Some("/a'b/k")
+        );
+        assert_eq!(
+            hook_command_exe(
+                "\"C:\\P F\\k \"\"x\"\"\" __orchestration-hook --agent konductor",
+                marker
+            )
+            .as_deref(),
+            Some("C:\\P F\\k \"x\"")
+        );
+    }
+
+    #[test]
+    fn hook_command_exe_needs_the_marker_right_after_the_exe() {
+        let marker = ORCHESTRATION_HOOK_MARKER;
+        assert_eq!(
+            hook_command_exe("/opt/k __orchestration-hookx", marker),
+            None
+        );
+        assert_eq!(
+            hook_command_exe("/opt/k __telemetry-hook agent-invocation", marker),
+            None
+        );
+        assert_eq!(
+            hook_command_exe("/opt/k --x __orchestration-hook", marker),
+            None
+        );
+        assert_eq!(
+            hook_command_exe("'/unterminated __orchestration-hook", marker),
+            None
+        );
+        assert_eq!(
+            hook_command_exe("konductor __orchestration-hook", marker).as_deref(),
+            Some("konductor")
         );
     }
 }
