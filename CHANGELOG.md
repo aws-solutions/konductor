@@ -29,7 +29,11 @@ not per individual commit.
   and does not report a denied action; it adds visible shared files to a proposed split before
   fan-out. A specialist that runs an SOP's independence step itself says so in its output.
 - Specialist configs no longer include any agent-spawning tool. Kiro CLI v3 and Claude Code
-  configs block it explicitly, so a specialist cannot spawn even when a prompt asks it to.
+  configs block the runtime's spawn tools explicitly, so a specialist cannot call one even when
+  a prompt asks it to. The block does not cover shell: a specialist with shell access could
+  still run `kiro-cli` or `claude`. The Kiro CLI v3 block uses `excludedTools`, tested with
+  kiro-cli 2.35.0 and later. Kiro CLI v2 output is not covered yet: its `@builtin` still
+  includes the `subagent` tool.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
