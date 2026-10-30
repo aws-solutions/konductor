@@ -875,8 +875,9 @@ orchestration:
 - Under `coordinator` the hook prints `Orchestration: coordinator`, a line telling `konductor` to
   read the installed `k-orchestrator-routing-rules.md` in full, and the short coordinator digest
   (under 2,500 bytes in total). Under `auto`, or with no setting, it prints nothing.
-- When it cannot apply `coordinator` (unset `HOME`, an unreadable or unparsable config file, an
-  unknown value, or a missing rules file), it prints one line,
+- When it recognises a `konductor` session but cannot apply `coordinator` (unset `HOME` on Claude
+  Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, or a missing rules
+  file), it prints one line,
   `Orchestration: auto (fallback: <reason>)`, and the session runs as `auto`.
 - The first reply of every `konductor` session states the mode: the hook's line, or
   `Orchestration: auto (default)` when no line arrived. `Orchestration: auto (default)` with
