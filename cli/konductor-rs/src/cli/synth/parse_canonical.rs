@@ -402,7 +402,8 @@ fn check_claude_preload_budget(
             ));
         }
         warnings.push(format!(
-            "agent '{}' preloads {} B over {} clientConfig.claudeCli.skills on Claude Code ({}). \
+            "agent '{}' preloads {} B across {} skill(s) in clientConfig.claudeCli.skills on \
+             Claude Code ({}). \
              Move skills not needed at the first turn to dependencies.skills.skillNames only; \
              they stay loadable with the Skill tool.",
             agent.name,
@@ -1415,7 +1416,7 @@ mod tests {
         let agent = agent_spec_with_claude_cli_skills("k-fat", &["fat"]);
         let warnings = check_claude_preload_budget(&[agent], &skills);
         assert_eq!(warnings.len(), 1, "got: {warnings:?}");
-        assert!(warnings[0].contains("agent 'k-fat' preloads 40,000 B over 1 "));
+        assert!(warnings[0].contains("agent 'k-fat' preloads 40,000 B across 1 skill(s) in "));
         assert!(warnings[0].contains("(budget 32,768 B)"));
         assert!(!warnings[0].contains("would be dropped"));
     }
