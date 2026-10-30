@@ -178,7 +178,7 @@ Read `references/finding-templates.md` when writing each finding and copy the te
 
 1. **Title**: Clear, specific description of the issue
 2. **Priority**: Critical/High/Medium/Low with emoji indicator
-3. **Category**: Which validation category (1-10)
+3. **Category**: Which validation category (1-13)
 4. **Problem**: Detailed explanation of what's wrong
 5. **Impact**: Specific consequences (performance degradation, cost increase, security risk)
 6. **Current State**: Code snippet showing current design
