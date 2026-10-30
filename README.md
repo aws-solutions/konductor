@@ -358,7 +358,9 @@ Each one is explained, with a flowchart, in [SOP workflows](docs/user-guide/sop-
 ### 💾 Persistent memory
 
 Agents with the `persistent-memory` skill keep a small scratchpad across sessions, with no setup.
-The directory is created on first write and added to `.gitignore`.
+The directory is created on first write and added to `.gitignore` by default; remove the ignore
+to share memory with your team. Agents treat these files like AGENTS.md, so review committed
+memory the same way.
 
 | File | Holds |
 | --- | --- |
