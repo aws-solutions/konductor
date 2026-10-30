@@ -35,6 +35,24 @@ test('parseArgs handles --flag value and bare boolean flags', () => {
   assert.equal(opts['out-dir'], '/tmp/out');
 });
 
+test('renderFrontmatter writes the Claude Code form of a Kiro dotted model ID', () => {
+  const spec = { name: 'k-example', config: { description: 'x', model: 'claude-sonnet-5.5' } };
+  assert.match(gen.renderFrontmatter(spec), /\nmodel: claude-sonnet-5-5\n/);
+});
+
+test('claudeModelId converts Kiro IDs and auto, and passes other values through', () => {
+  for (const [kiro, claude] of [
+    ['claude-sonnet-5.5', 'claude-sonnet-5-5'],
+    ['claude-haiku-4.5-20251001', 'claude-haiku-4-5-20251001'],
+    ['claude-sonnet-5', 'claude-sonnet-5'],
+    ['auto', 'inherit'],
+    ['sonnet', 'sonnet'],
+    ['claude-opus-4-1', 'claude-opus-4-1'],
+  ]) {
+    assert.equal(gen.claudeModelId(kiro), claude, kiro);
+  }
+});
+
 test('renderFrontmatter emits name, description, model, tools, and skills', () => {
   const spec = {
     name: 'asdlc-example',
