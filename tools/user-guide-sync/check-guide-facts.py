@@ -309,6 +309,15 @@ def main() -> int:
     for name, spec in specs.items():
         for skill in set(spec["skill_names"]) | set(spec["claude_skills"]):
             declared_by.setdefault(skill, set()).add(name)
+        # Only a skill whose description says it is for Claude Code may skip skillNames.
+        for skill in sorted(set(spec["claude_skills"]) - set(spec["skill_names"])):
+            skill_md = root / "skills" / skill / "SKILL.md"
+            desc = re.search(r"^description:\s*(.*)$", read(skill_md), re.M) if skill_md.is_file() else None
+            if not desc or "Claude Code" not in desc.group(1):
+                named_fails.append(
+                    f"agents/{name}.agent-spec.json: preloads `{skill}` on Claude Code without "
+                    f"declaring it in skillNames, and its description does not mark it Claude Code only"
+                )
 
     # (a) agents.md cards: every skill a card NAMES must be declared by that agent.
     #     The cards are samples ("and others"), so absence is fine; a wrong name is not.
