@@ -19,6 +19,8 @@ not per individual commit.
   `skills/dynamodb-design/references/` (SKILL.md 75.5 KB to 15.7 KB); instructions are unchanged.
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
   `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 29.9 KB); instructions are unchanged.
+- `dynamodb-validation` moved its validation framework, finding templates, and report template into
+  `skills/dynamodb-validation/references/` (SKILL.md 64.7 KB to 13.4 KB); instructions are unchanged.
 - Claude Code subagents now preload 1 to 4 skills each (90 KB in total, down from 1.8 MB); the rest
   load on demand, and `konductor synth` warns when an agent's preload passes 32 KiB or 32 names.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
