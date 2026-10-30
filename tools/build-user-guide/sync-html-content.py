@@ -83,8 +83,8 @@ EDITS = [
      "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules and the writing-habits rule, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains",
      "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains"),
     ("concepts: no repeat review",
-     "k-delegate</span> step 8). A review finding gets one fix and one re-review of that fix. An artifact that passed review is not reviewed again unless it changes.",
-     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run, and one re-review of the fix and the code that uses it; a CRITICAL that survives is reported as unresolved. An artifact that passed review is not reviewed again unless it changes."),
+     "k-delegate</span> step 8).</p>",
+     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; a CRITICAL or IMPORTANT finding that survives blocks done, and the orchestrator stops and reports it to you. An artifact that passed review is not reviewed again unless it changes.</p>"),
     ("concepts: re-delegate sentence without a dash",
      "it re-delegates — <strong",
      "it re-delegates, <strong"),
@@ -342,6 +342,10 @@ EDITS = [
      'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>'),
     ("ik which agent: konductor first",
      ">kiro-cli chat --agent k-architect</pre>", ">kiro-cli chat --agent konductor</pre>"),
+    # ---- specialists return handoffs instead of spawning ---------------------
+    ("test coverage review: handoff to k-developer",
+     "it may offer to spawn k-developer to implement the missing tests.",
+     "it may return a note naming k-developer to implement the missing tests."),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.

@@ -212,17 +212,15 @@ transmitted. Delete it whenever you like.
 
 ## Why did my code review skip the security pass?
 
-Because it always does. `k-code-review-workflow` step 6 tries to spawn `k-architect` for an
-adversarial pass, and **the only agent that owns the SOP cannot spawn the architect**: no
-specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and the core rules forbid it in
-Kiro CLI v2.
-The SOP is written to skip the step quietly when the capability is missing, so you get standard
-review with no error.
+`k-code-review-workflow` step 6 asks for an adversarial pass by `k-architect`, and **the only
+agent that owns the SOP cannot spawn the architect**: no specialist holds a spawn tool in Kiro CLI
+v3 or Claude Code, and the core rules forbid it in Kiro CLI v2.
 
-Routing through `konductor` does not fix it either: the orchestrator does not declare
-`k-code-review-workflow`, so it hands the SOP to the developer, which hits the same wall.
+Under `konductor`, the developer returns step 6 as a handoff for `k-architect`, and `konductor`
+routes it and sends the findings back for the report. If you started `k-developer` directly,
+nothing routes the handoff, so the SOP skips the step and you get standard review with no error.
 
-Run the adversarial pass yourself against the agent that owns it:
+To run the adversarial pass on its own, ask the agent that owns it:
 
 ```text
 Run k-adversarial-pull-request-review against my current diff.
