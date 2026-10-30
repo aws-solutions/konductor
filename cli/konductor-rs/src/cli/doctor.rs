@@ -2004,7 +2004,25 @@ fn hook_binary(exe: &str) -> Option<PathBuf> {
             .unwrap_or(false)
             .then(|| path.to_path_buf());
     }
-    find_binary_on_path(exe, std::env::var_os("PATH").as_deref())
+    hook_binary_on_path(
+        exe,
+        std::env::var_os("PATH").as_deref(),
+        std::env::consts::EXE_SUFFIX,
+    )
+}
+
+/// A bare `konductor` resolves as `konductor.exe` on Windows, so try
+/// `exe_suffix` when the plain name is not on `PATH`.
+fn hook_binary_on_path(
+    exe: &str,
+    path_var: Option<&std::ffi::OsStr>,
+    exe_suffix: &str,
+) -> Option<PathBuf> {
+    find_binary_on_path(exe, path_var).or_else(|| {
+        (!exe_suffix.is_empty())
+            .then(|| find_binary_on_path(&format!("{exe}{exe_suffix}"), path_var))
+            .flatten()
+    })
 }
 
 fn persona_file_finding(
@@ -6007,6 +6025,25 @@ mod tests {
             fs::remove_dir_all(&home).ok();
         }
         fs::remove_dir_all(&destination).ok();
+    }
+
+    #[test]
+    fn hook_binary_on_path_tries_the_exe_suffix_for_a_bare_name() {
+        let dir = scratch_dir("orch-exe-suffix");
+        let exe = dir.join("konductor.exe");
+        fs::write(&exe, b"").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&exe, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let path_var = std::env::join_paths([&dir]).unwrap();
+        assert_eq!(
+            hook_binary_on_path("konductor", Some(&path_var), ".exe"),
+            Some(exe)
+        );
+        assert_eq!(hook_binary_on_path("konductor", Some(&path_var), ""), None);
+        fs::remove_dir_all(&dir).ok();
     }
 
     #[cfg(unix)]
