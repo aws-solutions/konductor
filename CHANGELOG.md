@@ -25,8 +25,8 @@ not per individual commit.
   `constraints` skill and the routing rules.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
-- Project memory in `.konductor/memory/` ranks with AGENTS.md, tracked or not. Orchestrators never
-  bypass a denial or read unnamed secrets; the validator refuses symlinked or out-of-root writes.
+- Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
+  and is never written via a symlink. Orchestrators never bypass denials or read unnamed secrets.
 
 ### Fixed
 
