@@ -1,6 +1,6 @@
 # DynamoDB AWS best practices
 
-Read this when choosing keys and indexes; read only the subsections for features the design uses.
+Read this when choosing keys and indexes. Always read the core subsections that `SKILL.md` lists under AWS Best Practices; read a feature subsection only when the design uses that feature.
 
 ### Partition Key Design
 
