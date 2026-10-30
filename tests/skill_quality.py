@@ -2,8 +2,8 @@
 """Static quality checks for skills/*/SKILL.md, used by tests/test_skill_quality.py.
 
 Checks each skill for: frontmatter `name` matching its directory; a description
-with an activation condition and a length window; line and byte ceilings; and
-link, bare-path and `references/` integrity. Sizes over a threshold must be
+with an activation condition and a length window; line and byte ceilings; no
+unclosed code fence; and link, bare-path and `references/` integrity. Sizes over a threshold must be
 carried by tests/skill-quality-baseline.json, which may only shrink.
 
 Needs PyYAML. Without it, run: uvx --with pyyaml pytest -q tests/
@@ -113,15 +113,20 @@ def split_frontmatter(text: str) -> tuple[str, list[str], int]:
     raise ValueError("frontmatter has no closing '---' line")
 
 
-def blank_fenced_lines(lines: list[str]) -> list[str]:
-    """Replace every line of a CommonMark fenced block (fences included) with ''."""
+def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
+    """Replace every line of a CommonMark fenced block (fences included) with ''.
+
+    Also return the 0-based index of a fence still open at the end, else None.
+    """
     out = []
     fence = None
-    for line in lines:
+    opened_at = None
+    for index, line in enumerate(lines):
         if fence is None:
             match = FENCE_OPEN.match(line)
             if match and not (match.group(1)[0] == "`" and "`" in match.group(2)):
                 fence = match.group(1)
+                opened_at = index
                 out.append("")
             else:
                 out.append(line)
@@ -130,7 +135,7 @@ def blank_fenced_lines(lines: list[str]) -> list[str]:
             if match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence):
                 fence = None
             out.append("")
-    return out
+    return out, (opened_at if fence is not None else None)
 
 
 def link_target(destination: str) -> str:
@@ -194,7 +199,10 @@ def check_skill_content(skill_dir: Path) -> SkillReport:
     }
     _check_name(report, meta["name"])
     _check_description(report, description)
-    unfenced = blank_fenced_lines(body)
+    unfenced, open_fence = blank_fenced_lines(body)
+    if open_fence is not None:
+        # Fail closed: an unclosed fence would hide every later line from the checks below.
+        report.fail("fence", f"line {body_start + open_fence}: code fence opened here is never closed")
     _check_links(report, skill_dir, unfenced, body_start)
     _check_bare_paths(report, skill_dir, unfenced, body_start)
     _check_references(report, skill_dir, text, unfenced, body_start)

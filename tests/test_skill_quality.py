@@ -286,6 +286,13 @@ def test_link_inside_longer_tilde_fence_ignored(tmp_path):
     assert _rules(_skill(tmp_path, body=body)) == set()
 
 
+def test_unclosed_fence_fails_closed(tmp_path):
+    body = "Intro.\n\n```bash\necho hi\n\nSee [n](missing.md).\n"
+    skill = _skill(tmp_path, body=body)
+    assert "fence" in _rules(skill)
+    assert "line 7: code fence opened here is never closed" in _messages(skill)
+
+
 def test_bare_reference_path_without_directory_ignored(tmp_path):
     body = "Its `references/architecture.md` file explains it.\n"
     assert _rules(_skill(tmp_path, body=body)) == set()
