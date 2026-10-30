@@ -54,17 +54,63 @@ def test_agent_tool_entries_ignores_specs_without_an_agent_grant():
     assert _agent_tool_entries(spec) == []
 
 
+KIRO_SPAWN_TOOLS = {"subagent", "use_subagent", "agent_crew", "*"}
+CLAUDE_SPAWN_TOOLS = {"Agent", "Task", "Workflow"}
+
+
+def _spawn_grants(spec):
+    client = spec.get("clientConfig", {})
+    kiro = client.get("kiroCli", {})
+    grants = []
+    for tool in kiro.get("tools", []):
+        if tool in KIRO_SPAWN_TOOLS or tool.split("/")[0] in KIRO_SPAWN_TOOLS:
+            grants.append(f"kiroCli.tools has {tool}")
+    for key in kiro.get("toolsSettings", {}):
+        if key in KIRO_SPAWN_TOOLS:
+            grants.append(f"kiroCli.toolsSettings has {key}")
+    for tool in client.get("claudeCli", {}).get("tools") or []:
+        if tool.split("(")[0].strip() in CLAUDE_SPAWN_TOOLS:
+            grants.append(f"claudeCli.tools has {tool}")
+    return grants
+
+
 def test_specialists_hold_no_spawn_grant():
     failures = []
     for spec_path in sorted(AGENTS_DIR.glob("k-*.agent-spec.json")):
         spec = json.loads(spec_path.read_text())
-        client = spec.get("clientConfig", {})
-        kiro = client.get("kiroCli", {})
-        if "subagent" in kiro.get("tools", []):
-            failures.append(f"{spec_path.name}: kiroCli.tools has subagent")
-        if "subagent" in kiro.get("toolsSettings", {}):
-            failures.append(f"{spec_path.name}: kiroCli.toolsSettings has subagent")
-        if _agent_tool_entries(spec):
-            failures.append(f"{spec_path.name}: claudeCli.tools has Agent(...)")
+        failures.extend(f"{spec_path.name}: {grant}" for grant in _spawn_grants(spec))
 
     assert not failures, "specialists must not spawn agents:\n" + "\n".join(failures)
+
+
+def test_spawn_grants_catches_every_alias():
+    spec = {
+        "clientConfig": {
+            "kiroCli": {
+                "tools": ["@builtin", "subagent", "use_subagent", "agent_crew", "*"],
+                "toolsSettings": {"subagent": {}},
+            },
+            "claudeCli": {"tools": ["Read", "Agent", "Task", "Workflow", "Agent(k-developer)"]},
+        }
+    }
+    assert _spawn_grants(spec) == [
+        "kiroCli.tools has subagent",
+        "kiroCli.tools has use_subagent",
+        "kiroCli.tools has agent_crew",
+        "kiroCli.tools has *",
+        "kiroCli.toolsSettings has subagent",
+        "claudeCli.tools has Agent",
+        "claudeCli.tools has Task",
+        "claudeCli.tools has Workflow",
+        "claudeCli.tools has Agent(k-developer)",
+    ]
+
+
+def test_spawn_grants_ignores_ordinary_tools():
+    spec = {
+        "clientConfig": {
+            "kiroCli": {"tools": ["@builtin", "@aws-mcp"], "toolsSettings": {"shell": {}}},
+            "claudeCli": {"tools": ["Read", "Bash", "mcp__aws-mcp__*"]},
+        }
+    }
+    assert _spawn_grants(spec) == []
