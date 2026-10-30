@@ -149,8 +149,8 @@ The rule itself:
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You MUST NOT
 > directly execute mutating operations. […] Every other `shell` command MUST be delegated.
 
-This read-only rule applies to the mux and cmux orchestrators, and to `konductor` in coordinator
-mode. `konductor`'s default shape loads `k-direct-work.md` instead, so editing files there is expected.
+This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
+instead, so editing files there is expected.
 
 Running read-only commands such as `ls` or `grep` itself is expected: the Orchestrator Direct Work
 table in that file allows them. Editing files, building, or running tests is not.
