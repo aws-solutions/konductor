@@ -10,8 +10,17 @@ not per individual commit.
 
 ### Changed
 
+- `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate; it
+  spawns a specialist to do work only for a tool it lacks or for parallel work on disjoint files.
+- A specialist treats a quoted user decision in its brief as approval only for the action it
+  names, never for a NEVER-rule confirmation or an irreversible action.
+- The rule against reading secret files now lives in the core rules, so all 11 agents load it.
+  From a file the user names, an agent reports key names or redacted values only, never the
+  secret values, in replies, briefs, commits or logs.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
-  so agents get them without loading the skill.
+  so agents get them without loading the skill. The `constraints` skill and the
+  `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
+  severity order; other skills still state it themselves.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in
@@ -40,6 +49,11 @@ not per individual commit.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
   `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
   or `.konductor/memory`; orchestrators never bypass a denial or read unnamed secrets.
+- Orchestrator review fixes CRITICAL and IMPORTANT findings once, reruns the build and tests,
+  re-reviews that fix and the code that uses it, and lists what remains and all suggestions for
+  you. A CRITICAL that survives the re-review is reported as unresolved, not as done.
+- Core rules now rank the user's request, project instruction files, user-written memory and the
+  codebase's conventions above konductor's format and workflow defaults; ties are asked once.
 
 ### Fixed
 

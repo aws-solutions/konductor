@@ -62,7 +62,7 @@ Konductor ships 11. Three are orchestrators (coordinators); eight are specialist
 
 | Agent | What it does |
 | --- | --- |
-| `konductor` | The main entry point. Coordinates everything, delegates all work, never implements directly. |
+| `konductor` | The main entry point. Does the work itself and spawns one reviewer per phase gate; spawns specialists for tools it lacks or parallel work. |
 | `konductor-mux-orchestrator` | Same coordination, but dispatches specialists into parallel tmux or zellij terminal panes. |
 | `konductor-cmux-orchestrator` | Same coordination, but dispatches specialists into parallel cmux surfaces. |
 | `k-product-manager` | User stories, requirements, decision research, sprint planning. |
@@ -153,16 +153,25 @@ A **context file** is Markdown loaded into an agent's memory *at session start* 
 active for the whole session — unlike a skill, which loads on demand. Context files are for
 rules that must never be missed.
 
-There are two today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
-rule, and the engineering practices, and all 11 agents load it. `context/k-orchestrator-routing-rules.md` is loaded by all three
-orchestrators. The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
+There are three today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
+rule, and the engineering practices, and all 11 agents load it. `context/k-direct-work.md` is loaded by `konductor`;
+`context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators (see
+Orchestration shapes). The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
 rules, including this one:
 
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You NEVER
 > directly execute mutating operations or shell commands.
 
-That is why the orchestrator hands file edits and shell commands to `k-developer` rather
-than doing them itself.
+That is why the mux and cmux orchestrators hand file edits and shell commands to `k-developer`
+rather than doing them themselves.
+
+## Orchestration shapes
+
+`konductor` ships in its single-writer shape: it reads, writes and runs commands itself and spawns a
+fresh `k-*` reviewer when a phase closes. This is the shape the current release calls `auto`. The
+coordinator shape, where the orchestrator never writes and every change goes to a specialist, is
+what `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` still use, and what a later
+release will expose as a setting.
 
 ## Orchestrator and delegation
 
@@ -186,7 +195,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates — **up to 2 fix cycles** (`k-delegate` step 8).
+fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run, and one re-review of the fix and the code that uses it; a CRITICAL that survives is reported as unresolved. An artifact that passed review is not reviewed again unless it changes.
 
 ## Maker-checker
 
@@ -219,8 +228,8 @@ Full detail in the [CLI reference](reference.md).
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
 flowchart LR
     User(["You"])
-    Ctx["<b>context/</b><br/>routing rules<br/><i>always active</i>"]:::gate
-    Orch["<b>konductor</b><br/><i>hub — read-only</i>"]:::focus
+    Ctx["<b>context/</b><br/>direct-work rules<br/><i>always active</i>"]:::gate
+    Orch["<b>konductor</b><br/><i>does the work, reviews at phase gates</i>"]:::focus
     Store["<b>skills/</b> — 82 modules<br/><b>agent-sops/</b> — 19 procedures<br/><i>loaded on demand</i>"]:::muted
 
     subgraph Specialists["8 specialist agents"]
@@ -241,18 +250,19 @@ flowchart LR
     classDef muted fill:#f4f4f5,stroke:#8a8a8a,stroke-width:1.2px,color:#0f172a,stroke-dasharray:4 3;
 ```
 
-*Hub-and-spoke: you talk only to `konductor`; routing rules are always active; skills
+*Hub-and-spoke: you talk only to `konductor`; its direct-work rules are always active; skills
 and SOPs load on demand.*
 
 Reading the diagram in words:
 
 1. You describe what you want to the `konductor` agent.
-2. The always-active routing rules tell it which specialist owns that kind of work.
-3. It writes a 7-section delegation and hands the work over.
+2. Its always-active direct-work rules have it do the work itself, or name an SOP for a
+   multi-phase request.
+3. It spawns a specialist only for a tool it lacks or for parallel work on disjoint files.
 4. The specialist loads whichever skills and SOPs the task needs, does the work, and applies
    its own maker-checker pass.
-5. `konductor` verifies the result against the delegation's expected outcome — and
-   re-delegates if it falls short, up to twice.
+5. When a phase closes, `konductor` spawns a fresh `k-*` reviewer, fixes the CRITICAL and
+   IMPORTANT findings once, and re-reviews the fix plus the code that uses it.
 
 ---
 

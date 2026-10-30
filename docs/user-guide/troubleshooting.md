@@ -137,8 +137,9 @@ means the invocation itself was malformed.
 
 ## 3. The orchestrator does the work itself instead of delegating
 
-**Symptom.** You asked `konductor` to implement something and it started editing files and
-running shell commands directly, rather than handing off to `k-developer`.
+**Symptom.** You asked `konductor-mux-orchestrator` or `konductor-cmux-orchestrator` to implement
+something and it started editing files and running shell commands directly, rather than handing off
+to `k-developer`.
 
 **Cause.** The orchestrator is supposed to be read-only. That rule lives in
 `context/k-orchestrator-routing-rules.md`, loaded at session start. If the context file did not
@@ -148,6 +149,9 @@ The rule itself:
 
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You MUST NOT
 > directly execute mutating operations. […] Every other `shell` command MUST be delegated.
+
+This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
+instead, so editing files there is expected.
 
 Running read-only commands such as `ls` or `grep` itself is expected: the Orchestrator Direct Work
 table in that file allows them. Editing files, building, or running tests is not.
@@ -169,7 +173,7 @@ Look at the `context files` line — it should report `2 registered`.
 konductor install --harness kiro-cli-v2
 ```
 
-3. Confirm you actually started an orchestrator. Only the three orchestrators load this file;
+3. Confirm you actually started an orchestrator. Only the mux and cmux orchestrators load this file;
    `k-developer` is *supposed* to write files, so if you invoked it directly this is correct
    behaviour rather than a bug.
 

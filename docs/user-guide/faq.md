@@ -70,11 +70,14 @@ visible parallel panes rather than as background subagents.
 
 ---
 
-## Why does `konductor` (or the other orchestrators) refuse to edit files itself?
+## Why do the mux and cmux orchestrators refuse to edit files themselves?
 
 By design. `context/k-orchestrator-routing-rules.md` makes it read-only:
 
 > You are a read-only orchestrator. You MUST NOT directly execute mutating operations.
+
+This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
+instead and edits files itself.
 
 Its Orchestrator Direct Work table lists the exceptions: reading files, read-only commands such as
 `ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
