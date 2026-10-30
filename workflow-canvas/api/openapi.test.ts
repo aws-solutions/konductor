@@ -10,6 +10,7 @@ import addFormats from 'ajv-formats';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 // The subset of an OpenAPI document that these checks read, after $ref
 // pointers have been replaced by the objects they point to.
@@ -80,7 +81,12 @@ const ERROR_CODES_BY_STATUS: Record<string, string[]> = {
   '403': ['forbidden_host', 'forbidden_origin', 'read_only_workflow'],
   '404': ['not_found'],
   '405': ['method_not_allowed'],
-  '409': ['conflict', 'already_running', 'harness_unavailable'],
+  '409': [
+    'conflict',
+    'already_running',
+    'harness_unavailable',
+    'trust_required',
+  ],
   '413': ['too_large'],
   '422': ['invalid_workflow', 'bad_params'],
   '500': ['io_error'],
@@ -292,6 +298,15 @@ function linesStartingWith(text: string, prefix: string): number[] {
     .flatMap((line, index) => (line.startsWith(prefix) ? [index + 1] : []));
 }
 
+// The codes whose position is the name that their message quotes. The others
+// point at a whole mapping or at a value, which the message does not repeat.
+const POINTS_AT_NAME = new Set([
+  'UNKNOWN_KEY',
+  'DUPLICATE_KEY',
+  'DUPLICATE_STAGE',
+  'NOT_SUPPORTED_BY_THIS_BUILD',
+]);
+
 // The name quoted in a diagnostic message, such as `owner`.
 function quotedIn(message: string): string | undefined {
   return /`([^`]+)`/.exec(message)?.[1];
@@ -301,7 +316,7 @@ function quotedIn(message: string): string | undefined {
 // use, which has one stage per `- name:` line.
 function readExampleText(text: string) {
   return {
-    outcome: /^intent: (.*)$/m.exec(text)?.[1],
+    outcome: /^intent:\n {2}outcome: (.*)$/m.exec(text)?.[1],
     stages: [...text.matchAll(/^\s*- name: (\S+)$/gm)].map((m) => m[1]),
   };
 }
@@ -324,6 +339,17 @@ interface TextAndAnswer {
   label: string;
   text: string;
   answer: Record<string, unknown>;
+}
+
+// Every diagnostic of the answers, with the text it is about.
+function diagnosticsOf(pairs: TextAndAnswer[]) {
+  return pairs.flatMap(({ label, text, answer }) =>
+    (answer['diagnostics'] as Record<string, unknown>[]).map((d) => ({
+      label: `${label}: ${String(d['message'])}`,
+      text,
+      d,
+    })),
+  );
 }
 
 function jsonBodyOf(spec: Spec, route: string, status?: string): MediaType {
@@ -392,7 +418,10 @@ function listTextsAndAnswers(spec: Spec): TextAndAnswer[] {
 // What a run promises about its own fields. Returns the broken promises.
 function runProblems(run: Record<string, unknown>): string[] {
   const order = run['order'] as string[];
-  const stages = run['stages'] as Record<string, { status: string }>;
+  const stages = run['stages'] as Record<
+    string,
+    { status: string; reason?: string }
+  >;
   const letters = order.map((name) => STAGE_LETTER[stages[name]?.status ?? '']);
   const allowed = STAGE_SEQUENCE_BY_RUN_STATUS[run['status'] as string];
   const problems: string[] = [];
@@ -404,6 +433,11 @@ function runProblems(run: Record<string, unknown>): string[] {
   }
   if (new Set(order).size !== order.length) problems.push('order repeats');
   if (!allowed?.test(letters.join(''))) problems.push('stage statuses');
+  // Only a blocked stage has a reason, and it has one.
+  const reasoned = Object.values(stages).every(
+    (stage) => (stage.status === 'blocked') === (stage.reason !== undefined),
+  );
+  if (!reasoned) problems.push('reason');
   return problems;
 }
 
@@ -619,17 +653,36 @@ describe('workflow canvas API contract', () => {
         }
       });
 
+      it('has a view that is its text read as YAML, with the name filled in', () => {
+        const withView = pairs.filter(({ answer }) => isRecord(answer['view']));
+        for (const { label, text, answer } of withView) {
+          const read = parse(text, { version: '1.2' }) as Record<
+            string,
+            unknown
+          >;
+          expect(answer['view'], label).toEqual({ name: 'hello', ...read });
+        }
+      });
+
       it('has a diagnostic that points at the name in its message', () => {
-        const found = pairs.flatMap(({ label, text, answer }) =>
-          (answer['diagnostics'] as Record<string, unknown>[]).map((d) => ({
-            label: `${label}: ${String(d['message'])}`,
-            pointedAt: textBetween(text, d),
-            quoted: quotedIn(String(d['message'])),
-          })),
+        const found = diagnosticsOf(pairs).filter(({ d }) =>
+          POINTS_AT_NAME.has(String(d['code'])),
         );
         expect(found.length).toBeGreaterThan(0);
-        for (const { label, pointedAt, quoted } of found) {
-          expect(pointedAt, label).toBe(quoted);
+        for (const { label, text, d } of found) {
+          expect(textBetween(text, d), label).toBe(
+            quotedIn(String(d['message'])),
+          );
+        }
+      });
+
+      it('has a diagnostic of another code that points at some text', () => {
+        const found = diagnosticsOf(pairs).filter(
+          ({ d }) => !POINTS_AT_NAME.has(String(d['code'])),
+        );
+        expect(found.length).toBeGreaterThan(0);
+        for (const { label, text, d } of found) {
+          expect(textBetween(text, d).trim(), label).not.toBe('');
         }
       });
 
@@ -771,6 +824,207 @@ describe('workflow canvas API contract', () => {
       const session = spec.paths['/api/session']?.['post']?.description ?? '';
       expect(words(spec.info.description)).toMatch(fromPrint);
       expect(words(session)).toMatch(fromPrint);
+    });
+  });
+
+  describe('the workflow format', () => {
+    const schema = (name: string) => spec.components.schemas[name]!;
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+
+    it('requires a format, a version, an intent and stages in a view', () => {
+      expect(schema('WorkflowView')['required']).toEqual([
+        'format',
+        'version',
+        'name',
+        'intent',
+        'stages',
+      ]);
+    });
+
+    it('takes the semantic version X.Y.Z and refuses 1.1', () => {
+      const version = schema('Version');
+      for (const good of ['0.1.0', '1.0.0', '10.20.30']) {
+        expect(valueMatchesSchema(version, good), good).toBe(true);
+      }
+      for (const bad of ['1.1', '1', '1.0.0.0', '01.0.0', '1.0.0-rc.1', '']) {
+        expect(valueMatchesSchema(version, bad), bad).toBe(false);
+      }
+    });
+
+    it('takes a path that is relative, has no .. part and is not empty', () => {
+      const path = schema('Path');
+      for (const good of ['PLAN.md', 'docs/a.md', 'a..b', '...', './a']) {
+        expect(valueMatchesSchema(path, good), good).toBe(true);
+      }
+      for (const bad of ['', '/etc/passwd', '..', '../a', 'a/..', 'a/../b']) {
+        expect(valueMatchesSchema(path, bad), bad).toBe(false);
+      }
+    });
+
+    it('takes a check with exactly one of file and run', () => {
+      const check = schema('Check');
+      expect(valueMatchesSchema(check, { id: 'a', file: 'A.md' })).toBe(true);
+      expect(valueMatchesSchema(check, { id: 'a', run: ['make'] })).toBe(true);
+      expect(valueMatchesSchema(check, { id: 'a' })).toBe(false);
+      expect(
+        valueMatchesSchema(check, { id: 'a', file: 'A.md', run: ['make'] }),
+      ).toBe(false);
+    });
+
+    it('lists each key of the key tables once', () => {
+      const description = spec.info.description;
+      const keys = [...description.matchAll(/^\s*\|\s*`([^`]+)`\s*\|/gm)]
+        .map((match) => match[1] as string)
+        .filter((key) => !/^[A-Z_]+$/.test(key));
+      expect(keys.length).toBeGreaterThan(15);
+      expect(new Set(keys).size).toBe(keys.length);
+    });
+
+    it('says what the stub does with a prompt_file', () => {
+      expect(words(spec.info.description)).toMatch(
+        /The stub reads no files, so it checks the path rules of a `prompt_file` and nothing else/,
+      );
+    });
+
+    it('keeps the major version of the document equal to api_version', () => {
+      const session = jsonBodyOf(spec, 'POST /api/session', '200');
+      const { api_version: apiVersion } = session.example as {
+        api_version: number;
+      };
+      const info = (spec as unknown as { info: { version: string } }).info;
+      expect(info.version).toBe('1.1.0');
+      expect(Number(info.version.split('.')[0])).toBe(apiVersion);
+      const xHeader = spec.components as unknown as {
+        headers: { XKonductorApi: { schema: { const: string } } };
+      };
+      expect(xHeader.headers.XKonductorApi.schema.const).toBe(
+        String(apiVersion),
+      );
+    });
+
+    it('says that the changes of this version are not additions, and why', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(/is not that kind of change/);
+      expect(description).toMatch(/makes `format` required/);
+      expect(description).toMatch(/limits `version` to a semantic version/);
+      expect(description).toMatch(/drops the string form of `intent`/);
+      expect(description).toMatch(/`api_version` stays 1/);
+    });
+  });
+
+  describe('a run', () => {
+    const schema = (name: string) => spec.components.schemas[name]!;
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+    const REASONS = [
+      'RESULT_MISSING',
+      'RESULT_INVALID',
+      'RESULT_FAILURE',
+      'SESSION_FAILED',
+      'TIMEOUT',
+      'OUTPUT_MISSING',
+      'OUTPUT_UNCHANGED',
+      'CHECK_FAILED',
+    ];
+
+    it('names the three harnesses, one of them for tests', () => {
+      expect(schema('Harness')['enum']).toEqual(['kiro-cli', 'claude', 'fake']);
+      expect(String(schema('Harness')['description'])).toMatch(
+        /`fake` is for tests only/,
+      );
+    });
+
+    it('has the reasons of a blocked stage, each described', () => {
+      expect(schema('StageReason')['enum']).toEqual(REASONS);
+      for (const reason of REASONS) {
+        expect(spec.info.description, reason).toMatch(
+          new RegExp(`^\\s*- \`${reason}\`: `, 'm'),
+        );
+      }
+    });
+
+    it('gives a blocked stage a reason, and no other stage one', () => {
+      const stage = schema('RunStage');
+      const ok = [
+        { status: 'blocked', reason: 'TIMEOUT' },
+        { status: 'passed' },
+        { status: 'pending' },
+        { status: 'running' },
+      ];
+      const bad = [
+        { status: 'blocked' },
+        { status: 'blocked', reason: 'OOPS' },
+        { status: 'passed', reason: 'TIMEOUT' },
+        { status: 'running', reason: 'TIMEOUT' },
+      ];
+      for (const value of ok) {
+        expect(valueMatchesSchema(stage, value), JSON.stringify(value)).toBe(
+          true,
+        );
+      }
+      for (const value of bad) {
+        expect(valueMatchesSchema(stage, value), JSON.stringify(value)).toBe(
+          false,
+        );
+      }
+    });
+
+    it('passes a stage on evidence, and links the specification for it', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(
+        /A stage passes on evidence, not on the exit status of its session/,
+      );
+      expect(description).toMatch(
+        /\(\.\.\/\.\.\/docs\/design\/workflows-spec\.md#stage-result\)/,
+      );
+      expect(description).not.toMatch(/is `passed` when its session ends/);
+    });
+
+    it('covers a run started by any process in the workspace', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(
+        /`already_running` covers a run started by any process in the workspace/,
+      );
+    });
+
+    it('checks trust after the workflow and before the active run and the harness', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(
+        /after the body its order is 404 for the file, then 422 `invalid_workflow`, then 409 `trust_required`, then 409 `already_running`, then 409 `harness_unavailable`/,
+      );
+      const run = spec.paths['/api/run']?.['post']?.responses?.['409'];
+      const text = words(
+        (run as unknown as { description: string }).description,
+      );
+      expect(text).toMatch(
+        /`trust_required`.*`already_running`.*`harness_unavailable`/,
+      );
+      expect(text).toMatch(/in this order/);
+    });
+
+    it('has a trust answer whose fix holds the exact command and nothing else in backticks', () => {
+      const body = jsonBodyOf(spec, 'POST /api/run', '409');
+      const { fix } = namedExample(body, 'untrusted') as { fix: string };
+      const quoted = [...fix.matchAll(/`([^`]*)`/g)].map((match) => match[1]);
+      expect(quoted).toEqual(['konductor flow trust hello']);
+      expect(namedExample(body, 'untrusted')['code']).toBe('trust_required');
+    });
+
+    it('has no operation that grants trust', () => {
+      const paths = Object.keys(spec.paths).join(' ');
+      expect(paths).not.toMatch(/trust/);
+      expect(words(spec.info.description)).toMatch(
+        /no operation that grants trust/,
+      );
+    });
+
+    it('has an answer for a missing claude as well as for kiro-cli', () => {
+      const body = jsonBodyOf(spec, 'POST /api/run', '409');
+      expect(namedExample(body, 'missingClaude')).toMatchObject({
+        code: 'harness_unavailable',
+      });
+      expect(namedExample(body, 'missingHarness')).toMatchObject({
+        code: 'harness_unavailable',
+      });
     });
   });
 

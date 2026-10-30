@@ -53,12 +53,23 @@ canvas calls. It covers six operations:
 | `POST /api/run`      | `startRun`      | Start a run                             |
 | `GET /api/runs/{id}` | `getRun`        | Get the status of a run                 |
 
-A workflow in this version has a `name`, an `intent` and `stages`, and each
-stage is a `name` and an `agent`. The only harness is `kiro-cli`. The file also
-holds what a backend needs to implement the calls: the accepted workflow text,
-the checks that make a text invalid, the list of diagnostic codes, how a file
-that is not a plain file is handled, and what a run does stage by stage. A
-client follows a run by polling `GET /api/runs/{id}`.
+A workflow in this version has a `format`, a `version`, an `intent` with an
+`outcome` and optional `accept` checks, optional `params` (the goal only) and
+`stages`. A stage has a `name`, an `agent` and optionally a `prompt` or a
+`prompt_file`. Keys that later releases add, such as `outputs` and `done_when`,
+are refused by name with the slice that adds them. The file also holds what a
+backend needs to implement the calls: the accepted workflow text, the checks
+that make a text invalid, the list of diagnostic codes, how a file that is not
+a plain file is handled, and what a run does stage by stage. A client follows a
+run by polling `GET /api/runs/{id}`. The format itself is described in
+[`docs/design/workflows-spec.md`](../docs/design/workflows-spec.md).
+
+A run uses the `kiro-cli` or `claude` harness, or `fake` in tests. A stage
+passes on evidence, not on the exit status of its session, and a blocked stage
+carries a `reason`. Only one run is active per workspace, whichever process
+started it. `POST /api/run` answers `trust_required` for a workflow that is not
+trusted, with the command that the user runs in a terminal. The contract has no
+call that grants trust.
 
 The contract is the one source of truth for the API. Every server of the API
 follows it, so a change to the API starts as a change to this file. Responses
@@ -78,9 +89,11 @@ know, and requests with a field the contract does not name are refused.
 - checks that request schemas refuse unknown fields and response schemas do not;
 - validates every example, including the ones inside schemas, against its schema;
 - checks that the examples agree with the rules in the contract: a hash is the
-  SHA-256 of its text, a view lists what its own text says, a diagnostic points at
-  the name in its message, the counts of a check add up, and a run's stages
-  follow its status.
+  SHA-256 of its text, a view is its text read as YAML, a diagnostic that names
+  a key points at that key, the counts of a check add up, and a run's stages
+  follow its status;
+- checks the format rules that a schema can hold: a version is `X.Y.Z`, a path
+  is relative and has no `..`, and a check has exactly one of `file` and `run`.
 
 CI runs it on each pull request, and `npm test` includes it.
 
@@ -115,11 +128,22 @@ again, with no time limit, and give the same token. Open the printed address
 again after a reload. `npm run stub` on its own follows the contract: once,
 within 60 seconds.
 
-The data covers the first release: a workflow of an intent and stages, and the
-`kiro-cli` harness. It is a `hello` workflow with a `draft` stage
-(`k-developer`) and a `review` stage (`k-quality-assurance`). A saved change
-lasts until the stub stops. A run is faked and calls no agent: its stages run
-for 3 seconds each, one after the other, and all of them pass.
+The data covers the first release: a workflow of the keys that slice 1 of the
+format reads, and the `kiro-cli` harness. It is a `hello` workflow with a
+`draft` stage (`k-developer`) and a `review` stage (`k-quality-assurance`). A
+saved change lasts until the stub stops. The stub reads no files, so for a
+`prompt_file` it checks only the path rules: it accepts a path to a file that
+does not exist. A run is faked and calls no agent: its stages run for 3 seconds
+each, one after the other, and all of them pass.
+
+`STUB_WORKFLOW` picks the workflow of the session, to show the other answers of
+`POST /api/run`. `untrusted` refuses a run with `trust_required`. `blocked`
+ends a run with a blocked stage and its `reason`, and the stage after it stays
+`pending`. `busy` has a run that another program started, so a run answers
+`already_running` with its id. `hello`, the default, passes. The stub has no
+real trust record: `untrusted` stays untrusted, because the canvas cannot grant
+trust. A name that is not one of these stops the command with a one-line
+error.
 
 ### Run the page against the stub
 
@@ -188,8 +212,9 @@ The code is in two parts, so the rules can be tested without a server:
 `npm run test:stub` runs the tests. Those in `http/` start the stub on a free
 port, call it over HTTP and check each reply against the schema of the
 contract. They move a fake clock by hand, so none of them waits. A test
-compares the error codes, diagnostic codes, limits and patterns of the stub
-with the contract, so a change to one without the other fails.
+compares the error codes, diagnostic codes, limits, patterns and the table of
+keys with their slices in the stub with the contract, so a change to one
+without the other fails.
 
 Playwright starts the stub beside the app (`stub-api/web-servers.ts` holds its
 launch code and the server list), with `--with-dev-server` so that a test can

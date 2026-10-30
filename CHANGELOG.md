@@ -14,6 +14,7 @@ not per individual commit.
 - Playwright end-to-end tests and screenshots for `workflow-canvas/`, run in CI.
 - HTTP API contract for the workflow canvas (`workflow-canvas/api/openapi.yaml`), checked by `npm run api:lint`.
 - Stub API for the workflow canvas (`npm run stub`, `npm run dev:stub`); `WC_API_TARGET` points the page at a real server.
+- The workflow canvas contract and stub read the first-release workflow format and name the slice of a key they do not read yet. The contract also covers stage evidence, trust and one run per workspace; `STUB_WORKFLOW` picks a stub fixture for each answer of a run.
 
 ### Changed
 

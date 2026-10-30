@@ -4,7 +4,12 @@ import type { AddressInfo } from 'node:net';
 import type { Clock } from '../core/clock.ts';
 import { ApiError } from '../core/errors.ts';
 import { RunSimulator } from '../core/runs.ts';
-import { SAMPLE_FILES, SAMPLE_ROOT } from '../core/sample.ts';
+import {
+  FIXTURES,
+  SAMPLE_FILES,
+  SAMPLE_ROOT,
+  type Behavior,
+} from '../core/sample.ts';
 import { WorkflowStore } from '../core/store.ts';
 import { WorkflowApi } from '../core/workflow-api.ts';
 import { DEFAULT_PORT, LOOPBACK, originOf } from '../address.ts';
@@ -26,6 +31,10 @@ export interface StubOptions {
   stageMs?: number;
   /** The workflow files at the start, by name. */
   files?: Readonly<Record<string, string>>;
+  /** The workflow of the session. It is `hello`, which runs and passes. */
+  root?: string;
+  /** How a run is answered. The default is that of the fixture of the root. */
+  behavior?: Behavior;
 }
 
 export interface RunningStub {
@@ -43,8 +52,10 @@ export async function startStub(
 ): Promise<RunningStub> {
   const clock = options.clock ?? systemClock;
   const launchCode = options.launchCode ?? newSecret();
+  const root = options.root ?? SAMPLE_ROOT;
   const api = new WorkflowApi({
-    root: SAMPLE_ROOT,
+    root,
+    behavior: options.behavior ?? FIXTURES[root]?.behavior,
     store: new WorkflowStore(options.files ?? SAMPLE_FILES),
     runs: new RunSimulator({
       clock,

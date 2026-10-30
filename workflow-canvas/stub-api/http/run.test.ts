@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Calls POST /api/run and GET /api/runs/{id} over HTTP; time is a fake clock. */
 import { describe, expect, it } from 'vitest';
+import { STAGE_REASONS } from '../core/model.ts';
 import { DEFAULT_STAGE_MS } from '../core/runs.ts';
 import {
   expectContract,
@@ -9,6 +10,7 @@ import {
 } from '../test-support/contract.ts';
 import { useStub, type TestStub } from '../test-support/harness.ts';
 import { oneStageWorkflow } from '../test-support/workflows.ts';
+import type { Behavior } from '../core/sample.ts';
 
 const RUN = '/api/run';
 const RUNS = '/api/runs/{id}';
@@ -127,6 +129,8 @@ describe('POST /api/run when the saved file has errors', () => {
       diagnostics: [
         { code: 'MISSING_KEY' },
         { code: 'MISSING_KEY' },
+        { code: 'MISSING_KEY' },
+        { code: 'MISSING_KEY' },
         { code: 'UNKNOWN_KEY' },
       ],
     });
@@ -202,4 +206,197 @@ describe('GET /api/runs/{id}', () => {
       expect(malformed.body).toEqual(missing.body);
     },
   );
+});
+
+describe('POST /api/run for a workflow that is not trusted', () => {
+  const stub = useStub({ root: 'untrusted' });
+
+  it('is trust_required, with the command to run in a terminal', async () => {
+    const reply = await stub().client.post(RUN, GOAL);
+    expectContract(reply, 'POST', RUN);
+    expect(reply.status).toBe(409);
+    expect(reply.body).toEqual({
+      ...(responseExample('POST', RUN, 409, 'untrusted') as object),
+      fix: 'Run `konductor flow trust untrusted` in a terminal, then try again.',
+    });
+  });
+
+  it('starts nothing, and says so every time', async () => {
+    await stub().client.post(RUN, GOAL);
+    const again = await stub().client.post(RUN, GOAL);
+    expect(again.body).toMatchObject({ code: 'trust_required' });
+    expect(again.body).not.toHaveProperty('run_id');
+    expectError(
+      await stub().client.get('/api/runs/20261024-0412-00001'),
+      404,
+      'not_found',
+    );
+  });
+
+  it('is not a way to grant trust: the contract has no such call', async () => {
+    expectError(await stub().client.post('/api/trust', {}), 404, 'not_found');
+    expectError(await stub().client.put('/api/trust', {}), 404, 'not_found');
+  });
+});
+
+describe('POST /api/run when another program holds the workspace', () => {
+  const stub = useStub({ root: 'busy' });
+
+  it('is already_running, with the id of the run that is active', async () => {
+    const reply = await stub().client.post(RUN, GOAL);
+    expectContract(reply, 'POST', RUN);
+    expect(reply.status).toBe(409);
+    expect(reply.body).toEqual({
+      ...(responseExample('POST', RUN, 409, 'busy') as object),
+      run_id: '20261024-0412-00001',
+    });
+  });
+
+  it('names the same run each time, and the run can be read', async () => {
+    const first = (await stub().client.post(RUN, GOAL)).body as {
+      run_id: string;
+    };
+    stub().clock.advance(60 * 60_000);
+    const second = (await stub().client.post(RUN, GOAL)).body as {
+      run_id: string;
+    };
+    expect(second.run_id).toBe(first.run_id);
+    const read = await stub().client.get(`/api/runs/${first.run_id}`);
+    expectContract(read, 'GET', RUNS);
+    expect(read.body).toMatchObject({
+      run: { status: 'running', stages: { draft: { status: 'running' } } },
+    });
+  });
+});
+
+describe('a run that ends with a blocked stage', () => {
+  const stub = useStub({ root: 'blocked' });
+
+  it('halts at the blocked stage with its reason, and leaves the next pending', async () => {
+    const runId = await start(stub());
+    const statuses = async () =>
+      (await stub().client.get(`/api/runs/${runId}`)).body;
+    stub().clock.advance(DEFAULT_STAGE_MS);
+    expect(await statuses()).toMatchObject({
+      run: { status: 'running', exit_code: null },
+    });
+    stub().clock.advance(DEFAULT_STAGE_MS);
+    const reply = await stub().client.get(`/api/runs/${runId}`);
+    expectContract(reply, 'GET', RUNS);
+    expect(reply.body).toEqual({
+      run: {
+        run_id: runId,
+        workflow: 'blocked',
+        harness: 'kiro-cli',
+        status: 'halted',
+        started_at: '2026-10-24T04:12:05Z',
+        finished_at: '2026-10-24T04:12:11Z',
+        exit_code: 1,
+        order: ['draft', 'review', 'wrap-up'],
+        stages: {
+          draft: { status: 'passed' },
+          review: { status: 'blocked', reason: 'RESULT_MISSING' },
+          'wrap-up': { status: 'pending' },
+        },
+      },
+    });
+  });
+
+  it('lets a new run start once it has halted', async () => {
+    await start(stub());
+    expect((await stub().client.post(RUN, GOAL)).status).toBe(409);
+    stub().clock.advance(2 * DEFAULT_STAGE_MS);
+    expect((await stub().client.post(RUN, GOAL)).status).toBe(202);
+  });
+});
+
+describe.each(STAGE_REASONS)('a run blocked for %s', (reason) => {
+  const stub = useStub({ behavior: { blocks: { stage: 0, reason } } });
+
+  it('shows the reason, and the answer matches the contract', async () => {
+    const runId = await start(stub());
+    stub().clock.advance(DEFAULT_STAGE_MS);
+    const reply = await stub().client.get(`/api/runs/${runId}`);
+    expectContract(reply, 'GET', RUNS);
+    expect(reply.body).toMatchObject({
+      run: { stages: { draft: { status: 'blocked', reason } } },
+    });
+  });
+});
+
+describe('the order of the refusals of POST /api/run', () => {
+  // A workflow that is untrusted, busy, and has no harness, all at once.
+  const everything: Behavior = {
+    untrusted: true,
+    busy: true,
+    harnessUnavailable: true,
+  };
+
+  describe('with every refusal in play', () => {
+    const stub = useStub({ behavior: everything });
+
+    it('answers trust_required first, and reveals no run', async () => {
+      const reply = await stub().client.post(RUN, GOAL);
+      expectContract(reply, 'POST', RUN);
+      expect(reply.body).toMatchObject({ code: 'trust_required' });
+      expect(reply.body).not.toHaveProperty('run_id');
+    });
+  });
+
+  describe('with a run that is active and no harness', () => {
+    const stub = useStub({
+      behavior: { busy: true, harnessUnavailable: true },
+    });
+
+    it('answers already_running before harness_unavailable', async () => {
+      const reply = await stub().client.post(RUN, GOAL);
+      expectContract(reply, 'POST', RUN);
+      expect(reply.body).toMatchObject({ code: 'already_running' });
+    });
+  });
+
+  describe('with no harness only', () => {
+    const stub = useStub({ behavior: { harnessUnavailable: true } });
+
+    it('answers harness_unavailable, with the fix, and starts nothing', async () => {
+      const reply = await stub().client.post(RUN, GOAL);
+      expectContract(reply, 'POST', RUN);
+      expect(reply.status).toBe(409);
+      expect(reply.body).toEqual(
+        responseExample('POST', RUN, 409, 'missingHarness'),
+      );
+      expect((await stub().client.post(RUN, GOAL)).status).toBe(409);
+    });
+  });
+
+  describe('with a file that has errors', () => {
+    const stub = useStub({
+      behavior: everything,
+      files: { hello: 'name: hello\nowner: me\n' },
+    });
+
+    it('answers invalid_workflow before trust_required', async () => {
+      expectError(await stub().client.post(RUN, GOAL), 422, 'invalid_workflow');
+    });
+  });
+
+  describe('with no file', () => {
+    const stub = useStub({ behavior: everything, files: {} });
+
+    it('answers not_found before everything else', async () => {
+      expectError(await stub().client.post(RUN, GOAL), 404, 'not_found');
+    });
+  });
+
+  describe('with a bad goal', () => {
+    const stub = useStub({ behavior: everything });
+
+    it('answers bad_params before anything about the workflow or the runs', async () => {
+      expectError(
+        await stub().client.post(RUN, { params: {} }),
+        422,
+        'bad_params',
+      );
+    });
+  });
 });
