@@ -14,3 +14,4 @@ name = "workflow_core"
 workspace = true
 
 [dependencies]
+saphyr-parser = "=0.3.3"
