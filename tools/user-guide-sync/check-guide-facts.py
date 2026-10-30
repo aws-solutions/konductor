@@ -297,6 +297,30 @@ def main() -> int:
         ok(f"per-agent skill counts agree outside the roster tables "
            f"({len(cards_seen)} agents.md cards, {len(guide_bundles)} bundle(s))")
 
+    # The prose sums up the per-agent preloads as a range ("1 to 4 skills").
+    # Nothing above reads that phrase, so a preload trim would leave it stale.
+    sizes = [len(spec["claude_skills"]) for spec in specs.values()]
+    want_range = f"{min(sizes)} to {max(sizes)}"
+    range_texts = [(f"docs/user-guide/{n}", read(guide / n)) for n in ("notes.md", "reference.md")]
+    for page in guide_bundles:
+        try:
+            range_texts.append((str(page.relative_to(root)), load_template(page)))
+        except (ValueError, json.JSONDecodeError):
+            continue
+    range_fails, range_seen = [], 0
+    for rel, text in range_texts:
+        for m in re.finditer(r"\b(\d+ to \d+) (?:skills|of them)\b", text):
+            if not re.search(r"preload|inject", text[max(0, m.start() - 120):m.end() + 120]):
+                continue
+            range_seen += 1
+            if m.group(1) != want_range:
+                range_fails.append(f"{rel}: preload range says {m.group(1)!r}, specs give "
+                                   f"{want_range!r}")
+    for msg in range_fails:
+        fail(msg)
+    if not range_fails:
+        ok(f"preload range {want_range!r} matches the specs ({range_seen} mention(s))")
+
     # ---- 2. Named skills, not just counts -----------------------------------
     # Counts are not the whole story. Two renderings name INDIVIDUAL skills, and
     # nothing checked those names against the specs: `agents.md`'s per-agent cards
