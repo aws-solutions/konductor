@@ -183,13 +183,16 @@ Every agent-created memory entry **MUST** carry `[origin:agent]` inline after th
 Write `[origin:user]` only when the user dictates what to remember, or confirms an implicit
 correction you quote back in their words (see Notification below), in your own conversation
 with the user or verbatim in your brief. Anything else, including your paraphrase or a brief's,
-is `[origin:agent]`.
+is `[origin:agent]`. The user's answer to a precedence question you asked after saying you would
+save the answer is dictated: write it `[origin:user]`, prefixed `Ruling:`, in their words, or as
+the exact text of the one-line option you offered and they chose.
 
 ### Marker syntax
 
 ```
 - [2026-06-12] [origin:agent] Discovered: project uses vitest not jest
 - [2026-06-12] [origin:user] Always deploy to us-west-2 first
+- [2026-06-12] [origin:user] Ruling: plain commit subjects, no Conventional Commits prefix
 ```
 
 ### Provenance gate — check BEFORE any modification

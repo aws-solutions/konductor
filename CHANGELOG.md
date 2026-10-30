@@ -33,6 +33,8 @@ not per individual commit.
   `.konductor/memory/` in a git work tree; orchestrators never bypass a denial or read unnamed secrets.
 - Orchestrator review re-reviews a fix once, blocks on IMPORTANT findings only for multi-artifact
   tasks or a requested review loop, and lists the rest and all suggestions for you.
+- Core rules now rank the user's request, project instruction files, user-written memory and the
+  codebase's conventions above konductor's format and workflow defaults; ties are asked once.
 
 ### Fixed
 
