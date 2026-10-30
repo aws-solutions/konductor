@@ -1976,6 +1976,13 @@ fn wiring_findings(
                 ));
                 finding
             }
+            None if Path::new(&exe).is_file() => OrchestrationFinding::new(
+                missing_status,
+                format!(
+                    "the hook points at {exe}, which is not executable; run `konductor update`"
+                ),
+                Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+            ),
             None => OrchestrationFinding::new(
                 missing_status,
                 format!(
@@ -1988,12 +1995,14 @@ fn wiring_findings(
         .collect()
 }
 
-/// The file a hook's exe names: itself when it has a directory part,
-/// else the first match on `PATH`, as the shell would find it.
+/// The executable a hook's exe names: itself when it has a directory
+/// part, else the first match on `PATH`, as the shell would find it.
 fn hook_binary(exe: &str) -> Option<PathBuf> {
     let path = Path::new(exe);
     if path.components().count() > 1 {
-        return path.is_file().then(|| path.to_path_buf());
+        return is_executable_file(path)
+            .unwrap_or(false)
+            .then(|| path.to_path_buf());
     }
     find_binary_on_path(exe, std::env::var_os("PATH").as_deref())
 }
@@ -5691,6 +5700,11 @@ mod tests {
         let dir = scratch_dir(label);
         let exe = dir.join("konductor");
         fs::write(&exe, b"").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&exe, fs::Permissions::from_mode(0o755)).unwrap();
+        }
         exe
     }
 
@@ -5993,6 +6007,28 @@ mod tests {
             fs::remove_dir_all(&home).ok();
         }
         fs::remove_dir_all(&destination).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn check_orchestration_reports_a_hook_binary_that_is_not_executable() {
+        use std::os::unix::fs::PermissionsExt;
+        let exe = fake_konductor_binary("orch-noexec-exe");
+        fs::set_permissions(&exe, fs::Permissions::from_mode(0o644)).unwrap();
+        let destination = healthy_v3_target("orch-noexec-dest", &exe);
+        let home = home_with_mode("orch-noexec-home", COORDINATOR);
+        let result = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(result.status, CheckStatus::Failed);
+        assert_eq!(
+            result.summary,
+            format!(
+                "the hook points at {}, which is not executable; run `konductor update`",
+                exe.display()
+            )
+        );
+        for dir in [&destination, &home, &exe.parent().unwrap().to_path_buf()] {
+            fs::remove_dir_all(dir).ok();
+        }
     }
 
     #[test]
