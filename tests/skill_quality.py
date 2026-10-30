@@ -64,8 +64,10 @@ MUST_USE = re.compile(r"\bMUST USE\b", re.IGNORECASE)
 VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b(?!\s+(?:on|of|for|about|in|to|from|with|at|by)\b)")
 VERB_PROXY_STOPLIST = frozenset({"This", "Has", "Was", "Its", "Is", "Does", "Thus", "Plus"})
 
-FENCE_OPEN = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
-FENCE_CLOSE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
+# Any indent opens a fence, so a fence nested in a list item counts. A closer may be
+# indented at most 3 spaces more than its opener.
+FENCE_OPEN = re.compile(r"^( *)(`{3,}|~{3,})(.*)$")
+FENCE_CLOSE = re.compile(r"^( *)(`{3,}|~{3,})[ \t]*$")
 # The destination may hold one level of balanced parentheses, e.g. "a(1).md".
 INLINE_LINK = re.compile(r"\]\(((?:[^()]|\([^()]*\))*)\)")
 REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*(\S+)")
@@ -128,19 +130,26 @@ def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
     """
     out = []
     fence = None
+    fence_indent = 0
     opened_at = None
     for index, line in enumerate(lines):
         if fence is None:
             match = FENCE_OPEN.match(line)
-            if match and not (match.group(1)[0] == "`" and "`" in match.group(2)):
-                fence = match.group(1)
+            if match and not (match.group(2)[0] == "`" and "`" in match.group(3)):
+                fence = match.group(2)
+                fence_indent = len(match.group(1))
                 opened_at = index
                 out.append("")
             else:
                 out.append(line)
         else:
             match = FENCE_CLOSE.match(line)
-            if match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence):
+            if (
+                match
+                and len(match.group(1)) <= fence_indent + 3
+                and match.group(2)[0] == fence[0]
+                and len(match.group(2)) >= len(fence)
+            ):
                 fence = None
             out.append("")
     return out, (opened_at if fence is not None else None)

@@ -331,6 +331,16 @@ def test_link_inside_longer_tilde_fence_ignored(tmp_path):
     assert _rules(_skill(tmp_path, body=body)) == set()
 
 
+def test_link_inside_list_nested_fence_ignored(tmp_path):
+    body = "1. Step\n\n    ```bash\n    echo [n](missing.md)\n    ```\n\nafter\n"
+    assert _rules(_skill(tmp_path, body=body)) == set()
+
+
+def test_fence_closer_indented_past_the_opener_does_not_close(tmp_path):
+    body = "```bash\necho hi\n    ```\n"
+    assert "fence" in _rules(_skill(tmp_path, body=body))
+
+
 def test_unclosed_fence_fails_closed(tmp_path):
     body = "Intro.\n\n```bash\necho hi\n\nSee [n](missing.md).\n"
     skill = _skill(tmp_path, body=body)
