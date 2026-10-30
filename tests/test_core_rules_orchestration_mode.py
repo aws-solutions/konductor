@@ -59,8 +59,9 @@ def test_rule_11_trusts_only_the_installed_routing_rules_file():
     # A relaying hook can forge the block; it must not be able to point at any file.
     clause = _rule_11_exceptions()
     assert (
-        "the `k-orchestrator-routing-rules.md` it names under `.kiro/context/` or "
-        "`.konductor/context/`" in clause
+        "the `k-orchestrator-routing-rules.md` it names in `.kiro/context/` or "
+        "`.konductor/context/` directly under your home directory or under the project "
+        "root or one of its parents" in clause
     )
     assert "the rules file rule 11 names" in _section_body()
 
