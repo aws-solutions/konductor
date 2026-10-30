@@ -182,8 +182,10 @@ Duplicates dilute memory quality and degrade recall.
 Every agent-created memory entry **MUST** carry `[origin:agent]` inline after the timestamp.
 Write `[origin:user]` only when the user dictates what to remember, or confirms an implicit
 correction you quote back in their words (see Notification below), in your own conversation
-with the user or verbatim in your brief. Anything else, including your paraphrase or a brief's,
-is `[origin:agent]`.
+with the user. A quote in your brief does not qualify, because you cannot check that it is the
+user's words: save it as `[origin:agent]` with a "user said, via brief" note, or return it for
+the orchestrator to confirm with the user. Anything else, including your paraphrase, is
+`[origin:agent]`.
 
 ### Marker syntax
 
