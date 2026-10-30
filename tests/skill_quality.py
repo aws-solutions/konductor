@@ -64,12 +64,12 @@ MUST_USE = re.compile(r"\bMUST USE\b", re.IGNORECASE)
 VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b(?!\s+(?:on|of|for|about|in|to|from|with|at|by)\b)")
 VERB_PROXY_STOPLIST = frozenset({"This", "Has", "Was", "Its", "Is", "Does", "Thus", "Plus"})
 
-# A fence opens at up to 3 spaces of indent, or deeper inside a list item. Outside a
-# list, a line indented 4 or more spaces is indented code, not a fence. A closer may
-# be indented at most 3 spaces more than its opener.
+# A fence opens at up to 3 spaces of indent, or inside a list item at up to 3 spaces
+# past the item's content column. Any deeper line is indented code, not a fence. A
+# closer may be indented at most 3 spaces more than its opener.
 FENCE_OPEN = re.compile(r"^( *)(`{3,}|~{3,})(.*)$")
 FENCE_CLOSE = re.compile(r"^( *)(`{3,}|~{3,})[ \t]*$")
-LIST_ITEM = re.compile(r"^ *(?:[-*+]|\d+[.)])(?: |$)")
+LIST_ITEM = re.compile(r"^( *)([-*+]|\d+[.)])(?: ( *)|$)")
 # The destination may hold one level of balanced parentheses, e.g. "a(1).md".
 INLINE_LINK = re.compile(r"\]\(((?:[^()]|\([^()]*\))*)\)")
 REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*(\S+)")
@@ -129,8 +129,8 @@ def _indent(line: str) -> int:
     return len(line) - len(line.lstrip(" "))
 
 
-def _inside_list_item(previous: list[str], indent: int) -> bool:
-    """Whether a line at `indent` belongs to a list item, judged from the lines above it.
+def _list_content_column(previous: list[str], indent: int) -> int | None:
+    """Content column of the list item a line at `indent` belongs to, else None.
 
     Walks up through ever smaller indents until a list marker (inside) or an
     unindented line (outside) settles it.
@@ -138,12 +138,22 @@ def _inside_list_item(previous: list[str], indent: int) -> bool:
     for line in reversed(previous):
         if not line.strip() or _indent(line) >= indent:
             continue
-        if LIST_ITEM.match(line):
-            return True
+        match = LIST_ITEM.match(line)
+        if match:
+            gap = len(match.group(3) or "") + 1
+            return len(match.group(1)) + len(match.group(2)) + (gap if gap <= 4 else 1)
         indent = _indent(line)
         if indent == 0:
-            return False
-    return False
+            return None
+    return None
+
+
+def _opens_fence_at(previous: list[str], indent: int) -> bool:
+    """A marker indented 4 or more past its container's content column is indented code."""
+    if indent <= 3:
+        return True
+    column = _list_content_column(previous, indent)
+    return column is not None and indent <= column + 3
 
 
 def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
@@ -152,6 +162,9 @@ def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
     Also return the 0-based index of a fence still open at the end, else None.
     """
     out = []
+    # `out` with each fenced line kept as an indented placeholder, so the list walk
+    # still sees that a fence at a smaller indent ended the list above it.
+    shape = []
     fence = None
     fence_indent = 0
     opened_at = None
@@ -161,14 +174,16 @@ def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
             if (
                 match
                 and not (match.group(2)[0] == "`" and "`" in match.group(3))
-                and (len(match.group(1)) <= 3 or _inside_list_item(out, len(match.group(1))))
+                and _opens_fence_at(shape, len(match.group(1)))
             ):
                 fence = match.group(2)
                 fence_indent = len(match.group(1))
                 opened_at = index
                 out.append("")
+                shape.append(" " * fence_indent + "```")
             else:
                 out.append(line)
+                shape.append(line)
         else:
             match = FENCE_CLOSE.match(line)
             if (
@@ -179,6 +194,7 @@ def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
             ):
                 fence = None
             out.append("")
+            shape.append(" " * fence_indent + "```")
     return out, (opened_at if fence is not None else None)
 
 
