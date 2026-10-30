@@ -12,6 +12,8 @@ not per individual commit.
 
 - `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate; it
   spawns a specialist to do work only for a tool it lacks or for parallel work on disjoint files.
+- A specialist treats a quoted user decision in its brief as approval only for the action it
+  names, never for a NEVER-rule confirmation or an irreversible action.
 - The rule against reading secret files now lives in the core rules, so all 11 agents load it.
   From a file the user names, an agent reports key names or redacted values only, never the
   secret values, in replies, briefs, commits or logs.
