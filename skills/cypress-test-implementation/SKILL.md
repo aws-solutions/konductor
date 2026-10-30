@@ -17,7 +17,7 @@ Breaks down an E2E test strategy into Cypress implementation tasks with a phased
 
 **Not for:** choosing what to test (use `e2e-test-strategy`) or Playwright projects (use `playwright-test-implementation`).
 
-**Lightweight fallback:** for one or two flows, write the spec files directly using `references/cypress-patterns.md`; skip the task breakdown, roadmap, and traceability matrix.
+**Lightweight fallback:** for one or two flows, write the spec files directly using `references/cypress-patterns.md`; skip the task breakdown, roadmap, and traceability matrix. Still check the Quality Gate's non-Final-mode items (hardcoded `cy.wait()` timeouts, shared state between tests) on the specs you write, and state any that apply.
 
 ## Usage
 
