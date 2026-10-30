@@ -199,11 +199,10 @@ is declared only by `k-developer`, which **cannot spawn `k-architect` in either 
 - Specialists hold no spawn tool in either runtime (see above).
 - The core rules tell a specialist to do such steps itself or return them to its caller.
 
-Under `konductor`, the core rules have `k-developer` return step 6 as a handoff for
-`k-architect`, naming the SOP and the step to resume at. `konductor` routes it to the architect
-and sends the findings back to the developer to finish steps 6 and 7. When `k-developer` is
-started directly, nothing routes the handoff, and the SOP's own constraint applies:
-*"You MUST skip this step if `k-adversarial-pull-request-review` is unavailable"*. You then get standard review only.
+Step 6 has `k-developer` return it as a handoff for `k-architect` when it cannot spawn, naming
+the SOP and the step to resume at. Under `konductor`, `konductor` routes it to the architect and
+sends the findings back to the developer to finish steps 6 and 7. When `k-developer` is started
+directly, nothing routes the handoff, and it comes back to you.
 
 To be sure the adversarial pass runs, run
 [`k-adversarial-pull-request-review`](sop-workflows/code-review.md#k-adversarial-pull-request-review)

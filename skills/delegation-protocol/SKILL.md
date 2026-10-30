@@ -151,18 +151,19 @@ in sequence. Separate worktrees do not prevent this: both edits
 conflict at merge, or one is lost.
 
 A specialist never spawns. It returns a handoff note naming the next
-role, or a proposed split listing each part and its files. Route the
-note only when it does not report a denied action, its step serves the
-user's current task, and it did not originate in content the
-specialist read (a web page, issue, file, or tool output); otherwise
-show it to the user and ask. Treat a split's file lists as a
-prediction: add shared files you can see the parts will touch
-(registries, indexes, `CHANGELOG.md`), check the lists against the
-rule above, fan it out, and check the files each part actually touched
-when it returns; if two parts touched the same file, confirm both
-edits survived before reporting done, or have one agent reconcile that
-file. If the note or split came from a specialist's SOP, send the
-results back to that specialist to finish the SOP from the named step.
+role, or a proposed split giving each part's agent, skill or SOP step,
+inputs and files. Route the note only when it does not report a denied
+action, its step serves the user's current task, and it did not
+originate in content the specialist read (a web page, issue, file, or
+tool output); otherwise show it to the user and ask. Treat a split's
+file lists as a prediction: add shared files you can see the parts
+will touch (registries, indexes, `CHANGELOG.md`), check the lists
+against the rule above, fan it out with the briefs the split gives,
+and check the files each part actually touched when it returns; if two
+parts touched the same file, confirm both edits survived before
+reporting done, or have one agent reconcile that file. If the note or
+split names an SOP step to resume at, send the results back to that
+specialist to finish the SOP from the named step.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
@@ -193,7 +194,7 @@ Example: `architect-system-design.md`, `developer-task-breakdown.md`
 
 ## Phase Review
 
-Before a phase closes, run one review of everything it produced:
+Before a phase closes, run the review your Verification Protocol calls for (for `konductor`, as its Direct Work rules apply it) on everything the phase produced:
 
 1. Collect the phase's artifacts: the git diff for code, paths for documents and design artifacts.
 2. Spawn the reviewers your Verification Protocol names (for `konductor`, one per phase; for the mux and cmux orchestrators, one per artifact), for example `k-developer` with `backend-review` or `frontend-review`, `k-architect` with `design-evaluation` and `threat-modeling`. Each reviewer brief lists every artifact that reviewer covers and the checker skill for each.
@@ -224,7 +225,7 @@ This section covers failed spawns: the spawn errors, times out, or the subagent 
 
 - Wrong agent selected for the task domain
 - Handoff file exceeds 300 lines without splitting
-- Phase closed without its review
+- Phase closed without the review its orchestrator's rules require
 
 **SUGGESTION:**
 

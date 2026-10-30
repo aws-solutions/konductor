@@ -133,13 +133,12 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
 - **The diff, not just the file list, is the input.** Step 1 captures full hunks; the changed-file
   list is derived from them.
 - **The adversarial step runs only through `konductor`.** Step 6 asks for `k-architect`, but its
-  one owning agent cannot spawn: no specialist holds a spawn tool in either runtime. Under
-  `konductor`, `k-developer` returns step 6 as a handoff, `konductor` routes it to `k-architect`,
-  and the findings come back for the report. When `k-developer` is started directly, the SOP
-  skips the step (*"You MUST skip this step if `k-adversarial-pull-request-review` is
-  unavailable"*), so you get standard review only. Run
+  one owning agent cannot spawn: no specialist holds a spawn tool in either runtime. Step 6 has
+  `k-developer` return it as a handoff instead. Under `konductor`, `konductor` routes it to
+  `k-architect`, and the findings come back for the report. When `k-developer` is started
+  directly, the handoff comes back to you: run
   [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) against `k-architect`
-  separately if you need it there. See
+  yourself. See
   [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 - **The adversarial step is also skipped for frontend-only reviews** by design, because it targets
   backend and infra gaps.
