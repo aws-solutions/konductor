@@ -229,8 +229,8 @@ Full detail in the [CLI reference](reference.md).
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
 flowchart LR
     User(["You"])
-    Ctx["<b>context/</b><br/>routing rules<br/><i>always active</i>"]:::gate
-    Orch["<b>konductor</b><br/><i>hub — read-only</i>"]:::focus
+    Ctx["<b>context/</b><br/>direct-work rules<br/><i>always active</i>"]:::gate
+    Orch["<b>konductor</b><br/><i>does the work, reviews at phase gates</i>"]:::focus
     Store["<b>skills/</b> — 82 modules<br/><b>agent-sops/</b> — 19 procedures<br/><i>loaded on demand</i>"]:::muted
 
     subgraph Specialists["8 specialist agents"]

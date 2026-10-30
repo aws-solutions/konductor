@@ -379,8 +379,8 @@ The list differs from `dependencies.skills.skillNames` in two places. `konductor
 `humanize-writing` in `skillNames` only, so no runtime preloads it for them. Every skill is catalogued in the
 [Skills catalog](skills.md).
 
-Every agent declares `context/k-core-rules.md`. Only the three orchestrators also declare
-`context/k-orchestrator-routing-rules.md`.
+Every agent declares `context/k-core-rules.md`. Only the mux and cmux orchestrators also declare
+`context/k-orchestrator-routing-rules.md`; `konductor` declares `context/k-direct-work.md`.
 
 ### MCP registry entries
 
