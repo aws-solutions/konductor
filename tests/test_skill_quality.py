@@ -474,6 +474,14 @@ def test_print_baseline_refuses_a_truncated_baseline(tmp_path, monkeypatch, caps
     assert "temp file" in capsys.readouterr().err
 
 
+def test_print_baseline_allow_growth_refuses_a_truncated_baseline(tmp_path, monkeypatch, capsys):
+    _grown_tree(tmp_path, monkeypatch).write_text("", encoding="utf-8")
+    assert sq.main(["--print-baseline", "--allow-growth"]) == 1
+    captured = capsys.readouterr()
+    assert "temp file" in captured.err
+    assert captured.out == ""
+
+
 def test_build_baseline_records_exact_over_threshold_values(tmp_path):
     _skill(tmp_path, name="big", body="x\n" * 120)
     _skill(tmp_path, name="small")

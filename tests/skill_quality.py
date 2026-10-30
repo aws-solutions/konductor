@@ -11,7 +11,8 @@ Needs PyYAML. Without it, run: uvx --with pyyaml pytest -q tests/
 CLI (run from anywhere):
   python3 tests/skill_quality.py --scorecard
   python3 tests/skill_quality.py --print-baseline > /tmp/b.json && mv /tmp/b.json tests/skill-quality-baseline.json
-  python3 tests/skill_quality.py --print-baseline --allow-growth   (only after lowering a threshold)
+  python3 tests/skill_quality.py --print-baseline --allow-growth > /tmp/b.json && mv /tmp/b.json tests/skill-quality-baseline.json
+      (--allow-growth only after lowering a threshold)
   python3 tests/skill_quality.py --check-ratchet OLD_BASELINE.json
 """
 from __future__ import annotations
@@ -494,35 +495,38 @@ def _scorecard() -> int:
 
 
 def _print_baseline(allow_growth: bool) -> int:
-    thresholds, tolerance = _baseline_limits()
+    committed = None
+    if BASELINE_PATH.exists():
+        try:
+            committed = load_baseline()
+        except BaselineError as error:
+            # Redirecting straight onto the baseline truncates it before it is read,
+            # and falling back to the defaults would silently undo a lowered threshold.
+            print(
+                f"error: committed baseline is unreadable ({error}); write the output "
+                "to a temp file, then move it into place",
+                file=sys.stderr,
+            )
+            return 1
+    if committed is None:
+        thresholds, tolerance = DEFAULT_THRESHOLDS, DEFAULT_TOLERANCE
+    else:
+        thresholds, tolerance = committed["thresholds"], committed["tolerance"]
     try:
         built = build_baseline(SKILLS_DIR, thresholds, tolerance)
     except (BaselineError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    if not allow_growth:
-        if not BASELINE_PATH.exists():
-            violations = []
-        else:
-            try:
-                violations = check_ratchet(load_baseline(), built)
-            except BaselineError as error:
-                # Redirecting straight onto the baseline truncates it before it is read.
-                print(
-                    f"error: committed baseline is unreadable ({error}); write the output "
-                    "to a temp file, then move it into place",
-                    file=sys.stderr,
-                )
-                return 1
-        if violations:
-            for line in violations:
-                print(f"ratchet: {line}", file=sys.stderr)
-            print(
-                "error: the new baseline would grow; slim the skill instead, or pass "
-                "--allow-growth if a threshold was lowered on purpose",
-                file=sys.stderr,
-            )
-            return 1
+    violations = [] if allow_growth or committed is None else check_ratchet(committed, built)
+    if violations:
+        for line in violations:
+            print(f"ratchet: {line}", file=sys.stderr)
+        print(
+            "error: the new baseline would grow; slim the skill instead, or pass "
+            "--allow-growth if a threshold was lowered on purpose",
+            file=sys.stderr,
+        )
+        return 1
     sys.stdout.write(render_baseline(built))
     return 0
 
