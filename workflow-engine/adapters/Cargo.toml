@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "workflow-adapters"
+version = "0.1.0"
+description = "The parts of the workflow engine that touch the world: the file source."
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "workflow_adapters"
+
+[lints]
+workspace = true
+
+[dependencies]
+workflow-core = { path = "../core" }
