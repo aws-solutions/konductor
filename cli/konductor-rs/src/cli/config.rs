@@ -158,6 +158,11 @@ pub(crate) struct OrchestrationSection {
     pub(crate) mode: Option<String>,
 }
 
+/// `<home>/.konductor/config.yml`, the user layer.
+pub(crate) fn user_config_path(home: &Path) -> PathBuf {
+    home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME)
+}
+
 /// All the ways loading/validating a config can fail. Every variant is a
 /// USAGE ERROR from the CLI's perspective (see module docstring) -- never
 /// map any of these to exit code 2.
@@ -364,7 +369,7 @@ pub(crate) fn load_config_with_home(
 
     let merged = match home_dir {
         Some(home) => {
-            let user_config_path = home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
+            let user_config_path = user_config_path(home);
             if user_config_path.is_file() {
                 let raw_user = load_raw_config(&user_config_path)?;
                 super::trace::trace(
