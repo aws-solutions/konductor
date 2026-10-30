@@ -10,13 +10,15 @@ not per individual commit.
 
 ### Added
 
-- `make test-py` now checks every skill's frontmatter, description, size, and
+- `make test-py` now checks every skill's frontmatter, description, size, code fences, and
   `references/` links against a shrink-only baseline in `tests/skill-quality-baseline.json`.
+  `python3 tests/skill_quality.py --print-baseline` refuses to write a baseline that grew.
 
 ### Changed
 
 - `dynamodb-design` moved its best-practices catalogue, report templates, and checklists into
-  `skills/dynamodb-design/references/` (SKILL.md 75.5 KB to 15.7 KB); instructions are unchanged.
+  `skills/dynamodb-design/references/` (SKILL.md 75.5 KB to 15.8 KB). It also gains a scope
+  section and a short answer path for a single table with one or two access patterns.
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
   `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 30.2 KB). It also gains a
   scope section and a shorter Coverage-mode path for one module or one PR, and drops the
