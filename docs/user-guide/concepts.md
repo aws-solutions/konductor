@@ -187,7 +187,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates — **up to 2 fix cycles** (`k-delegate` step 8). An artifact that passed review is not reviewed again unless it changes.
+fails, it re-delegates — **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix and one re-review of that fix. An artifact that passed review is not reviewed again unless it changes.
 
 ## Maker-checker
 
