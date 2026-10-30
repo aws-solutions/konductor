@@ -303,8 +303,8 @@ def main() -> int:
     section("named skills agree with the specs, not just counts")
     named_fails = []
 
-    # An agent declares a skill if either list names it: `konductor` carries
-    # `claude-teams-behavior` only in clientConfig.claudeCli.skills.
+    # Declared = skillNames plus any Claude-only preload in clientConfig.claudeCli.skills
+    # (see "Adding a skill to an agent" in docs/user-guide/appendix/contributing.md).
     declared_by = {}
     for name, spec in specs.items():
         for skill in set(spec["skill_names"]) | set(spec["claude_skills"]):
