@@ -17,7 +17,7 @@ Generates DynamoDB table designs from access patterns and system requirements. C
 
 **Not for:** auditing an existing design without changing it (use `dynamodb-validation`), relational schema design, or a one-off key question.
 
-**Lightweight fallback:** for a single table with one or two access patterns, state the partition key, sort key, and at most one GSI with a one-paragraph rationale; do not run the full workflow or produce the report. Still read Partition Key Design and Sort Key Design in `references/aws-best-practices.md` first, and check the Quality Gate's CRITICAL items and state any that apply.
+**Lightweight fallback:** for a single table with one or two access patterns, state the partition key, sort key, and at most one GSI with a one-paragraph rationale; do not run the full workflow or produce the report. Still read Partition Key Design and Sort Key Design in `references/aws-best-practices.md` first, plus any feature subsection listed under AWS Best Practices whose condition the design meets (GSI vs LSI for its GSI, TTL for time-bounded data), and check the Quality Gate's CRITICAL items and state any that apply.
 
 ## Usage
 
@@ -256,7 +256,7 @@ Continue with Design Table Schema, Design Indexes, and Generate Deliverables ste
 
 The AWS best practices catalogue holds two kinds of subsection.
 
-Core subsections apply to every design that runs the full workflow, so always read them then (the lightweight fallback reads only the two key-design subsections, plus any feature subsection below whose condition its design meets, such as GSI vs LSI for its one GSI):
+Core subsections apply to every design that runs the full workflow, so always read them then (the lightweight fallback reads what its paragraph under Scope and fallback lists):
 
 - Partition Key Design
 - Sort Key Design
