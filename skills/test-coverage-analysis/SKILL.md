@@ -426,7 +426,7 @@ After subagent completes:
 
 **Subagent-Powered Analysis:**
 
-Use the `invokeSubAgent` tool with `general-task-execution` agent to analyze code in parallel:
+Use the `invokeSubAgent` tool with the `general-task-execution` agent to analyze code in parallel.
 
 Read `references/gap-identification.md` when you reach this stage and before classifying gaps; it holds Steps 1 and 2 (code directory detection and the four subagent prompts), the gap classification heuristics, the recommendation guidance, a worked gap entry, and the subagent usage note. Run Steps 1 and 2 from there, then Step 3 below, then the classification.
 
