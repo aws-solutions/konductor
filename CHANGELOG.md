@@ -43,10 +43,10 @@ not per individual commit.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
   `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
   or `.konductor/memory`; orchestrators never bypass a denial or read unnamed secrets.
-- Orchestrator review fixes CRITICAL and IMPORTANT findings once, reruns the build and tests,
-  re-reviews that fix and the code that uses it, and lists what remains and all suggestions for
-  you. A CRITICAL or IMPORTANT finding that survives the re-review blocks done: the orchestrator
-  stops and reports it to you.
+- Orchestrator review fixes CRITICAL and IMPORTANT findings once, reruns the build and tests
+  for code, re-reviews that fix and what depends on it, and lists what remains and all
+  suggestions for you. A CRITICAL or IMPORTANT finding that survives the re-review blocks done:
+  the orchestrator stops and reports it to you.
 
 ### Fixed
 
