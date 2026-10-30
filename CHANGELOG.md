@@ -28,6 +28,8 @@ not per individual commit.
 
 ### Fixed
 
+- `rustls` is updated to 0.23.46 in the CLI, MCP server and shared crates, for four security
+  advisories against 0.23.45.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
   skills; it used to serve every installed skill.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
