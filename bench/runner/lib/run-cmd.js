@@ -45,6 +45,11 @@ function engineOpt(opts, runtimes) {
 
 const list = (v) => (v ? String(v).split(',').filter(Boolean) : []);
 
+// Paths the agent must not read: the bench answer material, any extra tasks directory, the run output and the credentials file.
+function maskPaths({ benchDir, extraDirs = [], outDir, awsCredsFile = null }) {
+  return [...benchMask(benchDir, extraDirs), outDir, ...(awsCredsFile ? [awsCredsFile] : [])];
+}
+
 function need(opts, name) {
   if (!opts[name] || opts[name] === true) throw new Error(`--${name} is required for opencode arms`);
   return opts[name];
@@ -103,7 +108,8 @@ const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root']
 async function cmdRun(opts) {
   if (!SUITE_NAMES.includes(opts.suite)) throw new Error(`--suite ${SUITE_NAMES.join('|')} is required`);
   const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
-  const tasksAll = loadTasks(benchDir);
+  const extraDirs = list(opts['extra-tasks']).map((d) => path.resolve(d));
+  const tasksAll = loadTasks(benchDir, { extraDirs });
   const suite = loadSuite(opts.suite, tasksAll, benchDir);
   const taskIds = opts.tasks ? list(opts.tasks) : suite.taskIds;
   const tasks = taskIds.map((id) => {
@@ -135,6 +141,12 @@ async function cmdRun(opts) {
   if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
   const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isOc ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;
   if (!(censoredFloor >= 0)) throw new Error('--censored-floor must be a non-negative number');
+  let runCreditLimit = null;
+  if (opts['run-credit-limit'] !== undefined) {
+    runCreditLimit = Number(opts['run-credit-limit']);
+    if (opts['run-credit-limit'] === true || !(runCreditLimit > 0)) throw new Error('--run-credit-limit must be a positive number');
+    if (isOc) throw new Error('--run-credit-limit applies to kiro-cli arms only; opencode runs are costed in USD');
+  }
   const seed = opts.seed === undefined ? Date.now() % 2147483647 : intOpt(opts.seed, 'seed', 0);
   const isolate = opts.isolate || 'auto';
   if (!ISOLATE_MODES.includes(isolate)) throw new Error(`--isolate must be one of ${ISOLATE_MODES.join(', ')}`);
@@ -195,7 +207,8 @@ async function cmdRun(opts) {
     const tripExtra = list(opts['tripwire-exclude']);
     ctx.isolation = isolation;
     ctx.hide = [...list(opts.hide), ...list(process.env.BENCH_HIDE_EXTRA)];
-    ctx.mask = [...benchMask(benchDir), outDir, ...(awsCredsFile ? [awsCredsFile] : [])];
+    ctx.mask = maskPaths({ benchDir, extraDirs, outDir, awsCredsFile });
+    ctx.runCreditLimit = runCreditLimit;
     ctx.keyRoots = [benchDir];
     ctx.tripwire = {
       roots: [
@@ -218,6 +231,7 @@ async function cmdRun(opts) {
     const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main');
     runConfig = {
       suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, [isOc ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
+      runCreditLimit, extraTasks: extraDirs,
       order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
       timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
       ...config, ...ctx.envInfo,
@@ -278,4 +292,4 @@ async function cmdRun(opts) {
   }
 }
 
-module.exports = { cmdRun, repoRootOf };
+module.exports = { cmdRun, repoRootOf, maskPaths };

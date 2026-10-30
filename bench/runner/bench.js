@@ -8,6 +8,7 @@
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
+ *   node bench/runner/bench.js cap list|audit|variant|plan ...   (capability benchmarking; free, no model calls)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/README.md.
@@ -18,6 +19,7 @@ const { listArms, KNOWN_ARMS, resolveArms, formatArmRows, ARM_SYNTAX } = require
 const { cmdRun, repoRootOf } = require('./lib/run-cmd.js');
 const { planPr } = require('./lib/pr-plan.js');
 const evalCommands = require('./eval-commands.js');
+const { cmdCap } = require('../cap/cli.js');
 const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli-flags.js');
 
 const USAGE = `Usage:
@@ -27,29 +29,53 @@ const USAGE = `Usage:
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-partial] [--censored-floor X] [--hide DIR,DIR]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
+       [--extra-tasks DIR,DIR] [--run-credit-limit X]
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
        (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
+       (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)
+       (--run-credit-limit kills a run once its metered credits pass X; the run is recorded as censored. New launches also stop when
+       charged credits plus the largest run so far would pass --budget-credits)
        arms: vanilla, v1.0.0, v1.1.0, v1.2.0, main, name=<git ref>, name=dir:<path> (see list-arms for the syntax)
        opencode arms (oc-vanilla, oc-v1.2.0, oc-main; one harness per run):
        --aws-creds-file FILE [--aws-profile bench] [--budget-usd X] [--opencode-bin PATH] [--rg-bin PATH]
   node bench/runner/bench.js judge --run DIR [--judges a,b] [--mode rubric,pairwise] [--baseline vanilla|ARM]
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
-       [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE]
-  node bench/runner/bench.js report --run DIR [--baseline vanilla|ARM] [--out report.md] [--bench-dir DIR]
-  node bench/runner/bench.js contrast --run DIR [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--bench-dir DIR]
-       (each head arm against the base arm, overall and per task class; writes contrast.md and contrast.json
+       [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR]
+  node bench/runner/bench.js report --run DIR [--baseline vanilla|ARM] [--out report.md] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+  node bench/runner/bench.js contrast --run DIR [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--by class|task]
+       [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       (each head arm against the base arm, overall and per task class (--by task: per task); writes contrast.md and contrast.json
        in DIR. Default base: v1.2.0 if present, else vanilla, else the first arm. Default head: all other arms)
   node bench/runner/bench.js pr-plan --ref name=<git ref>|name=dir:<path> [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
        [--replicates N] [--no-vanilla] [--budget-credits X] [--seed N] [--repo-root DIR] [--bench-dir DIR]
        (prints the run, contrast, judge and report commands for one ref against a release; runs nothing)
-  node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run]
+  node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run] [--extra-tasks DIR,DIR]
        (re-evaluates the current task checks against each run's saved workspace; the first results are kept
        under checksOriginal in result.json; stream.jsonl and credit fields are never touched; safe to repeat)
   node bench/runner/bench.js compare --base DIR --head DIR [--min-rel 0.15] [--rule both|any] [--force] [--bench-dir DIR]
        (exit 0 no regression, 1 regression, 2 refused or error)
-  node bench/runner/bench.js skills --run DIR [--bench-dir DIR] [--repo-root DIR] [--json]
+  node bench/runner/bench.js skills --run DIR [--bench-dir DIR] [--repo-root DIR] [--json] [--extra-tasks DIR,DIR]
        (skill and SOP loads recomputed from stream.jsonl; read-only, works on old and in-progress runs)
+  node bench/runner/bench.js cap list [--base REF] [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--init] [--json]
+       [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger
+       queries, gaps. --init prints skeleton registry entries for unregistered capabilities and writes nothing. No credits)
+  node bench/runner/bench.js cap audit [--base REF] [--harness kiro-cli|opencode|both] [--out DIR] [--public] [--json]
+       [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       (static checks, no model: description lint, bytes, near duplicates, reachability, inbound references, startup bytes,
+       task coverage, leakage, registry validity; writes cap-audit.md and cap-audit.json; exit 1 on any error finding.
+       --public also scans registry text, task prompts and docs for internal markers. --base takes a ref, dir:PATH or an arm spec)
+  node bench/runner/bench.js cap variant --scratch DIR [--base REF] [--drop ID,ID] [--replace ID=FILE] [--add ID=FILE --to-agent A,B]
+       [--preset skills-only|bare] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
+       [--cargo-online] [--repo-root DIR] [--bench-dir DIR] [--json]
+       (builds a dir: arm from git archive of the base ref with the capability dropped, replaced or added, and prints the arm string for the run command.
+       --verify builds it and trial-installs it with a scratch HOME. Exit 2 when the capability is not reachable at startup, unless --force)
+  node bench/runner/bench.js cap plan --mode lift|trigger|improve --cap ID [--base REF] [--reps N] [--tasks id,id] [--budget-credits X]
+       [--vanilla] [--allow-regex] [--force] [--candidate FILE] [--acting-agent A] [--agent-engine v2|v3] [--scratch DIR] [--seed N]
+       [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--json]
+       (prints the variant, run, contrast, judge and report commands and a credit estimate; runs nothing. Refuses regex-only lift tasks
+       without --allow-regex, and refuses to guess credits without observed figures unless --budget-credits is given)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
   node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X]
@@ -115,6 +141,7 @@ async function main(argv) {
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);
   if (cmd === 'calibrate') return evalCommands.cmdCalibrate(opts);
+  if (cmd === 'cap') return cmdCap(opts);
   console.error(USAGE);
   process.exitCode = cmd ? 2 : 0;
 }

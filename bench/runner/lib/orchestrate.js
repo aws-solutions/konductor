@@ -96,7 +96,8 @@ const USD = (r) => ({ observed: r.costUsd || 0, censored: Boolean(r.costCensored
 // `costOf(result)` says what a run spent and in which unit: credits for kiro-cli, list-price USD for opencode.
 function makeLedger({ budgetCredits, floor = DEFAULT_CENSORED_FLOOR, runsPerReplicate, costOf = CREDITS }) {
   const completed = new Map();
-  const ledger = { observed: 0, charged: 0, runs: 0 };
+  const ledger = { observed: 0, charged: 0, runs: 0, largest: 0 };
+  let reason = null;
   ledger.add = (r) => {
     const { observed, censored, known } = costOf(r);
     let charge = observed;
@@ -104,20 +105,29 @@ function makeLedger({ budgetCredits, floor = DEFAULT_CENSORED_FLOOR, runsPerRepl
     else if (known) completed.set(r.armId, [...(completed.get(r.armId) || []), observed]);
     ledger.observed += observed;
     ledger.charged += charge;
+    ledger.largest = Math.max(ledger.largest, charge);
     ledger.runs++;
     return charge;
   };
   // Whole replicates are skipped when the next one is projected to overshoot; within one, only the hard cap applies.
   const decided = new Map();
   ledger.shouldSkip = ({ replicate }) => {
+    reason = null;
     if (budgetCredits == null) return false;
-    if (ledger.charged >= budgetCredits) return true;
+    if (ledger.charged >= budgetCredits) { reason = `budget reached: charged ${ledger.charged.toFixed(3)} of ${budgetCredits}`; return true; }
+    // The next run may cost as much as the largest so far; launching it must not be what overshoots the budget.
+    if (ledger.runs && ledger.charged + ledger.largest > budgetCredits) {
+      reason = `budget headroom: charged ${ledger.charged.toFixed(3)} + largest run so far ${ledger.largest.toFixed(3)} would pass the budget ${budgetCredits}`;
+      return true;
+    }
     if (!decided.has(replicate)) {
       const projected = ledger.runs ? (ledger.charged / ledger.runs) * runsPerReplicate : 0;
       decided.set(replicate, replicate > 1 && ledger.charged + projected > budgetCredits);
     }
+    if (decided.get(replicate)) reason = `budget projected: the next replicate would pass the budget ${budgetCredits}`;
     return decided.get(replicate);
   };
+  ledger.skipReason = () => reason ?? 'budget reached';
   return ledger;
 }
 
@@ -220,10 +230,10 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     return r;
   };
   const onSkip = ({ task, arm, replicate }) => {
-    const r = skippedResult({ arm, task, replicate, config: ctx.config, env: ctx.envInfo });
+    const r = skippedResult({ arm, task, replicate, config: ctx.config, env: ctx.envInfo, reason: ledger.skipReason() });
     writeResult(outDir, arm, task, replicate, r);
     state.results.push(r);
-    log(`skip ${arm.id} / ${task.id} / #${replicate}: budget ${budgetCredits} reached or projected`);
+    log(`skip ${arm.id} / ${task.id} / #${replicate}: ${ledger.skipReason()}`);
     return r;
   };
 

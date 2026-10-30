@@ -1,0 +1,29 @@
+{
+  "id": "skill:backend-review",
+  "kind": "skill",
+  "path": "skills/backend-review/SKILL.md",
+  "owner": "k-developer",
+  "tasks": {
+    "lift": [
+      "review-inventory-security"
+    ],
+    "trigger": [],
+    "headroom": {}
+  },
+  "trigger": {
+    "gen": 1,
+    "queries": []
+  },
+  "expect": {
+    "kiro-cli": {
+      "tool": "get_skill",
+      "actingAgents": [
+        "k-developer"
+      ]
+    },
+    "opencode": {
+      "tool": "skill"
+    }
+  },
+  "notes": "Linked to the one review task that names it as its target. Headroom not measured yet."
+}

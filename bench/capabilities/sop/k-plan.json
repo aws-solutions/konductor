@@ -1,0 +1,27 @@
+{
+  "id": "sop:k-plan",
+  "kind": "sop",
+  "path": "agent-sops/k-plan.sop.md",
+  "owner": "konductor",
+  "tasks": {
+    "lift": [],
+    "trigger": [],
+    "headroom": {}
+  },
+  "trigger": {
+    "gen": 1,
+    "queries": []
+  },
+  "expect": {
+    "kiro-cli": {
+      "tool": "prompt",
+      "actingAgents": [
+        "konductor"
+      ]
+    },
+    "opencode": {
+      "tool": "skill"
+    }
+  },
+  "notes": "Served as an MCP prompt on kiro; the orchestrator stops at identification."
+}

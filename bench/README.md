@@ -304,6 +304,32 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 | hard-A (6) | 20.06 | not run | not run |
 | haiku-5.5, partial (1 task) | 0.42 | not run | 0.66 |
 
+## Capability benchmarking (cap)
+`cap` answers questions about one skill, SOP, agent or context file. Everything below is free: no model call, no credits.
+- `cap list` shows the registry plus a scan of the tree at `--base` (default `v1.2.0`): owner, agents that reach each capability, tasks, gaps.
+  `--init` prints skeleton registry entries for unregistered ones and writes nothing.
+- `cap audit --base REF --harness kiro-cli|opencode|both` writes `cap-audit.md` and `cap-audit.json` and exits 1 on any error
+  finding. `--base` takes a ref, `dir:PATH` or an arm spec; `--public` also scans registry text, task prompts and these docs for internal markers.
+- `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare` builds a `dir:`
+  arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
+  the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.
+- `cap plan --mode lift|trigger|improve --cap ID` prints the variant, run, contrast, judge and report commands and a credit estimate
+  from the observed table. It refuses a task scored by checks alone unless `--allow-regex`, and refuses to guess credits without observed
+  figures unless `--budget-credits X` is given. A skills-only change the acting agent cannot reach at startup stops with exit 2 unless `--force`.
+- Registry: `capabilities/<kind>/<name>.json`, schema `schema/capability.schema.json`, checked by every `cap` command and by
+  `node tasks/validate-tasks.js`. To add one: run `cap list --init --cap ID`, save the entry under its path, fill in `owner`, link tasks,
+  then run `cap audit`. Only a person edits these files; stored query splits are never recomputed.
+- Variants: ops edit a copy. `drop` removes the file and the name from every skill, SOP and context list of every agent spec and from
+  `clientConfig.claudeCli.skills` (synth rejects a listed skill that has no directory). `variant.json` sits beside the tree, so it does
+  not change the arm hash; it records the base commit, each op with before and after sha256, inbound references and the tree hash.
+- Runner additions: `contrast --by task`; `--extra-tasks DIR` on `run`, `judge`, `report`, `contrast`, `recheck`, `skills` (tasks in
+  `DIR/<id>.json`, `DIR/fixtures`, `DIR/hidden`, masked from the agent; check with `validate-tasks.js --only-extra --extra-tasks DIR`);
+  `run` stops launching when charged credits plus the largest run so far would pass `--budget-credits`, and `--run-credit-limit X`
+  kills one run past X credits and records it as censored.
+- Reading the audit: tokens are bytes / 4, an estimate. "Unreachable" means no agent spec lists the capability, so no kiro agent can
+  load it. A near-duplicate score is Jaccard on description words. Leakage fails above 5% shared 8-word shingles. Each `cap`
+  command that builds hashes `~/.konductor/installs` before and after and exits 1 if it changed.
+
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.
 - Efficiency cells are `median [95% bootstrap CI of the median]` over clean passes only: status success,

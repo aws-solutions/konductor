@@ -51,9 +51,9 @@ async function judgeOnce({ caller, model, prompt, check }) {
 }
 
 async function runJudging(o) {
-  const { runDir, benchDir, judges, modes, baseline, concurrency, budgetCredits, limits, redactions, log = () => {} } = o;
+  const { runDir, benchDir, extraDirs = [], judges, modes, baseline, concurrency, budgetCredits, limits, redactions, log = () => {} } = o;
   const run = loadRun(runDir);
-  const tasks = loadTasks(benchDir);
+  const tasks = loadTasks(benchDir, { extraDirs });
   const subject = o.subjectModel ?? run.config.model ?? run.runs[0].result.model;
   judges.forEach((j) => checkJudgeModel(j, subject));
   checkPanel(judges);

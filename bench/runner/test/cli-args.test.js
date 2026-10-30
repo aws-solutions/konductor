@@ -14,7 +14,8 @@ const { parseArgs } = require('../bench.js');
 const { FLAGS, BOOLEAN_FLAGS, checkArgs, COMMANDS } = require('../lib/cli-flags.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
-const COMMAND_NAMES = ['run', 'judge', 'report', 'compare', 'contrast', 'pr-plan', 'recheck', 'skills', 'calibrate', 'list-arms'];
+const COMMAND_NAMES = ['run', 'judge', 'report', 'compare', 'contrast', 'pr-plan', 'recheck', 'skills', 'calibrate', 'list-arms', 'cap'];
+const CAP_SUBS = ['list', 'audit', 'variant', 'plan'];
 
 function sandbox() {
   const root = tmp();
@@ -76,7 +77,7 @@ test('no command prints usage and exits 0; an unknown command exits 2', () => {
 test('an unknown flag exits 2 and lists the known flags of that command, for every command', () => {
   const s = sandbox();
   try {
-    const calls = [...COMMAND_NAMES.filter((c) => c !== 'calibrate').map((c) => [c]), ['calibrate', 'export'], ['calibrate', 'score']];
+    const calls = [...COMMAND_NAMES.filter((c) => c !== 'calibrate' && c !== 'cap').map((c) => [c]), ['calibrate', 'export'], ['calibrate', 'score'], ...CAP_SUBS.map((c) => ['cap', c])];
     for (const call of calls) {
       const r = s.cli([...call, '--bogus-flag']);
       const label = call.join(' ');
@@ -168,7 +169,7 @@ test('every flag in the usage text is accepted, and every accepted flag is in th
   const blocks = usage.split(/\n(?=  node bench\/runner\/bench\.js )/).filter((b) => b.startsWith('  node bench/runner/bench.js '));
   const documented = {};
   for (const b of blocks) {
-    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export|score)|[a-z-]+)/);
+    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export|score)|cap (?:list|audit|variant|plan)|[a-z-]+)/);
     const key = m[1];
     const flags = new Set([...b.matchAll(/--([a-z][a-z-]*)/g)].map((x) => x[1]).filter((f) => f !== 'help'));
     documented[key] = new Set([...(documented[key] || []), ...flags]);

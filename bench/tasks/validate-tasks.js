@@ -39,6 +39,8 @@ const { checkPanel, checkJudgeModel } = require('../judge/config.js');
 const { loadCases, checkCases } = require('../runner/lib/negatives.js');
 const reallib = require('../real/lib.js');
 const autonomyRules = require('./validate-autonomy.js');
+const { loadRegistry, validateRegistry } = require('../cap/registry.js');
+const { scanRepo, loadAgentSpecs } = require('../cap/scan.js');
 
 const BENCH = path.resolve(__dirname, '..');
 const TASKS_DIR = path.join(BENCH, 'tasks');
@@ -49,6 +51,15 @@ const STUBS_DIR = path.join(TASKS_DIR, 'stubs');
 const NEGATIVES_DIR = path.join(TASKS_DIR, 'negatives');
 const HIDDEN_DIR = path.join(TASKS_DIR, 'hidden');
 const PARTIALS_DIR = path.join(TASKS_DIR, 'partials');
+
+// Where the task under validation keeps its fixtures, solutions, hidden tests and so on. The bench tasks use the
+// directories above; a task from --extra-tasks DIR uses DIR/fixtures (then the bench fixtures), DIR/solutions and so on.
+const DEFAULT_ROOTS = { fixtures: [FIXTURES_DIR], solutions: SOLUTIONS_DIR, stubs: STUBS_DIR, negatives: NEGATIVES_DIR, hidden: HIDDEN_DIR, partials: PARTIALS_DIR, extra: false };
+const extraRoots = (dir) => ({
+  fixtures: [path.join(dir, 'fixtures'), FIXTURES_DIR], solutions: path.join(dir, 'solutions'), stubs: path.join(dir, 'stubs'),
+  negatives: path.join(dir, 'negatives'), hidden: path.join(dir, 'hidden'), partials: path.join(dir, 'partials'), extra: true, dir,
+});
+let R = DEFAULT_ROOTS;
 
 const CLASSES = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'real', 'autonomy'];
 const TIERS = ['lite', 'full', 'hard', 'real', 'autonomy', 'pilot'];
@@ -146,11 +157,11 @@ function listFiles(dir, base = dir) {
   return out;
 }
 
-const fixtureDir = (name) => path.join(FIXTURES_DIR, name);
+const fixtureDir = (name) => R.fixtures.map((d) => path.join(d, name)).find((d) => fs.existsSync(d)) ?? path.join(R.fixtures[0], name);
 
 function copyFixture(name, overlayDir) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-validate-'));
-  fs.cpSync(path.join(FIXTURES_DIR, name), tmp, {
+  fs.cpSync(fixtureDir(name), tmp, {
     recursive: true,
     filter: (src) => path.basename(src) !== ANSWER_KEY,
   });
@@ -188,28 +199,29 @@ function validateShape(file, t) {
   const ownTiers = Array.isArray(t.tiers) ? t.tiers.filter((x) => x !== 'pilot') : [];
   if (Array.isArray(t.tiers)) {
     if (autonomy) { /* tiers are checked with the other autonomy rules */ }
-    else if (hard) need(ownTiers.length === 1 && ownTiers[0] === 'hard', 'hard tasks must have tiers ["hard"] (and optionally "pilot") only');
+    else if (hard && !R.extra) need(ownTiers.length === 1 && ownTiers[0] === 'hard', 'hard tasks must have tiers ["hard"] (and optionally "pilot") only');
     else if (real) need(ownTiers.length === 1 && ownTiers[0] === 'real', 'real tasks must have tiers ["real"] (and optionally "pilot") only; the full tier does not include them');
+    else if (R.extra) need(!t.tiers.includes('hard') && !t.tiers.includes('real'), 'an extra task may not be tagged hard or real (those tiers are the bench suites)');
     else need(t.tiers.includes('full') && !t.tiers.includes('hard') && !t.tiers.includes('real'), 'every task must include the full tier (and only hard tasks the hard tier, only real tasks the real tier)');
   }
   if (hard) {
     need(isInt(t.timeoutSec) && t.timeoutSec >= HARD_MIN_TIMEOUT && t.timeoutSec <= HARD_MAX_TIMEOUT, `hard tasks need timeoutSec from ${HARD_MIN_TIMEOUT} to ${HARD_MAX_TIMEOUT}`);
-    need(isStr(t.hidden) && fs.existsSync(path.join(HIDDEN_DIR, t.hidden || '?')), 'hard tasks need hidden: a directory under tasks/hidden/');
+    need(isStr(t.hidden) && fs.existsSync(path.join(R.hidden, t.hidden || '?')), 'hard tasks need hidden: a directory under tasks/hidden/');
     need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'tests'), 'hard tasks need at least one tests check');
     need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'fixture_unchanged'), 'hard tasks need a fixture_unchanged check on the existing tests');
     need(!HARD_PROMPT_BANNED.test(t.prompt || ''), 'hard prompt mentions grading, hidden tests, agents, skills or reviewers');
   } else if (real) {
     need(isInt(t.timeoutSec) && t.timeoutSec >= HARD_MIN_TIMEOUT && t.timeoutSec <= HARD_MAX_TIMEOUT, `real tasks need timeoutSec from ${HARD_MIN_TIMEOUT} to ${HARD_MAX_TIMEOUT}`);
     need(isStr(t.real), 'real tasks need real: the id of a manifest entry');
-    need(isStr(t.hidden) && t.hidden === t.real && fs.existsSync(path.join(HIDDEN_DIR, t.hidden || '?', 'overlay')), 'real tasks need hidden equal to real, with an overlay/ directory under tasks/hidden/');
+    need(isStr(t.hidden) && t.hidden === t.real && fs.existsSync(path.join(R.hidden, t.hidden || '?', 'overlay')), 'real tasks need hidden equal to real, with an overlay/ directory under tasks/hidden/');
     need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'tests' && c.manifest === true), 'real tasks need a tests check with manifest: true');
     need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'fixture_unchanged'), 'real tasks need a fixture_unchanged check on the existing tests');
     need(!HARD_PROMPT_BANNED.test(t.prompt || ''), 'real prompt mentions grading, hidden tests, agents, skills or reviewers');
     need(!REAL_PROMPT_BANNED.test(t.prompt || ''), 'real prompt names a pull request, issue, link or hosting site');
   } else if (autonomy) {
     need(t.real === undefined, 'only real tasks may name a real reference');
-    need(isStr(t.hidden) && fs.existsSync(path.join(HIDDEN_DIR, t.hidden || '?')), 'autonomy tasks need hidden: a directory under tasks/hidden/');
-    autonomyRules.shapeProblems(t, { hiddenRoot: HIDDEN_DIR }).forEach((p) => err(where, p));
+    need(isStr(t.hidden) && fs.existsSync(path.join(R.hidden, t.hidden || '?')), 'autonomy tasks need hidden: a directory under tasks/hidden/');
+    autonomyRules.shapeProblems(t, { hiddenRoot: R.hidden }).forEach((p) => err(where, p));
   } else {
     need(t.hidden === undefined && t.real === undefined, 'only hard, real and autonomy tasks may name a hidden directory or a real reference');
   }
@@ -217,7 +229,7 @@ function validateShape(file, t) {
     need(t.timeoutSec <= LITE_MAX_TIMEOUT, `lite tasks need timeoutSec <= ${LITE_MAX_TIMEOUT}`);
   }
   if (isStr(t.fixture)) {
-    need(fs.existsSync(path.join(FIXTURES_DIR, t.fixture)), `fixture "${t.fixture}" does not exist`);
+    need(fs.existsSync(fixtureDir(t.fixture)), `fixture "${t.fixture}" does not exist`);
   }
   if (!real) need(t.real === undefined, 'only real tasks may name a real reference');
   if (isStr(t.prompt)) {
@@ -268,9 +280,9 @@ function validateShape(file, t) {
   });
 }
 
-function validateFixtures(used, hardOnly, autonomyOnly = new Set()) {
-  for (const name of fs.readdirSync(FIXTURES_DIR)) {
-    const dir = path.join(FIXTURES_DIR, name);
+function validateFixtures(used, hardOnly, autonomyOnly = new Set(), root = FIXTURES_DIR) {
+  for (const name of fs.readdirSync(root)) {
+    const dir = path.join(root, name);
     if (!fs.statSync(dir).isDirectory() || name.startsWith('_')) continue;
     const files = listFiles(dir);
     const visible = files.filter((f) => path.basename(f) !== ANSWER_KEY);
@@ -346,7 +358,7 @@ function validateHard(t, solutionDir, hiddenDir) {
   if (base.unparsed) err(where, 'the untouched fixture gives no readable hidden test result');
   else if (base.passed / base.total > HARD_MAX_FIXTURE_PASS) err(where, `untouched fixture passes ${base.passed}/${base.total} hidden tests, must fail at least 30 percent`);
 
-  const dir = path.join(PARTIALS_DIR, t.id);
+  const dir = path.join(R.partials, t.id);
   const names = fs.existsSync(dir) ? fs.readdirSync(dir).filter((n) => fs.statSync(path.join(dir, n)).isDirectory()).sort() : [];
   if (names.length < MIN_PARTIALS) err(where, `needs at least ${MIN_PARTIALS} partial solutions under tasks/partials/${t.id}/, found ${names.length}`);
   const partials = [];
@@ -389,7 +401,7 @@ function validateAutonomyEvidence(t, solutionDir, hiddenDir) {
   const bare = copyFixture(t.fixture);
   const fixture = groupScores(t, bare, hiddenDir);
   fs.rmSync(bare, { recursive: true, force: true });
-  const dir = path.join(PARTIALS_DIR, t.id);
+  const dir = path.join(R.partials, t.id);
   const names = fs.existsSync(dir) ? fs.readdirSync(dir).filter((n) => fs.statSync(path.join(dir, n)).isDirectory()).sort() : [];
   const partials = names.map((name) => {
     const work = copyFixture(t.fixture, path.join(dir, name));
@@ -448,25 +460,62 @@ function validateRealSet(tasks, manifest) {
   return `real set: ${entries.length} tasks, ${crossFile} cross-file bug fixes, ${features} features, languages ${[...new Set(entries.map((e) => e.language))].join('+')}`;
 }
 
+// --extra-tasks DIR[,DIR] adds task directories outside bench/tasks; they get the same proofs against their own
+// fixtures, solutions, stubs, negatives and hidden tests. Suites list bench tasks only.
+function extraDirsFromArgs(argv = process.argv.slice(2)) {
+  const out = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--extra-tasks') out.push(...String(argv[++i] ?? '').split(',').filter(Boolean).map((d) => path.resolve(d)));
+    else if (argv[i] === '--only-extra') continue;
+    else if (argv[i].startsWith('--')) { console.error(`validate-tasks: unknown flag ${argv[i]} (known: --extra-tasks DIR[,DIR], --only-extra)`); process.exit(2); }
+  }
+  return out;
+}
+
 function main() {
-  const taskFiles = fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith('.json') && !f.startsWith('_')).sort();
+  const extraDirs = extraDirsFromArgs();
+  // --only-extra checks the extra directories alone: no bench tasks, suites, hygiene scan or registry.
+  const onlyExtra = process.argv.includes('--only-extra');
+  if (onlyExtra && !extraDirs.length) { console.error('validate-tasks: --only-extra needs --extra-tasks DIR'); process.exit(2); }
+  const taskFiles = onlyExtra ? [] : fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith('.json') && !f.startsWith('_')).sort();
   const tasks = [];
   const seen = new Map();
-  for (const f of taskFiles) {
-    const t = readJson(path.join(TASKS_DIR, f), f);
-    if (!t) continue;
-    validateShape(f, t);
-    if (seen.has(t.id)) err(f, `duplicate id "${t.id}" (also ${seen.get(t.id)})`);
-    seen.set(t.id, f);
-    tasks.push(t);
+  const rootsOf = new Map();
+  const sources = [{ dir: TASKS_DIR, files: taskFiles, roots: DEFAULT_ROOTS }];
+  for (const dir of extraDirs) {
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) { err('--extra-tasks', `directory not found: ${dir}`); continue; }
+    sources.push({ dir, files: fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('_')).sort(), roots: extraRoots(dir) });
   }
+  for (const src of sources) {
+    R = src.roots;
+    for (const f of src.files) {
+      const t = readJson(path.join(src.dir, f), src.roots.extra ? `${path.basename(src.dir)}/${f}` : f);
+      if (!t) continue;
+      validateShape(f, t);
+      if (seen.has(t.id)) err(f, `duplicate id "${t.id}" (also ${seen.get(t.id)})`);
+      seen.set(t.id, f);
+      tasks.push(t);
+      rootsOf.set(t, src.roots);
+    }
+  }
+  R = DEFAULT_ROOTS;
 
   const manifestFile = path.join(BENCH, 'real', 'manifest.json');
   const manifest = tasks.some((t) => t.class === 'real') ? readJson(manifestFile, 'real/manifest.json') : null;
-  const used = new Set(tasks.map((t) => t.fixture).filter(isStr));
-  const hardOnly = new Set([...used].filter((f) => tasks.filter((t) => t.fixture === f).every((t) => t.class === 'hard')));
-  const autonomyOnly = new Set([...used].filter((f) => tasks.filter((t) => t.fixture === f).every((t) => t.class === 'autonomy')));
-  validateFixtures(used, hardOnly, autonomyOnly);
+  const benchTasks = tasks.filter((t) => !rootsOf.get(t).extra);
+  const used = new Set(benchTasks.map((t) => t.fixture).filter(isStr));
+  const hardOnly = new Set([...used].filter((f) => benchTasks.filter((t) => t.fixture === f).every((t) => t.class === 'hard')));
+  const autonomyOnly = new Set([...used].filter((f) => benchTasks.filter((t) => t.fixture === f).every((t) => t.class === 'autonomy')));
+  if (!onlyExtra) validateFixtures(used, hardOnly, autonomyOnly);
+  for (const dir of extraDirs) {
+    const fx = path.join(dir, 'fixtures');
+    if (!fs.existsSync(fx)) continue;
+    R = extraRoots(dir);
+    const own = tasks.filter((t) => rootsOf.get(t).dir === dir);
+    const usedHere = new Set(own.map((t) => t.fixture).filter(isStr));
+    validateFixtures(usedHere, new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'hard'))), new Set(), fx);
+  }
+  R = DEFAULT_ROOTS;
 
   let guards = 0;
   let negativeCases = 0;
@@ -475,10 +524,11 @@ function main() {
   const autonomyReport = [];
   const realReport = [];
   for (const t of tasks) {
+    R = rootsOf.get(t);
     if (t.class === 'real' && manifest && Array.isArray(t.checks)) { realReport.push(validateRealTask(t, manifest)); continue; }
-    if (!isStr(t.fixture) || !fs.existsSync(path.join(FIXTURES_DIR, t.fixture)) || !Array.isArray(t.checks)) continue;
+    if (!isStr(t.fixture) || !fs.existsSync(fixtureDir(t.fixture)) || !Array.isArray(t.checks)) continue;
     const where = t.id;
-    const hiddenDir = t.hidden ? path.join(HIDDEN_DIR, t.hidden) : null;
+    const hiddenDir = t.hidden ? path.join(R.hidden, t.hidden) : null;
     const pristine = copyFixture(t.fixture);
     const results = t.checks.map((c) => ({ c, r: evalCheck(pristine, c, fixtureDir(t.fixture), hiddenDir) }));
     fs.rmSync(pristine, { recursive: true, force: true });
@@ -488,9 +538,9 @@ function main() {
     });
     if (results.every(({ r }) => r.pass)) err(where, 'every check already passes on the untouched fixture');
 
-    const overlay = path.join(SOLUTIONS_DIR, t.id);
+    const overlay = path.join(R.solutions, t.id);
     if (!fs.existsSync(overlay)) {
-      err(where, `missing reference solution at tasks/solutions/${t.id}/`);
+      err(where, `missing reference solution at ${R.extra ? `${path.basename(R.dir)}/solutions` : 'tasks/solutions'}/${t.id}/`);
       continue;
     }
     const solved = copyFixture(t.fixture, overlay);
@@ -502,7 +552,7 @@ function main() {
     if (t.class === 'hard') hardReport.push(validateHard(t, overlay, hiddenDir));
     if (t.class === 'autonomy') autonomyReport.push(validateAutonomyEvidence(t, overlay, hiddenDir));
 
-    const spec = loadCases(NEGATIVES_DIR, t.id);
+    const spec = loadCases(R.negatives, t.id);
     if (spec) {
       checkCases({
         task: t, spec,
@@ -512,9 +562,9 @@ function main() {
       negativeCases += spec.cases.length;
     }
 
-    const stub = path.join(STUBS_DIR, t.id);
+    const stub = path.join(R.stubs, t.id);
     if (!fs.existsSync(stub)) {
-      if (DOC_CLASSES.includes(t.class)) err(where, `missing keyword stub at tasks/stubs/${t.id}/`);
+      if (DOC_CLASSES.includes(t.class)) err(where, `missing keyword stub at ${R.extra ? `${path.basename(R.dir)}/stubs` : 'tasks/stubs'}/${t.id}/`);
       continue;
     }
     const stubbed = copyFixture(t.fixture, overlay);
@@ -529,6 +579,7 @@ function main() {
     }
     stubReport.push(`${t.id} ${failed.length}/${t.checks.length}`);
   }
+  R = DEFAULT_ROOTS;
 
   for (const t of tasks) {
     if (!Array.isArray(t.checks)) continue;
@@ -540,81 +591,90 @@ function main() {
   }
 
   const suites = {};
-  if (manifest) realReport.push(validateRealSet(tasks, manifest));
-  for (const name of ['lite', 'full', 'hard', 'real', 'autonomy', 'pilot']) {
-    const file = path.join(SUITES_DIR, `${name}.json`);
-    const s = fs.existsSync(file) ? readJson(file, `suites/${name}.json`) : null;
-    if (!s) { err(`suites/${name}.json`, 'missing or unreadable'); continue; }
-    suites[name] = s;
-    const at = `suites/${name}.json`;
-    if (!Array.isArray(s.tasks) || s.tasks.length === 0) err(at, 'tasks must be a non-empty array');
-    else {
-      if (new Set(s.tasks).size !== s.tasks.length) err(at, 'tasks has duplicates');
-      for (const id of s.tasks) {
-        if (!seen.has(id)) err(at, `unknown task id "${id}"`);
+  if (!onlyExtra) {
+    if (manifest) realReport.push(validateRealSet(tasks, manifest));
+    for (const name of ['lite', 'full', 'hard', 'real', 'autonomy', 'pilot']) {
+      const file = path.join(SUITES_DIR, `${name}.json`);
+      const s = fs.existsSync(file) ? readJson(file, `suites/${name}.json`) : null;
+      if (!s) { err(`suites/${name}.json`, 'missing or unreadable'); continue; }
+      suites[name] = s;
+      const at = `suites/${name}.json`;
+      if (!Array.isArray(s.tasks) || s.tasks.length === 0) err(at, 'tasks must be a non-empty array');
+      else {
+        if (new Set(s.tasks).size !== s.tasks.length) err(at, 'tasks has duplicates');
+        for (const id of s.tasks) {
+          if (!seen.has(id)) err(at, `unknown task id "${id}"`);
+        }
+      }
+      if (!Array.isArray(s.arms) || !s.arms.every(isStr) || s.arms.length === 0) err(at, 'arms must be a non-empty string array');
+      if (!isInt(s.replicates) || s.replicates < 1) err(at, 'replicates must be a positive integer');
+      if (!Array.isArray(s.judges) || !s.judges.every(isStr) || s.judges.length < MIN_JUDGES) {
+        err(at, `judges must be a string array with at least ${MIN_JUDGES} models`);
+      } else {
+        try { checkPanel(s.judges); } catch (e) { err(at, e.message); }
+        for (const j of s.judges) {
+          try { checkJudgeModel(j, SUBJECT_MODEL); } catch (e) { err(at, e.message); }
+        }
       }
     }
-    if (!Array.isArray(s.arms) || !s.arms.every(isStr) || s.arms.length === 0) err(at, 'arms must be a non-empty string array');
-    if (!isInt(s.replicates) || s.replicates < 1) err(at, 'replicates must be a positive integer');
-    if (!Array.isArray(s.judges) || !s.judges.every(isStr) || s.judges.length < MIN_JUDGES) {
-      err(at, `judges must be a string array with at least ${MIN_JUDGES} models`);
-    } else {
-      try { checkPanel(s.judges); } catch (e) { err(at, e.message); }
-      for (const j of s.judges) {
-        try { checkJudgeModel(j, SUBJECT_MODEL); } catch (e) { err(at, e.message); }
+    for (const [name, s] of Object.entries(suites)) {
+      if (!Array.isArray(s.tasks)) continue;
+      const expected = benchTasks.filter((t) => Array.isArray(t.tiers) && t.tiers.includes(name)).map((t) => t.id).sort();
+      const actual = [...s.tasks].sort();
+      if (JSON.stringify(expected) !== JSON.stringify(actual)) {
+        err(`suites/${name}.json`, `tasks do not match the tasks tagged "${name}" (tagged: ${expected.join(', ')})`);
       }
     }
-  }
-  for (const [name, s] of Object.entries(suites)) {
-    if (!Array.isArray(s.tasks)) continue;
-    const expected = tasks.filter((t) => Array.isArray(t.tiers) && t.tiers.includes(name)).map((t) => t.id).sort();
-    const actual = [...s.tasks].sort();
-    if (JSON.stringify(expected) !== JSON.stringify(actual)) {
-      err(`suites/${name}.json`, `tasks do not match the tasks tagged "${name}" (tagged: ${expected.join(', ')})`);
+    if (suites.lite && Array.isArray(suites.lite.tasks)) {
+      const at = 'suites/lite.json';
+      if (suites.lite.tasks.length !== LITE_TASKS) err(at, `expected ${LITE_TASKS} tasks, found ${suites.lite.tasks.length}`);
+      const lite = suites.lite.tasks.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
+      const fixtures = new Set(lite.map((t) => t.fixture));
+      const classes = new Set(lite.map((t) => t.class));
+      if (fixtures.size < LITE_MIN_FIXTURES) err(at, `tasks cover ${fixtures.size} fixtures, need at least ${LITE_MIN_FIXTURES}`);
+      if (classes.size < LITE_MIN_CLASSES) err(at, `tasks cover ${classes.size} classes, need at least ${LITE_MIN_CLASSES}`);
+      if (suites.lite.parallel !== 1) err(at, 'parallel must be 1 (wall-clock comparisons need one run at a time)');
     }
-  }
-  if (suites.lite && Array.isArray(suites.lite.tasks)) {
-    const at = 'suites/lite.json';
-    if (suites.lite.tasks.length !== LITE_TASKS) err(at, `expected ${LITE_TASKS} tasks, found ${suites.lite.tasks.length}`);
-    const lite = suites.lite.tasks.map((id) => tasks.find((t) => t.id === id)).filter(Boolean);
-    const fixtures = new Set(lite.map((t) => t.fixture));
-    const classes = new Set(lite.map((t) => t.class));
-    if (fixtures.size < LITE_MIN_FIXTURES) err(at, `tasks cover ${fixtures.size} fixtures, need at least ${LITE_MIN_FIXTURES}`);
-    if (classes.size < LITE_MIN_CLASSES) err(at, `tasks cover ${classes.size} classes, need at least ${LITE_MIN_CLASSES}`);
-    if (suites.lite.parallel !== 1) err(at, 'parallel must be 1 (wall-clock comparisons need one run at a time)');
-  }
 
-  if (suites.real) {
-    if (suites.real.parallel !== 1) err('suites/real.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
-    for (const id of suites.real.tasks || []) {
-      const t = tasks.find((x) => x.id === id);
-      if (t && t.class !== 'real') err('suites/real.json', `task "${id}" is not a real task`);
+    if (suites.real) {
+      if (suites.real.parallel !== 1) err('suites/real.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
+      for (const id of suites.real.tasks || []) {
+        const t = tasks.find((x) => x.id === id);
+        if (t && t.class !== 'real') err('suites/real.json', `task "${id}" is not a real task`);
+      }
     }
-  }
 
-  if (suites.autonomy) {
-    if (suites.autonomy.parallel !== 1) err('suites/autonomy.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
-    for (const id of suites.autonomy.tasks || []) {
-      const t = tasks.find((x) => x.id === id);
-      if (t && t.class !== 'autonomy') err('suites/autonomy.json', `task "${id}" is not an autonomy task`);
+    if (suites.autonomy) {
+      if (suites.autonomy.parallel !== 1) err('suites/autonomy.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
+      for (const id of suites.autonomy.tasks || []) {
+        const t = tasks.find((x) => x.id === id);
+        if (t && t.class !== 'autonomy') err('suites/autonomy.json', `task "${id}" is not an autonomy task`);
+      }
     }
-  }
 
-  if (suites.pilot && suites.pilot.parallel !== 1) err('suites/pilot.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
+    if (suites.pilot && suites.pilot.parallel !== 1) err('suites/pilot.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
 
-  if (suites.hard) {
-    if (suites.hard.parallel !== 1) err('suites/hard.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
-    for (const id of suites.hard.tasks || []) {
-      const t = tasks.find((x) => x.id === id);
-      if (t && t.class !== 'hard') err('suites/hard.json', `task "${id}" is not a hard task`);
+    if (suites.hard) {
+      if (suites.hard.parallel !== 1) err('suites/hard.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
+      for (const id of suites.hard.tasks || []) {
+        const t = tasks.find((x) => x.id === id);
+        if (t && t.class !== 'hard') err('suites/hard.json', `task "${id}" is not a hard task`);
+      }
     }
-  }
 
-  scanHygiene();
+    scanHygiene();
+
+    // The capability registry, checked against this checkout's own skills, agents, SOPs and context files.
+    const repoRoot = path.resolve(BENCH, '..');
+    const registry = loadRegistry(BENCH);
+    const capFindings = validateRegistry(registry, { scan: scanRepo(repoRoot), specs: loadAgentSpecs(repoRoot), tasks: new Map(tasks.map((t) => [t.id, t])), baseDir: repoRoot });
+    for (const f of capFindings) (f.level === 'error' ? err : warn)(f.where, f.msg);
+    console.log(`capabilities: ${registry.entries.length} registry entr${registry.entries.length === 1 ? 'y' : 'ies'}`);
+  }
 
   const byClass = {};
   for (const t of tasks) byClass[t.class] = (byClass[t.class] || 0) + 1;
-  console.log(`tasks: ${tasks.length} ${JSON.stringify(byClass)}`);
+  console.log(`tasks: ${tasks.length} ${JSON.stringify(byClass)}${extraDirs.length ? ` (${tasks.length - benchTasks.length} from ${extraDirs.length} extra dir(s))` : ''}`);
   console.log(`checks passing on untouched fixtures (regression guards): ${guards}`);
   console.log(`keyword-only stubs (failing checks / total): ${stubReport.join(', ')}`);
   console.log(`negative and positive cases for loosened checks: ${negativeCases}`);

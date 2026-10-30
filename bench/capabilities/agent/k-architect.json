@@ -1,0 +1,27 @@
+{
+  "id": "agent:k-architect",
+  "kind": "agent",
+  "path": "agents/k-architect.agent-spec.json",
+  "owner": "k-architect",
+  "tasks": {
+    "lift": [],
+    "trigger": [],
+    "headroom": {}
+  },
+  "trigger": {
+    "gen": 1,
+    "queries": []
+  },
+  "expect": {
+    "kiro-cli": {
+      "tool": "subagent",
+      "actingAgents": [
+        "konductor"
+      ]
+    },
+    "opencode": {
+      "tool": "task"
+    }
+  },
+  "notes": "Spawned by the orchestrator."
+}

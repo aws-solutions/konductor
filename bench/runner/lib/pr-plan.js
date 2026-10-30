@@ -153,4 +153,4 @@ function renderPlan({ suite, reps, specs, added, baseParsed, estimate, est, budg
   return L.join('\n');
 }
 
-module.exports = { planPr, OBSERVED, quote };
+module.exports = { planPr, OBSERVED, HEADROOM, quote, stamp, seedOf };

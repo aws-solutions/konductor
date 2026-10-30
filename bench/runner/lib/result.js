@@ -150,8 +150,8 @@ function errorResult({ arm, task, replicate, config, env, message, meta, conv = 
   });
 }
 
-function skippedResult({ arm, task, replicate, config, env }) {
-  return { ...errorResult({ arm, task, replicate, config, env, message: 'budget reached' }), status: 'budget_skipped', creditsCensored: false, creditsLowerBound: null, ...(arm.runtime === 'opencode' ? { costCensored: false } : {}) };
+function skippedResult({ arm, task, replicate, config, env, reason = 'budget reached' }) {
+  return { ...errorResult({ arm, task, replicate, config, env, message: reason }), status: 'budget_skipped', creditsCensored: false, creditsLowerBound: null, ...(arm.runtime === 'opencode' ? { costCensored: false } : {}) };
 }
 
 function validateResult(result) {

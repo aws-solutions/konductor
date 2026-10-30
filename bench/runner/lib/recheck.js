@@ -96,9 +96,9 @@ function recheckRun({ dir, task, dryRun = false, now = () => new Date().toISOStr
   return { status: 'rechecked', before: original, after };
 }
 
-function recheckAll({ runDir, benchDir = BENCH_DIR, dryRun = false, now }) {
+function recheckAll({ runDir, benchDir = BENCH_DIR, extraDirs = [], dryRun = false, now }) {
   const run = loadRun(runDir);
-  const tasks = loadTasks(benchDir);
+  const tasks = loadTasks(benchDir, { extraDirs });
   return run.runs.map((r) => ({
     armId: r.armId, taskId: r.taskId, replicate: r.replicate,
     ...recheckRun({ dir: r.dir, task: tasks.get(r.taskId), dryRun, now }),

@@ -20,29 +20,45 @@ const SUITE_DEFAULTS = {
 };
 const SUITE_NAMES = Object.keys(SUITE_DEFAULTS);
 
-function loadTasks(benchDir = BENCH_DIR) {
-  const dir = path.join(benchDir, 'tasks');
-  const schema = loadSchema('task');
-  const tasks = new Map();
-  if (!fs.existsSync(dir)) return tasks;
+// Reads every task file of one directory into `tasks`. Fixtures come from `fixtureRoots` (first hit wins) and
+// hidden test directories from `hiddenRoot`.
+function readTaskDir({ dir, tasks, schema, benchDir, fixtureRoots, hiddenRoot, allowReal, extra }) {
+  if (!fs.existsSync(dir)) return;
   for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
     const task = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
     const errors = validate(schema, task);
     if (errors.length) throw new Error(`invalid task file ${file}:\n  ${errors.join('\n  ')}`);
     if (tasks.has(task.id)) throw new Error(`duplicate task id ${task.id} (${file})`);
     if (task.real !== undefined) {
+      if (!allowReal) throw new Error(`task ${task.id}: real tasks cannot come from an extra tasks directory`);
       // The base tree comes from the real-repository cache and is built on first use, so loading never needs the cache.
       try { real.attach(task, benchDir); } catch (e) { throw new Error(`task ${task.id}: ${e.message}`); }
     } else {
       if (task.fixture === undefined) throw new Error(`task ${task.id}: needs a fixture or a real reference`);
-      task.fixtureDir = path.join(benchDir, 'fixtures', task.fixture);
+      task.fixtureDir = fixtureRoots.map((r) => path.join(r, task.fixture)).find((d) => fs.existsSync(d)) ?? path.join(fixtureRoots[0], task.fixture);
       if (!fs.existsSync(task.fixtureDir)) throw new Error(`task ${task.id}: fixture dir missing: ${task.fixtureDir}`);
     }
     if (task.hidden !== undefined) {
-      task.hiddenDir = path.join(benchDir, 'tasks', 'hidden', task.hidden);
+      task.hiddenDir = path.join(hiddenRoot, task.hidden);
       if (!fs.existsSync(task.hiddenDir)) throw new Error(`task ${task.id}: hidden dir missing: ${task.hiddenDir}`);
     }
+    if (extra) task.extraDir = extra;
     tasks.set(task.id, task);
+  }
+}
+
+/**
+ * Loads bench/tasks, then each directory of `extraDirs`: `<dir>/<id>.json` tasks, `<dir>/fixtures/<name>` (falling back
+ * to bench/fixtures) and `<dir>/hidden/<name>`. A task id may appear only once across all of them.
+ */
+function loadTasks(benchDir = BENCH_DIR, { extraDirs = [] } = {}) {
+  const schema = loadSchema('task');
+  const tasks = new Map();
+  readTaskDir({ dir: path.join(benchDir, 'tasks'), tasks, schema, benchDir, fixtureRoots: [path.join(benchDir, 'fixtures')], hiddenRoot: path.join(benchDir, 'tasks', 'hidden'), allowReal: true });
+  for (const raw of extraDirs) {
+    const dir = path.resolve(raw);
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error(`--extra-tasks directory not found: ${dir}`);
+    readTaskDir({ dir, tasks, schema, benchDir, fixtureRoots: [path.join(dir, 'fixtures'), path.join(benchDir, 'fixtures')], hiddenRoot: path.join(dir, 'hidden'), allowReal: false, extra: dir });
   }
   return tasks;
 }
@@ -50,8 +66,9 @@ function loadTasks(benchDir = BENCH_DIR) {
 // Everything under the bench directory that the agent must never read: fixtures (answer keys),
 // reference and partial solutions, keyword stubs, the hidden acceptance tests and the real-repository
 // manifest with its fetch tooling.
-function benchMask(benchDir = BENCH_DIR) {
-  return [path.join(benchDir, 'fixtures'), path.join(benchDir, 'real'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d))];
+// An extra tasks directory holds fixtures and hidden tests too, so it is hidden whole.
+function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
+  return [path.join(benchDir, 'fixtures'), path.join(benchDir, 'real'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d)), ...extraDirs.map((d) => path.resolve(d))];
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR) {

@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Konductor benchmark capability",
+  "type": "object",
+  "required": ["id", "kind", "path", "owner", "tasks", "trigger", "expect"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^(skill|agent|sop|context):[a-z0-9][a-z0-9._-]*$" },
+    "kind": { "enum": ["skill", "agent", "sop", "context"] },
+    "path": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string", "minLength": 1 },
+    "tasks": {
+      "type": "object",
+      "required": ["lift", "trigger", "headroom"],
+      "additionalProperties": false,
+      "properties": {
+        "lift": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "trigger": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "headroom": { "type": "object" }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["gen", "queries"],
+      "additionalProperties": false,
+      "properties": {
+        "gen": { "type": "integer", "minimum": 1 },
+        "queries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "text", "expect", "split"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+              "text": { "type": "string", "minLength": 1 },
+              "expect": { "enum": ["load", "none"] },
+              "split": { "enum": ["train", "heldout", "reserve"] },
+              "nearMissOf": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kiro-cli": {
+          "type": "object",
+          "required": ["tool"],
+          "additionalProperties": false,
+          "properties": {
+            "tool": { "enum": ["get_skill", "prompt", "subagent", "resource"] },
+            "actingAgents": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        },
+        "opencode": {
+          "type": "object",
+          "required": ["tool"],
+          "additionalProperties": false,
+          "properties": {
+            "tool": { "enum": ["skill", "task", "resource"] }
+          }
+        }
+      }
+    },
+    "notes": { "type": "string" }
+  }
+}

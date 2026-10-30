@@ -134,7 +134,8 @@ function buildCell({ spec: specs, baseEntries, headEntries, base, head, basis, r
   return { metrics, outcomes, notes, minReplicates: { base: minReplicates(baseEntries), head: minReplicates(headEntries) } };
 }
 
-function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both' }) {
+function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by = 'class' }) {
+  if (!['class', 'task'].includes(by)) throw new Error('--by takes class or task');
   const armIds = orderedArms(run);
   const baseArm = base ?? pickBase(armIds);
   if (!armIds.includes(baseArm)) throw new Error(`base arm "${baseArm}" has no runs in ${run.dir} (arms present: ${armIds.join(', ')})`);
@@ -146,9 +147,9 @@ function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both' }) 
   if (!headArms.length) throw new Error(`nothing to contrast: the run has only the arm "${baseArm}"`);
 
   const basis = BASIS[run.harness ?? 'kiro-cli'];
-  const classOf = (taskId) => tasks.get(taskId)?.class ?? 'unknown';
+  const classOf = by === 'task' ? (taskId) => taskId : (taskId) => tasks.get(taskId)?.class ?? 'unknown';
   const { series } = buildReport({ run, tasks, baseline: baseArm });
-  const classes = [...new Set(run.runs.map((r) => classOf(r.taskId)))].sort((a, b) => (CLASS_ORDER.indexOf(a) + 1 || 99) - (CLASS_ORDER.indexOf(b) + 1 || 99));
+  const classes = [...new Set(run.runs.map((r) => classOf(r.taskId)))].sort(by === 'task' ? (a, b) => (a < b ? -1 : a > b ? 1 : 0) : (a, b) => (CLASS_ORDER.indexOf(a) + 1 || 99) - (CLASS_ORDER.indexOf(b) + 1 || 99));
   const scopes = ['overall', ...classes];
   const opts = { minRel, rule };
   const entriesOf = (arm, scope) => run.runs.filter((r) => r.armId === arm && (scope === 'overall' || classOf(r.taskId) === scope));
@@ -178,7 +179,7 @@ function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both' }) 
   return {
     schemaVersion: 1, harness: run.harness ?? 'kiro-cli', costUnit: basis.unit,
     run: { dir: run.dir, suite: run.config.suite ?? null, model: run.config.model ?? run.runs[0].result.model, effort: run.config.effort ?? run.runs[0].result.effort },
-    base: baseArm, heads: headArms, minRel, rule, scopes, arms, cells, anecdotal, notes,
+    base: baseArm, heads: headArms, minRel, rule, by, scopes, arms, cells, anecdotal, notes,
   };
 }
 

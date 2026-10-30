@@ -34,6 +34,7 @@ const finish = () => {
   ev('runStarted', { engine: 'v2' });
   (tc.toolCalls || []).forEach((c, i) => ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'tool_call', toolCallId: 'fake-' + i, title: 'x', rawInput: c.rawInput, _meta: { kiro: { toolName: c.toolName } } } }));
   ev('metadata', { sessionId: sid, turnDurationMs: 100, meteringUsage: [{ value: tc.credits ?? 0.5, unit: 'credit' }] });
+  if (tc.hangAfterMetering) { setTimeout(() => {}, 60000); return; }
   ev('runFinished', { sessionId: sid, status: 'success', stopReason: tc.stopReason ?? 'end_turn', finalText: tc.finalText ?? 'done', finalTextTruncated: false });
   if (cfg.sessionJson) {
     const sdir = path.join(process.env.HOME, '.kiro/sessions/cli');

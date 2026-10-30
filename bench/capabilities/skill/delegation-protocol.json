@@ -1,0 +1,27 @@
+{
+  "id": "skill:delegation-protocol",
+  "kind": "skill",
+  "path": "skills/delegation-protocol/SKILL.md",
+  "owner": "konductor",
+  "tasks": {
+    "lift": [],
+    "trigger": [],
+    "headroom": {}
+  },
+  "trigger": {
+    "gen": 1,
+    "queries": []
+  },
+  "expect": {
+    "kiro-cli": {
+      "tool": "get_skill",
+      "actingAgents": [
+        "konductor"
+      ]
+    },
+    "opencode": {
+      "tool": "skill"
+    }
+  },
+  "notes": "Listed by the orchestrator only. No task linked yet; trigger queries come from cap draft."
+}

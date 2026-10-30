@@ -9,24 +9,41 @@ const FLAGS = {
     'suite', 'arms', 'tasks', 'replicates', 'parallel', 'budget-credits', 'budget-usd', 'out', 'model', 'effort', 'cache', 'cargo-target',
     'cargo-online', 'seed', 'isolate', 'allow-partial', 'censored-floor', 'hide', 'env-keep', 'tripwire-exclude', 'tripwire-depth', 'tripwire-dir',
     'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'agent-engine',
+    'extra-tasks', 'run-credit-limit',
   ],
   judge: [
     'run', 'judges', 'mode', 'baseline', 'concurrency', 'budget-credits', 'judge-cmd', 'max-file-chars', 'max-bundle-chars', 'redact-file',
-    'judge-timeout-sec', 'bench-dir', 'allow-small-panel', 'kiro-bin', 'isolate', 'hide', 'auth-db',
+    'judge-timeout-sec', 'bench-dir', 'allow-small-panel', 'kiro-bin', 'isolate', 'hide', 'auth-db', 'extra-tasks',
   ],
-  report: ['run', 'baseline', 'out', 'bench-dir'],
+  report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks'],
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'bench-dir'],
-  contrast: ['run', 'base', 'head', 'min-rel', 'rule', 'bench-dir'],
+  contrast: ['run', 'base', 'head', 'min-rel', 'rule', 'by', 'bench-dir', 'extra-tasks'],
   'pr-plan': ['ref', 'base', 'suite', 'replicates', 'no-vanilla', 'budget-credits', 'seed', 'repo-root', 'bench-dir'],
-  recheck: ['run', 'bench-dir', 'dry-run'],
-  skills: ['run', 'bench-dir', 'repo-root', 'json'],
+  recheck: ['run', 'bench-dir', 'dry-run', 'extra-tasks'],
+  skills: ['run', 'bench-dir', 'repo-root', 'json', 'extra-tasks'],
   'calibrate export': ['run', 'n', 'seed', 'out', 'bench-dir', 'max-file-chars', 'max-bundle-chars', 'redact-file'],
   'calibrate score': ['labels', 'key', 'kappa-min', 'agreement-min', 'spearman-min'],
   'list-arms': ['arms', 'repo-root'],
+  'cap list': ['cap', 'kind', 'all', 'base', 'repo-root', 'bench-dir', 'extra-tasks', 'init', 'json'],
+  'cap audit': ['cap', 'kind', 'all', 'base', 'harness', 'repo-root', 'bench-dir', 'extra-tasks', 'out', 'public', 'json'],
+  'cap variant': [
+    'base', 'drop', 'replace', 'add', 'to-agent', 'preset', 'scratch', 'verify', 'force', 'acting-agent', 'agent-engine', 'repo-root', 'bench-dir',
+    'cache', 'cargo-target', 'cargo-online', 'json',
+  ],
+  'cap plan': [
+    'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
+    'repo-root', 'bench-dir', 'extra-tasks', 'json',
+  ],
 };
 
+// Commands whose first word selects the sub-command and therefore the flag table.
+const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan'] };
+
 // Flags that never take a value, so they cannot swallow the next argument.
-const BOOLEAN_FLAGS = new Set(['cargo-online', 'allow-partial', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help']);
+const BOOLEAN_FLAGS = new Set([
+  'cargo-online', 'allow-partial', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all',
+]);
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];
 
@@ -56,10 +73,10 @@ function suggestion(flag, known) {
 function checkArgs(cmd, opts) {
   let key = cmd;
   let positional = opts._;
-  if (cmd === 'calibrate') {
+  if (SUBCOMMANDS[cmd]) {
     const sub = opts._[0];
-    if (sub !== 'export' && sub !== 'score') return null;
-    key = `calibrate ${sub}`;
+    if (!SUBCOMMANDS[cmd].includes(sub)) return null;
+    key = `${cmd} ${sub}`;
     positional = opts._.slice(1);
   }
   const known = FLAGS[key];
@@ -76,4 +93,4 @@ function checkArgs(cmd, opts) {
   return `${problems.join('\n')}\nknown flags for ${key}: ${known.map((f) => `--${f}`).join(' ')}\nnothing was run; see: node bench/runner/bench.js ${cmd} --help`;
 }
 
-module.exports = { FLAGS, BOOLEAN_FLAGS, COMMANDS, checkArgs };
+module.exports = { FLAGS, BOOLEAN_FLAGS, COMMANDS, SUBCOMMANDS, checkArgs };

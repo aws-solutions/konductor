@@ -44,6 +44,8 @@ function seedOf(opts) {
 }
 
 const benchDirOf = (opts) => (opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR);
+// Extra task directories (--extra-tasks), resolved; empty when the flag is absent.
+const extraDirsOf = (opts) => (opts['extra-tasks'] && opts['extra-tasks'] !== true ? String(opts['extra-tasks']).split(',').filter(Boolean).map((d) => path.resolve(d)) : []);
 
 function limitsOf(opts) {
   return {
@@ -67,7 +69,7 @@ async function cmdJudge(opts) {
   const benchDir = benchDirOf(opts);
   const run = loadRun(runDir);
   let suiteJudges = [];
-  try { suiteJudges = loadSuite(run.config.suite, loadTasks(benchDir), benchDir).judges; } catch { /* run without a known suite */ }
+  try { suiteJudges = loadSuite(run.config.suite, loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir).judges; } catch { /* run without a known suite */ }
   const { judges, small } = resolveJudges({ cliJudges: opts.judges, suiteJudges, subjectModel: run.config.model ?? null, allowSmallPanel: Boolean(opts['allow-small-panel']) });
   const modes = String(opts.mode || 'rubric,pairwise').split(',');
   if (modes.some((m) => !['rubric', 'pairwise'].includes(m))) throw new Error('--mode takes rubric, pairwise or both');
@@ -96,7 +98,7 @@ async function cmdJudge(opts) {
   let j;
   try {
     j = await runJudging({
-      runDir, benchDir, judges, modes, baseline, caller, smallPanel: small,
+      runDir, benchDir, extraDirs: extraDirsOf(opts), judges, modes, baseline, caller, smallPanel: small,
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       limits: limitsOf(opts), redactions: loadRedactions(opts['redact-file']), log,
@@ -116,7 +118,7 @@ async function cmdJudge(opts) {
 function cmdRecheck(opts) {
   const runDir = path.resolve(need(opts, 'run'));
   const dryRun = Boolean(opts['dry-run']);
-  const out = recheckAll({ runDir, benchDir: benchDirOf(opts), dryRun });
+  const out = recheckAll({ runDir, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), dryRun });
   const tally = (checks) => (checks ? `${checks.filter((c) => c.passed).length}/${checks.length}` : '-');
   for (const r of out) {
     const note = r.status === 'skipped' ? ` (${r.reason})` : '';
@@ -131,7 +133,7 @@ function cmdReport(opts) {
   const run = loadRun(runDir);
   const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : defaultBaseline(run);
   if (!run.runs.some((r) => r.armId === baseline)) console.error(`warning: baseline arm "${baseline}" has no runs; pairwise columns will be empty`);
-  const { report } = buildReport({ run, tasks: loadTasks(benchDirOf(opts)), baseline });
+  const { report } = buildReport({ run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline });
   const mdPath = path.resolve(opts.out && opts.out !== true ? opts.out : path.join(runDir, 'report.md'));
   const jsonPath = mdPath.endsWith('.md') ? `${mdPath.slice(0, -3)}.json` : `${mdPath}.json`;
   fs.mkdirSync(path.dirname(mdPath), { recursive: true });
@@ -146,7 +148,7 @@ function cmdSkills(opts) {
   const benchDir = benchDirOf(opts);
   const guess = path.resolve(benchDir, '..');
   const repoRoot = opts['repo-root'] && opts['repo-root'] !== true ? path.resolve(opts['repo-root']) : fs.existsSync(path.join(guess, 'agent-sops')) ? guess : null;
-  const { rows, startup, armOrder } = collectRows(runDir, { tasks: loadTasks(benchDir), repoRoot });
+  const { rows, startup, armOrder } = collectRows(runDir, { tasks: loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), repoRoot });
   const done = rows.filter((r) => r.complete);
   const open = rows.length - done.length;
   const sum = summarizeSkills(done, { armOrder, startup });
@@ -179,8 +181,8 @@ function cmdContrast(opts) {
   if (heads && !heads.length) throw new Error('--head needs one or more arm names, comma separated');
   if (opts.base !== undefined && opts.base === true) throw new Error('--base needs an arm name');
   const c = contrastRun({
-    run: loadRun(runDir), tasks: loadTasks(benchDirOf(opts)), base: opts.base, heads,
-    minRel: numOpt(opts, 'min-rel', 0.15), rule,
+    run: loadRun(runDir), tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), base: opts.base, heads,
+    minRel: numOpt(opts, 'min-rel', 0.15), rule, by: opts.by === undefined ? 'class' : String(opts.by),
   });
   const md = renderContrast(c);
   fs.writeFileSync(path.join(runDir, 'contrast.md'), md);
