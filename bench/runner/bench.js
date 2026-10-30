@@ -8,7 +8,7 @@
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
- *   node bench/runner/bench.js cap list|audit|variant|plan ...   (capability benchmarking; free, no model calls)
+ *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/README.md.
@@ -67,11 +67,15 @@ const USAGE = `Usage:
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (registry plus a scan of the capabilities at --base (default v1.2.0): owner, agents that reach each, tasks, trigger
        queries, gaps. --init prints skeleton registry entries for unregistered capabilities and writes nothing. No credits)
-  node bench/runner/bench.js cap audit [--base REF] [--harness kiro-cli|opencode|both] [--out DIR] [--public] [--json]
+  node bench/runner/bench.js cap audit [--base REF] [--harness kiro-cli|opencode|both] [--out DIR] [--public] [--json] [--update-baseline [--force]]
        [--cap ID,ID] [--kind skill|agent|sop|context] [--all] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (static checks, no model: description lint, bytes, near duplicates, reachability, inbound references, startup bytes,
        task coverage, leakage, registry validity; writes cap-audit.md and cap-audit.json; exit 1 on any error finding.
-       --public also scans registry text, task prompts and docs for internal markers. --base takes a ref, dir:PATH or an arm spec)
+       --public also scans registry text, task prompts and docs for internal markers. --base takes a ref, dir:PATH or an arm spec.
+       Lint checks: name equals directory and is kebab-case, third-person description, SKILL.md length, links, orphan and too-deep reference files,
+       frontmatter keys, a When to Use section that repeats the description, blocks copied between skills. If bench/capabilities/audit-baseline.json
+       exists, only listed lint findings are tolerated: a new finding fails, and so does a listed one that no longer occurs. --update-baseline writes
+       the file (all findings if absent; afterwards it only removes stale waivers, adding needs --force); it is never run for you)
   node bench/runner/bench.js cap variant --scratch DIR [--base REF] [--drop ID,ID] [--replace ID=FILE] [--add ID=FILE --to-agent A,B]
        [--preset skills-only|bare] [--verify] [--force] [--acting-agent A] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR]
        [--cargo-online] [--repo-root DIR] [--bench-dir DIR] [--json]
@@ -82,6 +86,27 @@ const USAGE = `Usage:
        [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--json]
        (prints the variant, run, contrast, judge and report commands and a credit estimate; runs nothing. Refuses regex-only lift tasks
        without --allow-regex, and refuses to guess credits without observed figures unless --budget-credits is given)
+  node bench/runner/bench.js cap draft --cap ID,ID [--n 24] [--model M] [--out DIR] [--base REF] [--model-cmd CMD] [--isolate auto|unshare|sandbox-exec|none]
+       [--kiro-bin PATH] [--auth-db FILE] [--hide DIR,DIR] [--repo-root DIR] [--bench-dir DIR]
+       (one tool-less model call per capability, in a scratch HOME and an empty directory: candidate trigger queries (about half should load,
+       half should not, at least half of those near misses of a similar capability), task ideas and, for a SOP, its declared output sections.
+       Writes DIR/drafts/<id>.json and .md for human review; assigns no splits; never writes into the repository. Costs credits)
+  node bench/runner/bench.js cap import --from FILE --cap ID [--out DIR] [--repo-root DIR] [--bench-dir DIR]
+       (reads a skill-creator style JSON array of { query, should_trigger } into the same draft format; should_trigger true is expect load, false is none)
+  node bench/runner/bench.js cap trigger --cap ID --mode proxy|live [--split train|heldout|all] [--reps 3] [--harness kiro-cli|opencode] [--base REF]
+       [--queries FILE] [--out DIR] [--model M] [--model-cmd CMD] [--from-run DIR] [--from-arm NAME] [--acting-agent A] [--concurrency N]
+       [--crosscheck F] [--crosscheck-run DIR] [--budget-credits X] [--budget-usd X] [--run-credit-limit X] [--stop-on first-capability|first-load|end_turn]
+       [--max-tool-calls N] [--seed N] [--censored-floor X] [--dry-run] [--kiro-bin PATH] [--auth-db FILE] [--isolate auto|unshare|sandbox-exec|none]
+       [--hide DIR,DIR] [--cache DIR] [--cargo-target DIR] [--cargo-online] [--agent-engine v2|v3] [--effort LEVEL] [--aws-creds-file FILE]
+       [--aws-profile NAME] [--opencode-bin PATH] [--rg-bin PATH] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--json]
+       (trigger precision, recall and F1 with Wilson intervals for one capability; queries come from the registry (train, heldout or both; the
+       reserve is never used) or from a draft file with --queries. proxy: tool-less model calls; on kiro-cli the model writes find_skills arguments,
+       the offline find_skills returns the candidates and a second call picks, so retrieval failures and judgment failures are reported separately;
+       on opencode the skill index is in the prompt. The surface is the acting agent's skill filter from --from-run's recorded startupResources
+       (arm --from-arm) or from the agent spec at --base. live: real runs of trigger tasks, stopped at the first load or delegation (first-load by
+       default; first-capability also stops at find_skills), at most 4 tool calls; needs --budget-credits (--budget-usd on opencode). --crosscheck F
+       runs a share F of the queries live (at least one per kind) and --crosscheck-run DIR reads a finished live run; kappa below 0.6 or fewer than
+       12 queries prints "proxy not validated". --dry-run only writes the trigger tasks and prints the run command. Harnesses are never merged)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
   node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X]

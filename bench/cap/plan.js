@@ -15,6 +15,19 @@ const { scoringOf } = require('./captasks.js');
 const { split } = require('./reach.js');
 
 const MODES = ['lift', 'trigger', 'improve'];
+
+/**
+ * The per-command budget: the largest of 1.5x the estimate, the estimate plus the largest single run seen so far, and
+ * the estimate with two cells at that size. The headroom rule refuses a launch when credits charged plus the largest
+ * run so far would pass the budget, so one expensive run early in a command would otherwise skip the last cell.
+ */
+function budgetFor({ total, cells, tail }) {
+  const each = total / Math.max(1, cells);
+  const terms = [total * HEADROOM, total + tail, total - 2 * each + 2 * tail];
+  const budget = Math.ceil(Math.max(...terms));
+  const why = `Budget ${budget}: the largest of ${HEADROOM}x the estimate (${terms[0].toFixed(1)}), the estimate plus the largest observed single run ${tail.toFixed(2)} (${terms[1].toFixed(1)}), and the estimate with one cell at that size ahead of the last (${terms[2].toFixed(1)}), so the headroom rule (charged plus the largest run so far must fit) does not skip a cell.`;
+  return { budget, why, terms };
+}
 const OBSERVED_SUITES = ['lite', 'real', 'hard'];
 const CEILING = 0.8;
 const DEFAULT_ACTING = ['konductor'];
@@ -88,6 +101,11 @@ function planCap({
   const picked = ids.map((id) => { const t = tasks.get(id); if (!t) throw new Error(`unknown task "${id}"`); return t; });
 
   const warnings = [];
+  if (mode === 'lift' && reg?.class === 'preference') {
+    const msg = `${cap} is a preference capability, tested for fidelity, not lift (trigger tests and conformance checks apply)`;
+    if (!force) throw new Error(`${msg}. Pass --force to plan its lift anyway`);
+    warnings.push(`${msg} (--force)`);
+  }
   if (mode !== 'trigger') {
     for (const t of picked) {
       if (scoringOf(t) === 'regex-only') {
@@ -126,7 +144,11 @@ function planCap({
     throw new Error(`${est.reason}. The runs are not guessed at: pass --budget-credits X to set your own cap`);
   }
   const estimateOut = est.missing ? null : est;
-  const budget = budgetCredits !== null ? Number(budgetCredits) : Math.ceil(est.total * HEADROOM);
+  const sizing = estimateOut ? budgetFor({ total: estimateOut.total, cells: arms.length * picked.length * replicates, tail: OBSERVED.tail.credits }) : null;
+  const budget = budgetCredits !== null ? Number(budgetCredits) : sizing.budget;
+  if (sizing && budgetCredits !== null && budget < sizing.budget) {
+    warnings.push(`--budget-credits ${budget} is below the ${sizing.budget} credits this plan needs; the headroom rule may skip cells once a run costs more than its estimate`);
+  }
 
   const suite = suiteFor(picked);
   const stampName = `cap-${mode}-${split(cap)[1]}-${stamp(now)}`;
@@ -150,11 +172,11 @@ function planCap({
     commands.report = `${bench} report --run ${quote(out)} --baseline base${benchFlag}${extraFlag}`;
   }
 
-  const text = render({ mode, cap, base, picked, replicates, arms, warnings, estimateOut, est, budget, budgetCredits, commands, acting, suite });
+  const text = render({ mode, cap, base, picked, replicates, arms, warnings, estimateOut, est, budget, budgetCredits, commands, acting, suite, sizing });
   return { arms: arms.map((a) => a.spec), out, seed: seedValue, suite, tasks: picked.map((t) => t.id), estimate: estimateOut, budget, commands, warnings, actingAgents: acting, text };
 }
 
-function render({ mode, cap, base, picked, replicates, arms, warnings, estimateOut, est, budget, budgetCredits, commands, acting, suite }) {
+function render({ mode, cap, base, picked, replicates, arms, warnings, estimateOut, est, budget, budgetCredits, commands, acting, suite, sizing }) {
   const L = [];
   L.push(`Plan: ${mode} of ${cap} against base ${base} on ${picked.length} task(s) (${picked.map((t) => t.id).join(', ')}), ${replicates} replicate${replicates === 1 ? '' : 's'}, acting agent ${acting.join(', ')}, suite ${suite}. This prints the plan and runs nothing.`);
   L.push(`Arms: ${arms.map((a) => a.name).join(', ')}`);
@@ -163,7 +185,8 @@ function render({ mode, cap, base, picked, replicates, arms, warnings, estimateO
   if (estimateOut) {
     L.push(`Estimate (credits per task, scaled from observed per-suite figures on ${OBSERVED.model}, n=1, a rough guide only):`);
     for (const l of estimateOut.lines) L.push(`  ${l.arm.padEnd(10)} ${l.lowerBound ? 'at least ' : ''}${l.credits.toFixed(2)} per replicate  (${l.basis})`);
-    L.push(`  total for ${replicates} replicate${replicates === 1 ? '' : 's'}: ${estimateOut.lowerBound ? 'at least ' : ''}${estimateOut.total.toFixed(2)} credits; cap ${budget} (${HEADROOM}x, rounded up). Judge credits are not included.`);
+    L.push(`  total for ${replicates} replicate${replicates === 1 ? '' : 's'}: ${estimateOut.lowerBound ? 'at least ' : ''}${estimateOut.total.toFixed(2)} credits; cap ${budget}. Judge credits are not included.`);
+    if (sizing) L.push(`  ${sizing.why}`);
   } else {
     L.push(`No estimate: ${est.reason}. The cap below is the one you gave (${budgetCredits}). Judge credits are not included.`);
   }
@@ -179,4 +202,4 @@ function render({ mode, cap, base, picked, replicates, arms, warnings, estimateO
   return L.join('\n');
 }
 
-module.exports = { planCap, MODES };
+module.exports = { planCap, budgetFor, MODES };

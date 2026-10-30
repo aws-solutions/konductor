@@ -9,6 +9,7 @@ const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { loadRun, readJson } = require('../report/load.js');
 const { buildBundle } = require('./bundle.js');
 const { rubricScore } = require('./score.js');
+const { effectiveLimits } = require('./config.js');
 const { percentAgreement, cohenKappa, spearman } = require('./agreement.js');
 
 const VERDICTS = ['pass', 'partial', 'fail'];
@@ -43,7 +44,7 @@ function sheetMarkdown(items) {
 }
 
 // Writes sheet.json (blinded, editable), sheet.md (readable copy) and key.json (item -> arm).
-function exportSheet({ runDir, benchDir, n, seed, limits, redactions, outDir }) {
+function exportSheet({ runDir, benchDir, n, seed, limits, explicitLimits = {}, redactions, outDir }) {
   const run = loadRun(runDir);
   const tasks = loadTasks(benchDir);
   const eligible = run.runs.filter((r) => r.result.status !== 'budget_skipped');
@@ -60,7 +61,7 @@ function exportSheet({ runDir, benchDir, n, seed, limits, redactions, outDir }) 
       taskPrompt: task.prompt,
       rubric: task.rubric.map(({ id, criterion, weight }) => ({ id, criterion, weight })),
       answerKey: fs.existsSync(answerKeyFile) ? fs.readFileSync(answerKeyFile, 'utf8') : null,
-      bundle: buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits, redactions }).text,
+      bundle: buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions }).text,
       labels: Object.fromEntries(task.rubric.map((c) => [c.id, null])),
       notes: '',
     });

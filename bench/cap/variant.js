@@ -30,11 +30,20 @@ const inside = (child, parent) => child === parent || child.startsWith(parent + 
 
 function realOrResolve(p) { try { return fs.realpathSync(p); } catch { return path.resolve(p); } }
 
-function checkScratch(scratch, repo) {
-  fs.mkdirSync(scratch, { recursive: true });
-  const real = realOrResolve(scratch);
-  if (inside(real, realOrResolve(repo))) throw new Error(`--scratch ${scratch} is inside the repository; variants live outside it`);
-  if (realHomes().some((h) => inside(real, h))) throw new Error(`--scratch ${scratch} is under the real HOME; use a directory under TMPDIR`);
+// The real path a directory will have once created: the nearest existing ancestor resolved, then the missing parts.
+function realTarget(p) {
+  let cur = path.resolve(p);
+  const rest = [];
+  while (!fs.existsSync(cur) && path.dirname(cur) !== cur) { rest.unshift(path.basename(cur)); cur = path.dirname(cur); }
+  return path.join(realOrResolve(cur), ...rest);
+}
+
+// Checks before creating anything, so a refused path leaves no directory behind.
+function checkScratch(scratch, repo, flag = '--scratch') {
+  const real = realTarget(scratch);
+  if (inside(real, realOrResolve(repo))) throw new Error(`${flag} ${scratch} is inside the repository; keep generated files outside it`);
+  if (realHomes().some((h) => inside(real, h))) throw new Error(`${flag} ${scratch} is under the real HOME; use a directory under TMPDIR`);
+  fs.mkdirSync(real, { recursive: true });
   return real;
 }
 

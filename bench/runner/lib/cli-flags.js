@@ -25,10 +25,17 @@ const FLAGS = {
   'calibrate score': ['labels', 'key', 'kappa-min', 'agreement-min', 'spearman-min'],
   'list-arms': ['arms', 'repo-root'],
   'cap list': ['cap', 'kind', 'all', 'base', 'repo-root', 'bench-dir', 'extra-tasks', 'init', 'json'],
-  'cap audit': ['cap', 'kind', 'all', 'base', 'harness', 'repo-root', 'bench-dir', 'extra-tasks', 'out', 'public', 'json'],
+  'cap audit': ['cap', 'kind', 'all', 'base', 'harness', 'repo-root', 'bench-dir', 'extra-tasks', 'out', 'public', 'json', 'update-baseline', 'force'],
   'cap variant': [
     'base', 'drop', 'replace', 'add', 'to-agent', 'preset', 'scratch', 'verify', 'force', 'acting-agent', 'agent-engine', 'repo-root', 'bench-dir',
     'cache', 'cargo-target', 'cargo-online', 'json',
+  ],
+  'cap draft': ['cap', 'n', 'model', 'model-cmd', 'base', 'out', 'isolate', 'kiro-bin', 'auth-db', 'hide', 'repo-root', 'bench-dir'],
+  'cap import': ['from', 'cap', 'out', 'repo-root', 'bench-dir'],
+  'cap trigger': [
+    'cap', 'mode', 'split', 'reps', 'crosscheck', 'crosscheck-run', 'harness', 'base', 'queries', 'out', 'model', 'model-cmd', 'from-run', 'from-arm', 'acting-agent',
+    'concurrency', 'budget-credits', 'budget-usd', 'run-credit-limit', 'stop-on', 'max-tool-calls', 'seed', 'censored-floor', 'dry-run', 'kiro-bin', 'auth-db', 'isolate', 'hide', 'cache',
+    'cargo-target', 'cargo-online', 'agent-engine', 'effort', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'repo-root', 'bench-dir', 'extra-tasks', 'json',
   ],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
@@ -37,12 +44,12 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan'] };
+const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline',
 ]);
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];

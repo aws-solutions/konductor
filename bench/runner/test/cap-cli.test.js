@@ -32,8 +32,8 @@ test('cap list prints every capability with owner, reach and tasks, and exits 0 
   try {
     const r = s.cap('list');
     assert.equal(r.status, 0, r.stderr);
-    assert.match(r.stdout, /skill:alpha\s+yes\s+k-dev\s+2\s+1\s+0/);
-    assert.match(r.stdout, /skill:gamma\s+-\s+-\s+0\s+0\s+-\s+no task/);
+    assert.match(r.stdout, /skill:alpha\s+yes\s+k-dev\s+uplift\s+2\s+1\s+0/);
+    assert.match(r.stdout, /skill:gamma\s+-\s+-\s+-\s+0\s+0\s+-\s+no task/);
     assert.match(r.stdout, /skill:alpha: reached by k-dev, konductor on kiro-cli; linked tasks rev-one/);
     const only = s.cap('list', '--kind', 'sop');
     assert.doesNotMatch(only.stdout, /skill:alpha\s+yes/);

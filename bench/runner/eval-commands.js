@@ -54,6 +54,11 @@ function limitsOf(opts) {
   };
 }
 
+// Which limits the user set on the command line; those beat a task's own bundleLimits.
+function explicitLimitsOf(opts) {
+  return { maxFileChars: opts['max-file-chars'] !== undefined, maxBundleChars: opts['max-bundle-chars'] !== undefined };
+}
+
 // --judges wins, then the suite file, then the default three-family panel. Fewer than three
 // distinct families is refused unless --allow-small-panel is passed.
 function resolveJudges({ cliJudges, suiteJudges, subjectModel = null, allowSmallPanel = false }) {
@@ -101,7 +106,7 @@ async function cmdJudge(opts) {
       runDir, benchDir, extraDirs: extraDirsOf(opts), judges, modes, baseline, caller, smallPanel: small,
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
-      limits: limitsOf(opts), redactions: loadRedactions(opts['redact-file']), log,
+      limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), log,
     });
   } finally {
     removeHandlers();
@@ -197,7 +202,7 @@ function cmdCalibrate(opts) {
     const r = exportSheet({
       runDir: path.resolve(need(opts, 'run')), benchDir: benchDirOf(opts),
       n: numOpt(opts, 'n', 25, { int: true }), seed: seedOf(opts),
-      limits: limitsOf(opts), redactions: loadRedactions(opts['redact-file']), outDir: opts.out,
+      limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), outDir: opts.out,
     });
     console.log(`wrote ${r.n} item(s) to ${r.dir} (sheet.json, sheet.md, key.json). Label sheet.json, then run: calibrate score --labels ${r.sheetPath}`);
   } else if (sub === 'score') {

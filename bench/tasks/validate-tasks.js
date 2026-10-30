@@ -61,8 +61,8 @@ const extraRoots = (dir) => ({
 });
 let R = DEFAULT_ROOTS;
 
-const CLASSES = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'real', 'autonomy'];
-const TIERS = ['lite', 'full', 'hard', 'real', 'autonomy', 'pilot'];
+const CLASSES = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'real', 'autonomy', 'trigger'];
+const TIERS = ['lite', 'full', 'hard', 'real', 'autonomy', 'pilot', 'cap'];
 const REAL_RUBRIC_SIZE = 3;
 const REAL_MIN_TASKS = 6;
 const REAL_MAX_TASKS = 8;
@@ -101,6 +101,8 @@ const FIXTURE_BASELINE = {
   textkit: { cmd: 'node --test', exit: 1 },
   'inventory-api': { cmd: 'node --test', exit: 0 },
   'product-spec': null,
+  // Neutral fixture of the trigger tasks that `cap trigger` writes: no tests to run.
+  'trigger-neutral': null,
   // Hard fixtures: the visible tests pass before and after the work, so they cannot hide the defects.
   'hard-quota': { cmd: 'node --test', exit: 0 },
   'hard-jobs': { cmd: 'node --test', exit: 0 },
@@ -177,7 +179,32 @@ function evalCheck(dir, check, pristine, hiddenDir = null) {
   return { pass: r.passed, broken, detail: r.detail, tests: r.tests };
 }
 
+// A trigger task is a query run to see which capability the agent reaches for. It has no checks, rubric or hidden tests,
+// is not a document task, and does not end with the no-questions sentence; its prompt may be short.
+const TRIGGER_PROMPT_MAX = 600;
+function validateTriggerShape(file, t) {
+  const where = path.basename(file);
+  const need = (cond, msg) => { if (!cond) err(where, msg); };
+  need(isStr(t.id), 'id must be a non-empty string');
+  need(where === `${t.id}.json`, `file name must be <id>.json (id is "${t.id}")`);
+  need(R.extra, 'trigger tasks live in an --extra-tasks directory, not in bench/tasks');
+  need(t.target === null || isStr(t.target), 'target must be a string or null');
+  need(isStr(t.prompt) && t.prompt.length <= TRIGGER_PROMPT_MAX, `prompt must be 1 to ${TRIGGER_PROMPT_MAX} characters`);
+  need(isStr(t.fixture) && fs.existsSync(fixtureDir(t.fixture)), `fixture "${t.fixture}" does not exist`);
+  need(isInt(t.timeoutSec) && t.timeoutSec > 0, 'timeoutSec must be a positive integer');
+  need(Array.isArray(t.checks) && t.checks.length === 0, 'trigger tasks have no checks');
+  need(Array.isArray(t.rubric) && t.rubric.length === 0, 'trigger tasks have no rubric');
+  need(t.hidden === undefined && t.real === undefined, 'trigger tasks have no hidden directory or real reference');
+  need(Array.isArray(t.tiers) && t.tiers.length === 1 && t.tiers[0] === 'cap', 'trigger tasks must have tiers ["cap"]');
+  need(t.triggerQuery && isStr(t.triggerQuery.capId) && isStr(t.triggerQuery.queryId) && ['load', 'none'].includes(t.triggerQuery.expect), 'trigger tasks need a triggerQuery with capId, queryId and expect (load or none)');
+  if (isStr(t.prompt)) {
+    need(!PROMPT_BANNED.test(t.prompt), 'prompt names a konductor procedure or agent');
+    need(!DASHES.test(t.prompt), 'prompt contains an em or en dash');
+  }
+}
+
 function validateShape(file, t) {
+  if (t.class === 'trigger') return validateTriggerShape(file, t);
   const where = path.basename(file);
   const need = (cond, msg) => { if (!cond) err(where, msg); };
   need(isStr(t.id), 'id must be a non-empty string');
@@ -526,6 +553,7 @@ function main() {
   for (const t of tasks) {
     R = rootsOf.get(t);
     if (t.class === 'real' && manifest && Array.isArray(t.checks)) { realReport.push(validateRealTask(t, manifest)); continue; }
+    if (t.class === 'trigger') continue;
     if (!isStr(t.fixture) || !fs.existsSync(fixtureDir(t.fixture)) || !Array.isArray(t.checks)) continue;
     const where = t.id;
     const hiddenDir = t.hidden ? path.join(R.hidden, t.hidden) : null;

@@ -6,7 +6,7 @@ const path = require('node:path');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
-const { checkJudgeModel, checkPanel, families } = require('./config.js');
+const { checkJudgeModel, checkPanel, families, effectiveLimits } = require('./config.js');
 const { buildBundle } = require('./bundle.js');
 const { rubricPrompt, pairPrompt, retrySuffix } = require('./prompts.js');
 const { parseJsonStrict, validateRubricReply, validatePairReply } = require('./validate.js');
@@ -51,7 +51,7 @@ async function judgeOnce({ caller, model, prompt, check }) {
 }
 
 async function runJudging(o) {
-  const { runDir, benchDir, extraDirs = [], judges, modes, baseline, concurrency, budgetCredits, limits, redactions, log = () => {} } = o;
+  const { runDir, benchDir, extraDirs = [], judges, modes, baseline, concurrency, budgetCredits, limits, explicitLimits = {}, redactions, log = () => {} } = o;
   const run = loadRun(runDir);
   const tasks = loadTasks(benchDir, { extraDirs });
   const subject = o.subjectModel ?? run.config.model ?? run.runs[0].result.model;
@@ -68,7 +68,7 @@ async function runJudging(o) {
   for (const r of judged) {
     const task = tasks.get(r.taskId);
     if (!task) throw new Error(`task "${r.taskId}" is not in ${benchDir}/tasks`);
-    bundles.set(runKey(r), buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits, redactions }));
+    bundles.set(runKey(r), buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions }));
   }
   const byKey = new Map(judged.map((r) => [runKey(r), r]));
   const revisions = new Map(judged.map((r) => [r.taskId, taskRevision(tasks.get(r.taskId))]));

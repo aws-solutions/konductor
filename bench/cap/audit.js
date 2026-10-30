@@ -15,8 +15,10 @@ const { loadRegistry, validateRegistry } = require('./registry.js');
 const { descTokens, jaccard, shingles, overlapFraction, cueKeywords, CUE } = require('./text.js');
 const { scoringOf } = require('./captasks.js');
 const { findMarker } = require('./public.js');
+const { lintSkills } = require('./lint.js');
+const { readBaseline, applyBaseline, isRatchetRule } = require('./baseline.js');
 
-const TOOL_VERSION = 'cap-audit/1';
+const TOOL_VERSION = 'cap-audit/2';
 const LEAK_K = 8;
 const LEAK_MAX = 0.05;
 const DESC_MAX = 1024;
@@ -157,7 +159,7 @@ function summarize({ caps, records, specs, findings, harness }) {
     };
   })();
   const lint = {};
-  for (const f of findings) if (f.rule.startsWith('description-')) lint[f.rule] = (lint[f.rule] ?? 0) + 1;
+  for (const f of findings) if (f.rule.startsWith('description-') || f.rule.startsWith('lint-')) lint[f.rule] = (lint[f.rule] ?? 0) + 1;
   const pairs = new Map();
   for (const c of caps) for (const n of records.get(c.id).neighbours) { const key = [c.id, n.id].sort().join(' | '); if (!pairs.has(key)) pairs.set(key, { a: key.split(' | ')[0], b: key.split(' | ')[1], score: n.score }); }
   const withTask = caps.filter((c) => { const t = records.get(c.id).tasks; return t.linked.length || t.byTarget.length; });
@@ -192,7 +194,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
     const byId = new Map(registry.entries.filter((e) => e.data?.id).map((e) => [e.data.id, e.data]));
     const kiroOn = harness !== 'opencode';
     const caps = [...scan.values()].sort((a, b2) => (a.id < b2.id ? -1 : 1));
-    const findings = [];
+    let findings = [];
     const add = (level, id, rule, msg, where) => findings.push({ level, id, rule, msg, ...(where ? { where } : {}) });
     for (const f of regFindings) add(f.level, null, 'registry', `${f.where}: ${f.msg}`, f.where);
 
@@ -204,7 +206,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
       const linked = reg ? [...new Set([...reg.tasks.lift, ...reg.tasks.trigger, ...Object.keys(reg.tasks.headroom ?? {})])].sort() : [];
       const byTarget = [...tasks.values()].filter((t) => t.target && t.target.toLowerCase() === c.name.toLowerCase() && !linked.includes(t.id)).map((t) => t.id).sort();
       records.set(c.id, {
-        id: c.id, kind: c.kind, name: c.name, path: c.path, registered: Boolean(reg), owner: reg?.owner ?? null,
+        id: c.id, kind: c.kind, name: c.name, path: c.path, registered: Boolean(reg), owner: reg?.owner ?? null, class: reg?.class ?? 'uplift',
         bytes: c.bytes, estTokens: estTokens(c.bytes), description: desc, neighbours: [],
         reach: { kiro: kiroOn ? { agents: kiroReachers(c.id, specs) } : null, opencode: harness === 'kiro-cli' ? null : reach.opencode[c.id] },
         inbound: inbound.get(c.id), leakage: [],
@@ -225,6 +227,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
       for (const t of tasks.values()) {
         if (t.target && t.target.toLowerCase() === c.name.toLowerCase() && reg && !r.tasks.linked.includes(t.id)) add('warn', c.id, 'target-not-linked', `task ${t.id} has target "${t.target}" but ${c.id} does not list it in the registry`);
       }
+      if (reg?.class === 'preference' && reg.tasks.lift.length) add('warn', c.id, 'preference-lift-task', `${c.id} is a preference capability, tested for fidelity, not lift, but lists lift tasks (${reg.tasks.lift.join(', ')})`);
       for (const id of r.tasks.linked) {
         const t = tasks.get(id);
         if (!t) continue;
@@ -235,6 +238,11 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
         if (leak.max > LEAK_MAX) add('error', c.id, 'leakage', `task ${id} shares ${(leak.max * 100).toFixed(1)}% of its ${LEAK_K}-word shingles with ${c.id} (prompt ${(leak.prompt * 100).toFixed(1)}%, fixtures ${(leak.fixtures * 100).toFixed(1)}%, hidden ${(leak.hidden * 100).toFixed(1)}%); the limit is ${LEAK_MAX * 100}%`);
       }
     }
+
+    findings.push(...lintSkills({ baseDir: b.dir }));
+    for (const f of findings) if (!f.fid && isRatchetRule(f.rule)) f.fid = `${f.rule}|${f.id}`;
+    const ratchet = applyBaseline(findings, readBaseline(benchDir));
+    findings = ratchet.findings;
 
     if (pub) for (const h of publicFindings(benchDir, tasks, registry.dir)) add('error', null, 'public-marker', `${h.where}: ${h.marker} ("${h.sample}")`, h.where);
 
@@ -256,7 +264,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
       matrix: { agents: reach.agents, kiro: kiroOn ? reach.kiro : null, opencode: harness === 'kiro-cli' ? null : reach.opencode },
       dangling: kiroOn ? reach.dangling : [],
       startup, registry: { entries: registry.entries.length, findings: regFindings },
-      summary: summarize({ caps, records, specs, findings, harness }),
+      summary: { ...summarize({ caps, records, specs, findings, harness }), ratchet: ratchet.summary },
       findings,
     };
     return { report, exitCode: findings.some((f) => f.level === 'error') ? 1 : 0 };
@@ -287,7 +295,8 @@ function renderAudit(r) {
     if (s.kiro.unreachableSops.length) L.push(`SOPs listed by no agent: ${s.kiro.unreachableSops.join(', ')}.`);
   }
   L.push(`Block-scalar descriptions: ${s.foldedDescriptions.length ? s.foldedDescriptions.join(', ') : 'none'}.`);
-  L.push(`Description lint counts: ${Object.keys(s.lint).length ? Object.entries(s.lint).map(([k, v]) => `${k} ${v}`).join(', ') : 'none'}.`);
+  L.push(`Lint counts: ${Object.keys(s.lint).length ? Object.entries(s.lint).map(([k, v]) => `${k} ${v}`).join(', ') : 'none'}.`);
+  L.push(s.ratchet ? `Baseline: ${s.ratchet.waived} waived, ${s.ratchet.new} new, ${s.ratchet.stale} stale.` : 'Baseline: none (audit-baseline.json is absent, so lint findings are warnings).');
   L.push('', '10 largest skills (SKILL.md):', '', table(['skill', 'bytes', 'est. tokens'], s.top10Bytes.map((t) => [t.id, t.bytes, t.estTokens])));
 
   L.push('', '## Descriptions', '');

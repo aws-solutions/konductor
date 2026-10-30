@@ -5,7 +5,9 @@
 const DEFAULTS = {
   concurrency: 2,
   timeoutSec: 300,
-  limits: { maxFileChars: 6000, maxBundleChars: 24000 },
+  // 16000 holds the longest design document seen so far (about 2,100 words, 14,000 characters); the old 6000 cut
+  // documents mid-section and turned quotes from the cut part into "not found" downgrades.
+  limits: { maxFileChars: 16000, maxBundleChars: 48000 },
   // Judge-vs-human targets used by `calibrate score`.
   thresholds: { kappaMin: 0.6, agreementMin: 0.7, spearmanMin: 0.6 },
   // Cell flag when judges differ by more than this on a normalized 0..1 score.
@@ -50,4 +52,14 @@ function checkPanel(judges, { minFamilies = 1 } = {}) {
   }
 }
 
-module.exports = { DEFAULTS, VERDICT_VALUE, MIN_PANEL_FAMILIES, modelFamily, families, checkJudgeModel, checkPanel };
+/**
+ * The bundle limits for one task: an explicit flag value (`explicit.maxFileChars` / `maxBundleChars` true) wins, then the
+ * task's own `bundleLimits`, then the default or flag value in `limits`.
+ */
+function effectiveLimits(task, limits, explicit = {}) {
+  const own = task?.bundleLimits ?? {};
+  const pick = (k) => (explicit[k] || own[k] === undefined ? limits[k] : own[k]);
+  return { maxFileChars: pick('maxFileChars'), maxBundleChars: pick('maxBundleChars') };
+}
+
+module.exports = { effectiveLimits, DEFAULTS, VERDICT_VALUE, MIN_PANEL_FAMILIES, modelFamily, families, checkJudgeModel, checkPanel };

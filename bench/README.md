@@ -305,7 +305,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 | haiku-5.5, partial (1 task) | 0.42 | not run | 0.66 |
 
 ## Capability benchmarking (cap)
-`cap` answers questions about one skill, SOP, agent or context file. Everything below is free: no model call, no credits.
+`cap` answers questions about one skill, SOP, agent or context file. `list`, `audit`, `variant` and `plan` are free; `draft`, `trigger` and live runs spend credits.
 - `cap list` shows the registry plus a scan of the tree at `--base` (default `v1.2.0`): owner, agents that reach each capability, tasks, gaps.
   `--init` prints skeleton registry entries for unregistered ones and writes nothing.
 - `cap audit --base REF --harness kiro-cli|opencode|both` writes `cap-audit.md` and `cap-audit.json` and exits 1 on any error
@@ -329,6 +329,30 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - Reading the audit: tokens are bytes / 4, an estimate. "Unreachable" means no agent spec lists the capability, so no kiro agent can
   load it. A near-duplicate score is Jaccard on description words. Leakage fails above 5% shared 8-word shingles. Each `cap`
   command that builds hashes `~/.konductor/installs` before and after and exits 1 if it changed.
+- `cap draft --cap ID,ID [--n 24]` makes one tool-less model call per capability (scratch HOME, empty cwd, no tools, credential copy removed
+  after) and writes `DIR/drafts/<id>.json` and `.md`: candidate trigger queries with a rationale each (about half should-not, at least half of
+  those near misses of a similar capability), two task ideas and, for a SOP, its declared output sections. It assigns no splits and never
+  writes into the repository. A person reviews, assigns `split` (about 60/40 train/heldout plus 4 per polarity in `reserve`) and copies the
+  approved `id`, `text`, `expect`, `nearMissOf` into the registry. `cap import --from FILE --cap ID` reads `[{query, should_trigger}]` the same way.
+- `cap trigger --cap ID --mode proxy|live` scores precision, recall and F1 with Wilson 95% intervals, per query over repeats (a hit is a load in at
+  least half of them), plus what fired instead. Queries come from the registry (`--split train|heldout|all`) or a draft (`--queries FILE`).
+  Harnesses are reported separately, never merged. Trust each mode for what it sees:
+  - proxy asks a model what it would do without starting an agent. On kiro-cli it writes `find_skills` arguments, an offline copy of the tool
+    returns the candidates, and a second call picks; retrieval failures (the wording never reaches the skill) and judgment failures are
+    counted apart. On opencode the skill index is in the prompt. It cannot see task context or delegation hops: a miss is informative, a hit is not proof.
+  - live runs real trigger tasks and stops at the first load or delegation (`--stop-on first-load`, default) within 4 tool calls. A killed run
+    has no metered credits at all (metering arrives at the end of a turn), so live spend is unobserved; give `--budget-credits` and `--run-credit-limit`.
+  - Agreement of the two on a sample (`--crosscheck F` or `--crosscheck-run DIR`) is Cohen's kappa; below 0.6 or under 12 queries every proxy
+    report says "proxy not validated".
+- Forced load: `run --arm-prefix name=FILE` puts the file's text in front of the task prompt of one arm (recorded as sha256 and size); use
+  "load skill X before you start" against the same arm without it to separate discovery from effect. `--arm-agent name=AGENT` starts an arm in
+  another agent. `--stop-on first-capability|first-load|end_turn` and `--max-tool-calls N` stop a run early and mark it `earlyStopped`.
+- Audit lint and baseline: `cap audit` also checks names, third-person descriptions, SKILL.md length, links, orphan and too-deep reference
+  files, frontmatter keys, redundant When to Use sections and copied blocks. `capabilities/audit-baseline.json` lists tolerated findings by id: a new
+  finding fails, and so does a listed one that no longer occurs. `cap audit --update-baseline` writes it (only removals once it exists; `--force`
+  to add) and is never run for you. Registry `class: preference` marks a capability tested for fidelity, not lift; `cap plan --mode lift` refuses it.
+- Judge bundles keep up to 16000 characters per file and 48000 per bundle (was 6000 and 24000); a task can set `bundleLimits`. `cap plan` sizes
+  the budget as the largest of 1.5x the estimate, estimate plus the largest observed run, and a pass with one such run before the last cell.
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.

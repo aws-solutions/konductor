@@ -22,6 +22,10 @@ const OBSERVED = {
   },
 };
 
+// The most credits one run cost in the first paired experiment (a konductor arm that ran a second delegation); a
+// budget has to leave room for one run this size or the headroom rule skips a cell.
+OBSERVED.tail = { credits: 11.07, note: 'largest single run observed, claude-sonnet-5.5, v1.2.0, design task' };
+
 const HEADROOM = 1.5;
 const DEFAULT_BASE = 'v1.2.0';
 // A new arm is a konductor arm; main is the closest observed stand-in for its cost.
