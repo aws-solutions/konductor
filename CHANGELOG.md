@@ -12,6 +12,8 @@ not per individual commit.
 
 - `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml`; nothing
   acts on it until the session hook lands.
+- `konductor` runs as a coordinator when `orchestration.mode` is `coordinator`: `install` wires a
+  session-start hook, even under `--no-telemetry`, that points it at the routing rules.
 
 ### Changed
 
