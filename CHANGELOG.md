@@ -32,13 +32,14 @@ not per individual commit.
   Claude Code configs block the runtime's spawn tools explicitly, so a specialist cannot call one even when
   a prompt asks it to. The block does not cover shell: a specialist with shell access could
   still run `kiro-cli` or `claude`. The Kiro CLI v3 block uses `excludedTools`, tested with
-  kiro-cli 2.35.0 and later. Kiro CLI v2 ignores `excludedTools`, so a v2 specialist gets the
+  kiro-cli 2.35.0. Kiro CLI v2 ignores `excludedTools`, so a v2 specialist gets the
   v2 built-in tools listed one by one, without `subagent`, in place of `@builtin` (checked with
   kiro-cli 2.36.0).
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
-  `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor` or `.konductor/memory`; orchestrators never bypass a denial or read unnamed secrets.
+  `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
+  or `.konductor/memory`; orchestrators never bypass a denial or read unnamed secrets.
 
 ### Fixed
 
