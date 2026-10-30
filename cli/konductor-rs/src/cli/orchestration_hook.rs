@@ -267,7 +267,7 @@ fn load_persona(root: &Path) -> Result<String, PersonaError> {
     let body = format!("{}{digest_text}", pointer_line(&shown_root.join(rules)));
     if HEADER.len() + body.len() > MAX_PERSONA_BYTES {
         return Err(PersonaError::PathTooLong {
-            install_root: root.to_path_buf(),
+            install_root: shown_root,
         });
     }
     Ok(body)
@@ -767,7 +767,7 @@ mod tests {
         assert_eq!(
             error,
             PersonaError::PathTooLong {
-                install_root: root.clone()
+                install_root: std::fs::canonicalize(&root).unwrap()
             }
         );
         assert!(persona_reason(&error).starts_with("the install path is too long"));
