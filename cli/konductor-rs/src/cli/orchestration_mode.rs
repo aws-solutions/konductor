@@ -24,7 +24,6 @@ impl Mode {
         }
     }
 
-    #[allow(dead_code)] // `doctor orchestration` prints it.
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Mode::Auto => "auto",

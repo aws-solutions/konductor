@@ -27,8 +27,8 @@ use super::telemetry_hook::{
 /// `k-direct-work.md` (pinned by `tests/test_konductor_prompt_mode_neutral.py`).
 pub(crate) const MODE_AGENT: &str = "konductor";
 
-const ROUTING_RULES_FILE_NAME: &str = "k-orchestrator-routing-rules.md";
-const DIGEST_FILE_NAME: &str = "k-coordinator-digest.md";
+pub(crate) const ROUTING_RULES_FILE_NAME: &str = "k-orchestrator-routing-rules.md";
+pub(crate) const DIGEST_FILE_NAME: &str = "k-coordinator-digest.md";
 
 /// Header, pointer line and digest together stay under Kiro CLI v3's
 /// observed hook-output cut (about 3,000 bytes).
@@ -194,7 +194,7 @@ fn render(output: &HookOutput) -> Vec<u8> {
 /// The first manifest file (any strategy) named `file_name`, as a path
 /// under `root`. Paths that are absolute or climb out of `root` are
 /// ignored.
-fn installed_file(
+pub(crate) fn installed_file(
     manifest: &super::install::manifest::Manifest,
     root: &Path,
     file_name: &str,

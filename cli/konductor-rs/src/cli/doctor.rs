@@ -5,9 +5,9 @@
 // Inspects a Konductor installation/checkout for problems and prints
 // actionable remediation guidance. Every check is reuse-only: it calls
 // the same functions `install`/`synth`/`config` already use, rather
-// than re-implementing any validation logic. Seven checks run today,
+// than re-implementing any validation logic. Eight checks run today,
 // in this order: source, runtime, manifest, config, container_runtime,
-// index_status, telemetry_state.
+// index_status, telemetry_state, orchestration.
 //
 // Three additional checks (`gitignore`, `provider_model_access`,
 // `role_allowlists`) are fully implemented and unit-tested below, but
@@ -245,9 +245,9 @@ impl CheckResult {
     }
 }
 
-/// `konductor doctor [--from ...] [--target ...] [--all]`: runs the seven
+/// `konductor doctor [--from ...] [--target ...] [--all]`: runs the eight
 /// active checks (source, runtime, manifest, config, container_runtime,
-/// index_status, telemetry_state) against `--from`/`target_dir` (source
+/// index_status, telemetry_state, orchestration) against `--from`/`target_dir` (source
 /// tree) and `--target`/`$HOME` (install destination), prints a report,
 /// and returns the exit code.
 ///
@@ -340,7 +340,7 @@ pub fn dispatch_doctor_with(
 }
 
 /// The full active check suite (source, runtime, manifest, config,
-/// container_runtime, index_status, telemetry_state) against one
+/// container_runtime, index_status, telemetry_state, orchestration) against one
 /// resolved source-tree/destination pair. Shared by the single-target
 /// path and the `--all` path, so the two can never drift on which
 /// checks run or in what order.
@@ -364,6 +364,7 @@ fn run_checks(
         check_container_runtime(),
         check_index_status(destination, home_dir.as_deref()),
         check_telemetry_state(destination, home_dir.as_deref()),
+        check_orchestration(destination, &resolved_source.path, home_dir.as_deref()),
         // `gitignore`, `provider_model_access`, and `role_allowlists`
         // are implemented and unit-tested below, but intentionally not
         // surfaced in live doctor output yet:
@@ -1604,6 +1605,460 @@ fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckRe
     }
 }
 
+/// One finding inside the `orchestration` check; the worst becomes the
+/// check's headline and the rest become `detail` lines.
+struct OrchestrationFinding {
+    status: CheckStatus,
+    summary: String,
+    remediation: Option<String>,
+    detail: Vec<String>,
+}
+
+impl OrchestrationFinding {
+    fn new(status: CheckStatus, summary: String, remediation: Option<String>) -> Self {
+        OrchestrationFinding {
+            status,
+            summary,
+            remediation,
+            detail: Vec::new(),
+        }
+    }
+}
+
+fn orchestration_severity(status: CheckStatus) -> u8 {
+    match status {
+        CheckStatus::Ok => 0,
+        CheckStatus::Info => 1,
+        CheckStatus::Warn => 2,
+        CheckStatus::Failed | CheckStatus::Stale => 3,
+    }
+}
+
+const ORCHESTRATION_UPDATE_REMEDIATION: &str = "run `konductor update`";
+
+/// The `orchestration` check: whether the session hook can give
+/// `konductor` the mode in `~/.konductor/config.yml`. Reports the
+/// value, any ignored project-layer value, the hook wiring and its
+/// binary per installed harness, and under `coordinator` the persona
+/// files. A missing piece is `failed` under `coordinator` (the user
+/// asked for a persona they will not get) and `warn` otherwise.
+fn check_orchestration(
+    destination: &Path,
+    resolved_source: &Path,
+    home_dir: Option<&Path>,
+) -> CheckResult {
+    use crate::cli::orchestration_mode::{resolve_user_mode, Mode, ModeResolution};
+
+    let resolution = resolve_user_mode(home_dir);
+    let coordinator = resolution == ModeResolution::Explicit(Mode::Coordinator);
+    let missing_status = if coordinator {
+        CheckStatus::Failed
+    } else {
+        CheckStatus::Warn
+    };
+
+    let mut headline = orchestration_value_finding(&resolution);
+    let mut findings = Vec::new();
+    if let Some(ignored) = ignored_project_values(destination, resolved_source) {
+        if headline.status == CheckStatus::Ok {
+            headline = ignored_project_finding(&resolution, ignored);
+        } else {
+            findings.push(ignored_project_finding(&resolution, ignored));
+        }
+    }
+    findings.extend(orchestration_install_findings(
+        destination,
+        coordinator,
+        missing_status,
+    ));
+    combine_orchestration_findings(headline, findings)
+}
+
+fn orchestration_value_finding(
+    resolution: &crate::cli::orchestration_mode::ModeResolution,
+) -> OrchestrationFinding {
+    use crate::cli::orchestration_mode::{FallbackReason, ModeResolution};
+
+    match resolution {
+        ModeResolution::Default => OrchestrationFinding::new(
+            CheckStatus::Ok,
+            "orchestration.mode is auto (default; no setting in ~/.konductor/config.yml)"
+                .to_string(),
+            None,
+        ),
+        ModeResolution::Explicit(mode) => OrchestrationFinding::new(
+            CheckStatus::Ok,
+            format!(
+                "orchestration.mode is `{}` (from ~/.konductor/config.yml)",
+                mode.as_str()
+            ),
+            None,
+        ),
+        ModeResolution::Fallback(FallbackReason::UnknownValue { value }) => {
+            OrchestrationFinding::new(
+                CheckStatus::Failed,
+                format!(
+                    "orchestration.mode is {value:?} in ~/.konductor/config.yml, which is not a \
+                     mode; sessions run auto"
+                ),
+                Some("set orchestration.mode to auto or coordinator".to_string()),
+            )
+        }
+        ModeResolution::Fallback(FallbackReason::Unreadable { path, kind }) => {
+            OrchestrationFinding::new(
+                CheckStatus::Failed,
+                format!(
+                    "{} could not be read ({kind}); sessions run auto",
+                    path.display()
+                ),
+                Some(format!(
+                    "make {} readable, or remove it to use the default",
+                    path.display()
+                )),
+            )
+        }
+        ModeResolution::Fallback(FallbackReason::Malformed { path, message }) => {
+            OrchestrationFinding::new(
+                CheckStatus::Failed,
+                format!(
+                    "{} could not be parsed: {message}; sessions run auto",
+                    path.display()
+                ),
+                Some(format!(
+                    "fix the YAML in {}, or remove it to use the default",
+                    path.display()
+                )),
+            )
+        }
+        ModeResolution::Fallback(FallbackReason::HomeUnresolved) => OrchestrationFinding::new(
+            CheckStatus::Warn,
+            "HOME could not be resolved, so ~/.konductor/config.yml was not read; sessions run \
+             auto"
+                .to_string(),
+            Some("set HOME to a real directory".to_string()),
+        ),
+    }
+}
+
+/// Project `.konductor/config.yml` files under `destination` and
+/// `resolved_source` (once when they are the same directory) that set
+/// `orchestration.mode`, with the value each sets. `None` when none do.
+fn ignored_project_values(
+    destination: &Path,
+    resolved_source: &Path,
+) -> Option<Vec<(PathBuf, String)>> {
+    let mut roots = vec![resolved_source];
+    if !crate::cli::telemetry_hook::same_dir(resolved_source, destination) {
+        roots.push(destination);
+    }
+    let ignored: Vec<(PathBuf, String)> = roots
+        .into_iter()
+        .filter_map(|root| {
+            let path = root
+                .join(config::KONDUCTOR_DIR_NAME)
+                .join(config::CONFIG_FILE_NAME);
+            if !path.is_file() {
+                return None;
+            }
+            let mode = config::load_raw_config(&path).ok()?.orchestration?.mode?;
+            Some((path, mode))
+        })
+        .collect();
+    (!ignored.is_empty()).then_some(ignored)
+}
+
+fn ignored_project_finding(
+    resolution: &crate::cli::orchestration_mode::ModeResolution,
+    ignored: Vec<(PathBuf, String)>,
+) -> OrchestrationFinding {
+    use crate::cli::orchestration_mode::ModeResolution;
+
+    let resolved = match resolution {
+        ModeResolution::Explicit(mode) => mode.as_str(),
+        _ => "auto",
+    };
+    let paths = ignored
+        .iter()
+        .map(|(path, _)| path.display().to_string())
+        .collect::<Vec<_>>()
+        .join(" and ");
+    let verb = if ignored.len() == 1 { "sets" } else { "set" };
+    let mut finding = OrchestrationFinding::new(
+        CheckStatus::Info,
+        format!(
+            "orchestration.mode is `{resolved}`; {paths} also {verb} it, but only \
+             ~/.konductor/config.yml is read"
+        ),
+        Some(format!(
+            "remove `orchestration.mode` from {paths} or move it to ~/.konductor/config.yml"
+        )),
+    );
+    finding.detail = ignored
+        .iter()
+        .map(|(path, value)| {
+            format!(
+                "{} sets orchestration.mode to {value:?}, which is ignored",
+                path.display()
+            )
+        })
+        .collect();
+    finding
+}
+
+/// Wiring, binary and (under `coordinator`) persona findings for the
+/// install at `destination`. Problems only; a healthy slot adds a
+/// detail-only `Ok` finding naming the hook's binary.
+fn orchestration_install_findings(
+    destination: &Path,
+    coordinator: bool,
+    missing_status: CheckStatus,
+) -> Vec<OrchestrationFinding> {
+    let manifest = match manifest::read_manifest(destination) {
+        Ok(Some(manifest)) => manifest,
+        Ok(None) => {
+            return vec![OrchestrationFinding::new(
+                CheckStatus::Info,
+                format!(
+                    "no Konductor install at {}, so there is no orchestration hook to check",
+                    destination.display()
+                ),
+                Some("run `konductor install` to wire the hook".to_string()),
+            )];
+        }
+        // The `manifest` check reports why it cannot be read.
+        Err(_) => {
+            return vec![OrchestrationFinding::new(
+                CheckStatus::Info,
+                format!(
+                    "the manifest at {} could not be read, so the orchestration hook was not \
+                     checked",
+                    destination.display()
+                ),
+                Some("see the manifest check".to_string()),
+            )];
+        }
+    };
+
+    let mut findings = Vec::new();
+    for slot in &manifest.strategies {
+        let Some(wiring) = orchestration_hook_wiring(destination, slot) else {
+            continue;
+        };
+        findings.extend(wiring_findings(&slot.strategy, wiring, missing_status));
+    }
+    if coordinator {
+        findings.extend(persona_file_finding(&manifest, destination));
+    }
+    findings
+}
+
+/// Where a strategy slot's orchestration hook lives, and the hook
+/// commands found there (or why none could be read). `None` for a
+/// strategy that wires no orchestration hook.
+struct HookWiring {
+    file: PathBuf,
+    commands: Result<Vec<String>, String>,
+}
+
+fn orchestration_hook_wiring(destination: &Path, slot: &StrategyManifest) -> Option<HookWiring> {
+    use crate::cli::install::resource_rewrite::{
+        claude_hooks_settings_relative_path, V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
+    };
+
+    let (relative, commands): (&str, fn(&serde_json::Value) -> Vec<String>) =
+        match slot.strategy.as_str() {
+            "kiro-v3" => (
+                V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
+                v3_session_start_commands,
+            ),
+            "kiro-cli-v2" => (".kiro/agents/konductor.json", v2_agent_spawn_commands),
+            "claude" => (
+                claude_hooks_settings_relative_path(destination),
+                claude_session_start_commands,
+            ),
+            _ => return None,
+        };
+    let file = destination.join(relative);
+    let commands = read_hook_json(&file).map(|value| commands(&value));
+    Some(HookWiring { file, commands })
+}
+
+fn read_hook_json(path: &Path) -> Result<serde_json::Value, String> {
+    let text = std::fs::read_to_string(path).map_err(|err| match err.kind() {
+        std::io::ErrorKind::NotFound => "the file does not exist".to_string(),
+        _ => format!("the file could not be read ({err})"),
+    })?;
+    serde_json::from_str(&text).map_err(|err| format!("the file is not valid JSON ({err})"))
+}
+
+fn string_commands<'a>(entries: impl Iterator<Item = &'a serde_json::Value>) -> Vec<String> {
+    entries
+        .filter_map(|command| command.as_str())
+        .map(str::to_string)
+        .collect()
+}
+
+fn json_array(value: Option<&serde_json::Value>) -> impl Iterator<Item = &serde_json::Value> {
+    value
+        .and_then(|value| value.as_array())
+        .into_iter()
+        .flatten()
+}
+
+/// `hooks[]` entries with `trigger: SessionStart`, their `action.command`.
+fn v3_session_start_commands(document: &serde_json::Value) -> Vec<String> {
+    string_commands(
+        json_array(document.get("hooks"))
+            .filter(|hook| hook.get("trigger").and_then(|t| t.as_str()) == Some("SessionStart"))
+            .filter_map(|hook| hook.get("action").and_then(|action| action.get("command"))),
+    )
+}
+
+/// `hooks.agentSpawn[].command` in the v2 `konductor` agent file.
+fn v2_agent_spawn_commands(agent: &serde_json::Value) -> Vec<String> {
+    string_commands(
+        json_array(agent.get("hooks").and_then(|hooks| hooks.get("agentSpawn")))
+            .filter_map(|entry| entry.get("command")),
+    )
+}
+
+/// `hooks.SessionStart[].hooks[].command` in a Claude settings file.
+fn claude_session_start_commands(settings: &serde_json::Value) -> Vec<String> {
+    string_commands(
+        json_array(
+            settings
+                .get("hooks")
+                .and_then(|hooks| hooks.get("SessionStart")),
+        )
+        .flat_map(|block| json_array(block.get("hooks")))
+        .filter_map(|hook| hook.get("command")),
+    )
+}
+
+fn wiring_findings(
+    strategy: &str,
+    wiring: HookWiring,
+    missing_status: CheckStatus,
+) -> Vec<OrchestrationFinding> {
+    use crate::cli::install::resource_rewrite::{hook_command_exe, ORCHESTRATION_HOOK_MARKER};
+
+    let file = wiring.file.display();
+    let exes: Vec<String> = match &wiring.commands {
+        Ok(commands) => commands
+            .iter()
+            .filter_map(|command| hook_command_exe(command, ORCHESTRATION_HOOK_MARKER))
+            .collect(),
+        Err(reason) => {
+            return vec![OrchestrationFinding::new(
+                missing_status,
+                format!("the orchestration hook is not wired for {strategy}: {file}: {reason}"),
+                Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+            )];
+        }
+    };
+    if exes.is_empty() {
+        return vec![OrchestrationFinding::new(
+            missing_status,
+            format!(
+                "the orchestration hook is not wired for {strategy}: {file} has no \
+                 __orchestration-hook session-start entry"
+            ),
+            Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+        )];
+    }
+    exes.into_iter()
+        .map(|exe| match hook_binary(&exe) {
+            Some(path) => {
+                let mut finding = OrchestrationFinding::new(CheckStatus::Ok, String::new(), None);
+                finding.detail.push(format!(
+                    "{strategy}: hook wired in {file}, binary {}",
+                    path.display()
+                ));
+                finding
+            }
+            None => OrchestrationFinding::new(
+                missing_status,
+                format!(
+                    "the hook points at a konductor binary that no longer exists at {exe}; run \
+                     `konductor update`"
+                ),
+                Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+            ),
+        })
+        .collect()
+}
+
+/// The file a hook's exe names: itself when it has a directory part,
+/// else the first match on `PATH`, as the shell would find it.
+fn hook_binary(exe: &str) -> Option<PathBuf> {
+    let path = Path::new(exe);
+    if path.components().count() > 1 {
+        return path.is_file().then(|| path.to_path_buf());
+    }
+    find_binary_on_path(exe, std::env::var_os("PATH").as_deref())
+}
+
+fn persona_file_finding(
+    manifest: &manifest::Manifest,
+    destination: &Path,
+) -> Option<OrchestrationFinding> {
+    use crate::cli::orchestration_hook::{
+        installed_file, DIGEST_FILE_NAME, ROUTING_RULES_FILE_NAME,
+    };
+
+    let missing: Vec<&str> = [ROUTING_RULES_FILE_NAME, DIGEST_FILE_NAME]
+        .into_iter()
+        .filter(|name| {
+            !installed_file(manifest, destination, name).is_some_and(|path| path.is_file())
+        })
+        .collect();
+    if missing.is_empty() {
+        return None;
+    }
+    let mut finding = OrchestrationFinding::new(
+        CheckStatus::Failed,
+        "the coordinator rules file is not installed; run `konductor update`".to_string(),
+        Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+    );
+    finding.detail = missing
+        .iter()
+        .map(|name| format!("{name} is not installed under {}", destination.display()))
+        .collect();
+    Some(finding)
+}
+
+/// The worst finding (the headline on a tie) leads; every other
+/// finding's summary and detail follow as `detail` lines.
+fn combine_orchestration_findings(
+    headline: OrchestrationFinding,
+    findings: Vec<OrchestrationFinding>,
+) -> CheckResult {
+    let mut all = vec![headline];
+    all.extend(findings);
+    let lead_index = all.iter().enumerate().fold(0, |best, (index, finding)| {
+        if orchestration_severity(finding.status) > orchestration_severity(all[best].status) {
+            index
+        } else {
+            best
+        }
+    });
+    let lead = all.remove(lead_index);
+    let mut detail = lead.detail;
+    for finding in all {
+        if !finding.summary.is_empty() {
+            detail.push(finding.summary);
+        }
+        detail.extend(finding.detail);
+    }
+    CheckResult {
+        name: "orchestration",
+        status: lead.status,
+        summary: lead.summary,
+        remediation: lead.remediation,
+        detail,
+    }
+}
+
 /// `config::load_config_with_home`, the same loading logic
 /// `config get`/`config list`/`config set` use. A source tree with no
 /// `.konductor/config.yml` at all still loads (preset defaults alone
@@ -1845,6 +2300,12 @@ fn check_role_allowlists() -> CheckResult {
 /// check, each non-`Ok` line followed by an indented remediation hint.
 /// `-v` additionally prints every entry in that check's `detail` list.
 fn print_report(results: &[CheckResult], verbose: bool, color: ColorMode) {
+    print!("{}", format_report(results, verbose, color));
+}
+
+fn format_report(results: &[CheckResult], verbose: bool, color: ColorMode) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::new();
     for result in results {
         let label = result.status.label();
         let icon = result.status.icon();
@@ -1854,21 +2315,23 @@ fn print_report(results: &[CheckResult], verbose: bool, color: ColorMode) {
             CheckStatus::Warn => super::output::status::warn(color, label),
             CheckStatus::Failed | CheckStatus::Stale => super::output::status::error(color, label),
         };
-        println!(
+        let _ = writeln!(
+            out,
             "{icon} {colored_label}: {} — {}",
             result.name, result.summary
         );
         if let Some(remediation) = &result.remediation {
             let wrapped = crate::cli::output::wrap_indented(&format!("fix: {remediation}"), "    ");
-            println!("{}", crate::cli::output::status::dim(color, &wrapped));
+            let _ = writeln!(out, "{}", crate::cli::output::status::dim(color, &wrapped));
         }
         if verbose {
             for line in &result.detail {
                 let wrapped = crate::cli::output::wrap_indented(&format!("detail: {line}"), "    ");
-                println!("{}", crate::cli::output::status::dim(color, &wrapped));
+                let _ = writeln!(out, "{}", crate::cli::output::status::dim(color, &wrapped));
             }
         }
     }
+    out
 }
 
 /// Builds the `--json` equivalent of `print_report`: one compact JSON
@@ -4063,6 +4526,7 @@ mod tests {
                 "container_runtime",
                 "index_status",
                 "telemetry_state",
+                "orchestration",
             ],
             "run_checks' active check set and order changed; update this test's expectation \
              deliberately if the change is intended"
@@ -5210,5 +5674,492 @@ mod tests {
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
+    }
+
+    // ── check_orchestration ─────────────────────────────────────────────
+
+    const ORCHESTRATION_V2_AGENT: &str = ".kiro/agents/konductor.json";
+    const ORCHESTRATION_CLAUDE_HOOKS: &str = ".claude/settings.local.json";
+    const ROUTING_RULES: &str = ".kiro/context/k-orchestrator-routing-rules.md";
+    const DIGEST: &str = ".kiro/context/k-coordinator-digest.md";
+
+    /// A file standing in for the `konductor` binary a hook names.
+    fn fake_konductor_binary(label: &str) -> PathBuf {
+        let dir = scratch_dir(label);
+        let exe = dir.join("konductor");
+        fs::write(&exe, b"").unwrap();
+        exe
+    }
+
+    fn orchestration_command(exe: &Path, destination: &Path) -> String {
+        format!(
+            "{} __orchestration-hook --install-root {}",
+            exe.display(),
+            destination.display()
+        )
+    }
+
+    /// Writes `files` under `destination` and a complete manifest slot
+    /// for `strategy` listing them.
+    fn seed_orchestration_install(destination: &Path, strategy: &str, files: &[(&str, String)]) {
+        for (relative, contents) in files {
+            let path = destination.join(relative);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, contents).unwrap();
+        }
+        let manifest_files = files
+            .iter()
+            .map(|(relative, _)| manifest::ManifestFile {
+                path: relative.to_string(),
+                sha256: None,
+                provenance: manifest::Provenance::Created,
+            })
+            .collect();
+        write_manifest_for_test(
+            destination,
+            &StrategyManifest::new(
+                strategy,
+                "2026-01-01T00:00:00Z",
+                destination.display().to_string(),
+                None,
+                Status::Complete,
+                manifest_files,
+            ),
+        );
+    }
+
+    fn v3_orchestration_document(command: &str) -> String {
+        serde_json::json!({
+            "version": "v1",
+            "hooks": [{
+                "name": "konductor-orchestration-session-start",
+                "trigger": "SessionStart",
+                "action": {"type": "command", "command": command},
+                "timeout": 10,
+                "enabled": true
+            }]
+        })
+        .to_string()
+    }
+
+    fn v2_konductor_agent(command: Option<&str>) -> String {
+        let entries: Vec<serde_json::Value> = command
+            .map(|command| serde_json::json!({"command": command}))
+            .into_iter()
+            .collect();
+        serde_json::json!({"name": "konductor", "hooks": {"agentSpawn": entries}}).to_string()
+    }
+
+    fn claude_hooks_settings(command: Option<&str>) -> String {
+        let blocks: Vec<serde_json::Value> = command
+            .map(|command| {
+                serde_json::json!({
+                    "matcher": "startup|clear|resume|compact",
+                    "hooks": [{"type": "command", "command": command}]
+                })
+            })
+            .into_iter()
+            .collect();
+        serde_json::json!({"hooks": {"SessionStart": blocks}}).to_string()
+    }
+
+    fn persona_files() -> Vec<(&'static str, String)> {
+        vec![
+            (ROUTING_RULES, "# Routing rules\n".to_string()),
+            (DIGEST, "# Digest\n".to_string()),
+        ]
+    }
+
+    /// A Kiro v3 install with the orchestration document and no
+    /// telemetry document, as `install --no-telemetry` leaves it.
+    fn healthy_v3_target(label: &str, exe: &Path) -> PathBuf {
+        let destination = scratch_dir(label);
+        let mut files = vec![(
+            V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
+            v3_orchestration_document(&orchestration_command(exe, &destination)),
+        )];
+        files.extend(persona_files());
+        seed_orchestration_install(&destination, "kiro-v3", &files);
+        destination
+    }
+
+    fn home_with_mode(label: &str, contents: Option<&str>) -> PathBuf {
+        let home = scratch_dir(label);
+        if let Some(contents) = contents {
+            let dir = home.join(config::KONDUCTOR_DIR_NAME);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join(config::CONFIG_FILE_NAME), contents).unwrap();
+        }
+        home
+    }
+
+    const COORDINATOR: Option<&str> = Some("orchestration:\n  mode: coordinator\n");
+
+    use crate::cli::install::resource_rewrite::V3_ORCHESTRATION_HOOKS_RELATIVE_PATH;
+
+    #[test]
+    fn check_orchestration_reports_the_value_from_the_user_file() {
+        let exe = fake_konductor_binary("orch-value-exe");
+        let destination = healthy_v3_target("orch-value-dest", &exe);
+        let cases: [(Option<&str>, CheckStatus, &str, Option<&str>); 5] = [
+            (
+                None,
+                CheckStatus::Ok,
+                "orchestration.mode is auto (default; no setting in ~/.konductor/config.yml)",
+                None,
+            ),
+            (
+                Some("orchestration:\n  mode: auto\n"),
+                CheckStatus::Ok,
+                "orchestration.mode is `auto` (from ~/.konductor/config.yml)",
+                None,
+            ),
+            (
+                COORDINATOR,
+                CheckStatus::Ok,
+                "orchestration.mode is `coordinator` (from ~/.konductor/config.yml)",
+                None,
+            ),
+            (
+                Some("orchestration:\n  mode: strict\n"),
+                CheckStatus::Failed,
+                "orchestration.mode is \"strict\"",
+                Some("set orchestration.mode to auto or coordinator"),
+            ),
+            (
+                Some("orchestration: [\n"),
+                CheckStatus::Failed,
+                "could not be parsed",
+                Some("fix the YAML in"),
+            ),
+        ];
+        for (contents, status, summary, remediation) in cases {
+            let home = home_with_mode("orch-value-home", contents);
+            let result = check_orchestration(&destination, &destination, Some(&home));
+            assert_eq!(result.name, "orchestration");
+            assert_eq!(result.status, status, "{contents:?}: {}", result.summary);
+            assert!(
+                result.summary.contains(summary),
+                "{contents:?}: {}",
+                result.summary
+            );
+            match remediation {
+                Some(text) => assert!(
+                    result.remediation.as_deref().unwrap().contains(text),
+                    "{:?}",
+                    result.remediation
+                ),
+                None => assert_eq!(result.remediation, None),
+            }
+            fs::remove_dir_all(&home).ok();
+        }
+        let unresolved = check_orchestration(&destination, &destination, None);
+        assert_eq!(unresolved.status, CheckStatus::Warn);
+        assert!(unresolved.summary.starts_with("HOME could not be resolved"));
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(exe.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn check_orchestration_passes_a_no_telemetry_v3_target() {
+        let exe = fake_konductor_binary("orch-no-telemetry-exe");
+        let destination = healthy_v3_target("orch-no-telemetry-dest", &exe);
+        assert!(!destination.join(V3_STANDALONE_TELEMETRY_DOC).exists());
+        let home = home_with_mode("orch-no-telemetry-home", COORDINATOR);
+        let result = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(result.status, CheckStatus::Ok, "{}", result.summary);
+        assert!(
+            result
+                .detail
+                .iter()
+                .any(|line| line.starts_with("kiro-v3: hook wired")),
+            "{:?}",
+            result.detail
+        );
+        for dir in [&destination, &home, &exe.parent().unwrap().to_path_buf()] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    const V3_STANDALONE_TELEMETRY_DOC: &str = ".kiro/hooks/konductor-telemetry-hooks.json";
+
+    /// Each harness slot, wired and unwired: unwired is `warn` under
+    /// `auto` and `failed` under `coordinator`, both pointing at
+    /// `konductor update`.
+    #[test]
+    fn check_orchestration_checks_the_hook_for_each_harness_slot() {
+        let exe = fake_konductor_binary("orch-slots-exe");
+        let auto_home = home_with_mode("orch-slots-auto-home", None);
+        let coordinator_home = home_with_mode("orch-slots-coordinator-home", COORDINATOR);
+        type Builder = fn(Option<&str>) -> String;
+        let v3: Builder = |command| match command {
+            Some(command) => v3_orchestration_document(command),
+            None => serde_json::json!({"version": "v1", "hooks": []}).to_string(),
+        };
+        let slots: [(&str, &str, Builder); 3] = [
+            ("kiro-v3", V3_ORCHESTRATION_HOOKS_RELATIVE_PATH, v3),
+            ("kiro-cli-v2", ORCHESTRATION_V2_AGENT, v2_konductor_agent),
+            ("claude", ORCHESTRATION_CLAUDE_HOOKS, claude_hooks_settings),
+        ];
+        for (strategy, hook_file, build) in slots {
+            let wired = scratch_dir("orch-slots-wired");
+            let mut files = vec![(hook_file, build(Some(&orchestration_command(&exe, &wired))))];
+            files.extend(persona_files());
+            seed_orchestration_install(&wired, strategy, &files);
+            let result = check_orchestration(&wired, &wired, Some(&coordinator_home));
+            assert_eq!(
+                result.status,
+                CheckStatus::Ok,
+                "{strategy}: {}",
+                result.summary
+            );
+
+            let unwired = scratch_dir("orch-slots-unwired");
+            let mut files = vec![(hook_file, build(None))];
+            files.extend(persona_files());
+            seed_orchestration_install(&unwired, strategy, &files);
+            for (home, status) in [
+                (&auto_home, CheckStatus::Warn),
+                (&coordinator_home, CheckStatus::Failed),
+            ] {
+                let result = check_orchestration(&unwired, &unwired, Some(home));
+                assert_eq!(result.status, status, "{strategy}: {}", result.summary);
+                assert!(
+                    result.summary.starts_with(&format!(
+                        "the orchestration hook is not wired for {strategy}"
+                    )),
+                    "{}",
+                    result.summary
+                );
+                assert_eq!(
+                    result.remediation.as_deref(),
+                    Some("run `konductor update`")
+                );
+            }
+
+            fs::remove_file(unwired.join(hook_file)).unwrap();
+            let result = check_orchestration(&unwired, &unwired, Some(&auto_home));
+            assert_eq!(result.status, CheckStatus::Warn);
+            assert!(
+                result.summary.contains("the file does not exist"),
+                "{}",
+                result.summary
+            );
+
+            fs::remove_dir_all(&wired).ok();
+            fs::remove_dir_all(&unwired).ok();
+        }
+        for dir in [
+            &auto_home,
+            &coordinator_home,
+            &exe.parent().unwrap().to_path_buf(),
+        ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
+    fn check_orchestration_reports_a_hook_binary_that_is_gone() {
+        let missing = scratch_dir("orch-gone-exe").join("bin dir/konductor");
+        let destination = healthy_v3_target("orch-gone-dest", &missing);
+        let quoted = format!(
+            "'{}' __orchestration-hook --install-root {}",
+            missing.display(),
+            destination.display()
+        );
+        fs::write(
+            destination.join(V3_ORCHESTRATION_HOOKS_RELATIVE_PATH),
+            v3_orchestration_document(&quoted),
+        )
+        .unwrap();
+        for (contents, status) in [
+            (None, CheckStatus::Warn),
+            (COORDINATOR, CheckStatus::Failed),
+        ] {
+            let home = home_with_mode("orch-gone-home", contents);
+            let result = check_orchestration(&destination, &destination, Some(&home));
+            assert_eq!(result.status, status);
+            assert_eq!(
+                result.summary,
+                format!(
+                    "the hook points at a konductor binary that no longer exists at {}; run \
+                     `konductor update`",
+                    missing.display()
+                )
+            );
+            fs::remove_dir_all(&home).ok();
+        }
+        fs::remove_dir_all(&destination).ok();
+    }
+
+    #[test]
+    fn check_orchestration_needs_the_persona_files_only_under_coordinator() {
+        let exe = fake_konductor_binary("orch-persona-exe");
+        let destination = healthy_v3_target("orch-persona-dest", &exe);
+        fs::remove_file(destination.join(DIGEST)).unwrap();
+
+        let auto_home = home_with_mode("orch-persona-auto-home", None);
+        let result = check_orchestration(&destination, &destination, Some(&auto_home));
+        assert_eq!(result.status, CheckStatus::Ok, "{}", result.summary);
+
+        let coordinator_home = home_with_mode("orch-persona-coordinator-home", COORDINATOR);
+        let result = check_orchestration(&destination, &destination, Some(&coordinator_home));
+        assert_eq!(result.status, CheckStatus::Failed);
+        assert_eq!(
+            result.summary,
+            "the coordinator rules file is not installed; run `konductor update`"
+        );
+        assert!(
+            result
+                .detail
+                .iter()
+                .any(|line| line.starts_with("k-coordinator-digest.md is not installed")),
+            "{:?}",
+            result.detail
+        );
+        for dir in [
+            &destination,
+            &auto_home,
+            &coordinator_home,
+            &exe.parent().unwrap().to_path_buf(),
+        ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
+    fn check_orchestration_is_info_when_nothing_is_installed() {
+        let destination = scratch_dir("orch-empty-dest");
+        let home = home_with_mode("orch-empty-home", None);
+        let result = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(result.status, CheckStatus::Info);
+        assert!(result.summary.starts_with("no Konductor install at"));
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// A project-layer value is ignored by the hook, so a plain
+    /// `doctor` must say so: `info`, both files named in the summary,
+    /// and one `detail` line per file.
+    #[test]
+    fn check_orchestration_names_every_ignored_project_value() {
+        let exe = fake_konductor_binary("orch-project-exe");
+        let destination = healthy_v3_target("orch-project-dest", &exe);
+        let source = scratch_dir("orch-project-source");
+        for (root, mode) in [(&destination, "coordinator"), (&source, "auto")] {
+            let dir = root.join(config::KONDUCTOR_DIR_NAME);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(
+                dir.join(config::CONFIG_FILE_NAME),
+                format!("orchestration:\n  mode: {mode}\n"),
+            )
+            .unwrap();
+        }
+        let home = home_with_mode("orch-project-home", None);
+        let result = check_orchestration(&destination, &source, Some(&home));
+
+        let source_file = source.join(".konductor/config.yml");
+        let destination_file = destination.join(".konductor/config.yml");
+        let paths = format!(
+            "{} and {}",
+            source_file.display(),
+            destination_file.display()
+        );
+        assert_eq!(result.status, CheckStatus::Info);
+        assert_eq!(
+            result.summary,
+            format!(
+                "orchestration.mode is `auto`; {paths} also set it, but only \
+                 ~/.konductor/config.yml is read"
+            )
+        );
+        assert_eq!(
+            result.remediation.as_deref(),
+            Some(
+                format!(
+                    "remove `orchestration.mode` from {paths} or move it to \
+                     ~/.konductor/config.yml"
+                )
+                .as_str()
+            )
+        );
+        let ignored_lines: Vec<&String> = result
+            .detail
+            .iter()
+            .filter(|line| line.ends_with("which is ignored"))
+            .collect();
+        assert_eq!(ignored_lines.len(), 2, "{:?}", result.detail);
+
+        let same = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(
+            same.summary,
+            format!(
+                "orchestration.mode is `auto`; {} also sets it, but only \
+                 ~/.konductor/config.yml is read",
+                destination_file.display()
+            )
+        );
+        for dir in [
+            &destination,
+            &source,
+            &home,
+            &exe.parent().unwrap().to_path_buf(),
+        ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
+    fn check_orchestration_appears_in_the_text_and_json_reports() {
+        let source = scratch_dir("orch-report-source");
+        let exe = fake_konductor_binary("orch-report-exe");
+        let destination = healthy_v3_target("orch-report-dest", &exe);
+        let home = home_with_mode("orch-report-home", Some("orchestration:\n  mode: single\n"));
+        let results = run_checks(
+            &source,
+            Some(&source.display().to_string()),
+            &destination,
+            Some(&home),
+        );
+        let orchestration: Vec<&CheckResult> = results
+            .iter()
+            .filter(|r| r.name == "orchestration")
+            .collect();
+        assert_eq!(orchestration.len(), 1);
+
+        let text = format_report(&results, false, ColorMode::disabled());
+        assert!(
+            text.lines()
+                .any(|line| line.contains("failed: orchestration")
+                    && line.ends_with(
+                        "orchestration.mode is \"single\" in ~/.konductor/config.yml, \
+                                   which is not a mode; sessions run auto"
+                    )),
+            "{text}"
+        );
+        assert!(
+            text.contains("fix: set orchestration.mode to auto or coordinator"),
+            "{text}"
+        );
+
+        let parsed: serde_json::Value =
+            serde_json::from_str(&format_report_json(&results)).unwrap();
+        let check = parsed["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["name"] == "orchestration")
+            .expect("--json carries the orchestration check")
+            .clone();
+        assert_eq!(check["status"], "failed");
+        assert_eq!(parsed["ok"], false);
+        for dir in [
+            &source,
+            &destination,
+            &home,
+            &exe.parent().unwrap().to_path_buf(),
+        ] {
+            fs::remove_dir_all(dir).ok();
+        }
     }
 }
