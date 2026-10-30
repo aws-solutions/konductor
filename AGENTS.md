@@ -74,10 +74,11 @@ instructions.
   activation condition, a missing link target, an unclosed code fence, an unmentioned reference
   file, a reference mention without a read cue, and any size over the thresholds in
   `tests/skill-quality-baseline.json` (currently 500 lines, 32 KiB and 512 description
-  characters) that the baseline does not carry. The baseline may only shrink. `make test-py` only checks each skill against its entry; CI rejects a raised or
-  added entry, and so does `python3 tests/skill_quality.py --print-baseline` when you regenerate.
-  Renaming a skill counts as adding an entry, so bring an oversized skill under every threshold
-  before you rename it.
+  characters) that the baseline does not carry. The baseline may only shrink.
+  `make test-py` only checks each skill against its entry; CI rejects a raised or added entry,
+  and so does `python3 tests/skill_quality.py --print-baseline` when you regenerate. Renaming a
+  skill counts as adding an entry, so bring an oversized skill under every threshold before you
+  rename it.
 - Orchestrators are named `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`; 
   every specialist uses a `k-*` name. Skills are unprefixed unless avoiding a known collision.
 - **License headers:** All code files must carry an SPDX short-form identifier as the very first line

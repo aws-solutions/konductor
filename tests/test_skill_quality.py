@@ -331,6 +331,16 @@ def test_link_inside_longer_tilde_fence_ignored(tmp_path):
     assert _rules(_skill(tmp_path, body=body)) == set()
 
 
+def test_link_inside_list_nested_fence_ignored(tmp_path):
+    body = "1. Step\n\n    ```bash\n    echo [n](missing.md)\n    ```\n\nafter\n"
+    assert _rules(_skill(tmp_path, body=body)) == set()
+
+
+def test_fence_closer_indented_past_the_opener_does_not_close(tmp_path):
+    body = "```bash\necho hi\n    ```\n"
+    assert "fence" in _rules(_skill(tmp_path, body=body))
+
+
 def test_unclosed_fence_fails_closed(tmp_path):
     body = "Intro.\n\n```bash\necho hi\n\nSee [n](missing.md).\n"
     skill = _skill(tmp_path, body=body)
@@ -472,6 +482,14 @@ def test_print_baseline_refuses_a_truncated_baseline(tmp_path, monkeypatch, caps
     _grown_tree(tmp_path, monkeypatch).write_text("", encoding="utf-8")
     assert sq.main(["--print-baseline"]) == 1
     assert "temp file" in capsys.readouterr().err
+
+
+def test_print_baseline_allow_growth_refuses_a_truncated_baseline(tmp_path, monkeypatch, capsys):
+    _grown_tree(tmp_path, monkeypatch).write_text("", encoding="utf-8")
+    assert sq.main(["--print-baseline", "--allow-growth"]) == 1
+    captured = capsys.readouterr()
+    assert "temp file" in captured.err
+    assert captured.out == ""
 
 
 def test_build_baseline_records_exact_over_threshold_values(tmp_path):
