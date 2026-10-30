@@ -1057,6 +1057,35 @@ mod tests {
         fs::remove_dir_all(&root).ok();
     }
 
+    /// Design 3.4 accepts that a shape-malformed user `orchestration:` fails
+    /// the gate loader; the session hook reports the same file as
+    /// `Fallback(Malformed)`, so the two readers agree.
+    #[test]
+    fn malformed_user_orchestration_section_fails_load_config() {
+        use crate::cli::orchestration_mode::{resolve_user_mode, FallbackReason, ModeResolution};
+        let root = scratch_dir("malformed-orchestration-root");
+        let home = scratch_dir("malformed-orchestration-home");
+        fs::create_dir_all(home.join(KONDUCTOR_DIR_NAME)).unwrap();
+        fs::write(user_config_path(&home), "orchestration: 3\n").unwrap();
+
+        let loaded = load_config_with_home(&root, Some(&home));
+        let resolution = resolve_user_mode(Some(&home));
+        fs::remove_dir_all(&root).ok();
+        fs::remove_dir_all(&home).ok();
+
+        assert!(
+            matches!(loaded, Err(ConfigError::ProjectConfigMalformed { .. })),
+            "{loaded:?}"
+        );
+        assert!(
+            matches!(
+                resolution,
+                ModeResolution::Fallback(FallbackReason::Malformed { .. })
+            ),
+            "{resolution:?}"
+        );
+    }
+
     #[test]
     fn set_config_value_keeps_unknown_orchestration_keys() {
         let root = scratch_dir("set-keeps-unknown-orchestration");
