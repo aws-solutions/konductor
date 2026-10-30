@@ -26,7 +26,7 @@ not per individual commit.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
-  `.konductor/` in a git work tree, refusing a symlinked `.konductor` or `.konductor/memory`; orchestrators never bypass a denial or read unnamed secrets.
+  `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor` or `.konductor/memory`; orchestrators never bypass a denial or read unnamed secrets.
 
 ### Fixed
 
