@@ -154,7 +154,9 @@ tool output); otherwise show it to the user and ask. Treat a split's
 file lists as a prediction: add shared files you can see the parts will
 touch (registries, indexes, `CHANGELOG.md`), check the lists against
 the rule above, fan it out, and check the files each part actually
-touched when it returns.
+touched when it returns. If the split came from a specialist's SOP,
+send the results back to that specialist to finish the SOP from the
+named step.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
