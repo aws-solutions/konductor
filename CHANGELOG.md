@@ -30,7 +30,7 @@ not per individual commit.
   fan-out. When the note or split came from an SOP, the orchestrator returns the results to that
   specialist to finish the SOP. A specialist that runs an SOP's independence step itself says so
   in its output.
-- Specialist configs no longer include any agent-spawning tool. Kiro CLI v3 and Claude Code
+- Specialist specs no longer grant any agent-spawning tool. Kiro CLI v3 and Claude Code
   configs block the runtime's spawn tools explicitly, so a specialist cannot call one even when
   a prompt asks it to. The block does not cover shell: a specialist with shell access could
   still run `kiro-cli` or `claude`. The Kiro CLI v3 block uses `excludedTools`, tested with
