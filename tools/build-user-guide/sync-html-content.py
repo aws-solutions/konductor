@@ -465,7 +465,7 @@ PRELOAD_EDITS = [
      'persistent-memory, workspace-skills, socratic-elicitation, constraints, humanize-writing. Kiro CLI: @builtin'),
     ('skills catalog: verification reach',
      'REACH FOR IT: Always on for orchestrators. It is what makes done mean something. · DECLARED BY: all 3 orchestrators',
-     'REACH FOR IT: Orchestrators carry it, and on Claude Code it is preloaded into k-architect, k-developer and k-quality-assurance subagents. It is what makes done mean something. · DECLARED BY: architect, developer, quality-assurance, all 3 orchestrators'),
+     'REACH FOR IT: Orchestrators carry it, and on Claude Code it is preloaded into k-architect, k-developer and k-quality-assurance subagents. It is what makes done mean something. · DECLARED BY: architect, developer, QA, all 3 orchestrators'),
     ('skills catalog: claude-teams-behavior reach',
      'Claude Code only. Loaded automatically; relevant',
      'Claude Code only. Preloaded when konductor is spawned as a subagent on Claude Code; relevant'),
