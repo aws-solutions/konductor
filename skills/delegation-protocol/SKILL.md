@@ -142,7 +142,8 @@ agents, from the same task or different tasks, to collide in the same tree.
 The write agent itself provisions or reuses the named target using its own
 shell/file tools — not the orchestrator — on either runtime.
 
-Parallel write agents MUST own disjoint files. Before spawning two or
+Parallel write agents MUST own disjoint files. An orchestrator that
+writes in the same session counts as one of them. Before spawning two or
 more write agents at once, list the files each one will edit. If a
 file appears in more than one list (a shared router, an `index.ts`, a
 registry), give that file to one agent, or run the parts that touch it
