@@ -251,7 +251,8 @@ when a quality gate fails (up to two fix cycles).
 | `k-browser` | Browser automation with Playwright: navigation, forms, screenshots, E2E runs |
 | `k-media-analyzer` | PDFs, images and diagrams that need more than text extraction |
 
-Every agent runs `claude-sonnet-5.5`. Full details, including each agent's tools, are in the
+Every agent runs Claude Sonnet 5.5 (`claude-sonnet-5.5` on Kiro, `claude-sonnet-5-5` on Claude
+Code). Full details, including each agent's tools, are in the
 [agents reference](docs/user-guide/agents.md).
 
 `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
