@@ -799,6 +799,36 @@ mod tests {
     }
 
     #[test]
+    fn render_agent_file_expands_a_specialist_wildcard_with_its_mcp_servers() {
+        let mut mcp_servers = IndexMap::new();
+        mcp_servers.insert(
+            "example-mcp".to_string(),
+            McpServerDef {
+                command: Some("uvx".to_string()),
+                args: vec!["example-mcp@latest".to_string()],
+                url: None,
+            },
+        );
+        let kiro = KiroCliConfig {
+            tools: vec!["*".to_string()],
+            mcp_servers,
+            ..KiroCliConfig::default()
+        };
+        let agent = agent_with_kiro("k-example", kiro);
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+
+        let mut expected: Vec<String> = SPECIALIST_BUILTIN_TOOLS
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        expected.push("@example-mcp".to_string());
+        assert_eq!(file.tools, expected);
+        assert!(!file.tools.iter().any(|t| t == "*" || t == "subagent"));
+    }
+
+    #[test]
     fn strip_specialist_spawn_tools_lists_a_builtin_once_when_also_named() {
         let tools = vec![
             "fs_read".to_string(),
