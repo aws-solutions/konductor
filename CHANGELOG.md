@@ -47,6 +47,8 @@ not per individual commit.
   MCP server is session-wide; the plugin release PR says to tag by hand.
 - Claude Code agents and benchmarks use the Claude Code model ID (`claude-sonnet-5-5`), and the
   plugin ships `NOTICE.txt` with README links pinned to its release.
+- The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
+  agents no longer carry an `mcpServers` block that Claude Code ignores.
 
 ## [1.2.0] - 2026-10-26
 

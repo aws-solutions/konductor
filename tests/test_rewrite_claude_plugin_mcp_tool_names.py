@@ -8,7 +8,9 @@ Confirms the plugin-scoped MCP tool-name rewrite:
   even when the body happens to contain the same substring;
 - reads the plugin name from the given plugin.json file, not a hardcoded
   "konductor" string;
-- is idempotent (a second run over its own output is a no-op).
+- is idempotent (a second run over its own output is a no-op);
+- drops each agent's `mcpServers:` frontmatter block, which plugin agents
+  ignore, without touching any other key or the prompt body.
 
 Run:  cd tests && pytest test_rewrite_claude_plugin_mcp_tool_names.py -v
 """
@@ -43,7 +45,7 @@ rewritten -- only the frontmatter block above is in scope.
 
 
 def _write_plugin_json(path: Path, name: str) -> None:
-    path.write_text(json.dumps({"name": name, "agents": []}), encoding="utf-8")
+    path.write_text(json.dumps({"name": name}), encoding="utf-8")
 
 
 def _run(agents_dir: Path, plugin_json: Path, bundled_mcp_servers: str):
@@ -155,7 +157,7 @@ def test_rewrite_is_idempotent(tmp_path):
     assert once == twice
 
 
-def test_empty_bundled_mcp_servers_is_a_no_op(tmp_path):
+def test_empty_bundled_mcp_servers_leaves_grants_bare(tmp_path):
     agents_dir = tmp_path / "agents"
     agents_dir.mkdir()
     original = AGENT_MD_TEMPLATE.format(name="k-architect", server="aws-mcp")
@@ -271,3 +273,58 @@ def test_file_without_frontmatter_is_left_untouched(tmp_path):
 
     assert result.returncode == 0, result.stderr
     assert (agents_dir / "agent.md").read_text(encoding="utf-8") == original
+
+
+def _strip_one(tmp_path, frontmatter_body: str, body: str = "\nPrompt body.\n", newline: str = "\n"):
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir(exist_ok=True)
+    text = ("---\n" + frontmatter_body + "---\n" + body).replace("\n", newline)
+    (agents_dir / "k-architect.md").write_bytes(text.encode("utf-8"))
+    plugin_json = tmp_path / "plugin.json"
+    _write_plugin_json(plugin_json, "konductor")
+    result = _run(agents_dir, plugin_json, "")
+    return result, (agents_dir / "k-architect.md").read_bytes().decode("utf-8")
+
+
+KEYS_AFTER = "tools:\n- Read\nskills:\n- example-skill\n"
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        "mcpServers:\n- aws-mcp:\n    command: uvx\n    args:\n    - x\n",
+        "mcpServers:\n  aws-mcp:\n    command: uvx\n",
+        "mcpServers: []\n",
+        "mcpServers: {}\n",
+        "mcpServers:\n- aws-mcp:\n\n    command: uvx\n",
+    ],
+    ids=["indentless-list", "indented-map", "inline-empty-list", "inline-empty-map", "blank-line-inside"],
+)
+def test_mcp_servers_block_is_dropped_and_later_keys_are_kept(tmp_path, block):
+    result, text = _strip_one(tmp_path, "name: k-architect\n" + block + KEYS_AFTER)
+    assert result.returncode == 0, result.stderr
+    assert text == "---\nname: k-architect\n" + KEYS_AFTER + "---\n\nPrompt body.\n"
+
+
+def test_crlf_agent_file_is_stripped_and_written_back_with_lf(tmp_path):
+    # read_text/write_text translate newlines, so a CRLF file comes back LF.
+    result, text = _strip_one(
+        tmp_path, "name: k-architect\nmcpServers:\n- aws-mcp:\n    command: uvx\n" + KEYS_AFTER, newline="\r\n"
+    )
+    assert result.returncode == 0, result.stderr
+    assert text == "---\nname: k-architect\n" + KEYS_AFTER + "---\n\nPrompt body.\n"
+
+
+def test_mcp_servers_in_the_prompt_body_is_left_alone(tmp_path):
+    body = "\nmcpServers:\n- this is prose, not frontmatter\n"
+    result, text = _strip_one(tmp_path, "name: k-architect\n" + KEYS_AFTER, body=body)
+    assert result.returncode == 0, result.stderr
+    assert text.endswith("---\n" + body)
+
+
+def test_multi_line_flow_value_fails_instead_of_corrupting(tmp_path):
+    original_fm = "name: k-architect\nmcpServers: [\n  {a: 1}\n]\n" + KEYS_AFTER
+    result, text = _strip_one(tmp_path, original_fm)
+    assert result.returncode == 1
+    assert "multi-line flow value" in result.stderr
+    assert text == "---\n" + original_fm + "---\n\nPrompt body.\n"
