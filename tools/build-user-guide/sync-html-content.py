@@ -474,7 +474,7 @@ PRELOAD_EDITS = [
      'which declares the Claude Code tool names it may use and the few skills a spawned subagent preloads.'),
     ('contributing: where a skill is declared',
      'A skill has to be declared in both runtime configurations or it will only load in one.',
-     "Declare a skill in dependencies.skills.skillNames; both runtimes load it on demand from there. Add it to clientConfig.claudeCli.skills only if a Claude Code subagent needs it in context before its first turn: konductor synth warns when an agent's preload passes 32 KiB or 32 names."),
+     "Declare a skill in dependencies.skills.skillNames; both runtimes load it on demand from there. Add it to clientConfig.claudeCli.skills only if a Claude Code subagent needs it in context before its first turn: konductor synth warns when an agent's preload passes 32 KiB and fails when it passes 32 names. The preload is a subset of skillNames, except for a skill that applies only on Claude Code, such as claude-teams-behavior on konductor."),
 ]
 
 
