@@ -61,10 +61,10 @@ jobs:
         # tests/skill-quality-baseline.json may only shrink. The pytest gate
         # enforces "skill <= its entry"; this step enforces "entry <= what the
         # base branch had" so a PR cannot raise or add a ceiling to pass.
-        # OLD is read at the merge-base, not at base.sha, for the same reason the
-        # dist/ and CHANGELOG steps use a three-dot diff: base.sha is the base
-        # branch tip at event time, so a PR branched before an unrelated slimming
-        # landed would otherwise be told it raised an entry it never touched.
+        # The working tree is the PR's test merge commit, so it already holds any
+        # slimming that landed on the base branch, and OLD could be base.sha or
+        # the merge-base. The merge-base is used to match the dist/ and CHANGELOG
+        # steps.
         run: |
           set -e
           MERGE_BASE="$(git merge-base "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
