@@ -50,6 +50,7 @@ pub(crate) mod package;
 // path-containment predicate.
 pub(crate) mod path_safety;
 mod sidecar;
+mod skill_index;
 mod staging;
 
 #[allow(unused_imports)]

@@ -291,6 +291,10 @@ konductor synth: /path/to/agents/broken.agent-spec.json: invalid JSON: key must 
 
 - Skills and SOPs are parsed and validated before anything is written, so a bad skill name or a
   duplicate SOP fails the whole run rather than producing a partial tree.
+- On Kiro CLI v2 and v3, synth appends a `## Your skills` block to each agent's `prompt`. It lists
+  the agent's declared skills with a rule for when to load one. Skills whose description starts
+  "MUST USE for every" (today only `constraints`) are left out, since they claim every task.
+  Claude Code output is unchanged.
 
 ---
 

@@ -27,6 +27,8 @@ not per individual commit.
   `constraints` skill and the routing rules.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
+- Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
+  non-trivial work; orchestrators route skill work to the owning specialist.
 
 ### Fixed
 

@@ -82,6 +82,9 @@ pub fn parse_canonical(source_dir: &Path) -> Result<CanonicalModel, ParseError> 
     for warning in check_claude_preload_budget(&agents, &skills) {
         eprintln!("konductor: warning: {warning}");
     }
+    for warning in super::skill_index::every_task_skill_warnings(&skills) {
+        eprintln!("konductor: warning: {warning}");
+    }
 
     Ok(CanonicalModel {
         agents,
