@@ -13,7 +13,24 @@ fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_konductor")
 }
 
-fn scratch_dir(name: &str) -> PathBuf {
+/// A scratch directory removed on drop, so a failing assertion still
+/// cleans up the repository copy.
+struct ScratchDir(PathBuf);
+
+impl std::ops::Deref for ScratchDir {
+    type Target = Path;
+    fn deref(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for ScratchDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn scratch_dir(name: &str) -> ScratchDir {
     let dir = std::env::temp_dir().join(format!(
         "konductor-synth-claude-preload-e2e-{name}-{}",
         std::time::SystemTime::now()
@@ -22,7 +39,7 @@ fn scratch_dir(name: &str) -> PathBuf {
             .as_nanos()
     ));
     std::fs::create_dir_all(&dir).unwrap();
-    dir
+    ScratchDir(dir)
 }
 
 /// `HOME` points at the scratch dir so invocation logs stay out of the
@@ -57,7 +74,7 @@ fn copy_tree(from: &Path, to: &Path) {
 /// `context/` and `VERSION` into a fresh scratch dir and returns it, so
 /// `synth --from <dir>` writes `<dir>/dist` and never touches the real
 /// checkout.
-fn repo_copy(test_name: &str) -> PathBuf {
+fn repo_copy(test_name: &str) -> ScratchDir {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let dir = scratch_dir(test_name);
     for sub in ["agents", "skills", "agent-sops", "context"] {
