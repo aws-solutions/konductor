@@ -342,6 +342,10 @@ EDITS = [
      'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>'),
     ("ik which agent: konductor first",
      ">kiro-cli chat --agent k-architect</pre>", ">kiro-cli chat --agent konductor</pre>"),
+    # ---- specialists return handoffs instead of spawning ---------------------
+    ("test coverage review: handoff to k-developer",
+     "it may offer to spawn k-developer to implement the missing tests.",
+     "it may return a note naming k-developer to implement the missing tests."),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
