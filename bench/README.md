@@ -121,7 +121,8 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
 
 ## Isolation, environment, safety
 - Each run gets a scratch HOME and a fresh cwd under `/tmp/w-<random>/`, with a copy of the auth
-  database that is deleted when the agent exits. The agent and the check commands get an allowlisted
+  database (kiro-cli's `~/Library/Application Support/kiro-cli` on macOS, `~/.local/share/kiro-cli`
+  elsewhere, copied to the same place under the scratch HOME) that is deleted when the agent exits. The agent and the check commands get an allowlisted
   environment (PATH, locale, proxies, TERM=dumb, TMPDIR, pins); `--env-keep` adds Kiro variables.
   Mandatory-MCP variables are never passed. `env.json` lists the final variable names.
 - `--isolate auto` (default) uses `unshare --user --map-root-user --mount --pid --fork --kill-child`
@@ -139,8 +140,11 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
 - macOS has no `unshare`, so there `--isolate auto` picks `--isolate sandbox-exec` and aborts when its
   probe fails. The runner wraps each command in `sandbox-exec -p <profile>` with a profile generated per
   run: writes to the real home (also through `/System/Volumes/Data`), `/tmp`, `/var/tmp`, the user temp
-  dir and user-writable trees are denied, except `~/Library` (system frameworks write caches and
-  keychains there, but `~/Library/LaunchAgents` stays denied) and the run's scratch root. The same
+  dir and user-writable trees (including a user-writable `/usr/local`, as Intel Homebrew leaves it) are
+  denied, except `~/Library` (system frameworks write caches and keychains there, but the dirs macOS runs
+  code from, `LaunchAgents`, `Services`, `Scripts`, `QuickLook` and similar, stay denied) and the run's
+  scratch root. The probe checks that scratch is writable, the home and temp dir are not, and a masked
+  file cannot be read. The same
   hidden paths and masks as above are denied for reading, writing and Unix-socket connects (a denied
   read fails with "Operation not permitted" instead of showing an empty directory), plus the kiro-cli
   auth database under `~/Library/Application Support/kiro-cli` and launchd's per-session sockets under

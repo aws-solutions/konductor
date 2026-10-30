@@ -165,8 +165,13 @@ function emptyKiroHome(home) {
   }
 }
 
-function copyAuthDb(src, home) {
-  const destDir = path.join(home, '.local/share/kiro-cli');
+// kiro-cli keeps its data under ~/Library/Application Support on macOS and ~/.local/share elsewhere.
+function kiroDataDir(home, platform = process.platform) {
+  return path.join(home, platform === 'darwin' ? 'Library/Application Support/kiro-cli' : '.local/share/kiro-cli');
+}
+
+function copyAuthDb(src, home, platform = process.platform) {
+  const destDir = kiroDataDir(home, platform);
   fs.mkdirSync(destDir, { recursive: true });
   const dest = path.join(destDir, 'data.sqlite3');
   fs.copyFileSync(src, dest);
@@ -174,8 +179,8 @@ function copyAuthDb(src, home) {
   return dest;
 }
 
-function removeAuthCopy(home) {
-  fs.rmSync(path.join(home, '.local/share/kiro-cli/data.sqlite3'), { force: true });
+function removeAuthCopy(home, platform = process.platform) {
+  fs.rmSync(path.join(kiroDataDir(home, platform), 'data.sqlite3'), { force: true });
 }
 
 // The answer key is judge-only; the agent must never find it in its working directory.
@@ -194,8 +199,8 @@ function findAnswerKey(dir) {
   return null;
 }
 
-function defaultAuthDb() {
-  return path.join(os.homedir(), '.local/share/kiro-cli/data.sqlite3');
+function defaultAuthDb(home = os.homedir(), platform = process.platform) {
+  return path.join(kiroDataDir(home, platform), 'data.sqlite3');
 }
 
 function versionOf(cmd, args = ['--version']) {
@@ -226,6 +231,6 @@ function resolveKiroCli(pathEnv = process.env.PATH) {
 }
 
 module.exports = {
-  prepareArm, synthArm, installInto, runKonductor, normalizeAgentModels, emptyKiroHome, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
+  prepareArm, synthArm, installInto, runKonductor, normalizeAgentModels, emptyKiroHome, kiroDataDir, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
   exportRef, exportArm, readyMatches, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
 };

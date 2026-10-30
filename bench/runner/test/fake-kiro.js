@@ -6,6 +6,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { defaultAuthDb } = require('../lib/sandbox.js');
 
 const SCRIPT = `#!/usr/bin/env node
 const fs = require('fs');
@@ -20,7 +21,7 @@ if (args.includes('--help')) { console.log('--agent-engine <ENGINE>\\n[possible 
 let turn = 0;
 try { turn = fs.readdirSync(cfg.dir).filter((f) => /^started-\\d+\\.json$/.test(f)).length; } catch { /* read-only probe directory */ }
 const tc = { ...cfg, ...((cfg.turns || [])[Math.min(turn, (cfg.turns || []).length - 1)] || {}) };
-const authFile = path.join(process.env.HOME, '.local/share/kiro-cli/data.sqlite3');
+const authFile = path.join(process.env.HOME, process.platform === 'darwin' ? 'Library/Application Support/kiro-cli' : '.local/share/kiro-cli', 'data.sqlite3');
 const started = JSON.stringify({ pid: process.pid, cwd: process.cwd(), home: process.env.HOME, args, envKeys: Object.keys(process.env), authPresent: fs.existsSync(authFile), turn: turn + 1 });
 try { fs.writeFileSync(path.join(cfg.dir, 'started.json'), started); fs.writeFileSync(path.join(cfg.dir, 'started-' + (turn + 1) + '.json'), started); } catch { /* the probe directory is read-only inside a namespace */ }
 if (tc.exitCode) { process.exit(tc.exitCode); }
@@ -64,4 +65,11 @@ function makeFakeKiro(binDir, config) {
   return file;
 }
 
-module.exports = { makeFakeKiro };
+// Plants a stand-in auth database where the runner looks for it under this HOME.
+function writeFakeAuth(home) {
+  const db = defaultAuthDb(home);
+  fs.mkdirSync(path.dirname(db), { recursive: true });
+  fs.writeFileSync(db, 'fake-auth');
+}
+
+module.exports = { makeFakeKiro, writeFakeAuth };

@@ -50,7 +50,7 @@ function makeKiroCaller({ authDb, timeoutMs, scratchRoot = os.tmpdir(), kiroBin 
       }
       return { ...base, text: agg.finalText };
     } finally {
-      fs.rmSync(path.join(home, '.local/share/kiro-cli/data.sqlite3'), { force: true });
+      sandbox.removeAuthCopy(home);
       fs.rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
       procs.untrackScratch(root);
     }

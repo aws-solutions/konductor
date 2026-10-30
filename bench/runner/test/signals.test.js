@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { tmp, makeBench } = require('./helpers.js');
-const { makeFakeKiro } = require('./fake-kiro.js');
+const { makeFakeKiro, writeFakeAuth } = require('./fake-kiro.js');
 const { spawnWithTimeout } = require('../lib/run-one.js');
 const procs = require('../lib/procs.js');
 
@@ -33,8 +33,7 @@ for (const signal of ['SIGTERM', 'SIGHUP']) test(`${signal} to the runner kills 
   fs.mkdirSync(probe);
   makeFakeKiro(path.join(root, 'bin'), { dir: probe, sleepSec: 60 });
   const home = path.join(root, 'home');
-  fs.mkdirSync(path.join(home, '.local/share/kiro-cli'), { recursive: true });
-  fs.writeFileSync(path.join(home, '.local/share/kiro-cli/data.sqlite3'), 'fake-auth');
+  writeFakeAuth(home);
   const tmpdir = path.join(root, 'tmp');
   fs.mkdirSync(tmpdir);
   const out = path.join(root, 'out');

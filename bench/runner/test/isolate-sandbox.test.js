@@ -10,7 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const net = require('node:net');
 const { spawnSync } = require('node:child_process');
-const { makeIsolation, probeSandboxExec, resolveIsolation, autoMode, ISOLATE_MODES } = require('../lib/isolate.js');
+const { makeIsolation, probeSandboxExec, resolveIsolation, autoMode, userLocalTrees, ISOLATE_MODES } = require('../lib/isolate.js');
 const { makeScratchRoot } = require('../lib/sandbox.js');
 
 const probe = process.platform === 'darwin' ? probeSandboxExec() : { ok: false, reason: 'not macOS' };
@@ -47,9 +47,11 @@ test('the profile denies home writes, allows the scratch root and ~/Library, and
     for (const p of ['.ssh', '.kiro', '.konductor', '.site-token', 'Library/Application Support/kiro-cli/data.sqlite3']) {
       assert.ok(at(`(subpath "${path.join(homeReal, p)}")`) > at('(deny file-read* file-write*'), p);
     }
-    const launchAgents = at(`(subpath "${path.join(homeReal, 'Library/LaunchAgents')}")`);
-    assert.ok(launchAgents > at(`(subpath "${path.join(homeReal, 'Library')}")`), 'the LaunchAgents deny follows the ~/Library allow');
-    assert.ok(profile.lastIndexOf('(deny file-write*', launchAgents) > at('(allow file-write*'), 'LaunchAgents sits in a write deny');
+    for (const d of ['LaunchAgents', 'Services', 'Scripts', 'QuickLook', 'Spotlight', 'Input Methods']) {
+      const autorun = at(`(subpath "${path.join(homeReal, 'Library', d)}")`);
+      assert.ok(autorun > at(`(subpath "${path.join(homeReal, 'Library')}")`), `the ${d} deny follows the ~/Library allow`);
+      assert.ok(profile.lastIndexOf('(deny file-write*', autorun) > at('(allow file-write*'), `${d} sits in a write deny`);
+    }
     const snapshot = profile.split('\n').find((l) => l.includes('TimeMachine'));
     for (const n of ['ssh', 'aws', 'gnupg', 'netrc', 'zsh_history', 'site-token', 'claude', 'kiro', 'konductor']) {
       assert.ok(snapshot.includes(`\\.${n}`), `the snapshot deny covers .${n}`);
@@ -69,6 +71,28 @@ test('the profile denies home writes, allows the scratch root and ~/Library, and
   }
 });
 
+test('user-writable /usr/local trees are found so the profile can make them read-only', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sb-usr-local-'));
+  try {
+    fs.mkdirSync(path.join(base, 'bin'));
+    fs.mkdirSync(path.join(base, 'locked'));
+    fs.chmodSync(path.join(base, 'locked'), 0o555);
+    assert.deepEqual(userLocalTrees(base).sort(), [base, path.join(base, 'bin')].sort());
+    assert.deepEqual(userLocalTrees(path.join(base, 'absent')), []);
+  } finally {
+    fs.chmodSync(path.join(base, 'locked'), 0o755);
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('the probe fails when the profile does not deny reads of masked paths', { skip }, () => {
+  const weakened = (opts) => {
+    const profile = makeIsolation(opts).profile.replaceAll('(deny file-read* file-write*', '(allow file-read*');
+    return { mode: 'sandbox-exec', wrap: (file, args) => ({ file: 'sandbox-exec', args: ['-p', profile, file, ...args] }) };
+  };
+  assert.deepEqual(probeSandboxExec(os.homedir(), weakened), { ok: false, reason: 'masked path still readable' });
+});
+
 test('a home under /Users is also denied through the data volume path', () => {
   const scratch = makeScratchRoot();
   try {
@@ -80,7 +104,7 @@ test('a home under /Users is also denied through the data volume path', () => {
   }
 });
 
-test('inside the sandbox the scratch root is writable and the real home, temp dir and LaunchAgents are not', { skip }, () => {
+test('inside the sandbox the scratch root is writable and the real home, temp dir and autorun dirs are not', { skip }, () => {
   const scratch = makeScratchRoot();
   try {
     const s = fs.realpathSync(scratch);
@@ -90,6 +114,7 @@ test('inside the sandbox the scratch root is writable and the real home, temp di
       `touch "${home}/.bench-sb-probe" 2>/dev/null && exit 3`,
       `touch "${fs.realpathSync(os.tmpdir())}/bench-sb-probe" 2>/dev/null && exit 4`,
       `[ -d "${home}/Library/LaunchAgents" ] && [ -w "${home}/Library/LaunchAgents" ] && exit 5`,
+      `[ -d "${home}/Library/Services" ] && [ -w "${home}/Library/Services" ] && exit 6`,
       'exit 0',
     ].join('; '));
     assert.equal(r.status, 0, r.stderr);

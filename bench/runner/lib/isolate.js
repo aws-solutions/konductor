@@ -38,10 +38,9 @@ const HIDE_IN_HOME = [
 const MASK_IN_HOME = ['.local/share/kiro-cli', 'Library/Application Support/kiro-cli']
   .flatMap((d) => ['data.sqlite3', 'data.sqlite3-wal', 'data.sqlite3-shm'].map((f) => `${d}/${f}`));
 const SANDBOX_BIN = 'sandbox-exec';
-// sandbox-exec leaves ~/Library writable for system frameworks, except these login-item dirs.
-const LIBRARY_NO_WRITE = ['Library/LaunchAgents'];
 const sandboxWritableInHome = (homes) => homes.map((h) => path.join(h, 'Library'));
-// ~/Library dirs whose contents macOS loads and runs outside the sandbox; a tripwire hit there is flagged.
+// ~/Library dirs whose contents macOS loads and runs outside the sandbox. sandbox-exec leaves the rest of
+// ~/Library writable for system frameworks but denies writes here, and a tripwire hit here is flagged.
 const LIBRARY_AUTORUN = [
   'Library/LaunchAgents', 'Library/Services', 'Library/Scripts', 'Library/PreferencePanes', 'Library/Input Methods',
   'Library/QuickLook', 'Library/Spotlight', 'Library/Screen Savers', 'Library/Internet Plug-Ins',
@@ -109,6 +108,12 @@ function writableTrees() {
     }
   }
   return [...out];
+}
+
+// writableTrees skips /usr, but Intel Homebrew leaves /usr/local user-writable, and a binary planted
+// there shadows a system command outside the run. sandbox-exec makes these read-only.
+function userLocalTrees(base = '/usr/local') {
+  return [base, ...listDirs(base)].filter(writable);
 }
 
 // Container runtime sockets (docker.sock and friends) are root-equivalent and ignore read-only mounts.
@@ -189,8 +194,8 @@ function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTre
     '(allow default)',
     ...block('deny file-write*', [...homes, ...systemDirs, ...readOnlyTrees]),
     ...block('allow file-write*', sandboxWritableInHome(homes)),
-    // A login item written here would run outside the sandbox at the next login.
-    ...block('deny file-write*', homes.flatMap((h) => LIBRARY_NO_WRITE.map((d) => path.join(h, d)))),
+    // Anything written here would run outside the sandbox later (a login item, a service, a plug-in).
+    ...block('deny file-write*', homes.flatMap((h) => LIBRARY_AUTORUN.map((d) => path.join(h, d)))),
     ...block('allow file-write*', [scratchRoot]),
     ...block('deny file-read* file-write*', hidden),
     ...(homes.length ? ['(deny file-read* file-write*', ...snapshotRe, ')'] : []),
@@ -249,7 +254,8 @@ function makeIsolation({ mode, scratchRoot, home, hide = [], mask = [], keyRoots
   const keys = uniq([...mask, ...keyRoots].flatMap((m) => findAnswerKeys(m))).filter((k) => !dirMasks.some((d) => inside(k, d)));
   const masks = uniq([...tmpMasks, ...dirMasks, ...keys]).filter((m) => !inside(scratch, m));
   if (mode === SANDBOX_BIN) {
-    const profile = buildProfile({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, offline });
+    const sbReadOnly = uniq([...readOnlyTrees, ...userLocalTrees().map(realOrNull).filter(Boolean)]);
+    const profile = buildProfile({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees: sbReadOnly, offline });
     return { mode, profile, flaggedInHome: sandboxFlaggedInHome(homes), wrap: (file, args) => ({ file: SANDBOX_BIN, args: ['-p', profile, file, ...args] }) };
   }
   const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, offline });
@@ -285,26 +291,33 @@ function probeUnshare(home = os.homedir()) {
   }
 }
 
-// Same proof under the sandbox profile. access(2) honours the profile, so nothing is written outside scratch.
-function probeSandboxExec(home = os.homedir()) {
+// Same proof under the sandbox profile, plus a read of a masked file it plants, so a profile whose
+// read denies did not apply fails too. access(2) honours the profile, so nothing is written outside scratch.
+// `makeIso` replaces makeIsolation (for tests).
+function probeSandboxExec(home = os.homedir(), makeIso = makeIsolation) {
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
+  const masked = fs.mkdtempSync(path.join(os.tmpdir(), 'w-mask-'));
   try {
-    const iso = makeIsolation({ mode: SANDBOX_BIN, scratchRoot: scratch, home });
+    const secret = path.join(fs.realpathSync(masked), 'secret');
+    fs.writeFileSync(secret, 'x');
+    const iso = makeIso({ mode: SANDBOX_BIN, scratchRoot: scratch, home, mask: [masked] });
     const homeDir = realHomes(home)[0];
     const test = [
       `touch ${shq(path.join(fs.realpathSync(scratch), 'ok'))} || exit 2`,
       `if [ -w ${shq(homeDir)} ]; then exit 3; fi`,
       `if [ -w ${shq(fs.realpathSync(os.tmpdir()))} ]; then exit 4; fi`,
+      `if cat ${shq(secret)} >/dev/null 2>&1; then exit 5; fi`,
       'exit 0',
     ].join('; ');
     const w = iso.wrap('/bin/sh', ['-c', test]);
     const r = spawnSync(w.file, w.args, { encoding: 'utf8', timeout: 20000 });
-    const reasons = { 2: 'scratch dir not writable', 3: 'real home still writable', 4: 'tmp still writable' };
+    const reasons = { 2: 'scratch dir not writable', 3: 'real home still writable', 4: 'tmp still writable', 5: 'masked path still readable' };
     if (r.status === 0) return { ok: true, reason: null };
     const why = r.error ? r.error.message : (reasons[r.status] || (r.stderr || '').trim().split('\n').pop() || `exit ${r.status}`);
     return { ok: false, reason: why };
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
+    fs.rmSync(masked, { recursive: true, force: true });
   }
 }
 
@@ -335,6 +348,6 @@ function workingMode(home) {
 }
 
 module.exports = {
-  makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, runtimeSockets, findAnswerKeys,
+  makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, userLocalTrees, runtimeSockets, findAnswerKeys,
   UNSHARE_FLAGS, HIDE_IN_HOME, ISOLATE_MODES,
 };

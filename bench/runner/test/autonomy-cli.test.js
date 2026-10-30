@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write, makeBench } = require('./helpers.js');
-const { makeFakeKiro } = require('./fake-kiro.js');
+const { makeFakeKiro, writeFakeAuth } = require('./fake-kiro.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 
@@ -26,8 +26,7 @@ test('run --suite autonomy asks, answers, resumes and records the conversation; 
     fs.mkdirSync(probe);
     makeFakeKiro(path.join(root, 'bin'), { dir: probe, sessionJson: true, turns: [{ finalText: 'Seconds or milliseconds?', credits: 1 }, { finalText: 'Done.', credits: 2 }] });
     const home = path.join(root, 'home');
-    fs.mkdirSync(path.join(home, '.local/share/kiro-cli'), { recursive: true });
-    fs.writeFileSync(path.join(home, '.local/share/kiro-cli/data.sqlite3'), 'fake-auth');
+    writeFakeAuth(home);
     const tmpdir = path.join(root, 'tmp');
     fs.mkdirSync(tmpdir);
     const out = path.join(root, 'out');

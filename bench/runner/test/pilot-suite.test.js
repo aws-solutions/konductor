@@ -183,7 +183,7 @@ test('the validator accepts pilot on a real task and rejects a real task without
 });
 
 test('run --suite pilot executes tasks of different classes in one run; only the autonomy task records a conversation', () => {
-  const { makeFakeKiro } = require('./fake-kiro.js');
+  const { makeFakeKiro, writeFakeAuth } = require('./fake-kiro.js');
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
@@ -198,8 +198,7 @@ test('run --suite pilot executes tasks of different classes in one run; only the
     fs.mkdirSync(probe);
     makeFakeKiro(path.join(root, 'bin'), { dir: probe, sessionJson: true, turns: [{ finalText: 'Seconds or milliseconds?', credits: 1 }, { finalText: 'Done.', credits: 2 }] });
     const home = path.join(root, 'home');
-    fs.mkdirSync(path.join(home, '.local/share/kiro-cli'), { recursive: true });
-    fs.writeFileSync(path.join(home, '.local/share/kiro-cli/data.sqlite3'), 'fake-auth');
+    writeFakeAuth(home);
     const tmpdir = path.join(root, 'tmp');
     fs.mkdirSync(tmpdir);
     const out = path.join(root, 'out');
