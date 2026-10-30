@@ -146,9 +146,11 @@ load, the behaviour is gone — the system prompt alone does not carry it.
 
 The rule itself:
 
-> **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You NEVER directly
-> execute mutating operations or shell commands. […] Note: `shell` must always be delegated even for
-> apparently read-only commands (e.g., `ls`, `grep`) — there is no read-only carve-out for shell.
+> **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You MUST NOT
+> directly execute mutating operations. […] Every other `shell` command MUST be delegated.
+
+Running read-only commands such as `ls` or `grep` itself is expected: the Orchestrator Direct Work
+table in that file allows them. Editing files, building, or running tests is not.
 
 **Fix.**
 
