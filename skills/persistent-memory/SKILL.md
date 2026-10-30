@@ -86,10 +86,10 @@ Re-read file → delete the matching bullet line → pipe full content through v
 
 If `.konductor/memory/` doesn't exist, pass initial content through the validator as normal. Do not create the directory yourself: the validator creates it after its symlink check, and a `mkdir` through a symlinked `.konductor` would create it somewhere else.
 
-- On first write, if `.konductor/memory/` is not in `.gitignore`, add the glob so each clone keeps its own memory by default. A project that wants shared memory removes the line; trust does not depend on it.
+- On first write, if `.konductor/memory/` is not in `.gitignore`, add the glob so each clone keeps its own memory by default. A project that wants shared memory removes the line; trust does not depend on it. Skip this if `.gitignore` is a symlink: git does not read a symlinked `.gitignore`, and the append would write to wherever it points.
 
   ```bash
-  printf '.konductor/memory/\n' >> .gitignore
+  [ -L .gitignore ] || printf '.konductor/memory/\n' >> .gitignore
   ```
 
 ## Configuration

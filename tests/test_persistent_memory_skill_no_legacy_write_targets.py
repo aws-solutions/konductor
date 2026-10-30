@@ -64,3 +64,10 @@ def test_bootstrap_leaves_directory_creation_to_the_validator():
     text = SKILL_MD.read_text()
     assert "create the directory, then" not in text
     assert "Do not create the directory yourself" in text
+
+
+def test_gitignore_append_skips_a_symlinked_gitignore():
+    """An append through a tracked `.gitignore` symlink writes outside the
+    project."""
+    text = SKILL_MD.read_text()
+    assert "[ -L .gitignore ] || printf '.konductor/memory/\\n' >> .gitignore" in text
