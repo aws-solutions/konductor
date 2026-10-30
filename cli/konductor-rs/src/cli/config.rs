@@ -156,6 +156,11 @@ pub(crate) struct RawConfig {
 pub(crate) struct OrchestrationSection {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) mode: Option<String>,
+    /// Keys this CLI does not know, such as a misspelled `mdoe`. Kept, not
+    /// rejected, so a newer sibling key does not break `config` on an older
+    /// CLI; `orchestration_mode` reports them instead of silently using auto.
+    #[serde(flatten)]
+    pub(crate) unknown_keys: std::collections::BTreeMap<String, serde_yaml::Value>,
 }
 
 /// `<home>/.konductor/config.yml`, the user layer.
@@ -1023,6 +1028,7 @@ mod tests {
         let override_cfg = RawConfig {
             orchestration: Some(OrchestrationSection {
                 mode: Some("coordinator".to_string()),
+                ..OrchestrationSection::default()
             }),
             ..RawConfig::default()
         };
@@ -1049,5 +1055,23 @@ mod tests {
             Some("coordinator")
         );
         fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_config_value_keeps_unknown_orchestration_keys() {
+        let root = scratch_dir("set-keeps-unknown-orchestration");
+        let konductor_dir = root.join(KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        let path = konductor_dir.join(CONFIG_FILE_NAME);
+        fs::write(&path, "orchestration:\n  mdoe: coordinator\n").unwrap();
+
+        set_config_value(&root, "tier", "full").expect("set tier must succeed");
+
+        let section = load_raw_config(&path).unwrap().orchestration.unwrap();
+        fs::remove_dir_all(&root).ok();
+        assert_eq!(
+            section.unknown_keys.get("mdoe"),
+            Some(&serde_yaml::Value::String("coordinator".to_string()))
+        );
     }
 }

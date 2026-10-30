@@ -97,7 +97,22 @@ pub(crate) fn resolve_user_mode(home: Option<&Path>) -> ModeResolution {
         Ok(raw) => raw,
         Err(error) => return ModeResolution::Fallback(load_failure(path, error)),
     };
-    match raw.orchestration.and_then(|section| section.mode) {
+    let Some(section) = raw.orchestration else {
+        return ModeResolution::Default;
+    };
+    match section.mode {
+        // A misspelled `mode` must not read as "no mode set". A known `mode`
+        // next to an unknown key is a newer sibling and is left alone.
+        None if !section.unknown_keys.is_empty() => {
+            let keys: Vec<&str> = section.unknown_keys.keys().map(String::as_str).collect();
+            ModeResolution::Fallback(FallbackReason::Malformed {
+                path,
+                message: format!(
+                    "unknown key {} under orchestration (expected mode)",
+                    keys.join(", ")
+                ),
+            })
+        }
         None => ModeResolution::Default,
         Some(value) => match Mode::parse(&value) {
             Some(mode) => ModeResolution::Explicit(mode),
@@ -297,6 +312,33 @@ mod tests {
         assert_eq!(
             resolve_with("empty-section", "orchestration: {}\n"),
             ModeResolution::Default
+        );
+    }
+
+    #[test]
+    fn misspelled_mode_key_is_malformed() {
+        for (name, contents) in [
+            ("typo", "orchestration:\n  mdoe: coordinator\n"),
+            ("case", "orchestration:\n  Mode: coordinator\n"),
+        ] {
+            match resolve_with(name, contents) {
+                ModeResolution::Fallback(FallbackReason::Malformed { message, .. }) => {
+                    assert!(message.contains("unknown key"), "{message}");
+                    assert!(message.contains("under orchestration"), "{message}");
+                }
+                other => panic!("{name}: expected Malformed, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn unknown_sibling_of_a_valid_mode_is_ignored() {
+        assert_eq!(
+            resolve_with(
+                "sibling",
+                "orchestration:\n  mode: coordinator\n  later: 1\n"
+            ),
+            ModeResolution::Explicit(Mode::Coordinator)
         );
     }
 
