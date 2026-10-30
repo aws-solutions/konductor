@@ -132,14 +132,13 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
 
 - **The diff, not just the file list, is the input.** Step 1 captures full hunks; the changed-file
   list is derived from them.
-- **The adversarial step never actually fires.** Step 6 tells the agent to spawn
-  `k-architect`, but its one owning agent cannot: no specialist holds a spawn tool in Kiro CLI
-  v3 or Claude Code, and the core rules forbid it in Kiro CLI v2.
-  The SOP degrades quietly by design (*"You MUST skip this step if no adversarial CR-review
-  capability is available"*), so you get standard review only. Routing through the orchestrator does
-  not help — it does not declare this SOP. Run
+- **The adversarial step runs only through `konductor`.** Step 6 asks for `k-architect`, but its
+  one owning agent cannot spawn: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code,
+  and the core rules forbid it in Kiro CLI v2. Step 6 has `k-developer` return it as a handoff
+  instead. Under `konductor`, `konductor` routes it to `k-architect`, and the findings come back
+  for the report. When `k-developer` is started directly, the handoff comes back to you: run
   [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) against `k-architect`
-  separately instead. See
+  yourself. See
   [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 - **The adversarial step is also skipped for frontend-only reviews** by design, because it targets
   backend and infra gaps.

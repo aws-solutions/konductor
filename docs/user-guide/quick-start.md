@@ -114,7 +114,7 @@ Describe what you want in plain language. You do not need to name an agent or a 
 Run a codebase analysis on this repo.
 ```
 
-`konductor` runs this analysis itself, following the `k-codebase-analysis` workflow.
+`konductor` spawns `k-developer`, which owns the `k-codebase-analysis` workflow, to run it.
 It produces `codebase-analysis.md` — architecture, SOLID evaluation, design patterns, dependencies,
 and technical debt, with three diagrams — then reports the file path and its top three
 recommendations.

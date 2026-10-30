@@ -180,7 +180,7 @@ v3 or Claude Code, and the core rules forbid spawning everywhere (see
 [Who can delegate to whom](agents.md#who-can-delegate-to-whom)), so every piece of
 work routes through `konductor`, which decides who owns it, hands it over, and checks the result.
 A specialist does its own part, then returns a note naming the next role, or a proposed parallel
-split with the files each part touches, and `konductor` routes it.
+split that gives each part's agent, inputs and files, and `konductor` routes it.
 
 A **delegation** is not a casual instruction — it is a fixed 7-section format defined by the
 `k-delegate` SOP and the `delegation-protocol` skill:
@@ -196,7 +196,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run, and one re-review of the fix and the code that uses it; a CRITICAL that survives is reported as unresolved. An artifact that passed review is not reviewed again unless it changes.
+fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; a CRITICAL or IMPORTANT finding that survives blocks done, and the orchestrator stops and reports it to you. An artifact that passed review is not reviewed again unless it changes.
 
 ## Maker-checker
 

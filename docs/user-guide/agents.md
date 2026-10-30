@@ -196,13 +196,12 @@ Code:
 - Specialists hold no spawn tool there (see above; Kiro CLI v2 relies on the prompt rule).
 - The core rules tell a specialist to do such steps itself or return them to its caller.
 
-The SOP anticipates this — *"You MUST skip this step if no adversarial CR-review capability is
-available"* — so it degrades quietly rather than erroring. **In practice step 6 always no-ops,
-and you get standard review only.**
+Step 6 has `k-developer` return it as a handoff for `k-architect` when it cannot spawn, naming
+the SOP and the step to resume at. Under `konductor`, `konductor` routes it to the architect and
+sends the findings back to the developer to finish steps 6 and 7. When `k-developer` is started
+directly, nothing routes the handoff, and it comes back to you.
 
-Routing the request through `konductor` does **not** fix it: the orchestrator does not
-declare `k-code-review-workflow`, so it delegates the whole SOP to the developer, who then hits
-the same wall. The reliable workaround is to run
+To be sure the adversarial pass runs, run
 [`k-adversarial-pull-request-review`](sop-workflows/code-review.md#k-adversarial-pull-request-review)
 yourself against `k-architect`, which owns it.
 

@@ -54,6 +54,7 @@ def test_agent_tool_entries_ignores_specs_without_an_agent_grant():
     assert _agent_tool_entries(spec) == []
 
 
+# `*` is rejected here, at spec level, because a wildcard on v2 includes `subagent`.
 KIRO_SPAWN_TOOLS = {"subagent", "use_subagent", "agent_crew", "*"}
 CLAUDE_SPAWN_TOOLS = {"Agent", "Task", "Workflow"}
 
@@ -65,6 +66,9 @@ def _spawn_grants(spec):
     for tool in kiro.get("tools", []):
         if tool in KIRO_SPAWN_TOOLS or tool.split("/")[0] in KIRO_SPAWN_TOOLS:
             grants.append(f"kiroCli.tools has {tool}")
+    for tool in kiro.get("allowedTools", []):
+        if tool in KIRO_SPAWN_TOOLS or tool.split("/")[0] in KIRO_SPAWN_TOOLS:
+            grants.append(f"kiroCli.allowedTools has {tool}")
     for key in kiro.get("toolsSettings", {}):
         if key in KIRO_SPAWN_TOOLS:
             grants.append(f"kiroCli.toolsSettings has {key}")
@@ -88,6 +92,7 @@ def test_spawn_grants_catches_every_alias():
         "clientConfig": {
             "kiroCli": {
                 "tools": ["@builtin", "subagent", "use_subagent", "agent_crew", "*"],
+                "allowedTools": ["fs_read", "use_subagent"],
                 "toolsSettings": {"subagent": {}},
             },
             "claudeCli": {"tools": ["Read", "Agent", "Task", "Workflow", "Agent(k-developer)"]},
@@ -98,6 +103,7 @@ def test_spawn_grants_catches_every_alias():
         "kiroCli.tools has use_subagent",
         "kiroCli.tools has agent_crew",
         "kiroCli.tools has *",
+        "kiroCli.allowedTools has use_subagent",
         "kiroCli.toolsSettings has subagent",
         "claudeCli.tools has Agent",
         "claudeCli.tools has Task",
