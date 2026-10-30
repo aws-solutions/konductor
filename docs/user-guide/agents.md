@@ -28,7 +28,7 @@ and the MCP registry entries.
 
 | Agent | Role | Model | Skills | SOPs | MCP |
 | --- | --- | --- | --- | --- | --- |
-| `konductor` | Coordinator. Delegates everything, implements nothing. | `claude-sonnet-5.5` | 13 | 10 | — |
+| `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 18 | 10 | — |
 | `konductor-mux-orchestrator` | Same, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 9 | — |
 | `konductor-cmux-orchestrator` | Same, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 9 | — |
 | `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
@@ -237,10 +237,10 @@ The default entry point, and the one to use unless you have a specific reason no
 | --- | --- |
 | **Model** | `claude-sonnet-5.5` |
 | **SOPs** (10) | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
-| **Skills** (13) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 12 plus `humanize-writing`, on demand |
+| **Skills** (18) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`, `threat-modeling`, `design-doc-guidelines`, `user-story-writing`, `backend-review`, `frontend-review`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 17 plus `humanize-writing`, on demand |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` **only** |
-| **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Skill` |
-| **Can mutate?** | In Claude Code, yes — it declares `Bash` and `Write`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
+| **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Edit`, `Skill` |
+| **Can mutate?** | Yes, by design: it does the work itself. In Claude Code it declares `Bash`, `Write` and `Edit`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
 
 It is the agent with the widest delegation reach — an explicit allowlist of all eight
 specialists — and the only one that declares

@@ -67,7 +67,7 @@ Turning a business ask into something an engineer can build.
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
 | `requirements-extraction` | Extracts design inputs from requirements outputs into three focused files: business-context.md, requirements-summary.md, user-stories-extract.md. | You are moving from requirements into design and want the architect to start from something structured. | `k-architect`, `k-product-manager` |
-| `user-story-writing` | Creates user stories with INVEST principles, epics, and acceptance criteria. Scales to MVP (10-15), Production (20-30), or full scope (30-40 stories). | Validated requirements exist and you need development-ready stories. | `k-product-manager` |
+| `user-story-writing` | Creates user stories with INVEST principles, epics, and acceptance criteria. Scales to MVP (10-15), Production (20-30), or full scope (30-40 stories). | Validated requirements exist and you need development-ready stories. | `k-product-manager`, `konductor` |
 | `task-decomposition` | Splits stories and a system design into independent features that individual engineers can build with minimal overlap. | The HLD is done and you need to parallelise the work across people. | `k-developer`, `k-product-manager`, `k-tpm` |
 | `sprint-planning` | Task hierarchy, story-point sizing, capacity tracking, sprint workflow. | You are planning a sprint or sizing work, with no external tracker involved. | `k-product-manager`, `k-tpm` |
 | `asana-sprint-planning` | The same sprint workflow, driven through Asana. | You track sprints in Asana. Needs an Asana MCP server — opt-in. | `k-product-manager` |
@@ -102,7 +102,7 @@ Producing the design itself.
 | --- | --- | --- | --- |
 | `system-design-patterns` | Guides system architecture design through a structured interview. Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description. | Starting a new service or feature that needs a design document. | `k-architect` |
 | `architecture-advisor` | Quick recommendation mode — concise opinions with trade-off analysis instead of a full artifact. | You want a sanity check or an opinion, not a document. | `k-architect` |
-| `design-doc-guidelines` | Rules for writing and reviewing design docs: outside-in structure, plain writing, AI-slop detection, diagram accuracy, technical accuracy. | Writing or reviewing any design doc. It is also the maker-checker rubric `k-design-doc-creation` runs against. | `k-architect` |
+| `design-doc-guidelines` | Rules for writing and reviewing design docs: outside-in structure, plain writing, AI-slop detection, diagram accuracy, technical accuracy. | Writing or reviewing any design doc. It is also the maker-checker rubric `k-design-doc-creation` runs against. | `k-architect`, `konductor` |
 | `non-functional-requirements` | Extracts measurable NFRs across performance, availability, security, scalability, and observability. | The design exists and "it should be fast" needs to become a number. | `k-architect` |
 | `architecture-diagram-generation` | Generates AWS architecture diagrams as draw.io XML with official service icons and directional data flows; single or multi-account. | You need a real diagram from a written design. | `k-architect` |
 | `cost-estimation` | AWS cost estimates in baseline, optimized, and high-availability scenarios. | Someone asked what this will cost to run. Needs service configs and expected load. | `k-architect` |
@@ -151,7 +151,7 @@ Security-specific analysis, spanning design through remediation.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `threat-modeling` | AWS threat models via STRIDE — architecture analysis, threat identification, security controls. | After system design, on anything touching auth, PII, or an external boundary. | `k-architect` |
+| `threat-modeling` | AWS threat models via STRIDE — architecture analysis, threat identification, security controls. | After system design, on anything touching auth, PII, or an external boundary. | `k-architect`, `konductor` |
 | `security-test-generation` | Security test plans by domain and layer, covering all 7 domains: authentication, input validation, API security, data protection, session management, error handling, infrastructure. | You need security test coverage, not just functional coverage. | `k-quality-assurance` |
 | `security-remediation` | Analyzes security findings and produces prioritized remediation plans with effort estimates and risk context. | You have a vulnerability report or appsec findings to work through. | `k-developer` |
 
@@ -164,9 +164,9 @@ Writing and reviewing code.
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
 | `backend-development` | Implements backend changes — Lambda handlers, service layers, DynamoDB operations. KISS/YAGNI/DRY, minimal surgical changes. | Implementing or fixing backend logic. | `k-developer` |
-| `backend-review` | Reviews backend changes for pattern compliance, type safety, DynamoDB correctness, and test quality. Produces CRITICAL / IMPORTANT / SUGGESTION findings. | After backend changes, before opening a review. | `k-developer` |
+| `backend-review` | Reviews backend changes for pattern compliance, type safety, DynamoDB correctness, and test quality. Produces CRITICAL / IMPORTANT / SUGGESTION findings. | After backend changes, before opening a review. | `k-developer`, `konductor` |
 | `frontend-development` | Implements React/TypeScript frontend using AWS Cloudscape. Cloudscape-only components, no native HTML. | Implementing UI in a Cloudscape app. | `k-developer` |
-| `frontend-review` | Reviews frontend changes for Cloudscape compliance, React Hook Form patterns, type safety, and test quality. | After frontend changes, before opening a review. | `k-developer` |
+| `frontend-review` | Reviews frontend changes for Cloudscape compliance, React Hook Form patterns, type safety, and test quality. | After frontend changes, before opening a review. | `k-developer`, `konductor` |
 | `infra-validation` | Validates CDK and CloudFormation against AWS best practice, security standards, and Well-Architected principles. | Before deploying any infrastructure change. | `k-developer` |
 | `code-review` | Standard pull-request review workflow — creating PRs, reviewing diffs, addressing feedback, post-implementation cycles. | Ordinary code review, using git and the GitHub CLI. | `k-developer` |
 | `adversarial-code-review` | Reviews a diff from an adversarial security-focused stance, arguing against approval. Targets information disclosure, data-integrity failures, and schema/validation gaps. | After standard review, on anything security-sensitive. This is what `k-adversarial-pull-request-review` runs on. | `k-architect`, `k-developer` |
@@ -250,9 +250,9 @@ Useful when deciding which agent to talk to directly.
 | --- | --- |
 | `k-architect` | 38 |
 | `k-developer` | 27 |
+| `konductor` | 18 |
 | `k-product-manager` | 16 |
 | `k-tpm` | 14 |
-| `konductor` | 13 |
 | `k-quality-assurance` | 12 |
 | `konductor-cmux-orchestrator` | 10 |
 | `konductor-mux-orchestrator` | 10 |
