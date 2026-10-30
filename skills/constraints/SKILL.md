@@ -25,7 +25,7 @@ The NEVER DO rules live in the core rules, which every agent loads at session st
 
 1. **Read before edit**: see Engineering practices in the core rules
 2. **Follow existing patterns**: see Engineering practices and Writing habits in the core rules
-3. **Maker-checker**: a separate reviewer runs when the orchestrator's Verification Protocol says so (once per phase, on everything the phase produced). Before you return an artifact, apply its checker skill yourself.
+3. **Maker-checker**: a separate reviewer runs as often as the orchestrator's Verification Protocol says. Before you return an artifact, apply its checker skill yourself.
 4. **Backward compatibility**: see Engineering practices in the core rules
 5. **Comment complex logic**: see Engineering practices in the core rules
 6. **Structured logging**: see Engineering practices in the core rules
@@ -59,7 +59,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (fix before proceeding; review findings get one fix, then what remains is listed for the user):**
+**IMPORTANT (fix before proceeding; a review finding gets one fix, and one that survives the re-review blocks done until the user decides):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts

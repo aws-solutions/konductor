@@ -167,7 +167,7 @@ Summarize findings and recommend next steps.
 - You MUST state clearly: READY FOR RELEASE or NOT READY
 - You MUST treat a Security Test Plan reported as NOT EVALUATED the same as a critical gap for this determination — recommend NOT READY, not READY, when its findings were never actually evaluated
 - If NOT READY, you MUST list the critical gaps that must be addressed
-- You SHOULD offer to spawn `k-developer` subagent to implement missing tests
+- You SHOULD return a handoff note naming `k-developer` to implement missing tests
 - You MAY offer to re-run the review after tests are added
 
 ## Examples

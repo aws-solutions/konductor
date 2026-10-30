@@ -19,7 +19,7 @@ You (the orchestrator) are the sole hub. The rules below are MANDATORY:
 
 This constraint keeps multi-agent behavior portable across runtimes. This skill and Claude's `SendMessage`/`Agent()` tools are scoped to Claude Code only (via `claudeCli.skills` / `claudeCli.tools`); the same specialists also run as Kiro CLI subagents, which are one-shot with no peer-messaging channel — the orchestrator spawns a specialist, it runs to completion in isolation, and returns its result. Peer-to-peer coordination therefore cannot be relied on cross-runtime, so all coordination flows through the orchestrator. This also matches the documented orchestrator-only dispatch design: native dispatch belongs solely to the orchestrator, and nested subagent spawning is unsupported in both runtimes.
 
-## Tool Usage: Direct Reads and Read-only Bash
+## Tool Usage: Direct Work
 
 What you do yourself is defined once, in your Direct Work rules: the context file your orchestrator loads (`k-direct-work.md` for `konductor`, `k-orchestrator-routing-rules.md` for the mux and cmux orchestrators). Under `k-direct-work.md` you read, write, run commands and commit yourself. Under `k-orchestrator-routing-rules.md` you use `Read`, `Glob`, and `Grep` for files and search, and `Bash` only for the read-only commands its Orchestrator Direct Work table lists. Either way, before dispatching a write agent, read `.wt-ledger.json` and run `git worktree list` (see Worktree Scoping below). Once you hand a write to an agent, `git worktree add`, `git worktree remove`, and every other state-changing command for that work stay with the write agent.
 
@@ -48,12 +48,11 @@ legitimate forms:
 decision at all — they share the primary working tree by default, and the
 dispatch prompt does not need to name a target.
 
-**Before dispatch (orchestrator, read-only):** using the direct reads
+**Before dispatch (orchestrator, a read):** using the direct reads
 above, check current worktree state (`.wt-ledger.json` and `git worktree
 list` — treat `git worktree list` as ground truth over the ledger, which can
 go stale) and decide which of the three forms applies for this task. This is
-a read plus a naming decision, not a mutation, so the zero-mutation rule
-still holds.
+a read plus a naming decision, not a mutation, so it changes no state.
 
 **State the decision in the dispatch prompt:**
 

@@ -195,7 +195,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run, and one re-review of the fix and the code that uses it; a CRITICAL that survives is reported as unresolved. An artifact that passed review is not reviewed again unless it changes.
+fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; a CRITICAL or IMPORTANT finding that survives blocks done, and the orchestrator stops and reports it to you. An artifact that passed review is not reviewed again unless it changes.
 
 ## Maker-checker
 
