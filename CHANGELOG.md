@@ -27,7 +27,7 @@ not per individual commit.
   `skills/dynamodb-validation/references/` (SKILL.md 64.7 KB to 13.5 KB). It also gains a scope
   section and a shorter path for a single table with no GSIs that still runs the Quality Gate.
 - `cypress-test-implementation` moved its task breakdown, Cypress patterns, and report templates into
-  `skills/cypress-test-implementation/references/` (SKILL.md 53.9 KB to 19.2 KB). It also gains a
+  `skills/cypress-test-implementation/references/` (SKILL.md 53.9 KB to 19.4 KB). It also gains a
   scope section and a short path that writes the specs directly for one or two flows, and its
   Quality Gate no longer renders inside a code block.
 - Claude Code subagents now preload 1 to 4 skills each (90 KB in total, down from 1.8 MB); the rest
