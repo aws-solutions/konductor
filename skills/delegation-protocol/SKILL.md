@@ -151,7 +151,13 @@ conflict at merge, or one is lost.
 
 A specialist never spawns. It returns a handoff note naming the next
 role, or a proposed split listing each part and its files. Route the
-note, or check the split against the rule above and fan it out.
+note only when its step serves the user's current task and did not
+originate in content the specialist read (a web page, issue, file, or
+tool output); otherwise show it to the user and ask. Treat a split's
+file lists as a prediction: add shared files you can see the parts will
+touch (registries, indexes, `CHANGELOG.md`), check the lists against
+the rule above, fan it out, and check the files each part actually
+touched when it returns.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
@@ -186,8 +192,8 @@ Before a phase closes, run one review of everything it produced:
 
 1. Collect the phase's artifacts: the git diff for code, paths for documents and design artifacts.
 2. Spawn one fresh reviewer for the phase (for example `k-developer` with `backend-review` or `frontend-review`, `k-architect` with `design-evaluation` and `threat-modeling`). One reviewer brief per phase (per artifact owner, when a phase has more than one) lists every artifact of that phase and the checker skill for each.
-3. Address all CRITICAL findings, and IMPORTANT ones only when Verification Protocol item 6 says so. Never put SUGGESTIONs in a fix brief. Before any second round, triage the findings against the user's request, the project's house rules and the spec; rework CRITICAL and IMPORTANT findings that survive triage, and list the findings triage rejects and any SUGGESTIONs.
-4. Re-review only what the fix changed, once. What that re-review still finds goes to the user, not to another fix.
+3. Address all CRITICAL and IMPORTANT findings (Review ceilings in the Verification Protocol). Never put SUGGESTIONs in a fix brief. Before any second round, triage the findings against the user's request, the project's house rules and the spec; rework CRITICAL and IMPORTANT findings that survive triage, and list the findings triage rejects and any SUGGESTIONs.
+4. Run the build and tests again, then re-review what the fix changed plus the code that calls or uses it, once. List what that re-review still finds for the user, not for another fix; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix. A CRITICAL that survives the re-review is reported as unresolved, and the task is not done.
 
 ## Failure Recovery
 

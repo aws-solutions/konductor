@@ -175,8 +175,9 @@ release will expose as a setting.
 
 ## Orchestrator and delegation
 
-**`konductor`**, as the orchestrator, is the hub. Specialists hold no spawn tool in either
-runtime (see [Who can delegate to whom](agents.md#who-can-delegate-to-whom)), so every piece of
+**`konductor`**, as the orchestrator, is the hub. Specialists hold no spawn tool in Kiro CLI
+v3 or Claude Code, and the core rules forbid spawning everywhere (see
+[Who can delegate to whom](agents.md#who-can-delegate-to-whom)), so every piece of
 work routes through `konductor`, which decides who owns it, hands it over, and checks the result.
 A specialist does its own part, then returns a note naming the next role, or a proposed parallel
 split with the files each part touches, and `konductor` routes it.
@@ -195,7 +196,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates — **up to 2 fix cycles** (`k-delegate` step 8). An artifact that passed review is not reviewed again unless it changes.
+fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix and one re-review of that fix. An artifact that passed review is not reviewed again unless it changes.
 
 ## Maker-checker
 
