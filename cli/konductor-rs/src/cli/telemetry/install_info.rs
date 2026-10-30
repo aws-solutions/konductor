@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// telemetry/install_info.rs — `<target_dir>/.konductor/install-info.json`
-// schema, `agent_version` derivation, and write and removal mechanics.
+// telemetry/install_info.rs - `<target_dir>/.konductor/install-info.json`
+// path, `agent_version` derivation, and read, write and removal mechanics.
 //
 // `agent_version` is the installed content's own version, reported
 // separately from the running binary's version, which reaches every
@@ -10,12 +10,11 @@
 
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
-
 use super::super::config::KONDUCTOR_DIR_NAME;
 
-/// Independent of `identity::SCHEMA_VERSION`/`instance::SCHEMA_VERSION`.
-pub(crate) const SCHEMA_VERSION: u64 = 1;
+/// The record's shape and validity rule live in `konductor-telemetry` so
+/// skill-lookup-mcp reads the file exactly as the CLI does.
+pub(crate) use konductor_telemetry::install_info::{InstallInfoAbsence, InstallInfoRecord};
 
 const INSTALL_INFO_FILE_NAME: &str = "install-info.json";
 
@@ -29,32 +28,6 @@ const FILE_MODE: u32 = 0o600;
 /// Relative to an install source's own root; written by `synth`'s
 /// `dispatch_synth_with`.
 const DIST_VERSION_RELATIVE_PATH: &str = "dist/VERSION";
-
-/// `<target_dir>/.konductor/install-info.json`'s on-disk shape.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct InstallInfoRecord {
-    pub schema_version: u64,
-    /// Degrades to null rather than defaulting when there's no
-    /// `VERSION` file under `dist/` or it doesn't parse.
-    pub agent_version: Option<String>,
-    pub harness: String,
-    pub installed_at: String,
-}
-
-impl InstallInfoRecord {
-    fn new(
-        agent_version: Option<String>,
-        harness: impl Into<String>,
-        installed_at: impl Into<String>,
-    ) -> Self {
-        InstallInfoRecord {
-            schema_version: SCHEMA_VERSION,
-            agent_version,
-            harness: harness.into(),
-            installed_at: installed_at.into(),
-        }
-    }
-}
 
 pub(crate) fn install_info_path(target_dir: &Path) -> std::path::PathBuf {
     target_dir
@@ -107,11 +80,11 @@ pub(crate) fn write_install_info(
     write_record(target_dir, &record)
 }
 
-/// Removes the opt-in record, so an `install --no-telemetry` over a target
-/// that was installed with telemetry on actually opts it out. Leaving
-/// the file would keep every `report_*` gate open and make the next
-/// plain `update` carry telemetry forward as enabled. An absent file is
-/// not an error.
+/// Removes the opt-in record, so an `install --no-telemetry` or
+/// `update --no-telemetry` over a target that was installed with
+/// telemetry on actually opts it out. Leaving the file would keep every
+/// `report_*` gate open and make the next plain `update` carry
+/// telemetry forward as enabled. An absent file is not an error.
 pub(crate) fn remove_install_info(target_dir: &Path) -> std::io::Result<()> {
     match std::fs::remove_file(install_info_path(target_dir)) {
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -135,23 +108,6 @@ fn write_record(target_dir: &Path, record: &InstallInfoRecord) -> std::io::Resul
     crate::cli::atomic_write::write_atomic_with_mode(&path, rendered.as_bytes(), FILE_MODE)
 }
 
-/// Why a read did not produce a usable [`InstallInfoRecord`], for a
-/// caller that needs to tell "nobody chose this" apart from "the
-/// target opted out." `read_install_info` collapses both into `None`
-/// for callers that only need a yes/no; callers that need to warn on
-/// a broken record specifically use this type instead.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum InstallInfoAbsence {
-    /// No file at `install_info_path(target_dir)` -- the target's own
-    /// `--no-telemetry` choice at install.
-    NotFound,
-    /// A file exists but is not a record anyone chose to write this
-    /// way: unreadable (I/O error), not valid JSON, or a
-    /// `schema_version` this binary does not recognize. Nobody opted
-    /// out; something wrote, or left, a file that cannot be trusted.
-    Broken,
-}
-
 /// One filesystem read, three outcomes: `Ok` (a valid, current-schema
 /// record), or `Err` naming which of the two ways a record can fail to
 /// read back (see [`InstallInfoAbsence`]). `read_install_info` is a
@@ -162,20 +118,7 @@ pub(crate) enum InstallInfoAbsence {
 pub(crate) fn read_install_info_detailed(
     target_dir: &Path,
 ) -> Result<InstallInfoRecord, InstallInfoAbsence> {
-    let path = install_info_path(target_dir);
-    let contents = match std::fs::read_to_string(path) {
-        Ok(contents) => contents,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            return Err(InstallInfoAbsence::NotFound);
-        }
-        Err(_) => return Err(InstallInfoAbsence::Broken),
-    };
-    let record: InstallInfoRecord =
-        serde_json::from_str(&contents).map_err(|_| InstallInfoAbsence::Broken)?;
-    if record.schema_version != SCHEMA_VERSION {
-        return Err(InstallInfoAbsence::Broken);
-    }
-    Ok(record)
+    konductor_telemetry::install_info::read_install_info_record(&install_info_path(target_dir))
 }
 
 /// `None` for missing, unreadable, or an unrecognized schema version.
@@ -201,6 +144,7 @@ pub(crate) fn install_info_exists(target_dir: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use konductor_telemetry::install_info::INSTALL_INFO_SCHEMA_VERSION as SCHEMA_VERSION;
     use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};

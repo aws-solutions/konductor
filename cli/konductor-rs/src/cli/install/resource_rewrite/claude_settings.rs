@@ -66,12 +66,7 @@ pub(crate) fn is_claude_settings_path(path: &str) -> bool {
 /// fire in every project, and `settings.local.json` at `$HOME` only applies
 /// to sessions started there), `.claude/settings.local.json` otherwise.
 pub(crate) fn claude_hooks_settings_relative_path(target_dir: &Path) -> &'static str {
-    let canonical =
-        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    let is_home = std::env::var_os("HOME")
-        .filter(|home| !home.is_empty())
-        .is_some_and(|home| canonical(Path::new(&home)) == canonical(target_dir));
-    if is_home {
+    if super::target_dir_is_home(target_dir) {
         CLAUDE_SETTINGS_RELATIVE_PATH
     } else {
         CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH

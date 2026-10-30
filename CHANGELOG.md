@@ -47,6 +47,8 @@ not per individual commit.
   MCP server is session-wide; the plugin release PR says to tag by hand.
 - Claude Code agents and benchmarks use the Claude Code model ID (`claude-sonnet-5-5`), and the
   plugin ships `NOTICE.txt` with README links pinned to its release.
+- `update --no-telemetry` now keeps a project opted out on later updates, and the new
+  `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
 
 ## [1.2.0] - 2026-10-26
 

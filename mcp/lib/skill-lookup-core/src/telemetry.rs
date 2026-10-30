@@ -38,6 +38,7 @@ const TELEMETRY_REPORT_SCRIPT: &str =
 
 const MATERIALIZED_SCRIPT_NAME: &str = "konductor-telemetry-report-mcp.sh";
 
+pub use konductor_telemetry::install_info::install_info_record_is_valid;
 pub use konductor_telemetry::NIL_UUID_SENTINEL;
 
 /// No fallback to `std::env::temp_dir()`, never derived from

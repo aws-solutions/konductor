@@ -80,6 +80,40 @@ pub(crate) struct Cli {
     /// task is never started at all.
     #[arg(long = "telemetry", value_enum, default_value = "on")]
     pub(crate) telemetry: TelemetryMode,
+
+    /// Path to the install target's `install-info.json` telemetry record.
+    /// When given, telemetry is on only if the file holds a valid record,
+    /// the same rule the Konductor CLI applies. Missing, unreadable,
+    /// malformed or wrong-schema means off, as with `--telemetry off`.
+    /// The record is target-wide, so every agent that points here follows
+    /// the same opt-out. A leading `~` is expanded and a relative path is
+    /// resolved against the working directory, as for `--skills-dir`.
+    #[arg(long = "install-info", value_name = "PATH")]
+    pub(crate) install_info: Option<PathBuf>,
+}
+
+impl Cli {
+    /// `--telemetry` after applying `--install-info`. Does not consult
+    /// `KONDUCTOR_TELEMETRY`; `main` checks that separately.
+    pub(crate) fn effective_telemetry(&self) -> TelemetryMode {
+        self.effective_telemetry_with_home(std::env::var_os("HOME"))
+    }
+
+    /// `effective_telemetry` with `home` passed in, so tests need not
+    /// mutate the process environment. A `~` path that cannot expand
+    /// names no record, so it means off.
+    fn effective_telemetry_with_home(&self, home: Option<std::ffi::OsString>) -> TelemetryMode {
+        let Some(path) = &self.install_info else {
+            return self.telemetry;
+        };
+        let record_is_valid = expand_tilde_with_home(path, home)
+            .is_ok_and(|path| skill_lookup_core::telemetry::install_info_record_is_valid(&path));
+        if record_is_valid {
+            self.telemetry
+        } else {
+            TelemetryMode::Off
+        }
+    }
 }
 
 /// `--telemetry`'s accepted values.
@@ -958,5 +992,119 @@ mod tests {
         assert_eq!(resolved.valid, vec![dir.clone()]);
         assert!(!resolved.messages.is_empty());
         let _ = fs::remove_dir_all(&dir);
+    }
+    fn parse(args: &[&str]) -> Cli {
+        Cli::try_parse_from(std::iter::once("skill-lookup-mcp").chain(args.iter().copied()))
+            .unwrap()
+    }
+
+    #[test]
+    fn missing_install_info_turns_telemetry_off() {
+        let dir = temp_dir("install-info-missing");
+        let record = dir.join("install-info.json");
+        let cli = parse(&["--install-info", record.to_str().unwrap()]);
+        assert_eq!(cli.effective_telemetry(), TelemetryMode::Off);
+    }
+
+    const VALID_RECORD: &str = r#"{"schema_version":1,"agent_version":"1.2.0","harness":"kiro-cli-v2","installed_at":"2026-01-01T00:00:00Z"}"#;
+
+    fn telemetry_with_record(label: &str, contents: &str) -> TelemetryMode {
+        let dir = temp_dir(label);
+        let record = dir.join("install-info.json");
+        fs::write(&record, contents).unwrap();
+        parse(&["--install-info", record.to_str().unwrap()]).effective_telemetry()
+    }
+
+    #[test]
+    fn present_install_info_leaves_telemetry_on() {
+        assert_eq!(
+            telemetry_with_record("install-info-present", VALID_RECORD),
+            TelemetryMode::On
+        );
+    }
+
+    #[test]
+    fn malformed_install_info_turns_telemetry_off() {
+        for contents in ["not json", "{}"] {
+            assert_eq!(
+                telemetry_with_record("install-info-malformed", contents),
+                TelemetryMode::Off,
+                "contents: {contents}"
+            );
+        }
+    }
+
+    #[test]
+    fn wrong_schema_install_info_turns_telemetry_off() {
+        let wrong_schema = VALID_RECORD.replace(r#""schema_version":1"#, r#""schema_version":2"#);
+        assert_eq!(
+            telemetry_with_record("install-info-wrong-schema", &wrong_schema),
+            TelemetryMode::Off
+        );
+    }
+
+    #[test]
+    fn no_install_info_flag_keeps_the_telemetry_flag() {
+        assert_eq!(parse(&[]).effective_telemetry(), TelemetryMode::On);
+        assert_eq!(
+            parse(&["--telemetry", "off"]).effective_telemetry(),
+            TelemetryMode::Off
+        );
+    }
+
+    #[test]
+    fn install_info_with_a_leading_tilde_reads_the_record_under_home() {
+        let home = temp_dir("install-info-tilde-home");
+        let cli = parse(&["--install-info", "~/.konductor/install-info.json"]);
+        assert_eq!(
+            cli.effective_telemetry_with_home(Some(home.clone().into_os_string())),
+            TelemetryMode::Off,
+            "no record under HOME yet"
+        );
+
+        fs::create_dir_all(home.join(".konductor")).unwrap();
+        fs::write(home.join(".konductor/install-info.json"), VALID_RECORD).unwrap();
+        assert_eq!(
+            cli.effective_telemetry_with_home(Some(home.clone().into_os_string())),
+            TelemetryMode::On
+        );
+        let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn install_info_with_a_leading_tilde_and_no_home_turns_telemetry_off() {
+        let cli = parse(&["--install-info", "~/.konductor/install-info.json"]);
+        assert_eq!(cli.effective_telemetry_with_home(None), TelemetryMode::Off);
+    }
+
+    #[test]
+    fn relative_install_info_resolves_against_the_working_directory() {
+        let project = temp_dir("install-info-relative");
+        fs::create_dir_all(project.join(".konductor")).unwrap();
+        fs::write(project.join(".konductor/install-info.json"), VALID_RECORD).unwrap();
+        let cli = parse(&["--install-info", ".konductor/install-info.json"]);
+
+        let _cwd_guard = cwd_lock::lock();
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&project).unwrap();
+        let telemetry = cli.effective_telemetry_with_home(None);
+        std::env::set_current_dir(&original_cwd).unwrap();
+
+        assert_eq!(telemetry, TelemetryMode::On);
+        let _ = fs::remove_dir_all(&project);
+    }
+
+    #[test]
+    fn telemetry_off_wins_over_a_present_install_info() {
+        let dir = temp_dir("install-info-present-but-off");
+        let record = dir.join("install-info.json");
+        fs::write(&record, VALID_RECORD).unwrap();
+        let cli = parse(&[
+            "--telemetry",
+            "off",
+            "--install-info",
+            record.to_str().unwrap(),
+        ]);
+        assert_eq!(cli.effective_telemetry(), TelemetryMode::Off);
     }
 }
