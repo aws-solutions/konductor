@@ -347,7 +347,7 @@ Read the section for the current mode in `references/report-templates.md` when p
 
 **Save History:**
 
-If enabled, save to `.kiro/specs/validation-history/cypress-progress-[timestamp].json`:
+If enabled, save to `.kiro/specs/validation-history/cypress-progress-[timestamp].json`.
 
 Read the history JSON example in the Progress section of `references/report-templates.md` before saving history.
 
