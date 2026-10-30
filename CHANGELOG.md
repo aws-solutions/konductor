@@ -20,7 +20,7 @@ not per individual commit.
   `skills/dynamodb-design/references/` (SKILL.md 75.5 KB to 16.1 KB). It also gains a scope
   section and a short answer path for a single table with one or two access patterns.
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
-  `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 30.2 KB). It also gains a
+  `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 30.3 KB). It also gains a
   scope section and a shorter Coverage-mode path for one module or one PR, and drops the
   compatibility and roadmap lists.
 - Claude Code subagents now preload 1 to 4 skills each (90 KB in total, down from 1.8 MB); the rest

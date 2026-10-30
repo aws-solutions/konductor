@@ -77,12 +77,12 @@ Include at the top of the report file and update as stages complete:
 - [x] Analysis started
 - [ ] Testing philosophy detected
 - [ ] Artifacts parsed
-- [ ] Test distribution analyzed
+- [ ] Test distribution analyzed (or: skipped, lightweight fallback)
 - [ ] Functional test coverage calculated
 - [ ] Non-functional test coverage analyzed
 - [ ] Integration points analyzed
 - [ ] Gaps identified (with subagent analysis)
-- [ ] Pattern analysis complete
+- [ ] Pattern analysis complete (or: skipped, lightweight fallback)
 - [ ] Readiness assessment complete (Readiness mode only)
 - [ ] Risk evaluation complete (Readiness mode only)
 - [ ] Report finalized
