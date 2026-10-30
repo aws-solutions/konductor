@@ -1,6 +1,6 @@
 ---
 name: constraints
-description: MUST USE for every interaction across all Konductor agents. Defines the maker-checker, quality gate, severity ordering, and failure recovery rules; the always-loaded core rules hold the rest.
+description: MUST USE for every interaction across all Konductor agents. Defines the maker-checker, quality gate, and failure recovery rules; the always-loaded core rules hold the rest.
 version: 1.0.0
 tags: [skill, behavioral, constraints, quality, security]
 ---
@@ -30,7 +30,7 @@ The NEVER DO rules live in the core rules, which every agent loads at session st
 5. **Comment complex logic**: see Engineering practices in the core rules
 6. **Structured logging**: see Engineering practices in the core rules
 7. **Verify before done**: see "No broken commits" and "No broken state" under NEVER DO, and Engineering practices, in the core rules
-8. **Severity ordering** — Always present findings as CRITICAL → IMPORTANT → SUGGESTION
+8. **Severity ordering**: see Engineering practices in the core rules
 
 ## Failure Recovery
 
@@ -59,7 +59,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (must fix before proceeding):**
+**IMPORTANT (fix before proceeding, or list for the user where the orchestrator's Verification Protocol item 6 allows):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts

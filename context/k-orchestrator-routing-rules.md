@@ -39,7 +39,7 @@ Never read a file whose purpose is to hold secrets, tokens, or private keys, wha
 
 You never create, edit, rename, or delete a project file. Every write goes to the owning specialist (`k-developer` for code and tests), whatever the size of the request, including a quick or obvious fix. The only files you write or remove yourself are the dispatch task and `.done` files in the Dispatch mechanics row, the zellij screen-dump file the `mux-dispatch` skill names, the `k-light-ui-testing` temp-credentials file, and, when your prompt has Memory & Skill Reflexes, the memory and skill files the `persistent-memory` or `workspace-skills` skill writes (including its `.gitignore` entry). Nothing else.
 
-Direct work never replaces a phase. Requirements, design, implementation, review, and verification still go to their specialists, and every mutation, approval, and maker-checker rule in this file still applies.
+Direct work never replaces a phase. Requirements, design, implementation, review, and verification still go to their specialists, and every mutation and approval rule in this file, and the Verification Protocol in your prompt, still apply.
 
 When a task has independent parts, you may delegate them instead of doing them yourself. Once you delegate two or more, run them in parallel within rule 3's limit in your prompt. You may spawn more than one agent of the same type, for example two `k-developer` agents on two separate modules. See the `delegation-protocol` skill's Parallel Execution section for the authoritative rules on file overlap and worktrees.
 
