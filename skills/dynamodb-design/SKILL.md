@@ -138,7 +138,7 @@ Based on the analysis:
 For queries not supported by the primary key:
 
 1. **Identify Alternate Patterns**: List queries that can't use partition/sort key
-2. **Evaluate GSI vs LSI**: Use decision framework to choose index type
+2. **Evaluate GSI vs LSI**: Use the GSI vs LSI decision framework (in `references/aws-best-practices.md`) to choose index type
    - Default to GSI unless strongly consistent reads required
    - Validate LSI 10GB partition limit if considering LSI
    - Document why GSI or LSI was chosen
@@ -271,7 +271,7 @@ Core subsections apply to every design that runs the full workflow, so always re
 
 Feature subsections apply only when the design uses the feature:
 
-- GSI vs LSI: Decision Framework (when an LSI is an option)
+- GSI vs LSI: Decision Framework (when the design needs any secondary index)
 - How to Handle "List All Items" Requirements (when a pattern lists every item)
 - DynamoDB Streams
 - Transactions (ACID Operations)
