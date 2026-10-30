@@ -45,6 +45,8 @@ not per individual commit.
   it can still run the release scripts and create the tag.
 - The README says the mux and cmux orchestrators skip permission checks and that the plugin's AWS
   MCP server is session-wide; the plugin release PR says to tag by hand.
+- Claude Code agents and benchmarks use the Claude Code model ID (`claude-sonnet-5-5`), and the
+  plugin ships `NOTICE.txt` with README links pinned to its release.
 - `update --no-telemetry` now keeps a project opted out on later updates, and the new
   `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
 

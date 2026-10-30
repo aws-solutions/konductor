@@ -371,7 +371,8 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 | `k-browser` | `claude-sonnet-5.5` | — | 4 | `playwright-mcp` |
 | `k-media-analyzer` | `claude-sonnet-5.5` | — | 1 | — |
 
-Every agent runs `claude-sonnet-5.5`. The SOP column is each spec's
+Every agent runs `claude-sonnet-5.5`, the Kiro CLI form of the ID. On Claude Code, `konductor synth`
+writes it as `claude-sonnet-5-5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
 `clientConfig.claudeCli.skills`. Claude Code preloads that list only when the agent runs as a
 subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand.
