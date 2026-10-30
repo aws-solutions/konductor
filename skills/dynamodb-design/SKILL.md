@@ -17,7 +17,7 @@ Generates DynamoDB table designs from access patterns and system requirements. C
 
 **Not for:** reviewing an existing design (use `dynamodb-validation`), relational schema design, or a one-off key question.
 
-**Lightweight fallback:** for a single table with one or two access patterns, state the partition key, sort key, and at most one GSI with a one-paragraph rationale; do not run the full workflow or produce the report.
+**Lightweight fallback:** for a single table with one or two access patterns, state the partition key, sort key, and at most one GSI with a one-paragraph rationale; do not run the full workflow or produce the report. Still check the Quality Gate's CRITICAL items and state any that apply.
 
 ## Usage
 
