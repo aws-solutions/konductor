@@ -54,7 +54,8 @@ def test_agent_tool_entries_ignores_specs_without_an_agent_grant():
     assert _agent_tool_entries(spec) == []
 
 
-# `*` is rejected here, at spec level, because a wildcard on v2 includes `subagent`.
+# `*` is rejected here, at spec level, because it grants every tool, `subagent`
+# included. Synth's v2 expansion is a backstop, not the policy.
 KIRO_SPAWN_TOOLS = {"subagent", "use_subagent", "agent_crew", "*"}
 CLAUDE_SPAWN_TOOLS = {"Agent", "Task", "Workflow"}
 
