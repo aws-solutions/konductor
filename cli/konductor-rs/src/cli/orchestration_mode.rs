@@ -8,14 +8,12 @@ use std::path::{Path, PathBuf};
 
 use crate::cli::config::{self, ConfigError, CONFIG_FILE_NAME, KONDUCTOR_DIR_NAME};
 
-#[allow(dead_code)] // Callers arrive with the session hook.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Mode {
     Auto,
     Coordinator,
 }
 
-#[allow(dead_code)]
 impl Mode {
     /// The only place the allowed values are listed. Case-sensitive.
     pub(crate) fn parse(value: &str) -> Option<Mode> {
@@ -26,6 +24,7 @@ impl Mode {
         }
     }
 
+    #[allow(dead_code)] // `doctor orchestration` prints it.
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Mode::Auto => "auto",
@@ -34,7 +33,6 @@ impl Mode {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ModeResolution {
     /// No `~/.konductor/config.yml`, or no `orchestration.mode` in it.
@@ -45,7 +43,6 @@ pub(crate) enum ModeResolution {
     Fallback(FallbackReason),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FallbackReason {
     HomeUnresolved,
@@ -62,12 +59,10 @@ pub(crate) enum FallbackReason {
     },
 }
 
-#[allow(dead_code)]
 pub(crate) fn user_config_path(home: &Path) -> PathBuf {
     home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME)
 }
 
-#[allow(dead_code)]
 /// `home` comes from `index::env_home_dir`, which treats an empty `HOME`
 /// as unset. A dangling symlink counts as no file.
 pub(crate) fn resolve_user_mode(home: Option<&Path>) -> ModeResolution {
@@ -91,7 +86,6 @@ pub(crate) fn resolve_user_mode(home: Option<&Path>) -> ModeResolution {
     }
 }
 
-#[allow(dead_code)]
 fn load_failure(path: PathBuf, error: ConfigError) -> FallbackReason {
     match error {
         ConfigError::ProjectConfigNotReadable { source, .. } => FallbackReason::Unreadable {
@@ -109,7 +103,6 @@ fn load_failure(path: PathBuf, error: ConfigError) -> FallbackReason {
     }
 }
 
-#[allow(dead_code)]
 fn first_line(text: &str) -> String {
     text.lines().next().unwrap_or_default().to_string()
 }

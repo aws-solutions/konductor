@@ -32,6 +32,7 @@ pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
 mod logging;
+mod orchestration_hook;
 pub(crate) mod orchestration_mode;
 pub(crate) mod output;
 pub(crate) mod report;
@@ -441,6 +442,22 @@ pub enum Commands {
         #[arg(long)]
         install_root: Option<std::path::PathBuf>,
     },
+
+    /// Prints the coordinator persona for a `konductor` session when
+    /// `~/.konductor/config.yml` sets `orchestration.mode: coordinator`.
+    ///
+    /// Not one of the public commands. Hidden from --help.
+    #[command(hide = true, name = "__orchestration-hook")]
+    OrchestrationHook {
+        /// The agent this hook belongs to, for harnesses whose payload
+        /// does not name it (Kiro CLI v2 bakes it in at install).
+        #[arg(long)]
+        agent: Option<String>,
+        /// The install that wired this hook; only the nearest install
+        /// that owns the agent prints, so two installs never inject twice.
+        #[arg(long)]
+        install_root: Option<std::path::PathBuf>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -479,6 +496,7 @@ impl Commands {
             Commands::Metrics { .. } => Self::METRICS,
             Commands::DumpSchema => "__dump_schema",
             Commands::TelemetryHook { .. } => "__telemetry-hook",
+            Commands::OrchestrationHook { .. } => "__orchestration-hook",
         }
     }
 

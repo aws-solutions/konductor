@@ -60,6 +60,9 @@ pub(crate) struct HookPayload {
     /// agent on `SubagentStart`.
     #[serde(default, alias = "agent_name")]
     pub(crate) agent_type: Option<String>,
+    /// Which event fired. Read only by the orchestration hook's event gate.
+    #[serde(default)]
+    pub(crate) hook_event_name: Option<String>,
     /// Kiro v3 `PreToolUse`: the delegation tool's name.
     #[serde(default)]
     tool_name: Option<String>,
@@ -674,7 +677,10 @@ mod tests {
             kiro_session_agent_mode(&home.join(".kiro"), "sess_abc-123"),
             Some("konductor".to_string())
         );
-        assert_eq!(kiro_session_agent_mode(&home.join(".kiro"), "sess_missing"), None);
+        assert_eq!(
+            kiro_session_agent_mode(&home.join(".kiro"), "sess_missing"),
+            None
+        );
         std::fs::remove_dir_all(&home).ok();
     }
 
@@ -682,7 +688,11 @@ mod tests {
     fn kiro_session_agent_mode_rejects_path_like_session_ids() {
         let home = scratch_dir("session-store-unsafe");
         for id in ["../etc", "a/b", "", "sess.json"] {
-            assert_eq!(kiro_session_agent_mode(&home.join(".kiro"), id), None, "{id:?}");
+            assert_eq!(
+                kiro_session_agent_mode(&home.join(".kiro"), id),
+                None,
+                "{id:?}"
+            );
         }
         std::fs::remove_dir_all(&home).ok();
     }
