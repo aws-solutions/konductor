@@ -194,7 +194,7 @@ Example: `architect-system-design.md`, `developer-task-breakdown.md`
 
 ## Phase Review
 
-Before a phase closes, run one review of everything it produced:
+Before a phase closes, run the review your Verification Protocol calls for (for `konductor`, as its Direct Work rules apply it) on everything the phase produced:
 
 1. Collect the phase's artifacts: the git diff for code, paths for documents and design artifacts.
 2. Spawn the reviewers your Verification Protocol names (for `konductor`, one per phase; for the mux and cmux orchestrators, one per artifact), for example `k-developer` with `backend-review` or `frontend-review`, `k-architect` with `design-evaluation` and `threat-modeling`. Each reviewer brief lists every artifact that reviewer covers and the checker skill for each.
@@ -225,7 +225,7 @@ This section covers failed spawns: the spawn errors, times out, or the subagent 
 
 - Wrong agent selected for the task domain
 - Handoff file exceeds 300 lines without splitting
-- Phase closed without its review
+- Phase closed without the review its orchestrator's rules require
 
 **SUGGESTION:**
 
