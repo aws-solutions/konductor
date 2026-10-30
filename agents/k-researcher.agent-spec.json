@@ -47,13 +47,7 @@
       "tools": ["WebFetch", "WebSearch", "TodoWrite", "Read", "Skill"],
       "skills": [
         "constraints",
-        "external-research",
-        "sdlc-navigator",
-        "document-formats",
-        "deliberation-panel",
-        "socratic-elicitation",
-        "persistent-memory",
-        "workspace-skills"
+        "external-research"
       ]
     }
   }

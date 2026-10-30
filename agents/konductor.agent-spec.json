@@ -93,18 +93,7 @@
       ],
       "skills": [
         "constraints",
-        "delegation-protocol",
-        "agents-md-authoring",
-        "claude-teams-behavior",
-        "pre-planning-analysis",
-        "socratic-elicitation",
-        "deliberation-panel",
-        "verification",
-        "persistent-memory",
-        "workspace-skills",
-        "sdlc-navigator",
-        "sop-state-management",
-        "about-konductor"
+        "claude-teams-behavior"
       ]
     }
   }

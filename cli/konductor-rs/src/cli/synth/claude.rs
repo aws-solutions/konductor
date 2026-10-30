@@ -312,6 +312,10 @@ impl HarnessTransformer for ClaudeTransformer {
                     &agent.dependencies.context.context_names,
                     &model.context,
                     &skill_names,
+                    &super::parse_canonical::skill_names_from_dependencies(
+                        &agent.dependencies.skills,
+                    )
+                    .collect::<Vec<_>>(),
                     &agent.dependencies.mcp_registry,
                 )?;
                 write_agent_file(staging_dir, &agent.name, &rendered)?;
@@ -364,6 +368,11 @@ impl HarnessTransformer for ClaudeTransformer {
 /// `merge_mcp_servers` (see that function's own doc comment for the
 /// precedence rule) before rendering, so the frontmatter's `mcpServers:`
 /// key reflects both sources rather than only the Claude-specific one.
+///
+/// `declared_skills` is the agent's `dependencies.skills.skillNames` in
+/// declared order; the ones not in `claude.skills` are listed in a
+/// trailing block (see `render_on_demand_skills_block`).
+#[allow(clippy::too_many_arguments)]
 fn render_agent_md(
     name: &str,
     config: &super::parser::AgentConfig,
@@ -371,6 +380,7 @@ fn render_agent_md(
     context_names: &[String],
     context_defs: &[super::model::ContextDef],
     skill_names: &HashSet<&str>,
+    declared_skills: &[&str],
     mcp_registry: &BTreeMap<String, McpServerDef>,
 ) -> Result<String, String> {
     for skill_name in &claude.skills {
@@ -395,19 +405,47 @@ fn render_agent_md(
     };
     let yaml = serde_yaml::to_string(&frontmatter)
         .map_err(|e| format!("failed to serialize frontmatter for agent '{name}': {e}"))?;
-    // Trimmed before appending context blocks (only when there's at
-    // least one to append) so the prompt-to-first-block transition gets
-    // exactly one blank line, matching the live materialization's own
-    // spacing, rather than an extra one from the source prompt's own
-    // trailing newline. The no-context case is untouched -- the body is
+    // Trimmed before appending context blocks or the on-demand skills
+    // block (only when there's at least one to append) so the prompt is
+    // followed by exactly one blank line, matching the live
+    // materialization's own spacing, rather than an extra one from the
+    // source prompt's own trailing newline. With neither, the body is
     // exactly `system_prompt`, unmodified.
+    let on_demand_block = render_on_demand_skills_block(declared_skills, &claude.skills);
     let mut body = config.system_prompt.clone();
-    if !context_names.is_empty() {
+    if !context_names.is_empty() || on_demand_block.is_some() {
         let trimmed_len = body.trim_end().len();
         body.truncate(trimmed_len);
     }
     append_context_blocks(&mut body, name, context_names, context_defs)?;
+    if let Some(block) = on_demand_block {
+        body.push_str("\n\n");
+        body.push_str(&block);
+    }
     Ok(format!("---\n{yaml}---\n\n{body}"))
+}
+
+/// Lists the agent's declared skills that are not in the Claude Code
+/// preload, so a spawned subagent knows what it can load. `None` when
+/// every declared skill is preloaded.
+fn render_on_demand_skills_block(declared: &[&str], preloaded: &[String]) -> Option<String> {
+    let on_demand: indexmap::IndexSet<&str> = declared
+        .iter()
+        .copied()
+        .filter(|name| !preloaded.iter().any(|p| p == name))
+        .collect();
+    if on_demand.is_empty() {
+        return None;
+    }
+    let names = on_demand
+        .iter()
+        .map(|name| format!("`{name}`"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    Some(format!(
+        "## Skills you can load\n\nThese skills are yours but are not preloaded. Load one by \
+         name with the `Skill` tool when the task or your brief calls for it: {names}."
+    ))
 }
 
 /// Appends one `<Context: {name}>\n{content}\n</Context: {name}>` block
@@ -554,6 +592,7 @@ mod tests {
             &[],
             &[],
             &skill_names,
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -607,6 +646,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -645,6 +685,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -675,6 +716,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -762,6 +804,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -815,6 +858,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -873,6 +917,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -929,6 +974,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -967,6 +1013,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1025,6 +1072,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &mcp_registry,
         )
         .unwrap();
@@ -1101,6 +1149,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &mcp_registry,
         )
         .unwrap();
@@ -1161,6 +1210,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &mcp_registry,
         )
         .unwrap();
@@ -1195,6 +1245,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1260,6 +1311,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         );
         let err = match result {
@@ -1453,6 +1505,7 @@ mod tests {
             &context_names,
             &context_defs,
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1498,6 +1551,7 @@ mod tests {
             &context_names,
             &context_defs,
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
@@ -1528,11 +1582,118 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
         assert!(!rendered.contains("<Context:"));
         assert!(rendered.ends_with("You are a test agent."));
+    }
+
+    fn preloaded(names: &[&str]) -> Vec<String> {
+        names.iter().map(|n| n.to_string()).collect()
+    }
+
+    #[test]
+    fn on_demand_skills_block_lists_declared_minus_preloaded_in_declared_order() {
+        let block = render_on_demand_skills_block(
+            &["constraints", "zeta", "alpha", "backend-review", "zeta"],
+            &preloaded(&["constraints", "backend-review", "claude-teams-behavior"]),
+        )
+        .unwrap();
+        assert_eq!(
+            block,
+            "## Skills you can load\n\nThese skills are yours but are not preloaded. Load one by \
+             name with the `Skill` tool when the task or your brief calls for it: `zeta`, `alpha`."
+        );
+        assert!(!block.contains("claude-teams-behavior"));
+    }
+
+    #[test]
+    fn on_demand_skills_block_is_none_when_everything_declared_is_preloaded() {
+        assert!(render_on_demand_skills_block(&["a"], &preloaded(&["a", "b"])).is_none());
+        assert!(render_on_demand_skills_block(&[], &preloaded(&["a"])).is_none());
+    }
+
+    #[test]
+    fn on_demand_skills_block_contains_no_em_or_en_dashes() {
+        let block = render_on_demand_skills_block(&["a", "b"], &[]).unwrap();
+        assert!(!block.contains('\u{2014}') && !block.contains('\u{2013}'));
+    }
+
+    #[test]
+    fn render_agent_md_puts_skills_block_one_blank_line_after_last_context_block() {
+        let agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let context_names = vec!["rules.md".to_string()];
+        let context_defs = vec![ContextDef {
+            name: "rules.md".to_string(),
+            body: "Rules.\n".to_string(),
+        }];
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &context_names,
+            &context_defs,
+            &HashSet::new(),
+            &["backend-review"],
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(
+            rendered.ends_with(
+                "</Context: rules.md>\n\n## Skills you can load\n\nThese skills are yours but are \
+                 not preloaded. Load one by name with the `Skill` tool when the task or your \
+                 brief calls for it: `backend-review`."
+            ),
+            "got:\n{rendered}"
+        );
+    }
+
+    #[test]
+    fn render_agent_md_without_context_trims_prompt_before_skills_block() {
+        let mut agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        agent.config.system_prompt = "prompt text\n".to_string();
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+            &["backend-review"],
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(
+            rendered.contains("prompt text\n\n## Skills you can load"),
+            "got:\n{rendered}"
+        );
+        assert!(!rendered.contains("\n\n\n"), "got:\n{rendered}");
+    }
+
+    #[test]
+    fn render_agent_md_without_context_or_skills_block_keeps_prompt_verbatim() {
+        let mut agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        agent.config.system_prompt = "prompt text\n".to_string();
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+            &[],
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(
+            rendered.ends_with("---\n\nprompt text\n"),
+            "got:\n{rendered}"
+        );
     }
 
     /// End-to-end through `transform`, not just `render_agent_md`

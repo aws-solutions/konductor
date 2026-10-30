@@ -175,9 +175,17 @@ def main() -> int:
                 if name not in specs or len(row) <= max(i_model, i_skills):
                     continue
                 checked.add(name)
-                want_n = len(specs[name]["claude_skills"])
+                want_n = len(specs[name]["skill_names"])
                 if row[i_skills] != str(want_n):
-                    fail(f"{page}: {name} Skills column says {row[i_skills]!r}, spec has {want_n}")
+                    fail(f"{page}: {name} Skills column says {row[i_skills]!r}, spec declares {want_n}")
+                # The preload column is the Claude Code subagent preload,
+                # clientConfig.claudeCli.skills, a subset of what the agent declares.
+                i_pre = next((header.index(h) for h in header if h.startswith("Preloaded")), None)
+                if i_pre is not None and len(row) > i_pre:
+                    want_pre = len(specs[name]["claude_skills"])
+                    if row[i_pre] != str(want_pre):
+                        fail(f"{page}: {name} Preloaded column says {row[i_pre]!r}, "
+                             f"spec preloads {want_pre}")
                 if row[i_model] != specs[name]["model"]:
                     fail(f"{page}: {name} Model says {row[i_model]!r}, spec says {specs[name]['model']!r}")
                 # SOP columns drift the same way the skill counts do -- one spec
@@ -209,19 +217,25 @@ def main() -> int:
     # skips it, which is how it kept five stale counts through a roster rewrite.
     skills_counts = {}
     for header, rows in parse_md_tables(read(guide / "skills.md")):
-        if header[:2] != ["Agent", "Skills preloaded (Claude Code)"]:
+        if header[:3] != ["Agent", "Skills declared", "Preloaded on Claude Code"]:
             continue
         for row in rows:
             name = strip_md(row[0])
-            if name in specs and len(row) > 1:
-                skills_counts[name] = row[1]
+            if name in specs and len(row) > 2:
+                skills_counts[name] = (row[1], row[2])
     if not skills_counts:
-        fail("skills.md: no 'Agent | Skills preloaded (Claude Code)' table found")
+        fail("skills.md: no 'Agent | Skills declared | Preloaded on Claude Code' table found")
     else:
-        bad = {n: v for n, v in skills_counts.items()
-               if v != str(len(specs[n]["claude_skills"]))}
-        for n, v in sorted(bad.items()):
-            fail(f"skills.md: {n} says {v}, spec has {len(specs[n]['claude_skills'])}")
+        bad = []
+        for n, (declared, preloaded) in sorted(skills_counts.items()):
+            if declared != str(len(specs[n]["skill_names"])):
+                bad.append(n)
+                fail(f"skills.md: {n} Skills declared says {declared}, "
+                     f"spec declares {len(specs[n]['skill_names'])}")
+            if preloaded != str(len(specs[n]["claude_skills"])):
+                bad.append(n)
+                fail(f"skills.md: {n} Preloaded on Claude Code says {preloaded}, "
+                     f"spec preloads {len(specs[n]['claude_skills'])}")
         if missing := set(specs) - set(skills_counts):
             fail(f"skills.md: per-agent table missing agents: {sorted(missing)}")
         elif not bad:
@@ -248,7 +262,7 @@ def main() -> int:
         m = re.search(r"^\|\s*\*\*Skills\*\*[^|]*\|\s*\**(\d+)\**", body, re.M)
         if not m:
             continue  # the card spells the list out instead of counting it
-        want = len(specs[name]["claude_skills"])
+        want = len(specs[name]["skill_names"])
         if m.group(1) != str(want):
             card_fails.append(
                 f"agents.md: {name} card says {m.group(1)} skills, spec has {want}"
@@ -266,10 +280,10 @@ def main() -> int:
                 r'\{\s*k:\s*"' + re.escape(name) + r'",\s*v:\s*"(.*?)"\s*\}', rendered
             ):
                 found = re.search(r"(\d+) skills", m.group(1))
-                if found and found.group(1) != str(len(spec["claude_skills"])):
+                if found and found.group(1) != str(len(spec["skill_names"])):
                     card_fails.append(
                         f"{rel}: {name} roster row says {found.group(1)} skills, "
-                        f"spec has {len(spec['claude_skills'])}"
+                        f"spec declares {len(spec['skill_names'])}"
                     )
 
     if card_fails:
@@ -289,9 +303,11 @@ def main() -> int:
     section("named skills agree with the specs, not just counts")
     named_fails = []
 
+    # An agent declares a skill if either list names it: `konductor` carries
+    # `claude-teams-behavior` only in clientConfig.claudeCli.skills.
     declared_by = {}
     for name, spec in specs.items():
-        for skill in spec["claude_skills"]:
+        for skill in set(spec["skill_names"]) | set(spec["claude_skills"]):
             declared_by.setdefault(skill, set()).add(name)
 
     # (a) agents.md cards: every skill a card NAMES must be declared by that agent.

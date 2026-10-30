@@ -31,7 +31,7 @@ TASK: <Atomic, specific goal — one verb, one outcome>
 
 EXPECTED OUTCOME: <Concrete deliverables with success criteria>
 
-REQUIRED SKILLS: <Relevant expertise the subagent needs>
+REQUIRED SKILLS: <Konductor skills by exact skills/<name> identifier, so the subagent can load them with its skill tool; plus any other expertise>
 
 REQUIRED TOOLS: <Explicit tool allowlist — only these tools may be used>
 

@@ -79,6 +79,9 @@ pub fn parse_canonical(source_dir: &Path) -> Result<CanonicalModel, ParseError> 
     for warning in check_skill_scope_consistency(&agents) {
         eprintln!("konductor: warning: {warning}");
     }
+    for warning in check_claude_preload_budget(&agents, &skills) {
+        eprintln!("konductor: warning: {warning}");
+    }
 
     Ok(CanonicalModel {
         agents,
@@ -307,6 +310,100 @@ fn check_skill_scope_consistency(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
                 skill_names.into_iter().collect::<Vec<_>>()
             ));
         }
+    }
+    warnings
+}
+
+/// Policy budget for the skill bodies Claude Code injects into each
+/// spawned subagent, re-sent on every turn.
+pub(crate) const CLAUDE_PRELOAD_BUDGET_BYTES: usize = 32_768;
+/// Claude Code preloads at most this many `skills:` names; the rest are
+/// silently dropped.
+pub(crate) const CLAUDE_PRELOAD_NAME_CAP: usize = 32;
+
+/// What Claude Code injects into a spawned subagent for one agent: the
+/// deduplicated preload names in declared order and the byte total of
+/// their rendered SKILL.md files.
+pub(crate) struct ClaudePreload {
+    pub bytes: usize,
+    /// First occurrence wins; `names[CLAUDE_PRELOAD_NAME_CAP..]` is what
+    /// Claude Code would drop.
+    pub names: Vec<String>,
+}
+
+/// Measures `preload` against the rendered SKILL.md of each named skill.
+/// Only SKILL.md is counted because Claude Code never injects auxiliary
+/// files. A skill that fails to render counts as 0 bytes: the same synth
+/// fails with the real error when it writes skills.
+pub(crate) fn claude_preload(preload: &[String], defs: &[SkillDef]) -> ClaudePreload {
+    let distinct: indexmap::IndexSet<&str> = preload.iter().map(String::as_str).collect();
+    let bytes = distinct
+        .iter()
+        .filter_map(|name| defs.iter().find(|skill| skill.name == *name))
+        .map(|skill| super::frontmatter::render_skill_md(skill).map_or(0, |md| md.len()))
+        .sum();
+    ClaudePreload {
+        bytes,
+        names: distinct.into_iter().map(str::to_string).collect(),
+    }
+}
+
+/// Formats `n` with comma thousands separators, e.g. `556,663`.
+pub(crate) fn group_thousands(n: usize) -> String {
+    let digits = n.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, ch) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(ch);
+    }
+    out
+}
+
+/// Warns, one line per agent, when an agent's `clientConfig.claudeCli.skills`
+/// exceeds the preload byte budget or Claude Code's name cap. A warning,
+/// not an error: `doctor` also runs this parse, and downstream packages
+/// that extend these agents should not break on a CLI upgrade.
+fn check_claude_preload_budget(
+    agents: &[parser::ParsedAgentSpec],
+    skills: &[SkillDef],
+) -> Vec<String> {
+    let mut warnings = Vec::new();
+    for agent in agents {
+        let Some(claude_cli) = &agent.client_config.claude_cli else {
+            continue;
+        };
+        let preload = claude_preload(&claude_cli.skills, skills);
+        let over_budget = preload.bytes > CLAUDE_PRELOAD_BUDGET_BYTES;
+        let over_cap = preload.names.len() > CLAUDE_PRELOAD_NAME_CAP;
+        if !over_budget && !over_cap {
+            continue;
+        }
+        let mut limits = Vec::new();
+        if over_budget {
+            limits.push(format!(
+                "budget {} B",
+                group_thousands(CLAUDE_PRELOAD_BUDGET_BYTES)
+            ));
+        }
+        if over_cap {
+            let dropped = &preload.names[CLAUDE_PRELOAD_NAME_CAP..];
+            limits.push(format!(
+                "cap {CLAUDE_PRELOAD_NAME_CAP} names, {} would be dropped: {}",
+                dropped.len(),
+                dropped.join(", ")
+            ));
+        }
+        warnings.push(format!(
+            "agent '{}' preloads {} B over {} clientConfig.claudeCli.skills on Claude Code ({}). \
+             Move skills not needed at the first turn to dependencies.skills.skillNames only; \
+             they stay loadable with the Skill tool.",
+            agent.name,
+            group_thousands(preload.bytes),
+            preload.names.len(),
+            limits.join("; ")
+        ));
     }
     warnings
 }
@@ -1228,6 +1325,131 @@ mod tests {
         let agent = parser::parse_agent_spec_str(content, "agents/test.agent-spec.json").unwrap();
         let warnings = check_skill_scope_consistency(&[agent]);
         assert!(warnings.is_empty(), "got: {warnings:?}");
+    }
+
+    fn agent_spec_with_claude_cli_skills(
+        name: &str,
+        claude_skills: &[&str],
+    ) -> parser::ParsedAgentSpec {
+        let skills_json = claude_skills
+            .iter()
+            .map(|n| format!("\"{n}\""))
+            .collect::<Vec<_>>()
+            .join(",");
+        let content = format!(
+            r#"{{"schemaVersion":"1","name":"{name}","config":{{"description":"d","systemPrompt":"s","model":"m"}},"clientConfig":{{"claudeCli":{{"skills":[{skills_json}]}}}}}}"#
+        );
+        parser::parse_agent_spec_str(&content, "agents/test.agent-spec.json").unwrap()
+    }
+
+    /// A skill whose rendered SKILL.md is exactly `rendered_len` bytes
+    /// (`---\n` + `name: x` + `\n---\n\n` + body).
+    fn skill_of_rendered_len(name: &str, rendered_len: usize) -> SkillDef {
+        let raw_frontmatter = format!("name: {name}");
+        let overhead = "---\n".len() + raw_frontmatter.len() + "\n---\n\n".len();
+        SkillDef {
+            name: name.to_string(),
+            raw_frontmatter,
+            body: "x".repeat(rendered_len - overhead),
+            auxiliary_files: Vec::new(),
+        }
+    }
+
+    fn names(prefix: &str, count: usize) -> Vec<String> {
+        (1..=count).map(|i| format!("{prefix}{i}")).collect()
+    }
+
+    #[test]
+    fn claude_preload_budget_clean_agent_produces_no_warnings() {
+        let skills = vec![
+            skill_of_rendered_len("a", 1_000),
+            skill_of_rendered_len("b", 2_000),
+        ];
+        let agent = agent_spec_with_claude_cli_skills("k-clean", &["a", "b"]);
+        let warnings = check_claude_preload_budget(&[agent], &skills);
+        assert!(warnings.is_empty(), "got: {warnings:?}");
+    }
+
+    #[test]
+    fn claude_preload_budget_bytes_over_names_under_warns_on_budget_only() {
+        let skills = vec![skill_of_rendered_len("fat", 40_000)];
+        let agent = agent_spec_with_claude_cli_skills("k-fat", &["fat"]);
+        let warnings = check_claude_preload_budget(&[agent], &skills);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        assert!(warnings[0].contains("agent 'k-fat' preloads 40,000 B over 1 "));
+        assert!(warnings[0].contains("(budget 32,768 B)"));
+        assert!(!warnings[0].contains("would be dropped"));
+    }
+
+    #[test]
+    fn claude_preload_budget_names_over_bytes_under_warns_on_cap_only() {
+        let skill_names = names("s", 33);
+        let skills: Vec<SkillDef> = skill_names
+            .iter()
+            .map(|n| skill_of_rendered_len(n, 30))
+            .collect();
+        let refs: Vec<&str> = skill_names.iter().map(String::as_str).collect();
+        let agent = agent_spec_with_claude_cli_skills("k-wide", &refs);
+        let warnings = check_claude_preload_budget(&[agent], &skills);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        assert!(
+            warnings[0].contains("(cap 32 names, 1 would be dropped: s33)"),
+            "got: {}",
+            warnings[0]
+        );
+        assert!(!warnings[0].contains("budget"));
+    }
+
+    #[test]
+    fn claude_preload_budget_both_over_reports_both_limits() {
+        let skill_names = names("s", 34);
+        let skills: Vec<SkillDef> = skill_names
+            .iter()
+            .map(|n| skill_of_rendered_len(n, 1_000))
+            .collect();
+        let refs: Vec<&str> = skill_names.iter().map(String::as_str).collect();
+        let agent = agent_spec_with_claude_cli_skills("k-both", &refs);
+        let warnings = check_claude_preload_budget(&[agent], &skills);
+        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        assert!(
+            warnings[0].contains("(budget 32,768 B; cap 32 names, 2 would be dropped: s33, s34)"),
+            "got: {}",
+            warnings[0]
+        );
+    }
+
+    #[test]
+    fn claude_preload_dedups_names_in_first_occurrence_order() {
+        let skills = vec![
+            skill_of_rendered_len("a", 100),
+            skill_of_rendered_len("b", 200),
+        ];
+        let preload: Vec<String> = ["b", "a", "b", "a"].iter().map(|s| s.to_string()).collect();
+        let measured = claude_preload(&preload, &skills);
+        assert_eq!(measured.names, vec!["b".to_string(), "a".to_string()]);
+        assert_eq!(measured.bytes, 300);
+    }
+
+    #[test]
+    fn claude_preload_budget_skips_agent_without_claude_cli() {
+        let skill_names = names("s", 40);
+        let refs: Vec<&str> = skill_names.iter().map(String::as_str).collect();
+        let agent = agent_spec_with_skill_names_and_resources("k-kiro-only", &refs, &[]);
+        let skills: Vec<SkillDef> = skill_names
+            .iter()
+            .map(|n| skill_of_rendered_len(n, 5_000))
+            .collect();
+        let warnings = check_claude_preload_budget(&[agent], &skills);
+        assert!(warnings.is_empty(), "got: {warnings:?}");
+    }
+
+    #[test]
+    fn group_thousands_inserts_commas_every_three_digits() {
+        assert_eq!(group_thousands(556_663), "556,663");
+        assert_eq!(group_thousands(1_807_398), "1,807,398");
+        assert_eq!(group_thousands(999), "999");
+        assert_eq!(group_thousands(1_000), "1,000");
+        assert_eq!(group_thousands(0), "0");
     }
 
     fn write_skill(dir: &Path, name: &str) {

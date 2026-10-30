@@ -68,16 +68,7 @@
         "Skill"
       ],
       "skills": [
-        "constraints",
-        "delegation-protocol",
-        "sdlc-navigator",
-        "git-merge",
-        "pre-planning-analysis",
-        "socratic-elicitation",
-        "verification",
-        "cmux-dispatch",
-        "sop-state-management",
-        "about-konductor"
+        "constraints"
       ]
     }
   }

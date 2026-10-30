@@ -10,6 +10,8 @@ not per individual commit.
 
 ### Changed
 
+- Claude Code subagents now preload 1 to 4 skills each (90 KB in total, down from 1.8 MB); the rest
+  load on demand, and `konductor synth` warns when an agent's preload passes 32 KiB or 32 names.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)

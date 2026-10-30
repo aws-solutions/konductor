@@ -46,8 +46,8 @@ the skill wins.
 
 ### Adding a skill to an agent
 
-A skill has to be named in **two** places or it will only load in one runtime — the dependency
-list `konductor synth` reads for either harness, and the Claude Code skill list:
+Name the skill in the agent's dependency list, which `konductor synth` reads for either harness.
+Both runtimes then load it on demand:
 
 ```json
 {
@@ -55,14 +55,13 @@ list `konductor synth` reads for either harness, and the Claude Code skill list:
     "skills": {
       "skillNames": ["my-new-skill"]
     }
-  },
-  "clientConfig": {
-    "claudeCli": {
-      "skills": ["my-new-skill"]
-    }
   }
 }
 ```
+
+Add it to `clientConfig.claudeCli.skills` as well only if a Claude Code subagent needs it in
+context before its first turn. Claude Code injects every skill in that list into each spawned
+subagent, so `konductor synth` warns when an agent's list passes 32 KiB or 32 names.
 
 There is no per-skill entry under `clientConfig.kiroCli.resources`. Kiro CLI reaches installed
 skills through the bundled `skill-lookup` MCP server, not through its own `.kiro/skills/` scan —

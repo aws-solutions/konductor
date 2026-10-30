@@ -606,11 +606,21 @@ fn format_artifact_summary_line(output_root: &Path, artifact_path: &Path) -> Str
 /// and context file name, each prefixed with its content type. An agent
 /// skipped by every transformer (not written -- see `agent_is_written`)
 /// is not listed, matching the summary count. Empty when the model has
-/// nothing written of that type -- never a line for a zero count.
+/// nothing written of that type -- never a line for a zero count. After
+/// the agent lines comes one `claude preload:` line per agent with a
+/// `claudeCli` section (see `claude_preloads`).
 fn format_verbose_lines(model: &CanonicalModel) -> Vec<String> {
     let mut lines = Vec::new();
     for agent in model.agents.iter().filter(|a| agent_is_written(a)) {
         lines.push(format!("  agent: {}", agent.name));
+    }
+    for preload in claude_preloads(model) {
+        lines.push(format!(
+            "  claude preload: {} {} B, {} skill(s)",
+            preload.agent,
+            parse_canonical::group_thousands(preload.bytes),
+            preload.skills
+        ));
     }
     for skill in &model.skills {
         lines.push(format!("  skill: {}", skill.name));
@@ -647,8 +657,38 @@ fn format_summary_json(
         "nothing_to_build": counts.total() == 0,
         "artifact_path": artifact_path.display().to_string(),
         "sidecar_path": sidecar_path.display().to_string(),
+        "claude_preload": claude_preloads(model)
+            .into_iter()
+            .map(|p| serde_json::json!({"agent": p.agent, "bytes": p.bytes, "skills": p.skills}))
+            .collect::<Vec<_>>(),
     })
     .to_string()
+}
+
+/// One agent's Claude Code skill preload: bytes injected into each
+/// spawned subagent and the distinct name count.
+struct AgentClaudePreload {
+    agent: String,
+    bytes: usize,
+    skills: usize,
+}
+
+/// Measures every agent with a `claudeCli` section, in model order, with
+/// the same function the preload budget warning uses.
+fn claude_preloads(model: &CanonicalModel) -> Vec<AgentClaudePreload> {
+    model
+        .agents
+        .iter()
+        .filter_map(|agent| {
+            let claude_cli = agent.client_config.claude_cli.as_ref()?;
+            let preload = parse_canonical::claude_preload(&claude_cli.skills, &model.skills);
+            Some(AgentClaudePreload {
+                agent: agent.name.clone(),
+                bytes: preload.bytes,
+                skills: preload.names.len(),
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -1145,6 +1185,55 @@ mod tests {
         );
     }
 
+    fn model_with_claude_preload() -> CanonicalModel {
+        let skill = |name: &str, body_len: usize| model::SkillDef {
+            name: name.to_string(),
+            raw_frontmatter: format!("name: {name}"),
+            body: "x".repeat(body_len),
+            auxiliary_files: vec![],
+        };
+        let mut agent = minimal_agent("k-claude");
+        agent.client_config.claude_cli = Some(crate::cli::synth::parser::ClaudeCliConfig {
+            skills: vec!["alpha".to_string(), "beta".to_string(), "alpha".to_string()],
+            ..Default::default()
+        });
+        CanonicalModel {
+            agents: vec![agent, minimal_agent("k-kiro-only")],
+            // Rendered SKILL.md is `---\nname: <n>\n---\n\n<body>`: 21 B
+            // of framing for a 5-letter name, 20 B for a 4-letter one.
+            skills: vec![skill("alpha", 1_979), skill("beta", 980)],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn format_verbose_lines_reports_claude_preload_per_claude_agent() {
+        let lines = format_verbose_lines(&model_with_claude_preload());
+        let preload_lines: Vec<&String> = lines
+            .iter()
+            .filter(|l| l.contains("claude preload"))
+            .collect();
+        assert_eq!(
+            preload_lines,
+            vec!["  claude preload: k-claude 3,000 B, 2 skill(s)"]
+        );
+    }
+
+    #[test]
+    fn format_summary_json_reports_claude_preload_per_claude_agent() {
+        let rendered = format_summary_json(
+            &model_with_claude_preload(),
+            Path::new("/tmp/example/dist"),
+            Path::new("/tmp/example/a.tar.gz"),
+            Path::new("/tmp/example/a.tar.gz.sha256"),
+        );
+        let parsed: serde_json::Value = serde_json::from_str(&rendered).unwrap();
+        assert_eq!(
+            parsed["claude_preload"],
+            serde_json::json!([{"agent": "k-claude", "bytes": 3000, "skills": 2}])
+        );
+    }
+
     /// `--verbose` on an empty model adds no lines at all -- never a
     /// line for a zero count.
     #[test]
@@ -1463,7 +1552,13 @@ mod tests {
             "konductor synth: wrote 1 agent(s), 0 skill(s), 0 SOP(s), 0 context file(s) to /tmp/example/dist"
         );
         let lines = format_verbose_lines(&model);
-        assert_eq!(lines, vec!["  agent: k-claude-only".to_string()]);
+        assert_eq!(
+            lines,
+            vec![
+                "  agent: k-claude-only".to_string(),
+                "  claude preload: k-claude-only 0 B, 0 skill(s)".to_string(),
+            ]
+        );
     }
 
     /// Cross-transformer partial-failure regression guard: drives the

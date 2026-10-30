@@ -194,6 +194,12 @@ On success, `synth` prints two summary lines to stdout: what was written
 artifact's filename. `dist/` is gitignored — inspect the output with a
 plain directory listing, e.g. `find dist -maxdepth 3`.
 
+Claude Code injects every skill in an agent's `clientConfig.claudeCli.skills` into each
+subagent it spawns, so `synth` measures that preload. It prints a `konductor: warning:` line to
+stderr for any agent over 32 KiB or 32 names (the command still succeeds). `-v` adds one
+`claude preload: <agent> <bytes> B, <n> skill(s)` line per agent, and `--json` carries the same
+figures in a `claude_preload` array.
+
 ---
 
 ## `install`
