@@ -22,7 +22,8 @@ not per individual commit.
 - `dynamodb-validation` moved its validation framework, finding templates, and report template into
   `skills/dynamodb-validation/references/` (SKILL.md 64.7 KB to 13.4 KB); instructions are unchanged.
 - Claude Code subagents now preload 1 to 4 skills each (90 KB in total, down from 1.8 MB); the rest
-  load on demand, and `konductor synth` warns when an agent's preload passes 32 KiB or 32 names.
+  load on demand. `konductor synth` warns when an agent's preload passes 32 KiB and fails when it
+  passes 32 names.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
