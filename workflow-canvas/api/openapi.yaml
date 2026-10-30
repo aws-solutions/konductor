@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Workflow canvas API
-  version: 1.0.0
+  version: 1.1.0
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -11,17 +11,24 @@ info:
     and check a workflow file, and start and follow a run. The local stub
     server and the real backend will both implement this document.
 
-    This version covers the first release only. A workflow has a `name`, an
-    `intent` and a list of `stages`, and each stage is a `name` and an `agent`.
-    Every run uses the `kiro-cli` harness. Anything not described here is not
-    part of the contract yet.
+    This version covers the first release of the workflow format. A file has a
+    `format`, a `version`, an `intent`, optional `params` and a list of
+    `stages`, and each stage is done by one agent. A run uses the `kiro-cli`
+    harness. Anything not described here is not part of the contract yet.
 
-    **How this version changes.** A later version only adds: response fields,
-    operations, error codes and diagnostic codes. One later change is not an
-    addition. This version starts every run without asking anyone to trust the
-    workflow. A later version refuses a run with 409 `trust_required` until
-    trust is recorded, so a client shows a 409 with a code it does not know as
-    a failure and does not crash.
+    **How this version changes.** After a server ships this contract, a later
+    version only adds: response fields, operations, error codes and diagnostic
+    codes. Version 1.1.0 is not that kind of change, because no server has
+    shipped version 1.0.0. It sets the contract that the first servers
+    implement. It makes `format` required, limits `version` to a semantic
+    version and drops the string form of `intent`. None of these is an
+    addition, so a file written for 1.0.0 fails the check. `api_version` stays
+    1 and `info.version` moves from 1.0.0 to 1.1.0: there is no client of 1.0.0
+    to break, so there is no reason to start a second major version. One later
+    change is not an addition either. This version starts every run without
+    asking anyone to trust the workflow. A later version refuses a run with 409
+    `trust_required` until trust is recorded, so a client shows a 409 with a
+    code it does not know as a failure and does not crash.
 
     **Conventions**
 
@@ -165,20 +172,98 @@ info:
     like a number is a number. The YAML is a plain subset: one document, no
     anchors, aliases, merge keys or tags, and only scalar keys. A key that
     appears twice in one mapping is an error, not a case of the last one
-    winning. The text is a mapping with these keys and no others:
+    winning. The text is a mapping with the keys below and no others. A key
+    belongs to a slice, a unit of delivery of the workflow format. This version
+    reads the keys of slice 1.
 
-    | Key       | Required | Value                                                                                                  |
-    | --------- | -------- | ------------------------------------------------------------------------------------------------------ |
-    | `version` | no       | The string `'1.1'`, quoted.                                                                             |
-    | `name`    | no       | The workflow name. It defaults to the file name, and when present it must equal it.                    |
-    | `intent`  | yes      | One line of 1 to 300 characters. It may also be a mapping with the one key `outcome` that holds it.    |
-    | `stages`  | yes      | A list of 1 to 40 mappings, in run order. Each has the keys `name` and `agent`, and no others.         |
+    | Key                       | Required                | Value                                                                                         | Slice |
+    | ------------------------- | ----------------------- | --------------------------------------------------------------------------------------------- | ----- |
+    | `format`                  | yes                     | The string `konductor/1`.                                                                     | 1     |
+    | `name`                    | no                      | The workflow name. It defaults to the file name, and when present it must equal it.           | 1     |
+    | `version`                 | yes                     | A semantic version: three whole numbers without leading zeros, joined by dots, as in `0.1.0`. | 1     |
+    | `intent`                  | yes                     | A mapping.                                                                                    | 1     |
+    | `intent.outcome`          | yes                     | One line of 1 to 300 characters.                                                              | 1     |
+    | `intent.accept`           | no                      | A list of checks. It defaults to an empty list.                                               | 1     |
+    | `intent.accept[].id`      | yes                     | A name, used once in the file. A check id and a stage name are separate.                      | 1     |
+    | `intent.accept[].file`    | one of `file` and `run` | A path. The check passes when the file exists.                                                | 1     |
+    | `intent.accept[].run`     | one of `file` and `run` | A command as a list of strings.                                                               | 3a    |
+    | `params`                  | no                      | A mapping of names to params.                                                                 | 1     |
+    | `params.goal`             | no                      | A mapping. The goal of a run is always a param, declared or not.                              | 1     |
+    | `params.goal.description` | no                      | A string.                                                                                     | 1     |
+    | `params.goal.default`     | no                      | A string.                                                                                     | 1     |
+    | `params.<name>`           | no                      | A param other than the goal.                                                                  | 2     |
+    | `stages`                  | yes                     | A list of 1 to 40 mappings, in run order.                                                     | 1     |
+    | `stages[].name`           | yes                     | A stage name.                                                                                 | 1     |
+    | `stages[].agent`          | yes, in an agent stage  | An agent id. It also says that the stage is an agent stage.                                   | 1     |
+    | `stages[].prompt`         | no                      | Text of 1 to 32768 characters.                                                                | 1     |
+    | `stages[].prompt_file`    | no                      | A path, relative to the folder of the workflow file, of a file that holds the prompt.         | 1     |
+    | `stages[].outputs`        | no                      | A mapping of output names to paths.                                                           | 2     |
+    | `stages[].done_when`      | no                      | A list of check ids.                                                                          | 3a    |
 
-    A workflow name, a stage name and an agent id match
+    A later slice reserves more keys. A key in the table above with a later
+    slice, or in the table below, is not an unknown key but a known one that
+    this version does not read. The check reports it with
+    `NOT_SUPPORTED_BY_THIS_BUILD` and the message names the slice that adds it.
+    A key that no slice plans is `UNKNOWN_KEY`.
+
+    | Slice | Reserved keys and stage kinds |
+    | ----- | ----------------------------- |
+    | 3b    | `intent.writes`; the stage kind `stages[].run` |
+    | 4     | `stages[].on_fail`, `stages[].max_iterations`, `stages[].on_exhausted` |
+    | 5     | the stage kinds `stages[].human_review` and `stages[].human_input` |
+    | 6     | `stages[].parallel` |
+    | 7     | the stage kind `stages[].uses` |
+    | 8     | `stages[].renamed_from`, `stages[].required` |
+    | 11b   | `fallback_sop` |
+    | 12    | `runner_options` |
+    | 13    | `stages[].effort`, `stages[].model`, the param types integer, boolean and path, the string form of intent |
+    | 14    | `targets` |
+
+    The string form of `intent` (`intent: <text>`) is also reported with
+    `NOT_SUPPORTED_BY_THIS_BUILD`, at the value, naming slice 13. This version
+    takes the mapping with `outcome` only, and the canvas writes the mapping.
+    Text in a `prompt` that looks like a reference, such as `{plan.design}`
+    (`{`, a name, `.`, another name and `}`), is reported the same way, at the
+    value, naming slice 2, because slice 2 gives a reference a meaning and
+    until then the text would change meaning when it arrives. A server that
+    reads a `prompt_file` reports the same for the text of the file, at the
+    `prompt_file` value. Any other brace is plain text.
+
+    A stage has exactly one key that names its kind. This version knows one,
+    `agent`. A stage with no such key, including one with no `agent`, is
+    `STAGE_KIND_MISSING`, not `MISSING_KEY`. A stage with more than one is
+    `STAGE_KIND_AMBIGUOUS`. A key that names a kind of a later slice counts as
+    one, and is reported as a later key as well.
+
+    `params.goal` takes `description` and `default` only. Every other key of
+    `params` is a param of slice 2. Some planned shapes of released keys are
+    reported with an existing code, so a file written today keeps its
+    meaning. In this version, `params` written as a list is `WRONG_TYPE` and a
+    key such as `description` on the workflow itself is `UNKNOWN_KEY`. A
+    mapping as a value of `outputs`, or a string as a `run` check, would be
+    `WRONG_TYPE` in a version that reads those keys. This version does not
+    read them, so it reports the key as a later one.
+
+    A workflow name, a stage name, a check id and an agent id match
     `^[a-z0-9][a-z0-9-]{0,63}$`. A stage name is also not `start`, `end`,
     `run` or `halt`, and is unique in the workflow. This version does not look
-    up whether an agent exists. The `view` in a response is the parsed text:
-    `intent` is always the mapping form, and `version` is not in it.
+    up whether an agent exists.
+
+    A path (`intent.accept[].file`, `stages[].prompt_file`) is one line, is not
+    empty, does not start with `/` and has no `..` segment. A path in
+    `file` is relative to the project root and a `prompt_file` to the folder of
+    the workflow file. A server that reads files also treats a path that leaves
+    its folder, follows a link or names anything but a regular UTF-8 file within
+    the size limit as not there. When the file of a `prompt_file` is not there,
+    or its text is not 1 to 32768 characters, the value is `INVALID_VALUE`.
+    **The stub reads no files, so it checks the path rules of a `prompt_file`
+    and nothing else:** it accepts a path to a file that does not exist. A
+    `prompt` and a `prompt_file` in one stage is `INVALID_VALUE` at the
+    `prompt_file` value.
+
+    The `view` in a response is the parsed text. It has the keys of the file
+    that this version reads, and `name` is filled in from the file name when the
+    file has none.
 
     **Check.** A check reads the text and reports every problem it finds, each
     as a `Diagnostic`. The text has a problem when a diagnostic has severity
@@ -190,29 +275,36 @@ info:
     A diagnostic `path` is the key path from the top, joined by dots, with the
     empty string for the whole text. A stage is addressed by its name, as in
     `stages.write.agent`, or by its place in the list, as in `stages[1].name`,
-    when its name is missing, malformed or already used. `line` and `column`
+    when its name is missing, malformed or already used. A check is addressed
+    by its place in the list, as in `intent.accept[0].file`. `line` and `column`
     count from 1. A line ends at `\n`, `\r\n` or a lone `\r`, and a last line
     with no line break at its end is still a line. A column counts code points,
     and a tab counts as one. The end position is the first place after the key
     or value, so it is after the start, except for the two cases in the table
-    that have no width. The position is the key for `UNKNOWN_KEY` and
-    `DUPLICATE_KEY`, the enclosing mapping for `MISSING_KEY` and the value for
-    the other codes. The `file` is `<name>.yml`.
+    that have no width. The position is the key for `UNKNOWN_KEY`,
+    `DUPLICATE_KEY` and `NOT_SUPPORTED_BY_THIS_BUILD` about a key, the
+    enclosing mapping for `MISSING_KEY`, `STAGE_KIND_MISSING`,
+    `STAGE_KIND_AMBIGUOUS` and a check with neither or both of `file` and `run`,
+    and the value for the other codes. The `file` is `<name>.yml`.
 
-    | Code               | Path                         | Reported when                                                                |
-    | ------------------ | ---------------------------- | ---------------------------------------------------------------------------- |
-    | `YAML_SYNTAX`      | the whole text               | The text is not valid YAML. The position is where the parser found the problem, and the end is the same place. |
-    | `YAML_UNSUPPORTED` | the node                     | The text has an anchor, alias, merge key, tag, a second document or a key that is not a scalar, such as `? [a]`. For a second document, the position is its `---` line and the end is the end of its content. |
-    | `NOT_A_MAPPING`    | the whole text, or the stage | The text, or a stage, is not a mapping. Text that is empty or only blank lines or comments is not a mapping, and its position is line 1, column 1, with the same end. |
-    | `UNKNOWN_KEY`      | the key                      | A mapping has a key that this version does not list. `suggestion` is the listed key with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table above (for a stage, `name` before `agent`) if two tie, and only when that distance is at most 2. Otherwise it is left out. |
-    | `DUPLICATE_KEY`    | the later key                | A key appears again in a mapping. Two keys are one key when their text is the same: the characters of the key after quotes and escapes are resolved, and before they are read as a number, boolean or null. So `1` and `'1'` are one key, but `true` and `True`, `1`, `1.0` and `0x1`, and `null` and `~` are each different keys. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. An unknown key that is repeated has `UNKNOWN_KEY` at the first and `DUPLICATE_KEY` at each later one. |
-    | `MISSING_KEY`      | the mapping                  | `intent`, `stages`, `outcome`, or a stage's `name` or `agent` is absent.     |
-    | `WRONG_TYPE`       | the value                    | A value is the wrong kind, such as `stages` that is not a list, or a `name`, `agent`, `version` or `intent` that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
-    | `INVALID_NAME`     | the value                    | A name or agent id that is a string does not match the pattern above.        |
-    | `RESERVED_NAME`    | the stage's `name`           | A stage is named `start`, `end`, `run` or `halt`.                            |
-    | `DUPLICATE_STAGE`  | the later stage's `name`     | A stage name is already used by an earlier stage.                            |
-    | `NAME_MISMATCH`    | `name`                       | `name` is not the name of the file.                                          |
-    | `INVALID_VALUE`    | the value                    | `version` is a string other than `'1.1'`, `intent` is empty, has a line break or is over 300 characters, or `stages` has no entry or more than 40. |
+    | Code                          | Path                         | Reported when |
+    | ----------------------------- | ---------------------------- | ------------- |
+    | `YAML_SYNTAX`                 | the whole text               | The text is not valid YAML. The position is where the parser found the problem, and the end is the same place. |
+    | `YAML_UNSUPPORTED`            | the node                     | The text has an anchor, alias, merge key, tag, a second document or a key that is not a scalar, such as `? [a]`. For a second document, the position is its `---` line and the end is the end of its content. |
+    | `NOT_A_MAPPING`               | the whole text, or the stage | The text, or a stage, is not a mapping. Text that is empty or only blank lines or comments is not a mapping, and its position is line 1, column 1, with the same end. |
+    | `UNKNOWN_KEY`                 | the key                      | A mapping has a key that no slice plans. `suggestion` is the key of the tables above, among those this version reads, with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table if two tie, and only when that distance is at most 2. Otherwise it is left out. |
+    | `DUPLICATE_KEY`               | the later key                | A key appears again in a mapping. Two keys are one key when their text is the same: the characters of the key after quotes and escapes are resolved, and before they are read as a number, boolean or null. So `1` and `'1'` are one key, but `true` and `True`, `1`, `1.0` and `0x1`, and `null` and `~` are each different keys. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. An unknown key that is repeated has `UNKNOWN_KEY` at the first and `DUPLICATE_KEY` at each later one. |
+    | `MISSING_KEY`                 | the mapping                  | `format`, `version`, `intent`, `stages`, `outcome`, a check's `id`, or a stage's `name` is absent. For `format` the `suggestion` is `format: konductor/1`. |
+    | `WRONG_TYPE`                  | the value                    | A value is the wrong kind, such as `stages` that is not a list, `intent` that is neither a mapping nor a string, `params` that is not a mapping, a check that is not a mapping, or a `name`, `agent`, `format`, `version`, `prompt`, path or `params.goal` text that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
+    | `INVALID_NAME`                | the value                    | A name, check id or agent id that is a string does not match the pattern above. |
+    | `RESERVED_NAME`               | the stage's `name`           | A stage is named `start`, `end`, `run` or `halt`. |
+    | `DUPLICATE_STAGE`             | the later stage's `name`     | A stage name is already used by an earlier stage. |
+    | `NAME_MISMATCH`               | `name`                       | `name` is not the name of the file. |
+    | `INVALID_VALUE`               | the value                    | `version` is a string that is not a semantic version, such as `'1.1'` (`suggestion` is `0.1.0`). `intent.outcome` is empty, has a line break or is over 300 characters. `stages` has no entry or more than 40. A `prompt` is empty or over 32768 characters. A path breaks the path rules. A check id is used twice. A check has neither or both of `file` and `run`. A `prompt` and a `prompt_file` are both set. |
+    | `UNSUPPORTED_FORMAT`          | the value                    | `format` is a string other than `konductor/1`. |
+    | `STAGE_KIND_MISSING`          | the stage                    | A stage has no key that names its kind. |
+    | `STAGE_KIND_AMBIGUOUS`        | the stage                    | A stage has more than one key that names its kind. |
+    | `NOT_SUPPORTED_BY_THIS_BUILD` | the key, or the value        | A key of a later slice, the string form of `intent`, or text in a `prompt` that looks like a reference. The message names the slice. |
 servers:
   - url: http://127.0.0.1:{port}
     description: |
@@ -319,16 +411,22 @@ paths:
                   summary: A saved workflow
                   value:
                     name: hello
-                    text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n  - name: review\n    agent: k-quality-assurance\n"
-                    hash: 71683aa25e747b95c805b93ec90f4b18490eef07dd4066e36943d58ba7c5dc8b
+                    text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\n  accept:\n    - id: readme-exists\n      file: README.md\nstages:\n  - name: write\n    agent: k-developer\n    prompt: Add the greeting to README.md.\n  - name: review\n    agent: k-quality-assurance\n"
+                    hash: f404c7ec7ba6e7d46943ee65e281b950ef6728a6a0191caaac35e760fd84684b
                     read_only: false
                     view:
+                      format: konductor/1
+                      version: 0.1.0
                       name: hello
                       intent:
                         outcome: Add a greeting to the README
+                        accept:
+                          - id: readme-exists
+                            file: README.md
                       stages:
                         - name: write
                           agent: k-developer
+                          prompt: Add the greeting to README.md.
                         - name: review
                           agent: k-quality-assurance
                     diagnostics: []
@@ -399,20 +497,20 @@ paths:
                 summary: Replace the saved text
                 value:
                   name: hello
-                  text: "name: hello\nintent: Add a greeting to the README and a changelog line\nstages:\n  - name: write\n    agent: k-developer\n  - name: review\n    agent: k-quality-assurance\n"
-                  base_hash: 71683aa25e747b95c805b93ec90f4b18490eef07dd4066e36943d58ba7c5dc8b
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README and a changelog line\n  accept:\n    - id: readme-exists\n      file: README.md\nstages:\n  - name: write\n    agent: k-developer\n    prompt: Add the greeting to README.md.\n  - name: review\n    agent: k-quality-assurance\n"
+                  base_hash: f404c7ec7ba6e7d46943ee65e281b950ef6728a6a0191caaac35e760fd84684b
               create:
                 summary: Create the root, which has no file yet
                 value:
                   name: hello
-                  text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
                   base_hash: null
               unknownKey:
                 summary: A key this version does not list
                 value:
                   name: hello
-                  text: "name: hello\nintent: Add a greeting to the README\nowner: me\nstages:\n  - name: write\n    agent: k-developer\n"
-                  base_hash: 71683aa25e747b95c805b93ec90f4b18490eef07dd4066e36943d58ba7c5dc8b
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nowner: me\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
+                  base_hash: f404c7ec7ba6e7d46943ee65e281b950ef6728a6a0191caaac35e760fd84684b
       responses:
         '200':
           headers:
@@ -424,14 +522,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/SaveResponse'
               example:
-                hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
+                hash: a30d758b0fabce01e74e1f52d220e25321fb61a246545ed7c2e197f75405340d
                 view:
+                  format: konductor/1
+                  version: 0.1.0
                   name: hello
                   intent:
                     outcome: Add a greeting to the README and a changelog line
+                    accept:
+                      - id: readme-exists
+                        file: README.md
                   stages:
                     - name: write
                       agent: k-developer
+                      prompt: Add the greeting to README.md.
                     - name: review
                       agent: k-quality-assurance
                 diagnostics: []
@@ -498,13 +602,13 @@ paths:
                   value:
                     error: The file changed on disk.
                     code: conflict
-                    current_hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
+                    current_hash: a30d758b0fabce01e74e1f52d220e25321fb61a246545ed7c2e197f75405340d
                 exists:
                   summary: The file exists, though base_hash is null
                   value:
                     error: The file already exists.
                     code: conflict
-                    current_hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
+                    current_hash: a30d758b0fabce01e74e1f52d220e25321fb61a246545ed7c2e197f75405340d
                 deleted:
                   summary: The file is gone, so there is no current_hash
                   value:
@@ -536,27 +640,42 @@ paths:
                 summary: A text with no problems
                 value:
                   name: hello
-                  text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
               duplicateStage:
                 summary: Two stages with one name
                 value:
                   name: hello
-                  text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n  - name: write\n    agent: k-quality-assurance\n"
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n  - name: write\n    agent: k-quality-assurance\n"
               duplicateKey:
                 summary: One key twice in a mapping
                 value:
                   name: hello
-                  text: "name: hello\nintent: Add a greeting to the README\nintent: Add a changelog line\nstages:\n  - name: write\n    agent: k-developer\n"
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nintent:\n  outcome: Add a changelog line\nstages:\n  - name: write\n    agent: k-developer\n"
               unknownKeyTwice:
                 summary: An unknown key that is repeated
                 value:
                   name: hello
-                  text: "name: hello\nowner: me\nintent: Add a greeting to the README\nowner: you\nstages:\n  - name: write\n    agent: k-developer\n"
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nowner: me\nintent:\n  outcome: Add a greeting to the README\nowner: you\nstages:\n  - name: write\n    agent: k-developer\n"
               distinctKeys:
                 summary: Keys with different text are different keys
                 value:
                   name: hello
-                  text: "name: hello\nintent: Add a greeting to the README\nTrue: a\ntrue: b\n1.0: c\n1: d\nstages:\n  - name: write\n    agent: k-developer\n"
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nTrue: a\ntrue: b\n1.0: c\n1: d\nstages:\n  - name: write\n    agent: k-developer\n"
+              laterSlice:
+                summary: Keys that a later slice adds
+                value:
+                  name: hello
+                  text: "format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n    outputs:\n      plan: PLAN.md\n    parallel: true\n"
+              badVersion:
+                summary: A version that is not a semantic version
+                value:
+                  name: hello
+                  text: "format: konductor/1\nname: hello\nversion: '1.1'\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
+              missingFormat:
+                summary: A file with no format
+                value:
+                  name: hello
+                  text: "name: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
       responses:
         '200':
           headers:
@@ -575,6 +694,8 @@ paths:
                     warnings: 0
                     infos: 0
                     view:
+                      format: konductor/1
+                      version: 0.1.0
                       name: hello
                       intent:
                         outcome: Add a greeting to the README
@@ -598,9 +719,9 @@ paths:
                         severity: error
                         file: hello.yml
                         path: stages[1].name
-                        line: 6
+                        line: 9
                         column: 11
-                        end_line: 6
+                        end_line: 9
                         end_column: 16
                         message: The stage name `write` is already used.
                     summary:
@@ -619,9 +740,9 @@ paths:
                         severity: error
                         file: hello.yml
                         path: intent
-                        line: 3
+                        line: 6
                         column: 1
-                        end_line: 3
+                        end_line: 6
                         end_column: 7
                         message: The key `intent` is already used.
                     summary:
@@ -640,18 +761,18 @@ paths:
                         severity: error
                         file: hello.yml
                         path: owner
-                        line: 2
+                        line: 4
                         column: 1
-                        end_line: 2
+                        end_line: 4
                         end_column: 6
                         message: Unknown key `owner`.
                       - code: DUPLICATE_KEY
                         severity: error
                         file: hello.yml
                         path: owner
-                        line: 4
+                        line: 7
                         column: 1
-                        end_line: 4
+                        end_line: 7
                         end_column: 6
                         message: The key `owner` is already used.
                     summary:
@@ -670,38 +791,112 @@ paths:
                         severity: error
                         file: hello.yml
                         path: 'True'
-                        line: 3
+                        line: 6
                         column: 1
-                        end_line: 3
+                        end_line: 6
                         end_column: 5
                         message: Unknown key `True`.
                       - code: UNKNOWN_KEY
                         severity: error
                         file: hello.yml
                         path: 'true'
-                        line: 4
+                        line: 7
                         column: 1
-                        end_line: 4
+                        end_line: 7
                         end_column: 5
                         message: Unknown key `true`.
                       - code: UNKNOWN_KEY
                         severity: error
                         file: hello.yml
                         path: '1.0'
-                        line: 5
+                        line: 8
                         column: 1
-                        end_line: 5
+                        end_line: 8
                         end_column: 4
                         message: Unknown key `1.0`.
                       - code: UNKNOWN_KEY
                         severity: error
                         file: hello.yml
                         path: '1'
-                        line: 6
+                        line: 9
                         column: 1
-                        end_line: 6
+                        end_line: 9
                         end_column: 2
                         message: Unknown key `1`.
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+                laterSlice:
+                  summary: Keys that a later slice adds
+                  value:
+                    errors: 2
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: NOT_SUPPORTED_BY_THIS_BUILD
+                        severity: error
+                        file: hello.yml
+                        path: stages.write.outputs
+                        line: 9
+                        column: 5
+                        end_line: 9
+                        end_column: 12
+                        message: The key `outputs` is not supported by this build. Slice 2 adds it.
+                      - code: NOT_SUPPORTED_BY_THIS_BUILD
+                        severity: error
+                        file: hello.yml
+                        path: stages.write.parallel
+                        line: 11
+                        column: 5
+                        end_line: 11
+                        end_column: 13
+                        message: The key `parallel` is not supported by this build. Slice 6 adds it.
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+                badVersion:
+                  summary: A version that is not a semantic version
+                  value:
+                    errors: 1
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: INVALID_VALUE
+                        severity: error
+                        file: hello.yml
+                        path: version
+                        line: 3
+                        column: 10
+                        end_line: 3
+                        end_column: 15
+                        message: '`version` must be three numbers joined by dots, as in `0.1.0`.'
+                        suggestion: 0.1.0
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+                missingFormat:
+                  summary: A file with no format
+                  value:
+                    errors: 1
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: MISSING_KEY
+                        severity: error
+                        file: hello.yml
+                        path: ''
+                        line: 1
+                        column: 1
+                        end_line: 8
+                        end_column: 1
+                        message: The mapping needs the key `format`.
+                        suggestion: 'format: konductor/1'
                     summary:
                       valid: false
                       counts:
@@ -1134,16 +1329,16 @@ components:
             severity: error
             file: hello.yml
             path: owner
-            line: 3
+            line: 4
             column: 1
-            end_line: 3
+            end_line: 4
             end_column: 6
             message: Unknown key `owner`.
   schemas:
     Name:
       type: string
       pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
-      description: A workflow name or an agent id.
+      description: A workflow name, a check id or an agent id.
       examples: [hello, k-developer]
     StageName:
       description: |
@@ -1167,6 +1362,56 @@ components:
         that a malformed id in a path can be told from a missing run, and only
         a new major version changes it.
       examples: [20261024-0412-a7b3c]
+    Path:
+      type: string
+      pattern: '^(?!/)(?!(?:.*/)?\.\.(?:/|$)).+$'
+      description: |
+        A path with `/` between its parts. It is one line, is not empty, is not
+        absolute and has no `..` part. A `file` or `outputs` path is relative to
+        the project root, and a `prompt_file` to the folder of the workflow
+        file.
+      examples: [PLAN.md, docs/design.md]
+    Version:
+      type: string
+      pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+      description: A semantic version of three whole numbers, such as `0.1.0`.
+      examples: [0.1.0]
+    Check:
+      type: object
+      required: [id]
+      description: |
+        A test of the outcome. It has an `id` and exactly one of `file` and
+        `run`. This version reads `file` checks.
+      properties:
+        id:
+          $ref: '#/components/schemas/Name'
+      oneOf:
+        - required: [file]
+          properties:
+            file:
+              $ref: '#/components/schemas/Path'
+        - required: [run]
+          properties:
+            run:
+              type: array
+              minItems: 1
+              items:
+                type: string
+              description: A command and its arguments, run with no shell.
+    Param:
+      type: object
+      description: One input of a run.
+      properties:
+        type:
+          type: string
+          enum: [string]
+          description: The kind of value. It is `string` unless a later release adds more.
+        description:
+          type: string
+        default:
+          type: string
+        required:
+          type: boolean
     Stage:
       type: object
       required: [name, agent]
@@ -1176,6 +1421,33 @@ components:
           $ref: '#/components/schemas/StageName'
         agent:
           $ref: '#/components/schemas/Name'
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 32768
+          description: What the stage does. It is left out when the file has none.
+        prompt_file:
+          $ref: '#/components/schemas/Path'
+        outputs:
+          type: object
+          propertyNames:
+            type: string
+            pattern: '^[a-z][a-z0-9-]{0,63}$'
+          additionalProperties:
+            $ref: '#/components/schemas/Path'
+          description: The files the stage must leave behind, by output name.
+        done_when:
+          type: array
+          items:
+            $ref: '#/components/schemas/Name'
+          description: The ids of the checks that must pass before the stage does.
+      examples:
+        - name: plan
+          agent: k-architect
+          prompt: Write a short plan for the goal to PLAN.md.
+          outputs:
+            plan: PLAN.md
+          done_when: [plan-exists]
     Intent:
       type: object
       required: [outcome]
@@ -1187,18 +1459,33 @@ components:
           maxLength: 300
           pattern: '^[^\r\n]*$'
           description: One line saying what must be true when the run is done.
+        accept:
+          type: array
+          items:
+            $ref: '#/components/schemas/Check'
+          description: The checks that say whether the run met its intent.
     WorkflowView:
       type: object
-      required: [name, intent, stages]
+      required: [format, version, name, intent, stages]
       description: |
-        The parsed workflow, ready to draw. In the file the `intent` may be
-        written as a plain string, which means `{ outcome: <string> }`. The view
-        always has the object form.
+        The parsed workflow, ready to draw. It has the keys of the file, and
+        `name` is filled in from the file name when the file has none. The
+        `intent` is always the mapping. A key the file leaves out is left out.
       properties:
+        format:
+          type: string
+          const: konductor/1
+        version:
+          $ref: '#/components/schemas/Version'
         name:
           $ref: '#/components/schemas/Name'
         intent:
           $ref: '#/components/schemas/Intent'
+        params:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Param'
+          description: The params of the file, by name.
         stages:
           type: array
           minItems: 1
@@ -1228,6 +1515,10 @@ components:
         - DUPLICATE_STAGE
         - NAME_MISMATCH
         - INVALID_VALUE
+        - UNSUPPORTED_FORMAT
+        - STAGE_KIND_MISSING
+        - STAGE_KIND_AMBIGUOUS
+        - NOT_SUPPORTED_BY_THIS_BUILD
     Diagnostic:
       type: object
       required:

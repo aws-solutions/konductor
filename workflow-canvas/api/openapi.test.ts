@@ -10,6 +10,7 @@ import addFormats from 'ajv-formats';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 // The subset of an OpenAPI document that these checks read, after $ref
 // pointers have been replaced by the objects they point to.
@@ -292,6 +293,15 @@ function linesStartingWith(text: string, prefix: string): number[] {
     .flatMap((line, index) => (line.startsWith(prefix) ? [index + 1] : []));
 }
 
+// The codes whose position is the name that their message quotes. The others
+// point at a whole mapping or at a value, which the message does not repeat.
+const POINTS_AT_NAME = new Set([
+  'UNKNOWN_KEY',
+  'DUPLICATE_KEY',
+  'DUPLICATE_STAGE',
+  'NOT_SUPPORTED_BY_THIS_BUILD',
+]);
+
 // The name quoted in a diagnostic message, such as `owner`.
 function quotedIn(message: string): string | undefined {
   return /`([^`]+)`/.exec(message)?.[1];
@@ -301,7 +311,7 @@ function quotedIn(message: string): string | undefined {
 // use, which has one stage per `- name:` line.
 function readExampleText(text: string) {
   return {
-    outcome: /^intent: (.*)$/m.exec(text)?.[1],
+    outcome: /^intent:\n {2}outcome: (.*)$/m.exec(text)?.[1],
     stages: [...text.matchAll(/^\s*- name: (\S+)$/gm)].map((m) => m[1]),
   };
 }
@@ -324,6 +334,17 @@ interface TextAndAnswer {
   label: string;
   text: string;
   answer: Record<string, unknown>;
+}
+
+// Every diagnostic of the answers, with the text it is about.
+function diagnosticsOf(pairs: TextAndAnswer[]) {
+  return pairs.flatMap(({ label, text, answer }) =>
+    (answer['diagnostics'] as Record<string, unknown>[]).map((d) => ({
+      label: `${label}: ${String(d['message'])}`,
+      text,
+      d,
+    })),
+  );
 }
 
 function jsonBodyOf(spec: Spec, route: string, status?: string): MediaType {
@@ -619,17 +640,36 @@ describe('workflow canvas API contract', () => {
         }
       });
 
+      it('has a view that is its text read as YAML, with the name filled in', () => {
+        const withView = pairs.filter(({ answer }) => isRecord(answer['view']));
+        for (const { label, text, answer } of withView) {
+          const read = parse(text, { version: '1.2' }) as Record<
+            string,
+            unknown
+          >;
+          expect(answer['view'], label).toEqual({ name: 'hello', ...read });
+        }
+      });
+
       it('has a diagnostic that points at the name in its message', () => {
-        const found = pairs.flatMap(({ label, text, answer }) =>
-          (answer['diagnostics'] as Record<string, unknown>[]).map((d) => ({
-            label: `${label}: ${String(d['message'])}`,
-            pointedAt: textBetween(text, d),
-            quoted: quotedIn(String(d['message'])),
-          })),
+        const found = diagnosticsOf(pairs).filter(({ d }) =>
+          POINTS_AT_NAME.has(String(d['code'])),
         );
         expect(found.length).toBeGreaterThan(0);
-        for (const { label, pointedAt, quoted } of found) {
-          expect(pointedAt, label).toBe(quoted);
+        for (const { label, text, d } of found) {
+          expect(textBetween(text, d), label).toBe(
+            quotedIn(String(d['message'])),
+          );
+        }
+      });
+
+      it('has a diagnostic of another code that points at some text', () => {
+        const found = diagnosticsOf(pairs).filter(
+          ({ d }) => !POINTS_AT_NAME.has(String(d['code'])),
+        );
+        expect(found.length).toBeGreaterThan(0);
+        for (const { label, text, d } of found) {
+          expect(textBetween(text, d).trim(), label).not.toBe('');
         }
       });
 
@@ -771,6 +811,91 @@ describe('workflow canvas API contract', () => {
       const session = spec.paths['/api/session']?.['post']?.description ?? '';
       expect(words(spec.info.description)).toMatch(fromPrint);
       expect(words(session)).toMatch(fromPrint);
+    });
+  });
+
+  describe('the workflow format', () => {
+    const schema = (name: string) => spec.components.schemas[name]!;
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+
+    it('requires a format, a version, an intent and stages in a view', () => {
+      expect(schema('WorkflowView')['required']).toEqual([
+        'format',
+        'version',
+        'name',
+        'intent',
+        'stages',
+      ]);
+    });
+
+    it('takes the semantic version X.Y.Z and refuses 1.1', () => {
+      const version = schema('Version');
+      for (const good of ['0.1.0', '1.0.0', '10.20.30']) {
+        expect(valueMatchesSchema(version, good), good).toBe(true);
+      }
+      for (const bad of ['1.1', '1', '1.0.0.0', '01.0.0', '1.0.0-rc.1', '']) {
+        expect(valueMatchesSchema(version, bad), bad).toBe(false);
+      }
+    });
+
+    it('takes a path that is relative, has no .. part and is not empty', () => {
+      const path = schema('Path');
+      for (const good of ['PLAN.md', 'docs/a.md', 'a..b', '...', './a']) {
+        expect(valueMatchesSchema(path, good), good).toBe(true);
+      }
+      for (const bad of ['', '/etc/passwd', '..', '../a', 'a/..', 'a/../b']) {
+        expect(valueMatchesSchema(path, bad), bad).toBe(false);
+      }
+    });
+
+    it('takes a check with exactly one of file and run', () => {
+      const check = schema('Check');
+      expect(valueMatchesSchema(check, { id: 'a', file: 'A.md' })).toBe(true);
+      expect(valueMatchesSchema(check, { id: 'a', run: ['make'] })).toBe(true);
+      expect(valueMatchesSchema(check, { id: 'a' })).toBe(false);
+      expect(
+        valueMatchesSchema(check, { id: 'a', file: 'A.md', run: ['make'] }),
+      ).toBe(false);
+    });
+
+    it('lists each key of the key tables once', () => {
+      const description = spec.info.description;
+      const keys = [...description.matchAll(/^\s*\|\s*`([^`]+)`\s*\|/gm)]
+        .map((match) => match[1] as string)
+        .filter((key) => !/^[A-Z_]+$/.test(key));
+      expect(keys.length).toBeGreaterThan(15);
+      expect(new Set(keys).size).toBe(keys.length);
+    });
+
+    it('says what the stub does with a prompt_file', () => {
+      expect(words(spec.info.description)).toMatch(
+        /The stub reads no files, so it checks the path rules of a `prompt_file` and nothing else/,
+      );
+    });
+
+    it('keeps the major version of the document equal to api_version', () => {
+      const session = jsonBodyOf(spec, 'POST /api/session', '200');
+      const { api_version: apiVersion } = session.example as {
+        api_version: number;
+      };
+      const info = (spec as unknown as { info: { version: string } }).info;
+      expect(info.version).toBe('1.1.0');
+      expect(Number(info.version.split('.')[0])).toBe(apiVersion);
+      const xHeader = spec.components as unknown as {
+        headers: { XKonductorApi: { schema: { const: string } } };
+      };
+      expect(xHeader.headers.XKonductorApi.schema.const).toBe(
+        String(apiVersion),
+      );
+    });
+
+    it('says that the changes of this version are not additions, and why', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(/is not that kind of change/);
+      expect(description).toMatch(/makes `format` required/);
+      expect(description).toMatch(/limits `version` to a semantic version/);
+      expect(description).toMatch(/drops the string form of `intent`/);
+      expect(description).toMatch(/`api_version` stays 1/);
     });
   });
 

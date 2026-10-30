@@ -38,12 +38,14 @@ describe('POST /api/validate', () => {
       summary: { valid: boolean; counts: { stages: number } };
     };
     expect(body.diagnostics.map((d) => [d.code, d.line])).toEqual([
+      ['MISSING_KEY', 1],
+      ['MISSING_KEY', 1],
       ['UNKNOWN_KEY', 2],
       ['WRONG_TYPE', 3],
-      ['MISSING_KEY', 5],
+      ['STAGE_KIND_MISSING', 5],
       ['RESERVED_NAME', 5],
     ]);
-    expect(body.errors).toBe(4);
+    expect(body.errors).toBe(6);
     expect(body.view).toBeNull();
     expect(body.summary).toEqual({ valid: false, counts: { stages: 0 } });
   });

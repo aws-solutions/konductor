@@ -8,19 +8,54 @@ import {
   schemaOf,
 } from '../test-support/contract.ts';
 import {
+  FORMAT,
   HASH_PATTERN,
   MAX_GOAL_CHARS,
   MAX_INTENT_CHARS,
+  MAX_PROMPT_CHARS,
   MAX_STAGES,
   MAX_TEXT_BYTES,
   NAME_PATTERN,
+  PATH_PATTERN_SOURCE,
   RESERVED_STAGE_NAMES,
   RUN_ID_PATTERN,
+  VERSION_PATTERN,
 } from './contract.ts';
 import { ERROR_CODES, type ErrorCode } from './errors.ts';
+import { KEY_TABLES } from './keys.ts';
 import { DIAGNOSTIC_CODES } from './model.ts';
 
 type Json = Record<string, unknown>;
+
+// The keys of the tables in the description: the key table, with its slice in
+// the last column, and the table of reserved keys, with the slice first.
+function keyRowsOf(description: string): [key: string, slice: string][] {
+  const isSlice = (cell: string | undefined) => /^\d+[ab]?$/.test(cell ?? '');
+  return description
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('|'))
+    .map((line) =>
+      line
+        .slice(1, -1)
+        .split('|')
+        .map((cell) => cell.trim()),
+    )
+    .flatMap((cells): [string, string][] => {
+      const first = /^`([^`]+)`$/.exec(cells[0] ?? '')?.[1];
+      const last = cells[cells.length - 1];
+      if (first && isSlice(last)) return [[first, last as string]];
+      if (isSlice(cells[0]) && cells.length === 2) {
+        const keys = [...(cells[1] ?? '').matchAll(/`([^`]+)`/g)];
+        return keys.map((match): [string, string] => [
+          match[1] as string,
+          cells[0] as string,
+        ]);
+      }
+      return [];
+    });
+}
+
 const property = (schema: Json, name: string) =>
   (schema.properties as Record<string, Json>)[name] as Json;
 
@@ -56,6 +91,23 @@ describe('the stub and api/openapi.yaml', () => {
     expect(schemaOf('Name').pattern).toBe(NAME_PATTERN.source);
     expect(schemaOf('Hash').pattern).toBe(HASH_PATTERN.source);
     expect(schemaOf('RunId').pattern).toBe(RUN_ID_PATTERN.source);
+    expect(schemaOf('Version').pattern).toBe(VERSION_PATTERN.source);
+    expect(schemaOf('Path').pattern).toBe(PATH_PATTERN_SOURCE);
+  });
+
+  it('have the same format', () => {
+    expect(property(schemaOf('WorkflowView'), 'format').const).toBe(FORMAT);
+  });
+
+  it('have the same keys, each with the same slice', () => {
+    const stub = KEY_TABLES.flatMap((table) => [
+      ...table.keys.map((rule) => `${table.prefix}${rule.key} ${rule.slice}`),
+      ...(table.otherKeys ? [`${table.prefix}<name> ${table.otherKeys}`] : []),
+    ]);
+    const contract = keyRowsOf(contractDescription()).map(
+      ([key, slice]) => `${key} ${slice}`,
+    );
+    expect(contract.sort()).toEqual(stub.sort());
   });
 
   it('have the same reserved stage names', () => {
@@ -71,6 +123,9 @@ describe('the stub and api/openapi.yaml', () => {
     );
     expect(property(schemaOf('WorkflowView'), 'stages').maxItems).toBe(
       MAX_STAGES,
+    );
+    expect(property(schemaOf('Stage'), 'prompt').maxLength).toBe(
+      MAX_PROMPT_CHARS,
     );
     const params = property(schemaOf('RunRequest'), 'params');
     expect(property(params, 'goal').maxLength).toBe(MAX_GOAL_CHARS);
