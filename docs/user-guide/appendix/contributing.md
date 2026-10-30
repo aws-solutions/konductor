@@ -59,6 +59,9 @@ Both runtimes then load it on demand:
 }
 ```
 
+On Claude Code the agent loads it through the `Skill` tool, so its `clientConfig.claudeCli.tools`
+must list `Skill`. `konductor synth` warns when it does not.
+
 Add it to `clientConfig.claudeCli.skills` as well only if a Claude Code subagent needs it in
 context before its first turn. Claude Code injects every skill in that list into each spawned
 subagent, so `konductor synth` warns when an agent's list passes 32 KiB and fails when it passes
