@@ -69,7 +69,7 @@ not per individual commit.
   defaults. When these do not settle a collision, the agent asks once and saves the answer as a
   `Ruling:` memory entry.
 - Docs describe setting `orchestration.mode` by hand, reading the mode line in the first reply,
-  and harness support, Kiro CLI v2 included.
+  and that Kiro CLI v2 is not supported.
 
 ### Fixed
 
