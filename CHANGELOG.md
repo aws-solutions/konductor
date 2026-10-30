@@ -47,8 +47,10 @@ not per individual commit.
   for code, re-reviews that fix and what depends on it, and lists what remains and all
   suggestions for you. A CRITICAL or IMPORTANT finding that survives the re-review blocks done:
   the orchestrator stops and reports it to you.
-- Core rules now rank the user's request, project instruction files, user-written memory and the
-  codebase's conventions above konductor's format and workflow defaults; ties are asked once.
+- Core rules now rank the user's request, recorded rulings, project instruction files,
+  user-written memory and the codebase's conventions above konductor's format and workflow
+  defaults. When these do not settle a collision, the agent asks once and saves the answer as a
+  `Ruling:` memory entry.
 
 ### Fixed
 
