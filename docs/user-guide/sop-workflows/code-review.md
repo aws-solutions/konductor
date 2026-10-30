@@ -138,7 +138,8 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
   `k-architect`, and the findings come back for the report. When `k-developer` is started
   directly, the handoff comes back to you: run
   [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) against `k-architect`
-  yourself. See
+  yourself, then pass its findings and the handoff to `k-developer` and ask it to resume
+  `k-code-review-workflow` at step 6 to finish the report. See
   [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 - **The adversarial step is also skipped for frontend-only reviews** by design, because it targets
   backend and infra gaps.
