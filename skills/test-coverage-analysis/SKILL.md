@@ -17,7 +17,7 @@ Compares implementation code against existing test suites to identify missing te
 
 **Not for:** writing tests (use `cypress-test-implementation` or `playwright-test-implementation`) or analyzing a single file.
 
-**Lightweight fallback:** for one module or one PR, list the uncovered behaviours and their severity in a short table; skip Stages 0, 3, 8 and the full report.
+**Lightweight fallback (Coverage mode only, and not when a calling SOP drives the run):** for one module or one PR, skip Stages 3 and 8. Still run Stage 0 and write the report file, with a short table of the uncovered behaviours and their severity in place of the per-stage sections. A fallback report has no distribution analysis, so it is not a full input for `e2e-test-strategy`.
 
 ## Usage
 
