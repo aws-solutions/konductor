@@ -31,7 +31,6 @@ const table = new dynamodb.Table(this, 'UsersTable', {
   sortKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
 });
 ```
-````
 
 **Recommended State**:
 
@@ -71,7 +70,7 @@ table.addGlobalSecondaryIndex({
 
 ### CRITICAL FINDING EXAMPLE: "List All Items" Without GSI
 
-```markdown
+````markdown
 🔴 **CRITICAL**: "List All Items" Pattern Requires Table Scan
 
 **Category**: Index Coverage
@@ -152,13 +151,13 @@ async function listAllTasks() {
 **References**:
 - [Avoiding Table Scans](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html)
 - [GSI Best Practices](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-indexes-general.html)
-```
+````
 
 ---
 
 ### HIGH PRIORITY FINDING TEMPLATE
 
-```markdown
+````markdown
 🟡 **HIGH**: [Specific Issue Title]
 
 **Category**: [Validation Category Name]
@@ -183,7 +182,7 @@ UsersTable:
       - AttributeName: userId
         KeyType: HASH
     #  No GSI for email lookups - requires Scan
-````
+```
 
 **Recommended State**:
 
@@ -230,7 +229,7 @@ UsersTable:
 
 ### MEDIUM PRIORITY FINDING TEMPLATE
 
-```markdown
+````markdown
 🟢 **MEDIUM**: [Specific Issue Title]
 
 **Category**: [Validation Category Name]
@@ -250,7 +249,7 @@ table.addGlobalSecondaryIndex({
   partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
   projectionType: dynamodb.ProjectionType.ALL, //  Projects 15 attributes, only 3 used
 });
-````
+```
 
 **Recommended State**:
 
@@ -287,7 +286,7 @@ table.addGlobalSecondaryIndex({
 
 ### LOW PRIORITY FINDING TEMPLATE
 
-```markdown
+````markdown
 ⚪ **LOW**: [Specific Issue Title]
 
 **Category**: [Validation Category Name]
@@ -306,7 +305,7 @@ const table = new dynamodb.Table(this, 'UsersTable', {
   partitionKey: { name: 'user_id', type: dynamodb.AttributeType.STRING }, // snake_case
   sortKey: { name: 'createdAt', type: dynamodb.AttributeType.NUMBER }, // camelCase
 });
-````
+```
 
 **Recommended State**:
 
@@ -392,5 +391,3 @@ const table = new dynamodb.Table(this, 'UsersTable', {
 - Keep examples focused (5-20 lines, not entire files)
 - Show only relevant portions of larger configurations
 - Include context comments explaining the change
-
-````
