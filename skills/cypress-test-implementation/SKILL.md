@@ -511,7 +511,7 @@ After completing mode-specific stages, generate consolidated report.
 
 The consolidated report template, with its appendices for the detailed task list and Cypress configuration, is in `references/report-templates.md`.
 
-Read the section for the current mode in `references/report-templates.md` when producing that mode's report.
+Read the Consolidated report section of `references/report-templates.md` when producing the final report.
 
 ---
 
