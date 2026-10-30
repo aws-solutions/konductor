@@ -48,7 +48,7 @@ not per individual commit.
 - Orchestrator review fixes CRITICAL and IMPORTANT findings once, reruns the build and tests
   for code, re-reviews that fix and what depends on it, and lists what remains and all
   suggestions for you. A CRITICAL or IMPORTANT finding that survives the re-review blocks done:
-  the orchestrator stops and reports it to you.
+  the orchestrator stops and reports it to you. An SOP may set its own fix-round limit.
 
 ### Fixed
 
