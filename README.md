@@ -303,7 +303,7 @@ explicit `auto` injects nothing, so it cannot serve as the test.
 | --- | --- |
 | Kiro CLI v3 | Supported. It may not re-inject the rules after `/compact`: if a `coordinator` session starts writing files itself after a compaction, start a new session |
 | Claude Code | Supported. The hook runs again on `/clear`, `/compact` and resume, so the rules come back |
-| Kiro CLI v2 | Not supported. `install` wires the hook into `konductor`'s `agentSpawn` hooks, as it does for telemetry, but delivery on v2 is untested. If it arrives, the session behaves as on v3; if not, the first reply reads `Orchestration: auto (default)` and the session runs as `auto` |
+| Kiro CLI v2 | Not supported. `install` wires the hook into `konductor`'s `agentSpawn` hooks, as it does for telemetry, but delivery on v2 is untested. The first reply shows whether it arrived: if not, it reads `Orchestration: auto (default)` and the session runs as `auto` |
 
 ---
 
