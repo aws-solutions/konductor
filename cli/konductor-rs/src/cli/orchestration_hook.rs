@@ -202,15 +202,15 @@ fn render(output: &HookOutput) -> Vec<u8> {
     }
 }
 
-/// The first manifest file (any strategy) named `file_name`, as a path
-/// under `root`. Paths that are absolute or climb out of `root` are
-/// ignored.
+/// A manifest path (any strategy) named `file_name`, relative to `root`:
+/// the first one present on disk, else the first one listed. Paths that
+/// are absolute or climb out of `root` are ignored.
 fn installed_file(
     manifest: &super::install::manifest::Manifest,
     root: &Path,
     file_name: &str,
 ) -> Option<PathBuf> {
-    manifest
+    let mut listed = manifest
         .strategies
         .iter()
         .flat_map(|strategy| strategy.files.iter())
@@ -219,8 +219,17 @@ fn installed_file(
             path.components()
                 .all(|part| matches!(part, Component::Normal(_)))
         })
-        .find(|path| path.file_name().is_some_and(|name| name == file_name))
-        .map(|path| root.join(path))
+        .filter(|path| path.file_name().is_some_and(|name| name == file_name));
+    let first = listed.next()?;
+    if root.join(first).is_file() {
+        return Some(first.to_path_buf());
+    }
+    Some(
+        listed
+            .find(|path| root.join(path).is_file())
+            .unwrap_or(first)
+            .to_path_buf(),
+    )
 }
 
 /// The persona body for the install at `root`: the line naming its
@@ -235,17 +244,18 @@ fn load_persona(root: &Path) -> Result<String, PersonaError> {
     };
     let rules =
         installed_file(&manifest, root, ROUTING_RULES_FILE_NAME).ok_or_else(not_installed)?;
-    let digest = installed_file(&manifest, root, DIGEST_FILE_NAME).ok_or_else(not_installed)?;
-    if !rules.is_file() {
-        return Err(PersonaError::Unreadable { path: rules });
+    let digest =
+        root.join(installed_file(&manifest, root, DIGEST_FILE_NAME).ok_or_else(not_installed)?);
+    if !root.join(&rules).is_file() {
+        return Err(PersonaError::Unreadable {
+            path: root.join(rules),
+        });
     }
-    let digest_text = read_digest(&digest)?;
-    let rules = std::fs::canonicalize(&rules).unwrap_or(rules);
-    let body = format!(
-        "{}{}",
-        pointer_line(&rules),
-        with_trailing_newline(digest_text)
-    );
+    let digest_text = with_trailing_newline(read_digest(&digest)?);
+    // Only the root is canonicalized, so the printed path keeps the
+    // `.kiro/context/` or `.konductor/context/` part rule 11 trusts.
+    let shown_root = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    let body = format!("{}{digest_text}", pointer_line(&shown_root.join(rules)));
     if HEADER.len() + body.len() > MAX_PERSONA_BYTES {
         return Err(PersonaError::TooLarge { path: digest });
     }
@@ -697,6 +707,32 @@ mod tests {
             installed_file(&manifest, &root, ROUTING_RULES_FILE_NAME),
             None
         );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_missing_copy_under_one_strategy_falls_through_to_one_that_exists() {
+        let root = scratch_dir("persona-two-strategies");
+        seed(
+            &root,
+            &[
+                (".kiro/context/k-orchestrator-routing-rules.md", "# Rules\n"),
+                (".kiro/context/k-coordinator-digest.md", "d"),
+                (
+                    ".konductor/context/k-orchestrator-routing-rules.md",
+                    "# Rules\n",
+                ),
+            ],
+        );
+        std::fs::remove_file(root.join(".kiro/context/k-orchestrator-routing-rules.md")).unwrap();
+        let manifest = read_manifest(&root).unwrap().unwrap();
+        assert_eq!(
+            installed_file(&manifest, &root, ROUTING_RULES_FILE_NAME),
+            Some(PathBuf::from(
+                ".konductor/context/k-orchestrator-routing-rules.md"
+            ))
+        );
+        assert!(load_persona(&root).is_ok());
         std::fs::remove_dir_all(&root).ok();
     }
 
