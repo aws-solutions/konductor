@@ -246,14 +246,23 @@ fn is_spawn_tool_id(id: &str) -> bool {
 }
 
 /// Drops every spawn-tool alias and expands `@builtin` to
-/// `SPECIALIST_BUILTIN_TOOLS`, keeping the other entries in order.
+/// `SPECIALIST_BUILTIN_TOOLS`, keeping the other entries in order and
+/// each id once.
 fn strip_specialist_spawn_tools(tools: &[String]) -> Vec<String> {
-    let mut stripped = Vec::new();
+    let mut stripped: Vec<String> = Vec::new();
     for id in tools.iter().filter(|id| !is_spawn_tool_id(id)) {
-        if id == "@builtin" {
-            stripped.extend(SPECIALIST_BUILTIN_TOOLS.iter().map(|t| t.to_string()));
+        let expanded: Vec<String> = if id == "@builtin" {
+            SPECIALIST_BUILTIN_TOOLS
+                .iter()
+                .map(|t| t.to_string())
+                .collect()
         } else {
-            stripped.push(id.clone());
+            vec![id.clone()]
+        };
+        for tool in expanded {
+            if !stripped.contains(&tool) {
+                stripped.push(tool);
+            }
         }
     }
     stripped
@@ -770,6 +779,26 @@ mod tests {
             file.tools_settings,
             serde_json::json!({"shell": {"autoAllowReadonly": true}})
         );
+    }
+
+    #[test]
+    fn strip_specialist_spawn_tools_lists_a_builtin_once_when_also_named() {
+        let tools = vec![
+            "fs_read".to_string(),
+            "@builtin".to_string(),
+            "@aws-mcp".to_string(),
+        ];
+        let stripped = strip_specialist_spawn_tools(&tools);
+
+        let mut expected = vec!["fs_read".to_string()];
+        expected.extend(
+            SPECIALIST_BUILTIN_TOOLS
+                .iter()
+                .filter(|t| **t != "fs_read")
+                .map(|t| t.to_string()),
+        );
+        expected.push("@aws-mcp".to_string());
+        assert_eq!(stripped, expected);
     }
 
     #[test]
