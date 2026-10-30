@@ -112,7 +112,7 @@ function readTranscripts(sessionDir, sessionIds, streamText) {
 function trialInstall(prepared, ctx) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
   try {
-    sandbox.installInto(home, prepared);
+    sandbox.installInto(home, prepared, ctx.config.agentEngine);
     const rewritten = sandbox.normalizeAgentModels(home, ctx.config.model);
     prepared.skillInfo = skills.kiroSkillInfo(home, prepared.exportDir);
     return rewritten;
@@ -127,7 +127,7 @@ function installInto(home, { arm, prepared, ctx, config, outDir }) {
   if (arm.vanilla) {
     sandbox.emptyKiroHome(home);
   } else {
-    fs.writeFileSync(path.join(outDir, 'install.log'), sandbox.installInto(home, prepared) + '\n');
+    fs.writeFileSync(path.join(outDir, 'install.log'), sandbox.installInto(home, prepared, config.agentEngine) + '\n');
     meta.rewrittenAgents = sandbox.normalizeAgentModels(home, config.model);
     meta.modelNormalized = true;
   }

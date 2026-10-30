@@ -17,13 +17,20 @@ node --test "bench/runner/test/*.test.js"                           # unit tests
 node bench/tasks/validate-tasks.js                                  # tasks vs reference solutions
 ```
 Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--budget-credits X`,
-`--model ID` (default claude-sonnet-5.5), `--effort LEVEL` (default high), `--seed N`,
+`--model ID` (default claude-sonnet-5.5), `--effort LEVEL` (default high), `--agent-engine v2|v3` (default v2), `--seed N`,
 `--isolate unshare|none|auto`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
 `--hide PATH,..`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
 `--suite lite|full|hard|real|autonomy|pilot`.
 More than 10 planned runs need `--budget-credits`; `run` prints the worst-case wall clock and the cap first.
 An unknown or mistyped flag is an error (exit 2) that lists the known flags, and nothing runs. `--help` and `-h` print the usage.
+
+`--agent-engine` selects the kiro-cli agent engine for every arm of the run and installs agents that engine loads:
+`v2` runs `konductor install --harness kiro-cli-v2` and launches `kiro-cli chat --agent-engine v2`; `v3` runs
+`konductor install --harness kiro-v3` and launches with `--agent-engine v3`. An arm whose CLI has no `kiro-v3`
+harness fails the trial install and shows as FAILED in the preflight table (`--prepare-only` checks this without
+starting an agent). The engine is recorded as `agentEngine` in `run-config.json` and each `result.json`
+(`installHarness` names the install). It applies to kiro-cli arms only; opencode runs reject the flag.
 
 ## Suites and arms
 - lite: vanilla, v1.2.0, main; 1 replicate, `--parallel 1` (wall-clock comparisons need 1). full: all
@@ -277,6 +284,6 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - Under 3 replicates per task is anecdotal (flagged), as are judges differing by over 0.2. Redaction
   hides names, not style; check calibration first.
 - `compare` uses the same series. It refuses runs that differ in model, effort, task set, judge set,
-  content hash, kiro-cli version or isolation mode (exit 2, `--force` overrides) and exits 1 on any
+  content hash, kiro-cli version, isolation mode or agent engine (exit 2, `--force` overrides) and exits 1 on any
   regression: worse by at least `--min-rel` (default 15%) and, with 3+ runs per side, disjoint CIs
   (`--rule any`: either).

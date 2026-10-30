@@ -9,6 +9,7 @@ const { spawnSync, execFileSync } = require('node:child_process');
 const { buildCheckEnv } = require('./env.js');
 const { ANSWER_KEY } = require('./check-matcher.js');
 const armSource = require('./arm-source.js');
+const { kiroInstallHarness } = require('./harness/runtime.js');
 
 function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts });
@@ -127,10 +128,10 @@ function prepareArm(arm, ctx) {
 }
 
 // Agent JSON embeds absolute install paths, so each run installs into its own HOME.
-function installInto(home, prepared) {
+function installInto(home, prepared, agentEngine) {
   fs.mkdirSync(home, { recursive: true });
   const { env } = buildCheckEnv(process.env, { home });
-  return run(prepared.bin, ['install', '--harness', 'kiro-cli-v2', '--from', prepared.exportDir, '--no-telemetry'], { env }).stdout.trim();
+  return run(prepared.bin, ['install', '--harness', kiroInstallHarness(agentEngine), '--from', prepared.exportDir, '--no-telemetry'], { env }).stdout.trim();
 }
 
 // Old releases pin older models in their agent specs. Rewrites `model` in every installed

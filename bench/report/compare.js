@@ -47,6 +47,8 @@ function describe(run) {
     harness: run.harness ?? 'kiro-cli',
     harnessVersion: (run.harness === 'opencode' ? run.config.harnessVersion ?? results[0].harnessVersion : run.config.kiroCliVersion ?? results[0].kiroCliVersion) ?? '',
     isolation: run.config.isolation?.mode ?? results[0].isolation ?? '',
+    // Runs written before --agent-engine existed all used v2.
+    agentEngine: run.harness === 'opencode' ? '' : run.config.agentEngine ?? results[0].agentEngine ?? 'v2',
   };
 }
 
@@ -56,6 +58,7 @@ function refusalsFor(base, head) {
   const labels = {
     harness: 'harness', model: 'model pin', effort: 'effort', tasks: 'suite task set', judges: 'judge set',
     contentHash: 'task/fixture/suite content hash', harnessVersion: `${a.harness} version`, isolation: 'isolation mode',
+    agentEngine: 'agent engine',
   };
   return Object.keys(labels).filter((k) => a[k] !== b[k]).map((k) => `${labels[k]} differs: base "${a[k] || 'none'}" vs head "${b[k] || 'none'}"`);
 }

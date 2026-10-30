@@ -96,6 +96,8 @@ test('refuses when model, effort, task set, or judge set differ; --force overrid
     [{ headCfg: { model: 'other-model' } }, /model/],
     [{ headCfg: { effort: 'low' } }, /effort/],
     [{ headCfg: { taskIds: ['t1', 't9'] } }, /task set/],
+    [{ baseCfg: { agentEngine: 'v2' }, headCfg: { agentEngine: 'v3' } }, /agent engine differs: base "v2" vs head "v3"/],
+    [{ headCfg: { agentEngine: 'v3' } }, /agent engine/],
     [{ baseJ: { judges: ['j1'] }, headJ: { judges: ['j2'] } }, /judge/],
     [{ baseJ: { judges: ['j1'] } }, /judge/],
   ];
@@ -108,6 +110,14 @@ test('refuses when model, effort, task set, or judge set differ; --force overrid
       assert.equal(run(p, { force: true }).exitCode, 0);
     } finally { done(p); }
   }
+});
+
+test('a run written before --agent-engine existed counts as v2', () => {
+  const specs = reps('a', () => ({}));
+  const p = pair(specs, specs, { headCfg: { agentEngine: 'v2' } });
+  try {
+    assert.equal(run(p).refusals.length, 0);
+  } finally { done(p); }
 });
 
 test('arms present on only one side are listed, not compared', () => {

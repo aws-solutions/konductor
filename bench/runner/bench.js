@@ -23,10 +23,11 @@ const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli
 const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
-       [--model ID] [--effort LEVEL] [--cache DIR] [--cargo-target DIR] [--cargo-online]
+       [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate unshare|none|auto] [--allow-partial] [--censored-floor X] [--hide DIR,DIR]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
+       (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
        (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
        arms: vanilla, v1.0.0, v1.1.0, v1.2.0, main, name=<git ref>, name=dir:<path> (see list-arms for the syntax)
        opencode arms (oc-vanilla, oc-v1.2.0, oc-main; one harness per run):

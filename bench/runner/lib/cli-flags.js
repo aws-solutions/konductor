@@ -8,7 +8,7 @@ const FLAGS = {
   run: [
     'suite', 'arms', 'tasks', 'replicates', 'parallel', 'budget-credits', 'budget-usd', 'out', 'model', 'effort', 'cache', 'cargo-target',
     'cargo-online', 'seed', 'isolate', 'allow-partial', 'censored-floor', 'hide', 'env-keep', 'tripwire-exclude', 'tripwire-depth', 'tripwire-dir',
-    'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin',
+    'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'agent-engine',
   ],
   judge: [
     'run', 'judges', 'mode', 'baseline', 'concurrency', 'budget-credits', 'judge-cmd', 'max-file-chars', 'max-bundle-chars', 'redact-file',

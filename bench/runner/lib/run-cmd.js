@@ -9,6 +9,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { resolveArm } = require('./arms.js');
 const { harnessFor, opencode: oc } = require('./harness/index.js');
+const { AGENT_ENGINES, DEFAULT_ENGINE } = require('./harness/runtime.js');
 const { readProfile } = require('./harness/opencode-creds.js');
 const { loadTasks, loadSuite, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
@@ -23,7 +24,6 @@ const rc = require('./runconfig.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
-const DEFAULT_ENGINE = 'v2';
 const DEFAULT_REPO = path.resolve(BENCH_DIR, '..');
 // Censored opencode runs are charged this many USD when the arm has no completed run yet.
 const DEFAULT_CENSORED_FLOOR_USD = 0.5;
@@ -34,6 +34,15 @@ function intOpt(v, name, min = 1) {
   return n;
 }
 
+// --agent-engine picks the kiro-cli engine and the matching install (v2: kiro-cli-v2, v3: kiro-v3). opencode has no engine.
+function engineOpt(opts, runtimes) {
+  const v = opts['agent-engine'];
+  if (v === undefined) return DEFAULT_ENGINE;
+  if (runtimes.includes('opencode')) throw new Error('--agent-engine applies to kiro-cli arms only; opencode arms have no agent engine');
+  if (!AGENT_ENGINES.includes(v)) throw new Error(`--agent-engine must be ${AGENT_ENGINES.join(' or ')}`);
+  return v;
+}
+
 const list = (v) => (v ? String(v).split(',').filter(Boolean) : []);
 
 function need(opts, name) {
@@ -41,12 +50,12 @@ function need(opts, name) {
   return opts[name];
 }
 
-function listModels(kiroBin, authDb, scratchDir, envKeep) {
+function listModels(kiroBin, authDb, scratchDir, envKeep, agentEngine) {
   const dir = fs.mkdtempSync(path.join(scratchDir, 'm-'));
   try {
     sandbox.copyAuthDb(authDb, dir);
     fs.mkdirSync(path.join(dir, 'tmp'), { recursive: true });
-    const { env } = buildChildEnv(process.env, { home: dir, agentEngine: DEFAULT_ENGINE, keep: envKeep });
+    const { env } = buildChildEnv(process.env, { home: dir, agentEngine, keep: envKeep });
     return execFileSync(kiroBin, ['chat', '--list-models', '-f', 'json'], { env, encoding: 'utf8' });
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -67,7 +76,7 @@ function summarize(runConfig, state, extra) {
 
 // Builds and trial-installs every arm exactly as `run` does before it launches an agent, prints the preflight table
 // and stops. It needs no kiro-cli login, creates no run directory and starts no agent, so it spends no credits.
-function prepareOnlyRun({ opts, arms, runtimes, repo, log }) {
+function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   if (runtimes.includes('opencode')) throw new Error('--prepare-only covers kiro-cli arms; opencode arms need their binary and AWS profile, so check them with a normal run');
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
@@ -78,7 +87,7 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, log }) {
   try {
     const ctx = {
       repo, cacheDir, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb: null,
-      config: { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine: DEFAULT_ENGINE }, envKeep: list(opts['env-keep']),
+      config: { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine }, envKeep: list(opts['env-keep']),
     };
     const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
     console.log(preflightTable(arms, prepared, errors));
@@ -115,7 +124,8 @@ async function cmdRun(opts) {
   const REPO = repoRootOf(opts);
   const arms = armIds.map((id) => resolveArm(id, REPO));
   const runtimes = [...new Set(arms.map((a) => harnessFor(a).id))];
-  if (prepareOnly) return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
+  const agentEngine = engineOpt(opts, runtimes);
+  if (prepareOnly) return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
   if (runtimes.length > 1) throw new Error(`arms from different harnesses cannot share one run (${arms.map((a) => `${a.id}: ${harnessFor(a).id}`).join(', ')}); run them separately with different --out`);
   const isOc = runtimes[0] === 'opencode';
   const unit = isOc ? 'usd' : 'credits';
@@ -156,7 +166,7 @@ async function cmdRun(opts) {
 
   const config = isOc
     ? { model: opts.model || oc.DEFAULT_MODEL, effort: oc.variantOf(opts.effort || DEFAULT_EFFORT) }
-    : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine: DEFAULT_ENGINE };
+    : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine };
   const state = { results: [], spent: 0, charged: 0 };
   let runConfig = { suite: suite.name, armIds, startedAt: new Date().toISOString(), seed };
   const flush = (signal) => {
@@ -201,7 +211,7 @@ async function cmdRun(opts) {
       ctx.envInfo = { kiroCliVersion: null, harnessVersion: ctx.opencode.version, modelListSnapshotPath: null, region: oc.REGION };
     } else {
       const modelListPath = path.join(outDir, 'model-list.json');
-      fs.writeFileSync(modelListPath, listModels(ctx.kiroBin, authDb, scratchDir, envKeep));
+      fs.writeFileSync(modelListPath, listModels(ctx.kiroBin, authDb, scratchDir, envKeep, config.agentEngine));
       ctx.envInfo = { kiroCliVersion: sandbox.kiroCliVersion(), modelListSnapshotPath: modelListPath };
     }
 

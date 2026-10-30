@@ -6,6 +6,7 @@ const { resultFields } = require('./skills.js');
 const { aggregateHidden, aggregateRegression, aggregateGroup } = require('./check-matcher.js');
 const { autonomyFields } = require('./autonomy.js');
 const { provenanceOf } = require('./runconfig.js');
+const { kiroInstallHarness } = require('./harness/runtime.js');
 
 function classifyStatus({ timedOut, exitCode, runFinishedStatus }) {
   if (timedOut) return 'timeout';
@@ -74,7 +75,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     commitSha: arm.commitSha,
     ...provenanceOf(arm),
     harness: runtime,
-    installHarness: arm.harness,
+    installHarness: oc || arm.vanilla || !config.agentEngine ? arm.harness : kiroInstallHarness(config.agentEngine),
     harnessVersion: env?.harnessVersion ?? env?.kiroCliVersion ?? null,
     model: config.model,
     effort: config.effort,
