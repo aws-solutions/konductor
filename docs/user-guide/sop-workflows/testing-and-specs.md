@@ -90,7 +90,7 @@ flowchart TD
     S6 --> S7["7. Present recommendation"]
 
     S7 --> V{"Verdict"}
-    V -->|"NOT READY"| NR["List the critical gaps<br/>that must be addressed<br/>may offer to spawn k-developer<br/>to implement the missing tests"]
+    V -->|"NOT READY"| NR["List the critical gaps<br/>that must be addressed<br/>may return a note naming k-developer<br/>to implement the missing tests"]
     V -->|"READY FOR RELEASE"| R["Report and finish"]
 
     class Ask gate

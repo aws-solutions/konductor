@@ -146,13 +146,17 @@ registry), give that file to one agent, or run the parts that touch it
 in sequence. Separate worktrees do not prevent this: both edits
 conflict at merge, or one is lost.
 
+A specialist never spawns. It returns a handoff note naming the next
+role, or a proposed split listing each part and its files. Route the
+note, or check the split against the rule above and fan it out.
+
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
 Teams), `mux-dispatch` (tmux/zellij), or `cmux-dispatch` (cmux) for the
 dispatch-method-specific steps. `mux-dispatch` and `cmux-dispatch` each
 detect and drive Kiro CLI the same as Claude Code, so Kiro CLI is already
 covered there; for a plain in-session `subagent`/`Agent()` call with no
-multiplexer, the three paragraphs above are the complete procedure on either
+multiplexer, the paragraphs above are the complete procedure on either
 runtime and no separate skill is needed.
 
 Examples of parallelizable work:

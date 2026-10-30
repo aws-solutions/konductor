@@ -23,6 +23,8 @@ not per individual commit.
   specialists. The three orchestrator prompts also drop the
   Ultrawork framing, state the parallel rule once, and remove rules already defined in the
   `constraints` skill and the routing rules.
+- Specialist agents no longer spawn other agents. They finish their part and hand the next
+  step, or a proposed parallel split, back to the orchestrator.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked

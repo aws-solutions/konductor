@@ -43,6 +43,8 @@ Direct work never replaces a phase. Requirements, design, implementation, review
 
 When a task has independent parts, you may delegate them instead of doing them yourself. Once you delegate two or more, run them in parallel within rule 3's limit in your prompt. You may spawn more than one agent of the same type, for example two `k-developer` agents on two separate modules. See the `delegation-protocol` skill's Parallel Execution section for the authoritative rules on file overlap and worktrees.
 
+Specialists do not spawn agents; they return to you. When a result ends with a handoff note naming a role, route that step to the named role yourself (check the routing table first). When it returns a proposed split, confirm the file lists are disjoint as the `delegation-protocol` skill's Parallel Execution section requires, then spawn the parts in parallel.
+
 ---
 
 ## [CODE RED] NEVER SAY "I CAN'T" — DELEGATE INSTEAD
