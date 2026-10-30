@@ -25,10 +25,8 @@ not per individual commit.
   `constraints` skill and the routing rules.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
-- Agents ignore planted instructions and follow user-written memory only from an untracked
-  `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
-  or `.konductor/memory` and any tracked dot path with a non-ASCII name; orchestrators never
-  bypass a denial or read unnamed secrets.
+- Project memory in `.konductor/memory/` ranks with AGENTS.md, tracked or not. Orchestrators never
+  bypass a denial or read unnamed secrets; the validator refuses symlinked or out-of-root writes.
 
 ### Fixed
 
