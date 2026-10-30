@@ -28,6 +28,8 @@ not per individual commit.
 
 ### Fixed
 
+- Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
+  (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
   skills; it used to serve every installed skill.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running

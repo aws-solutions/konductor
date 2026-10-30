@@ -177,6 +177,18 @@ function yamlInlineList(key, items) {
   return `${key}: ${rendered.join(', ')}\n`;
 }
 
+// Specs use Kiro CLI's dotted model ID (`claude-sonnet-5.5`), which Claude
+// Code ignores without an error. Same rule as `claude_model_id` in
+// cli/konductor-rs/src/cli/synth/claude.rs: dots become dashes and `auto`
+// becomes `inherit`; anything else passes through.
+const KIRO_MODEL_ID = /^claude-(?:opus|sonnet|haiku|fable)-\d{1,2}(?:\.\d{1,2})?(?:-\d{8})?$/;
+
+/** Convert a spec's model ID to the form Claude Code accepts. */
+function claudeModelId(model) {
+  if (model === 'auto') return 'inherit';
+  return KIRO_MODEL_ID.test(model) ? model.replace(/\./g, '-') : model;
+}
+
 // Emits tools: and skills: only. mcpServers: is deliberately not emitted —
 // MCP servers are customer-installed, not bundled.
 /** Render the frontmatter block for one agent-spec. */
@@ -187,7 +199,7 @@ function renderFrontmatter(spec) {
   const model = (spec.config && spec.config.model) || '';
 
   const parts = ['---', `name: ${spec.name}`, `description: ${JSON.stringify(description)}`];
-  if (model) parts.push(`model: ${model}`);
+  if (model) parts.push(`model: ${claudeModelId(model)}`);
   // `tools:` must be the inline comma-separated form -- see yamlInlineList's
   // comment. `skills:` stays a block sequence: the docs' own
   // "Preload skills into subagents" example renders it that way.
@@ -357,6 +369,7 @@ module.exports = {
   stripFrontmatter,
   loadSkillContent,
   renderFrontmatter,
+  claudeModelId,
   buildInlinedBlock,
   renderAgentFile,
   formatSummaryTable,
