@@ -20,7 +20,8 @@ not per individual commit.
 - `test-coverage-analysis` moved its stage catalogues, report templates, and examples into
   `skills/test-coverage-analysis/references/` (SKILL.md 69.3 KB to 29.9 KB); instructions are unchanged.
 - `dynamodb-validation` moved its validation framework, finding templates, and report template into
-  `skills/dynamodb-validation/references/` (SKILL.md 64.7 KB to 13.4 KB); instructions are unchanged.
+  `skills/dynamodb-validation/references/` (SKILL.md 64.7 KB to 13.4 KB). It also gains a scope
+  section and a shorter path for a single table with no GSIs that still runs the Quality Gate.
 - Claude Code subagents now preload 1 to 4 skills each (90 KB in total, down from 1.8 MB); the rest
   load on demand. `konductor synth` warns when an agent's preload passes 32 KiB and fails when it
   passes 32 names.
