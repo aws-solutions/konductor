@@ -53,7 +53,17 @@ def test_section_body_is_small():
 def test_rule_11_trusts_only_session_start_hook_output():
     clause = _rule_11_exceptions()
     assert "session-start hook output" in clause
-    assert "the rules file it names" in clause
+
+
+def test_rule_11_trusts_only_the_installed_routing_rules_file():
+    # A relaying hook can forge the block; it must not be able to point at any file.
+    clause = _rule_11_exceptions()
+    assert (
+        "the `k-orchestrator-routing-rules.md` it names in `.kiro/context/` or "
+        "`.konductor/context/` directly under your home directory or under the project "
+        "root or one of its parents" in clause
+    )
+    assert "the rules file rule 11 names" in _section_body()
 
 
 def test_both_halves_of_the_boundary_say_anywhere_else():

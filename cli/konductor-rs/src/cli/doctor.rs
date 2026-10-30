@@ -1844,7 +1844,12 @@ fn orchestration_install_findings(
         let Some(wiring) = orchestration_hook_wiring(destination, slot) else {
             continue;
         };
-        findings.extend(wiring_findings(&slot.strategy, wiring, missing_status));
+        findings.extend(wiring_findings(
+            &slot.strategy,
+            wiring,
+            destination,
+            missing_status,
+        ));
     }
     if coordinator {
         findings.extend(persona_file_finding(&manifest, destination));
@@ -1879,7 +1884,14 @@ fn orchestration_hook_wiring(destination: &Path, slot: &StrategyManifest) -> Opt
             _ => return None,
         };
     let file = destination.join(relative);
-    let commands = read_hook_json(&file).map(|value| commands(&value));
+    // A v3 document the slot does not list is a leftover or hand-placed
+    // file, not one this install wrote.
+    let unlisted = slot.strategy == "kiro-v3" && !slot.files.iter().any(|f| f.path == relative);
+    let commands = if unlisted {
+        Err("the file is not listed in the install manifest".to_string())
+    } else {
+        read_hook_json(&file).map(|value| commands(&value))
+    };
     Some(HookWiring { file, commands })
 }
 
@@ -1938,15 +1950,18 @@ fn claude_session_start_commands(settings: &serde_json::Value) -> Vec<String> {
 fn wiring_findings(
     strategy: &str,
     wiring: HookWiring,
+    destination: &Path,
     missing_status: CheckStatus,
 ) -> Vec<OrchestrationFinding> {
     use crate::cli::install::resource_rewrite::{hook_command_exe, ORCHESTRATION_HOOK_MARKER};
 
     let file = wiring.file.display();
-    let exes: Vec<String> = match &wiring.commands {
+    let hooks: Vec<(String, &String)> = match &wiring.commands {
         Ok(commands) => commands
             .iter()
-            .filter_map(|command| hook_command_exe(command, ORCHESTRATION_HOOK_MARKER))
+            .filter_map(|command| {
+                hook_command_exe(command, ORCHESTRATION_HOOK_MARKER).map(|exe| (exe, command))
+            })
             .collect(),
         Err(reason) => {
             return vec![OrchestrationFinding::new(
@@ -1956,7 +1971,7 @@ fn wiring_findings(
             )];
         }
     };
-    if exes.is_empty() {
+    if hooks.is_empty() {
         return vec![OrchestrationFinding::new(
             missing_status,
             format!(
@@ -1966,36 +1981,96 @@ fn wiring_findings(
             Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
         )];
     }
-    exes.into_iter()
-        .map(|exe| match hook_binary(&exe) {
-            Some(path) => {
-                let mut finding = OrchestrationFinding::new(CheckStatus::Ok, String::new(), None);
-                finding.detail.push(format!(
-                    "{strategy}: hook wired in {file}, binary {}",
-                    path.display()
-                ));
-                finding
-            }
-            None => OrchestrationFinding::new(
-                missing_status,
-                format!(
-                    "the hook points at a konductor binary that no longer exists at {exe}; run \
-                     `konductor update`"
-                ),
-                Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
-            ),
+    hooks
+        .into_iter()
+        .flat_map(|(exe, command)| {
+            let label = format!("{strategy}: hook wired in {file}");
+            [
+                Some(binary_finding(&label, &exe, missing_status)),
+                install_root_finding(command, destination, missing_status),
+            ]
         })
+        .flatten()
         .collect()
 }
 
-/// The file a hook's exe names: itself when it has a directory part,
-/// else the first match on `PATH`, as the shell would find it.
+fn binary_finding(label: &str, exe: &str, missing_status: CheckStatus) -> OrchestrationFinding {
+    match hook_binary(exe) {
+        Some(path) => {
+            let mut finding = OrchestrationFinding::new(CheckStatus::Ok, String::new(), None);
+            finding
+                .detail
+                .push(format!("{label}, binary {}", path.display()));
+            finding
+        }
+        None if Path::new(exe).is_file() => OrchestrationFinding::new(
+            missing_status,
+            format!("the hook points at {exe}, which is not executable; run `konductor update`"),
+            Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+        ),
+        None => OrchestrationFinding::new(
+            missing_status,
+            format!(
+                "the hook points at a konductor binary that no longer exists at {exe}; run \
+                 `konductor update`"
+            ),
+            Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+        ),
+    }
+}
+
+/// The hook loads the persona from its `--install-root`, so a root
+/// other than `destination` (a moved or copied project) reads the
+/// wrong install, or none.
+fn install_root_finding(
+    command: &str,
+    destination: &Path,
+    missing_status: CheckStatus,
+) -> Option<OrchestrationFinding> {
+    use crate::cli::install::resource_rewrite::hook_command_install_root;
+
+    let root = hook_command_install_root(command)?;
+    if crate::cli::telemetry_hook::same_dir(Path::new(&root), destination) {
+        return None;
+    }
+    Some(OrchestrationFinding::new(
+        missing_status,
+        format!(
+            "the hook reads the install at {root}, not {}; run `konductor update`",
+            destination.display()
+        ),
+        Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+    ))
+}
+
+/// The executable a hook's exe names: itself when it has a directory
+/// part, else the first match on `PATH`, as the shell would find it.
 fn hook_binary(exe: &str) -> Option<PathBuf> {
     let path = Path::new(exe);
     if path.components().count() > 1 {
-        return path.is_file().then(|| path.to_path_buf());
+        return is_executable_file(path)
+            .unwrap_or(false)
+            .then(|| path.to_path_buf());
     }
-    find_binary_on_path(exe, std::env::var_os("PATH").as_deref())
+    hook_binary_on_path(
+        exe,
+        std::env::var_os("PATH").as_deref(),
+        std::env::consts::EXE_SUFFIX,
+    )
+}
+
+/// A bare `konductor` resolves as `konductor.exe` on Windows, so try
+/// `exe_suffix` when the plain name is not on `PATH`.
+fn hook_binary_on_path(
+    exe: &str,
+    path_var: Option<&std::ffi::OsStr>,
+    exe_suffix: &str,
+) -> Option<PathBuf> {
+    find_binary_on_path(exe, path_var).or_else(|| {
+        (!exe_suffix.is_empty())
+            .then(|| find_binary_on_path(&format!("{exe}{exe_suffix}"), path_var))
+            .flatten()
+    })
 }
 
 fn persona_file_finding(
@@ -2009,7 +2084,8 @@ fn persona_file_finding(
     let missing: Vec<&str> = [ROUTING_RULES_FILE_NAME, DIGEST_FILE_NAME]
         .into_iter()
         .filter(|name| {
-            !installed_file(manifest, destination, name).is_some_and(|path| path.is_file())
+            !installed_file(manifest, destination, name)
+                .is_some_and(|path| destination.join(path).is_file())
         })
         .collect();
     if missing.is_empty() {
@@ -2017,7 +2093,10 @@ fn persona_file_finding(
     }
     let mut finding = OrchestrationFinding::new(
         CheckStatus::Failed,
-        "the coordinator rules file is not installed; run `konductor update`".to_string(),
+        format!(
+            "the coordinator persona files are not installed ({}); run `konductor update`",
+            missing.join(", ")
+        ),
         Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
     );
     finding.detail = missing
@@ -5688,6 +5767,11 @@ mod tests {
         let dir = scratch_dir(label);
         let exe = dir.join("konductor");
         fs::write(&exe, b"").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&exe, fs::Permissions::from_mode(0o755)).unwrap();
+        }
         exe
     }
 
@@ -5959,6 +6043,69 @@ mod tests {
     }
 
     #[test]
+    fn check_orchestration_needs_the_v3_document_listed_in_the_slot() {
+        let exe = fake_konductor_binary("orch-unlisted-exe");
+        let destination = scratch_dir("orch-unlisted-dest");
+        seed_orchestration_install(&destination, "kiro-v3", &persona_files());
+        let document = destination.join(V3_ORCHESTRATION_HOOKS_RELATIVE_PATH);
+        fs::create_dir_all(document.parent().unwrap()).unwrap();
+        fs::write(
+            &document,
+            v3_orchestration_document(&orchestration_command(&exe, &destination)),
+        )
+        .unwrap();
+        let home = home_with_mode("orch-unlisted-home", None);
+        let result = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(result.status, CheckStatus::Warn);
+        assert!(
+            result
+                .summary
+                .ends_with("the file is not listed in the install manifest"),
+            "{}",
+            result.summary
+        );
+        for dir in [&destination, &home, &exe.parent().unwrap().to_path_buf()] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
+    fn check_orchestration_reports_a_hook_that_reads_another_install() {
+        let exe = fake_konductor_binary("orch-moved-exe");
+        let destination = healthy_v3_target("orch-moved-dest", &exe);
+        let old_root = scratch_dir("orch-moved-old-root");
+        fs::write(
+            destination.join(V3_ORCHESTRATION_HOOKS_RELATIVE_PATH),
+            v3_orchestration_document(&orchestration_command(&exe, &old_root)),
+        )
+        .unwrap();
+        for (contents, status) in [
+            (None, CheckStatus::Warn),
+            (COORDINATOR, CheckStatus::Failed),
+        ] {
+            let home = home_with_mode("orch-moved-home", contents);
+            let result = check_orchestration(&destination, &destination, Some(&home));
+            assert_eq!(result.status, status, "{}", result.summary);
+            assert_eq!(
+                result.summary,
+                format!(
+                    "the hook reads the install at {}, not {}; run `konductor update`",
+                    old_root.display(),
+                    destination.display()
+                )
+            );
+            fs::remove_dir_all(&home).ok();
+        }
+        for dir in [
+            &destination,
+            &old_root,
+            &exe.parent().unwrap().to_path_buf(),
+        ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
     fn check_orchestration_reports_a_hook_binary_that_is_gone() {
         let missing = scratch_dir("orch-gone-exe").join("bin dir/konductor");
         let destination = healthy_v3_target("orch-gone-dest", &missing);
@@ -5993,6 +6140,47 @@ mod tests {
     }
 
     #[test]
+    fn hook_binary_on_path_tries_the_exe_suffix_for_a_bare_name() {
+        let dir = scratch_dir("orch-exe-suffix");
+        let exe = dir.join("konductor.exe");
+        fs::write(&exe, b"").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&exe, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let path_var = std::env::join_paths([&dir]).unwrap();
+        assert_eq!(
+            hook_binary_on_path("konductor", Some(&path_var), ".exe"),
+            Some(exe)
+        );
+        assert_eq!(hook_binary_on_path("konductor", Some(&path_var), ""), None);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn check_orchestration_reports_a_hook_binary_that_is_not_executable() {
+        use std::os::unix::fs::PermissionsExt;
+        let exe = fake_konductor_binary("orch-noexec-exe");
+        fs::set_permissions(&exe, fs::Permissions::from_mode(0o644)).unwrap();
+        let destination = healthy_v3_target("orch-noexec-dest", &exe);
+        let home = home_with_mode("orch-noexec-home", COORDINATOR);
+        let result = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(result.status, CheckStatus::Failed);
+        assert_eq!(
+            result.summary,
+            format!(
+                "the hook points at {}, which is not executable; run `konductor update`",
+                exe.display()
+            )
+        );
+        for dir in [&destination, &home, &exe.parent().unwrap().to_path_buf()] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
     fn check_orchestration_needs_the_persona_files_only_under_coordinator() {
         let exe = fake_konductor_binary("orch-persona-exe");
         let destination = healthy_v3_target("orch-persona-dest", &exe);
@@ -6007,7 +6195,8 @@ mod tests {
         assert_eq!(result.status, CheckStatus::Failed);
         assert_eq!(
             result.summary,
-            "the coordinator rules file is not installed; run `konductor update`"
+            "the coordinator persona files are not installed (k-coordinator-digest.md); run \
+             `konductor update`"
         );
         assert!(
             result

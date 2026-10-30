@@ -38,8 +38,8 @@ pub(super) use claude_settings::apply_claude_settings_grant_and_hooks;
 pub(super) use claude_settings::apply_claude_settings_hooks_only;
 pub(crate) use claude_settings::CLAUDE_SETTINGS_RELATIVE_PATH;
 pub(crate) use claude_settings::{
-    claude_hooks_settings_relative_path, hook_command_exe, is_claude_settings_path,
-    remove_claude_konductor_hooks, ORCHESTRATION_HOOK_MARKER,
+    claude_hooks_settings_relative_path, hook_command_exe, hook_command_install_root,
+    is_claude_settings_path, remove_claude_konductor_hooks, ORCHESTRATION_HOOK_MARKER,
 };
 pub(super) use mcp_server::{McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME};
 

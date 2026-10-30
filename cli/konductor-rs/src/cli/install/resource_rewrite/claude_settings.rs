@@ -708,6 +708,19 @@ pub(crate) fn hook_command_exe(command: &str, marker: &str) -> Option<String> {
     (rest.is_empty() || rest.starts_with(' ')).then_some(exe)
 }
 
+/// The unquoted `--install-root` value of a hook command, or `None`
+/// when the command carries none.
+pub(crate) fn hook_command_install_root(command: &str) -> Option<String> {
+    let (_, mut rest) = split_first_word(command)?;
+    loop {
+        let (word, after) = split_first_word(rest.strip_prefix(' ')?)?;
+        if word == "--install-root" {
+            return split_first_word(after.strip_prefix(' ')?).map(|(root, _)| root);
+        }
+        rest = after;
+    }
+}
+
 /// The first shell word of `command`, unquoted, and the text after it.
 fn split_first_word(command: &str) -> Option<(String, &str)> {
     match command.chars().next()? {
@@ -2465,6 +2478,31 @@ mod tests {
             )
             .as_deref(),
             Some("C:\\P F\\k \"x\"")
+        );
+    }
+
+    #[test]
+    fn hook_command_install_root_round_trips_the_quoted_root() {
+        let root = Path::new("/p q/r's");
+        let command = orchestration_hook_command(
+            &shell_quote_for_hook_command("/opt/k"),
+            Some("konductor"),
+            Some(root),
+        );
+        assert_eq!(
+            hook_command_install_root(&command).as_deref(),
+            Some("/p q/r's")
+        );
+        assert_eq!(
+            hook_command_install_root(
+                "\"C:\\a b\\k\" __orchestration-hook --install-root \"C:\\p q\""
+            )
+            .as_deref(),
+            Some("C:\\p q")
+        );
+        assert_eq!(
+            hook_command_install_root("/opt/k __orchestration-hook --agent konductor"),
+            None
         );
     }
 
