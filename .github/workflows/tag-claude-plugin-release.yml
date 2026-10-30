@@ -19,7 +19,7 @@ name: Tag Claude Code plugin release
 # exists on the PR's BASE branch
 # (https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
 # release/plugins is artifact-only -- scripts/assemble-claude-plugin-branch.sh
-# publishes only agents/, skills/, README.md, LICENSE.txt, and the rendered
+# publishes only agents/, skills/, README.md, LICENSE.txt, NOTICE.txt, and the rendered
 # .claude-plugin/plugin.json/.mcp.json there, never .github/, VERSION, or
 # scripts/. A pull_request.closed trigger on this file would therefore
 # never fire for a merge into release/plugins: there is no copy of this
@@ -200,13 +200,13 @@ jobs:
         # scripts/assemble-claude-plugin-branch.sh produces, not an empty or
         # unexpectedly-shaped commit -- the exact files that tree's own
         # script guarantees are present (see that script's own checks for
-        # README.md/LICENSE.txt and its explicit mkdir/cp list for
+        # README.md/LICENSE.txt/NOTICE.txt and its explicit mkdir/cp list for
         # everything else).
         working-directory: plugin-tree
         run: |
           set -e
           MISSING=""
-          for f in ".claude-plugin/plugin.json" ".mcp.json" "README.md" "LICENSE.txt"; do
+          for f in ".claude-plugin/plugin.json" ".mcp.json" "README.md" "LICENSE.txt" "NOTICE.txt"; do
             if [ ! -f "$f" ]; then
               MISSING="$MISSING $f"
             fi

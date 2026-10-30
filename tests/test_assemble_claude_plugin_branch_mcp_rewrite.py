@@ -28,6 +28,7 @@ import json
 import os
 import re
 import subprocess
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
@@ -167,3 +168,55 @@ def test_plugin_json_leaves_agents_and_skills_to_default_scans(assembled):
     plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
     assert "agents" not in plugin
     assert "skills" not in plugin
+
+
+def test_assembled_agents_use_claude_code_model_ids(assembled):
+    for agent in (assembled / "agents").glob("*.md"):
+        model = re.search(r"^model: (.+)$", agent.read_text(encoding="utf-8"), re.M).group(1)
+        assert re.fullmatch(
+            r"claude-(?:opus|sonnet|haiku|fable)-\d{1,2}(?:-\d{1,2})?(?:-\d{8})?|inherit", model
+        ), f"{agent.name}: {model}"
+
+
+class _LinkAttrs(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.targets = []
+
+    def handle_starttag(self, tag, attrs):
+        for name, value in attrs:
+            if name in ("src", "href") and value is not None:
+                self.targets.append(value)
+            elif name == "srcset" and value:
+                self.targets += [c.split()[0] for c in value.split(",") if c.strip()]
+
+
+def _readme_link_targets(readme):
+    # Found independently of the rewriter's regex, so a link form the rewriter
+    # misses still fails here.
+    prose = re.sub(r"^(```|~~~).*?^\1[ \t]*$", "", readme, flags=re.M | re.S)
+    attrs = _LinkAttrs()
+    attrs.feed(prose)
+    targets = list(attrs.targets)
+    for match in re.finditer(r"\]\(", prose):
+        rest = prose[match.end():]
+        if rest.startswith("<"):
+            targets.append(rest[1:rest.index(">")])
+        else:
+            targets.append(re.match(r"[^)\s]*", rest).group(0))
+    targets += re.findall(r"^ {0,3}\[[^\]\n]+\]:[ \t]*<?([^>\s]+)", prose, re.M)
+    return targets
+
+
+def test_assembled_tree_ships_notice_and_absolute_readme_links(assembled):
+    assert (assembled / "NOTICE.txt").is_file()
+    readme = (assembled / "README.md").read_text(encoding="utf-8")
+    targets = _readme_link_targets(readme)
+    shipped = {"LICENSE.txt", "NOTICE.txt"}
+    relative = [
+        t for t in targets
+        if not re.match(r"^(?:[a-z][a-z0-9+.-]*:|#|/)", t, re.I) and t.split("#", 1)[0] not in shipped
+    ]
+    assert targets, "expected links in the assembled README"
+    assert not relative, f"README links that point at files the plugin does not ship: {relative}"
+    assert "](LICENSE.txt)" in readme
