@@ -64,10 +64,12 @@ MUST_USE = re.compile(r"\bMUST USE\b", re.IGNORECASE)
 VERB_PROXY = re.compile(r"^[A-Z][a-z]+s\b(?!\s+(?:on|of|for|about|in|to|from|with|at|by)\b)")
 VERB_PROXY_STOPLIST = frozenset({"This", "Has", "Was", "Its", "Is", "Does", "Thus", "Plus"})
 
-# Any indent opens a fence, so a fence nested in a list item counts. A closer may be
-# indented at most 3 spaces more than its opener.
+# A fence opens at up to 3 spaces of indent, or deeper inside a list item. Outside a
+# list, a line indented 4 or more spaces is indented code, not a fence. A closer may
+# be indented at most 3 spaces more than its opener.
 FENCE_OPEN = re.compile(r"^( *)(`{3,}|~{3,})(.*)$")
 FENCE_CLOSE = re.compile(r"^( *)(`{3,}|~{3,})[ \t]*$")
+LIST_ITEM = re.compile(r"^ *(?:[-*+]|\d+[.)])(?: |$)")
 # The destination may hold one level of balanced parentheses, e.g. "a(1).md".
 INLINE_LINK = re.compile(r"\]\(((?:[^()]|\([^()]*\))*)\)")
 REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*(\S+)")
@@ -123,6 +125,27 @@ def split_frontmatter(text: str) -> tuple[str, list[str], int]:
     raise ValueError("frontmatter has no closing '---' line")
 
 
+def _indent(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
+
+
+def _inside_list_item(previous: list[str], indent: int) -> bool:
+    """Whether a line at `indent` belongs to a list item, judged from the lines above it.
+
+    Walks up through ever smaller indents until a list marker (inside) or an
+    unindented line (outside) settles it.
+    """
+    for line in reversed(previous):
+        if not line.strip() or _indent(line) >= indent:
+            continue
+        if LIST_ITEM.match(line):
+            return True
+        indent = _indent(line)
+        if indent == 0:
+            return False
+    return False
+
+
 def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
     """Replace every line of a CommonMark fenced block (fences included) with ''.
 
@@ -135,7 +158,11 @@ def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
     for index, line in enumerate(lines):
         if fence is None:
             match = FENCE_OPEN.match(line)
-            if match and not (match.group(2)[0] == "`" and "`" in match.group(3)):
+            if (
+                match
+                and not (match.group(2)[0] == "`" and "`" in match.group(3))
+                and (len(match.group(1)) <= 3 or _inside_list_item(out, len(match.group(1))))
+            ):
                 fence = match.group(2)
                 fence_indent = len(match.group(1))
                 opened_at = index
