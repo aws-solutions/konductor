@@ -196,7 +196,7 @@ After receiving subagent results, verify completeness.
   - Did agent avoid MUST NOT DO prohibitions?
   - Are results usable for next steps?
 - You MUST re-delegate if any check fails (max 2 fix cycles)
-- The 2-cycle limit covers this checklist only. Review findings get one fix and one re-review of only what changed, per Review ceilings in the orchestrator's Verification Protocol
+- The 2-cycle limit covers this checklist only. Review findings get one fix, a fresh build and test run, and one re-review of what the fix changed plus the code that calls or uses it, per Review ceilings in the orchestrator's Verification Protocol
 
 **Expected Output:** Completed verification checklist with pass/fail per item, and either confirmation of success or a re-delegation prompt
 

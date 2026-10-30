@@ -190,7 +190,7 @@ After code changes, run the maker-checker cycle:
 1. Get the git diff of all changes
 2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
 3. Address all CRITICAL and IMPORTANT findings (Review ceilings in the Verification Protocol). Never put SUGGESTIONs in a fix brief.
-4. Re-review only what the fix changed, once. List what that re-review still finds for the user, not for another fix; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix. A CRITICAL that survives the re-review is reported as unresolved, and the task is not done.
+4. Run the build and tests again, then re-review what the fix changed plus the code that calls or uses it, once. List what that re-review still finds for the user, not for another fix; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix. A CRITICAL that survives the re-review is reported as unresolved, and the task is not done.
 
 ## Failure Recovery
 
