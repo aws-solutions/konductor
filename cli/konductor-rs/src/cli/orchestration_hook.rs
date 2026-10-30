@@ -150,13 +150,24 @@ fn display_path(path: &Path, home: Option<&Path>) -> String {
     }
 }
 
-/// Each run of control characters becomes one space, so user-authored
-/// or parser text cannot break the one-line output.
+/// Control characters, plus the Unicode line and paragraph separators
+/// and bidi controls that some renderers treat as line breaks or use to
+/// reorder text.
+fn breaks_a_line(c: char) -> bool {
+    c.is_control()
+        || matches!(
+            c,
+            '\u{200E}' | '\u{200F}' | '\u{2028}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+        )
+}
+
+/// Each run of line-breaking characters becomes one space, so
+/// user-authored, parser or path text cannot break the one-line output.
 fn sanitize(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut in_control_run = false;
     for c in text.chars() {
-        if c.is_control() {
+        if breaks_a_line(c) {
             if !in_control_run {
                 out.push(' ');
             }
@@ -248,7 +259,7 @@ fn pointer_line(rules: &Path) -> String {
         "Step 1, before any other action: read {} in full. It holds the complete coordinator \
          rules this digest summarizes. In your first reply, after the Orchestration line, name \
          that file's last `## ` heading.\n\n",
-        rules.display()
+        sanitize(&rules.display().to_string())
     )
 }
 
@@ -687,6 +698,13 @@ mod tests {
             None
         );
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn the_pointer_path_stays_on_one_line() {
+        let line = pointer_line(Path::new("/p/a\u{2028}b\nc\u{202E}d/rules.md"));
+        assert!(line.contains("read /p/a b c d/rules.md in full."), "{line}");
+        assert_eq!(line.matches('\n').count(), 2, "{line:?}");
     }
 
     #[test]
