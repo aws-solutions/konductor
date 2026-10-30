@@ -2017,7 +2017,10 @@ fn persona_file_finding(
     }
     let mut finding = OrchestrationFinding::new(
         CheckStatus::Failed,
-        "the coordinator rules file is not installed; run `konductor update`".to_string(),
+        format!(
+            "the coordinator persona files are not installed ({}); run `konductor update`",
+            missing.join(", ")
+        ),
         Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
     );
     finding.detail = missing
@@ -6007,7 +6010,8 @@ mod tests {
         assert_eq!(result.status, CheckStatus::Failed);
         assert_eq!(
             result.summary,
-            "the coordinator rules file is not installed; run `konductor update`"
+            "the coordinator persona files are not installed (k-coordinator-digest.md); run \
+             `konductor update`"
         );
         assert!(
             result
