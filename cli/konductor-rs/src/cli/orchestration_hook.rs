@@ -57,6 +57,7 @@ pub(crate) enum PersonaError {
     NotInstalled { install_root: PathBuf },
     Unreadable { path: PathBuf },
     TooLarge { path: PathBuf },
+    PathTooLong { install_root: PathBuf },
 }
 
 /// `SessionStart` (Kiro CLI v3, Claude Code) and `agentSpawn` (Kiro CLI
@@ -138,6 +139,11 @@ fn persona_reason(error: &PersonaError) -> String {
         PersonaError::Unreadable { path } | PersonaError::TooLarge { path } => format!(
             "the coordinator rules file at {} could not be read; run konductor update",
             display_path(path, home.as_deref())
+        ),
+        PersonaError::PathTooLong { install_root } => format!(
+            "the install path is too long for session-start hook output; install to a shorter \
+             path than {}",
+            display_path(install_root, home.as_deref())
         ),
     }
 }
@@ -252,12 +258,17 @@ fn load_persona(root: &Path) -> Result<String, PersonaError> {
         });
     }
     let digest_text = with_trailing_newline(read_digest(&digest)?);
+    if HEADER.len() + pointer_line(Path::new("")).len() + digest_text.len() > MAX_PERSONA_BYTES {
+        return Err(PersonaError::TooLarge { path: digest });
+    }
     // Only the root is canonicalized, so the printed path keeps the
     // `.kiro/context/` or `.konductor/context/` part rule 11 trusts.
     let shown_root = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
     let body = format!("{}{digest_text}", pointer_line(&shown_root.join(rules)));
     if HEADER.len() + body.len() > MAX_PERSONA_BYTES {
-        return Err(PersonaError::TooLarge { path: digest });
+        return Err(PersonaError::PathTooLong {
+            install_root: root.to_path_buf(),
+        });
     }
     Ok(body)
 }
@@ -734,6 +745,33 @@ mod tests {
         );
         assert!(load_persona(&root).is_ok());
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_long_install_path_is_reported_as_the_path_not_the_digest() {
+        let root = scratch_dir("persona-long-path")
+            .join("a".repeat(200))
+            .join("b".repeat(200));
+        std::fs::create_dir_all(&root).unwrap();
+        seed(
+            &root,
+            &[
+                (".kiro/context/k-orchestrator-routing-rules.md", "# Rules\n"),
+                (
+                    ".kiro/context/k-coordinator-digest.md",
+                    include_str!("../../../../context/k-coordinator-digest.md"),
+                ),
+            ],
+        );
+        let error = load_persona(&root).unwrap_err();
+        assert_eq!(
+            error,
+            PersonaError::PathTooLong {
+                install_root: root.clone()
+            }
+        );
+        assert!(persona_reason(&error).starts_with("the install path is too long"));
+        std::fs::remove_dir_all(root.parent().unwrap().parent().unwrap()).ok();
     }
 
     #[test]
