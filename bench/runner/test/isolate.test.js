@@ -256,6 +256,9 @@ test('tripwire hits are flags without the namespace and informational inside it'
   assert.deepEqual(tripwireFlags(agent, 'sandbox-exec', flagged), ['homeTripwire'], 'an autorun dir hit past the first 50 is flagged');
   assert.deepEqual(tripwireFlags(trip([path.join(os.tmpdir(), 'h', '.zshrc')]), 'sandbox-exec', flagged), []);
   assert.deepEqual(tripwireFlags(agent, 'unshare', flagged), []);
+  const cut = { ...trip(churn), truncated: true };
+  assert.deepEqual(tripwireFlags(cut, 'sandbox-exec', flagged), ['homeTripwireTruncated'], 'a truncated walk is flagged');
+  assert.deepEqual(tripwireFlags({ ...agent, truncated: true }, 'sandbox-exec', flagged), ['homeTripwire', 'homeTripwireTruncated']);
 });
 
 test('realHomes finds the account home from the password database even when HOME points at a scratch directory', () => {

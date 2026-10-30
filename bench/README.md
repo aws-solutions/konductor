@@ -25,7 +25,8 @@ Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--b
 More than 10 planned runs need `--budget-credits`; `run` prints the worst-case wall clock and the cap first.
 The unit tests for the real-task track run a fake project's pytest suite. Without `python3 -m pytest`
 those 9 tests are skipped, not failed, and the summary shows them in its `skipped` count; install
-pytest (`python3 -m pip install --user pytest`) to cover them.
+pytest (`python3 -m pip install --user pytest`) to cover them. Set `BENCH_REQUIRE_PYTEST=1` on CI
+and reference hosts so a missing pytest fails those tests instead of skipping them.
 An unknown or mistyped flag is an error (exit 2) that lists the known flags, and nothing runs. `--help` and `-h` print the usage.
 
 `--agent-engine` selects the kiro-cli agent engine for every arm of the run and installs agents that engine loads:
@@ -143,11 +144,14 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   hidden paths and masks as above are denied for reading, writing and Unix-socket connects (a denied
   read fails with "Operation not permitted" instead of showing an empty directory), plus the kiro-cli
   auth database under `~/Library/Application Support/kiro-cli` and launchd's per-session sockets under
-  `/var/run/com.apple.launchd.*` (where `SSH_AUTH_SOCK` points). `open`, `osascript` and `launchctl`
-  cannot run. Capabilities and the pid namespace have no equivalent, so a process the agent detaches
+  `/var/run/com.apple.launchd.*` (where `SSH_AUTH_SOCK` points), and the user's keychains under
+  `~/Library/Keychains`. `open`, `osascript`, `launchctl`, `security` and `git-credential-osxkeychain`
+  cannot run, so items whose ACL trusts those tools cannot be read without a prompt. Capabilities and the pid namespace have no equivalent, so a process the agent detaches
   with `setsid` can outlive the run. launchd stays reachable over Mach, and jobs it starts run outside
   the sandbox, so a program that submits a job without `launchctl` can still run code outside the
-  sandbox, including writing a login item. Offline checks deny outbound connections except to localhost.
+  sandbox, including writing a login item. securityd is also reachable over Mach, so a program
+  that calls the Security framework directly can still ask for keychain items; items that do not
+  trust it prompt the user, and an unattended run has no one to approve. Offline checks deny outbound connections except to localhost.
 - Every `konductor` CLI call (synth, install) runs with a scratch HOME and the allowlisted environment,
   and refuses to start with the real HOME, so `~/.konductor/installs` and `~/.konductor/logs` are never written.
 - Tripwire (always on): after each run the real HOME (depth 3), the repository and `--tripwire-dir` are
@@ -155,6 +159,7 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   raised for any hit with `--isolate none`, for hits in the `~/Library` dirs macOS runs code from
   (`LaunchAgents`, `Services`, `Scripts`, `QuickLook` and similar) with `--isolate sandbox-exec`
   (system processes write elsewhere in `~/Library` all the time), and never with `--isolate unshare`, where a hit is another process (an IDE).
+  With `none` or `sandbox-exec`, a scan that stops at its entry cap raises `homeTripwireTruncated`.
 - SIGINT/SIGTERM/SIGHUP kills every agent group, removes scratch dirs and auth copies, writes
   `summary.json` with `interrupted`, and exits non-zero. The judge phase does the same for its calls.
 

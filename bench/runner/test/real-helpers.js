@@ -23,7 +23,9 @@ const git = (cwd, ...args) => {
 // The fix adds a long docstring line so a verbatim copy is long enough for the recall check.
 const FIXED_MOD = 'def add(a, b):\n    """Return the sum of a and b, computed with the plus operator on the two given arguments."""\n    return a + b\n';
 // The fake upstream project's tests run under pytest; without it these tests can only report "unparsed".
-const PYTEST_SKIP = spawnSync('python3', ['-m', 'pytest', '--version'], { encoding: 'utf8' }).status === 0 ? false : 'python3 -m pytest is not installed';
+// They skip when pytest is missing, unless BENCH_REQUIRE_PYTEST=1 makes them run (and fail) anyway.
+const HAS_PYTEST = spawnSync('python3', ['-m', 'pytest', '--version'], { encoding: 'utf8' }).status === 0;
+const PYTEST_SKIP = HAS_PYTEST || process.env.BENCH_REQUIRE_PYTEST === '1' ? false : 'python3 -m pytest is not installed (set BENCH_REQUIRE_PYTEST=1 to fail instead)';
 const RUBRIC = [1, 2, 3].map((n) => ({ id: `c${n}`, criterion: `Criterion ${n}.`, weight: 1 }));
 
 // useEnv points BENCH_REAL_CACHE at the cache until done() runs, as `--real-cache` does for a run.

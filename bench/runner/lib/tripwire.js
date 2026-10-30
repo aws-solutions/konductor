@@ -93,7 +93,8 @@ function tripwireFlags(trip, isolationMode, flaggedInHome = []) {
   }
   if (isolationMode !== 'sandbox-exec') return [];
   const risky = trip.allHits.some((h) => flaggedInHome.some((w) => under(h, w) || under(realOr(h), w)));
-  return risky ? ['homeTripwire'] : [];
+  // A truncated walk may never have reached the autorun dirs.
+  return [...(risky ? ['homeTripwire'] : []), ...(trip.truncated ? ['homeTripwireTruncated'] : [])];
 }
 
 module.exports = { createTripwire, tripwireFlags, DEFAULT_EXCLUDES, REPO_EXCLUDES };

@@ -56,6 +56,9 @@ test('the profile denies home writes, allows the scratch root and ~/Library, and
     }
     assert.match(profile, /\(deny process-exec\n {2}\(literal "\/usr\/bin\/open"\)/);
     assert.ok(profile.indexOf('(literal "/bin/launchctl")') > at('(deny process-exec'), 'launchctl cannot run');
+    assert.ok(at(`(subpath "${path.join(homeReal, 'Library/Keychains')}")`) > at('(deny file-read* file-write*'), 'the user keychains cannot be read');
+    assert.ok(profile.indexOf('(literal "/usr/bin/security")') > at('(deny process-exec'), 'the security CLI cannot run');
+    assert.ok(profile.indexOf('(regex #"/git-credential-osxkeychain$")') > at('(deny process-exec'), 'the osxkeychain credential helper cannot run');
     assert.ok(profile.includes(`(remote unix-socket (subpath "${path.join(homeReal, '.ssh')}"))`), 'masked paths are denied as Unix-socket peers');
     assert.ok(profile.includes('(remote unix-socket (regex #"^(/System/Volumes/Data)?/private/var/run/com\\.apple\\.launchd\\.[^/]+(/|$)"))'), 'the launchd ssh-agent socket is denied');
     assert.doesNotMatch(profile, /remote ip/);
@@ -152,6 +155,22 @@ test('the launchd ssh-agent socket is refused and launchctl cannot run in the sa
       const code = `require('net').connect(${JSON.stringify(agent)}).on('connect', () => process.exit(0)).on('error', () => process.exit(7))`;
       assert.equal(await runInSandbox(iso, process.execPath, ['-e', code]), 7, 'the ssh-agent socket is refused');
     }
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test('the login keychain cannot be opened or read from the sandbox', { skip }, () => {
+  const scratch = makeScratchRoot();
+  try {
+    const keychain = path.join(os.homedir(), 'Library/Keychains/login.keychain-db');
+    if (!fs.existsSync(keychain)) return;
+    const r = inSandbox(scratch, [
+      `/usr/bin/security show-keychain-info "${keychain}" >/dev/null 2>&1 && exit 3`,
+      `head -c1 "${keychain}" >/dev/null 2>&1 && exit 4`,
+      'exit 0',
+    ].join('; '));
+    assert.equal(r.status, 0, r.stderr);
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }

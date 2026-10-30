@@ -16,7 +16,8 @@
 // layout: writes to the real home, /tmp and the user temp dir are denied (except ~/Library, where
 // system frameworks keep caches and keychains, but not ~/Library/LaunchAgents), the scratch root stays writable, the same
 // credential paths and masks are denied for reading and for Unix-socket connects, as are launchd's
-// per-session sockets (the ssh-agent), and GUI launchers and launchctl cannot run.
+// per-session sockets (the ssh-agent) and the user's keychains, and GUI launchers, launchctl and the
+// keychain CLIs cannot run.
 // `offline` denies outbound connections except to localhost.
 
 const fs = require('node:fs');
@@ -46,6 +47,11 @@ const LIBRARY_AUTORUN = [
   'Library/QuickLook', 'Library/Spotlight', 'Library/Screen Savers', 'Library/Internet Plug-Ins',
 ];
 const sandboxFlaggedInHome = (homes) => homes.flatMap((h) => LIBRARY_AUTORUN.map((d) => path.join(h, d)));
+// The login keychain stays unlocked for the session; the profile denies reading it and running the
+// keychain CLIs, since items whose ACL trusts them return secrets without a prompt.
+const KEYCHAINS_IN_HOME = ['Library/Keychains'];
+const KEYCHAIN_CLIENTS = ['/usr/bin/security'];
+const KEYCHAIN_CLIENT_RE = '/git-credential-osxkeychain$';
 const GUI_LAUNCHERS = ['/usr/bin/open', '/usr/bin/osascript', '/usr/bin/xdg-open', '/usr/local/bin/xdg-open', '/opt/homebrew/bin/xdg-open'];
 // Jobs launchd starts do not inherit the sandbox.
 const LAUNCHD_CLIENTS = ['/bin/launchctl'];
@@ -173,7 +179,7 @@ const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // The last matching rule wins, so each allow follows the deny it carves out of, and the read denies come last.
 function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, offline = false }) {
   const block = (head, ps) => (ps.length ? [`(${head}`, ...subpaths(ps), ')'] : []);
-  const hidden = hideTargets(homes, hide, masks);
+  const hidden = [...hideTargets(homes, hide, masks), ...homes.flatMap((h) => KEYCHAINS_IN_HOME.map((d) => path.join(h, d)))];
   // A Time Machine local snapshot exposes another copy of the home under /private/var/folders.
   const names = uniq([...HIDE_IN_HOME, ...hide].filter((d) => !path.isAbsolute(d))).map(reEscape).join('|');
   const snapshotRe = homes.map((h) => `  (regex #"^(${reEscape(DATA_VOLUME)})?/private/var/folders/.*/persist-com\\.apple\\.TimeMachine[^/]*${reEscape(h)}/(${names})(/|$)")`);
@@ -192,7 +198,8 @@ function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTre
     // A Unix-socket connect() is checked as network-outbound, not as a file read.
     // Filters inside one (remote unix-socket ...) are ANDed, so each path gets its own.
     '(deny network-outbound', ...[...subpaths(hidden), launchdSockets].map((f) => `  (remote unix-socket ${f.trim()})`), ')',
-    '(deny process-exec', ...[...GUI_LAUNCHERS, ...LAUNCHD_CLIENTS].map((p) => `  (literal ${sbq(p)})`), ')',
+    '(deny process-exec', ...[...GUI_LAUNCHERS, ...LAUNCHD_CLIENTS, ...KEYCHAIN_CLIENTS].map((p) => `  (literal ${sbq(p)})`),
+    `  (regex #"${KEYCHAIN_CLIENT_RE}")`, ')',
     ...(offline ? ['(deny network-outbound (remote ip "*:*"))', '(allow network-outbound (remote ip "localhost:*"))'] : []),
   ].join('\n');
 }
