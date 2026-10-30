@@ -839,6 +839,38 @@ def test_symlinked_konductor_is_refused_outside_a_git_work_tree(tmp_path):
     assert list(outside.iterdir()) == []
 
 
+def test_directory_at_the_target_path_is_refused(tmp_path):
+    _commit_initial(tmp_path)
+    blocker = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    blocker.mkdir(parents=True)
+
+    result = run_validator(ENTRY, Path(_relative_memory_target()), cwd=tmp_path)
+    assert result.returncode == 1
+    assert "is not a regular file" in result.stderr
+    assert list(blocker.iterdir()) == []
+
+
+def test_long_s_symlink_folded_onto_user_md_is_refused(tmp_path):
+    """U+017F (long s) case-folds to `s`, so on a case-insensitive filesystem
+    a planted `U\u017fER.md` symlink is the file the validator opens as USER.md."""
+    root = tmp_path / "root"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=str(root), check=True)
+    _commit_initial(root)
+    outside_file = tmp_path / "outside.txt"
+    outside_file.write_bytes(b"do not touch\n")
+    memory_dir = root / ".konductor" / "memory"
+    memory_dir.mkdir(parents=True)
+    (memory_dir / "U\u017fER.md").symlink_to(outside_file)
+    if not (memory_dir / "USER.md").is_symlink():
+        pytest.skip("U\u017fER.md and USER.md are separate names on this filesystem")
+
+    result = run_validator(ENTRY, Path(".konductor") / "memory" / "USER.md", cwd=root)
+    assert result.returncode == 1
+    assert "is a symlink" in result.stderr
+    assert outside_file.read_bytes() == b"do not touch\n"
+
+
 def test_other_file_name_under_the_memory_dir_is_refused(tmp_path):
     _commit_initial(tmp_path)
     target = Path(".konductor") / "memory" / "OTHER.md"
@@ -882,6 +914,7 @@ def _attacker_repo(path: Path, planted_dir: str, planted_name: str) -> None:
         pytest.param(KELVIN_DIR, "USER.md", True, id="kelvin-into-existing"),
         pytest.param(".konductor", "USER.md", True, id="literal-tracked"),
         pytest.param(".konductor", "user.md", True, id="case-variant-file-name"),
+        pytest.param(".konductor", "U\u017fER.md", True, id="long-s-file-name"),
     ],
 )
 def test_planted_tracked_memory_does_not_change_where_the_validator_writes(

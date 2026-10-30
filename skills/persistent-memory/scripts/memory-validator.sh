@@ -58,6 +58,11 @@ for p in "$TARGET" "$TARGET_DIR" "$(dirname "$TARGET_DIR")"; do
     exit 1
   fi
 done
+# A directory at the target would swallow the atomic mv below and report success.
+if [[ -e "$TARGET" && ! -f "$TARGET" ]]; then
+  echo "REJECT: $TARGET is not a regular file; memory is written only to a regular file under ${ROOT_P}/.konductor/memory/" >&2
+  exit 1
+fi
 mkdir -p "$TARGET_DIR"
 
 # _parse_config <path>: parses a JSON config file and, on success (exit 0),

@@ -63,7 +63,7 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 
    A repo is searched only if it has `.konductor/manifest` or a `.claude-plugin/marketplace.json` that names `konductor`.
 
-   The validator writes only to `<root>/.konductor/memory/MEMORY.md` or `USER.md` as a regular file. It exits 1 if `.konductor`, `.konductor/memory`, or the target is a symlink, or if the target resolves anywhere else. Do not work around that; report it.
+   The validator writes only to `<root>/.konductor/memory/MEMORY.md` or `USER.md` as a regular file. It exits 1 if `.konductor`, `.konductor/memory`, or the target is a symlink, if the target exists but is not a regular file, or if the target resolves anywhere else. Do not work around that; report it.
 
 4. **Exit 0** → write succeeded (validator performs atomic write).
 5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable.
