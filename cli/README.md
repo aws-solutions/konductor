@@ -7,16 +7,16 @@ a Konductor-managed repository. It handles installation, configuration, and diag
 for the agent, skill and SOP content that Konductor manages — it does not itself run
 SDLC workflows (that's the Konductor Kiro agent's job).
 
-> **Status:** `init`, `install`, `update`, `uninstall`, `synth`, and `doctor` now
+> **Status:** `init`, `install`, `update`, `uninstall`, `synth`, `doctor`, and `flow` now
 > perform real work (see [Current state](#current-state)). The remaining command
 > (`metrics`) is still a **stub** — it parses arguments and validates input correctly,
 > but does not yet perform real work.
 
 ---
 
-## The 7 commands
+## The 8 commands
 
-`install`, `update`, `uninstall`, `synth`, `init`, `doctor`, `metrics`.
+`install`, `update`, `uninstall`, `synth`, `init`, `doctor`, `flow`, `metrics`.
 
 Global options: `--verbose`/`-v`,
 `--json`, `--version`, `--no-color`.
@@ -59,7 +59,8 @@ of failing.
   Defaults to `$HOME` when omitted, same as `install --target`.
 
 Running an SDLC _workflow_ is **not** a CLI subcommand — that is driven by the Konductor
-Kiro agent. The CLI utility handles setup, content build, lifecycle, and diagnostics only.
+Kiro agent. The CLI utility handles setup, content build, lifecycle, and diagnostics, and it
+checks and shows workflow files with [`flow`](#flow). It does not run them yet.
 
 ---
 
@@ -834,6 +835,37 @@ stdout instead:
 
 ---
 
+## `flow`
+
+```bash
+konductor flow check <name> [--json]
+konductor flow show <name> [--json]
+```
+
+A workflow is a YAML file, `<name>.yml`, that lists the stages of a piece of work and the agent that does each one.
+The rules for the file are in [`docs/design/workflows-spec.md`](../docs/design/workflows-spec.md), and
+[`workflow-engine/examples/hello-plan.yml`](../workflow-engine/examples/hello-plan.yml) is an example. `flow` only
+reads files. It never writes one, and `install`, `update` and `uninstall` never write to `.konductor/workflows/`.
+
+A bare `<name>` is looked up in `.konductor/workflows/` of the current directory, then in `~/.konductor/workflows/`.
+The name follows the pattern `^[a-z0-9][a-z0-9-]{0,63}$`. `library/<name>` names a shipped workflow, and none exist
+yet, so it is a usage error.
+
+The engine reads a file only if it is a regular UTF-8 file with the expected name, of at most 262144 bytes. A link, a
+directory or anything bigger is treated as not there, and a link is never followed.
+
+- `flow check` validates the file and reports every problem with its file, line, column, code and message, and a
+  suggestion when it has one. A key that a later release adds is `NOT_SUPPORTED_BY_THIS_BUILD` and names the release.
+  With `--json` it prints one JSON object with the diagnostics.
+- `flow show` prints the resolved workflow as JSON, with the text of each prompt. Keys are sorted, nothing in it is a
+  machine path, and the bytes are the same whatever order the keys have in the file. `--json` prints the same
+  document and makes a failure JSON as well.
+
+Exit codes: `0` when the workflow has no errors, `64` for a usage error (a bad name, `library/<name>`, or a name that
+matches no file), and `65` when the workflow has errors.
+
+---
+
 ## Using the orchestrator
 
 Agents installed with `--target <dir>` are discovered by a **cwd-relative scan** — they
@@ -878,7 +910,7 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | 5 | Reserved, not yet emitted by any command. |
   | 6 | Success with warnings — emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
   | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
-  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error) |
+  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error). Also the workflow has errors (`flow check`, `flow show`) |
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 
@@ -899,6 +931,7 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   - `doctor` inspecting a source tree/install destination via `synth`/`install`/`config`'s
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
+  - `flow check` and `flow show` reading workflow files through the `workflow-engine/` crates
 - **Stubs:** `metrics` still prints "not yet implemented."
 - **Not yet started:** the run-engine/conductor (which will read/write
   `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's

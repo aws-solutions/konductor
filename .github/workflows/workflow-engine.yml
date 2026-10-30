@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Format, lint and test for workflow-engine/. Runs only when that folder (or this
+# workflow) changes. The integration/** and engine/** targets cover stacked PRs, where
+# a PR's base is another feature branch rather than main.
+#
+# The first job runs on the stable toolchain: `cargo fmt --check`, `cargo clippy` with
+# warnings as errors, and `cargo test`. The second job runs the tests on the oldest
+# toolchain the crates declare in `rust-version`, so a newer language feature cannot
+# slip in unnoticed.
+#
+# Triggers on `pull_request`, NOT `pull_request_target`, so PR-head code runs
+# with a read-only, secret-free token even for fork PRs.
+name: Workflow engine
+
+on:
+  pull_request:
+    branches: [main, 'integration/**', 'engine/**']
+    paths:
+      - 'workflow-engine/**'
+      - '.github/workflows/workflow-engine.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workflow-engine:
+    name: Format, lint, test (stable)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: workflow-engine
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+  minimum-rust-version:
+    name: Test (Rust 1.88)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: workflow-engine
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: '1.88'
+
+      - name: Test
+        run: cargo test
