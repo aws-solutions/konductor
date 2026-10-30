@@ -38,7 +38,20 @@ TARGET_DIR="$(dirname "$TARGET")"
 # Refuse to write through a symlink or outside the project root. Trust in
 # memory content is decided by the rules, not here; this guard only stops a
 # tracked symlink from turning a memory write into a write somewhere else.
+# The path is checked before anything is created, so a refused argument
+# (absolute, `..`, or a variant spelling) leaves no directory behind.
 ROOT_P="$(cd "$GIT_ROOT" && pwd -P)"
+TARGET_NAME="$(basename "$TARGET")"
+KONDUCTOR_DIR="$(dirname "$TARGET_DIR")"
+PARENT_P="$(cd -P "$(dirname "$KONDUCTOR_DIR")" 2>/dev/null && pwd -P || true)"
+if [[ "$TARGET_NAME" != "MEMORY.md" && "$TARGET_NAME" != "USER.md" ]] ||
+   [[ "$(basename "$TARGET_DIR")" != "memory" || "$(basename "$KONDUCTOR_DIR")" != ".konductor" ]] ||
+   [[ "$PARENT_P" != "$ROOT_P" ]]; then
+  echo "REJECT: resolved target $TARGET is not ${ROOT_P}/.konductor/memory/{MEMORY,USER}.md" >&2
+  exit 1
+fi
+TARGET="${ROOT_P}/.konductor/memory/${TARGET_NAME}"
+TARGET_DIR="$(dirname "$TARGET")"
 for p in "$TARGET" "$TARGET_DIR" "$(dirname "$TARGET_DIR")"; do
   if [[ -L "$p" ]]; then
     echo "REJECT: $p is a symlink; memory is written only to a regular file under ${ROOT_P}/.konductor/memory/" >&2
@@ -46,13 +59,6 @@ for p in "$TARGET" "$TARGET_DIR" "$(dirname "$TARGET_DIR")"; do
   fi
 done
 mkdir -p "$TARGET_DIR"
-TARGET_P="$(cd "$TARGET_DIR" && pwd -P)/$(basename "$TARGET")"
-case "$TARGET_P" in
-  "${ROOT_P}/.konductor/memory/MEMORY.md"|"${ROOT_P}/.konductor/memory/USER.md") ;;
-  *) echo "REJECT: resolved target $TARGET_P is not ${ROOT_P}/.konductor/memory/{MEMORY,USER}.md" >&2; exit 1 ;;
-esac
-TARGET="$TARGET_P"
-TARGET_DIR="$(dirname "$TARGET")"
 
 # _parse_config <path>: parses a JSON config file and, on success (exit 0),
 # prints:

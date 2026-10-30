@@ -799,10 +799,44 @@ def test_absolute_target_outside_the_root_is_refused(tmp_path):
     subprocess.run(["git", "init", "-q"], cwd=str(root), check=True)
     _commit_initial(root)
 
-    result = run_validator(ENTRY, outside / "MEMORY.md", cwd=root)
+    for target in (outside / "MEMORY.md", outside / "a" / "b" / "MEMORY.md"):
+        result = run_validator(ENTRY, target, cwd=root)
+        assert result.returncode == 1
+        assert "resolved target" in result.stderr
+    assert list(outside.iterdir()) == []
+
+
+def test_dotdot_through_a_symlinked_konductor_creates_nothing_outside(tmp_path):
+    root = tmp_path / "root"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=str(root), check=True)
+    _commit_initial(root)
+    (root / ".konductor").symlink_to(outside)
+
+    for target in (".konductor/memory/../memory/MEMORY.md", "../outside/.konductor/memory/MEMORY.md"):
+        result = run_validator(ENTRY, Path(target), cwd=root)
+        assert result.returncode == 1
+        assert "resolved target" in result.stderr
+    assert list(outside.iterdir()) == []
+    assert (root / ".konductor").is_symlink()
+
+
+def test_symlinked_konductor_is_refused_outside_a_git_work_tree(tmp_path):
+    workdir = tmp_path / "plain"
+    outside = tmp_path / "outside"
+    workdir.mkdir()
+    outside.mkdir()
+    (workdir / ".konductor").symlink_to(outside)
+    # The autouse fixture made tmp_path a repo; stop git from finding it.
+    ceiling = {"GIT_CEILING_DIRECTORIES": f"{tmp_path}:{tmp_path.resolve()}"}
+
+    result = run_validator(ENTRY, Path(_relative_memory_target()), cwd=workdir, env=ceiling)
     assert result.returncode == 1
-    assert "resolved target" in result.stderr
-    assert not (outside / "MEMORY.md").exists()
+    assert "is a symlink" in result.stderr
+    assert str(workdir.resolve() / ".konductor") in result.stderr
+    assert list(outside.iterdir()) == []
 
 
 def test_other_file_name_under_the_memory_dir_is_refused(tmp_path):
@@ -824,8 +858,8 @@ KELVIN_DIR = ".\u212aonductor"
 PLANTED_BYTES = b"- Planted entry from the repository\n"
 
 
-def _attacker_repo(path: Path, planted_dir: str) -> None:
-    """Commit <planted_dir>/memory/USER.md with plumbing, so the path is
+def _attacker_repo(path: Path, planted_dir: str, planted_name: str) -> None:
+    """Commit <planted_dir>/memory/<planted_name> with plumbing, so the path is
     recorded exactly as given rather than as this filesystem spells it."""
     path.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=str(path), check=True)
@@ -836,24 +870,25 @@ def _attacker_repo(path: Path, planted_dir: str) -> None:
         check=True,
         capture_output=True,
     ).stdout.decode().strip()
-    _git(path, "update-index", "--add", "--cacheinfo", f"100644,{blob},{planted_dir}/memory/USER.md")
+    _git(path, "update-index", "--add", "--cacheinfo", f"100644,{blob},{planted_dir}/memory/{planted_name}")
     _git(path, "commit", "-q", "-m", "plant")
 
 
 @pytest.mark.parametrize(
-    ("planted_dir", "victim_has_konductor"),
+    ("planted_dir", "planted_name", "victim_has_konductor"),
     [
-        pytest.param(".Konductor", True, id="case-variant-into-existing"),
-        pytest.param(KELVIN_DIR, False, id="kelvin-into-fresh-tree"),
-        pytest.param(KELVIN_DIR, True, id="kelvin-into-existing"),
-        pytest.param(".konductor", True, id="literal-tracked"),
+        pytest.param(".Konductor", "USER.md", True, id="case-variant-into-existing"),
+        pytest.param(KELVIN_DIR, "USER.md", False, id="kelvin-into-fresh-tree"),
+        pytest.param(KELVIN_DIR, "USER.md", True, id="kelvin-into-existing"),
+        pytest.param(".konductor", "USER.md", True, id="literal-tracked"),
+        pytest.param(".konductor", "user.md", True, id="case-variant-file-name"),
     ],
 )
 def test_planted_tracked_memory_does_not_change_where_the_validator_writes(
-    tmp_path, planted_dir, victim_has_konductor
+    tmp_path, planted_dir, planted_name, victim_has_konductor
 ):
     attacker = tmp_path / "attacker"
-    _attacker_repo(attacker, planted_dir)
+    _attacker_repo(attacker, planted_dir, planted_name)
     victim = tmp_path / "victim"
     victim.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=str(victim), check=True)
@@ -864,7 +899,7 @@ def test_planted_tracked_memory_does_not_change_where_the_validator_writes(
         (memory_dir / "MEMORY.md").write_text(existing)
     _git(victim, "pull", "-q", "--no-rebase", str(attacker), "HEAD")
 
-    planted = victim / planted_dir / "memory" / "USER.md"
+    planted = victim / planted_dir / "memory" / planted_name
     canonical_dir = victim / ".konductor"
     if planted_dir != ".konductor" and not (
         canonical_dir.exists() and os.path.samefile(victim / planted_dir, canonical_dir)
@@ -877,4 +912,3 @@ def test_planted_tracked_memory_does_not_change_where_the_validator_writes(
     assert result.returncode == 0, result.stderr
     assert (victim.resolve() / ".konductor" / "memory" / "MEMORY.md").read_text() == proposed.rstrip("\n")
     assert planted.read_bytes() == PLANTED_BYTES
-
