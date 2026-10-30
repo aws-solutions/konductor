@@ -175,10 +175,10 @@ fn synth_emits_no_preload_warning_for_this_repo() {
 #[test]
 fn synth_warns_when_a_fixture_agent_exceeds_the_byte_budget() {
     let dir = repo_copy("fat");
-    write_fixture_agent(&dir, "k-fixture-fat", &["dynamodb-design".to_string()]);
+    write_fixture_agent(&dir, "k-fixture-fat", &["infra-validation".to_string()]);
     let output = synth(&dir, &[]);
     let stderr = String::from_utf8_lossy(&output.stderr);
-    let expected = group_thousands(shipped_skill_bytes(&dir, "dynamodb-design"));
+    let expected = group_thousands(shipped_skill_bytes(&dir, "infra-validation"));
     assert!(
         stderr.contains(&format!("agent 'k-fixture-fat' preloads {expected} B")),
         "got: {stderr}"

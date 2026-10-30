@@ -8,10 +8,6 @@
       "bytes": 53895,
       "lines": 1944
     },
-    "dynamodb-design": {
-      "bytes": 75539,
-      "lines": 2195
-    },
     "dynamodb-validation": {
       "bytes": 64678,
       "lines": 1903
