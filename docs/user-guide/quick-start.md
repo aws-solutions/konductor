@@ -128,8 +128,9 @@ Design and implement a service that ingests IoT sensor events and alerts on anom
 Here `konductor` names the `k-full-sdlc` SOP and its command, then waits for you to type it. That
 SOP runs each phase in a specialist subagent and reviews it before moving on.
 
-**Checkpoint.** Watch what happens after you ask for implementation work. You should see
-`konductor` edit files and run the build itself, then spawn a `k-*` reviewer when the phase closes.
+**Checkpoint.** Watch what happens when you ask for a single change, such as a bug fix in one
+module. You should see `konductor` edit files and run the build itself, then spawn a `k-*` reviewer
+when the phase closes. A multi-phase request like the one above gets an SOP name instead.
 In Kiro CLI `konductor` pre-approves `fs_read` alone, so each write or command stops to ask you
 first; in Claude Code it holds `Write` and `Bash` outright. If you want an orchestrator that hands
 every change to a specialist, use `konductor-mux-orchestrator` or `konductor-cmux-orchestrator`. If
