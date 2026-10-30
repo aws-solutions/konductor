@@ -17,6 +17,7 @@ use super::content_writers::{write_auxiliary_file, write_skill, write_sop};
 use super::model::CanonicalModel;
 #[cfg(test)]
 use super::model::{AuxiliaryFile, ContextDef, SkillDef, SopDef};
+use super::parse_canonical::skill_names_from_dependencies;
 use super::parser::KiroCliConfig;
 use super::path_safety::reject_unsafe_agent_name;
 #[cfg(test)]
@@ -24,6 +25,7 @@ use super::path_safety::{
     reject_unsafe_auxiliary_relative_path, reject_unsafe_name_segment, reject_unsafe_skill_name,
     reject_unsafe_sop_name,
 };
+use super::skill_index;
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
 
@@ -82,13 +84,20 @@ impl HarnessTransformer for KiroCliV2Transformer {
                 let Some(kiro) = &agent.client_config.kiro_cli else {
                     continue;
                 };
-                let file = render_agent_file(
+                let declared: Vec<&str> =
+                    skill_names_from_dependencies(&agent.dependencies.skills).collect();
+                let prompt = skill_index::kiro_skill_block(&agent.name, &declared, &model.skills)
+                    .map(|block| skill_index::append_block(&agent.config.system_prompt, &block));
+                let mut file = render_agent_file(
                     &agent.name,
                     &agent.config,
                     kiro,
                     &agent.dependencies.context.context_names,
                     &skill_names,
                 )?;
+                if let Some(prompt) = &prompt {
+                    file.prompt = prompt;
+                }
                 write_agent_file(staging_dir, &agent.name, &file)?;
             }
             write_sop_scopes_sidecar(staging_dir, &model.agents)?;
@@ -2020,6 +2029,70 @@ mod tests {
             parsed,
             serde_json::json!({"k-example": ["constraints", "sdlc-navigator"]})
         );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn skill_with_description(name: &str, description: &str) -> crate::cli::synth::model::SkillDef {
+        crate::cli::synth::model::SkillDef {
+            name: name.to_string(),
+            raw_frontmatter: format!("name: {name}\ndescription: {description}"),
+            body: "# Body\n".to_string(),
+            auxiliary_files: Vec::new(),
+        }
+    }
+
+    fn written_prompt(dir: &Path, agent: &str) -> String {
+        let path = dir
+            .join(expected_output_dir())
+            .join(format!("{agent}.json"));
+        let parsed: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+        parsed["prompt"].as_str().unwrap().to_string()
+    }
+
+    #[test]
+    fn transform_appends_declared_skill_index_to_prompt() {
+        let dir = temp_dir("skill-index");
+        let model = CanonicalModel {
+            agents: vec![agent_with_kiro_and_skill_names(
+                "k-example",
+                KiroCliConfig::default(),
+                &["beta", "alpha"],
+            )],
+            skills: vec![
+                skill_with_description("alpha", "Use for alpha work."),
+                skill_with_description("beta", "Use for beta work."),
+                skill_with_description("gamma", "Use for gamma work."),
+            ],
+            ..Default::default()
+        };
+        KiroCliV2Transformer.transform(&model, &dir).unwrap();
+
+        let prompt = written_prompt(&dir, "k-example");
+        assert!(prompt.starts_with("You are a test agent.\n\n## Your skills\n"));
+        assert!(prompt.contains("`get_skill`"));
+        let lines: Vec<&str> = prompt.lines().filter(|l| l.starts_with("- ")).collect();
+        assert_eq!(
+            lines,
+            vec!["- beta: Use for beta work.", "- alpha: Use for alpha work."]
+        );
+        assert!(prompt.ends_with("- alpha: Use for alpha work.\n"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn transform_leaves_prompt_unchanged_for_agent_without_skills() {
+        let dir = temp_dir("skill-index-none");
+        let model = CanonicalModel {
+            agents: vec![agent_with_kiro("k-example", KiroCliConfig::default())],
+            skills: vec![skill_with_description("alpha", "Use for alpha work.")],
+            ..Default::default()
+        };
+        KiroCliV2Transformer.transform(&model, &dir).unwrap();
+
+        assert_eq!(written_prompt(&dir, "k-example"), "You are a test agent.");
 
         let _ = fs::remove_dir_all(&dir);
     }

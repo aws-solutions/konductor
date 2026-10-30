@@ -75,6 +75,11 @@ pub struct CanonicalModel {
     pub context: Vec<ContextDef>,
 }
 
+/// Orchestrators are the `konductor*` agents.
+pub(crate) fn is_orchestrator(agent_name: &str) -> bool {
+    agent_name.starts_with("konductor")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
