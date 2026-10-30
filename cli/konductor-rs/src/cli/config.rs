@@ -131,7 +131,7 @@ pub struct Config {
 /// stays a fully-populated, already-merged-and-validated type everywhere
 /// else in the codebase uses it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct RawConfig {
+pub(crate) struct RawConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     version: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -144,6 +144,18 @@ struct RawConfig {
     default_severity: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fail_on_severity_at_or_above: Option<String>,
+    /// Read only from the user layer by `orchestration_mode`; kept here so
+    /// `config set` writes an `orchestration:` section back instead of
+    /// dropping it. Never merged (see `merge`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) orchestration: Option<OrchestrationSection>,
+}
+
+/// The `orchestration:` mapping of a config file.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct OrchestrationSection {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) mode: Option<String>,
 }
 
 /// All the ways loading/validating a config can fail. Every variant is a
@@ -584,7 +596,7 @@ fn load_preset_defaults() -> Result<RawConfig, ConfigError> {
 /// file would incorrectly raise `ProjectConfigMalformed` instead of
 /// falling back to the preset defaults for a legitimate, non-malformed
 /// input.
-fn load_raw_config(path: &Path) -> Result<RawConfig, ConfigError> {
+pub(crate) fn load_raw_config(path: &Path) -> Result<RawConfig, ConfigError> {
     let contents =
         std::fs::read_to_string(path).map_err(|source| ConfigError::ProjectConfigNotReadable {
             path: path.to_path_buf(),
@@ -614,6 +626,9 @@ fn merge(base: RawConfig, override_cfg: RawConfig) -> RawConfig {
         fail_on_severity_at_or_above: override_cfg
             .fail_on_severity_at_or_above
             .or(base.fail_on_severity_at_or_above),
+        // The mode is not a gate setting and no layer may override another's;
+        // `orchestration_mode` reads it from the user file directly.
+        orchestration: None,
     }
 }
 
@@ -996,5 +1011,38 @@ mod tests {
         let declared_keys: std::collections::BTreeSet<&str> =
             _CONFIG_FIELDS.iter().copied().collect();
         assert_eq!(serialized_keys, declared_keys);
+    }
+
+    #[test]
+    fn merge_drops_orchestration_section_from_override() {
+        let override_cfg = RawConfig {
+            orchestration: Some(OrchestrationSection {
+                mode: Some("coordinator".to_string()),
+            }),
+            ..RawConfig::default()
+        };
+        let merged = merge(load_preset_defaults().unwrap(), override_cfg);
+        assert!(merged.orchestration.is_none());
+    }
+
+    #[test]
+    fn set_config_value_keeps_orchestration_section() {
+        let root = scratch_dir("set-keeps-orchestration");
+        let konductor_dir = root.join(KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        let path = konductor_dir.join(CONFIG_FILE_NAME);
+        fs::write(&path, "orchestration:\n  mode: coordinator\ntier: minor\n").unwrap();
+
+        set_config_value(&root, "tier", "full").expect("set tier must succeed");
+
+        let raw = load_raw_config(&path).unwrap();
+        assert_eq!(raw.tier.as_deref(), Some("full"));
+        assert_eq!(
+            raw.orchestration
+                .and_then(|section| section.mode)
+                .as_deref(),
+            Some("coordinator")
+        );
+        fs::remove_dir_all(&root).ok();
     }
 }

@@ -32,6 +32,7 @@ pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
 mod logging;
+pub(crate) mod orchestration_mode;
 pub(crate) mod output;
 pub(crate) mod report;
 pub(crate) mod schema;

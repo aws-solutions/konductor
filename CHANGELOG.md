@@ -8,6 +8,11 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml`; nothing
+  acts on it until the session hook lands.
+
 ### Changed
 
 - `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate; it
