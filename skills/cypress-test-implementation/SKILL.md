@@ -15,7 +15,7 @@ Breaks down an E2E test strategy into Cypress implementation tasks with a phased
 
 **Applies to:** turning an E2E strategy into a Cypress implementation plan, tracking its progress, or verifying it.
 
-**Not for:** choosing what to test (use `e2e-test-strategy`) or for non-Cypress frameworks.
+**Not for:** choosing what to test (use `e2e-test-strategy`) or Playwright projects (use `playwright-test-implementation`).
 
 **Lightweight fallback:** for one or two flows, write the spec files directly using `references/cypress-patterns.md`; skip the task breakdown, roadmap, and traceability matrix.
 
