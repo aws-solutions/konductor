@@ -684,8 +684,8 @@ SOP_EDITS += [
      'code: "{\\n  \\"dependencies\\": {\\n    \\"skills\\": {\\n      \\"skillNames\\": [\\"my-new-skill\\"]\\n    }\\n  },\\n  \\"clientConfig\\": {\\n    \\"claudeCli\\": {\\n      \\"skills\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"',
      'code: "{\\n  \\"dependencies\\": {\\n    \\"skills\\": {\\n      \\"skillNames\\": [\\"my-new-skill\\"]\\n    }\\n  }\\n}"'),
     ("skills: recently-fixed wiring sentence",
-     "Both runtimes were wired: the skill name in clientConfig.claudeCli.skills and a matching skill:// resource entry in clientConfig.kiroCli.resources.",
-     "Both runtimes were wired: the skill name in dependencies.skills.skillNames, which is what konductor synth reads for either harness, and in clientConfig.claudeCli.skills, which is what Claude Code lists in the rendered agent's skills: frontmatter."),
+     "Both runtimes were wired: the skill name in dependencies.skills.skillNames, which is what konductor synth reads for either harness, and in clientConfig.claudeCli.skills, which is what Claude Code lists in the rendered agent's skills: frontmatter.",
+     "Each is declared in dependencies.skills.skillNames, which konductor synth reads for either harness, and both runtimes load it on demand."),
 
     # Three design SOPs, not two: k-principal-engineer-design-review is one, and
     # the picker's own comparison table already contrasts it with

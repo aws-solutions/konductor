@@ -204,7 +204,9 @@ subagent it spawns, so `synth` measures that preload. An agent over 32 KiB gets 
 `konductor: warning:` line on stderr and the command still succeeds. An agent over 32 names fails
 the command, because Claude Code silently drops the names past 32. `-v` adds one
 `claude preload: <agent> <bytes> B, <n> skill(s)` line per agent, and `--json` carries the same
-figures in a `claude_preload` array.
+figures in a `claude_preload` array. Each agent file lists the declared skills it does not
+preload, to be loaded with the `Skill` tool, so `synth` also warns when an agent has such skills
+but an explicit `clientConfig.claudeCli.tools` list without `Skill`.
 
 ---
 

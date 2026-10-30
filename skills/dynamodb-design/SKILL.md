@@ -17,7 +17,7 @@ Generates DynamoDB table designs from access patterns and system requirements. C
 
 **Not for:** auditing an existing design without changing it (use `dynamodb-validation`), relational schema design, or a one-off key question.
 
-**Lightweight fallback:** for a single table with one or two access patterns, state the partition key, sort key, and at most one GSI with a one-paragraph rationale; do not run the full workflow or produce the report. Still check the Quality Gate's CRITICAL items and state any that apply.
+**Lightweight fallback:** for a single table with one or two access patterns, state the partition key, sort key, and at most one GSI with a one-paragraph rationale; do not run the full workflow or produce the report. Still read Partition Key Design and Sort Key Design in `references/aws-best-practices.md` first, and check the Quality Gate's CRITICAL items and state any that apply.
 
 ## Usage
 
@@ -138,7 +138,7 @@ Based on the analysis:
 For queries not supported by the primary key:
 
 1. **Identify Alternate Patterns**: List queries that can't use partition/sort key
-2. **Evaluate GSI vs LSI**: Use decision framework to choose index type
+2. **Evaluate GSI vs LSI**: Use the GSI vs LSI decision framework (in `references/aws-best-practices.md`) to choose index type
    - Default to GSI unless strongly consistent reads required
    - Validate LSI 10GB partition limit if considering LSI
    - Document why GSI or LSI was chosen
@@ -256,7 +256,7 @@ Continue with Design Table Schema, Design Indexes, and Generate Deliverables ste
 
 The AWS best practices catalogue holds two kinds of subsection.
 
-Core subsections apply to every design, so always read them:
+Core subsections apply to every design that runs the full workflow, so always read them then (the lightweight fallback reads only the two key-design subsections):
 
 - Partition Key Design
 - Sort Key Design
@@ -271,7 +271,7 @@ Core subsections apply to every design, so always read them:
 
 Feature subsections apply only when the design uses the feature:
 
-- GSI vs LSI: Decision Framework (when an LSI is an option)
+- GSI vs LSI: Decision Framework (when the design needs any secondary index)
 - How to Handle "List All Items" Requirements (when a pattern lists every item)
 - DynamoDB Streams
 - Transactions (ACID Operations)
