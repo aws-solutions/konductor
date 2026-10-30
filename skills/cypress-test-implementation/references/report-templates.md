@@ -739,6 +739,12 @@ module.exports = defineConfig({
 
 ---
 
+## Appendix: Example Test Structure
+
+[Include the example spec, page object, and custom command from the Example test structure section of references/cypress-patterns.md, adapted to this project]
+
+---
+
 **Report Location:** [output_file_path]
 **Analysis Duration:** [X] seconds
 ````
