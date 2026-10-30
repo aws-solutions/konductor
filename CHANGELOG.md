@@ -24,6 +24,7 @@ not per individual commit.
 - The Execution tab runs the workflow and shows live node states.
 - A launch code trade that gets no answer shows "Still waiting for the server" with a way to stop, and ends with an error after 120 seconds.
 - The Designer tab edits stages (agent, rename, add, delete) and saves with checks while typing.
+- The workflow canvas contract and stub read the first-release workflow format and name the slice of a key they do not read yet. The contract also covers stage evidence, trust and one run per workspace; `STUB_WORKFLOW` picks a stub fixture for each answer of a run.
 
 ### Changed
 
