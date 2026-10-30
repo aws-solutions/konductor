@@ -55,7 +55,10 @@ test('the profile denies home writes, allows the scratch root and ~/Library, and
       assert.ok(snapshot.includes(`\\.${n}`), `the snapshot deny covers .${n}`);
     }
     assert.match(profile, /\(deny process-exec\n {2}\(literal "\/usr\/bin\/open"\)/);
-    assert.doesNotMatch(profile, /network-outbound/);
+    assert.ok(profile.indexOf('(literal "/bin/launchctl")') > at('(deny process-exec'), 'launchctl cannot run');
+    assert.ok(profile.includes(`(remote unix-socket (subpath "${path.join(homeReal, '.ssh')}"))`), 'masked paths are denied as Unix-socket peers');
+    assert.ok(profile.includes('(remote unix-socket (regex #"^(/System/Volumes/Data)?/private/var/run/com\\.apple\\.launchd\\.[^/]+(/|$)"))'), 'the launchd ssh-agent socket is denied');
+    assert.doesNotMatch(profile, /remote ip/);
     assert.deepEqual(wrap('a', ['b']), { file: 'sandbox-exec', args: ['-p', profile, 'a', 'b'] });
     fs.rmSync(home, { recursive: true, force: true });
   } finally {
@@ -108,6 +111,49 @@ test('hidden home paths and masks cannot be read from the sandbox', { skip }, ()
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
     fs.rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+function runInSandbox(iso, file, args) {
+  const w = iso.wrap(file, args);
+  return new Promise((resolve) => {
+    const c = require('node:child_process').spawn(w.file, w.args, { stdio: 'ignore' });
+    const t = setTimeout(() => c.kill('SIGKILL'), 10000);
+    c.on('exit', (code) => { clearTimeout(t); resolve(code); });
+  });
+}
+
+test('a masked Unix socket outside scratch cannot be connected from the sandbox', { skip }, async () => {
+  const scratch = makeScratchRoot();
+  const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'sb-sock-')));
+  const sock = path.join(outside, 'runtime.sock');
+  const server = net.createServer((c) => { c.on('error', () => {}); c.end('hi'); });
+  await new Promise((resolve) => server.listen(sock, resolve));
+  try {
+    const code = `require('net').connect(${JSON.stringify(sock)}).on('connect', () => process.exit(0)).on('error', () => process.exit(7))`;
+    const open = makeIsolation({ mode: 'sandbox-exec', scratchRoot: scratch });
+    assert.equal(await runInSandbox(open, process.execPath, ['-e', code]), 0, 'an unmasked socket connects');
+    const masked = makeIsolation({ mode: 'sandbox-exec', scratchRoot: scratch, mask: [sock] });
+    assert.equal(await runInSandbox(masked, process.execPath, ['-e', code]), 7, 'the masked socket is refused');
+  } finally {
+    server.close();
+    fs.rmSync(scratch, { recursive: true, force: true });
+    fs.rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('the launchd ssh-agent socket is refused and launchctl cannot run in the sandbox', { skip }, async () => {
+  const scratch = makeScratchRoot();
+  try {
+    const iso = makeIsolation({ mode: 'sandbox-exec', scratchRoot: scratch });
+    assert.notEqual(await runInSandbox(iso, '/bin/launchctl', ['print', `gui/${os.userInfo().uid}`]), 0, 'launchctl is denied');
+    const agent = process.env.SSH_AUTH_SOCK;
+    if (agent && /^\/(private\/)?var\/run\/com\.apple\.launchd\./.test(agent)) {
+      const code = `require('net').connect(${JSON.stringify(agent)}).on('connect', () => process.exit(0)).on('error', () => process.exit(7))`;
+      assert.equal(await runInSandbox(iso, process.execPath, ['-e', code]), 7, 'the ssh-agent socket is refused');
+    }
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
   }
 });
 

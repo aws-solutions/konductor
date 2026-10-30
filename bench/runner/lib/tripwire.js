@@ -75,7 +75,7 @@ function createTripwire({ markerPath, roots, extraExcludes = [], absExclude = []
         ctx.patterns = [...(r.exclude || []), ...extraExcludes];
         walk(r.dir, '', r.depth, ctx);
       }
-      return { hits: ctx.hits.slice(0, MAX_REPORTED), total: ctx.hits.length, truncated: ctx.truncated };
+      return { hits: ctx.hits.slice(0, MAX_REPORTED), allHits: ctx.hits, total: ctx.hits.length, truncated: ctx.truncated };
     },
   };
 }
@@ -84,15 +84,16 @@ const realOr = (p) => { try { return fs.realpathSync(p); } catch { return p; } }
 const under = (p, dir) => p === dir || p.startsWith(dir + path.sep);
 
 // Inside the mount namespace the real home is read-only, so a hit is another process writing
-// (an IDE, a shell) and only informational. sandbox-exec leaves `writableInHome` (~/Library) open,
-// so a hit there may be the agent and is flagged. Without isolation every hit is flagged.
-function tripwireFlags(trip, isolationMode, writableInHome = []) {
+// (an IDE, a shell) and only informational. sandbox-exec leaves ~/Library writable, where system
+// processes write all the time, so only hits under `flaggedInHome` (dirs macOS runs code from) are
+// flagged, checked over every hit rather than the reported first 50. Without isolation every hit is flagged.
+function tripwireFlags(trip, isolationMode, flaggedInHome = []) {
   if (isolationMode === 'none') {
     return [...(trip.total > 0 ? ['homeTripwire'] : []), ...(trip.truncated ? ['homeTripwireTruncated'] : [])];
   }
   if (isolationMode !== 'sandbox-exec') return [];
-  const open = trip.hits.some((h) => writableInHome.some((w) => under(h, w) || under(realOr(h), w)));
-  return open ? ['homeTripwire'] : [];
+  const risky = trip.allHits.some((h) => flaggedInHome.some((w) => under(h, w) || under(realOr(h), w)));
+  return risky ? ['homeTripwire'] : [];
 }
 
 module.exports = { createTripwire, tripwireFlags, DEFAULT_EXCLUDES, REPO_EXCLUDES };

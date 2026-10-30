@@ -139,19 +139,22 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   probe fails. The runner wraps each command in `sandbox-exec -p <profile>` with a profile generated per
   run: writes to the real home (also through `/System/Volumes/Data`), `/tmp`, `/var/tmp`, the user temp
   dir and user-writable trees are denied, except `~/Library` (system frameworks write caches and
-  keychains there, but `~/Library/LaunchAgents` stays denied so no login item can be left behind) and the
-  run's scratch root. The same hidden paths and masks as above are denied for
-  reading as well as writing (a denied read fails with "Operation not permitted" instead of showing an
-  empty directory), plus the kiro-cli auth database under `~/Library/Application Support/kiro-cli`, and
-  `open` and `osascript` cannot run. Capabilities and the pid namespace have no equivalent, so a
-  process the agent detaches with `setsid` can outlive the run. Offline checks deny outbound
-  connections except to localhost.
+  keychains there, but `~/Library/LaunchAgents` stays denied) and the run's scratch root. The same
+  hidden paths and masks as above are denied for reading, writing and Unix-socket connects (a denied
+  read fails with "Operation not permitted" instead of showing an empty directory), plus the kiro-cli
+  auth database under `~/Library/Application Support/kiro-cli` and launchd's per-session sockets under
+  `/var/run/com.apple.launchd.*` (where `SSH_AUTH_SOCK` points). `open`, `osascript` and `launchctl`
+  cannot run. Capabilities and the pid namespace have no equivalent, so a process the agent detaches
+  with `setsid` can outlive the run. launchd stays reachable over Mach, and jobs it starts run outside
+  the sandbox, so a program that submits a job without `launchctl` can still run code outside the
+  sandbox, including writing a login item. Offline checks deny outbound connections except to localhost.
 - Every `konductor` CLI call (synth, install) runs with a scratch HOME and the allowlisted environment,
   and refuses to start with the real HOME, so `~/.konductor/installs` and `~/.konductor/logs` are never written.
 - Tripwire (always on): after each run the real HOME (depth 3), the repository and `--tripwire-dir` are
   scanned for entries newer than a marker. Hits go to `homeTripwireHits`. The `homeTripwire` flag is
-  raised for any hit with `--isolate none`, for hits under `~/Library` with `--isolate sandbox-exec` (the
-  profile leaves it writable), and never with `--isolate unshare`, where a hit is another process (an IDE).
+  raised for any hit with `--isolate none`, for hits in the `~/Library` dirs macOS runs code from
+  (`LaunchAgents`, `Services`, `Scripts`, `QuickLook` and similar) with `--isolate sandbox-exec`
+  (system processes write elsewhere in `~/Library` all the time), and never with `--isolate unshare`, where a hit is another process (an IDE).
 - SIGINT/SIGTERM/SIGHUP kills every agent group, removes scratch dirs and auth copies, writes
   `summary.json` with `interrupted`, and exits non-zero. The judge phase does the same for its calls.
 

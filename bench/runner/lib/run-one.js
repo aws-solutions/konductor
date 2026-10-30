@@ -135,7 +135,7 @@ function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tri
 
   const trip = tripwire.check();
   acc.meta.homeTripwireHits = trip.hits;
-  acc.meta.flags.push(...tripwireFlags(trip, iso.mode, iso.writableInHome));
+  acc.meta.flags.push(...tripwireFlags(trip, iso.mode, iso.flaggedInHome));
 }
 
 

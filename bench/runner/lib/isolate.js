@@ -15,7 +15,8 @@
 // On macOS, where there is no unshare, `sandbox-exec` applies a generated profile with the same
 // layout: writes to the real home, /tmp and the user temp dir are denied (except ~/Library, where
 // system frameworks keep caches and keychains, but not ~/Library/LaunchAgents), the scratch root stays writable, the same
-// credential paths and masks are denied for reading too, and GUI launchers cannot run.
+// credential paths and masks are denied for reading and for Unix-socket connects, as are launchd's
+// per-session sockets (the ssh-agent), and GUI launchers and launchctl cannot run.
 // `offline` denies outbound connections except to localhost.
 
 const fs = require('node:fs');
@@ -39,7 +40,17 @@ const SANDBOX_BIN = 'sandbox-exec';
 // sandbox-exec leaves ~/Library writable for system frameworks, except these login-item dirs.
 const LIBRARY_NO_WRITE = ['Library/LaunchAgents'];
 const sandboxWritableInHome = (homes) => homes.map((h) => path.join(h, 'Library'));
+// ~/Library dirs whose contents macOS loads and runs outside the sandbox; a tripwire hit there is flagged.
+const LIBRARY_AUTORUN = [
+  'Library/LaunchAgents', 'Library/Services', 'Library/Scripts', 'Library/PreferencePanes', 'Library/Input Methods',
+  'Library/QuickLook', 'Library/Spotlight', 'Library/Screen Savers', 'Library/Internet Plug-Ins',
+];
+const sandboxFlaggedInHome = (homes) => homes.flatMap((h) => LIBRARY_AUTORUN.map((d) => path.join(h, d)));
 const GUI_LAUNCHERS = ['/usr/bin/open', '/usr/bin/osascript', '/usr/bin/xdg-open', '/usr/local/bin/xdg-open', '/opt/homebrew/bin/xdg-open'];
+// Jobs launchd starts do not inherit the sandbox.
+const LAUNCHD_CLIENTS = ['/bin/launchctl'];
+// launchd's per-session sockets (SSH_AUTH_SOCK points at one of these).
+const LAUNCHD_SOCKET_RE = '^(/System/Volumes/Data)?/private/var/run/com\\.apple\\.launchd\\.[^/]+(/|$)';
 // macOS also reaches every path under /Users through the data volume.
 const DATA_VOLUME = '/System/Volumes/Data';
 const RO_SYSTEM_DIRS = ['/tmp', '/var/tmp', '/dev/shm'];
@@ -166,6 +177,7 @@ function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTre
   // A Time Machine local snapshot exposes another copy of the home under /private/var/folders.
   const names = uniq([...HIDE_IN_HOME, ...hide].filter((d) => !path.isAbsolute(d))).map(reEscape).join('|');
   const snapshotRe = homes.map((h) => `  (regex #"^(${reEscape(DATA_VOLUME)})?/private/var/folders/.*/persist-com\\.apple\\.TimeMachine[^/]*${reEscape(h)}/(${names})(/|$)")`);
+  const launchdSockets = `  (regex #"${LAUNCHD_SOCKET_RE}")`;
   return [
     '(version 1)',
     '(allow default)',
@@ -176,7 +188,11 @@ function buildProfile({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTre
     ...block('allow file-write*', [scratchRoot]),
     ...block('deny file-read* file-write*', hidden),
     ...(homes.length ? ['(deny file-read* file-write*', ...snapshotRe, ')'] : []),
-    '(deny process-exec', ...GUI_LAUNCHERS.map((p) => `  (literal ${sbq(p)})`), ')',
+    '(deny file-read* file-write*', launchdSockets, ')',
+    // A Unix-socket connect() is checked as network-outbound, not as a file read.
+    // Filters inside one (remote unix-socket ...) are ANDed, so each path gets its own.
+    '(deny network-outbound', ...[...subpaths(hidden), launchdSockets].map((f) => `  (remote unix-socket ${f.trim()})`), ')',
+    '(deny process-exec', ...[...GUI_LAUNCHERS, ...LAUNCHD_CLIENTS].map((p) => `  (literal ${sbq(p)})`), ')',
     ...(offline ? ['(deny network-outbound (remote ip "*:*"))', '(allow network-outbound (remote ip "localhost:*"))'] : []),
   ].join('\n');
 }
@@ -227,7 +243,7 @@ function makeIsolation({ mode, scratchRoot, home, hide = [], mask = [], keyRoots
   const masks = uniq([...tmpMasks, ...dirMasks, ...keys]).filter((m) => !inside(scratch, m));
   if (mode === SANDBOX_BIN) {
     const profile = buildProfile({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, offline });
-    return { mode, profile, writableInHome: sandboxWritableInHome(homes), wrap: (file, args) => ({ file: SANDBOX_BIN, args: ['-p', profile, file, ...args] }) };
+    return { mode, profile, flaggedInHome: sandboxFlaggedInHome(homes), wrap: (file, args) => ({ file: SANDBOX_BIN, args: ['-p', profile, file, ...args] }) };
   }
   const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, offline });
   return {
