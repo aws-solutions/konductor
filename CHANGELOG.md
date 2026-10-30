@@ -68,6 +68,8 @@ not per individual commit.
   user-written memory and the codebase's conventions above konductor's format and workflow
   defaults. When these do not settle a collision, the agent asks once and saves the answer as a
   `Ruling:` memory entry.
+- Docs describe setting `orchestration.mode` by hand, reading the mode line in the first reply,
+  and harness support, Kiro CLI v2 included.
 
 ### Fixed
 
