@@ -542,7 +542,10 @@ fn copy_agent_files_rewriting_resources(
         // without this clause an agent matching none of the other
         // conditions would take this fast path and never reach
         // `apply_all` when telemetry is enabled, silently skipping hook
-        // injection for exactly the agents that most need it.
+        // injection for exactly the agents that most need it. The
+        // `konductor` agent always takes the rewrite path for the same
+        // reason: `OrchestrationHookPass` wires it whatever the telemetry
+        // choice.
         let contents = String::from_utf8(original_bytes.clone())
             .map_err(|e| format!("{} is not valid UTF-8: {e}", src.display()))?;
         if no_telemetry
@@ -550,6 +553,7 @@ fn copy_agent_files_rewriting_resources(
             && !contents.contains(super::super::resource_rewrite::SKILL_RESOURCE_PREFIX)
             && !agent_has_sop_names
             && !agent_has_skill_names
+            && agent_name != crate::cli::orchestration_hook::MODE_AGENT
         {
             crate::cli::atomic_write::write_atomic(&dst, &original_bytes)
                 .map_err(|e| format!("failed to write {}: {e}", dst.display()))?;

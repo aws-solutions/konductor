@@ -10,6 +10,8 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use telemetry_test_sink::TelemetrySink;
+
 const RULES_LAST_HEADING: &str = "## Missing Tool = Delegate, Always";
 const V3_SESSION: &str = "sess_8147fdc3-f3ec-4b32-a669-a0d26bd4cea0";
 
@@ -30,15 +32,17 @@ fn scratch_dir(name: &str) -> PathBuf {
     std::fs::canonicalize(&dir).unwrap()
 }
 
-fn konductor(home: &Path, cwd: &Path) -> Command {
+fn konductor(home: &Path, cwd: &Path, sink: &TelemetrySink) -> Command {
     let mut command = Command::new(bin());
     command
         .current_dir(cwd)
         .env("HOME", home)
-        .env("KONDUCTOR_TELEMETRY", "off")
         .env_remove("KIRO_HOME")
         .env_remove("KIRO_SESSION_ID")
         .env_remove("CLAUDE_CODE_AGENT");
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
     command
 }
 
@@ -76,9 +80,19 @@ fn seed_repo(agents: &[&str]) -> PathBuf {
 
 /// A real kiro-v3 install of `agents` into `target`.
 fn install_into(home: &Path, target: &Path, agents: &[&str]) {
+    install_with(
+        home,
+        target,
+        agents,
+        &["--harness", "kiro-v3", "--no-telemetry"],
+    );
+}
+
+fn install_with(home: &Path, target: &Path, agents: &[&str], flags: &[&str]) {
     let repo = seed_repo(agents);
     let repo_arg = repo.display().to_string();
-    let synth = konductor(home, &repo)
+    let sink = TelemetrySink::start();
+    let synth = konductor(home, &repo, &sink)
         .args(["synth", "--from", &repo_arg])
         .output()
         .unwrap();
@@ -87,10 +101,10 @@ fn install_into(home: &Path, target: &Path, agents: &[&str]) {
         "synth: {}",
         String::from_utf8_lossy(&synth.stderr)
     );
-    let install = konductor(home, target)
+    let install = konductor(home, target, &sink)
         .args(["install", "--from", &repo_arg, "--target"])
         .arg(target)
-        .args(["--harness", "kiro-v3", "--no-telemetry"])
+        .args(flags)
         .output()
         .unwrap();
     assert!(
@@ -128,7 +142,8 @@ fn fire_bytes(
     env: &[(&str, &Path)],
     payload: &[u8],
 ) -> Fired {
-    let mut command = konductor(home, cwd);
+    let sink = TelemetrySink::start();
+    let mut command = konductor(home, cwd, &sink);
     command
         .arg("__orchestration-hook")
         .args(args)
@@ -324,4 +339,84 @@ fn bad_stdin_exits_zero_with_no_output() {
         assert_eq!(fired.stderr, "");
     }
     std::fs::remove_dir_all(&home).ok();
+}
+
+#[test]
+fn kiro_v3_wires_its_own_hook_document_under_no_telemetry_and_uninstall_removes_it() {
+    let home = scratch_dir("v3-wiring-home");
+    let project = scratch_dir("v3-wiring-project");
+    install_into(&home, &project, &["konductor"]);
+    let hooks = project.join(".kiro/hooks");
+    assert!(!hooks.join("konductor-telemetry-hooks.json").exists());
+    let document: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(hooks.join("konductor-orchestration-hooks.json")).unwrap(),
+    )
+    .unwrap();
+    let entry = &document["hooks"][0];
+    assert_eq!(entry["trigger"], "SessionStart");
+    assert_eq!(entry["timeout"], 10);
+    let command = entry["action"]["command"].as_str().unwrap();
+    assert!(
+        command.ends_with(&format!(
+            " __orchestration-hook --install-root {}",
+            project.display()
+        )),
+        "{command}"
+    );
+
+    let sink = TelemetrySink::start();
+    let uninstall = konductor(&home, &project, &sink)
+        .args(["uninstall", "--target"])
+        .arg(&project)
+        .output()
+        .unwrap();
+    assert!(
+        uninstall.status.success(),
+        "uninstall: {}",
+        String::from_utf8_lossy(&uninstall.stderr)
+    );
+    assert!(!hooks.exists(), "{} must be gone", hooks.display());
+    std::fs::remove_dir_all(&home).ok();
+    std::fs::remove_dir_all(&project).ok();
+}
+
+#[test]
+fn kiro_v2_wires_the_hook_on_konductor_only() {
+    for flags in [
+        &["--harness", "kiro-cli-v2"][..],
+        &["--harness", "kiro-cli-v2", "--no-telemetry"][..],
+    ] {
+        let home = scratch_dir("v2-wiring-home");
+        let project = scratch_dir("v2-wiring-project");
+        install_with(&home, &project, &["konductor", "k-developer"], flags);
+        let spawn_commands = |agent: &str| -> Vec<String> {
+            let value: serde_json::Value = serde_json::from_slice(
+                &std::fs::read(project.join(format!(".kiro/agents/{agent}.json"))).unwrap(),
+            )
+            .unwrap();
+            value["hooks"]["agentSpawn"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|entry| entry["command"].as_str().map(str::to_string))
+                .collect()
+        };
+        let konductor_hooks = spawn_commands("konductor");
+        assert!(
+            konductor_hooks.iter().any(|c| c.contains(&format!(
+                " __orchestration-hook --agent konductor --install-root {}",
+                project.display()
+            ))),
+            "{flags:?}: {konductor_hooks:?}"
+        );
+        assert!(
+            !spawn_commands("k-developer")
+                .iter()
+                .any(|c| c.contains("__orchestration-hook")),
+            "{flags:?}"
+        );
+        std::fs::remove_dir_all(&home).ok();
+        std::fs::remove_dir_all(&project).ok();
+    }
 }

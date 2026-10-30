@@ -603,17 +603,17 @@ fn claude_reinstall_with_no_telemetry_strips_previously_installed_hooks() {
         !serialized.contains("__telemetry-hook"),
         "no telemetry hook may remain after a --no-telemetry reinstall, got: {after_off}"
     );
-    // The foreign hook and the unrelated top-level key survive.
-    let session_start = after_off["hooks"]["SessionStart"].as_array().unwrap();
-    assert_eq!(
-        session_start.len(),
-        1,
-        "the foreign SessionStart block must survive, got: {session_start:?}"
-    );
-    assert_eq!(
-        session_start[0]["hooks"][0]["command"],
-        serde_json::json!("/usr/bin/env my-own-hook")
-    );
+    // The foreign hook, the orchestration hook (wired under
+    // --no-telemetry too) and the unrelated top-level key survive.
+    let commands: Vec<&str> = after_off["hooks"]["SessionStart"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|block| block["hooks"][0]["command"].as_str().unwrap())
+        .collect();
+    assert_eq!(commands.len(), 2, "got: {commands:?}");
+    assert!(commands.contains(&"/usr/bin/env my-own-hook"));
+    assert!(commands.iter().any(|c| c.contains("__orchestration-hook")));
     assert_eq!(
         after_off["permissions"],
         serde_json::json!({"allow": ["Read(*)"]}),
