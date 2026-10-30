@@ -1844,7 +1844,12 @@ fn orchestration_install_findings(
         let Some(wiring) = orchestration_hook_wiring(destination, slot) else {
             continue;
         };
-        findings.extend(wiring_findings(&slot.strategy, wiring, missing_status));
+        findings.extend(wiring_findings(
+            &slot.strategy,
+            wiring,
+            destination,
+            missing_status,
+        ));
     }
     if coordinator {
         findings.extend(persona_file_finding(&manifest, destination));
@@ -1945,15 +1950,18 @@ fn claude_session_start_commands(settings: &serde_json::Value) -> Vec<String> {
 fn wiring_findings(
     strategy: &str,
     wiring: HookWiring,
+    destination: &Path,
     missing_status: CheckStatus,
 ) -> Vec<OrchestrationFinding> {
     use crate::cli::install::resource_rewrite::{hook_command_exe, ORCHESTRATION_HOOK_MARKER};
 
     let file = wiring.file.display();
-    let exes: Vec<String> = match &wiring.commands {
+    let hooks: Vec<(String, &String)> = match &wiring.commands {
         Ok(commands) => commands
             .iter()
-            .filter_map(|command| hook_command_exe(command, ORCHESTRATION_HOOK_MARKER))
+            .filter_map(|command| {
+                hook_command_exe(command, ORCHESTRATION_HOOK_MARKER).map(|exe| (exe, command))
+            })
             .collect(),
         Err(reason) => {
             return vec![OrchestrationFinding::new(
@@ -1963,7 +1971,7 @@ fn wiring_findings(
             )];
         }
     };
-    if exes.is_empty() {
+    if hooks.is_empty() {
         return vec![OrchestrationFinding::new(
             missing_status,
             format!(
@@ -1973,33 +1981,66 @@ fn wiring_findings(
             Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
         )];
     }
-    exes.into_iter()
-        .map(|exe| match hook_binary(&exe) {
-            Some(path) => {
-                let mut finding = OrchestrationFinding::new(CheckStatus::Ok, String::new(), None);
-                finding.detail.push(format!(
-                    "{strategy}: hook wired in {file}, binary {}",
-                    path.display()
-                ));
-                finding
-            }
-            None if Path::new(&exe).is_file() => OrchestrationFinding::new(
-                missing_status,
-                format!(
-                    "the hook points at {exe}, which is not executable; run `konductor update`"
-                ),
-                Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
-            ),
-            None => OrchestrationFinding::new(
-                missing_status,
-                format!(
-                    "the hook points at a konductor binary that no longer exists at {exe}; run \
-                     `konductor update`"
-                ),
-                Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
-            ),
+    hooks
+        .into_iter()
+        .flat_map(|(exe, command)| {
+            let label = format!("{strategy}: hook wired in {file}");
+            [
+                Some(binary_finding(&label, &exe, missing_status)),
+                install_root_finding(command, destination, missing_status),
+            ]
         })
+        .flatten()
         .collect()
+}
+
+fn binary_finding(label: &str, exe: &str, missing_status: CheckStatus) -> OrchestrationFinding {
+    match hook_binary(exe) {
+        Some(path) => {
+            let mut finding = OrchestrationFinding::new(CheckStatus::Ok, String::new(), None);
+            finding
+                .detail
+                .push(format!("{label}, binary {}", path.display()));
+            finding
+        }
+        None if Path::new(exe).is_file() => OrchestrationFinding::new(
+            missing_status,
+            format!("the hook points at {exe}, which is not executable; run `konductor update`"),
+            Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+        ),
+        None => OrchestrationFinding::new(
+            missing_status,
+            format!(
+                "the hook points at a konductor binary that no longer exists at {exe}; run \
+                 `konductor update`"
+            ),
+            Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+        ),
+    }
+}
+
+/// The hook loads the persona from its `--install-root`, so a root
+/// other than `destination` (a moved or copied project) reads the
+/// wrong install, or none.
+fn install_root_finding(
+    command: &str,
+    destination: &Path,
+    missing_status: CheckStatus,
+) -> Option<OrchestrationFinding> {
+    use crate::cli::install::resource_rewrite::hook_command_install_root;
+
+    let root = hook_command_install_root(command)?;
+    if crate::cli::telemetry_hook::same_dir(Path::new(&root), destination) {
+        return None;
+    }
+    Some(OrchestrationFinding::new(
+        missing_status,
+        format!(
+            "the hook reads the install at {root}, not {}; run `konductor update`",
+            destination.display()
+        ),
+        Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+    ))
 }
 
 /// The executable a hook's exe names: itself when it has a directory
@@ -6023,6 +6064,42 @@ mod tests {
             result.summary
         );
         for dir in [&destination, &home, &exe.parent().unwrap().to_path_buf()] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
+    fn check_orchestration_reports_a_hook_that_reads_another_install() {
+        let exe = fake_konductor_binary("orch-moved-exe");
+        let destination = healthy_v3_target("orch-moved-dest", &exe);
+        let old_root = scratch_dir("orch-moved-old-root");
+        fs::write(
+            destination.join(V3_ORCHESTRATION_HOOKS_RELATIVE_PATH),
+            v3_orchestration_document(&orchestration_command(&exe, &old_root)),
+        )
+        .unwrap();
+        for (contents, status) in [
+            (None, CheckStatus::Warn),
+            (COORDINATOR, CheckStatus::Failed),
+        ] {
+            let home = home_with_mode("orch-moved-home", contents);
+            let result = check_orchestration(&destination, &destination, Some(&home));
+            assert_eq!(result.status, status, "{}", result.summary);
+            assert_eq!(
+                result.summary,
+                format!(
+                    "the hook reads the install at {}, not {}; run `konductor update`",
+                    old_root.display(),
+                    destination.display()
+                )
+            );
+            fs::remove_dir_all(&home).ok();
+        }
+        for dir in [
+            &destination,
+            &old_root,
+            &exe.parent().unwrap().to_path_buf(),
+        ] {
             fs::remove_dir_all(dir).ok();
         }
     }
