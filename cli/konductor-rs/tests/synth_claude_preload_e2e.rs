@@ -4,7 +4,8 @@
 // copy of this repository's own agents/skills tree, adds fixture agents
 // whose Claude Code skill preload (`clientConfig.claudeCli.skills`) is
 // too large, and checks what the synth preload lint reports for them.
-// It also fails if any agent in this repo grows past the lint's limits.
+// It also fails if any agent in this repo grows past the lint's limits,
+// or lists on-demand skills without granting the Skill tool.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -160,11 +161,15 @@ fn write_fixture_agent(dir: &Path, name: &str, claude_skills: &[String]) {
 }
 
 #[test]
-fn synth_emits_no_preload_warning_for_this_repo() {
+fn synth_emits_no_preload_or_skill_grant_warning_for_this_repo() {
     let dir = repo_copy("no-warning");
     let output = synth(&dir, &[]);
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(!stderr.contains("preloads"), "unexpected warning: {stderr}");
+    assert!(
+        !stderr.contains("does not list Skill"),
+        "unexpected warning: {stderr}"
+    );
 }
 
 #[test]
