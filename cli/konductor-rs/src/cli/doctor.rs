@@ -1879,7 +1879,14 @@ fn orchestration_hook_wiring(destination: &Path, slot: &StrategyManifest) -> Opt
             _ => return None,
         };
     let file = destination.join(relative);
-    let commands = read_hook_json(&file).map(|value| commands(&value));
+    // A v3 document the slot does not list is a leftover or hand-placed
+    // file, not one this install wrote.
+    let unlisted = slot.strategy == "kiro-v3" && !slot.files.iter().any(|f| f.path == relative);
+    let commands = if unlisted {
+        Err("the file is not listed in the install manifest".to_string())
+    } else {
+        read_hook_json(&file).map(|value| commands(&value))
+    };
     Some(HookWiring { file, commands })
 }
 
@@ -5989,6 +5996,33 @@ mod tests {
             &coordinator_home,
             &exe.parent().unwrap().to_path_buf(),
         ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
+    fn check_orchestration_needs_the_v3_document_listed_in_the_slot() {
+        let exe = fake_konductor_binary("orch-unlisted-exe");
+        let destination = scratch_dir("orch-unlisted-dest");
+        seed_orchestration_install(&destination, "kiro-v3", &persona_files());
+        let document = destination.join(V3_ORCHESTRATION_HOOKS_RELATIVE_PATH);
+        fs::create_dir_all(document.parent().unwrap()).unwrap();
+        fs::write(
+            &document,
+            v3_orchestration_document(&orchestration_command(&exe, &destination)),
+        )
+        .unwrap();
+        let home = home_with_mode("orch-unlisted-home", None);
+        let result = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(result.status, CheckStatus::Warn);
+        assert!(
+            result
+                .summary
+                .ends_with("the file is not listed in the install manifest"),
+            "{}",
+            result.summary
+        );
+        for dir in [&destination, &home, &exe.parent().unwrap().to_path_buf()] {
             fs::remove_dir_all(dir).ok();
         }
     }
