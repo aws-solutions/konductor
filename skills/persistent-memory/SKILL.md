@@ -229,8 +229,8 @@ If the capture turns out to be situational, the user can say "don't save that" i
 turn and the entry can be removed. Removing an `[origin:user]` entry is allowed only when the
 user asks; the provenance gate above covers every other change. When two `Ruling:` entries
 decide the same collision differently, the newer date wins: follow it, and offer to remove the
-older one. Without a confirmation, save an
-implicit correction as `[origin:agent]`.
+older one. If both have the same date, ask the user which one stands. Without a confirmation,
+save an implicit correction as `[origin:agent]`.
 
 ---
 
