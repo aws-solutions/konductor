@@ -125,8 +125,8 @@ Something larger, spanning several specialists:
 Design and implement a service that ingests IoT sensor events and alerts on anomalies.
 ```
 
-Here `konductor` names the `k-full-sdlc` SOP and its command, then waits for you to type it. It
-then runs each phase itself and spawns a fresh `k-*` reviewer when each phase closes.
+Here `konductor` names the `k-full-sdlc` SOP and its command, then waits for you to type it. That
+SOP runs each phase in a specialist subagent and reviews it before moving on.
 
 **Checkpoint.** Watch what happens after you ask for implementation work. You should see
 `konductor` edit files and run the build itself, then spawn a `k-*` reviewer when the phase closes.
