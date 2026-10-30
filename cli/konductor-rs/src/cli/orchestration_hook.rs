@@ -57,6 +57,7 @@ pub(crate) enum PersonaError {
     NotInstalled { install_root: PathBuf },
     Unreadable { path: PathBuf },
     TooLarge { path: PathBuf },
+    PathTooLong { install_root: PathBuf },
 }
 
 /// `SessionStart` (Kiro CLI v3, Claude Code) and `agentSpawn` (Kiro CLI
@@ -139,6 +140,11 @@ fn persona_reason(error: &PersonaError) -> String {
             "the coordinator rules file at {} could not be read; run konductor update",
             display_path(path, home.as_deref())
         ),
+        PersonaError::PathTooLong { install_root } => format!(
+            "the install path is too long for session-start hook output; install to a shorter \
+             path than {}",
+            display_path(install_root, home.as_deref())
+        ),
     }
 }
 
@@ -150,13 +156,24 @@ fn display_path(path: &Path, home: Option<&Path>) -> String {
     }
 }
 
-/// Each run of control characters becomes one space, so user-authored
-/// or parser text cannot break the one-line output.
+/// Control characters, plus the Unicode line and paragraph separators
+/// and bidi controls that some renderers treat as line breaks or use to
+/// reorder text.
+fn breaks_a_line(c: char) -> bool {
+    c.is_control()
+        || matches!(
+            c,
+            '\u{200E}' | '\u{200F}' | '\u{2028}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+        )
+}
+
+/// Each run of line-breaking characters becomes one space, so
+/// user-authored, parser or path text cannot break the one-line output.
 fn sanitize(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut in_control_run = false;
     for c in text.chars() {
-        if c.is_control() {
+        if breaks_a_line(c) {
             if !in_control_run {
                 out.push(' ');
             }
@@ -191,15 +208,15 @@ fn render(output: &HookOutput) -> Vec<u8> {
     }
 }
 
-/// The first manifest file (any strategy) named `file_name`, as a path
-/// under `root`. Paths that are absolute or climb out of `root` are
-/// ignored.
+/// A manifest path (any strategy) named `file_name`, relative to `root`:
+/// the first one present on disk, else the first one listed. Paths that
+/// are absolute or climb out of `root` are ignored.
 pub(crate) fn installed_file(
     manifest: &super::install::manifest::Manifest,
     root: &Path,
     file_name: &str,
 ) -> Option<PathBuf> {
-    manifest
+    let mut listed = manifest
         .strategies
         .iter()
         .flat_map(|strategy| strategy.files.iter())
@@ -208,8 +225,17 @@ pub(crate) fn installed_file(
             path.components()
                 .all(|part| matches!(part, Component::Normal(_)))
         })
-        .find(|path| path.file_name().is_some_and(|name| name == file_name))
-        .map(|path| root.join(path))
+        .filter(|path| path.file_name().is_some_and(|name| name == file_name));
+    let first = listed.next()?;
+    if root.join(first).is_file() {
+        return Some(first.to_path_buf());
+    }
+    Some(
+        listed
+            .find(|path| root.join(path).is_file())
+            .unwrap_or(first)
+            .to_path_buf(),
+    )
 }
 
 /// The persona body for the install at `root`: the line naming its
@@ -224,19 +250,25 @@ fn load_persona(root: &Path) -> Result<String, PersonaError> {
     };
     let rules =
         installed_file(&manifest, root, ROUTING_RULES_FILE_NAME).ok_or_else(not_installed)?;
-    let digest = installed_file(&manifest, root, DIGEST_FILE_NAME).ok_or_else(not_installed)?;
-    if !rules.is_file() {
-        return Err(PersonaError::Unreadable { path: rules });
+    let digest =
+        root.join(installed_file(&manifest, root, DIGEST_FILE_NAME).ok_or_else(not_installed)?);
+    if !root.join(&rules).is_file() {
+        return Err(PersonaError::Unreadable {
+            path: root.join(rules),
+        });
     }
-    let digest_text = read_digest(&digest)?;
-    let rules = std::fs::canonicalize(&rules).unwrap_or(rules);
-    let body = format!(
-        "{}{}",
-        pointer_line(&rules),
-        with_trailing_newline(digest_text)
-    );
-    if HEADER.len() + body.len() > MAX_PERSONA_BYTES {
+    let digest_text = with_trailing_newline(read_digest(&digest)?);
+    if HEADER.len() + pointer_line(Path::new("")).len() + digest_text.len() > MAX_PERSONA_BYTES {
         return Err(PersonaError::TooLarge { path: digest });
+    }
+    // Only the root is canonicalized, so the printed path keeps the
+    // `.kiro/context/` or `.konductor/context/` part rule 11 trusts.
+    let shown_root = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    let body = format!("{}{digest_text}", pointer_line(&shown_root.join(rules)));
+    if HEADER.len() + body.len() > MAX_PERSONA_BYTES {
+        return Err(PersonaError::PathTooLong {
+            install_root: shown_root,
+        });
     }
     Ok(body)
 }
@@ -248,7 +280,7 @@ fn pointer_line(rules: &Path) -> String {
         "Step 1, before any other action: read {} in full. It holds the complete coordinator \
          rules this digest summarizes. In your first reply, after the Orchestration line, name \
          that file's last `## ` heading.\n\n",
-        rules.display()
+        sanitize(&rules.display().to_string())
     )
 }
 
@@ -687,6 +719,66 @@ mod tests {
             None
         );
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_missing_copy_under_one_strategy_falls_through_to_one_that_exists() {
+        let root = scratch_dir("persona-two-strategies");
+        seed(
+            &root,
+            &[
+                (".kiro/context/k-orchestrator-routing-rules.md", "# Rules\n"),
+                (".kiro/context/k-coordinator-digest.md", "d"),
+                (
+                    ".konductor/context/k-orchestrator-routing-rules.md",
+                    "# Rules\n",
+                ),
+            ],
+        );
+        std::fs::remove_file(root.join(".kiro/context/k-orchestrator-routing-rules.md")).unwrap();
+        let manifest = read_manifest(&root).unwrap().unwrap();
+        assert_eq!(
+            installed_file(&manifest, &root, ROUTING_RULES_FILE_NAME),
+            Some(PathBuf::from(
+                ".konductor/context/k-orchestrator-routing-rules.md"
+            ))
+        );
+        assert!(load_persona(&root).is_ok());
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_long_install_path_is_reported_as_the_path_not_the_digest() {
+        let root = scratch_dir("persona-long-path")
+            .join("a".repeat(200))
+            .join("b".repeat(200));
+        std::fs::create_dir_all(&root).unwrap();
+        seed(
+            &root,
+            &[
+                (".kiro/context/k-orchestrator-routing-rules.md", "# Rules\n"),
+                (
+                    ".kiro/context/k-coordinator-digest.md",
+                    include_str!("../../../../context/k-coordinator-digest.md"),
+                ),
+            ],
+        );
+        let error = load_persona(&root).unwrap_err();
+        assert_eq!(
+            error,
+            PersonaError::PathTooLong {
+                install_root: std::fs::canonicalize(&root).unwrap()
+            }
+        );
+        assert!(persona_reason(&error).starts_with("the install path is too long"));
+        std::fs::remove_dir_all(root.parent().unwrap().parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn the_pointer_path_stays_on_one_line() {
+        let line = pointer_line(Path::new("/p/a\u{2028}b\nc\u{202E}d/rules.md"));
+        assert!(line.contains("read /p/a b c d/rules.md in full."), "{line}");
+        assert_eq!(line.matches('\n').count(), 2, "{line:?}");
     }
 
     #[test]

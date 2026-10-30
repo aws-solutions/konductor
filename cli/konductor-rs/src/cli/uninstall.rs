@@ -1291,7 +1291,7 @@ fn uninstall_one_impl(
     if !hooks_still_owned {
         let (_, hook_errors) = remove_claude_konductor_hooks(target_path);
         for err in hook_errors {
-            eprintln!("konductor uninstall: warning: could not remove a telemetry hook: {err}");
+            eprintln!("konductor uninstall: warning: could not remove a Konductor hook: {err}");
         }
     }
 

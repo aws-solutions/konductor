@@ -2084,7 +2084,8 @@ fn persona_file_finding(
     let missing: Vec<&str> = [ROUTING_RULES_FILE_NAME, DIGEST_FILE_NAME]
         .into_iter()
         .filter(|name| {
-            !installed_file(manifest, destination, name).is_some_and(|path| path.is_file())
+            !installed_file(manifest, destination, name)
+                .is_some_and(|path| destination.join(path).is_file())
         })
         .collect();
     if missing.is_empty() {
