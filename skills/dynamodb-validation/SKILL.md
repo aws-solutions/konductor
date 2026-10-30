@@ -17,7 +17,7 @@ Reviews DynamoDB designs across 13 categories: partition key distribution, GSI c
 
 **Not for:** creating a design (use `dynamodb-design`).
 
-**Lightweight fallback:** for a single table with no GSIs, run categories 1, 5, 7 and 11 only and report findings without the scored report.
+**Lightweight fallback:** for a single table with no GSIs, run categories 1, 5, 7 and 11 in full and report findings without the scored report. Still check every Quality Gate item, which covers index coverage (for example a "list all" pattern served by a Scan), the backup strategy and throttling alarms.
 
 ## Usage
 
