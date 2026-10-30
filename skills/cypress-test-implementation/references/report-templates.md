@@ -6,15 +6,6 @@ Read the section for the current mode when producing that mode's report.
 
 ## Progress formulas
 
-**Per-Phase Progress:**
-
-```
-Phase 1: (completed / total) * 100%
-Phase 2: (completed / total) * 100%
-Phase 3: (completed / total) * 100%
-Phase 4: (completed / total) * 100%
-```
-
 **Calculate Remaining Effort:**
 
 ```

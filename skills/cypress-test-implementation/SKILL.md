@@ -296,11 +296,14 @@ For each task in the implementation plan:
 
 **Calculate Progress:**
 
-
-Read the Progress section of `references/report-templates.md` when calculating progress and velocity; it holds the two formulas.
 **Per-Phase Progress:**
 
-Completion percentage for each of the four phases (formula in the Progress section of the reference file).
+```
+Phase 1: (completed / total) * 100%
+Phase 2: (completed / total) * 100%
+Phase 3: (completed / total) * 100%
+Phase 4: (completed / total) * 100%
+```
 
 **Overall Progress:**
 
@@ -336,7 +339,7 @@ A task is blocked if:
 
 **Calculate Remaining Effort:**
 
-Remaining effort, estimated completion, and team velocity (formulas in the Progress section of the reference file).
+Read the Progress section of `references/report-templates.md` when calculating remaining effort; it holds the remaining effort, estimated completion, and team velocity formulas.
 
 **Generate Progress Report:**
 
