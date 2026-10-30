@@ -194,7 +194,8 @@ fn render_agent_file<'a>(
     let mut allowed_tools = kiro.allowed_tools.clone();
     let mut tools_settings = kiro.tools_settings.clone();
     if is_specialist(name) {
-        tools = strip_specialist_spawn_tools(&tools);
+        let servers: Vec<&str> = kiro.mcp_servers.keys().map(String::as_str).collect();
+        tools = strip_specialist_spawn_tools(&tools, &servers);
         allowed_tools.retain(|id| !is_spawn_tool_id(id));
         if let Some(settings) = tools_settings.as_object_mut() {
             settings.remove(SUBAGENT_CAPABILITY);
@@ -247,17 +248,19 @@ fn is_spawn_tool_id(id: &str) -> bool {
 
 /// Drops every spawn-tool alias and expands `@builtin` to
 /// `SPECIALIST_BUILTIN_TOOLS`, keeping the other entries in order and
-/// each id once.
-fn strip_specialist_spawn_tools(tools: &[String]) -> Vec<String> {
+/// each id once. `*` grants every tool, `subagent` included, so it
+/// expands to the same list plus `@<server>` for each of the spec's MCP
+/// servers.
+fn strip_specialist_spawn_tools(tools: &[String], mcp_servers: &[&str]) -> Vec<String> {
+    let builtins = || SPECIALIST_BUILTIN_TOOLS.iter().map(|t| t.to_string());
     let mut stripped: Vec<String> = Vec::new();
     for id in tools.iter().filter(|id| !is_spawn_tool_id(id)) {
-        let expanded: Vec<String> = if id == "@builtin" {
-            SPECIALIST_BUILTIN_TOOLS
-                .iter()
-                .map(|t| t.to_string())
-                .collect()
-        } else {
-            vec![id.clone()]
+        let expanded: Vec<String> = match id.as_str() {
+            "@builtin" => builtins().collect(),
+            "*" => builtins()
+                .chain(mcp_servers.iter().map(|server| format!("@{server}")))
+                .collect(),
+            _ => vec![id.clone()],
         };
         for tool in expanded {
             if !stripped.contains(&tool) {
@@ -782,13 +785,27 @@ mod tests {
     }
 
     #[test]
+    fn strip_specialist_spawn_tools_expands_a_wildcard_without_subagent() {
+        let tools = vec!["*".to_string()];
+        let stripped = strip_specialist_spawn_tools(&tools, &["aws-mcp"]);
+
+        let mut expected: Vec<String> = SPECIALIST_BUILTIN_TOOLS
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        expected.push("@aws-mcp".to_string());
+        assert_eq!(stripped, expected);
+        assert!(!stripped.iter().any(|t| t == "*" || t == "subagent"));
+    }
+
+    #[test]
     fn strip_specialist_spawn_tools_lists_a_builtin_once_when_also_named() {
         let tools = vec![
             "fs_read".to_string(),
             "@builtin".to_string(),
             "@aws-mcp".to_string(),
         ];
-        let stripped = strip_specialist_spawn_tools(&tools);
+        let stripped = strip_specialist_spawn_tools(&tools, &[]);
 
         let mut expected = vec!["fs_read".to_string()];
         expected.extend(

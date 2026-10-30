@@ -154,7 +154,8 @@ This is enforced in config, not just in the prompt:
   list. A specialist with no `tools` list gets them as `disallowedTools` instead.
 - Kiro CLI v2 ignores `excludedTools`, and its `@builtin` includes the `subagent` tool. Synth
   therefore replaces a specialist's `@builtin` with the v2 built-in tools listed one by one,
-  without `subagent`, and drops `toolsSettings.subagent`. The list matches kiro-cli 2.36.0; an
+  without `subagent`, and drops `toolsSettings.subagent`. A `*` entry gets the same list plus
+  `@<server>` for each of the spec's MCP servers. The list matches kiro-cli 2.36.0; an
   older client that does not know one of these tools may fail to load the specialists; a
   built-in tool added in a later release does not reach v2 specialists until the list is updated.
 
