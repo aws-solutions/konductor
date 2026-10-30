@@ -54,6 +54,10 @@ _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 # not a way to silence this script -- see docs/user-guide/notes.md.
 WITHDRAWN_COMMANDS = {"config"}
 
+# The description wording that lets a skill sit in clientConfig.claudeCli.skills
+# without skillNames (docs/user-guide/appendix/contributing.md, "Adding a skill").
+CLAUDE_ONLY_MARKER = re.compile(r"\bClaude Code only\b|\bonly in Claude Code\b")
+
 
 def html_pages_for_flags(root: Path):
     return [p for p in (root / "docs" / "site" / "user-guide.html",
@@ -309,11 +313,12 @@ def main() -> int:
     for name, spec in specs.items():
         for skill in set(spec["skill_names"]) | set(spec["claude_skills"]):
             declared_by.setdefault(skill, set()).add(name)
-        # Only a skill whose description says it is for Claude Code may skip skillNames.
+        # Only a skill whose description marks it Claude Code only may skip skillNames.
+        # A bare mention of Claude Code is not enough: general skills mention it too.
         for skill in sorted(set(spec["claude_skills"]) - set(spec["skill_names"])):
             skill_md = root / "skills" / skill / "SKILL.md"
             desc = re.search(r"^description:\s*(.*)$", read(skill_md), re.M) if skill_md.is_file() else None
-            if not desc or "Claude Code" not in desc.group(1):
+            if not desc or not CLAUDE_ONLY_MARKER.search(desc.group(1)):
                 named_fails.append(
                     f"agents/{name}.agent-spec.json: preloads `{skill}` on Claude Code without "
                     f"declaring it in skillNames, and its description does not mark it Claude Code only"
