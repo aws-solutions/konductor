@@ -352,6 +352,14 @@ def test_fence_under_a_wrapped_list_item_is_a_fence(tmp_path):
     assert _rules(_skill(tmp_path, body=body)) == set()
 
 
+def test_list_ended_by_a_top_level_fence_does_not_hold_a_later_marker(tmp_path):
+    body = (
+        "- item\n\n```bash\necho\n```\n\n    ```\n\nRead [g](missing.md)\n\n"
+        "```bash\nx\n```\ntail\n"
+    )
+    assert "link" in _rules(_skill(tmp_path, body=body))
+
+
 def test_fence_closer_indented_past_the_opener_does_not_close(tmp_path):
     body = "```bash\necho hi\n    ```\n"
     assert "fence" in _rules(_skill(tmp_path, body=body))

@@ -152,6 +152,9 @@ def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
     Also return the 0-based index of a fence still open at the end, else None.
     """
     out = []
+    # `out` with each fenced line kept as an indented placeholder, so the list walk
+    # still sees that a fence at a smaller indent ended the list above it.
+    shape = []
     fence = None
     fence_indent = 0
     opened_at = None
@@ -161,14 +164,16 @@ def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
             if (
                 match
                 and not (match.group(2)[0] == "`" and "`" in match.group(3))
-                and (len(match.group(1)) <= 3 or _inside_list_item(out, len(match.group(1))))
+                and (len(match.group(1)) <= 3 or _inside_list_item(shape, len(match.group(1))))
             ):
                 fence = match.group(2)
                 fence_indent = len(match.group(1))
                 opened_at = index
                 out.append("")
+                shape.append(" " * fence_indent + "```")
             else:
                 out.append(line)
+                shape.append(line)
         else:
             match = FENCE_CLOSE.match(line)
             if (
@@ -179,6 +184,7 @@ def blank_fenced_lines(lines: list[str]) -> tuple[list[str], int | None]:
             ):
                 fence = None
             out.append("")
+            shape.append(" " * fence_indent + "```")
     return out, (opened_at if fence is not None else None)
 
 
