@@ -221,7 +221,7 @@ saving a durable fact — notify immediately after writing.**
 
 If the capture turns out to be situational, the user can say "don't save that" in the next
 turn and the entry can be removed. Removing an `[origin:user]` entry is allowed only when the
-user asks; the provenance gate below covers every other change. Without a confirmation, save an
+user asks; the provenance gate above covers every other change. Without a confirmation, save an
 implicit correction as `[origin:agent]`.
 
 ---
