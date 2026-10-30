@@ -345,7 +345,7 @@ fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
         if !grants.is_empty() {
             warnings.push(format!(
                 "agent '{}' is a specialist (k-* name) but its spec grants spawn tools {grants:?}; \
-                 synth strips them from its output, so remove them from the spec",
+                 specialists must not spawn, so remove them from the spec",
                 agent.name
             ));
         }
