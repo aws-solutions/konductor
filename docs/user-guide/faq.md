@@ -186,6 +186,26 @@ the usual culprit, since it applies everywhere and nothing surfaces it. See
 
 ---
 
+## How do I make `konductor` hand every change to a specialist?
+
+Set the `coordinator` orchestration mode by hand in your user config. There is no command for it.
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+Only `~/.konductor/config.yml` is read; a value in a project's `.konductor/config.yml` is ignored,
+and `konductor doctor` reports it. The next `konductor` session picks it up, with no reinstall. Its
+first reply should read `Orchestration: coordinator`. `Orchestration: auto (default)` with
+`coordinator` set means the hook output did not arrive: run `konductor doctor`, then see
+[Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
+This works on Kiro CLI v3 and Claude Code. Kiro CLI v2 is not supported: the hook is wired but
+untested there, and a session it does not reach runs as `auto`.
+
+---
+
 ## Is any of my data sent anywhere?
 
 The CLI touches the network in one place only: `install`, fetching the release it installs from.
