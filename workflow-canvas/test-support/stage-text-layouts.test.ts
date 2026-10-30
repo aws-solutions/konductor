@@ -92,7 +92,15 @@ function random(seed: number): () => number {
   };
 }
 
-const HEAD = ['# a workflow', 'name: wf', 'intent: Say hi', ''];
+const HEAD = [
+  '# a workflow',
+  'format: konductor/1',
+  'name: wf',
+  'version: 0.1.0',
+  'intent:',
+  '  outcome: Say hi',
+  '',
+];
 const FOOT = ['# footer', ''];
 
 function stagesOf(count: number, agents: string[]): StageView[] {

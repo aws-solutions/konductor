@@ -10,6 +10,7 @@ import {
   type Document,
   type YAMLMap,
 } from 'yaml';
+import { MAX_YAML_DEPTH } from './contract.ts';
 import type { Segment, Span } from './diagnostics.ts';
 
 /** A mapping entry whose key is a scalar, with the key as plain text. */
@@ -78,28 +79,50 @@ export function entriesOf(map: YAMLMap): MapEntry[] {
   );
 }
 
-/** Finds every anchor, `*` reference, tag, merge key and non-scalar key in a node. */
+/**
+ * Finds every anchor, `*` reference, tag, merge key and non-scalar key in a
+ * node, and every mapping or list nested deeper than the contract allows.
+ * `depth` is the number of mappings and lists around the node.
+ */
 export function findUnsupported(
   node: unknown,
   path: Segment[] = [],
+  depth = 0,
 ): Unsupported[] {
   if (isAlias(node))
     return [unsupported(path, node, 'A `*` reference is not allowed.')];
   if (!isNode(node)) return [];
   const found = marksOf(node, path);
+  if ((isSeq(node) || isMap(node)) && depth >= MAX_YAML_DEPTH) {
+    // Stop here: what lies below this node is too deep to read, and one
+    // diagnostic per branch is enough.
+    found.push(
+      unsupported(
+        path,
+        node,
+        `YAML nested deeper than ${MAX_YAML_DEPTH} levels is not allowed.`,
+      ),
+    );
+    return found;
+  }
   if (isSeq(node)) {
     node.items.forEach((item, index) =>
-      found.push(...findUnsupported(item, [...path, index])),
+      found.push(...findUnsupported(item, [...path, index], depth + 1)),
     );
   } else if (isMap(node)) {
     for (const pair of node.items) {
-      found.push(...findInPair(pair.key, pair.value, path));
+      found.push(...findInPair(pair.key, pair.value, path, depth + 1));
     }
   }
   return found;
 }
 
-function findInPair(key: unknown, value: unknown, path: Segment[]) {
+function findInPair(
+  key: unknown,
+  value: unknown,
+  path: Segment[],
+  depth: number,
+) {
   if (!isScalar(key)) {
     return [unsupported(path, key, 'A key must be a plain value.')];
   }
@@ -108,7 +131,7 @@ function findInPair(key: unknown, value: unknown, path: Segment[]) {
   if (keyText === '<<' && key.type === Scalar.PLAIN) {
     found.push(unsupported(path, key, 'A merge key is not allowed.'));
   }
-  return [...found, ...findUnsupported(value, [...path, keyText])];
+  return [...found, ...findUnsupported(value, [...path, keyText], depth)];
 }
 
 // An anchor or an explicit tag on a node.

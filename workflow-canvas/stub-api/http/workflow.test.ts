@@ -16,13 +16,21 @@ const PATH = '/api/workflow';
 const HELLO = SAMPLE_FILES.hello ?? '';
 const HELLO_HASH = sha256Hex(HELLO);
 const ONE_STAGE =
-  'name: hello\nintent: Say hello\nstages:\n  - name: only\n    agent: k-developer\n';
+  'format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Say hello\nstages:\n  - name: only\n    agent: k-developer\n';
 
 interface Loaded {
   text: string | null;
   hash: string | null;
   view: { stages: { name: string; agent: string }[] } | null;
 }
+
+const ONE_STAGE_VIEW = {
+  format: 'konductor/1',
+  version: '0.1.0',
+  name: 'hello',
+  intent: { outcome: 'Say hello' },
+  stages: [{ name: 'only', agent: 'k-developer' }],
+};
 
 async function load(reply: Promise<Reply>): Promise<Loaded> {
   return (await reply).body as Loaded;
@@ -41,11 +49,30 @@ describe('GET /api/workflow', () => {
       hash: HELLO_HASH,
       read_only: false,
       view: {
+        format: 'konductor/1',
+        version: '0.1.0',
         name: 'hello',
-        intent: { outcome: 'Add a greeting to the README' },
+        intent: {
+          outcome: 'Add a greeting to the README',
+          accept: [{ id: 'readme-exists', file: 'README.md' }],
+        },
+        params: {
+          goal: {
+            description: 'What the workflow should accomplish.',
+            default: 'Add a greeting to the README',
+          },
+        },
         stages: [
-          { name: 'draft', agent: 'k-developer' },
-          { name: 'review', agent: 'k-quality-assurance' },
+          {
+            name: 'draft',
+            agent: 'k-developer',
+            prompt: 'Write the greeting to README.md.',
+          },
+          {
+            name: 'review',
+            agent: 'k-quality-assurance',
+            prompt_file: 'review.md',
+          },
         ],
       },
       diagnostics: [],
@@ -110,6 +137,8 @@ describe('GET /api/workflow with text that has errors', () => {
       diagnostics: [
         { code: 'MISSING_KEY' },
         { code: 'MISSING_KEY' },
+        { code: 'MISSING_KEY' },
+        { code: 'MISSING_KEY' },
         { code: 'UNKNOWN_KEY' },
       ],
     });
@@ -127,11 +156,7 @@ describe('PUT /api/workflow', () => {
     expect(reply.status).toBe(200);
     expect(reply.body).toEqual({
       hash: sha256Hex(ONE_STAGE),
-      view: {
-        name: 'hello',
-        intent: { outcome: 'Say hello' },
-        stages: [{ name: 'only', agent: 'k-developer' }],
-      },
+      view: ONE_STAGE_VIEW,
       diagnostics: [],
     });
     const loaded = await load(stub().client.get(PATH));
@@ -193,7 +218,7 @@ describe('PUT /api/workflow', () => {
 
   it('rejects an invalid text with its diagnostics and writes nothing', async () => {
     const reply = await save(
-      'name: hello\nintent: a\nintent: b\nstages:\n  - name: x\n    agent: y\n',
+      'format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: a\nintent:\n  outcome: b\nstages:\n  - name: x\n    agent: y\n',
       HELLO_HASH,
     );
     expectContract(reply, 'PUT', PATH);
@@ -201,7 +226,25 @@ describe('PUT /api/workflow', () => {
     expect(reply.body).toMatchObject({
       code: 'invalid_workflow',
       diagnostics: [
-        { code: 'DUPLICATE_KEY', path: 'intent', line: 3, column: 1 },
+        { code: 'DUPLICATE_KEY', path: 'intent', line: 6, column: 1 },
+      ],
+    });
+    expect((await load(stub().client.get(PATH))).hash).toBe(HELLO_HASH);
+  });
+
+  it('refuses a stage with parallel, and names the slice that adds it', async () => {
+    const reply = await save(`${ONE_STAGE}    parallel: []\n`, HELLO_HASH);
+    expectContract(reply, 'PUT', PATH);
+    expect(reply.status).toBe(422);
+    expect(reply.body).toMatchObject({
+      code: 'invalid_workflow',
+      diagnostics: [
+        {
+          code: 'NOT_SUPPORTED_BY_THIS_BUILD',
+          path: 'stages.only.parallel',
+          message:
+            'The key `parallel` is not supported by this build. Slice 6 adds it.',
+        },
       ],
     });
     expect((await load(stub().client.get(PATH))).hash).toBe(HELLO_HASH);

@@ -127,6 +127,8 @@ describe('POST /api/run when the saved file has errors', () => {
       diagnostics: [
         { code: 'MISSING_KEY' },
         { code: 'MISSING_KEY' },
+        { code: 'MISSING_KEY' },
+        { code: 'MISSING_KEY' },
         { code: 'UNKNOWN_KEY' },
       ],
     });

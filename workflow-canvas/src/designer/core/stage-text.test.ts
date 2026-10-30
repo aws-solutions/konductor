@@ -154,7 +154,7 @@ describe('withStages', () => {
     const next = withStages(text, VIEW, [{ name: 'b', agent: 'k-architect' }]);
 
     expect(next).toBe(
-      'name: hello\nintent: Add a greeting to the README\nstages:\n  - name: b\n    agent: k-architect\n',
+      'format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting to the README\nstages:\n  - name: b\n    agent: k-architect\n',
     );
   });
 
@@ -165,7 +165,7 @@ describe('withStages', () => {
       { name: 'a', agent: 'k-tpm' },
     ]);
 
-    expect(next).toContain('intent: "Fix: the #1 bug"\n');
+    expect(next).toContain('intent:\n  outcome: "Fix: the #1 bug"\n');
   });
 });
 
