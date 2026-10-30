@@ -448,9 +448,10 @@ fn check_claude_skill_tool_grant(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
         if tools.iter().any(|tool| tool == "Skill") {
             continue;
         }
-        let on_demand: Vec<&str> = skill_names_from_dependencies(&agent.dependencies.skills)
-            .filter(|name| !claude_cli.skills.iter().any(|p| p == name))
-            .collect();
+        let on_demand: indexmap::IndexSet<&str> =
+            skill_names_from_dependencies(&agent.dependencies.skills)
+                .filter(|name| !claude_cli.skills.iter().any(|p| p == name))
+                .collect();
         if on_demand.is_empty() {
             continue;
         }
@@ -460,7 +461,7 @@ fn check_claude_skill_tool_grant(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
              Add Skill to clientConfig.claudeCli.tools.",
             agent.name,
             on_demand.len(),
-            on_demand.join(", ")
+            on_demand.iter().copied().collect::<Vec<_>>().join(", ")
         ));
     }
     warnings
@@ -1546,7 +1547,8 @@ mod tests {
 
     #[test]
     fn claude_skill_tool_grant_warns_when_on_demand_skills_lack_the_skill_tool() {
-        let agent = agent_spec_with_claude_tools("k-noskill", &["a", "b"], &["a"], Some(&["Read"]));
+        let agent =
+            agent_spec_with_claude_tools("k-noskill", &["a", "b", "b"], &["a"], Some(&["Read"]));
         let warnings = check_claude_skill_tool_grant(&[agent]);
         assert_eq!(warnings.len(), 1, "got: {warnings:?}");
         assert!(
