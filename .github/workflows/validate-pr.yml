@@ -57,6 +57,23 @@ jobs:
         # the tests/ files import yaml.
         run: python3 -m pip install --user pytest pyyaml
 
+      - name: Reject a skill-quality baseline that grew
+        # tests/skill-quality-baseline.json may only shrink. The pytest gate
+        # enforces "skill <= its entry"; this step enforces "entry <= what the
+        # base branch had" so a PR cannot raise or add a ceiling to pass.
+        # OLD is read at the merge-base, not at base.sha, for the same reason the
+        # dist/ and CHANGELOG steps use a three-dot diff: base.sha is the base
+        # branch tip at event time, so a PR branched before an unrelated slimming
+        # landed would otherwise be told it raised an entry it never touched.
+        run: |
+          set -e
+          MERGE_BASE="$(git merge-base "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")"
+          if git show "${MERGE_BASE}:tests/skill-quality-baseline.json" > /tmp/base-baseline.json 2>/dev/null; then
+            python3 tests/skill_quality.py --check-ratchet /tmp/base-baseline.json
+          else
+            echo "notice: no baseline at the merge-base; skipping ratchet diff" >&2
+          fi
+
       - name: Validate the Kiro Power (powers/konductor/)
         # Users import the Power from the tagged release matching VERSION
         # (github.com/aws-solutions/konductor/tree/v<VERSION>/powers/konductor),

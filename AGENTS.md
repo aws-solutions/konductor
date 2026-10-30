@@ -65,6 +65,13 @@ instructions.
   convert a description from one form to the other for consistency alone. Fix a description
   that gives no activation condition at all. You may broaden an existing condition (for example,
   add a disjunct) when the skill's actual scope grew, but do not churn the form otherwise.
+- Reference material a skill needs only sometimes (catalogues, long templates, worked examples)
+  lives in `skills/<name>/references/*.md`, one level deep, Markdown only. `SKILL.md` keeps the
+  instructions and must name each reference file with a cue saying when to read it (for example
+  "Read `references/aws-best-practices.md` before Stage 3"). `make test-py` fails on a missing
+  target, an unmentioned reference file, a reference mention without a read cue, and on any
+  `SKILL.md` over 500 lines or 32 KiB that is not in `tests/skill-quality-baseline.json`, which
+  may only shrink.
 - Orchestrators are named `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`; 
   every specialist uses a `k-*` name. Skills are unprefixed unless avoiding a known collision.
 - **License headers:** All code files must carry an SPDX short-form identifier as the very first line
