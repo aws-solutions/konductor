@@ -51,7 +51,7 @@ CONTEXT: <File paths, patterns, constraints, handoff file references>
   USER DECISIONS IN FORCE: <one entry per decision the specialist must take as given: the user's own words from a user turn, quoted verbatim, then -> the action and target they approve; "none" when there are none>
 ```
 
-When the user asked to remove comments or logging, or approved a scope reduction, attribute that request to the user in CONTEXT and drop the default MUST DO / MUST NOT DO line it overrides (see the core rules' House rules section).
+When the user asked to remove comments or logging, attribute that request to the user in CONTEXT and drop the default MUST DO / MUST NOT DO line it overrides. When the user approved a scope reduction, name what was approved in CONTEXT and keep `Do NOT silently reduce scope`, since anything beyond the approval is still a silent reduction (see the core rules' House rules section).
 
 If a section is not applicable, write `N/A` — never omit the section. `TARGET AGENT` is the one exception: it is never `N/A` — every delegation targets exactly one agent. `USER DECISIONS IN FORCE` is part of CONTEXT and uses `none`, not `N/A`.
 
