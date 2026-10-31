@@ -34,8 +34,8 @@ not per individual commit.
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
   `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
-  or `.konductor/memory` and any tracked dot path with a non-ASCII name; orchestrators never
-  bypass a denial or read unnamed secrets.
+  or `.konductor/memory`, and treating memory as content when a tracked top-level dot name is
+  non-ASCII; orchestrators never bypass a denial or read unnamed secrets.
 
 ### Fixed
 
