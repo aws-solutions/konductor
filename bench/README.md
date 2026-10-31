@@ -305,11 +305,14 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 | haiku-5.5, partial (1 task) | 0.42 | not run | 0.66 |
 
 ## Capability benchmarking (cap)
-`cap` answers questions about one skill, SOP, agent or context file. `list`, `audit`, `variant` and `plan` are free; `draft`, `trigger` and live runs spend credits.
+`cap` answers questions about one skill, SOP, agent or context file. `list`, `audit`, `variant`, `plan` and `prune-report` are free; `draft`, `trigger` and live runs spend credits.
 - `cap list` shows the registry plus a scan of the tree at `--base` (default `v1.2.0`): owner, agents that reach each capability, tasks, gaps.
   `--init` prints skeleton registry entries for unregistered ones and writes nothing.
 - `cap audit --base REF --harness kiro-cli|opencode|both` writes `cap-audit.md` and `cap-audit.json` and exits 1 on any error
   finding. `--base` takes a ref, `dir:PATH` or an arm spec; `--public` also scans registry text, task prompts and these docs for internal markers.
+- `cap prune-report --base REF --runs-glob 'DIR/*' [--evidence FILE]` recomputes skill loads from the streams of every finished, non-vanilla run and writes one
+  recommendation per skill and harness: HARMS, RELOCATE, PRUNE, FIX, KEEP or NEEDS DATA, plus a TRIM flag. Free, read-only, never a deletion.
+  How to evaluate skills and decide keep, fix, trim, relocate or prune: [CAP-PLAYBOOK.md](CAP-PLAYBOOK.md).
 - `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare` builds a `dir:`
   arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
   the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.

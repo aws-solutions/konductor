@@ -1,0 +1,112 @@
+# Capability playbook: evaluate skills, then keep, fix, trim, relocate or prune
+
+This is the how-to for the `cap` family in [README.md](README.md). It answers three questions: how to run the benchmark, how to
+evaluate a skill, and whether a skill should be pruned. Everything marked free spends no credits and calls no model.
+
+## What each tool answers
+
+| Tool | Question | Cost |
+| --- | --- | --- |
+| `cap audit --base REF` | Can any agent reach the skill? Is the description well formed? How big is it? Does a near duplicate exist? Does a task cover it? | free |
+| `skills --run DIR` | Which skills did this run load? | free |
+| `cap prune-report --base REF --runs-glob 'DIR/*'` | Across all finished runs: how often was each skill offered and loaded, and what do the audit and the evidence file say? One recommendation per skill and harness. | free |
+| `cap trigger --mode proxy` | Would a model pick this skill for a query? Retrieval misses and judgment misses are counted apart. Generous: a hit is not proof. | about 0.09 credits per call |
+| `cap trigger --mode live` | Does a real agent load it, or delegate first? Stops at the first load. Spend is not metered. | unobserved, cap it |
+| `cap plan --mode lift`, then `run`, `judge`, `contrast` | Does having the skill change cost, speed or quality? Needs an A/A arm to read the result. | tens of credits |
+
+The prune report is a recommendation, never a deletion. A person decides, with the checklist at the end.
+
+## Harness differences that change the answer
+
+- **kiro-cli** loads a skill on demand through `get_skill`. A skill nobody loads costs nothing per session. Each agent can load only
+  the skills its spec lists (`--skill-name-filter`), so a skill listed by no agent is unreachable. SOPs are prompts a user invokes; `get_skill` does not return them.
+- **opencode** puts the name and description of every skill into each session at startup (parent-session loads only are visible in
+  its stream). Every description is paid for on every session, so size and wording matter more. Claude Code works the same way by design; this bench does not run it.
+- **The orchestrator picks skills by name from its own prompt.** In the live checks it asked for skills by name and never used `find_skills`.
+  Editing a description alone may therefore change nothing on kiro-cli. Change the prompt or the routing text, or test it.
+- A skill that no kiro agent lists may still be wired for Claude Code (`clientConfig.claudeCli.skills`). That is RELOCATE, not PRUNE.
+
+## Decision table
+
+Rules apply in this order per skill and harness. TRIM is a separate flag beside the class.
+
+| Class | Rule | Do this | Never |
+| --- | --- | --- | --- |
+| HARMS | Evidence verdict `hurts` | Look at it first. Rerun with more replicates before acting. | Act on a delta inside the A/A spread |
+| RELOCATE | Unreachable on every assessed harness, and its text, owner or Claude Code list says another harness | Keep it where it is listed | Prune it |
+| PRUNE | Unreachable on every assessed harness, no sign of another | Open a prune review (checklist below) | Prune because it is unreachable on one harness only |
+| FIX | Reachable, offered in at least `--min-exposure` runs (default 10), loaded 0 times | Check discovery: routing text, description, prompt. Run `cap trigger` queries that should load it. | Delete it |
+| KEEP | Evidence verdict `helps`; or registry class `preference` with loads; or loaded in 30% or more of exposed runs with a behavior change in the evidence file | Leave it | Treat a load rate alone as proof |
+| KEEP (provisional) | Loaded in 30% or more of exposed runs, no evidence of effect | Leave it, plan a controlled run | Cite it as a measured benefit |
+| NEEDS DATA | Everything else, including exposure below the minimum | Gather runs or evidence | Decide on it |
+| TRIM | Bytes above the 90th percentile of skills, or a near duplicate with Jaccard above 0.6 | Move detail into reference files or merge with the neighbour | Delete the content |
+
+Exposure means an agent in the run could load the skill, not that the task needed it. Runs that were not built around a skill
+will show zero loads for it. FIX is a prompt to check, and the report lowers its confidence when no task is linked to the skill.
+
+## Order of work
+
+1. Free: `cap audit`, then `cap prune-report` over every run directory you have.
+2. `cap trigger --mode proxy` on skills in FIX or with a stored query set. Read recall first; treat hits with suspicion.
+3. `cap trigger --mode live` on a handful of queries to cross-check the proxy (kappa below 0.6 or under 12 queries means "proxy not validated").
+4. Paired lift: `cap plan --mode lift`, with a base arm and an A/A copy of it, on tasks with headroom. Judge before you read lift.
+5. Write the result into the evidence file, rerun `prune-report`, then decide.
+
+## Add a capability and its tasks
+
+1. `cap list --init --cap skill:NAME` prints a registry skeleton. Save it under `capabilities/skill/`, fill in `owner`, run `cap audit`.
+2. Tasks need hidden tests or a judged rubric, not regex checks alone (`cap plan` refuses those without `--allow-regex`).
+3. Record headroom: a calibration pass where the arm without the skill scores under 70%. At ceiling, no skill can show lift.
+4. The prompt must not name the skill or copy its text. `cap audit` fails above 5% shared 8-word shingles.
+5. Draft trigger queries with `cap draft`, then review them by hand: about half should-not, and at least half of those near misses.
+6. `class: preference` marks a skill tested for fidelity (it makes the agent follow a house rule), not for lift.
+
+## Evidence file
+
+A JSON list, passed with `--evidence FILE`. Copy [capabilities/evidence.example.json](capabilities/evidence.example.json) and edit it.
+Fields: `capId`, `harness` (`kiro-cli` or `opencode`), `kind` (`lift`, `trigger`, `ablation`), `task`, `n`, `delta`
+(with the skill minus without, higher is better), `aaSpread`, `verdict` (`helps`, `hurts`, `none`, `unmeasurable`), `runId`, `note`,
+and optional `behaviorChange`. A `helps` or `hurts` verdict whose delta sits inside the A/A spread is flagged and capped at low confidence.
+The file is kept by hand; the report reads it and never writes it.
+
+## Pitfalls
+
+- **Ceiling effects.** If the arm without the skill already passes nearly everything, lift cannot show.
+- **n=3 is anecdotal.** Three replicates of one task say what happened, not what will happen.
+- **A/A spread.** Run the same ref twice as separate arms. A delta smaller than the gap between them is noise.
+- **Regex-only scoring** rewards phrasing, not quality. Prefer hidden tests or a rubric judged by several judges.
+- **Truncated judge bundles.** Files cut at a character cap hide content; check the limits before reading a rubric score.
+- **Rubric ceiling.** Raw rubric scores near 1.0 everywhere leave nothing to separate; verified scores then mostly track length.
+- **Early-stop credit censoring.** A run killed at the first load has no metered credits. Do not compare its cost with a full run.
+- **Proxy generosity.** The proxy shows the model the skill-related prompt text, so it over-triggers. Misses are informative, hits are not.
+- **Mixed refs.** The report keeps usage per ref. Do not read an overall rate across refs that differ in what they list.
+
+## Worked example: `delegation-protocol` (one pilot, n=3)
+
+The skill tells the orchestrator how to build a delegation prompt with eight labelled sections. A variant of v1.2.0 without it
+ran against two copies of v1.2.0 (the A/A pair) on one design task, three replicates each.
+
+- Cost, speed, tool calls and pass rate: the dropped-skill delta stayed inside the A/A spread on every metric. The rubric mean was 0.08 higher with the skill, against a spread of 0.09.
+  Verdict: **unmeasurable**, an uninformative result and not a null.
+- Behavior: when the skill loaded, all five delegation prompts carried the eight labelled sections; in the six runs without a load, none did (5 to 7 of 8 present).
+- Loading was a coin flip: 3 of 6 base-arm runs loaded it. Across all 31 offered runs on file it loaded in 9, about 29%.
+- Read together: the report gives it NEEDS DATA, one run short of the 30% line, even with the behavior change recorded. That is the honest reading.
+  The next step is a forced-load arm (a fixed first instruction to load it) against the dropped variant, on a task that needs a multi-agent handoff.
+
+## Credit guide (observed, a guide and not a forecast)
+
+One pass, n=1 per cell, claude-sonnet-5.5, from the README table: lite suite (5 tasks) 6.78 credits vanilla, 23.31 on v1.2.0; real suite (7 tasks) 14.22 and 61.32.
+In the pilot above: a typical design run cost about 4.4 credits, the largest 11.07, and judging added about 0.5 per run, so 9 runs plus judging came to about 52.
+Proxy calls cost about 0.09 each and draft calls 0.7 to 0.9. Free steps (audit, prune-report, skills, plan) cost nothing.
+Always pass `--budget-credits`; `run` stops launching when charged credits plus the largest run so far would pass it.
+
+## Pruning pull request checklist
+
+- [ ] The prune-report row quoted with class, confidence and the "what would change this" text, and the report's base ref and date.
+- [ ] Harness stated. For a skill unreachable on one harness, the other harnesses are named and checked.
+- [ ] Run directories listed with counts per ref, exposure, loads and the minimum used.
+- [ ] Evidence rows added to the evidence file, each with `runId`, `n`, `delta`, `aaSpread` and a verdict.
+- [ ] No inbound references broken (`cap audit` lists skills, SOPs, context files and prompts that name it).
+- [ ] No agent spec, claudeCli list or SOP still lists it.
+- [ ] What would reverse the decision, written down (for example: any load in the next N runs, a task that needs it).
+- [ ] A person other than the author has read the evidence rows.
