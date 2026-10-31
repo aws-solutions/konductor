@@ -59,8 +59,9 @@ Both runtimes then load it on demand:
 }
 ```
 
-On Claude Code the agent loads it through the `Skill` tool, so its `clientConfig.claudeCli.tools`
-must list `Skill`. `konductor synth` warns when it does not.
+On Claude Code the agent loads it through the `Skill` tool. If the spec sets
+`clientConfig.claudeCli.tools`, that list must include `Skill`, and `konductor synth` warns when it
+does not. Omitting the key grants every tool, `Skill` included.
 
 Add it to `clientConfig.claudeCli.skills` as well only if a Claude Code subagent needs it in
 context before its first turn. Claude Code injects every skill in that list into each spawned
