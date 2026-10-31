@@ -13,6 +13,7 @@ const { loadRegistry } = require('./registry.js');
 const { variantPaths, reachWarning } = require('./variant.js');
 const { scoringOf } = require('./captasks.js');
 const { split } = require('./reach.js');
+const { replicatesFor } = require('../runner/lib/profiles.js');
 
 const MODES = ['lift', 'trigger', 'improve'];
 
@@ -73,12 +74,12 @@ function estimate({ tasks, arms, reps }) {
  */
 function planCap({
   mode, cap, base = 'v1.2.0', reps, tasks: taskIds = [], budgetCredits = null, repoRoot, benchDir, extraTasks = [], vanilla = false,
-  allowRegex = false, force = false, candidate = null, actingAgents = null, agentEngine = 'v2', scratch, seed, now = new Date(), tmpRoot = os.tmpdir(),
+  allowRegex = false, force = false, candidate = null, actingAgents = null, agentEngine = 'v2', scratch, seed, now = new Date(), tmpRoot = os.tmpdir(), profile = null,
 }) {
   if (!MODES.includes(mode)) throw new Error('--mode takes lift, trigger or improve');
   if (!cap) throw new Error('--cap is required (for example skill:backend-review)');
   if (mode === 'improve' && !candidate) throw new Error('improve needs --candidate FILE (the edited capability text to measure against the current one)');
-  const replicates = reps === undefined ? 3 : Number(reps);
+  const replicates = profile ? replicatesFor(profile, reps) : reps === undefined ? 3 : Number(reps);
   if (!Number.isInteger(replicates) || replicates < 1) throw new Error('--reps must be an integer >= 1');
 
   const b = resolveBase(base, repoRoot);
@@ -140,13 +141,14 @@ function planCap({
     ...(variantOps ? [{ name: 'base-b', spec: `base-b=${refName}`, key: base, basis: 'A/A sentinel, same ref' }, { name: vp.armName, spec: vp.armSpec, key: base, basis: `assumed like ${base}` }] : []),
   ];
   const est = estimate({ tasks: picked, arms, reps: replicates });
-  if (est.missing && budgetCredits === null) {
+  if (est.missing && budgetCredits === null && !profile) {
     throw new Error(`${est.reason}. The runs are not guessed at: pass --budget-credits X to set your own cap`);
   }
   const estimateOut = est.missing ? null : est;
   const sizing = estimateOut ? budgetFor({ total: estimateOut.total, cells: arms.length * picked.length * replicates, tail: OBSERVED.tail.credits }) : null;
-  const budget = budgetCredits !== null ? Number(budgetCredits) : sizing.budget;
-  if (sizing && budgetCredits !== null && budget < sizing.budget) {
+  // With a profile there is no default cap: credits are tracked in the ledger and only an explicit --budget-credits guards them.
+  const budget = budgetCredits !== null ? Number(budgetCredits) : profile ? null : sizing.budget;
+  if (sizing && budget !== null && budgetCredits !== null && budget < sizing.budget) {
     warnings.push(`--budget-credits ${budget} is below the ${sizing.budget} credits this plan needs; the headroom rule may skip cells once a run costs more than its estimate`);
   }
 
@@ -163,20 +165,29 @@ function planCap({
     const opFlags = variantOps.drop ? `--drop ${cap}` : `--replace ${cap}=${quote(path.resolve(candidate))}`;
     commands.variant = `${bench} cap variant --base ${base} ${opFlags} --scratch ${quote(scratchDir)}${engineFlag}${repoFlag}${benchFlag}`;
   }
-  commands.run = `${bench} run --suite ${suite} --arms '${arms.map((a) => a.spec).join(',')}' --tasks ${picked.map((t) => t.id).join(',')} --replicates ${replicates} --parallel 1 --seed ${seedValue} --budget-credits ${budget}${engineFlag} --out ${quote(out)}${repoFlag}${benchFlag}${extraFlag}`;
+  const studyProfile = profile && mode !== 'trigger' ? ` --profile ${profile.name}` : '';
+  const budgetFlag = budget === null ? '' : ` --budget-credits ${budget}`;
+  commands.run = `${bench} run --suite ${suite} --arms '${arms.map((a) => a.spec).join(',')}' --tasks ${picked.map((t) => t.id).join(',')} --replicates ${replicates} --parallel 1 --seed ${seedValue}${budgetFlag}${engineFlag}${studyProfile} --out ${quote(out)}${repoFlag}${benchFlag}${extraFlag}`;
   if (mode === 'trigger') {
     commands.skills = `${bench} skills --run ${quote(out)}${benchFlag}${repoFlag}`;
   } else {
     commands.contrast = `${bench} contrast --run ${quote(out)} --base base --head ${[vp.armName, 'base-b'].join(',')} --by task${benchFlag}${extraFlag}`;
-    commands.judge = `${bench} judge --run ${quote(out)} --baseline base${benchFlag}${extraFlag}`;
-    commands.report = `${bench} report --run ${quote(out)} --baseline base${benchFlag}${extraFlag}`;
+    commands.judge = `${bench} judge --run ${quote(out)} --baseline base${studyProfile}${benchFlag}${extraFlag}`;
+    commands.report = `${bench} report --run ${quote(out)} --baseline base${studyProfile}${benchFlag}${extraFlag}`;
   }
 
-  const text = render({ mode, cap, base, picked, replicates, arms, warnings, estimateOut, est, budget, budgetCredits, commands, acting, suite, sizing });
+  const isSkill = split(cap)[0] === 'skill';
+  if (profile && mode !== 'trigger' && isSkill) {
+    const min = profile.scenariosPerSkill.min;
+    if (min > 1 && picked.length < min) warnings.push(`profile ${profile.name} wants at least ${min} scenarios per skill study; this plan has ${picked.length} task${picked.length === 1 ? '' : 's'}. Draft more with cap scenarios, review them, and add them as tasks`);
+    if (min > 1) commands.scenarios = `${bench} cap scenarios --cap ${cap} --n ${min} --dry-run --base ${base}${repoFlag}${benchFlag}`;
+    if (profile.controls) commands.controls = `${bench} cap controls --out ${quote(path.join(tmpRoot, 'konductor-bench', 'controls'))} --base ${base} --reps ${replicates}${engineFlag}${repoFlag}${benchFlag}`;
+  }
+  const text = render({ mode, cap, base, picked, replicates, arms, warnings, estimateOut, est, budget, budgetCredits, commands, acting, suite, sizing, profile });
   return { arms: arms.map((a) => a.spec), out, seed: seedValue, suite, tasks: picked.map((t) => t.id), estimate: estimateOut, budget, commands, warnings, actingAgents: acting, text };
 }
 
-function render({ mode, cap, base, picked, replicates, arms, warnings, estimateOut, est, budget, budgetCredits, commands, acting, suite, sizing }) {
+function render({ mode, cap, base, picked, replicates, arms, warnings, estimateOut, est, budget, budgetCredits, commands, acting, suite, sizing, profile }) {
   const L = [];
   L.push(`Plan: ${mode} of ${cap} against base ${base} on ${picked.length} task(s) (${picked.map((t) => t.id).join(', ')}), ${replicates} replicate${replicates === 1 ? '' : 's'}, acting agent ${acting.join(', ')}, suite ${suite}. This prints the plan and runs nothing.`);
   L.push(`Arms: ${arms.map((a) => a.name).join(', ')}`);
@@ -185,18 +196,26 @@ function render({ mode, cap, base, picked, replicates, arms, warnings, estimateO
   if (estimateOut) {
     L.push(`Estimate (credits per task, scaled from observed per-suite figures on ${OBSERVED.model}, n=1, a rough guide only):`);
     for (const l of estimateOut.lines) L.push(`  ${l.arm.padEnd(10)} ${l.lowerBound ? 'at least ' : ''}${l.credits.toFixed(2)} per replicate  (${l.basis})`);
-    L.push(`  total for ${replicates} replicate${replicates === 1 ? '' : 's'}: ${estimateOut.lowerBound ? 'at least ' : ''}${estimateOut.total.toFixed(2)} credits; cap ${budget}. Judge credits are not included.`);
-    if (sizing) L.push(`  ${sizing.why}`);
+    L.push(`  total for ${replicates} replicate${replicates === 1 ? '' : 's'}: ${estimateOut.lowerBound ? 'at least ' : ''}${estimateOut.total.toFixed(2)} credits; ${budget === null ? 'no cap' : `cap ${budget}`}. Judge credits are not included.`);
+    if (sizing && budget !== null) L.push(`  ${sizing.why}`);
   } else {
-    L.push(`No estimate: ${est.reason}. The cap below is the one you gave (${budgetCredits}). Judge credits are not included.`);
+    L.push(budget === null
+      ? `No estimate: ${est.reason}. No cap was given, so credits are only tracked. Judge credits are not included.`
+      : `No estimate: ${est.reason}. The cap below is the one you gave (${budgetCredits}). Judge credits are not included.`);
   }
+  if (budget === null) {
+    L.push(`No credit cap: spending is tracked in credit-ledger.jsonl and nothing stops it.${sizing ? ` A guard of ${sizing.budget} credits would be --budget-credits ${sizing.budget} (new runs stop at 90% of it).` : ' Pass --budget-credits X for a guard that stops new runs at 90% of X.'}`);
+  }
+  if (profile) L.push(`Profile ${profile.name}: ${replicates} replicate${replicates === 1 ? '' : 's'} per cell${profile.aaArm ? ', an A/A arm' : ''}${profile.controls ? ', known-answer controls' : ''}, judging ${profile.judging.modes.join(', ')} in both answer orders${profile.calibrationSample ? `, and a human calibration sample (calibration-sample.md in the results directory)` : ''}.`);
   let n = 1;
   const step = (title, cmd) => { if (cmd) L.push('', `${n++}. ${title}`, `   ${cmd}`); };
+  step('Draft scenarios for review (the dry run is free; drop --dry-run to spend credits on one model call per skill):', commands.scenarios);
+  step('Known-answer controls (free to write; it prints the variant, run and check commands for a planted lift and a decoy):', commands.controls);
   step('Build the variant (no credits; a scratch HOME is used for every konductor call):', commands.variant);
-  step('Run (stops launching new runs at the cap):', commands.run);
+  step(budget === null ? 'Run (credits are tracked, nothing stops it):' : 'Run (stops launching new runs at 90% of the cap):', commands.run);
   step('Skill loads, no credits:', commands.skills);
   step('Contrast per task, no credits (x-minus vs base, and the A/A sentinel base-b vs base):', commands.contrast);
-  step('Judge (spends credits; rubric scoring):', commands.judge);
+  step(`Judge (spends credits; ${profile ? profile.judging.modes.join(', ') : 'rubric'} scoring):`, commands.judge);
   step('Report, no credits:', commands.report);
   L.push('', 'A lift or cost difference counts only if it exceeds the base-b vs base spread on the same tasks.');
   return L.join('\n');

@@ -37,8 +37,13 @@ const { buildSkillCards } = require('../report/skillcard.js');
 const { writeOutputs, detailOf, formatOf } = require('../report/generate.js');
 const { loadEvidence } = require('./evidence.js');
 const { expandGlob } = require('./usage.js');
+const { analyze } = require('../report/generate.js');
+const { loadTasks } = require('../runner/lib/tasks.js');
+const { optionalProfile, replicatesFor } = require('../runner/lib/profiles.js');
+const { generateScenarios, checkCount } = require('./scenarios.js');
+const { writeControls, controlPlan, evaluateControls } = require('./controls.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report'];
+const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -241,7 +246,7 @@ function cmdPlan(opts) {
     tasks: list(opts.tasks), budgetCredits: opts['budget-credits'] === undefined ? null : Number(opts['budget-credits']),
     repoRoot: repo, benchDir, extraTasks, vanilla: Boolean(opts.vanilla), allowRegex: Boolean(opts['allow-regex']), force: Boolean(opts.force),
     candidate: pathOpt(opts.candidate), actingAgents: list(opts['acting-agent']), agentEngine: engineOf(opts), scratch: pathOpt(opts.scratch) ?? undefined,
-    seed: opts.seed,
+    seed: opts.seed, profile: optionalProfile(opts.profile),
   });
   console.log(opts.json ? JSON.stringify(p, null, 2) : p.text);
 }
@@ -324,9 +329,10 @@ function liveRunOpts({ opts, harness, base, tasksDir, taskIds, reps, out, seed, 
   return o;
 }
 
-async function liveRun({ opts, cap, queries, reps, harness, base, outDir, repo, benchDir, extraTasks, seed, log }) {
+async function liveRun({ opts, cap, queries, reps, harness, base, outDir, repo, benchDir, extraTasks, seed, log, profile = null }) {
   const budgetFlag = harness === 'opencode' ? 'budget-usd' : 'budget-credits';
-  if (opts[budgetFlag] === undefined || opts[budgetFlag] === true) throw new Error(`--${budgetFlag} is required for live mode: every query is a real agent run`);
+  // A profile means credits are tracked in the ledger without a cap; without one a live run still needs a guard.
+  if (!profile && (opts[budgetFlag] === undefined || opts[budgetFlag] === true)) throw new Error(`--${budgetFlag} is required for live mode: every query is a real agent run`);
   const slug = cap.id.replace(':', '-');
   const tasksDir = path.join(outDir, 'trigger-tasks', slug);
   fs.rmSync(tasksDir, { recursive: true, force: true });
@@ -358,7 +364,8 @@ async function cmdTrigger(opts) {
   const harness = opts.harness && opts.harness !== true ? opts.harness : 'kiro-cli';
   if (!['kiro-cli', 'opencode'].includes(harness)) throw new Error('--harness takes kiro-cli or opencode');
   const split = opts.split && opts.split !== true ? opts.split : 'all';
-  const reps = intIn(opts.reps, 'reps', 1, 20, 3);
+  const profile = optionalProfile(opts.profile);
+  const reps = profile ? replicatesFor(profile, opts.reps) : intIn(opts.reps, 'reps', 1, 20, 3);
   const crossFraction = opts.crosscheck === undefined ? 0 : Number(opts.crosscheck);
   if (mode === 'live' && (crossFraction > 0 || opts['crosscheck-run'])) throw new Error('--crosscheck applies to proxy mode: it runs live on a sample and compares');
   if (mode === 'proxy') { const ok = proxySupported(capId, harness); if (!ok.ok) throw new Error(ok.reason); }
@@ -390,7 +397,7 @@ async function cmdTrigger(opts) {
     const nameOf = `trigger-${capId.replace(':', '-')}-${harness}-${mode}`;
 
     if (mode === 'live') {
-      const live = await liveRun({ opts, cap, queries, reps, harness, base, outDir, repo, benchDir, extraTasks, seed, log });
+      const live = await liveRun({ opts, cap, queries, reps, harness, base, outDir, repo, benchDir, extraTasks, seed, log, profile });
       if (!live) return;
       const s = liveScore(live.results, cap);
       const report = trig.renderTriggerReport({ cap, harness, mode, split: splitLabel, reps, score: s.score, credits: s.credits, censored: s.censored, firstDecisions: s.first, model: live.results[0]?.model ?? null });
@@ -424,7 +431,7 @@ async function cmdTrigger(opts) {
     } else if (crossFraction > 0) {
       const sample = trig.crossCheckSample(queries, crossFraction, seed);
       log(`cross-check: ${sample.length} of ${queries.length} queries run live`);
-      const live = await liveRun({ opts, cap, queries: sample, reps, harness, base, outDir, repo, benchDir, extraTasks, seed, log });
+      const live = await liveRun({ opts, cap, queries: sample, reps, harness, base, outDir, repo, benchDir, extraTasks, seed, log, profile });
       liveResults = live ? live.results : null;
     }
     if (liveResults) {
@@ -478,6 +485,90 @@ function cmdPruneReport(opts) {
   }
 }
 
+// ---- scenarios ----
+
+async function cmdScenarios(opts) {
+  const { repo, base } = common(opts);
+  const ids = list(opts.cap);
+  if (!ids.length) throw new Error('--cap is required (for example skill:backend-review, comma separated)');
+  const n = checkCount(opts.n);
+  const dryRun = Boolean(opts['dry-run']);
+  const model = opts.model && opts.model !== true ? opts.model : DEFAULT_MODEL;
+  const outDir = outDirOf(opts, repo);
+  const b = resolveBase(base, repo);
+  const log = logger('cap scenarios');
+  let failed = 0;
+  let credits = 0;
+  let calls = 0;
+  try {
+    const scan = scanRepo(b.dir);
+    for (const id of ids) {
+      if (!scan.has(id)) throw new Error(`unknown capability ${id} at ${b.label}`);
+      if (!id.startsWith('skill:')) throw new Error(`${id} is not a skill: scenarios are drafted for skills only`);
+    }
+    // A dry run needs no login and builds no model caller at all.
+    const made = dryRun ? { caller: async () => { throw new Error('a dry run never calls a model'); }, cleanup: () => {} } : makeCapCaller(opts, { rawDir: path.join(outDir, 'model-raw'), log });
+    try {
+      for (const id of ids) {
+        const r = await generateScenarios({ capId: id, scan, caller: made.caller, model, n, outDir, dryRun });
+        credits += r.credits;
+        calls += r.calls;
+        if (r.dryRun) console.log(`${id}: wrote the prompt to ${r.file}`);
+        else if (r.ok) console.log(`${id}: wrote ${r.file} and ${path.basename(r.mdFile)} (${r.draft.scenarios.length} scenarios, attempts ${r.calls}, ${r.credits.toFixed(3)} credits)`);
+        else { failed++; console.log(`${id}: FAILED ${r.error} (attempts ${r.calls}, ${r.credits.toFixed(3)} credits); nothing written`); }
+      }
+    } finally { made.cleanup(); }
+  } finally { b.cleanup(); }
+  if (dryRun) console.log(`dry run: no model call was made and no credits were spent; ${ids.length} call(s) would be made for ${n} scenarios per skill. Prompts are in ${path.join(outDir, 'scenarios')}`);
+  else console.log(`model ${model}; ${calls} call(s), ${credits.toFixed(3)} credits in total; review files are in ${path.join(outDir, 'scenarios')}; nothing was written into the repository`);
+  process.exitCode = failed ? 1 : 0;
+}
+
+// ---- controls ----
+
+function printControlCheck(r) {
+  const row = (name, c) => `${name.padEnd(14)} ${c.status.padEnd(12)} ${c.delta === null ? 'n/a' : `${c.delta >= 0 ? '+' : ''}${c.delta.toFixed(1)} points`}  n ${c.nHead} vs ${c.nBase}  ${c.reason ?? ''}`;
+  console.log(`${row('keep control', r.keep)}\n${row('prune control', r.prune)}\nnoise band ${r.band.toFixed(1)} points${r.aaSpread ? ` (A/A spread ${r.aaSpread.toFixed(1)})` : ' (no A/A arm given, so the minimum band)'}\n${r.summary}`);
+}
+
+function cmdControls(opts) {
+  const { repo, benchDir, base, extraTasks } = common(opts);
+  if (opts.check !== undefined) {
+    if (opts.check === true) throw new Error('--check takes the run directory');
+    const need = (name) => { if (!opts[name] || opts[name] === true) throw new Error(`--${name} is required with --check`); return String(opts[name]); };
+    const arms = { base: need('base-arm'), keep: need('keep'), prune: need('prune'), aa: opts.aa && opts.aa !== true ? String(opts.aa) : null };
+    const runDir = path.resolve(String(opts.check));
+    const run = loadRun(runDir);
+    const tasks = loadTasks(benchDir, { extraDirs: extraTasks });
+    for (const t of ['control-keep', 'control-prune']) if (!tasks.has(t)) throw new Error(`task ${t} is not loaded: pass --extra-tasks with the controls/tasks directory that cap controls wrote`);
+    const present = new Set(run.runs.map((r) => r.armId));
+    for (const a of [arms.base, arms.keep, arms.prune, ...(arms.aa ? [arms.aa] : [])]) if (!present.has(a)) throw new Error(`arm "${a}" has no runs in ${runDir} (arms present: ${[...present].join(', ')})`);
+    const { rows } = analyze({ run, tasks, baseline: arms.base });
+    const result = evaluateControls({ rows, ...arms });
+    fs.writeFileSync(path.join(runDir, 'controls-check.json'), `${JSON.stringify({ schemaVersion: 1, checkedAt: new Date().toISOString(), arms, ...result }, null, 2)}\n`);
+    if (opts.json) console.log(JSON.stringify(result, null, 2)); else printControlCheck(result);
+    console.log(`wrote ${path.join(runDir, 'controls-check.json')}`);
+    process.exitCode = result.trusted ? 0 : 1;
+    return;
+  }
+  if (!opts.out || opts.out === true) throw new Error('--out DIR is required (where the control skills and tasks are written), or --check RUN to judge a finished controls run');
+  const outDir = outDirOf(opts, repo);
+  const reps = intIn(opts.reps, 'reps', 3, 20, 5);
+  const scratch = pathOpt(opts.scratch) ?? path.join(outDir, 'scratch');
+  checkScratch(scratch, repo);
+  const writes = writeControls({ outDir });
+  const plan = controlPlan({ repo, base, writes, scratch, replicates: reps, agentEngine: engineOf(opts) });
+  if (opts.json) { console.log(JSON.stringify({ writes, ...plan }, null, 2)); return; }
+  console.log([
+    `Wrote the known-answer controls to ${writes.root}: a skill holding a codename nobody can guess (keep) and a skill about sourdough starters (prune), with one task for each.`,
+    'Nothing was written into the repository and no credits were spent. Run the steps below yourself.',
+    '', `1. Build the two variants (free). Each adds one control skill to the konductor agent of ${base}:`, `   ${plan.commands.variantKeep}`, `   ${plan.commands.variantPrune}`,
+    '', `2. Run (${plan.runs} runs: 2 tasks x ${plan.arms.length} arms x ${reps} replicates; the tasks write one small file each, so expect a few credits per run, not measured):`, `   ${plan.commands.run}`,
+    '', '3. Check the controls (free). Exit 0 when the planted lift is found and the decoy shows no effect:', `   ${plan.commands.check}`,
+    '', 'Read skill verdicts from a study only if its controls pass. The check writes controls-check.json beside the run; the platform verdict report shows it.',
+  ].join('\n'));
+}
+
 function cmdCap(opts) {
   const sub = opts._[0];
   if (!SUBCOMMANDS.includes(sub)) { console.error(`bench: cap takes ${SUBCOMMANDS.join(', ')}`); process.exitCode = 2; return; }
@@ -489,6 +580,8 @@ function cmdCap(opts) {
     if (sub === 'draft') return cmdDraft(opts);
     if (sub === 'import') return cmdImport(opts);
     if (sub === 'prune-report') return cmdPruneReport(opts);
+    if (sub === 'scenarios') return cmdScenarios(opts);
+    if (sub === 'controls') return cmdControls(opts);
     return cmdTrigger(opts);
   };
   const fail = (e) => {

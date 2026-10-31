@@ -32,20 +32,22 @@ const FLAGS = {
   ],
   'cap draft': ['cap', 'n', 'model', 'model-cmd', 'base', 'out', 'isolate', 'kiro-bin', 'auth-db', 'hide', 'repo-root', 'bench-dir'],
   'cap import': ['from', 'cap', 'out', 'repo-root', 'bench-dir'],
+  'cap scenarios': ['cap', 'n', 'model', 'model-cmd', 'base', 'out', 'isolate', 'kiro-bin', 'auth-db', 'hide', 'repo-root', 'bench-dir', 'dry-run'],
+  'cap controls': ['out', 'base', 'reps', 'scratch', 'agent-engine', 'repo-root', 'bench-dir', 'check', 'base-arm', 'aa', 'keep', 'prune', 'extra-tasks', 'json'],
   'cap trigger': [
     'cap', 'mode', 'split', 'reps', 'crosscheck', 'crosscheck-run', 'harness', 'base', 'queries', 'out', 'model', 'model-cmd', 'from-run', 'from-arm', 'acting-agent',
     'concurrency', 'budget-credits', 'budget-usd', 'run-credit-limit', 'stop-on', 'max-tool-calls', 'seed', 'censored-floor', 'dry-run', 'kiro-bin', 'auth-db', 'isolate', 'hide', 'cache',
-    'cargo-target', 'cargo-online', 'agent-engine', 'effort', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'repo-root', 'bench-dir', 'extra-tasks', 'json',
+    'cargo-target', 'cargo-online', 'agent-engine', 'effort', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',
   ],
   'cap prune-report': ['base', 'harness', 'runs', 'runs-glob', 'min-exposure', 'evidence', 'out', 'json', 'repo-root', 'bench-dir', 'detail', 'format'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
-    'repo-root', 'bench-dir', 'extra-tasks', 'json',
+    'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',
   ],
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report'] };
+const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([

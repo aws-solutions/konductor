@@ -211,5 +211,5 @@ function importQueries(items, { capId, source, now = new Date() }) {
 }
 
 module.exports = {
-  neighboursFor, buildDraftPrompt, validateDraft, draftCapability, importQueries, renderDraftMd, writeDraft, draftFileName, retrySuffix, split, TOOL, BANNED,
+  neighboursFor, buildDraftPrompt, validateDraft, draftCapability, importQueries, renderDraftMd, writeDraft, draftFileName, retrySuffix, split, TOOL, BANNED, DASHES, wordRe, capabilityText,
 };

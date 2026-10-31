@@ -96,9 +96,11 @@ const USAGE = `Usage:
        --verify builds it and trial-installs it with a scratch HOME. Exit 2 when the capability is not reachable at startup, unless --force)
   node bench/runner/bench.js cap plan --mode lift|trigger|improve --cap ID [--base REF] [--reps N] [--tasks id,id] [--budget-credits X]
        [--vanilla] [--allow-regex] [--force] [--candidate FILE] [--acting-agent A] [--agent-engine v2|v3] [--scratch DIR] [--seed N]
-       [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--json]
+       [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--json] [--profile quick|detailed]
        (prints the variant, run, contrast, judge and report commands and a credit estimate; runs nothing. Refuses regex-only lift tasks
-       without --allow-regex, and refuses to guess credits without observed figures unless --budget-credits is given)
+       without --allow-regex, and refuses to guess credits without observed figures unless --budget-credits is given or --profile is.
+       --profile sets the replicates and the profile flag on the printed commands. With detailed, a skill plan also prints the scenario and known-answer
+       controls steps and warns when it has fewer than 8 tasks. With a profile the printed run has no budget unless you pass --budget-credits)
   node bench/runner/bench.js cap draft --cap ID,ID [--n 24] [--model M] [--out DIR] [--base REF] [--model-cmd CMD] [--isolate auto|unshare|sandbox-exec|none]
        [--kiro-bin PATH] [--auth-db FILE] [--hide DIR,DIR] [--repo-root DIR] [--bench-dir DIR]
        (one tool-less model call per capability, in a scratch HOME and an empty directory: candidate trigger queries (about half should load,
@@ -106,18 +108,28 @@ const USAGE = `Usage:
        Writes DIR/drafts/<id>.json and .md for human review; assigns no splits; never writes into the repository. Costs credits)
   node bench/runner/bench.js cap import --from FILE --cap ID [--out DIR] [--repo-root DIR] [--bench-dir DIR]
        (reads a skill-creator style JSON array of { query, should_trigger } into the same draft format; should_trigger true is expect load, false is none)
+  node bench/runner/bench.js cap scenarios --cap ID,ID [--n 8] [--model M] [--model-cmd CMD] [--out DIR] [--base REF] [--dry-run]
+       [--isolate auto|unshare|sandbox-exec|none] [--kiro-bin PATH] [--auth-db FILE] [--hide DIR,DIR] [--repo-root DIR] [--bench-dir DIR]
+       (drafts 8 to 30 task scenarios for each skill, at least three quarters where the skill should help and at least one where it should change nothing,
+       one tool-less model call per skill in a scratch HOME. Writes DIR/scenarios/<id>.json and .md for human review and never writes into the repository.
+       --dry-run writes only the prompt, calls no model, needs no login and spends no credits)
+  node bench/runner/bench.js cap controls --out DIR [--base REF] [--reps 5] [--scratch DIR] [--agent-engine v2|v3] [--repo-root DIR] [--bench-dir DIR] [--json]
+  node bench/runner/bench.js cap controls --check RUN --base-arm ARM --keep ARM --prune ARM [--aa ARM] --extra-tasks DIR [--bench-dir DIR] [--json]
+       (known-answer controls for skill studies. With --out it writes a skill that holds a fact nobody can guess (keep), a decoy skill (prune) and one task for
+       each, and prints the variant, run and check commands; free. With --check it reads a finished controls run and exits 0 only when the planted lift was
+       found and the decoy showed no effect; it writes controls-check.json beside the run)
   node bench/runner/bench.js cap trigger --cap ID --mode proxy|live [--split train|heldout|all] [--reps 3] [--harness kiro-cli|opencode] [--base REF]
        [--queries FILE] [--out DIR] [--model M] [--model-cmd CMD] [--from-run DIR] [--from-arm NAME] [--acting-agent A] [--concurrency N]
        [--crosscheck F] [--crosscheck-run DIR] [--budget-credits X] [--budget-usd X] [--run-credit-limit X] [--stop-on first-capability|first-load|end_turn]
        [--max-tool-calls N] [--seed N] [--censored-floor X] [--dry-run] [--kiro-bin PATH] [--auth-db FILE] [--isolate auto|unshare|sandbox-exec|none]
        [--hide DIR,DIR] [--cache DIR] [--cargo-target DIR] [--cargo-online] [--agent-engine v2|v3] [--effort LEVEL] [--aws-creds-file FILE]
-       [--aws-profile NAME] [--opencode-bin PATH] [--rg-bin PATH] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--json]
+       [--aws-profile NAME] [--opencode-bin PATH] [--rg-bin PATH] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--json] [--profile quick|detailed]
        (trigger precision, recall and F1 with Wilson intervals for one capability; queries come from the registry (train, heldout or both; the
        reserve is never used) or from a draft file with --queries. proxy: tool-less model calls; on kiro-cli the model writes find_skills arguments,
        the offline find_skills returns the candidates and a second call picks, so retrieval failures and judgment failures are reported separately;
        on opencode the skill index is in the prompt. The surface is the acting agent's skill filter from --from-run's recorded startupResources
        (arm --from-arm) or from the agent spec at --base. live: real runs of trigger tasks, stopped at the first load or delegation (first-load by
-       default; first-capability also stops at find_skills), at most 4 tool calls; needs --budget-credits (--budget-usd on opencode). --crosscheck F
+       default; first-capability also stops at find_skills), at most 4 tool calls; needs --budget-credits (--budget-usd on opencode) unless --profile is given, which also sets --reps (quick 1 to 3, detailed at least 5). --crosscheck F
        runs a share F of the queries live (at least one per kind) and --crosscheck-run DIR reads a finished live run; kappa below 0.6 or fewer than
        12 queries prints "proxy not validated". --dry-run only writes the trigger tasks and prints the run command. Harnesses are never merged)
   node bench/runner/bench.js cap prune-report --base REF [--harness kiro-cli|opencode|both] [--runs DIR[,DIR...]] [--runs-glob GLOB]
