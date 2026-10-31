@@ -35,8 +35,8 @@ if [ -e "$OUT" ]; then
   echo "assemble-claude-plugin-branch.sh: $OUT already exists; refusing to overwrite" >&2
   exit 1
 fi
-if [ ! -f README.md ] || [ ! -f LICENSE.txt ]; then
-  echo "error: [assemble-claude-plugin] README.md and/or LICENSE.txt not found at repo root" >&2
+if [ ! -f README.md ] || [ ! -f LICENSE.txt ] || [ ! -f NOTICE.txt ]; then
+  echo "error: [assemble-claude-plugin] README.md, LICENSE.txt and/or NOTICE.txt not found at repo root" >&2
   exit 1
 fi
 
@@ -53,6 +53,10 @@ cp generated/claude-plugin/agents/*.md "$OUT/agents/"
 
 cp README.md "$OUT/README.md"
 cp LICENSE.txt "$OUT/LICENSE.txt"
+cp NOTICE.txt "$OUT/NOTICE.txt"
+python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-readme-links.py" \
+  --readme "$OUT/README.md" \
+  --version-file "$REPO_ROOT/VERSION"
 
 BUNDLED_MCP_SERVERS="$("$REPO_ROOT/scripts/read-bundled-mcp-servers.sh")"
 
