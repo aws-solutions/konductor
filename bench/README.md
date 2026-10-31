@@ -10,6 +10,8 @@ OUT=/tmp/bench-out
 node bench/runner/bench.js run --suite lite --budget-credits 60 --out $OUT   # every arm
 node bench/runner/bench.js judge --run $OUT                         # rubric + pairwise, 3-family panel
 node bench/runner/bench.js report --run $OUT                        # report.md, report.html, report.json, charts/ in $OUT
+node bench/runner/bench.js run --suite pilot --profile detailed --out $OUT   # 5 replicates, an A/A arm, graded judging, a calibration sample
+node bench/runner/bench.js report --run $A,$B,$C --verdict platform --out $V  # keep, discard or not enough evidence per arm: verdict.md and .html
 node bench/runner/bench.js compare --base $OLD --head $OUT          # regression check
 node bench/runner/bench.js recheck --run $OUT [--dry-run]                    # re-apply corrected task checks to saved workspaces
 node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then: calibrate score
@@ -22,7 +24,8 @@ Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--b
 `--hide PATH,..`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
 `--suite lite|full|hard|real|autonomy|pilot|cap` (`cap` is the fallback the `cap` commands use; they name their arms).
-More than 10 planned runs need `--budget-credits`; `run` prints the worst-case wall clock and the cap first.
+No credit cap is the default: every run is a line in `credit-ledger.jsonl` in the results directory and `run` prints the running total. `--budget-credits X` is an optional guard
+that stops new runs at 90% of X; a run that carries the command past 100% ends it with exit code 3. `run` prints the worst-case wall clock first. See "Profiles, credit ledger and platform verdict".
 The unit tests for the real-task track run a fake project's pytest suite. Without `python3 -m pytest`
 those 9 tests are skipped, not failed, and the summary shows them in its `skipped` count; install
 pytest (`python3 -m pip install --user pytest`) to cover them. Set `BENCH_REQUIRE_PYTEST=1` on CI
@@ -214,7 +217,10 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
 - Replies must be strict JSON; one retry, then `judgeError` is recorded. Results are cached by hash of
   (judge, prompt) in `<out>/judge/cache`. `spentCredits` and `spentByJudge` add up over invocations;
   a cached call costs 0 and keeps its original latency with `cached: true`.
-- Other flags: `--mode`, `--concurrency 2`, `--budget-credits X` (per invocation), `--max-file-chars`,
+- `--mode graded` asks the judge to grade both responses of a pair 1 to 5, once with the baseline in position A and once with it in B. A record keeps the mean grades, the
+  difference, and `orderDisagreement` (one order favored the arm, the other the baseline). The report lists the disagreement rate; above 25% it says the judges follow position.
+  Graded grades are shown beside the quality score and never feed it, so `scoring.json` still decides quality.
+- Other flags: `--mode rubric,pairwise,graded`, `--profile`, `--concurrency 2`, `--budget-credits X` (per invocation; stops new calls at 90%), `--max-file-chars`,
   `--max-bundle-chars`, `--judge-cmd CMD` (test double: prompt on stdin, reply on stdout), `--auth-db`.
 
 ## Calibration
@@ -316,6 +322,8 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare` builds a `dir:`
   arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
   the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.
+- `cap scenarios --cap ID,ID [--n 8] [--dry-run]` drafts 8 to 30 task scenarios per skill into `DIR/scenarios/<id>.json` and `.md` for review. `--dry-run` writes the prompt only: no model call, no login, no credits.
+- `cap controls --out DIR` writes a planted-lift skill and a decoy skill with one task each and prints the variant, run and check commands; `cap controls --check RUN ...` exits 0 only when the planted lift was found and the decoy showed none.
 - `cap plan --mode lift|trigger|improve --cap ID` (pass `--tasks id,id` when the registry links no lift task) prints the variant, run, contrast, judge and report commands and a credit estimate
   from the observed table. It refuses a task scored by checks alone unless `--allow-regex`, and refuses to guess credits without observed
   figures unless `--budget-credits X` is given. A skills-only change the acting agent cannot reach at startup stops with exit 2 unless `--force`.
@@ -327,7 +335,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   not change the arm hash; it records the base commit, each op with before and after sha256, inbound references and the tree hash.
 - Runner additions: `contrast --by task`; `--extra-tasks DIR` on `run`, `judge`, `report`, `contrast`, `recheck`, `skills` (tasks in
   `DIR/<id>.json`, `DIR/fixtures`, `DIR/hidden`, masked from the agent; check with `validate-tasks.js --only-extra --extra-tasks DIR`);
-  `run` stops launching when charged credits plus the largest run so far would pass `--budget-credits`, and `--run-credit-limit X`
+  `run` stops launching at 90% of `--budget-credits` or when charged credits plus the largest run so far would pass it, and `--run-credit-limit X`
   kills one run past X credits and records it as censored.
 - Reading the audit: tokens are bytes / 4, an estimate. "Unreachable" means no agent spec lists the capability, so no kiro agent can
   load it. A near-duplicate score is Jaccard on description words. Leakage fails above 5% shared 8-word shingles. Each `cap`
@@ -393,3 +401,32 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   (3+ PASS, 2 WARN, 1 FAIL), A/A arm or same-ref repeat, known-answer controls (capability studies; a task field `control: positive|negative`), judge coverage, judge families (3+, no Claude), judge agreement (within-one 0.9+ and exact 0.6+ PASS; under 0.75 FAIL),
   hidden tests on every task, headroom (base at 95+ on at most 25% of tasks), model pin, provenance. Others: failures, censored credits, contamination, parse failures, both orderings, truncation, calibration (kappa 0.6+ from `calibrate score --save FILE` to `DIR/calibration/result.json`), recheck, isolation, budget, drift, task validation.
 - Rating: `anecdotal` if any key criterion FAILs; `supported` only if every applicable key criterion PASSes and nothing FAILs; otherwise `indicative`. Thresholds are in `THRESHOLDS` in `report/diligence.js`.
+
+## Profiles, credit ledger and platform verdict
+Two profiles set how much evidence a study collects. `--profile quick|detailed` is accepted by `run`, `judge`, `report`, `cap plan` and `cap trigger`; the files are `profiles/quick.json` and `profiles/detailed.json`.
+A profile changes what is collected, not how it is scored (`profiles/scoring.json` still holds the weights).
+
+| | quick | detailed |
+| --- | --- | --- |
+| replicates per cell | 1 to 3 (default 2); more is refused | at least 5 (default 5); fewer is refused |
+| A/A arm | none | added by `run`: the first konductor arm repeated at its exact commit (`v1.2.0-b` for `v1.2.0`); skipped when the arm list already has a same-ref pair |
+| skill studies | no controls | known-answer keep and prune controls (`cap controls`), at least 8 scenarios per skill (`cap scenarios`); `cap plan` warns when it has fewer tasks |
+| judging | rubric, pairwise | rubric, pairwise and graded, each pair in both answer orders |
+| human calibration | none | `calibration-sample.json` and `.md` written to the results directory (the draw `calibrate export --n 25 --seed 1` makes) |
+| report | `--detail quick`; a result under 3 runs is labelled anecdotal | `--detail full`; a "Profile check" lists what the run still lacks |
+
+`--detail` still wins over the profile. With a profile, `cap plan` prints no default budget and `cap trigger --mode live` does not require one.
+
+Credit ledger: `run` and `judge` append one JSON line per agent run and per judge call to `credit-ledger.jsonl` in the results directory (`kind`, arm, task, replicate, `credits`, `charged`, `cached`) and print
+`credits: this command X (no cap), study total Y (runs R, judge J)` after each one and at the end. A censored run is totalled at its charge. `--budget-credits X` is optional: at 90% of X
+(counted for the command, not the whole directory) no new run or call starts; a command that ends past 100% exits 3. `report` prints the ledger total.
+
+Platform verdict: `report --run DIR[,DIR...] --verdict platform [--baseline vanilla] [--out DIR] [--format md|html|both]` writes `verdict.md`, `verdict.html`, `verdict.json` and `charts/verdict-quality.svg`
+instead of the normal report. Each run directory keeps its own refs; one arm in several directories is pooled by exact ref, so `main@7428dd9` and `main@f031534` are two arms and are never merged.
+For each arm against the baseline, on the tasks both ran: quality /100 and the difference with its 95% interval, reliability /100, autonomy /100 where present, cost ratio (credits per successful run),
+latency ratio (mean wall clock), run counts, replicates in the smallest cell, the A/A noise, the lowest diligence rating over its directories, graded-judge figures and failed-run counts.
+Efficiency is a ratio and never a 0 to 100 number. A failed run with nothing to score counts as quality 0; infra errors and model mismatches are listed and left out of quality.
+- KEEP: quality up by more than the A/A noise, 95% interval above 0, reliability not clearly lower. DISCARD: the same for a loss.
+- NOT ENOUGH EVIDENCE otherwise. It is forced by: fewer than 3 runs on a side, a difference inside the A/A noise, an anecdotal diligence rating. It also follows from: no A/A noise measured,
+  fewer than 3 replicates in a cell, an interval that includes 0, or a quality gain with clearly lower reliability. The A/A noise is the mean quality gap between an arm and its repeat, never under 5 points.
+- Every reason that applies is printed. A directory without the baseline arm is listed and skipped.

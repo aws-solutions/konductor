@@ -13,6 +13,9 @@ evaluate a skill, and whether a skill should be pruned. Everything marked free s
 | `cap trigger --mode proxy` | Would a model pick this skill for a query? Retrieval misses and judgment misses are counted apart. Generous: a hit is not proof. | about 0.09 credits per call |
 | `cap trigger --mode live` | Does a real agent load it, or delegate first? Stops at the first load. Spend is not metered. | unobserved, cap it |
 | `cap plan --mode lift`, then `run`, `judge`, `contrast` | Does having the skill change cost, speed or quality? Needs an A/A arm to read the result. | tens of credits |
+| `cap scenarios --cap ID --dry-run` | Which 8 or more tasks would test this skill? The dry run writes the prompt only. | free (the live call is one model call per skill) |
+| `cap controls --out DIR`, then `--check RUN` | Does this study find a lift that was planted and none for a decoy? | free to write and check; the run is a few credits per run |
+| `report --verdict platform` | Is the platform worth keeping against vanilla? One page, one call per arm. | free |
 
 The prune report is a recommendation, never a deletion. A person decides, with the checklist at the end.
 
@@ -54,7 +57,9 @@ will show zero loads for it. FIX is a prompt to check, and the report lowers its
 1. Free: `cap audit`, then `cap prune-report` over every run directory you have.
 2. `cap trigger --mode proxy` on skills in FIX or with a stored query set. Read recall first; treat hits with suspicion.
 3. `cap trigger --mode live` on a handful of queries to cross-check the proxy (kappa below 0.6 or under 12 queries means "proxy not validated").
-4. Lift run: `cap plan --mode lift` (pass `--tasks id,id` when the registry links no lift task), with a base arm and an A/A copy of it, on tasks with headroom. Judge before you read lift.
+4. Lift run: `cap plan --mode lift --profile detailed` (pass `--tasks id,id` when the registry links no lift task), with a base arm and an A/A copy of it, on tasks with headroom. Judge before you read lift.
+   The detailed profile asks for at least 5 replicates and at least 8 scenarios (`cap scenarios`, then review and turn the good ones into tasks), and prints the controls step.
+   Run the controls first (`cap controls --out DIR`, run what it prints, `cap controls --check`). If the check exits 1, do not read any skill verdict from the study.
 5. Write the result into the evidence file, rerun `prune-report`, then decide.
 
 ## Reading the results
@@ -117,7 +122,9 @@ ran against two copies of v1.2.0 (the A/A pair) on one design task, three replic
 One pass, n=1 per cell, claude-sonnet-5.5, from the README table: lite suite (5 tasks) 6.78 credits vanilla, 23.31 on v1.2.0; real suite (7 tasks) 14.22 and 61.32.
 In the pilot above: a typical design run cost about 4.4 credits, the largest 11.07, and judging added about 0.5 per run, so 9 runs plus judging came to about 52.
 Proxy calls cost about 0.09 each and draft calls 0.7 to 0.9. Free steps (audit, prune-report, skills, plan) cost nothing.
-Always pass `--budget-credits`; `run` stops launching when charged credits plus the largest run so far would pass it.
+A cap is optional. Without `--budget-credits` nothing stops a run, and every run and judge call is a line in `credit-ledger.jsonl` in the results directory, with a running total printed.
+With `--budget-credits X`, `run` stops launching at 90% of X (and when charged credits plus the largest run so far would pass X); a command that ends past 100% exits 3.
+Judging graded mode adds two calls per pair per judge, so a detailed study judges about three times as many calls as a rubric-only one.
 
 ## Pruning pull request checklist
 
@@ -129,3 +136,14 @@ Always pass `--budget-credits`; `run` stops launching when charged credits plus 
 - [ ] No agent spec, claudeCli list or SOP still lists it.
 - [ ] What would reverse the decision, written down (for example: any load in the next N runs, a task that needs it).
 - [ ] A person other than the author has read the evidence rows.
+
+## Keep or discard the platform
+
+After a detailed run per suite, `report --run DIR1,DIR2,DIR3 --verdict platform --out OUT` gives one call per arm against vanilla, named by exact ref (`main@f031534`).
+Read the verdict column, then the reason. NOT ENOUGH EVIDENCE is not "no better": it means this study cannot say. The usual fixes are more replicates, an A/A arm and judged output.
+If the answer is KEEP, the next questions are which skills to trim and where the latency goes. `cap audit` and `cap prune-report` answer the static half for free; a trim is
+confirmed only by a lift run (`cap plan --mode improve --candidate FILE`) on the trimmed text.
+
+Move or remove: a section that tells the agent how to act belongs in the skill. Worked examples, long tables, templates and checklists the agent reads only sometimes belong in a
+reference file next to the skill (`references/NAME.md`, linked from `SKILL.md`), so they cost nothing until opened. Text that repeats the description, repeats another skill, or
+restates what the base prompt already says is removed. Keep the removed text in the commit message, not in a file.
