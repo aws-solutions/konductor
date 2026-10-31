@@ -107,4 +107,6 @@ See the `agents-md-authoring` skill for creating and maintaining AGENTS.md files
 
 Local memory persistence is provided by the `persistent-memory` skill. Facts persist across sessions in
 `.konductor/memory/MEMORY.md` (project facts) and `.konductor/memory/USER.md` (preferences), validated against
-limits and an optional URL allowlist configured in `.konductor/memory-config.json`.
+limits and an optional URL allowlist configured in `.konductor/memory-config.json`. These files are project
+content: agents follow user-written entries in them at the same level as this file, whether or not git tracks
+them. Review a change that adds or edits them the way you would review a change to this file.
