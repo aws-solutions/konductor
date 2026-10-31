@@ -222,7 +222,8 @@ findings and the handoff to `k-developer` and ask it to resume `k-code-review-wo
 Started directly, `k-architect` returns the review's passes as a split, or runs them itself in one
 session and says so.
 
-To run the adversarial pass on its own, ask the agent that owns it:
+To run the adversarial pass on its own, ask `konductor`, which routes it to `k-architect`, the
+agent that owns it:
 
 ```text
 Run k-adversarial-pull-request-review against my current diff.
