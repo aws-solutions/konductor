@@ -88,7 +88,7 @@ Spawn `k-architect` in adversarial mode with `k-adversarial-pull-request-review`
 
 **Constraints:**
 
-- If you were resumed at step 6 with `k-architect`'s findings, You MUST NOT spawn or hand off again. Apply the constraints below to those findings and the Step 5 list from the handoff, then continue to Step 7.
+- If you were resumed at step 6 with `k-architect`'s findings, You MUST NOT spawn or hand off again. Apply the false-positive, merge and no-re-report constraints below to those findings and the Step 5 list from the handoff, then continue to Step 7.
 - You MUST skip this step only if `review_type` is `frontend` only (adversarial review targets backend/infra gaps)
 - You MUST pass the same diff used in Step 1 as `diff_input`
 - If the k-code-review-workflow was invoked with a CR URL, You MUST also pass it to `k-adversarial-pull-request-review` as its `pr_url` parameter — that is the name that SOP declares, and passing `cr_url` instead leaves it unset so the review degrades to diff-only. Do not send it to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
