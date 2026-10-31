@@ -355,7 +355,7 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
   const startup = Object.fromEntries((run.config.arms || []).filter((a) => a.startupResources).map((a) => [a.id, a.startupResources]));
   const skills = summarizeSkills(rowsFromResults(run.runs, classOf, (id) => tasks.get(id)?.target ?? null), { armOrder: arms, startup });
   if (skills.recorded) report.skills = skills;
-  return { report, series };
+  return { report, series, ctx: { rubricIdx, isStale, judges, rawScoreOf, classOf, noQuestionTasks, basis, arms } };
 }
 
 // Records written before verdictRaw existed keep the judge's own verdict in judgeVerdict when it was downgraded.

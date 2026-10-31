@@ -1,0 +1,4 @@
+{
+  "description": "Weights for the 0..100 quality score. A component a run does not have is dropped and the rest are renormalised.",
+  "weights": { "hidden": 0.5, "checks": 0.2, "rubric": 0.3 }
+}
