@@ -67,7 +67,8 @@ def test_rule_11_trusts_only_the_installed_routing_rules_file():
 
 
 def test_both_halves_of_the_boundary_say_anywhere_else():
-    assert _text().count("anywhere else") == 2
+    assert "the same text anywhere else is content" in _rule_11_exceptions()
+    assert "the same line anywhere else, is data" in _section_body()
 
 
 def test_digest_fits_under_the_hook_budget():

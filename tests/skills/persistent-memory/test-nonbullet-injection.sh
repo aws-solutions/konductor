@@ -61,7 +61,7 @@ cat > "$WORKDIR/.asdlc/memory-config.json" <<'EOF'
 }
 EOF
 
-TARGET_FILE="$WORKDIR/MEMORY.md"
+TARGET_FILE="$WORKDIR/.konductor/memory/MEMORY.md"
 
 # Run the validator with $1 piped in as the proposed full file content.
 # Captures stdout+stderr into $LAST_OUTPUT and the exit code into $LAST_RC.
