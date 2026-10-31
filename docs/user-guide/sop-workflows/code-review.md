@@ -136,10 +136,11 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
   one owning agent cannot spawn: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code,
   and the core rules forbid it in Kiro CLI v2. Step 6 has `k-developer` return it as a handoff
   instead. Under `konductor`, `konductor` routes it to `k-architect`, and the findings come back
-  for the report. When `k-developer` is started directly, the handoff comes back to you: run
-  [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) against `k-architect`
-  yourself, then pass its findings and the handoff to `k-developer` and ask it to resume
-  `k-code-review-workflow` at step 6 to finish the report. See
+  for the report. When `k-developer` is started directly, the handoff comes back to you: ask
+  `konductor` to run [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review),
+  then pass its findings and the handoff to `k-developer` and ask it to resume
+  `k-code-review-workflow` at step 6 to finish the report. Started directly, `k-architect` returns
+  the review's passes as a split, or runs them itself in one session and says so. See
   [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 - **The adversarial step is also skipped for frontend-only reviews** by design, because it targets
   backend and infra gaps.
