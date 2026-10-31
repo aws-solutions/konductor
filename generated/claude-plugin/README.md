@@ -73,6 +73,7 @@ hooks/konductor-telemetry.js
 docs/telemetry-schema.json
 README.md
 LICENSE.txt
+NOTICE.txt
 ```
 
 `plugin.json` and `.mcp.json` are rendered only at that flat tree's own
