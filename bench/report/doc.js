@@ -47,7 +47,7 @@ function inline(s) {
   return t.replace(/\[([^\]]+)\]\(([^)]*)\)/g, (_m, label) => label);
 }
 
-const STATUS = { PASS: 'pass', WARN: 'warn', FAIL: 'fail', 'N/A': 'na' };
+const STATUS = { PASS: 'pass', WARN: 'warn', FAIL: 'fail', 'N/A': 'na', KEEP: 'pass', DISCARD: 'fail', 'NOT ENOUGH EVIDENCE': 'warn' };
 
 function cellHtml(v) {
   const s = String(v ?? '');

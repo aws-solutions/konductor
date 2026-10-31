@@ -16,6 +16,7 @@ const { runJudging } = require('../judge/run.js');
 const { exportSheet, scoreLabels, formatCalibration } = require('../judge/calibrate.js');
 const { loadRun, loadRuns } = require('../report/load.js');
 const { generateRunReport, generateContrast } = require('../report/generate.js');
+const { generateVerdict } = require('../report/verdictgen.js');
 const { buildReport, defaultBaseline } = require('../report/aggregate.js');
 const { renderMarkdown } = require('../report/render.js');
 const { recheckAll } = require('./lib/recheck.js');
@@ -152,7 +153,26 @@ function printWritten(written) {
   if (charts.length) console.log(`wrote ${charts.length} chart(s) in ${path.dirname(charts[0])}`);
 }
 
+// One page with a keep, discard or not-enough-evidence call per arm. Each run directory keeps its own refs and its own
+// A/A pairs, so directories are pooled by exact ref, never merged into one run.
+function cmdVerdict(opts) {
+  if (opts.verdict !== 'platform') throw new Error('--verdict takes platform');
+  const dirs = runDirsOf(opts);
+  const given = opts.out && opts.out !== true;
+  if (dirs.length > 1 && !given) throw new Error('several run directories feed one verdict; pass --out to say where verdict.md goes');
+  const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : 'vanilla';
+  const res = generateVerdict({
+    kind: opts.verdict, dirs, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), baseline, out: opts.out, format: opts.format, scoringFile: scoringOf(opts),
+    profile: optionalProfile(opts.profile),
+  });
+  const w = Math.max(...res.v.arms.map((a) => a.label.length));
+  console.log(`Platform verdict against ${res.v.baselineLabel}:`);
+  for (const a of res.v.arms) console.log(`  ${a.label.padEnd(w)}  ${(a.verdict ?? 'A/A repeat').padEnd(20)}  ${a.aaRepeatOf ? `repeat of ${a.aaRepeatOf}` : a.reason}`);
+  printWritten(res.written);
+}
+
 function cmdReport(opts) {
+  if (opts.verdict !== undefined) return cmdVerdict(opts);
   const dirs = runDirsOf(opts);
   const given = opts.out && opts.out !== true;
   if (dirs.length > 1 && !given) throw new Error('several run directories are merged read-only; pass --out to say where the report goes');
