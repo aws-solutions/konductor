@@ -36,6 +36,11 @@ Five files control five different things. Pick the smallest one that achieves wh
 | How an agent reasons about one topic | `skills/<name>/SKILL.md` | Guidance that agent loads on demand |
 | An agent's prompt, model, tools, or dependencies | `agents/<name>.agent-spec.json` | That agent, in both runtimes |
 
+For an agent with both `kiroCli` and `claudeCli` config, write `config.model` as a Kiro CLI model ID
+in its dotted form (`claude-sonnet-5.5`), or `auto`. `konductor synth` converts it for Claude Code
+(`claude-sonnet-5-5`, or `inherit` for `auto`) and fails on anything else. A Claude-only agent can
+also use Claude Code's own IDs and aliases, such as `claude-opus-4-1` or `sonnet`.
+
 ### Routing lives in two places
 
 The routing rules file says so itself: `skills/delegation-protocol/SKILL.md` is the **authoritative**
