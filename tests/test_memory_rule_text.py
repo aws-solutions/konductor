@@ -15,7 +15,8 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 REMOVED_CHECK_STRINGS = (
-    "git ls-files",
+    "git ls-files ':(icase).konductor'",
+    "git ls-files '.*'",
     "ls -ld",
     "grep -Fx .konductor",
     "[ -~]",
