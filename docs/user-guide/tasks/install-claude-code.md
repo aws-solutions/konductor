@@ -36,7 +36,7 @@ ls ~/.claude/agents
 ```
 
 Each agent's Claude Code configuration comes from its spec's `clientConfig.claudeCli` block, which
-declares the Claude Code tool names it may use and the skills it may load.
+declares the Claude Code tool names it may use and the few skills a spawned subagent preloads.
 
 
 Neither of the next two settings is on by default, and **each fails quietly without the other**.

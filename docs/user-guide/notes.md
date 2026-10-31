@@ -29,17 +29,13 @@ drift checks, [`tools/build-user-guide/`](../../tools/build-user-guide/README.md
 
 ## Deliberate divergences from the source
 
-### `konductor`'s skill count is runtime-dependent
+### Declared skills and the Claude Code preload differ by design
 
-`konductor` lists 13 skills in `dependencies.skills.skillNames` and 13 in
-`clientConfig.claudeCli.skills`. Twelve are shared. `claude-teams-behavior` is only in the
-`claudeCli` list, and `humanize-writing` is only in `skillNames`. Six more agents (the mux and
-cmux orchestrators, `k-quality-assurance`, `k-researcher`, `k-browser`, `k-media-analyzer`)
-list `humanize-writing` in `skillNames` only. The other four agents' two lists agree.
-
-The roster tables state **13** (the `claudeCli` basis, which `check-guide-facts.py` asserts
-against) and footnote the difference. If the two lists are ever reconciled in the specs,
-drop the footnote.
+Every agent's `clientConfig.claudeCli.skills` is a short preload list (1 to 4 skills) that
+Claude Code injects into a spawned subagent; `dependencies.skills.skillNames` is everything the
+agent may load. The roster tables give both: the Skills column is the `skillNames` count and the
+preload column is the `claudeCli` count, and `check-guide-facts.py` asserts each. The one name in
+a preload list but not in `skillNames` is `konductor`'s `claude-teams-behavior`.
 
 ### `metrics` is a stub
 

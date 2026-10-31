@@ -54,6 +54,10 @@ _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 # not a way to silence this script -- see docs/user-guide/notes.md.
 WITHDRAWN_COMMANDS = {"config"}
 
+# The description wording that lets a skill sit in clientConfig.claudeCli.skills
+# without skillNames (docs/user-guide/appendix/contributing.md, "Adding a skill to an agent").
+CLAUDE_ONLY_MARKER = re.compile(r"\bClaude Code only\b|\bonly in Claude Code\b")
+
 
 def html_pages_for_flags(root: Path):
     return [p for p in (root / "docs" / "site" / "user-guide.html",
@@ -175,9 +179,17 @@ def main() -> int:
                 if name not in specs or len(row) <= max(i_model, i_skills):
                     continue
                 checked.add(name)
-                want_n = len(specs[name]["claude_skills"])
+                want_n = len(specs[name]["skill_names"])
                 if row[i_skills] != str(want_n):
-                    fail(f"{page}: {name} Skills column says {row[i_skills]!r}, spec has {want_n}")
+                    fail(f"{page}: {name} Skills column says {row[i_skills]!r}, spec declares {want_n}")
+                # The preload column is the Claude Code subagent preload,
+                # clientConfig.claudeCli.skills, a subset of what the agent declares.
+                i_pre = next((header.index(h) for h in header if h.startswith("Preloaded")), None)
+                if i_pre is not None and len(row) > i_pre:
+                    want_pre = len(specs[name]["claude_skills"])
+                    if row[i_pre] != str(want_pre):
+                        fail(f"{page}: {name} Preloaded column says {row[i_pre]!r}, "
+                             f"spec preloads {want_pre}")
                 if row[i_model] != specs[name]["model"]:
                     fail(f"{page}: {name} Model says {row[i_model]!r}, spec says {specs[name]['model']!r}")
                 # SOP columns drift the same way the skill counts do -- one spec
@@ -209,19 +221,25 @@ def main() -> int:
     # skips it, which is how it kept five stale counts through a roster rewrite.
     skills_counts = {}
     for header, rows in parse_md_tables(read(guide / "skills.md")):
-        if header[:2] != ["Agent", "Skills preloaded (Claude Code)"]:
+        if header[:3] != ["Agent", "Skills declared", "Preloaded on Claude Code"]:
             continue
         for row in rows:
             name = strip_md(row[0])
-            if name in specs and len(row) > 1:
-                skills_counts[name] = row[1]
+            if name in specs and len(row) > 2:
+                skills_counts[name] = (row[1], row[2])
     if not skills_counts:
-        fail("skills.md: no 'Agent | Skills preloaded (Claude Code)' table found")
+        fail("skills.md: no 'Agent | Skills declared | Preloaded on Claude Code' table found")
     else:
-        bad = {n: v for n, v in skills_counts.items()
-               if v != str(len(specs[n]["claude_skills"]))}
-        for n, v in sorted(bad.items()):
-            fail(f"skills.md: {n} says {v}, spec has {len(specs[n]['claude_skills'])}")
+        bad = []
+        for n, (declared, preloaded) in sorted(skills_counts.items()):
+            if declared != str(len(specs[n]["skill_names"])):
+                bad.append(n)
+                fail(f"skills.md: {n} Skills declared says {declared}, "
+                     f"spec declares {len(specs[n]['skill_names'])}")
+            if preloaded != str(len(specs[n]["claude_skills"])):
+                bad.append(n)
+                fail(f"skills.md: {n} Preloaded on Claude Code says {preloaded}, "
+                     f"spec preloads {len(specs[n]['claude_skills'])}")
         if missing := set(specs) - set(skills_counts):
             fail(f"skills.md: per-agent table missing agents: {sorted(missing)}")
         elif not bad:
@@ -248,7 +266,7 @@ def main() -> int:
         m = re.search(r"^\|\s*\*\*Skills\*\*[^|]*\|\s*\**(\d+)\**", body, re.M)
         if not m:
             continue  # the card spells the list out instead of counting it
-        want = len(specs[name]["claude_skills"])
+        want = len(specs[name]["skill_names"])
         if m.group(1) != str(want):
             card_fails.append(
                 f"agents.md: {name} card says {m.group(1)} skills, spec has {want}"
@@ -266,10 +284,10 @@ def main() -> int:
                 r'\{\s*k:\s*"' + re.escape(name) + r'",\s*v:\s*"(.*?)"\s*\}', rendered
             ):
                 found = re.search(r"(\d+) skills", m.group(1))
-                if found and found.group(1) != str(len(spec["claude_skills"])):
+                if found and found.group(1) != str(len(spec["skill_names"])):
                     card_fails.append(
                         f"{rel}: {name} roster row says {found.group(1)} skills, "
-                        f"spec has {len(spec['claude_skills'])}"
+                        f"spec declares {len(spec['skill_names'])}"
                     )
 
     if card_fails:
@@ -278,6 +296,36 @@ def main() -> int:
     else:
         ok(f"per-agent skill counts agree outside the roster tables "
            f"({len(cards_seen)} agents.md cards, {len(guide_bundles)} bundle(s))")
+
+    # The prose sums up the per-agent preloads as a range ("1 to 4 skills").
+    # Nothing above reads that phrase, so a preload trim would leave it stale.
+    sizes = [len(spec["claude_skills"]) for spec in specs.values()]
+    want_range = f"{min(sizes)} to {max(sizes)}"
+    range_texts = [(f"docs/user-guide/{n}", read(guide / n)) for n in ("notes.md", "reference.md")]
+    for page in guide_bundles:
+        try:
+            range_texts.append((str(page.relative_to(root)), load_template(page)))
+        except (ValueError, json.JSONDecodeError):
+            continue
+    range_fails, range_seen = [], 0
+    for rel, text in range_texts:
+        seen_here = 0
+        for m in re.finditer(r"\b(\d+ to \d+) (?:skills|of them)\b", text):
+            if not re.search(r"preload|inject", text[max(0, m.start() - 120):m.end() + 120]):
+                continue
+            seen_here += 1
+            if m.group(1) != want_range:
+                range_fails.append(f"{rel}: preload range says {m.group(1)!r}, specs give "
+                                   f"{want_range!r}")
+        range_seen += seen_here
+        # A rewording the pattern misses must fail, not pass with nothing checked.
+        if seen_here == 0:
+            range_fails.append(f"{rel}: no preload range phrase found (\"N to M skills\"); "
+                               f"update this check if the prose changed")
+    for msg in range_fails:
+        fail(msg)
+    if not range_fails:
+        ok(f"preload range {want_range!r} matches the specs ({range_seen} mention(s))")
 
     # ---- 2. Named skills, not just counts -----------------------------------
     # Counts are not the whole story. Two renderings name INDIVIDUAL skills, and
@@ -289,10 +337,22 @@ def main() -> int:
     section("named skills agree with the specs, not just counts")
     named_fails = []
 
+    # Declared = skillNames plus any Claude-only preload in clientConfig.claudeCli.skills
+    # (see "Adding a skill to an agent" in docs/user-guide/appendix/contributing.md).
     declared_by = {}
     for name, spec in specs.items():
-        for skill in spec["claude_skills"]:
+        for skill in set(spec["skill_names"]) | set(spec["claude_skills"]):
             declared_by.setdefault(skill, set()).add(name)
+        # Only a skill whose description marks it Claude Code only may skip skillNames.
+        # A bare mention of Claude Code is not enough: general skills mention it too.
+        for skill in sorted(set(spec["claude_skills"]) - set(spec["skill_names"])):
+            skill_md = root / "skills" / skill / "SKILL.md"
+            desc = re.search(r"^description:\s*(.*)$", read(skill_md), re.M) if skill_md.is_file() else None
+            if not desc or not CLAUDE_ONLY_MARKER.search(desc.group(1)):
+                named_fails.append(
+                    f"agents/{name}.agent-spec.json: preloads `{skill}` on Claude Code without "
+                    f"declaring it in skillNames, and its description does not mark it Claude Code only"
+                )
 
     # (a) agents.md cards: every skill a card NAMES must be declared by that agent.
     #     The cards are samples ("and others"), so absence is fine; a wrong name is not.
