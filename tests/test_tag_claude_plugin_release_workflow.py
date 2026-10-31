@@ -352,6 +352,7 @@ def test_artifact_presence_is_validated_before_version_parsing():
         ".mcp.json",
         "README.md",
         "LICENSE.txt",
+        "NOTICE.txt",
         '"agents"',
         '"skills"',
     ]:
