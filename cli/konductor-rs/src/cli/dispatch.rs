@@ -179,6 +179,24 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             );
             0
         }
+        Commands::OrchestrationHook {
+            agent,
+            install_root,
+        } => {
+            // Same silent cwd fallback as `TelemetryHook`: this arm never
+            // prints to stderr and never fails the harness.
+            let cwd = std::env::current_dir().unwrap_or_else(|_| {
+                std::env::var_os("HOME")
+                    .map(PathBuf::from)
+                    .unwrap_or_default()
+            });
+            crate::cli::orchestration_hook::dispatch_orchestration_hook(
+                &cwd,
+                agent.as_deref(),
+                install_root.as_deref(),
+            );
+            0
+        }
     }
 }
 

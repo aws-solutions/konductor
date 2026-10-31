@@ -131,7 +131,7 @@ pub struct Config {
 /// stays a fully-populated, already-merged-and-validated type everywhere
 /// else in the codebase uses it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct RawConfig {
+pub(crate) struct RawConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     version: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -144,6 +144,28 @@ struct RawConfig {
     default_severity: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fail_on_severity_at_or_above: Option<String>,
+    /// Read only from the user layer by `orchestration_mode`; kept here so
+    /// `config set` writes an `orchestration:` section back instead of
+    /// dropping it. Never merged (see `merge`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) orchestration: Option<OrchestrationSection>,
+}
+
+/// The `orchestration:` mapping of a config file.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct OrchestrationSection {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) mode: Option<String>,
+    /// Keys this CLI does not know, such as a misspelled `mdoe`. Kept, not
+    /// rejected, so a newer sibling key does not break `config` on an older
+    /// CLI; `orchestration_mode` reports them instead of silently using auto.
+    #[serde(flatten)]
+    pub(crate) unknown_keys: std::collections::BTreeMap<String, serde_yaml::Value>,
+}
+
+/// `<home>/.konductor/config.yml`, the user layer.
+pub(crate) fn user_config_path(home: &Path) -> PathBuf {
+    home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME)
 }
 
 /// All the ways loading/validating a config can fail. Every variant is a
@@ -352,7 +374,7 @@ pub(crate) fn load_config_with_home(
 
     let merged = match home_dir {
         Some(home) => {
-            let user_config_path = home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
+            let user_config_path = user_config_path(home);
             if user_config_path.is_file() {
                 let raw_user = load_raw_config(&user_config_path)?;
                 super::trace::trace(
@@ -584,7 +606,7 @@ fn load_preset_defaults() -> Result<RawConfig, ConfigError> {
 /// file would incorrectly raise `ProjectConfigMalformed` instead of
 /// falling back to the preset defaults for a legitimate, non-malformed
 /// input.
-fn load_raw_config(path: &Path) -> Result<RawConfig, ConfigError> {
+pub(crate) fn load_raw_config(path: &Path) -> Result<RawConfig, ConfigError> {
     let contents =
         std::fs::read_to_string(path).map_err(|source| ConfigError::ProjectConfigNotReadable {
             path: path.to_path_buf(),
@@ -614,6 +636,9 @@ fn merge(base: RawConfig, override_cfg: RawConfig) -> RawConfig {
         fail_on_severity_at_or_above: override_cfg
             .fail_on_severity_at_or_above
             .or(base.fail_on_severity_at_or_above),
+        // The mode is not a gate setting and no layer may override another's;
+        // `orchestration_mode` reads it from the user file directly.
+        orchestration: None,
     }
 }
 
@@ -996,5 +1021,86 @@ mod tests {
         let declared_keys: std::collections::BTreeSet<&str> =
             _CONFIG_FIELDS.iter().copied().collect();
         assert_eq!(serialized_keys, declared_keys);
+    }
+
+    #[test]
+    fn merge_drops_orchestration_section_from_override() {
+        let override_cfg = RawConfig {
+            orchestration: Some(OrchestrationSection {
+                mode: Some("coordinator".to_string()),
+                ..OrchestrationSection::default()
+            }),
+            ..RawConfig::default()
+        };
+        let merged = merge(load_preset_defaults().unwrap(), override_cfg);
+        assert!(merged.orchestration.is_none());
+    }
+
+    #[test]
+    fn set_config_value_keeps_orchestration_section() {
+        let root = scratch_dir("set-keeps-orchestration");
+        let konductor_dir = root.join(KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        let path = konductor_dir.join(CONFIG_FILE_NAME);
+        fs::write(&path, "orchestration:\n  mode: coordinator\ntier: minor\n").unwrap();
+
+        set_config_value(&root, "tier", "full").expect("set tier must succeed");
+
+        let raw = load_raw_config(&path).unwrap();
+        assert_eq!(raw.tier.as_deref(), Some("full"));
+        assert_eq!(
+            raw.orchestration
+                .and_then(|section| section.mode)
+                .as_deref(),
+            Some("coordinator")
+        );
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// Design 3.4 accepts that a shape-malformed user `orchestration:` fails
+    /// the gate loader; the session hook reports the same file as
+    /// `Fallback(Malformed)`, so the two readers agree.
+    #[test]
+    fn malformed_user_orchestration_section_fails_load_config() {
+        use crate::cli::orchestration_mode::{resolve_user_mode, FallbackReason, ModeResolution};
+        let root = scratch_dir("malformed-orchestration-root");
+        let home = scratch_dir("malformed-orchestration-home");
+        fs::create_dir_all(home.join(KONDUCTOR_DIR_NAME)).unwrap();
+        fs::write(user_config_path(&home), "orchestration: 3\n").unwrap();
+
+        let loaded = load_config_with_home(&root, Some(&home));
+        let resolution = resolve_user_mode(Some(&home));
+        fs::remove_dir_all(&root).ok();
+        fs::remove_dir_all(&home).ok();
+
+        assert!(
+            matches!(loaded, Err(ConfigError::ProjectConfigMalformed { .. })),
+            "{loaded:?}"
+        );
+        assert!(
+            matches!(
+                resolution,
+                ModeResolution::Fallback(FallbackReason::Malformed { .. })
+            ),
+            "{resolution:?}"
+        );
+    }
+
+    #[test]
+    fn set_config_value_keeps_unknown_orchestration_keys() {
+        let root = scratch_dir("set-keeps-unknown-orchestration");
+        let konductor_dir = root.join(KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        let path = konductor_dir.join(CONFIG_FILE_NAME);
+        fs::write(&path, "orchestration:\n  mdoe: coordinator\n").unwrap();
+
+        set_config_value(&root, "tier", "full").expect("set tier must succeed");
+
+        let section = load_raw_config(&path).unwrap().orchestration.unwrap();
+        fs::remove_dir_all(&root).ok();
+        assert_eq!(
+            section.unknown_keys.get("mdoe"),
+            Some(&serde_yaml::Value::String("coordinator".to_string()))
+        );
     }
 }

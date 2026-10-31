@@ -155,8 +155,8 @@ rules that must never be missed.
 
 There are three today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
 rule, and the engineering practices, and all 11 agents load it. `context/k-direct-work.md` is loaded by `konductor`;
-`context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators (see
-Orchestration shapes). The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
+`context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators, and read by
+`konductor` in the `coordinator` mode (see Orchestration shapes). The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
 rules, including this one:
 
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You NEVER
@@ -168,10 +168,30 @@ rather than doing them themselves.
 ## Orchestration shapes
 
 `konductor` ships in its single-writer shape: it reads, writes and runs commands itself and spawns a
-fresh `k-*` reviewer when a phase closes. This is the shape the current release calls `auto`. The
-coordinator shape, where the orchestrator never writes and every change goes to a specialist, is
-what `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` still use, and what a later
-release will expose as a setting.
+fresh `k-*` reviewer when a phase closes. This shape is the `auto` orchestration mode, the default.
+The coordinator shape, where the orchestrator never writes and every change goes to a specialist, is
+what `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` use, and what `konductor` uses
+in the `coordinator` mode. Set the mode by hand in your user config; there is no command for it:
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+Only this file is read; a value in a project's `.konductor/config.yml` is ignored, and
+`konductor doctor` reports it. The change applies from the next session, with no reinstall, and
+stays until you edit the file again. A session-start hook that `install` wires reads it. Under
+`coordinator` the hook injects a short digest, `context/k-coordinator-digest.md`, and tells
+`konductor` to read the full routing rules file first. Under `auto` it injects nothing.
+
+The first reply of every `konductor` session states the mode: `Orchestration: coordinator`,
+`Orchestration: auto (default)`, or `Orchestration: auto (fallback: <reason>)` when the hook could
+not apply `coordinator`. `Orchestration: auto (default)` with `coordinator` set means no hook
+output arrived; run `konductor doctor`, then see
+[Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
+Kiro CLI v3 and Claude Code are supported. Kiro CLI v2 is not: the hook is wired there but untested,
+and a v2 session the hook does not reach runs as `auto`.
 
 ## Orchestrator and delegation
 

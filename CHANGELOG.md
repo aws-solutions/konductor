@@ -8,6 +8,15 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml`, and
+  `config set` keeps the section; a malformed one now fails `config` and `doctor` on that file.
+- `konductor` runs as a coordinator when `orchestration.mode` is `coordinator`: `install` wires a
+  session-start hook, even under `--no-telemetry`, that points it at the routing rules.
+- `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
+  config value is valid.
+
 ### Changed
 
 - `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate; it
@@ -59,6 +68,8 @@ not per individual commit.
   user-written memory and the codebase's conventions above konductor's format and workflow
   defaults. When these do not settle a collision, the agent asks once and saves the answer as a
   `Ruling:` memory entry.
+- Docs describe setting `orchestration.mode` by hand, reading the mode line in the first reply,
+  and that Kiro CLI v2 is not supported.
 
 ### Fixed
 

@@ -36,7 +36,8 @@ use super::install::kiro_cli::{
 };
 use super::install::manifest::{self, ManifestError, Provenance, StrategyManifest};
 use super::install::resource_rewrite::{
-    claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_telemetry_hooks,
+    claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_konductor_hooks,
+    V3_ORCHESTRATION_HOOKS_RELATIVE_PATH, V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME,
     V3_STANDALONE_HOOKS_RELATIVE_PATH, V3_STANDALONE_HOOK_LOCK_FILE_NAME,
 };
 use crate::cli::output::ColorMode;
@@ -1288,9 +1289,9 @@ fn uninstall_one_impl(
                     .any(|file| file.path == hooks_path)
             });
     if !hooks_still_owned {
-        let (_, hook_errors) = remove_claude_telemetry_hooks(target_path);
+        let (_, hook_errors) = remove_claude_konductor_hooks(target_path);
         for err in hook_errors {
-            eprintln!("konductor uninstall: warning: could not remove a telemetry hook: {err}");
+            eprintln!("konductor uninstall: warning: could not remove a Konductor hook: {err}");
         }
     }
 
@@ -1339,17 +1340,19 @@ fn delete_eligible_files(
         }
         let path = target_dir.join(rel);
 
-        // The V3 standalone telemetry-hook document shares its
-        // directory with a dedicated lock file that is never
-        // manifest-tracked, so it never appears as its own loop
-        // iteration. Removed unconditionally alongside the tracked
-        // hook document's entry, otherwise the lock file (and
+        // Each V3 hook document shares its directory with a dedicated
+        // lock file that is never manifest-tracked, so it never appears
+        // as its own loop iteration. Removed unconditionally alongside
+        // the tracked document's entry, otherwise the lock file (and
         // transitively `.kiro/hooks/`) would be stranded.
-        if file.path == V3_STANDALONE_HOOKS_RELATIVE_PATH {
-            if let Some(parent) = path.parent() {
-                let _ = std::fs::remove_file(parent.join(V3_STANDALONE_HOOK_LOCK_FILE_NAME));
-                touched_dirs.push(parent.to_path_buf());
-            }
+        let hook_lock = match file.path.as_str() {
+            V3_STANDALONE_HOOKS_RELATIVE_PATH => Some(V3_STANDALONE_HOOK_LOCK_FILE_NAME),
+            V3_ORCHESTRATION_HOOKS_RELATIVE_PATH => Some(V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME),
+            _ => None,
+        };
+        if let (Some(lock), Some(parent)) = (hook_lock, path.parent()) {
+            let _ = std::fs::remove_file(parent.join(lock));
+            touched_dirs.push(parent.to_path_buf());
         }
 
         if !path.is_file() {

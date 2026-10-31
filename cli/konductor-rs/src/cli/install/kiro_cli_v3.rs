@@ -60,9 +60,10 @@ use super::kiro_cli::{
 };
 use super::manifest::{classify_provenance, ManifestFile, Provenance, Status, StrategyManifest};
 use super::resource_rewrite::{
-    apply_all, apply_claude_settings_grant_and_hooks, apply_v3_standalone_telemetry_hook,
-    remove_v3_standalone_telemetry_hook, standard_passes_v3, RewriteContext, MCP_SERVER_NAME,
-    SKILL_RESOURCE_PREFIX, V3_STANDALONE_HOOKS_RELATIVE_PATH,
+    apply_all, apply_claude_settings_grant_and_hooks, apply_v3_orchestration_hook,
+    apply_v3_standalone_telemetry_hook, remove_v3_standalone_telemetry_hook, standard_passes_v3,
+    RewriteContext, MCP_SERVER_NAME, SKILL_RESOURCE_PREFIX, V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
+    V3_STANDALONE_HOOKS_RELATIVE_PATH,
 };
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
@@ -220,10 +221,11 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // Must run after the bin plan is folded in: it checks `plan`
         // for the MCP binary's planned path to predict whether the
         // Claude/V3 settings grant applies. The hooks settings file is
-        // planned only when the grant is and telemetry is on.
+        // planned whenever the grant is: the orchestration hook is wired
+        // even under `--no-telemetry`.
         let claude_plan =
             plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
-        let wires_claude_hooks = !no_telemetry && !claude_plan.is_empty();
+        let wires_claude_hooks = !claude_plan.is_empty();
         plan.extend(claude_plan);
         if wires_claude_hooks {
             plan_claude_hooks_file(&mut plan, target_dir, prior_manifest.as_ref());
@@ -251,8 +253,18 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // writing only this one file. Folded into `plan` before the
         // write-ahead manifest for the same crash-safety reason as
         // `plan_claude_settings_grant`.
-        if !no_telemetry {
-            let manifest_path = V3_STANDALONE_HOOKS_RELATIVE_PATH.to_string();
+        // The orchestration hook document is planned for every run,
+        // `--no-telemetry` included.
+        let hook_documents = if no_telemetry {
+            vec![V3_ORCHESTRATION_HOOKS_RELATIVE_PATH]
+        } else {
+            vec![
+                V3_STANDALONE_HOOKS_RELATIVE_PATH,
+                V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
+            ]
+        };
+        for manifest_path in hook_documents {
+            let manifest_path = manifest_path.to_string();
             let provenance = classify_provenance(
                 &target_dir.join(&manifest_path),
                 &manifest_path,
@@ -381,10 +393,24 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             }
         }
 
+        // The orchestration hook document, written for every V3 install
+        // whatever the telemetry choice; non-fatal like the telemetry one.
+        match apply_v3_orchestration_hook(target_dir) {
+            Ok((path, sha256)) => raw_files.push(ManifestFile {
+                path,
+                sha256: Some(sha256),
+                provenance: Provenance::Created,
+            }),
+            Err(err) => eprintln!(
+                "konductor install: warning: orchestration hook wiring skipped ({err}) -- the \
+                 rest of this install is unaffected"
+            ),
+        }
+
         // Additive, Claude/V3-only settings grant, mirroring
         // `AgentInstallPhase::run`'s identical branch: applies the
         // shared `.claude/settings.json` MCP-tool authorization grant
-        // (and, unless `--no-telemetry`, the telemetry hooks) once for
+        // (and the Konductor hooks) once for
         // the whole run, only when this run injected an MCP server
         // grant into at least one agent and this target is a detected
         // Claude Code target.
@@ -1142,9 +1168,8 @@ mod tests {
             super::super::manifest::Status::Complete
         );
         // 5 content-type files (agent, skill, sop, kiro-sop-skill,
-        // context) plus the standalone V3 telemetry hook document,
-        // written unconditionally with telemetry enabled.
-        assert_eq!(manifest.strategies[0].files.len(), 6);
+        // context) plus the V3 telemetry and orchestration hook documents.
+        assert_eq!(manifest.strategies[0].files.len(), 7);
         assert!(manifest.strategies[0]
             .files
             .iter()
@@ -1200,11 +1225,11 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        // The agent file, plus the standalone V3 telemetry hook document
-        // written unconditionally with telemetry enabled. Manifest
-        // files are sorted by path, and ".kiro/agents/..." sorts
-        // before ".kiro/hooks/...", so index 0 remains the agent.
-        assert_eq!(manifest.strategies[0].files.len(), 2);
+        // The agent file, plus the V3 telemetry and orchestration hook
+        // documents. Manifest files are sorted by path, and
+        // ".kiro/agents/..." sorts before ".kiro/hooks/...", so index 0
+        // remains the agent.
+        assert_eq!(manifest.strategies[0].files.len(), 3);
         assert_eq!(
             manifest.strategies[0].files[0].path,
             ".kiro/agents/agent.json"
