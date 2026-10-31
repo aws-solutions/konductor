@@ -8,6 +8,12 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- `make test-py` now checks every skill's frontmatter, description, size, code fences, and
+  `references/` links against a shrink-only baseline in `tests/skill-quality-baseline.json`.
+  `python3 tests/skill_quality.py --print-baseline` refuses to write a baseline that grew.
+
 ### Changed
 
 - Claude Code subagents now preload 1 to 4 skills each (90 KB in total, down from 1.8 MB); the rest
