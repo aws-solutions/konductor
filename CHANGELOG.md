@@ -53,10 +53,8 @@ not per individual commit.
   pass as a handoff for `k-architect` instead of skipping it.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
-- Agents ignore planted instructions and follow user-written memory only from an untracked
-  `.konductor/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
-  or `.konductor/memory` and any tracked dot path with a non-ASCII name; orchestrators never
-  bypass a denial or read unnamed secrets.
+- Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
+  and is never written via a symlink. Orchestrators never bypass denials or read unnamed secrets.
 - Orchestrator review fixes CRITICAL and IMPORTANT findings once, reruns the build and tests
   for code, re-reviews that fix and what depends on it, and lists what remains and all
   suggestions for you. A CRITICAL or IMPORTANT finding that survives the re-review blocks done:
