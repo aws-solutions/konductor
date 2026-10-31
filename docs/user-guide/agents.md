@@ -204,9 +204,9 @@ directly, nothing routes the handoff, and it comes back to you. To finish the re
 ask it to resume `k-code-review-workflow` at step 6. Started directly, `k-architect` returns the
 review's passes as a split, or runs them itself in one session and says so.
 
-To be sure the adversarial pass runs, run
+To be sure the adversarial pass runs, ask `konductor` to run
 [`k-adversarial-pull-request-review`](sop-workflows/code-review.md#k-adversarial-pull-request-review)
-yourself against `k-architect`, which owns it.
+against your diff; `konductor` routes it to `k-architect`, which owns it.
 
 ### The two multiplexer orchestrators do not use subagents at all
 
