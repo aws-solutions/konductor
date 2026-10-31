@@ -50,6 +50,8 @@ MUST NOT DO:
 CONTEXT: <File paths, patterns, constraints, handoff file references>
 ```
 
+When the user asked to remove comments or logging, or approved a scope reduction, attribute that request to the user in CONTEXT and drop the default MUST DO / MUST NOT DO line it overrides (see the core rules' House rules section).
+
 If a section is not applicable, write `N/A` — never omit the section. `TARGET AGENT` is the one exception: it is never `N/A` — every delegation targets exactly one agent.
 
 ### Never Omit the Target Agent
