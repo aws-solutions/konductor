@@ -22,6 +22,8 @@ const { recheckAll } = require('./lib/recheck.js');
 const { collectRows, summarizeSkills, renderSkillsMarkdown } = require('../report/skills.js');
 const { compareRuns, formatCompare } = require('../report/compare.js');
 const { contrastRun, renderContrast } = require('../report/contrast.js');
+const { optionalProfile, profileCheck, writeCalibrationSample } = require('./lib/profiles.js');
+const { MODES: JUDGE_MODES } = require('../judge/config.js');
 
 // One judge per model family: gpt, deepseek, glm. Override with --judges (qwen3-coder-next, minimax-m2.5 also work).
 const DEFAULT_JUDGES = ['gpt-5.6-luna', 'deepseek-3.2', 'glm-5'];
@@ -77,11 +79,12 @@ async function cmdJudge(opts) {
   let suiteJudges = [];
   try { suiteJudges = loadSuite(run.config.suite, loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir).judges; } catch { /* run without a known suite */ }
   const { judges, small } = resolveJudges({ cliJudges: opts.judges, suiteJudges, subjectModel: run.config.model ?? null, allowSmallPanel: Boolean(opts['allow-small-panel']) });
-  const modes = String(opts.mode || 'rubric,pairwise').split(',');
-  if (modes.some((m) => !['rubric', 'pairwise'].includes(m))) throw new Error('--mode takes rubric, pairwise or both');
+  const profile = optionalProfile(opts.profile);
+  const modes = String(opts.mode || (profile ? profile.judging.modes.join(',') : 'rubric,pairwise')).split(',');
+  if (modes.some((m) => !JUDGE_MODES.includes(m))) throw new Error(`--mode takes ${JUDGE_MODES.join(', ')}`);
   const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : defaultBaseline(run);
   const arms = [...new Set(run.runs.map((r) => r.armId))];
-  if (modes.includes('pairwise') && !arms.includes(baseline)) throw new Error(`baseline arm "${baseline}" has no runs in ${runDir} (arms present: ${arms.join(', ')}); pass --baseline ARM or --mode rubric`);
+  if ((modes.includes('pairwise') || modes.includes('graded')) && !arms.includes(baseline)) throw new Error(`baseline arm "${baseline}" has no runs in ${runDir} (arms present: ${arms.join(', ')}); pass --baseline ARM or --mode rubric`);
   const timeoutMs = numOpt(opts, 'judge-timeout-sec', DEFAULTS.timeoutSec) * 1000;
   const judgeCmd = opts['judge-cmd'] || process.env.BENCH_JUDGE_CMD;
   const log = (m) => console.error(`[judge ${new Date().toISOString().slice(11, 19)}] ${m}`);
@@ -116,8 +119,13 @@ async function cmdJudge(opts) {
   const recs = [...j.rubric, ...j.pairwise];
   const errors = recs.filter((r) => r.judgeError);
   const last = j.invocations[j.invocations.length - 1];
-  console.log(`judged ${j.rubric.length} rubric and ${j.pairwise.length} pairwise record(s); ${errors.length} with judgeError; live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)}); ${j.notJudged.length} run(s) not judged`);
+  console.log(`judged ${j.rubric.length} rubric, ${j.pairwise.length} pairwise and ${j.graded.length} graded record(s); ${errors.length + j.graded.filter((r) => r.judgeError).length} with judgeError; live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)}); ${j.notJudged.length} run(s) not judged`);
   if (small) console.log(`warning: panel has fewer than ${MIN_PANEL_FAMILIES} model families (--allow-small-panel)`);
+  console.log(j.ledgerLine);
+  if (j.guardState === 'hard') {
+    console.error('credit guard: HARD STOP, this command spent past 100% of --budget-credits; calls in flight were counted, and no further call started');
+    process.exitCode = 3;
+  }
   console.log(`wrote ${path.join(runDir, 'judgments.json')}`);
 }
 
@@ -151,10 +159,18 @@ function cmdReport(opts) {
   const run = loadRuns(dirs);
   const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : defaultBaseline(run);
   if (!run.runs.some((r) => r.armId === baseline)) console.error(`warning: baseline arm "${baseline}" has no runs; pairwise columns will be empty`);
+  const profile = optionalProfile(opts.profile);
   const res = generateRunReport({
-    run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline, out: opts.out, detail: opts.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0],
+    run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline, out: opts.out, detail: opts.detail ?? profile?.report.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0], profile,
   });
   printWritten(res.written);
+  if (profile?.calibrationSample) {
+    if (run.merged) console.log('calibration sample: not written for merged run directories; run report --profile detailed on one directory');
+    else {
+      const sample = writeCalibrationSample({ run, n: profile.calibrationSample, seed: 1 });
+      console.log(`wrote ${sample.json}\nwrote ${sample.md}`);
+    }
+  }
   console.log(`diligence rating: ${res.card.rating} (${res.card.counts.PASS} PASS, ${res.card.counts.WARN} WARN, ${res.card.counts.FAIL} FAIL)`);
 }
 

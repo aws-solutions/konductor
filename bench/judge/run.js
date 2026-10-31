@@ -8,12 +8,13 @@ const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
 const { checkJudgeModel, checkPanel, families, effectiveLimits } = require('./config.js');
 const { buildBundle } = require('./bundle.js');
-const { rubricPrompt, pairPrompt, retrySuffix } = require('./prompts.js');
-const { parseJsonStrict, validateRubricReply, validatePairReply } = require('./validate.js');
-const { rubricScore, pairOutcome, combineOrderings } = require('./score.js');
+const { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix } = require('./prompts.js');
+const { parseJsonStrict, validateRubricReply, validatePairReply, validateGradedReply } = require('./validate.js');
+const { rubricScore, pairOutcome, combineOrderings, combineGraded } = require('./score.js');
 const { withCache } = require('./model.js');
 const { makeQuoteMatcher } = require('./quote.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
+const { openLedger } = require('../runner/lib/credit-ledger.js');
 
 const MAX_PROMPT_BYTES = 120000; // one argv string is capped near 128 KiB on Linux
 
@@ -58,6 +59,8 @@ async function runJudging(o) {
   judges.forEach((j) => checkJudgeModel(j, subject));
   checkPanel(judges);
   const caller = withCache(o.caller, path.join(run.dir, 'judge', 'cache'));
+  // Every call is a ledger line. A budget turns the ledger into a guard that stops new calls at 90% of it.
+  const study = o.ledger ?? openLedger({ dir: run.dir, budget: budgetCredits });
 
   const candidates = run.runs.filter((r) => r.result.status !== 'budget_skipped');
   const notJudged = candidates.map((r) => ({ armId: r.armId, taskId: r.taskId, replicate: r.replicate, reason: notJudgedReason(r) })).filter((r) => r.reason);
@@ -75,6 +78,7 @@ async function runJudging(o) {
 
   const units = [];
   const pairErrors = [];
+  const gradedErrors = [];
   for (const judge of judges) {
     for (const r of judged) {
       if (modes.includes('rubric')) units.push({ kind: 'rubric', judge, run: r });
@@ -82,6 +86,11 @@ async function runJudging(o) {
         const base = byKey.get(`${baseline}|${r.taskId}|${r.replicate}`);
         if (!base) pairErrors.push({ judge, run: r });
         else for (const order of [1, 2]) units.push({ kind: 'pair', judge, run: r, base, order });
+      }
+      if (modes.includes('graded') && r.armId !== baseline) {
+        const base = byKey.get(`${baseline}|${r.taskId}|${r.replicate}`);
+        if (!base) gradedErrors.push({ judge, run: r });
+        else for (const order of [1, 2]) units.push({ kind: 'graded', judge, run: r, base, order });
       }
     }
   }
@@ -100,24 +109,33 @@ async function runJudging(o) {
       const prompt = rubricPrompt({ task, answerKey, bundleText: b.text });
       out = await judgeOnce({ caller, model: u.judge, prompt, check: (v) => validateRubricReply(v, task.rubric) });
     } else {
-      // Order 1 puts the baseline in position A; order 2 swaps.
+      // Order 1 puts the baseline in position A; order 2 swaps. Pairwise and graded modes share the layout.
       const mine = bundles.get(runKey(u.run)).text;
       const theirs = bundles.get(runKey(u.base)).text;
       const [bundleA, bundleB] = u.order === 1 ? [theirs, mine] : [mine, theirs];
-      const prompt = pairPrompt({ task, answerKey, bundleA, bundleB });
-      out = await judgeOnce({ caller, model: u.judge, prompt, check: validatePairReply });
+      if (u.kind === 'graded') {
+        const prompt = gradedPrompt({ task, answerKey, bundleA, bundleB });
+        out = await judgeOnce({ caller, model: u.judge, prompt, check: validateGradedReply });
+      } else {
+        const prompt = pairPrompt({ task, answerKey, bundleA, bundleB });
+        out = await judgeOnce({ caller, model: u.judge, prompt, check: validatePairReply });
+      }
     }
     const live = out.calls.filter((c) => !c.cached).reduce((s, c) => s + c.credits, 0);
     spent += live;
     spentByJudge[u.judge] = (spentByJudge[u.judge] || 0) + live;
-    log(`judged ${u.kind} ${u.judge} ${runKey(u.run)}${u.order ? ` order ${u.order}` : ''}: ${out.error ? `ERROR ${out.error}` : 'ok'} (spent ${spent.toFixed(3)})`);
+    for (const c of out.calls) {
+      study.record({ kind: 'judge', unit: 'credits', judge: u.judge, mode: u.kind === 'pair' ? 'pairwise' : u.kind, arm: u.run.armId, task: u.run.taskId, replicate: u.run.replicate, ...(u.order ? { order: u.order } : {}), credits: c.cached ? 0 : c.credits, cached: Boolean(c.cached), ok: c.ok });
+    }
+    log(`judged ${u.kind} ${u.judge} ${runKey(u.run)}${u.order ? ` order ${u.order}` : ''}: ${out.error ? `ERROR ${out.error}` : 'ok'}; ${study.line()}`);
     return out;
   };
-  const onSkip = () => ({ error: `budget reached (${budgetCredits} credits)`, calls: [], parseFailures: 0 });
-  const outs = await runPool(units, concurrency, worker, () => budgetCredits != null && spent >= budgetCredits, onSkip);
+  const onSkip = () => ({ error: `budget reached (${study.stopReason() ?? `${budgetCredits} credits`})`, calls: [], parseFailures: 0 });
+  const outs = await runPool(units, concurrency, worker, () => study.shouldStop(), onSkip);
 
   const rubric = [];
   const pairs = new Map();
+  const gradedMap = new Map();
   units.forEach((u, i) => {
     const out = outs[i];
     const bundle = bundles.get(runKey(u.run));
@@ -138,6 +156,19 @@ async function runJudging(o) {
         judgeError: out.error ?? null, parseFailures: out.parseFailures, calls: out.calls,
         redactionsFired: bundle.fired, truncatedFiles: bundle.meta.truncatedFiles,
       });
+    } else if (u.kind === 'graded') {
+      const key = `${u.judge}|${runKey(u.run)}`;
+      const rec = gradedMap.get(key) || { kind: 'graded', ...common, taskRevision: revisions.get(u.run.taskId), baselineId: baseline, orderings: [null, null], reasons: [], errors: [], parseFailures: 0, calls: [], redactionsFired: bundle.fired };
+      if (out.error) rec.errors.push(out.error);
+      else {
+        // Order 1 has the baseline in A; order 2 has the arm in A.
+        const armIsA = u.order === 2;
+        rec.orderings[u.order - 1] = armIsA ? { armGrade: out.value.gradeA, baseGrade: out.value.gradeB } : { armGrade: out.value.gradeB, baseGrade: out.value.gradeA };
+        rec.reasons.push(out.value.reason);
+      }
+      rec.parseFailures += out.parseFailures;
+      rec.calls.push(...out.calls);
+      gradedMap.set(key, rec);
     } else {
       const key = `${u.judge}|${runKey(u.run)}`;
       const rec = pairs.get(key) || { kind: 'pairwise', ...common, taskRevision: revisions.get(u.run.taskId), baselineId: baseline, orderings: [null, null], reasons: [], errors: [], parseFailures: 0, calls: [], redactionsFired: bundle.fired };
@@ -155,19 +186,23 @@ async function runJudging(o) {
     const { verdict, positionInconsistent } = combineOrderings(rec.orderings[0], rec.orderings[1]);
     return { ...rec, verdict, positionInconsistent, judgeError: errors.length ? errors.join('; ') : null };
   });
+  const graded = [...gradedMap.values()].map(({ errors, ...rec }) => ({ ...rec, ...combineGraded(rec.orderings[0], rec.orderings[1]), judgeError: errors.length ? errors.join('; ') : null }));
+  for (const { judge, run: r } of gradedErrors) {
+    graded.push({ kind: 'graded', judge, armId: r.armId, taskId: r.taskId, replicate: r.replicate, baselineId: baseline, orderings: [null, null], reasons: [], parseFailures: 0, calls: [], redactionsFired: {}, ...combineGraded(null, null), judgeError: `no baseline run (${baseline}) for this task and replicate` });
+  }
   for (const { judge, run: r } of pairErrors) {
     pairwise.push({ kind: 'pairwise', judge, armId: r.armId, taskId: r.taskId, replicate: r.replicate, baselineId: baseline, verdict: null, positionInconsistent: false, orderings: [null, null], reasons: [], parseFailures: 0, calls: [], redactionsFired: {}, judgeError: `no baseline run (${baseline}) for this task and replicate` });
   }
 
-  const judgments = mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, rubric, pairwise, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
-  return judgments;
+  const judgments = mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, rubric, pairwise, graded, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
+  return { ...judgments, ledgerLine: study.line(), guardState: study.state() };
 }
 
 // A rerun with other judges or modes keeps earlier records; a record is replaced by the same (judge, run, kind).
 // Spend accumulates across invocations: cached calls cost 0 now, so replacing a record never erases earlier spend.
-function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, rubric, pairwise, notJudged, calls, smallPanel }) {
+function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
   const file = path.join(run.dir, 'judgments.json');
-  const prev = run.judgments || { rubric: [], pairwise: [], judges: [], modes: [] };
+  const prev = run.judgments || { rubric: [], pairwise: [], graded: [], judges: [], modes: [] };
   // A unit skipped by the budget has nothing to say; it must not replace an earlier record that has a result.
   const skippedByBudget = (r) => /^budget reached/.test(r.judgeError || '');
   const merge = (old, fresh) => {
@@ -198,6 +233,7 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
     notJudged,
     rubric: merge(prev.rubric, rubric),
     pairwise: merge(prev.pairwise, pairwise),
+    graded: merge(prev.graded || [], graded),
   };
   fs.writeFileSync(file, JSON.stringify(out, null, 2) + '\n');
   return out;

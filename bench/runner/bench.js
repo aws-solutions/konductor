@@ -30,7 +30,11 @@ const USAGE = `Usage:
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        [--extra-tasks DIR,DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
-       [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N]
+       [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed]
+       (--profile quick runs 1 to 3 replicates (default 2) and labels a result under 3 runs anecdotal. --profile detailed runs at least 5 replicates (default 5),
+       adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
+       to the results directory. Without --profile the suite defaults apply and no arm is added. Credits are tracked per run in credit-ledger.jsonl; with no
+       --budget-credits nothing stops a run, with it new runs stop at 90% of the budget)
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
        (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
        (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)
@@ -47,9 +51,13 @@ const USAGE = `Usage:
   node bench/runner/bench.js judge --run DIR [--judges a,b] [--mode rubric,pairwise] [--baseline vanilla|ARM]
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
-       [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR]
+       [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR] [--profile quick|detailed]
+       (--mode takes rubric, pairwise, graded. graded asks for a 1 to 5 grade of each response in both answer orders and reports where the preference flipped
+       with position. --profile detailed makes rubric,pairwise,graded the default modes. Every call is a line in credit-ledger.jsonl)
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
        [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       [--profile quick|detailed]
+       (--profile sets the default detail (quick or full), adds a check of the run against the profile and, for detailed, writes calibration-sample.json and .md.)
        (writes report.md, report.html, report.json and charts/*.svg: a diligence scorecard, scores with CIs, charts and the text tables.
        quick is one page, full is everything; default full and both. Several run directories are merged into one run and need --out)
   node bench/runner/bench.js contrast --run DIR[,DIR...] [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--by class|task]

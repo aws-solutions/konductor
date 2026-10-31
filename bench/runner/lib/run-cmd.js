@@ -16,13 +16,15 @@ const { readProfile } = require('./harness/opencode-creds.js');
 const { loadTasks, loadSuite, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
 const reallib = require('../../real/lib.js');
-const { runAll, prepareAll, preflightTable, describePlan, requireBudget, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
+const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
 const { buildChildEnv, describeEnv } = require('./env.js');
 const { resolveIsolation, ISOLATE_MODES } = require('./isolate.js');
 const { DEFAULT_EXCLUDES, REPO_EXCLUDES } = require('./tripwire.js');
 const procs = require('./procs.js');
 const sandbox = require('./sandbox.js');
 const rc = require('./runconfig.js');
+const { optionalProfile, replicatesFor, aaArmFor, writeCalibrationSample } = require('./profiles.js');
+const { loadRun } = require('../../report/load.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -126,12 +128,22 @@ async function cmdRun(opts) {
   const realCache = realTasks.length ? reallib.resolveCache(opts['real-cache'] && opts['real-cache'] !== true ? opts['real-cache'] : undefined) : null;
   if (realCache) process.env.BENCH_REAL_CACHE = realCache;
   const realPins = realCache ? real.preflight(realTasks, { cache: realCache }) : null;
-  const armIds = opts.arms ? list(opts.arms) : suite.arms;
-  const replicates = opts.replicates ? intOpt(opts.replicates, 'replicates') : suite.replicates;
+  const profile = optionalProfile(opts.profile);
+  const armIds = [...(opts.arms ? list(opts.arms) : suite.arms)];
+  const replicates = profile ? replicatesFor(profile, opts.replicates) : opts.replicates ? intOpt(opts.replicates, 'replicates') : suite.replicates;
   const parallel = opts.parallel ? intOpt(opts.parallel, 'parallel') : suite.parallel;
   const REPO = repoRootOf(opts);
   const arms = armIds.map((id) => resolveArm(id, REPO));
   const armOpts = applyArmOptions(arms, opts);
+  const aa = profile?.aaArm ? aaArmFor(arms) : null;
+  if (aa?.spec) {
+    // The repeat runs under the same conditions as the arm it repeats, so it takes that arm's prefix and entry agent.
+    const twin = arms.find((a) => a.id === aa.twin);
+    const copy = resolveArm(aa.spec, REPO);
+    for (const k of ['prefixText', 'prefixInfo', 'agent', 'agentOverride']) if (twin[k] !== undefined) copy[k] = twin[k];
+    arms.push(copy);
+    armIds.push(copy.id);
+  }
   const variants = arms.map(attachVariant).filter(Boolean);
   const runtimes = [...new Set(arms.map((a) => harnessFor(a).id))];
   const agentEngine = engineOpt(opts, runtimes);
@@ -163,9 +175,12 @@ async function cmdRun(opts) {
   const envKeep = list(opts['env-keep']);
 
   const log = (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`);
+  if (profile) log(`profile ${profile.name}: ${replicates} replicate(s) per cell${opts.replicates === undefined ? ' (the profile default)' : ''}`);
+  if (aa) log(aa.note);
   const plan = describePlan({ tasks, arms, replicates, parallel, budgetCredits, unit });
-  requireBudget(plan.planned, budgetCredits, budgetFlag);
   log(plan.text);
+  const note = budgetNote(plan.planned, budgetCredits, budgetFlag);
+  if (note) log(note);
   const isolation = resolveIsolation(isolate);
   log(`isolation: ${isolation.mode} (${isolation.reason})`);
   if (parallel > 1) log(`warning: --parallel ${parallel} shares one account; wall-clock comparisons need --parallel 1`);
@@ -243,6 +258,7 @@ async function cmdRun(opts) {
     const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main');
     runConfig = {
       suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, [isOc ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
+      profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
       runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent,
       variants: variants.map((v) => ({ ...v })),
       order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
@@ -296,12 +312,23 @@ async function cmdRun(opts) {
     }, null, 2) + '\n');
 
     log(`out=${outDir}`);
-    const { results, observed, charged } = await runAll({
+    const { results, observed, charged, studyLine, guard } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
       costOf: isOc ? USD : CREDITS, unit,
     });
     fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, {}), null, 2) + '\n');
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
+    log(`final ${studyLine}`);
+    if (guard === 'hard') {
+      log('credit guard: HARD STOP, this command spent past 100% of --budget-credits; runs already in flight were counted, and no further run started');
+      process.exitCode = 3;
+    }
+    if (profile?.calibrationSample) {
+      try {
+        const sample = writeCalibrationSample({ run: loadRun(outDir), n: profile.calibrationSample, seed: 1 });
+        if (sample) log(`calibration sample: ${sample.items} run(s) listed in ${sample.md}`);
+      } catch (e) { log(`calibration sample not written: ${e.message}`); }
+    }
   } finally {
     removeHandlers();
     await new Promise((r) => setTimeout(r, 500));

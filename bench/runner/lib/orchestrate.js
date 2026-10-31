@@ -8,6 +8,7 @@ const { harnessFor } = require('./harness/index.js');
 const { executeRun } = require('./run-one.js');
 const { skippedResult, errorResult } = require('./result.js');
 const { layoutProblem } = require('./arm-source.js');
+const { openLedger } = require('./credit-ledger.js');
 
 const DEFAULT_CENSORED_FLOOR = 1.0;
 
@@ -58,25 +59,25 @@ async function runPool(plan, parallel, worker, shouldSkip, onSkip) {
   return results;
 }
 
-const BUDGET_REQUIRED_ABOVE = 10;
+const LARGE_PLAN_RUNS = 10;
 
 /**
  * What a run could cost before any credit is spent. Wall-clock worst case assumes every run hits
- * its timeout. Credits cannot be bounded per run, so the cap is the ledger budget, which stops new
- * launches once reached; up to `parallel` runs already in flight still finish and are added.
+ * its timeout. Credits cannot be bounded per run, so the cap is a guard on the ledger: it stops new
+ * launches at 90% of the budget; up to `parallel` runs already in flight still finish and are added.
  */
 function describePlan({ tasks, arms, replicates, parallel, budgetCredits, unit = 'credits' }) {
   const planned = tasks.length * arms.length * replicates;
   const worstWallSec = tasks.reduce((s, t) => s + t.timeoutSec, 0) * arms.length * replicates / Math.max(1, parallel);
   const hours = (worstWallSec / 3600).toFixed(1);
-  const cap = budgetCredits == null ? 'none' : `${budgetCredits} ${unit} (new launches stop at the cap; up to ${Math.max(1, parallel)} in-flight run(s) still finish)`;
+  const cap = budgetCredits == null ? 'none' : `${budgetCredits} ${unit} (new launches stop at 90% of the cap; up to ${Math.max(1, parallel)} in-flight run(s) still finish)`;
   return { planned, worstWallSec, text: `${planned} planned run(s); worst-case wall-clock ${hours} h if every run times out (parallel ${parallel}); ${unit === 'usd' ? 'USD' : 'credit'} cap: ${cap}` };
 }
 
-function requireBudget(planned, budgetCredits, flag = 'budget-credits') {
-  if (planned > BUDGET_REQUIRED_ABOVE && budgetCredits == null) {
-    throw new Error(`${planned} runs are planned, more than ${BUDGET_REQUIRED_ABOVE}: pass --${flag} X so a bad run cannot spend without limit (${flag === 'budget-usd' ? 'cost' : 'credits'} per run are not bounded by the runner)`);
-  }
+// No cap is the default. A large plan gets a note that credits are tracked in the ledger and nothing will stop them.
+function budgetNote(planned, budgetCredits, flag = 'budget-credits') {
+  if (planned <= LARGE_PLAN_RUNS || budgetCredits != null) return null;
+  return `${planned} runs are planned and no credit cap is set: spending is tracked in credit-ledger.jsonl and nothing stops it (pass --${flag} X for a guard that stops new work at 90% of X)`;
 }
 
 function median(values) {
@@ -198,8 +199,15 @@ function preflightTable(arms, prepared, errors) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ')).join('\n');
 }
 
-async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits' }) {
+async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null }) {
   const ledger = makeLedger({ budgetCredits, floor: censoredFloor, runsPerReplicate: tasks.length * arms.length, costOf });
+  // The study ledger only tracks unless a budget was given; then it also stops new launches at 90% of that budget.
+  const study = creditLedger ?? openLedger({ dir: outDir, budget: budgetCredits });
+  let guardReason = null;
+  const shouldSkip = (item) => {
+    guardReason = study.shouldStop() ? study.stopReason() : null;
+    return guardReason !== null || ledger.shouldSkip(item);
+  };
   let active = 0;
   const plan = planRuns(tasks, arms, replicates, seed);
 
@@ -220,6 +228,9 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
       }
       const charge = ledger.add(r);
       if (unit === 'usd') r.costUsdCharged = charge; else r.creditsCharged = charge;
+      const seen = costOf(r);
+      study.record({ kind: 'run', unit, arm: arm.id, task: task.id, replicate, status: r.status, credits: seen.known ? seen.observed : null, charged: charge, censored: seen.censored });
+      log(study.line());
       writeResult(outDir, arm, task, replicate, r);
       state.spent = ledger.observed;
       state.charged = ledger.charged;
@@ -231,17 +242,18 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     return r;
   };
   const onSkip = ({ task, arm, replicate }) => {
-    const r = skippedResult({ arm, task, replicate, config: ctx.config, env: ctx.envInfo, reason: ledger.skipReason() });
+    const why = guardReason ?? ledger.skipReason();
+    const r = skippedResult({ arm, task, replicate, config: ctx.config, env: ctx.envInfo, reason: why });
     writeResult(outDir, arm, task, replicate, r);
     state.results.push(r);
-    log(`skip ${arm.id} / ${task.id} / #${replicate}: ${ledger.skipReason()}`);
+    log(`skip ${arm.id} / ${task.id} / #${replicate}: ${why}`);
     return r;
   };
 
-  const results = await runPool(plan, parallel, worker, ledger.shouldSkip, onSkip);
-  return { results, observed: ledger.observed, charged: ledger.charged };
+  const results = await runPool(plan, parallel, worker, shouldSkip, onSkip);
+  return { results, observed: ledger.observed, charged: ledger.charged, study: study.totals(), studyLine: study.line(), guard: study.state() };
 }
 
 module.exports = {
-  CREDITS, USD, runAll, planRuns, runPool, prepareAll, preflightTable, makeLedger, describePlan, requireBudget, BUDGET_REQUIRED_ABOVE, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
+  CREDITS, USD, runAll, planRuns, runPool, prepareAll, preflightTable, makeLedger, describePlan, budgetNote, LARGE_PLAN_RUNS, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
 };

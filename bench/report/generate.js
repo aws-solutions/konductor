@@ -12,6 +12,7 @@ const { collectFacts, scorecard } = require('./diligence.js');
 const { buildRunDocument } = require('./build.js');
 const { toMarkdown, toHtml } = require('./doc.js');
 const { readJson } = require('./load.js');
+const { profileCheck } = require('../runner/lib/profiles.js');
 
 const DETAILS = ['quick', 'full'];
 const FORMATS = ['md', 'html', 'both'];
@@ -83,11 +84,12 @@ function writeOutputs({ dir, name, blocks, charts, title, format, json }) {
   return written;
 }
 
-function generateRunReport({ run, tasks, baseline, out, detail, format, scoringFile, defaultDir }) {
+function generateRunReport({ run, tasks, baseline, out, detail, format, scoringFile, defaultDir, profile = null }) {
   const a = analyze({ run, tasks, baseline, scoringFile });
   const d = detailOf(detail);
-  const doc = buildRunDocument({ run, tasks, report: a.report, rows: a.rows, scores: a.scores, card: a.card, facts: a.facts, ctx: a.ctx, weights: a.weights, detail: d });
-  const json = { ...a.report, detail: d, scores: a.scores, diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
+  const check = profile ? profileCheck(profile, { facts: a.facts, judgments: run.judgments }) : null;
+  const doc = buildRunDocument({ run, tasks, report: a.report, rows: a.rows, scores: a.scores, card: a.card, facts: a.facts, ctx: a.ctx, weights: a.weights, detail: d, profile: profile ? { profile, check } : null });
+  const json = { ...a.report, detail: d, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), scores: a.scores, diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
   const { dir, name } = outPaths(out, defaultDir);
   const { renderMarkdown } = require('./render.js');
   const written = writeOutputs({ dir, name, blocks: doc.blocks, charts: doc.charts, title: doc.title, format: formatOf(format), json });

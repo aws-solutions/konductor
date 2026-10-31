@@ -1,0 +1,12 @@
+{
+  "name": "detailed",
+  "description": "The study that can back a keep or discard call. At least 5 replicates per cell, an A/A arm, known-answer controls for skill studies, at least 8 scenarios per skill, graded and pairwise judging in both answer orders, and a human calibration sample.",
+  "replicates": { "default": 5, "min": 5 },
+  "aaArm": true,
+  "controls": true,
+  "scenariosPerSkill": { "min": 8 },
+  "judging": { "modes": ["rubric", "pairwise", "graded"], "bothOrders": true },
+  "calibrationSample": 25,
+  "report": { "detail": "full" },
+  "anecdotalBelow": 3
+}

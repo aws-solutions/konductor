@@ -16,7 +16,9 @@ if (mode === 'sleep') {
 if (mode === 'crash') { console.error('boom'); process.exit(3); }
 if (mode === 'prose') { console.log('I think it is fine.'); process.exit(0); }
 const ids = [...prompt.matchAll(/^- id: (\S+)/gm)].map((m) => m[1]);
-if (!prompt.includes('=== RESPONSE A ===')) {
+if (prompt.includes('"gradeA"')) {
+  console.log(JSON.stringify({ gradeA: 4, gradeB: 4, reason: 'equally good' }));
+} else if (!prompt.includes('=== RESPONSE A ===')) {
   console.log(JSON.stringify({ criteria: ids.map((id) => ({ id, verdict: 'pass', evidence: 'a.txt' })) }));
 } else {
   console.log(JSON.stringify({ winner: 'A', reason: 'first looked better' }));

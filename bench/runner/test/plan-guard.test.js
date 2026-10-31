@@ -8,7 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, makeBench } = require('./helpers.js');
-const { describePlan, requireBudget, BUDGET_REQUIRED_ABOVE } = require('../lib/orchestrate.js');
+const { describePlan, budgetNote, LARGE_PLAN_RUNS } = require('../lib/orchestrate.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const tasks = [{ timeoutSec: 600 }, { timeoutSec: 900 }];
@@ -21,19 +21,24 @@ test('the plan states runs, the worst-case wall clock and the credit cap', () =>
   assert.match(describePlan({ tasks, arms: [1], replicates: 1, parallel: 1, budgetCredits: null }).text, /credit cap: none/);
 });
 
-test('more than 10 planned runs need --budget-credits; 10 or fewer do not', () => {
-  assert.throws(() => requireBudget(BUDGET_REQUIRED_ABOVE + 1, null), /--budget-credits/);
-  assert.doesNotThrow(() => requireBudget(BUDGET_REQUIRED_ABOVE, null));
-  assert.doesNotThrow(() => requireBudget(500, 40));
+test('a large plan with no cap is allowed and gets a note that spending is tracked but not stopped', () => {
+  assert.equal(LARGE_PLAN_RUNS, 10);
+  assert.equal(budgetNote(LARGE_PLAN_RUNS, null), null);
+  assert.equal(budgetNote(500, 40), null);
+  assert.match(budgetNote(LARGE_PLAN_RUNS + 1, null), /11 runs are planned and no credit cap is set.*credit-ledger\.jsonl.*--budget-credits X/);
+  assert.match(budgetNote(11, null, 'budget-usd'), /--budget-usd X/);
 });
 
-test('run aborts before building anything when the plan is large and has no budget', () => {
+test('run no longer aborts on a large plan without a budget; it tracks credits and goes on to the next check', () => {
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
-    const r = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--tasks', 't1', '--replicates', '11', '--bench-dir', bench, '--out', path.join(root, 'out'), '--isolate', 'none'], { encoding: 'utf8' });
-    assert.equal(r.status, 1);
-    assert.match(r.stderr, /11 runs are planned, more than 10: pass --budget-credits/);
+    const home = path.join(root, 'home');
+    fs.mkdirSync(home);
+    const r = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--tasks', 't1', '--replicates', '11', '--bench-dir', bench, '--out', path.join(root, 'out'), '--isolate', 'none'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: home, TMPDIR: root } });
+    assert.doesNotMatch(r.stderr, /more than 10: pass --budget-credits/);
+    assert.match(r.stderr, /11 runs are planned and no credit cap is set/);
+    assert.match(r.stderr, /kiro-cli auth database not found/);
     assert.equal(fs.existsSync(path.join(root, 'out')), false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

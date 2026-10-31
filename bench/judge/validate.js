@@ -29,6 +29,13 @@ const PAIR_SCHEMA = {
   properties: { winner: { enum: ['A', 'B', 'tie'] }, reason: { type: 'string' } },
 };
 
+const GRADE = { enum: [1, 2, 3, 4, 5] };
+const GRADED_SCHEMA = {
+  type: 'object',
+  required: ['gradeA', 'gradeB', 'reason'],
+  properties: { gradeA: GRADE, gradeB: GRADE, reason: { type: 'string' } },
+};
+
 // Strict: bare JSON, or JSON inside a single code fence. Prose around it is a failure.
 function parseJsonStrict(text) {
   let s = String(text ?? '').trim();
@@ -60,4 +67,9 @@ function validatePairReply(value) {
   return errors.length ? { ok: false, error: errors.slice(0, 3).join('; ') } : { ok: true, winner: value.winner, reason: value.reason };
 }
 
-module.exports = { parseJsonStrict, validateRubricReply, validatePairReply };
+function validateGradedReply(value) {
+  const errors = validate(GRADED_SCHEMA, value);
+  return errors.length ? { ok: false, error: errors.slice(0, 3).join('; ') } : { ok: true, gradeA: value.gradeA, gradeB: value.gradeB, reason: value.reason };
+}
+
+module.exports = { parseJsonStrict, validateRubricReply, validatePairReply, validateGradedReply };

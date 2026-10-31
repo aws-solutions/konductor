@@ -58,8 +58,36 @@ Reply with only a JSON object, no prose and no code fence:
 {"winner":"A|B|tie","reason":"<one sentence>"}`;
 }
 
+const GRADE_SCALE = `Scale for each response:
+1 = does not do the task or is wrong
+2 = mostly wrong or missing most of what the rubric asks
+3 = partly right with real gaps
+4 = right with minor gaps
+5 = fully right and complete`;
+
+function gradedPrompt({ task, answerKey, bundleA, bundleB }) {
+  return `You are grading two AI agent responses to the same task on a 1 to 5 scale. Be strict and literal.
+
+${RULES}
+- Grade each response on its own against the rubric and answer key. Correctness first, then completeness. Ignore length, tone and formatting.
+- Grade each response on its own: do not lower one grade only because the other response is better. Equal grades are fine.
+
+${GRADE_SCALE}
+
+${head(task, answerKey)}
+
+=== RESPONSE A ===
+${fenced('OUTPUT-A', bundleA)}
+
+=== RESPONSE B ===
+${fenced('OUTPUT-B', bundleB)}
+
+Reply with only a JSON object, no prose and no code fence:
+{"gradeA":<1-5>,"gradeB":<1-5>,"reason":"<one sentence>"}`;
+}
+
 function retrySuffix(reason) {
   return `\n\n---\nYour previous reply could not be used: ${reason}. Reply again with only the JSON object described above.`;
 }
 
-module.exports = { rubricPrompt, pairPrompt, retrySuffix };
+module.exports = { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix };

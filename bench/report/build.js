@@ -12,6 +12,8 @@ const { agreementOf, THRESHOLDS } = require('./diligence.js');
 const { renderMarkdown } = require('./render.js');
 const { CLASS_ORDER } = require('./aggregate.js');
 const { MIN_RECALL } = require('../runner/lib/contamination.js');
+const { gradedSummary, gradedTable } = require('./graded.js');
+const { readLedger } = require('../runner/lib/credit-ledger.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const f = (v, d = 1) => (fin(v) ? v.toFixed(d) : 'n/a');
@@ -134,7 +136,19 @@ function commandsFor(run, report, detail) {
  * args: run, tasks, report, rows, scores, card, facts, ctx, weights, detail ('quick'|'full').
  * Returns { blocks, charts: Map(name -> svg), title }.
  */
-function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, weights, detail }) {
+/** The profile banner and the list of what the run still lacks against it. */
+function profileBlocks(profile, check) {
+  const lead = profile.name === 'quick'
+    ? `Profile quick: ${profile.replicates.min} to ${profile.replicates.max} replicates, no A/A arm, no controls. A result under ${profile.anecdotalBelow} runs is anecdotal and cannot support a keep or discard call. Use --profile detailed for that.`
+    : `Profile detailed: at least ${profile.replicates.min} replicates per cell, an A/A arm, graded and pairwise judging in both answer orders, and a human calibration sample (calibration-sample.md in the results directory).`;
+  return [
+    D.note(lead),
+    D.h(2, 'Profile check'),
+    D.list(check.items.map((i) => `${i.ok ? 'met' : 'NOT MET'}: ${i.text}`)),
+  ];
+}
+
+function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, weights, detail, profile = null }) {
   const blocks = [];
   const charts = new Map();
   const full = detail === 'full';
@@ -151,6 +165,8 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   blocks.push(D.h(1, `Benchmark report (${detail})`));
   const r = report.run;
   blocks.push(D.p(`Run: ${(run.dirs || [run.dir]).length > 2 ? `${(run.dirs || []).length} run directories merged (listed in the full appendix)` : (run.dirs || [run.dir]).join(', ')}  \nSuite: ${r.suite ?? 'n/a'}, model ${r.model}, effort ${r.effort}, ${r.taskIds.length} task(s), ${arms.length} arm(s), ${rows.length} executed run(s)${facts.budget.skipped ? `, ${facts.budget.skipped} budget-skipped` : ''}  \nBaseline: ${base}. Judges: ${report.judges.join(', ') || 'none'}. Detail: ${detail}${full ? '' : ' (add --detail full for every chart, table and the appendix)'}.`));
+
+  if (profile) blocks.push(...profileBlocks(profile.profile, profile.check));
 
   blocks.push(D.h(2, 'Diligence scorecard'));
   blocks.push(...scorecardBlocks(card, { compact: !full }));
@@ -230,6 +246,13 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
     if (pw.length) {
       add('pairwise', C.stackedBars({ title: `Pairwise verdicts versus ${base} (win, tie, loss)`, id: 'pairwise', normalize: true, segments: [{ key: 'win', name: 'win', color: '#009E73' }, { key: 'tie', name: 'tie', color: '#7A7A7A' }, { key: 'loss', name: 'loss', color: '#D55E00' }], rows: pw.map(({ a, t }) => ({ label: a, values: { win: t.win, tie: t.tie, loss: t.loss }, note: `position-inconsistent ${t.positionInconsistent} of ${t.win + t.tie + t.loss + t.errors}` })) }), 'Stacked pairwise win, tie and loss per arm');
     } else omitted.push('Pairwise bars need pairwise judgments (judge --mode pairwise).');
+    const graded = gradedSummary(j, { isStale: ctx.isStale });
+    if (graded.present) {
+      const gt = gradedTable(graded);
+      blocks.push(D.h(3, 'Graded judging (1 to 5)'));
+      blocks.push(D.table(gt.head, gt.rows));
+      blocks.push(D.note(gt.note));
+    }
   }
 
   const aut = arms.map((a) => ({ a, rs: rows.filter((x) => x.arm === a && x.turns > 0) })).filter((x) => x.rs.length);
@@ -261,6 +284,12 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   const runTotal = rows.reduce((n, x) => n + (fin(x.credits) ? x.credits : 0), 0);
   const phases = { run: runTotal, judge: fin(j?.spentCredits) ? j.spentCredits : 0, ...(run.spend || {}) };
   add('spend', C.stackedBars({ title: `Spend by phase (${unit})`, id: 'spend', unit, segments: [{ key: 'run', name: 'run' }, { key: 'judge', name: 'judge' }, { key: 'draft', name: 'draft' }, { key: 'trigger', name: 'trigger' }].filter((s) => phases[s.key] > 0), rows: [{ label: 'all phases', values: phases, note: `total ${f(Object.values(phases).reduce((n, v) => n + (fin(v) ? v : 0), 0), 2)}` }] }), 'Stacked bar of spend by phase');
+  const ledgers = (run.dirs || [run.dir]).map((d) => readLedger(d));
+  const found = ledgers.filter((l) => l.exists);
+  if (found.length) {
+    const t = found.reduce((a, l) => ({ run: a.run + l.totals.run, judge: a.judge + l.totals.judge, other: a.other + l.totals.other, total: a.total + l.totals.total, calls: a.calls + l.totals.calls }), { run: 0, judge: 0, other: 0, total: 0, calls: 0 });
+    blocks.push(D.p(`Credit ledger (credit-ledger.jsonl): ${f(t.total, 2)} ${unit} in ${t.calls} call(s): runs ${f(t.run, 2)}, judge ${f(t.judge, 2)}${t.other ? `, other ${f(t.other, 2)}` : ''}.`));
+  } else blocks.push(D.p('No credit ledger in this run directory (it predates the ledger); the totals above come from the result files.'));
   if (phases.draft === undefined && phases.trigger === undefined) blocks.push(D.p('Draft and trigger spend are not part of a run directory; they appear here when a spend.json (draft, trigger) sits beside the results.'));
 
   const timeline = rows.filter((x) => fin(x.wall)).sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0)).map((x) => ({ label: `${x.arm}/${x.task}#${x.rep}`, arm: x.arm, ms: x.wall, status: x.status }));

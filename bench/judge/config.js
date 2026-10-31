@@ -16,6 +16,9 @@ const DEFAULTS = {
 
 const VERDICT_VALUE = { pass: 1, partial: 0.5, fail: 0 };
 
+// rubric grades each criterion; pairwise picks a winner; graded gives each response of the pair a 1 to 5 grade.
+const MODES = ['rubric', 'pairwise', 'graded'];
+
 // The judge must not be a Claude model or share the subject model's family.
 function modelFamily(id) {
   // Bedrock ids carry a routing prefix and a vendor: global.anthropic.claude-sonnet-5-5 is a claude model.
@@ -62,4 +65,4 @@ function effectiveLimits(task, limits, explicit = {}) {
   return { maxFileChars: pick('maxFileChars'), maxBundleChars: pick('maxBundleChars') };
 }
 
-module.exports = { effectiveLimits, DEFAULTS, VERDICT_VALUE, MIN_PANEL_FAMILIES, modelFamily, families, checkJudgeModel, checkPanel };
+module.exports = { effectiveLimits, DEFAULTS, VERDICT_VALUE, MODES, MIN_PANEL_FAMILIES, modelFamily, families, checkJudgeModel, checkPanel };

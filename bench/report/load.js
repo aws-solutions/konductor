@@ -91,6 +91,7 @@ function loadRuns(dirs) {
       notJudged: withJudg.flatMap((x) => (x.j.notJudged || []).map((n) => fix(n, x.map))),
       rubric: withJudg.flatMap((x) => (x.j.rubric || []).map((rec) => fix(rec, x.map))),
       pairwise: withJudg.flatMap((x) => (x.j.pairwise || []).map((rec) => fix(rec, x.map))),
+      graded: withJudg.flatMap((x) => (x.j.graded || []).map((rec) => fix(rec, x.map))),
     };
   }
   return { dir: loaded.map((r) => r.dir).join(', '), dirs: loaded.map((r) => r.dir), harness: harnesses[0], config, configs: loaded.map((r) => ({ dir: r.dir, config: r.config })), runs, judgments, merged: true };

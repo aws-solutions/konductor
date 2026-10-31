@@ -24,6 +24,11 @@ function shuffle(list, seed) {
   return a;
 }
 
+// The runs a calibration sheet is drawn from: every run that was not budget-skipped, shuffled by the seed, the first n.
+function drawSample(runs, n, seed) {
+  return shuffle(runs.filter((r) => r.result.status !== 'budget_skipped'), seed).slice(0, n);
+}
+
 function fence(text) {
   const longest = Math.max(2, ...[...text.matchAll(/`+/g)].map((m) => m[0].length));
   const f = '`'.repeat(longest + 1);
@@ -47,8 +52,7 @@ function sheetMarkdown(items) {
 function exportSheet({ runDir, benchDir, n, seed, limits, explicitLimits = {}, redactions, outDir }) {
   const run = loadRun(runDir);
   const tasks = loadTasks(benchDir);
-  const eligible = run.runs.filter((r) => r.result.status !== 'budget_skipped');
-  const picked = shuffle(eligible, seed).slice(0, n);
+  const picked = drawSample(run.runs, n, seed);
   const items = [];
   const key = { runDir: run.dir, seed, items: {} };
   picked.forEach((r, i) => {
@@ -162,4 +166,4 @@ function formatCalibration(res) {
   return lines.join('\n');
 }
 
-module.exports = { exportSheet, scoreLabels, formatCalibration };
+module.exports = { exportSheet, scoreLabels, formatCalibration, drawSample };

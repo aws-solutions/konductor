@@ -28,4 +28,22 @@ function combineOrderings(first, second) {
   return { verdict: 'tie', positionInconsistent: true };
 }
 
-module.exports = { rubricScore, pairOutcome, combineOrderings };
+/**
+ * Two graded orderings, each { armGrade, baseGrade } or null, into the mean grades, the mean difference (arm minus
+ * baseline) and whether the preference flipped with position (one order favored the arm, the other the baseline).
+ * `shift` is the mean absolute change in the grade of the same answer between the two orders.
+ */
+function combineGraded(first, second) {
+  if (!first || !second) return { armGrade: null, baseGrade: null, delta: null, orderDisagreement: false, shift: null };
+  const d1 = first.armGrade - first.baseGrade;
+  const d2 = second.armGrade - second.baseGrade;
+  return {
+    armGrade: (first.armGrade + second.armGrade) / 2,
+    baseGrade: (first.baseGrade + second.baseGrade) / 2,
+    delta: (d1 + d2) / 2,
+    orderDisagreement: (d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0),
+    shift: (Math.abs(first.armGrade - second.armGrade) + Math.abs(first.baseGrade - second.baseGrade)) / 2,
+  };
+}
+
+module.exports = { rubricScore, pairOutcome, combineOrderings, combineGraded };
