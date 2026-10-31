@@ -172,8 +172,8 @@ SOP_EDITS += [
 # k-architect's model and skill count, in the agents page's own prose and tables.
 SOP_EDITS += [
     ("agents bullet: architect model",
-     "k-architect is the only agent on a different model (claude-opus-4.6) and carries 32 skills \u2014 nearly a third of the library.",
-     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model, claude-sonnet-5.5."),
+     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model, claude-sonnet-5.5.",
+     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code."),
     ("specialists table: architect",
      '{ k: "k-architect", v: "claude-opus-4.6, the only agent not on Sonnet. SOPs: k-design-doc-creation, k-existing-design-review, k-adversarial-pull-request-review. 32 skills.',
      '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review. 38 skills.'),
