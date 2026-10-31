@@ -45,8 +45,7 @@
       "bytes": 32890
     },
     "test-coverage-analysis": {
-      "bytes": 69262,
-      "lines": 2064
+      "lines": 740
     },
     "ui-text-validation": {
       "lines": 570
