@@ -67,6 +67,8 @@ Replace `<workspace>` with the project root (e.g., `.konductor`), so `<workspace
 
 - AGENTS.md is **developer-written instructions**, NOT agent memory. Do not dump session memory or
   timestamped facts here — that belongs in the memory files. Promote only durable, reviewed learnings.
+- Memory files rank with AGENTS.md, so a committed memory file deserves the same review as an AGENTS.md
+  edit.
 - Keep it concise and scannable — bullets and short sections, not prose.
 - For public packages, keep content generic — no internal tools, domains, or credentials.
 - When asked to edit `CLAUDE.md`, edit `AGENTS.md` instead (CLAUDE.md should just `@AGENTS.md`).
