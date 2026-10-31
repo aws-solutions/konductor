@@ -44,8 +44,9 @@ step 6 until the adversarial pass runs. To finish the report, ask `konductor` to
 ask it to resume `k-code-review-workflow` at step 6. Started directly, `k-architect` returns the
 review's passes as a split, or runs them itself in one session and says so.
 
-**To run the adversarial pass on its own:** run `k-adversarial-pull-request-review` yourself
-against `k-architect`, which owns it. That is step 4 below.
+**To run the adversarial pass on its own:** ask `konductor` to run
+`k-adversarial-pull-request-review` against your diff; `konductor` routes it to `k-architect`,
+which owns it. That is step 4 below.
 
 ---
 
@@ -169,7 +170,7 @@ afterwards — this is the one SOP here where "review" means "changed your code"
 
 ### 4. `k-adversarial-pull-request-review` — the security second opinion
 
-Ask **`k-architect`** directly. This is the workaround for the step 6 gap.
+Ask **`konductor`**, which routes it to `k-architect`. This is the workaround for the step 6 gap.
 
 ```text
 Run k-adversarial-pull-request-review against my current diff.
