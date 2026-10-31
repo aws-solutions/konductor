@@ -573,3 +573,31 @@ test('the example evidence file does not change a class it does not name', () =>
     assert.deepEqual(b.report.capabilities.map((c) => cls(b.report, c.id.slice(6)).class), a.capabilities.map((c) => cls(a, c.id.slice(6)).class));
   } finally { env.done(); }
 });
+
+// ---- units and own thresholds ----
+
+test('parseEvidence rejects delta and aaSpread given in percentage points and warns when delta disagrees with with/without', () => {
+  const { errors } = parseEvidence(JSON.stringify([evRow({ delta: 8 }), evRow({ aaSpread: 5 }), evRow({ delta: -30 })]));
+  assert.equal(errors.length, 3);
+  assert.match(errors[0], /row 1.*delta 8.*between -1 and 1.*percentage points/);
+  assert.match(errors[1], /row 2.*aaSpread 5/);
+  const ok = parseEvidence(JSON.stringify([evRow({ withValue: 0.8, withoutValue: 0.5, delta: 0.3 })]));
+  assert.deepEqual([ok.errors, ok.warnings], [[], []]);
+  const off = parseEvidence(JSON.stringify([evRow({ withValue: 0.8, withoutValue: 0.5, delta: 0.08, aaSpread: 0.02 })]));
+  assert.deepEqual(off.errors, []);
+  assert.match(off.warnings.join('\n'), /row 1.*delta 0.08.*with minus without is 0.3.*units/);
+  const flipped = parseEvidence(JSON.stringify([evRow({ withValue: 0.5, withoutValue: 0.8, delta: 0.3, verdict: 'none' })]));
+  assert.match(flipped.warnings.join('\n'), /with minus without is -0.3/);
+});
+
+test('the text report tags our own thresholds and says a direct SKILL.md read is not counted', () => {
+  const env = makeEnv([prefEntry()]);
+  try {
+    const { r, out } = prune(env, ['--runs', scenario(env), '--min-exposure', '4']);
+    assert.equal(r.status, 0, r.stderr);
+    const md = fs.readFileSync(path.join(out, 'prune-report.md'), 'utf8');
+    assert.match(md, /our own, not from an external source: .*30%.*0\.6.*p90.*10/s);
+    assert.match(md, /direct read of a SKILL\.md is not counted/);
+    assert.match(md, /not comparable to SkillsBench/);
+  } finally { env.done(); }
+});

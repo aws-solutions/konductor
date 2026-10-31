@@ -9,7 +9,7 @@ judge panel, and reports cost, quality and regressions. Node only. Task format: 
 OUT=/tmp/bench-out
 node bench/runner/bench.js run --suite lite --budget-credits 60 --out $OUT   # every arm
 node bench/runner/bench.js judge --run $OUT                         # rubric + pairwise, 3-family panel
-node bench/runner/bench.js report --run $OUT                        # report.md + report.json in $OUT
+node bench/runner/bench.js report --run $OUT                        # report.md, report.html, report.json, charts/ in $OUT
 node bench/runner/bench.js compare --base $OLD --head $OUT          # regression check
 node bench/runner/bench.js recheck --run $OUT [--dry-run]                    # re-apply corrected task checks to saved workspaces
 node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then: calibrate score
@@ -21,7 +21,7 @@ Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--b
 `--isolate auto|unshare|sandbox-exec|none`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
 `--hide PATH,..`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
-`--suite lite|full|hard|real|autonomy|pilot`.
+`--suite lite|full|hard|real|autonomy|pilot|cap` (`cap` is the fallback the `cap` commands use; they name their arms).
 More than 10 planned runs need `--budget-credits`; `run` prints the worst-case wall clock and the cap first.
 The unit tests for the real-task track run a fake project's pytest suite. Without `python3 -m pytest`
 those 9 tests are skipped, not failed, and the summary shows them in its `skipped` count; install
@@ -316,7 +316,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare` builds a `dir:`
   arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
   the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.
-- `cap plan --mode lift|trigger|improve --cap ID` prints the variant, run, contrast, judge and report commands and a credit estimate
+- `cap plan --mode lift|trigger|improve --cap ID` (pass `--tasks id,id` when the registry links no lift task) prints the variant, run, contrast, judge and report commands and a credit estimate
   from the observed table. It refuses a task scored by checks alone unless `--allow-regex`, and refuses to guess credits without observed
   figures unless `--budget-credits X` is given. A skills-only change the acting agent cannot reach at startup stops with exit 2 unless `--force`.
 - Registry: `capabilities/<kind>/<name>.json`, schema `schema/capability.schema.json`, checked by every `cap` command and by
@@ -338,7 +338,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   writes into the repository. A person reviews, assigns `split` (about 60/40 train/heldout plus 4 per polarity in `reserve`) and copies the
   approved `id`, `text`, `expect`, `nearMissOf` into the registry. `cap import --from FILE --cap ID` reads `[{query, should_trigger}]` the same way.
 - `cap trigger --cap ID --mode proxy|live` scores precision, recall and F1 with Wilson 95% intervals, per query over repeats (a hit is a load in at
-  least half of them), plus what fired instead. Queries come from the registry (`--split train|heldout|all`) or a draft (`--queries FILE`).
+  least half of them; skill-creator counts per run, and F1 with its interval is our own), plus what fired instead. Queries come from the registry (`--split train|heldout|all`) or a draft (`--queries FILE`).
   Harnesses are reported separately, never merged. Trust each mode for what it sees:
   - proxy asks a model what it would do without starting an agent. On kiro-cli it writes `find_skills` arguments, an offline copy of the tool
     returns the candidates, and a second call picks; retrieval failures (the wording never reaches the skill) and judgment failures are
@@ -373,6 +373,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 ## Reports, scores and the diligence scorecard
 `report`, `contrast` and `cap prune-report` take `--detail quick|full` (default full) and `--format md|html|both` (default both). Files: `report.md`,
 `report.html` (one file: inline CSS and SVG, no script, no external resource, prints), `report.json` and `charts/*.svg` (linked from the markdown, so it renders on GitHub).
+`contrast` names them `contrast.md`, `contrast.html` and `contrast.json`; `cap prune-report` writes `prune-report.md`, `prune-report.html` and `prune-report.json`, plus `charts/` (also with `--format md`).
 `--run DIR,DIR` merges several run directories read-only (a taken replicate number moves to the next free one) and needs `--out`; `contrast --out DIR` keeps the run directory unwritten.
 - quick: scorecard, three flags, one headline table (quality, reliability, autonomy, cost ratio), the cost-vs-quality scatter, the per-task dot plot.
 - full: everything in quick, then scores with their components, cost bars with CIs (overall and per class), dot plots, forest plots against the base with the A/A noise band,
@@ -385,8 +386,9 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   - Reliability /100: 100 minus the share of runs that timed out, errored, hit infraError or had a modelMismatch.
   - Autonomy /100 (autonomy tier only): share of runs completed without help, with interjections per task and the unnecessary-question rate beside it.
   - Efficiency (a ratio, not 0..100): cost per successful run, wall clock, model, work-tool and subagent calls, each as arm / base with a bootstrap CI; "cost per quality point" carries a ceiling caveat at quality 95 or more.
-  - Skills (`cap prune-report`): load rate with a Wilson interval and exposure n, size, class and evidence verdict. No composite. Each skill gets a decision card: invocation rate, cost, paired lift and Hake normalized gain
-    (evidence rows may carry `withValue` and `withoutValue`, rates 0 to 1), the A/A noise check, and a checklist of what is missing before anyone acts. The decision-board verdict (keep, prune candidate, needs human review, incomplete) is our mapping of the class, not another scale's threshold.
+  - Skills (`cap prune-report`): load rate with a Wilson interval and exposure n, size, class and evidence verdict. No composite. Each skill gets a decision card: load rate (not comparable to SkillsBench's skill invocation rate; a direct read of a SKILL.md is not counted), cost, lift (with minus without, not paired, no interval) and Hake normalized gain, or normalized change for a loss
+    (evidence rows may carry `withValue` and `withoutValue`, rates 0 to 1; `delta` and `aaSpread` use the same 0 to 1 scale and are rejected above 1), the A/A noise check, and a checklist of what is missing before anyone acts. The decision-board verdict (keep, prune candidate, needs human review, incomplete) is our mapping of the class, not another scale's threshold. A prune candidate needs medium or high confidence, a delta outside the A/A spread and consistent units (HARMS also needs 6 evidence runs); anything weaker reads needs human review.
+    Thresholds that are our own, not from an external source: load rate 30%, Jaccard 0.6, size p90, minimum exposure 10, the A/A rule, the 0.95 ceiling, the 600 and 60 character description limits and the 5% leakage limit.
 - Diligence scorecard (`report/diligence.js`, top of every report): PASS, WARN, FAIL or N/A per criterion with the measured value and the threshold. Unknown data is WARN "not recorded", never PASS. Key criteria: replicates per cell
   (3+ PASS, 2 WARN, 1 FAIL), A/A arm or same-ref repeat, known-answer controls (capability studies; a task field `control: positive|negative`), judge coverage, judge families (3+, no Claude), judge agreement (within-one 0.9+ and exact 0.6+ PASS; under 0.75 FAIL),
   hidden tests on every task, headroom (base at 95+ on at most 25% of tasks), model pin, provenance. Others: failures, censored credits, contamination, parse failures, both orderings, truncation, calibration (kappa 0.6+ from `calibrate score --save FILE` to `DIR/calibration/result.json`), recheck, isolation, budget, drift, task validation.

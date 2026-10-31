@@ -16,6 +16,7 @@ const LINES_MAX = 500;
 const DUP_WINDOW = 8;
 const DUP_MIN_CHARS = 200;
 const REDUNDANT_MIN = 0.6;
+const OWN = 'our own limit, not from an external source';
 const KEYS = new Set(['name', 'description', 'license', 'compatibility', 'metadata', 'allowed-tools', 'version', 'tags', 'source', 'origin', 'last_used']);
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FIRST_OR_SECOND = /^\s*(?:i|we|my|our|you|your)\b|\b(?:i|we) (?:can|will|help|am)\b|\byou (?:can|will)\b/i;
@@ -120,7 +121,7 @@ function lintSkills({ baseDir }) {
       const want = descTokens(desc);
       const have = descTokens(when);
       const kept = [...want].filter((t) => have.has(t)).length;
-      if (want.size && kept / want.size >= REDUNDANT_MIN) add(id, 'lint-redundant-when', `${id}: the "When to Use" section repeats the description (${Math.round((kept / want.size) * 100)}% of its words); delete it or add detail the description lacks`);
+      if (want.size && kept / want.size >= REDUNDANT_MIN) add(id, 'lint-redundant-when', `${id}: the "When to Use" section repeats the description (${Math.round((kept / want.size) * 100)}% of its words); delete it or add detail the description lacks (${OWN})`);
     }
     for (const h of dupWindows(body)) {
       if (!windows.has(h)) windows.set(h, new Set());
@@ -137,7 +138,7 @@ function lintSkills({ baseDir }) {
   }
   for (const [key, n] of [...pairs].sort()) {
     const [a, b] = key.split('|');
-    add(`skill:${a}`, 'lint-dup-block', `skill:${a} and skill:${b} share ${n} identical ${DUP_WINDOW}-line window(s); one of them should point to the other`, `skill:${b}`);
+    add(`skill:${a}`, 'lint-dup-block', `skill:${a} and skill:${b} share ${n} identical ${DUP_WINDOW}-line window(s); one of them should point to the other (the ${DUP_WINDOW}-line window is a known convention; the ${DUP_MIN_CHARS}-character minimum is ${OWN})`, `skill:${b}`);
   }
   return findings;
 }

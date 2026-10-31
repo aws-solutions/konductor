@@ -2,28 +2,40 @@
 'use strict';
 
 // One decision card per skill and harness, built from a prune report. It puts side by side what a decision needs:
-// whether the agent can reach the skill, how often it loads it (invocation rate, with an interval), what it costs
-// (bytes, tokens), what controlled runs showed (paired lift, normalized gain, the A/A noise check) and what is
-// still missing. The metrics follow the usual skill-ablation vocabulary: invocation rate, paired lift and Hake
-// normalized gain from SkillsBench, with versus baseline pass rates from skill-creator, and keep, prune candidate,
-// needs human review and incomplete as the decision-board verdicts. The mapping from this tool's classes to those
-// verdicts is ours; no gap threshold from another scale is copied.
+// whether the agent can reach the skill, how often it loads it (load rate, with an interval), what it costs
+// (bytes, tokens), what controlled runs showed (lift, normalized gain, the A/A noise check) and what is still missing.
+// Load rate is not SkillsBench's skill invocation rate. Lift is with minus without from the evidence file: it is not
+// paired by task and has no interval. Normalized gain is Hake's for a gain and Marx and Cummings' normalized change
+// for a loss. The labels keep, prune candidate, needs human review and incomplete follow a decision-board vocabulary;
+// the mapping from this tool's classes to them, and every threshold used, is our own.
 
 const { wilson } = require('./stats.js');
+const { deltaMismatch } = require('../cap/evidence.js');
 
 const VERDICTS = ['keep', 'prune candidate', 'needs human review', 'incomplete'];
 const MIN_EVIDENCE_N = 6;
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 
-/** (with - without) / (1 - without). Null when either is missing or the baseline is already at 1. */
+/**
+ * Gain: (with - without) / (1 - without), Hake's form. Loss: (with - without) / without, so the result stays within -1 to 0
+ * (Marx and Cummings' normalized change). Null when either is missing, or when the baseline is at 1 and nothing was lost.
+ */
 function hakeGain(withV, withoutV) {
-  if (!finite(withV) || !finite(withoutV) || withoutV >= 1) return null;
-  return (withV - withoutV) / (1 - withoutV);
+  if (!finite(withV) || !finite(withoutV)) return null;
+  if (withV < withoutV) return (withV - withoutV) / withoutV;
+  return withoutV >= 1 ? null : (withV - withoutV) / (1 - withoutV);
 }
 
-function mappedVerdict({ cls, provisional, exposed }) {
+/**
+ * A prune candidate needs a non-low confidence, a delta outside the A/A spread and consistent units; a HARMS class also
+ * needs at least MIN_EVIDENCE_N evidence runs behind it. Anything weaker, or a missing confidence, goes to a person.
+ */
+function mappedVerdict({ cls, provisional, exposed, confidence, evidenceN = 0, insideNoise = null, unitMismatch = false }) {
   if (cls === 'KEEP') return provisional ? 'needs human review' : 'keep';
-  if (cls === 'PRUNE' || cls === 'HARMS') return 'prune candidate';
+  if (cls === 'PRUNE' || cls === 'HARMS') {
+    const weak = !['medium', 'high'].includes(confidence) || insideNoise === true || unitMismatch || (cls === 'HARMS' && evidenceN < MIN_EVIDENCE_N);
+    return weak ? 'needs human review' : 'prune candidate';
+  }
   if (cls === 'NEEDS DATA' && exposed < 10) return 'incomplete';
   return 'needs human review';
 }
@@ -34,6 +46,7 @@ function evidenceRow(r) {
   return {
     kind: r.kind, task: r.task, n: r.n, delta: r.delta, aaSpread: r.aaSpread, verdict: r.verdict, runId: r.runId, note: r.note,
     withValue: r.withValue ?? null, withoutValue: r.withoutValue ?? null, liftPoints: lift, gain: hakeGain(r.withValue, r.withoutValue),
+    gainKind: finite(r.withValue) && finite(r.withoutValue) ? (r.withValue < r.withoutValue ? 'change' : 'gain') : null, unitMismatch: deltaMismatch(r),
     negative: (finite(lift) ? lift : r.delta) < 0, insideNoise: known ? Math.abs(r.delta) <= r.aaSpread : null,
     atCeiling: finite(r.withoutValue) && r.withoutValue >= 0.95,
   };
@@ -76,7 +89,11 @@ function buildSkillCards(report) {
         bytes: cap.bytes, estTokens: cap.estTokens, meanBytesPerLoad: v.loads.meanBytesPerLoad, trim: cap.trim, linkedTasks: cap.linkedTasks || [], inboundRefs: cap.inboundRefs || 0,
         evidence: (v.evidence || []).map(evidenceRow),
       };
-      card.verdict = mappedVerdict({ cls: card.cls, provisional: card.provisional, exposed });
+      const decisive = card.evidence.filter((e) => ['helps', 'hurts'].includes(e.verdict));
+      card.verdict = mappedVerdict({
+        cls: card.cls, provisional: card.provisional, exposed, confidence: card.confidence, evidenceN: card.evidence.reduce((a, e) => a + (e.n || 0), 0),
+        insideNoise: decisive.some((e) => e.insideNoise === true), unitMismatch: card.evidence.some((e) => e.unitMismatch),
+      });
       card.checks = checksFor(card, report.minExposure);
       out.push(card);
     }

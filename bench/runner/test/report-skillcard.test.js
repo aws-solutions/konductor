@@ -3,7 +3,9 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildSkillCards, hakeGain, mappedVerdict, VERDICTS } = require('../../report/skillcard.js');
+const fs = require('node:fs');
+const path = require('node:path');
+const { buildSkillCards, hakeGain, mappedVerdict, VERDICTS, MIN_EVIDENCE_N } = require('../../report/skillcard.js');
 const { buildPruneDocument } = require('../../report/prunedoc.js');
 const { wellFormed } = require('./svg-check.js');
 
@@ -83,8 +85,8 @@ test('mapped verdict follows the decision-board taxonomy and is labelled as a ma
   assert.deepEqual(VERDICTS, ['keep', 'prune candidate', 'needs human review', 'incomplete']);
   assert.equal(mappedVerdict({ cls: 'KEEP', provisional: false, exposed: 30 }), 'keep');
   assert.equal(mappedVerdict({ cls: 'KEEP', provisional: true, exposed: 30 }), 'needs human review');
-  assert.equal(mappedVerdict({ cls: 'PRUNE', exposed: 0 }), 'prune candidate');
-  assert.equal(mappedVerdict({ cls: 'HARMS', exposed: 30 }), 'prune candidate');
+  assert.equal(mappedVerdict({ cls: 'PRUNE', exposed: 0, confidence: 'medium' }), 'prune candidate');
+  assert.equal(mappedVerdict({ cls: 'HARMS', exposed: 30, confidence: 'high', evidenceN: 12 }), 'prune candidate');
   assert.equal(mappedVerdict({ cls: 'FIX', exposed: 30 }), 'needs human review');
   assert.equal(mappedVerdict({ cls: 'NEEDS DATA', exposed: 3 }), 'incomplete');
   assert.equal(mappedVerdict({ cls: 'NEEDS DATA', exposed: 30 }), 'needs human review');
@@ -103,4 +105,91 @@ test('the prune document renders charts, a decision table and cards; quick omits
   assert.ok(!JSON.stringify(quick.blocks).includes('Decision card'));
   assert.ok(quick.charts.size >= 1 && quick.charts.size <= full.charts.size);
   assert.ok(!/NaN|undefined/.test(text));
+});
+
+// ---- decision-card corrections ----
+
+test('prune candidate needs confidence, enough evidence and a delta outside the A/A spread', () => {
+  const base = { cls: 'HARMS', provisional: false, exposed: 30, confidence: 'medium', evidenceN: MIN_EVIDENCE_N, insideNoise: false };
+  assert.equal(mappedVerdict(base), 'prune candidate');
+  assert.equal(mappedVerdict({ ...base, confidence: 'low' }), 'needs human review', 'low confidence');
+  assert.equal(mappedVerdict({ ...base, evidenceN: MIN_EVIDENCE_N - 1 }), 'needs human review', 'too few runs behind a harm');
+  assert.equal(mappedVerdict({ ...base, insideNoise: true }), 'needs human review', 'delta inside the A/A spread');
+  assert.equal(mappedVerdict({ ...base, unitMismatch: true }), 'needs human review', 'units disagree');
+  const prune = { cls: 'PRUNE', provisional: false, exposed: 0, confidence: 'medium', evidenceN: 0, insideNoise: null };
+  assert.equal(mappedVerdict(prune), 'prune candidate');
+  assert.equal(mappedVerdict({ ...prune, confidence: 'low' }), 'needs human review');
+  assert.equal(mappedVerdict({ cls: 'PRUNE', exposed: 0 }), 'needs human review', 'no confidence given fails safe');
+});
+
+test('a HARMS card built from one weak hurts row inside its A/A spread is not a prune candidate', () => {
+  const weak = ev({ verdict: 'hurts', delta: -0.04, aaSpread: 0.09, n: 3 });
+  const [c] = buildSkillCards(report([cap('skill:a', { cls: 'HARMS', confidence: 'low', evidence: [weak] })]));
+  assert.equal(c.verdict, 'needs human review');
+  const strong = ev({ verdict: 'hurts', delta: -0.4, aaSpread: 0.05, n: 8 });
+  const [d] = buildSkillCards(report([cap('skill:a', { cls: 'HARMS', confidence: 'medium', evidence: [strong] })]));
+  assert.equal(d.verdict, 'prune candidate');
+  const [e] = buildSkillCards(report([cap('skill:a', { cls: 'HARMS', confidence: 'medium', evidence: [ev({ verdict: 'hurts', delta: -0.4, aaSpread: 0.05, n: 2 })] })]));
+  assert.equal(e.verdict, 'needs human review', 'n under the minimum');
+});
+
+test('normalized change for a loss divides by the baseline: 0.90 to 0.50 is -0.44, not -4.0', () => {
+  assert.ok(Math.abs(hakeGain(0.5, 0.9) - (-0.4 / 0.9)) < 1e-9);
+  assert.equal(hakeGain(0, 1), -1);
+  assert.equal(hakeGain(0.5, 1), -0.5);
+  assert.equal(hakeGain(0.9, 0.9), 0);
+  assert.equal(hakeGain(1, 1), null, 'no gain is defined when the baseline is already perfect and nothing was lost');
+  const [c] = buildSkillCards(report([cap('skill:a', { evidence: [ev({ withValue: 0.5, withoutValue: 0.9, delta: -0.4, verdict: 'hurts' })] })]));
+  assert.equal(c.evidence[0].gainKind, 'change');
+  const [g] = buildSkillCards(report([cap('skill:a', { evidence: [ev({ withValue: 0.8, withoutValue: 0.5, delta: 0.3 })] })]));
+  assert.equal(g.evidence[0].gainKind, 'gain');
+});
+
+test('the ceiling warning shows whenever the baseline is at 0.95 or more, with a finite gain too', () => {
+  const rep = report([cap('skill:a', { cls: 'KEEP', evidence: [ev({ withValue: 0.99, withoutValue: 0.97, delta: 0.02, aaSpread: 0.01 }), ev({ task: 't2', withValue: 0.5, withoutValue: 0.96, delta: -0.46, verdict: 'hurts' })] })]);
+  const doc = buildPruneDocument(rep, { detail: 'full' });
+  const text = JSON.stringify(doc.blocks);
+  const cells = doc.cards[0].evidence;
+  assert.ok(Number.isFinite(cells[0].gain) && cells[0].atCeiling);
+  assert.ok(Number.isFinite(cells[1].gain) && cells[1].atCeiling);
+  assert.equal((text.match(/at ceiling/g) || []).length >= 4, true, 'flag and gain cell on both rows');
+  assert.match(text, /normalized change/);
+});
+
+test('cards say load rate, not invocation rate, and the notes carry the caveats', () => {
+  const rep = report([cap('skill:a', { evidence: [ev({ withValue: 0.8, withoutValue: 0.5, delta: 0.3 })] })]);
+  const text = JSON.stringify(buildPruneDocument(rep, { detail: 'full' }).blocks);
+  assert.match(text, /Load rate \(runs that loaded it/);
+  assert.doesNotMatch(text, /Invocation rate/);
+  assert.match(text, /not comparable to SkillsBench/);
+  assert.match(text, /direct read of a SKILL\.md is not counted/);
+  assert.match(text, /our own, not from an external source/);
+  for (const q of ['quick', 'full']) assert.match(JSON.stringify(buildPruneDocument(rep, { detail: q }).blocks), /our own, not from an external source/);
+});
+
+test('the lift column says it is not paired and has no interval; a unit mismatch is flagged on the row', () => {
+  const rep = report([cap('skill:a', { evidence: [ev({ withValue: 0.8, withoutValue: 0.5, delta: 0.08, aaSpread: 0.02 })] })]);
+  const doc = buildPruneDocument(rep, { detail: 'full' });
+  const text = JSON.stringify(doc.blocks);
+  assert.match(text, /lift \(points; with minus without, not paired, no interval\)/);
+  assert.doesNotMatch(text, /paired lift/i);
+  assert.equal(doc.cards[0].evidence[0].unitMismatch, true);
+  assert.match(text, /units differ/);
+});
+
+test('README and playbook use load rate, no longer claim a paired lift, and tag our own thresholds', () => {
+  const read = (f) => fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8');
+  for (const f of ['README.md', 'CAP-PLAYBOOK.md']) {
+    const doc = read(f);
+    for (const line of doc.split('\n')) {
+      if (/invocation rate/i.test(line)) assert.match(line, /SkillsBench/, `${f}: ${line}`);
+      assert.doesNotMatch(line, /paired lift/i, `${f}: ${line}`);
+    }
+  }
+  const play = read('CAP-PLAYBOOK.md');
+  assert.match(play, /not comparable to SkillsBench/);
+  assert.match(play, /our own, not from an external source/);
+  assert.match(play, /direct read of a SKILL\.md is not counted/);
+  assert.match(play, /per query by majority vote/);
+  assert.match(read('README.md'), /our own, not from an external source/);
 });

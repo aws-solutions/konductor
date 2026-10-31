@@ -2,7 +2,8 @@
 'use strict';
 
 // Trigger scoring over queries: precision, recall and F1 with Wilson intervals, the confusion list, and the
-// agreement between the proxy and live modes on a cross-check sample.
+// agreement between the proxy and live modes on a cross-check sample. Counts are per query by majority vote over repeats
+// (skill-creator counts runs); F1 and its Wilson interval are our own.
 
 const { cohenKappa, percentAgreement } = require('../judge/agreement.js');
 const { DEFAULTS } = require('../judge/config.js');

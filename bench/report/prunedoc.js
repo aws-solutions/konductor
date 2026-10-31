@@ -8,13 +8,17 @@ const C = require('./charts.js');
 const D = require('./doc.js');
 const { buildSkillCards, MIN_EVIDENCE_N } = require('./skillcard.js');
 const { rate } = require('./diligence.js');
-const { renderPrune } = require('../cap/prune.js');
+const { renderPrune, OWN_THRESHOLDS_NOTE, LOAD_RATE_NOTE } = require('../cap/prune.js');
 const { FORMULAS } = require('./scores.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const pct = (v) => (fin(v) ? `${Math.round(v * 100)}%` : 'n/a');
 const f = (v, d = 2) => (fin(v) ? v.toFixed(d) : 'n/a');
 const CLASS_KEYS = ['HARMS', 'RELOCATE', 'PRUNE', 'FIX', 'KEEP', 'KEEP (provisional)', 'NEEDS DATA'];
+const gainText = (e) => {
+  if (!fin(e.gain)) return e.atCeiling ? 'undefined (without is at ceiling)' : 'n/a';
+  return `${f(e.gain)}${e.gainKind === 'change' ? ' (normalized change)' : ''}${e.atCeiling ? ' (without at ceiling, can overstate small differences)' : ''}`;
+};
 const labelOf = (c) => (c.cls === 'KEEP' && c.provisional ? 'KEEP (provisional)' : c.cls);
 const crit = (id, label, key, status, value, threshold) => ({ id, label, key, status, value, threshold, note: '' });
 
@@ -61,14 +65,14 @@ function cardBlocks(c) {
   const out = [D.h(3, `Decision card: ${c.id} on ${c.harness}`)];
   out.push(D.p(`**${labelOf(c)}** (confidence ${c.confidence}); decision-board verdict, our mapping: **${c.verdict}**. ${c.reason}`));
   out.push(D.table(['measure', 'value'], [
-    ['Invocation rate (runs that loaded it / runs that could)', c.rate === null ? 'n/a (never offered)' : `${c.runsLoaded} of ${c.exposed} = ${pct(c.rate)}, 95% Wilson [${pct(c.lo)}, ${pct(c.hi)}]`],
+    ['Load rate (runs that loaded it / runs that could)', c.rate === null ? 'n/a (never offered)' : `${c.runsLoaded} of ${c.exposed} = ${pct(c.rate)}, 95% Wilson [${pct(c.lo)}, ${pct(c.hi)}]`],
     ['Cost when loaded', `${c.meanBytesPerLoad === null ? 'no load seen' : `${c.meanBytesPerLoad} bytes per load`}; file ${c.bytes} bytes (about ${c.estTokens} tokens)${c.trim.flag ? '; TRIM flagged' : ''}`],
     ['Linked bench tasks', c.linkedTasks.length ? c.linkedTasks.join(', ') : 'none'],
   ]));
   if (c.evidence.length) {
-    out.push(D.table(['kind', 'task', 'n', 'verdict', 'delta', 'A/A spread', 'with / without', 'paired lift (points)', 'normalized gain', 'flags'], c.evidence.map((e) => [
+    out.push(D.table(['kind', 'task', 'n', 'verdict', 'delta (0 to 1)', 'A/A spread (0 to 1)', 'with / without', 'lift (points; with minus without, not paired, no interval)', 'normalized gain or change', 'flags'], c.evidence.map((e) => [
       e.kind, e.task, e.n, e.verdict, f(e.delta), f(e.aaSpread), `${fin(e.withValue) ? pct(e.withValue) : 'n/a'} / ${fin(e.withoutValue) ? pct(e.withoutValue) : 'n/a'}`, fin(e.liftPoints) ? f(e.liftPoints, 1) : 'n/a',
-      fin(e.gain) ? f(e.gain) : e.atCeiling ? 'undefined (without is at ceiling)' : 'n/a', [e.negative ? 'negative delta' : null, e.insideNoise ? 'inside A/A noise' : null].filter(Boolean).join(', ') || '-',
+      gainText(e), [e.negative ? 'negative delta' : null, e.insideNoise ? 'inside A/A noise' : null, e.atCeiling ? 'without at ceiling (0.95 or more)' : null, e.unitMismatch ? 'units differ: delta is not with minus without' : null].filter(Boolean).join(', ') || '-',
     ])));
   }
   out.push(D.table(['before acting', 'answer', 'detail'], c.checks.map((x) => [x.label, x.status, x.detail])));
@@ -120,7 +124,9 @@ function buildPruneDocument(report, { detail = 'full' } = {}) {
   const rows = (full ? cards : signal.filter((c) => c.harness === primary).slice(0, 15)).map(decisionRow);
   blocks.push(D.table(DECISION_HEAD, rows));
   if (!full) blocks.push(D.note(`Quick view: ${rows.length} of ${cards.length} skill and harness rows. The per-skill cards and the TRIM and evidence tables are in the full report (\`--detail full\`).`));
-  blocks.push(D.note('The decision-board verdict maps our classes to keep, prune candidate, needs human review and incomplete. It is our mapping: no gap threshold from another scale is copied, because this tool does not produce a 1 to 5 judge gap. A prune candidate always needs a person to approve it.'));
+  blocks.push(D.note(`The decision-board verdict maps our classes to keep, prune candidate, needs human review and incomplete. It is our mapping: no gap threshold from another scale is copied, because this tool does not produce a 1 to 5 judge gap. A prune candidate needs medium or high confidence, a delta outside the A/A spread and consistent units, and a HARMS class also needs at least ${MIN_EVIDENCE_N} evidence runs; weaker cases read needs human review. A prune candidate always needs a person to approve it.`));
+  blocks.push(D.note(LOAD_RATE_NOTE));
+  blocks.push(D.note(OWN_THRESHOLDS_NOTE));
 
   if (!full) return { blocks, charts, title: 'Prune report (quick)' };
 
@@ -129,8 +135,8 @@ function buildPruneDocument(report, { detail = 'full' } = {}) {
   blocks.push(trims.length ? D.table(['skill', 'bytes', 'est. tokens', 'why', 'class'], trims.map((c) => [c.id, c.bytes, c.estTokens, c.trim.reasons.map((r) => (r.type === 'size' ? `over p90 (${r.p90} bytes)` : `near duplicate of ${r.neighbour} (${r.score})`)).join('; '), report.harnesses.map((h) => `${h}: ${labelOf({ cls: c.harnesses[h].classification.class, provisional: c.harnesses[h].classification.provisional })}`).join(', ')])) : D.p('None.'));
 
   blocks.push(D.h(2, 'Evidence rows'));
-  const evRows = cards.filter((c) => c.evidence.length).flatMap((c) => c.evidence.map((e) => [c.id, c.harness, e.kind, e.task, e.n, e.verdict, f(e.delta), f(e.aaSpread), e.insideNoise === null ? 'unknown' : e.insideNoise ? 'yes' : 'no', fin(e.gain) ? f(e.gain) : 'n/a', e.runId || '-']));
-  blocks.push(evRows.length ? D.table(['skill', 'harness', 'kind', 'task', 'n', 'verdict', 'delta', 'A/A spread', 'inside noise', 'normalized gain', 'run'], evRows) : D.p('No evidence rows were given (`--evidence FILE`). Every class here rests on reach, size and load counts alone.'));
+  const evRows = cards.filter((c) => c.evidence.length).flatMap((c) => c.evidence.map((e) => [c.id, c.harness, e.kind, e.task, e.n, e.verdict, f(e.delta), f(e.aaSpread), e.insideNoise === null ? 'unknown' : e.insideNoise ? 'yes' : 'no', gainText(e), e.runId || '-']));
+  blocks.push(evRows.length ? D.table(['skill', 'harness', 'kind', 'task', 'n', 'verdict', 'delta', 'A/A spread', 'inside noise', 'normalized gain or change', 'run'], evRows) : D.p('No evidence rows were given (`--evidence FILE`). Every class here rests on reach, size and load counts alone.'));
 
   blocks.push(D.h(2, 'Decision cards'));
   const withSignal = cards.filter((c) => c.harness === primary && (c.cls !== 'NEEDS DATA' || c.evidence.length));

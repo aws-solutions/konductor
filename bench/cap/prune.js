@@ -15,6 +15,10 @@ const CLAUDE_TEXT = /\bclaude[ -]?code\b|\bclaudeCli\b/i;
 const estTokens = (bytes) => Math.round(bytes / 4);
 const LEVELS = ['low', 'medium', 'high'];
 
+// Printed in the text and document reports so none of these cut-offs reads as borrowed from a published method.
+const OWN_THRESHOLDS_NOTE = 'Thresholds that are our own, not from an external source: load rate 30%, near-duplicate Jaccard 0.6, size over the p90 of skill bytes, minimum exposure 10 runs (default), evidence of at least 6 runs, the A/A rule (a delta inside the spread is noise), the 0.95 ceiling, the 600 and 60 character description limits, the 5% leakage limit, and the mapping from classes to keep, prune candidate, needs human review and incomplete.';
+const LOAD_RATE_NOTE = 'Load rate is runs that loaded the skill through a skill tool call, divided by runs where an agent could. It is not comparable to SkillsBench\'s skill invocation rate, which counts task-matched trials where the agent reads or invokes a bundled skill. A direct read of a SKILL.md is not counted as a load here.';
+
 /** Nearest-rank 90th percentile. */
 function percentile90(values) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -115,7 +119,7 @@ function classify(i) {
     return out('NEEDS DATA', `Exposed in ${i.exposed} run${i.exposed === 1 ? '' : 's'}, under the minimum of ${i.minExposure}.${i.loads ? ` Loaded ${i.loads} time${i.loads === 1 ? '' : 's'}.` : ''}${evidenceNote}${otherNote}`, 'low',
       `At least ${i.minExposure} exposed runs, or a controlled result in the evidence file.`);
   }
-  return out('NEEDS DATA', `Loaded in ${pct(rate)} (${i.runsLoaded} of ${i.exposed} exposed runs), under the ${pct(LOAD_RATE_MIN)} threshold, with ${ev.behaviorChange ? 'a behavior change on file but no result showing an effect' : 'no evidence of effect'}.${evidenceNote}${otherNote}`, 'low',
+  return out('NEEDS DATA', `Loaded in ${pct(rate)} (${i.runsLoaded} of ${i.exposed} exposed runs), under the ${pct(LOAD_RATE_MIN)} threshold (our own), with ${ev.behaviorChange ? 'a behavior change on file but no result showing an effect' : 'no evidence of effect'}.${evidenceNote}${otherNote}`, 'low',
     'A controlled result in the evidence file, or a higher load rate over more runs.');
 }
 
@@ -242,6 +246,8 @@ function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = []
     'Exposed means an agent in the run could load the skill, not that the task needed it. The runs were not built around each skill, so FIX is a prompt to check discovery, not proof of a discovery problem.',
     'A load rate shows the agent picks a skill up. It is not evidence the skill improves a result; only the evidence file or a controlled run is.',
     'The evidence file is maintained by hand.',
+    LOAD_RATE_NOTE,
+    OWN_THRESHOLDS_NOTE,
   ];
 
   return {
@@ -342,4 +348,4 @@ function renderPrune(report, { compact = false } = {}) {
   return `${L.join('\n')}\n`;
 }
 
-module.exports = { buildPruneReport, renderPrune, classify, trimFor, percentile90, TOOL_VERSION, CLASSES };
+module.exports = { buildPruneReport, renderPrune, classify, trimFor, percentile90, TOOL_VERSION, CLASSES, OWN_THRESHOLDS_NOTE, LOAD_RATE_NOTE };

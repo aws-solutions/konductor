@@ -147,6 +147,7 @@ function renderTriggerReport({ cap, harness, mode, split, reps, score, proxy = n
   L.push('', `queries: ${score.queries.length} (${score.queries.filter((q) => q.expect === 'load').length} should load, ${score.queries.filter((q) => q.expect === 'none').length} should not)${skipped ? `; ${skipped} repeat(s) not run because the credit budget was reached` : ''}`);
   L.push(ratioText('precision', score.precision), ratioText('recall', score.recall), `${ratioText('F1', score.f1)} (approximate: Wilson on 2TP of 2TP+FP+FN)`);
   L.push(`counts: TP ${score.tp}, FP ${score.fp}, FN ${score.fn}, TN ${score.tn}`);
+  L.push('Counts are per query by majority vote over repeats, not per run as skill-creator counts. F1 and its interval are our own, not from an external source.');
   if (score.queries.length < 30) L.push(`With ${score.queries.length} queries the intervals are wide at this size; read them as a guide.`);
   if (proxy) {
     L.push('', '## Why should-load queries were missed', '');

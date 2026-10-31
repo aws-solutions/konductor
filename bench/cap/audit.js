@@ -24,6 +24,7 @@ const LEAK_MAX = 0.05;
 const DESC_MAX = 1024;
 const DESC_LONG = 600;
 const DESC_SHORT = 60;
+const OWN = 'our own limit, not from an external source';
 const TEXT_EXT = /\.(?:md|txt|js|mjs|cjs|ts|json|py|rs|go|java|sh|yml|yaml|toml|html|css|csv)$/i;
 const estTokens = (bytes) => Math.round(bytes / 4);
 
@@ -53,11 +54,11 @@ function describe(c) {
 
 function lintSkill(c, desc, add) {
   if (!desc.present) { add('error', c.id, 'description-missing', `${c.id} has no description, so the skills server cannot match it`); return; }
-  if (desc.length > DESC_MAX) add('error', c.id, 'description-too-long', `${c.id} description is ${desc.length} chars, over the ${DESC_MAX} limit the repo lint enforces`);
+  if (desc.length > DESC_MAX) add('error', c.id, 'description-too-long', `${c.id} description is ${desc.length} chars, over the ${DESC_MAX} limit in the Agent Skills specification`);
   if (desc.style === 'folded' || desc.style === 'literal') add('warn', c.id, 'description-block-scalar', `${c.id} description is a YAML ${desc.style} block scalar; tools that read the line after "description:" see only the indicator`);
   if (!desc.useWhen) add('warn', c.id, 'description-no-cue', `${c.id} description has no "use when/for/after" cue`);
-  if (desc.length < DESC_SHORT) add('warn', c.id, 'description-short', `${c.id} description is ${desc.length} chars, under ${DESC_SHORT}`);
-  if (desc.length > DESC_LONG) add('warn', c.id, 'description-long', `${c.id} description is ${desc.length} chars, over ${DESC_LONG}`);
+  if (desc.length < DESC_SHORT) add('warn', c.id, 'description-short', `${c.id} description is ${desc.length} chars, under ${DESC_SHORT} (${OWN})`);
+  if (desc.length > DESC_LONG) add('warn', c.id, 'description-long', `${c.id} description is ${desc.length} chars, over ${DESC_LONG} (${OWN})`);
 }
 
 function neighboursOf(caps, records) {
@@ -235,7 +236,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
         if (reg.tasks.lift.includes(id) && scoringOf(t) === 'regex-only') add('warn', c.id, 'lift-task-regex-only', `lift task ${id} is scored by checks alone (no hidden tests, no rubric)`);
         const leak = leakageFor(c.text, t);
         r.leakage.push(leak);
-        if (leak.max > LEAK_MAX) add('error', c.id, 'leakage', `task ${id} shares ${(leak.max * 100).toFixed(1)}% of its ${LEAK_K}-word shingles with ${c.id} (prompt ${(leak.prompt * 100).toFixed(1)}%, fixtures ${(leak.fixtures * 100).toFixed(1)}%, hidden ${(leak.hidden * 100).toFixed(1)}%); the limit is ${LEAK_MAX * 100}%`);
+        if (leak.max > LEAK_MAX) add('error', c.id, 'leakage', `task ${id} shares ${(leak.max * 100).toFixed(1)}% of its ${LEAK_K}-word shingles with ${c.id} (prompt ${(leak.prompt * 100).toFixed(1)}%, fixtures ${(leak.fixtures * 100).toFixed(1)}%, hidden ${(leak.hidden * 100).toFixed(1)}%); the limit is ${LEAK_MAX * 100}% (${OWN})`);
       }
     }
 

@@ -247,3 +247,10 @@ test('a proxy run over a draft with a command model writes the report files and 
     assert.ok(fs.existsSync(path.join(out, 'trigger-skill-alpha-kiro-cli-proxy.md')));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('the trigger report says precision, recall and F1 are per query and that F1 and its interval are our own', () => {
+  const score = scoreTrigger([{ queryId: 'a', expect: 'load', hit: true }]);
+  const rep = trig.renderTriggerReport({ cap: CAP, harness: 'kiro-cli', mode: 'live', split: 'all', reps: 1, score, model: 'm' });
+  assert.match(rep, /per query by majority vote over repeats, not per run as skill-creator counts/);
+  assert.match(rep, /F1 and its interval are our own, not from an external source/);
+});

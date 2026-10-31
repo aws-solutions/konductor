@@ -299,3 +299,23 @@ test('each skill record lists the agents whose claudeCli skills name it, apart f
     assert.deepEqual(cap(report, 'sop:k-plan').reach.claude.agents, []);
   } finally { s.done(); }
 });
+
+test('description length messages cite the Agent Skills spec for 1024 and call 60 and 600 our own limits', () => {
+  const root = scratch();
+  try {
+    const r = makeCapRepo(root, {
+      files: (repo) => {
+        write(path.join(repo, 'skills/longone/SKILL.md'), `---\nname: longone\ndescription: Use when testing. ${'x'.repeat(1100)}\n---\nbody\n`);
+        write(path.join(repo, 'skills/midone/SKILL.md'), `---\nname: midone\ndescription: Use when testing. ${'y'.repeat(700)}\n---\nbody\n`);
+        write(path.join(repo, 'skills/tiny/SKILL.md'), '---\nname: tiny\ndescription: Use for x.\n---\nbody\n');
+        write(path.join(repo, 'agents/konductor.agent-spec.json'), JSON.stringify({ name: 'konductor', config: { systemPrompt: 'p' }, dependencies: { skills: { skillNames: ['longone', 'midone', 'tiny'] } } }));
+      },
+    });
+    const { report } = runAudit({ repo: r.repo, base: 'v0', harness: 'both', benchDir: makeCapBench(root) });
+    const msg = (rule) => report.findings.find((f) => f.rule === rule).msg;
+    assert.match(msg('description-too-long'), /Agent Skills specification/);
+    assert.doesNotMatch(msg('description-too-long'), /repo lint/);
+    assert.match(msg('description-long'), /our own limit, not from an external source/);
+    assert.match(msg('description-short'), /our own limit, not from an external source/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

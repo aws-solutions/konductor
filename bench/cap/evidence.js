@@ -15,6 +15,15 @@ const KEYS = ['capId', 'harness', 'kind', 'task', 'n', 'delta', 'aaSpread', 'ver
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 
+// delta, aaSpread, withValue and withoutValue are all on one 0 to 1 scale. Rounding in a hand-entered delta is allowed for.
+const UNIT_TOLERANCE = 0.02;
+
+/** True when a row has delta, withValue and withoutValue and delta is not (withValue - withoutValue) within the tolerance. */
+function deltaMismatch(r) {
+  if (!finite(r.delta) || !finite(r.withValue) || !finite(r.withoutValue)) return false;
+  return Math.abs(r.delta - (r.withValue - r.withoutValue)) > UNIT_TOLERANCE;
+}
+
 function checkRow(r, i, errors, warnings) {
   const at = `row ${i + 1}`;
   if (!r || typeof r !== 'object' || Array.isArray(r)) { errors.push(`${at}: must be an object`); return null; }
@@ -28,7 +37,9 @@ function checkRow(r, i, errors, warnings) {
   if (typeof r.task !== 'string' || !r.task.trim()) bad('task must be a non-empty string');
   if (!Number.isInteger(r.n) || r.n < 1) bad(`n must be an integer of at least 1 (got ${JSON.stringify(r.n)})`);
   if (r.delta !== null && r.delta !== undefined && !finite(r.delta)) bad(`delta must be a number or null (got ${JSON.stringify(r.delta)})`);
+  else if (finite(r.delta) && Math.abs(r.delta) > 1) bad(`delta ${r.delta} must be between -1 and 1, the same 0 to 1 scale as withValue and withoutValue (not percentage points)`);
   if (r.aaSpread !== null && r.aaSpread !== undefined && (!finite(r.aaSpread) || r.aaSpread < 0)) bad(`aaSpread must be a number of 0 or more, or null (got ${JSON.stringify(r.aaSpread)})`);
+  else if (finite(r.aaSpread) && r.aaSpread > 1) bad(`aaSpread ${r.aaSpread} must be between 0 and 1, the same scale as delta (not percentage points)`);
   if (!VERDICTS.includes(r.verdict)) bad(`verdict must be ${VERDICTS.join(', ')} (got ${JSON.stringify(r.verdict)})`);
   if (r.runId !== undefined && r.runId !== null && typeof r.runId !== 'string') bad('runId must be a string or null');
   if (r.note !== undefined && typeof r.note !== 'string') bad('note must be a string');
@@ -40,6 +51,7 @@ function checkRow(r, i, errors, warnings) {
     verdict: r.verdict, runId: r.runId ?? null, note: r.note ?? '', behaviorChange: r.behaviorChange ?? false,
     withValue: r.withValue ?? null, withoutValue: r.withoutValue ?? null,
   };
+  if (deltaMismatch(out)) warnings.push(`${at}: delta ${out.delta} but with minus without is ${+(out.withValue - out.withoutValue).toFixed(4)}; check the units (all values are on a 0 to 1 scale)`);
   if (['helps', 'hurts'].includes(out.verdict)) {
     if (out.delta === null) warnings.push(`${at}: verdict ${out.verdict} without a delta; the effect size is unknown`);
     else if (out.aaSpread !== null && Math.abs(out.delta) <= out.aaSpread) warnings.push(`${at}: verdict ${out.verdict} but |delta| ${Math.abs(out.delta)} is inside the A/A spread ${out.aaSpread}`);
@@ -73,4 +85,4 @@ function loadEvidence(file) {
   return { file, rows: parsed.rows, warnings: parsed.warnings };
 }
 
-module.exports = { parseEvidence, loadEvidence, KINDS, VERDICTS, HARNESSES };
+module.exports = { parseEvidence, loadEvidence, deltaMismatch, KINDS, VERDICTS, HARNESSES };

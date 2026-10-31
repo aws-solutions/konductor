@@ -41,6 +41,11 @@ Rules apply in this order per skill and harness. TRIM is a separate flag beside 
 | NEEDS DATA | Everything else, including exposure below the minimum | Gather runs or evidence | Decide on it |
 | TRIM | Bytes above the 90th percentile of skills, or a near duplicate with Jaccard above 0.6 | Move detail into reference files or merge with the neighbour | Delete the content |
 
+Thresholds that are our own, not from an external source: the 30% load rate, Jaccard 0.6 for near duplicates, the p90 size cut, the minimum
+exposure of 10 runs, evidence of at least 6 runs, the A/A rule, the 0.95 ceiling, the 600 and 60 character description limits, the 5% leakage
+limit, and the mapping from classes to keep, prune candidate, needs human review and incomplete. Use them as prompts to look, not as findings.
+Only the 1024 and 64 character limits come from the Agent Skills specification.
+
 Exposure means an agent in the run could load the skill, not that the task needed it. Runs that were not built around a skill
 will show zero loads for it. FIX is a prompt to check, and the report lowers its confidence when no task is linked to the skill.
 
@@ -49,13 +54,18 @@ will show zero loads for it. FIX is a prompt to check, and the report lowers its
 1. Free: `cap audit`, then `cap prune-report` over every run directory you have.
 2. `cap trigger --mode proxy` on skills in FIX or with a stored query set. Read recall first; treat hits with suspicion.
 3. `cap trigger --mode live` on a handful of queries to cross-check the proxy (kappa below 0.6 or under 12 queries means "proxy not validated").
-4. Paired lift: `cap plan --mode lift`, with a base arm and an A/A copy of it, on tasks with headroom. Judge before you read lift.
+4. Lift run: `cap plan --mode lift` (pass `--tasks id,id` when the registry links no lift task), with a base arm and an A/A copy of it, on tasks with headroom. Judge before you read lift.
 5. Write the result into the evidence file, rerun `prune-report`, then decide.
 
 ## Reading the results
 
 - `cap prune-report --detail quick|full` opens with a scorecard for the report itself (is there enough data behind the classes?), then class bars, load-rate bars and a size-against-load scatter.
-- Each skill has a decision card (full): invocation rate with a Wilson interval, cost when loaded, paired lift and normalized gain from the evidence file, whether the effect clears the A/A noise, and a checklist of what is missing.
+- Each skill has a decision card (full): load rate with a Wilson interval, cost when loaded, lift and normalized gain from the evidence file, whether the effect clears the A/A noise, and a checklist of what is missing.
+- Load rate is runs that loaded the skill through a skill tool call over runs where an agent could. It is not comparable to SkillsBench's skill invocation rate (task-matched trials, reads or invokes). A direct read of a SKILL.md is not counted as a load here.
+- Lift on the card is `withValue` minus `withoutValue` from the evidence file, in points. It is not paired by task and has no interval; the evidence file holds no per-task pairs to build one.
+- Normalized gain is `(with - without) / (1 - without)`. For a loss it is `(with - without) / without`, which stays between -1 and 0. When `without` is 0.95 or more the card warns that the gain can overstate small differences.
+- The decision-board verdict says prune candidate only for HARMS or PRUNE with medium or high confidence, a delta outside the A/A spread and consistent units; a HARMS class also needs 6 evidence runs. Otherwise it says needs human review.
+- Trigger precision, recall and F1 are per query by majority vote over repeats. skill-creator counts per run. F1 and its interval are our own.
 - Read the card before the class. A bar of zeros is exposure, not need. A `helps` row inside its A/A spread is flagged and does not count.
 - For a lift run, `report` and `contrast` (`--detail full`) show the forest plot with the noise band; trust a delta only outside it, and look at the scorecard rating first.
 
@@ -73,7 +83,9 @@ will show zero loads for it. FIX is a prompt to check, and the report lowers its
 A JSON list, passed with `--evidence FILE`. Copy [capabilities/evidence.example.json](capabilities/evidence.example.json) and edit it.
 Fields: `capId`, `harness` (`kiro-cli` or `opencode`), `kind` (`lift`, `trigger`, `ablation`), `task`, `n`, `delta`
 (with the skill minus without, higher is better), `aaSpread`, `verdict` (`helps`, `hurts`, `none`, `unmeasurable`), `runId`, `note`,
-and optional `behaviorChange`. A `helps` or `hurts` verdict whose delta sits inside the A/A spread is flagged and capped at low confidence.
+and optional `behaviorChange`, `withValue` and `withoutValue` (pass or mean rates, 0 to 1).
+`delta`, `aaSpread`, `withValue` and `withoutValue` share one 0 to 1 scale, not percentage points. A `delta` or `aaSpread` outside that range is rejected,
+and a `delta` that differs from `withValue - withoutValue` by more than 0.02 gets a warning and keeps the card at needs human review. A `helps` or `hurts` verdict whose delta sits inside the A/A spread is flagged and capped at low confidence.
 The file is kept by hand; the report reads it and never writes it.
 
 ## Pitfalls
