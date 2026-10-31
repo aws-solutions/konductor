@@ -46,3 +46,28 @@ def test_skill_body_names_the_canonical_memory_directory():
         f"expected {SKILL_MD} to reference the canonical '.konductor/memory/' "
         "path at least once"
     )
+
+
+def test_skill_body_carries_no_memory_provenance_check():
+    """Memory ranks with the project's instruction files, tracked or not, so
+    the skill must not tell agents to run a git or `ls` check first."""
+    from test_memory_rule_text import REMOVED_CHECK_STRINGS
+
+    text = SKILL_MD.read_text()
+    found = [s for s in REMOVED_CHECK_STRINGS if s in text]
+    assert not found, f"{SKILL_MD} still carries {found}"
+
+
+def test_bootstrap_leaves_directory_creation_to_the_validator():
+    """A `mkdir` before the validator runs would follow a symlinked
+    `.konductor` and create `memory/` wherever it points."""
+    text = SKILL_MD.read_text()
+    assert "create the directory, then" not in text
+    assert "Do not create the directory yourself" in text
+
+
+def test_gitignore_append_skips_a_symlinked_gitignore():
+    """An append through a tracked `.gitignore` symlink writes outside the
+    project."""
+    text = SKILL_MD.read_text()
+    assert "[ -L .gitignore ] || printf '.konductor/memory/\\n' >> .gitignore" in text
