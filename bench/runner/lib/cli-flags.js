@@ -37,6 +37,7 @@ const FLAGS = {
     'concurrency', 'budget-credits', 'budget-usd', 'run-credit-limit', 'stop-on', 'max-tool-calls', 'seed', 'censored-floor', 'dry-run', 'kiro-bin', 'auth-db', 'isolate', 'hide', 'cache',
     'cargo-target', 'cargo-online', 'agent-engine', 'effort', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'repo-root', 'bench-dir', 'extra-tasks', 'json',
   ],
+  'cap prune-report': ['base', 'harness', 'runs', 'runs-glob', 'min-exposure', 'evidence', 'out', 'json', 'repo-root', 'bench-dir'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
     'repo-root', 'bench-dir', 'extra-tasks', 'json',
@@ -44,7 +45,7 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger'] };
+const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([

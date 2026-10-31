@@ -31,8 +31,11 @@ const { scoreTrigger, crossCheck } = require('./score.js');
 const { cmdRun } = require('../runner/lib/run-cmd.js');
 const { loadRun } = require('../report/load.js');
 const { seedOf } = require('../runner/lib/pr-plan.js');
+const { buildPruneReport, renderPrune } = require('./prune.js');
+const { loadEvidence } = require('./evidence.js');
+const { expandGlob } = require('./usage.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger'];
+const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -437,6 +440,38 @@ async function cmdTrigger(opts) {
   } finally { b.cleanup(); }
 }
 
+// ---- prune-report ----
+
+function cmdPruneReport(opts) {
+  const { repo, benchDir } = common(opts);
+  if (!opts.base || opts.base === true) throw new Error('prune-report needs --base REF, so reachability and usage refer to a known tree');
+  const harness = opts.harness && opts.harness !== true ? opts.harness : 'both';
+  if (!['kiro-cli', 'opencode', 'both'].includes(harness)) throw new Error('--harness takes kiro-cli, opencode or both');
+  const minRaw = opts['min-exposure'] === undefined ? '10' : String(opts['min-exposure']);
+  if (!/^[1-9]\d*$/.test(minRaw)) throw new Error('--min-exposure takes a whole number of at least 1');
+  const runDirs = list(opts.runs).map((d) => path.resolve(d));
+  for (const d of runDirs) if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) throw new Error(`run directory not found: ${d}`);
+  if (opts['runs-glob'] !== undefined) {
+    if (opts['runs-glob'] === true || !opts['runs-glob']) throw new Error('--runs-glob needs a pattern');
+    const found = expandGlob(opts['runs-glob']);
+    if (!found.length) throw new Error(`--runs-glob ${opts['runs-glob']} matched no directory (quote the pattern so the shell does not expand it)`);
+    runDirs.push(...found);
+  }
+  const evidence = opts.evidence === undefined ? null : loadEvidence(opts.evidence === true ? '' : path.resolve(opts.evidence));
+  const report = buildPruneReport({ repo, base: String(opts.base), harness, benchDir, runDirs: [...new Set(runDirs)], evidence, minExposure: Number(minRaw) });
+  const outDir = pathOpt(opts.out) ?? path.join(os.tmpdir(), 'konductor-bench', 'cap', new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'));
+  const outReal = checkScratch(outDir, repo, '--out');
+  fs.writeFileSync(path.join(outReal, 'prune-report.md'), renderPrune(report));
+  fs.writeFileSync(path.join(outReal, 'prune-report.json'), `${JSON.stringify(report, null, 2)}\n`);
+  if (opts.json) {
+    console.log(JSON.stringify(report, null, 2));
+    console.error(`wrote ${path.join(outReal, 'prune-report.md')} and prune-report.json`);
+  } else {
+    process.stdout.write(renderPrune(report, { compact: true }));
+    console.log(`\nwrote ${path.join(outReal, 'prune-report.md')}\nwrote ${path.join(outReal, 'prune-report.json')}`);
+  }
+}
+
 function cmdCap(opts) {
   const sub = opts._[0];
   if (!SUBCOMMANDS.includes(sub)) { console.error(`bench: cap takes ${SUBCOMMANDS.join(', ')}`); process.exitCode = 2; return; }
@@ -447,6 +482,7 @@ function cmdCap(opts) {
     if (sub === 'plan') return cmdPlan(opts);
     if (sub === 'draft') return cmdDraft(opts);
     if (sub === 'import') return cmdImport(opts);
+    if (sub === 'prune-report') return cmdPruneReport(opts);
     return cmdTrigger(opts);
   };
   const fail = (e) => {

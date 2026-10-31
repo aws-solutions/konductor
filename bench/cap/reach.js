@@ -18,6 +18,13 @@ function kiroReachers(id, specs) {
   return specs.filter((s) => has(s[field], name)).map((s) => s.name).sort();
 }
 
+/** Names of the agents whose claudeCli.skills list names the skill: the Claude Code route, which this bench does not run. */
+function claudeReachers(id, specs) {
+  const [kind, name] = split(id);
+  if (kind !== 'skill') return [];
+  return specs.filter((s) => has(s.claudeSkills, name)).map((s) => s.name).sort();
+}
+
 /**
  * The reachability matrix for the base tree.
  * kiro: capability id -> { acting agent -> boolean }. A SOP counts as reached when listed, but kiro serves it as an
@@ -45,4 +52,4 @@ function reachability(scan, specs) {
   return { agents, kiro, opencode, dangling };
 }
 
-module.exports = { kiroReachers, reachability, split };
+module.exports = { kiroReachers, claudeReachers, reachability, split };

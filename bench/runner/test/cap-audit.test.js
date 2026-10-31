@@ -288,3 +288,14 @@ test('an audit does not change the working tree of the repo it reads', () => {
     assert.equal(fs.readFileSync(path.join(s.repo, 'skills/alpha/SKILL.md'), 'utf8'), 'edited\n');
   } finally { s.done(); }
 });
+
+test('each skill record lists the agents whose claudeCli skills name it, apart from the kiro route', () => {
+  const s = setup();
+  try {
+    const { report } = s.audit();
+    assert.deepEqual(cap(report, 'skill:alpha').reach.claude.agents, ['konductor']);
+    assert.deepEqual(cap(report, 'skill:beta').reach.claude.agents, []);
+    assert.deepEqual(cap(report, 'skill:beta').reach.kiro.agents, ['k-dev']);
+    assert.deepEqual(cap(report, 'sop:k-plan').reach.claude.agents, []);
+  } finally { s.done(); }
+});

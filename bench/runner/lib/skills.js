@@ -126,7 +126,7 @@ function firstDecisionOf(events, runtime) {
  */
 function extractSkills(events, runtime) {
   const oc = runtime === 'opencode';
-  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], firstDecision: firstDecisionOf(events, runtime) };
+  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, bytesByName: {}, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], firstDecision: firstDecisionOf(events, runtime) };
   const byName = new Map();
   const requested = new Set();
   const load = (rawName, via, bytes) => {
@@ -135,6 +135,7 @@ function extractSkills(events, runtime) {
     if (cur) cur.count++;
     else byName.set(key, { name: rawName, via, count: 1 });
     out.skillBytesLoaded += bytes;
+    out.bytesByName[key] = (out.bytesByName[key] ?? 0) + bytes;
   };
   for (const c of oc ? opencodeCalls(events) : kiroCalls(events)) {
     if (c.tool === 'find_skills') {

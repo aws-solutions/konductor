@@ -1,0 +1,15 @@
+[
+  {
+    "capId": "skill:delegation-protocol",
+    "harness": "kiro-cli",
+    "kind": "ablation",
+    "task": "design-hold-service",
+    "n": 3,
+    "delta": 0.08,
+    "aaSpread": 0.09,
+    "verdict": "unmeasurable",
+    "runId": "EXAMPLE-3-replicates-v1.2.0",
+    "note": "EXAMPLE, adapt before use. Skill dropped from v1.2.0, kiro-cli, 3 replicates on one task. No cost, speed or pass-rate metric moved beyond the A/A spread (rubric mean 0.08 higher with the skill, against an A/A spread of 0.09). Delegation prompts carried all 8 fields only when the skill loaded (5 of 5 prompts in 3 of 3 runs); runs without a load used 5 to 7 of the 8. Whether the 8-field form improves the subagent's output was not shown.",
+    "behaviorChange": true
+  }
+]

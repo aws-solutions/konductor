@@ -60,6 +60,19 @@ test('get_skill: name, count, bytes of the returned text; a duplicate load count
   assert.equal(x.skillCallsFailed, 0);
 });
 
+test('bytesByName sums the returned bytes per lower-cased skill name and adds up to skillBytesLoaded', () => {
+  const a = skillBody('Backend-Review', 300);
+  const b = skillBody('verification', 50);
+  const x = extractSkills([
+    call('a', 'get_skill', { name: 'Backend-Review' }), done('a', a),
+    call('b', 'get_skill', { name: 'backend-review' }), done('b', a),
+    call('c', 'get_skill', { name: 'verification' }), done('c', b),
+    call('d', 'get_skill', { name: 'broken' }), done('d', jsonOut('nope', true)),
+  ], 'kiro-cli');
+  assert.deepEqual(x.bytesByName, { 'backend-review': textBytes(a) * 2, verification: textBytes(b) });
+  assert.equal(Object.values(x.bytesByName).reduce((n, v) => n + v, 0), x.skillBytesLoaded);
+});
+
 test('get_skill failures: isError, failed status, empty output, no answer and a missing name all count and load nothing', () => {
   const x = extractSkills([
     call('a', 'get_skill', { name: 'nope' }), done('a', jsonOut('skill not found: nope', true)),

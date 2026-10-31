@@ -10,7 +10,7 @@ const { startupKiro } = require('../runner/lib/skills.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { resolveBase } = require('./source.js');
 const { scanRepo, loadAgentSpecs } = require('./scan.js');
-const { reachability, kiroReachers, split } = require('./reach.js');
+const { reachability, kiroReachers, claudeReachers, split } = require('./reach.js');
 const { loadRegistry, validateRegistry } = require('./registry.js');
 const { descTokens, jaccard, shingles, overlapFraction, cueKeywords, CUE } = require('./text.js');
 const { scoringOf } = require('./captasks.js');
@@ -208,7 +208,7 @@ function runAudit({ repo, base, harness = 'both', benchDir, extraTasks = [], pub
       records.set(c.id, {
         id: c.id, kind: c.kind, name: c.name, path: c.path, registered: Boolean(reg), owner: reg?.owner ?? null, class: reg?.class ?? 'uplift',
         bytes: c.bytes, estTokens: estTokens(c.bytes), description: desc, neighbours: [],
-        reach: { kiro: kiroOn ? { agents: kiroReachers(c.id, specs) } : null, opencode: harness === 'kiro-cli' ? null : reach.opencode[c.id] },
+        reach: { kiro: kiroOn ? { agents: kiroReachers(c.id, specs) } : null, opencode: harness === 'kiro-cli' ? null : reach.opencode[c.id], claude: { agents: claudeReachers(c.id, specs) } },
         inbound: inbound.get(c.id), leakage: [],
         tasks: { linked, byTarget, gap: linked.length ? null : byTarget.length ? 'target only: no registry link' : 'no task' },
         triggerQueries: reg ? reg.trigger.queries.length : 0,

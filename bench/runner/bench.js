@@ -8,7 +8,7 @@
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
- *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger ...   (capability benchmarking; draft, trigger and live runs cost credits)
+ *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/README.md.
@@ -107,6 +107,11 @@ const USAGE = `Usage:
        default; first-capability also stops at find_skills), at most 4 tool calls; needs --budget-credits (--budget-usd on opencode). --crosscheck F
        runs a share F of the queries live (at least one per kind) and --crosscheck-run DIR reads a finished live run; kappa below 0.6 or fewer than
        12 queries prints "proxy not validated". --dry-run only writes the trigger tasks and prints the run command. Harnesses are never merged)
+  node bench/runner/bench.js cap prune-report --base REF [--harness kiro-cli|opencode|both] [--runs DIR[,DIR...]] [--runs-glob GLOB]
+       [--min-exposure N] [--evidence FILE] [--out DIR] [--json] [--repo-root DIR] [--bench-dir DIR]
+       (read-only, no credits: one recommendation per skill and harness from the audit at --base, the skill loads recomputed from the stream.jsonl of
+       every non-vanilla run in the run directories (quote the glob), and an optional evidence file. Classes: HARMS, RELOCATE, PRUNE, FIX, KEEP, NEEDS DATA,
+       plus a TRIM flag. A class is a recommendation, never a deletion. Writes prune-report.md and prune-report.json; exit 0, or 2 on an input error)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
   node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X]
