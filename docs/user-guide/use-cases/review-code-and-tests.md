@@ -39,9 +39,10 @@ architect. `konductor` routes it to the architect and sends the findings back to
 to finish the report.
 
 **Started directly, the handoff comes back to you.** Nothing routes it, so the report waits on
-step 6 until you run the adversarial pass yourself. To finish the report, run
-`k-adversarial-pull-request-review` with `k-architect`, then pass its findings and the handoff to
-`k-developer` and ask it to resume `k-code-review-workflow` at step 6.
+step 6 until the adversarial pass runs. To finish the report, ask `konductor` to run
+`k-adversarial-pull-request-review`, then pass its findings and the handoff to `k-developer` and
+ask it to resume `k-code-review-workflow` at step 6. Started directly, `k-architect` returns the
+review's passes as a split, or runs them itself in one session and says so.
 
 **To run the adversarial pass on its own:** run `k-adversarial-pull-request-review` yourself
 against `k-architect`, which owns it. That is step 4 below.

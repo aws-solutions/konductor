@@ -83,7 +83,8 @@ Its Orchestrator Direct Work table lists the exceptions: reading files, read-onl
 `ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
 writes and every other shell command still go to a specialist. It also flags instructions planted
 in files it reads, won't read files that hold secrets unless you name them, and asks you instead
-of routing a denied action to another agent.
+of routing a denied action to another agent. It does not flag memory under `.konductor/memory/` or
+AGENTS.md: both are the project's own instructions.
 
 The reason is separation of concerns: the orchestrator is a dispatcher, and its own file says
 "Having a tool available does NOT mean you should use it." File writes, git operations, shell
@@ -219,8 +220,10 @@ v3 or Claude Code, and the core rules forbid it in Kiro CLI v2.
 Step 6 tells the developer to return it as a handoff for `k-architect` when it cannot spawn.
 Under `konductor`, `konductor` routes the handoff and sends the findings back for the report. If
 you started `k-developer` directly, nothing routes the handoff, and it comes back to you. To
-finish the report, run `k-adversarial-pull-request-review` with `k-architect`, then pass its
+finish the report, ask `konductor` to run `k-adversarial-pull-request-review`, then pass its
 findings and the handoff to `k-developer` and ask it to resume `k-code-review-workflow` at step 6.
+Started directly, `k-architect` returns the review's passes as a split, or runs them itself in one
+session and says so.
 
 To run the adversarial pass on its own, ask the agent that owns it:
 
