@@ -84,7 +84,7 @@ Validate each finding to eliminate false positives. When in doubt, reject — fa
 
 ### 6. Adversarial Review
 
-Spawn `k-architect` in adversarial mode with `k-adversarial-pull-request-review`, passing the same diff used in Step 1 as `diff_input`, to surface gaps missed by standard review. If you cannot spawn `k-architect`, return step 6 as a handoff naming `k-architect`, `k-adversarial-pull-request-review`, this SOP, and step 6 as the step to resume at, per the core rules' specialist handoffs. Include the Step 5 consolidated findings list in the handoff so the resumed run can merge into it.
+Spawn `k-architect` in adversarial mode with `k-adversarial-pull-request-review`, passing the same diff used in Step 1 as `diff_input`, to surface gaps missed by standard review. If you cannot spawn `k-architect`, return step 6 as a handoff naming `k-architect`, `k-adversarial-pull-request-review`, this SOP, and step 6 as the step to resume at, per the core rules' specialist handoffs. Include the SOP parameters (`source_dir`, `review_type`, `output_file`, `base_branch`), the Step 2 file counts by category, and the Step 5 consolidated findings list in the handoff so the resumed run can merge into them and write the report. If the list is long, write it to `.konductor/handoff/k-developer-code-review.md` and name that path, per the `delegation-protocol` skill's Handoff Pattern.
 
 **Constraints:**
 
