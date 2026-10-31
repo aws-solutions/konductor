@@ -11,7 +11,7 @@ const KINDS = ['lift', 'trigger', 'ablation'];
 const VERDICTS = ['helps', 'hurts', 'none', 'unmeasurable'];
 const HARNESSES = ['kiro-cli', 'opencode'];
 const ALIAS = { kiro: 'kiro-cli' };
-const KEYS = ['capId', 'harness', 'kind', 'task', 'n', 'delta', 'aaSpread', 'verdict', 'runId', 'note', 'behaviorChange'];
+const KEYS = ['capId', 'harness', 'kind', 'task', 'n', 'delta', 'aaSpread', 'verdict', 'runId', 'note', 'behaviorChange', 'withValue', 'withoutValue'];
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 
@@ -33,10 +33,12 @@ function checkRow(r, i, errors, warnings) {
   if (r.runId !== undefined && r.runId !== null && typeof r.runId !== 'string') bad('runId must be a string or null');
   if (r.note !== undefined && typeof r.note !== 'string') bad('note must be a string');
   if (r.behaviorChange !== undefined && typeof r.behaviorChange !== 'boolean') bad('behaviorChange must be true or false');
+  for (const k of ['withValue', 'withoutValue']) if (r[k] !== undefined && r[k] !== null && (!finite(r[k]) || r[k] < 0 || r[k] > 1)) bad(`${k} must be a rate between 0 and 1, or null (got ${JSON.stringify(r[k])})`);
   if (errors.length > before) return null;
   const out = {
     capId: r.capId, harness, kind: r.kind, task: r.task, n: r.n, delta: r.delta ?? null, aaSpread: r.aaSpread ?? null,
     verdict: r.verdict, runId: r.runId ?? null, note: r.note ?? '', behaviorChange: r.behaviorChange ?? false,
+    withValue: r.withValue ?? null, withoutValue: r.withoutValue ?? null,
   };
   if (['helps', 'hurts'].includes(out.verdict)) {
     if (out.delta === null) warnings.push(`${at}: verdict ${out.verdict} without a delta; the effect size is unknown`);

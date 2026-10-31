@@ -14,7 +14,8 @@ const { loadRedactions } = require('../judge/redact.js');
 const { makeKiroCaller, makeCmdCaller } = require('../judge/model.js');
 const { runJudging } = require('../judge/run.js');
 const { exportSheet, scoreLabels, formatCalibration } = require('../judge/calibrate.js');
-const { loadRun } = require('../report/load.js');
+const { loadRun, loadRuns } = require('../report/load.js');
+const { generateRunReport, generateContrast } = require('../report/generate.js');
 const { buildReport, defaultBaseline } = require('../report/aggregate.js');
 const { renderMarkdown } = require('../report/render.js');
 const { recheckAll } = require('./lib/recheck.js');
@@ -133,18 +134,28 @@ function cmdRecheck(opts) {
   console.log(`${dryRun ? 'would recheck' : 'rechecked'} ${n('rechecked')}, unchanged ${n('unchanged')}, skipped ${n('skipped')}`);
 }
 
+// --run takes one directory, or several separated by commas that are merged into one run.
+const runDirsOf = (opts) => String(need(opts, 'run')).split(',').filter(Boolean).map((d) => path.resolve(d));
+const scoringOf = (opts) => (opts.scoring && opts.scoring !== true ? path.resolve(opts.scoring) : undefined);
+
+function printWritten(written) {
+  const charts = written.filter((w) => w.endsWith('.svg'));
+  for (const w of written.filter((x) => !x.endsWith('.svg'))) console.log(`wrote ${w}`);
+  if (charts.length) console.log(`wrote ${charts.length} chart(s) in ${path.dirname(charts[0])}`);
+}
+
 function cmdReport(opts) {
-  const runDir = path.resolve(need(opts, 'run'));
-  const run = loadRun(runDir);
+  const dirs = runDirsOf(opts);
+  const given = opts.out && opts.out !== true;
+  if (dirs.length > 1 && !given) throw new Error('several run directories are merged read-only; pass --out to say where the report goes');
+  const run = loadRuns(dirs);
   const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : defaultBaseline(run);
   if (!run.runs.some((r) => r.armId === baseline)) console.error(`warning: baseline arm "${baseline}" has no runs; pairwise columns will be empty`);
-  const { report } = buildReport({ run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline });
-  const mdPath = path.resolve(opts.out && opts.out !== true ? opts.out : path.join(runDir, 'report.md'));
-  const jsonPath = mdPath.endsWith('.md') ? `${mdPath.slice(0, -3)}.json` : `${mdPath}.json`;
-  fs.mkdirSync(path.dirname(mdPath), { recursive: true });
-  fs.writeFileSync(jsonPath, JSON.stringify(report, null, 2) + '\n');
-  fs.writeFileSync(mdPath, renderMarkdown(report));
-  console.log(`wrote ${mdPath}\nwrote ${jsonPath}`);
+  const res = generateRunReport({
+    run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline, out: opts.out, detail: opts.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0],
+  });
+  printWritten(res.written);
+  console.log(`diligence rating: ${res.card.rating} (${res.card.counts.PASS} PASS, ${res.card.counts.WARN} WARN, ${res.card.counts.FAIL} FAIL)`);
 }
 
 // Recomputes the skill table from stream.jsonl; reads the run directory and writes nothing.
@@ -177,23 +188,27 @@ function cmdCompare(opts) {
   }
 }
 
-// One base arm against one or more head arms of a single run. Writes contrast.md and contrast.json beside the results.
+// One base arm against one or more head arms of a single run. Writes contrast.md, contrast.json, contrast.html and charts/ beside the results (or in --out).
 function cmdContrast(opts) {
-  const runDir = path.resolve(need(opts, 'run'));
+  const dirs = runDirsOf(opts);
+  const given = opts.out && opts.out !== true;
+  if (dirs.length > 1 && !given) throw new Error('several run directories are merged read-only; pass --out to say where the contrast goes');
   const rule = opts.rule || 'both';
   if (!['both', 'any'].includes(rule)) throw new Error('--rule takes both or any');
   const heads = opts.head === undefined ? null : String(opts.head === true ? '' : opts.head).split(',').filter(Boolean);
   if (heads && !heads.length) throw new Error('--head needs one or more arm names, comma separated');
   if (opts.base !== undefined && opts.base === true) throw new Error('--base needs an arm name');
+  const run = loadRuns(dirs);
+  const tasks = loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) });
   const c = contrastRun({
-    run: loadRun(runDir), tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), base: opts.base, heads,
+    run, tasks, base: opts.base, heads,
     minRel: numOpt(opts, 'min-rel', 0.15), rule, by: opts.by === undefined ? 'class' : String(opts.by),
   });
-  const md = renderContrast(c);
-  fs.writeFileSync(path.join(runDir, 'contrast.md'), md);
-  fs.writeFileSync(path.join(runDir, 'contrast.json'), JSON.stringify(c, null, 2) + '\n');
-  console.log(md);
-  console.log(`wrote ${path.join(runDir, 'contrast.md')}\nwrote ${path.join(runDir, 'contrast.json')}`);
+  const res = generateContrast({ run, tasks, c, out: opts.out, detail: opts.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0] });
+  const mdFile = res.written.find((w) => w.endsWith('contrast.md'));
+  console.log(mdFile ? fs.readFileSync(mdFile, 'utf8') : renderContrast(c));
+  printWritten(res.written);
+  console.log(`diligence rating: ${res.card.rating}`);
 }
 
 function cmdCalibrate(opts) {
@@ -215,6 +230,11 @@ function cmdCalibrate(opts) {
       },
     });
     console.log(formatCalibration(res));
+    if (opts.save && opts.save !== true) {
+      fs.mkdirSync(path.dirname(path.resolve(opts.save)), { recursive: true });
+      fs.writeFileSync(path.resolve(opts.save), `${JSON.stringify(res, null, 2)}\n`);
+      console.log(`wrote ${path.resolve(opts.save)}`);
+    }
   } else {
     throw new Error('calibrate takes export or score');
   }

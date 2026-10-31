@@ -48,11 +48,14 @@ const USAGE = `Usage:
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
        [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR]
-  node bench/runner/bench.js report --run DIR [--baseline vanilla|ARM] [--out report.md] [--bench-dir DIR] [--extra-tasks DIR,DIR]
-  node bench/runner/bench.js contrast --run DIR [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--by class|task]
-       [--bench-dir DIR] [--extra-tasks DIR,DIR]
-       (each head arm against the base arm, overall and per task class (--by task: per task); writes contrast.md and contrast.json
-       in DIR. Default base: v1.2.0 if present, else vanilla, else the first arm. Default head: all other arms)
+  node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
+       [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       (writes report.md, report.html, report.json and charts/*.svg: a diligence scorecard, scores with CIs, charts and the text tables.
+       quick is one page, full is everything; default full and both. Several run directories are merged into one run and need --out)
+  node bench/runner/bench.js contrast --run DIR[,DIR...] [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--by class|task]
+       [--detail quick|full] [--format md|html|both] [--out DIR] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       (each head arm against the base arm, overall and per task class (--by task: per task); writes contrast.md, contrast.json, contrast.html
+       and charts/ in --out (default: DIR). Default base: v1.2.0 if present, else vanilla, else the first arm. Default head: all other arms)
   node bench/runner/bench.js pr-plan --ref name=<git ref>|name=dir:<path> [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
        [--replicates N] [--no-vanilla] [--budget-credits X] [--seed N] [--repo-root DIR] [--bench-dir DIR]
        (prints the run, contrast, judge and report commands for one ref against a release; runs nothing)
@@ -108,13 +111,13 @@ const USAGE = `Usage:
        runs a share F of the queries live (at least one per kind) and --crosscheck-run DIR reads a finished live run; kappa below 0.6 or fewer than
        12 queries prints "proxy not validated". --dry-run only writes the trigger tasks and prints the run command. Harnesses are never merged)
   node bench/runner/bench.js cap prune-report --base REF [--harness kiro-cli|opencode|both] [--runs DIR[,DIR...]] [--runs-glob GLOB]
-       [--min-exposure N] [--evidence FILE] [--out DIR] [--json] [--repo-root DIR] [--bench-dir DIR]
+       [--min-exposure N] [--evidence FILE] [--out DIR] [--json] [--detail quick|full] [--format md|html|both] [--repo-root DIR] [--bench-dir DIR]
        (read-only, no credits: one recommendation per skill and harness from the audit at --base, the skill loads recomputed from the stream.jsonl of
        every non-vanilla run in the run directories (quote the glob), and an optional evidence file. Classes: HARMS, RELOCATE, PRUNE, FIX, KEEP, NEEDS DATA,
-       plus a TRIM flag. A class is a recommendation, never a deletion. Writes prune-report.md and prune-report.json; exit 0, or 2 on an input error)
+       plus a TRIM flag. A class is a recommendation, never a deletion. Writes prune-report.md, .html, .json and charts/ with one decision card per skill; exit 0, or 2 on an input error)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
-  node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X]
+  node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--save FILE]
   node bench/runner/bench.js list-arms [--arms a,b,c] [--repo-root DIR]
 
 ${ARM_SYNTAX}

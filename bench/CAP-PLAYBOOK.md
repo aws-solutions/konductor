@@ -52,6 +52,13 @@ will show zero loads for it. FIX is a prompt to check, and the report lowers its
 4. Paired lift: `cap plan --mode lift`, with a base arm and an A/A copy of it, on tasks with headroom. Judge before you read lift.
 5. Write the result into the evidence file, rerun `prune-report`, then decide.
 
+## Reading the results
+
+- `cap prune-report --detail quick|full` opens with a scorecard for the report itself (is there enough data behind the classes?), then class bars, load-rate bars and a size-against-load scatter.
+- Each skill has a decision card (full): invocation rate with a Wilson interval, cost when loaded, paired lift and normalized gain from the evidence file, whether the effect clears the A/A noise, and a checklist of what is missing.
+- Read the card before the class. A bar of zeros is exposure, not need. A `helps` row inside its A/A spread is flagged and does not count.
+- For a lift run, `report` and `contrast` (`--detail full`) show the forest plot with the noise band; trust a delta only outside it, and look at the scorecard rating first.
+
 ## Add a capability and its tasks
 
 1. `cap list --init --cap skill:NAME` prints a registry skeleton. Save it under `capabilities/skill/`, fill in `owner`, run `cap audit`.

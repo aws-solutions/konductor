@@ -41,4 +41,59 @@ function loadRun(runDir) {
   };
 }
 
-module.exports = { loadRun, readJson };
+const keyOf = (arm, task, rep) => `${arm}\u0000${task}\u0000${rep}`;
+
+/**
+ * Several run directories as one run (for example one directory per task, or one per replicate). A replicate number that
+ * is already taken by an earlier directory is moved to the next free one, and the judgment records follow it.
+ * One directory gives exactly what loadRun gives.
+ */
+function loadRuns(dirs) {
+  if (dirs.length === 1) return loadRun(dirs[0]);
+  const loaded = dirs.map((d) => loadRun(d));
+  const harnesses = [...new Set(loaded.map((r) => r.harness))];
+  if (harnesses.length > 1) throw new Error(`run directories mix harnesses (${harnesses.join(', ')}); report each harness from its own run`);
+  const used = new Map();
+  const runs = [];
+  const remap = [];
+  loaded.forEach((r, di) => {
+    const map = new Map();
+    for (const e of r.runs) {
+      const slot = `${e.armId}\u0000${e.taskId}`;
+      const taken = used.get(slot) || new Set();
+      let rep = e.replicate;
+      while (taken.has(rep)) rep++;
+      taken.add(rep);
+      used.set(slot, taken);
+      map.set(keyOf(e.armId, e.taskId, e.replicate), rep);
+      runs.push({ ...e, replicate: rep, sourceReplicate: e.replicate, sourceDir: r.dir, result: { ...e.result, replicate: rep } });
+    }
+    remap[di] = map;
+  });
+  const cfgs = loaded.map((r) => r.config);
+  const first = cfgs[0] || {};
+  const union = (k) => [...new Set(cfgs.flatMap((c) => c[k] || []))];
+  const config = { ...first, taskIds: union('taskIds'), armIds: union('armIds'), arms: [...new Map(cfgs.flatMap((c) => c.arms || []).map((a) => [a.id, a])).values()] };
+  const withJudg = loaded.map((r, i) => ({ j: r.judgments, map: remap[i] })).filter((x) => x.j);
+  let judgments = null;
+  if (withJudg.length) {
+    const fix = (rec, map) => ({ ...rec, replicate: map.get(keyOf(rec.armId, rec.taskId, rec.replicate)) ?? rec.replicate });
+    const judges = [...new Set(withJudg.flatMap((x) => x.j.judges || []))];
+    const families = [...new Set(withJudg.flatMap((x) => x.j.panel?.families || []))];
+    const spentByJudge = {};
+    for (const x of withJudg) for (const [k, v] of Object.entries(x.j.spentByJudge || {})) spentByJudge[k] = (spentByJudge[k] || 0) + v;
+    judgments = {
+      ...withJudg[0].j,
+      judges, modes: [...new Set(withJudg.flatMap((x) => x.j.modes || []))],
+      panel: { families, small: families.length < 3 },
+      spentCredits: withJudg.reduce((n, x) => n + (x.j.spentCredits || 0), 0), spentByJudge,
+      invocations: withJudg.flatMap((x) => x.j.invocations || []),
+      notJudged: withJudg.flatMap((x) => (x.j.notJudged || []).map((n) => fix(n, x.map))),
+      rubric: withJudg.flatMap((x) => (x.j.rubric || []).map((rec) => fix(rec, x.map))),
+      pairwise: withJudg.flatMap((x) => (x.j.pairwise || []).map((rec) => fix(rec, x.map))),
+    };
+  }
+  return { dir: loaded.map((r) => r.dir).join(', '), dirs: loaded.map((r) => r.dir), harness: harnesses[0], config, configs: loaded.map((r) => ({ dir: r.dir, config: r.config })), runs, judgments, merged: true };
+}
+
+module.exports = { loadRun, loadRuns, readJson };

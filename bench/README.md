@@ -369,3 +369,25 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   content hash, kiro-cli version, isolation mode or agent engine (exit 2, `--force` overrides) and exits 1 on any
   regression: worse by at least `--min-rel` (default 15%) and, with 3+ runs per side, disjoint CIs
   (`--rule any`: either).
+
+## Reports, scores and the diligence scorecard
+`report`, `contrast` and `cap prune-report` take `--detail quick|full` (default full) and `--format md|html|both` (default both). Files: `report.md`,
+`report.html` (one file: inline CSS and SVG, no script, no external resource, prints), `report.json` and `charts/*.svg` (linked from the markdown, so it renders on GitHub).
+`--run DIR,DIR` merges several run directories read-only (a taken replicate number moves to the next free one) and needs `--out`; `contrast --out DIR` keeps the run directory unwritten.
+- quick: scorecard, three flags, one headline table (quality, reliability, autonomy, cost ratio), the cost-vs-quality scatter, the per-task dot plot.
+- full: everything in quick, then scores with their components, cost bars with CIs (overall and per class), dot plots, forest plots against the base with the A/A noise band,
+  the judge heatmap and pairwise bars, autonomy, skill load, contamination, spend by phase, run durations, provenance, commands to reproduce, and the existing text tables unchanged.
+  A run without judgments still renders; the charts that need them are listed under "Not shown". New JSON keys (`scores`, `diligence`, `detail`) are additive.
+- Scores (`report/scores.js`; every one has n and a 95% bootstrap CI, and is "anecdotal" below 3 runs; a failed run is never hidden):
+  - Quality /100: per run, the weighted mean of the components it has: hidden tests (FAIL_TO_PASS, hiddenTests or intendedTests as passed/total), checks (all pass = 1), rubric
+    (mean over judges of the verified score; raw shown beside it). Weights come from `profiles/scoring.json` (0.5, 0.2, 0.3; `--scoring FILE`). A missing component is dropped and the
+    others renormalised, never imputed. infraError, modelMismatch and runs with no component are left out and counted. The inputs used are printed beside the score.
+  - Reliability /100: 100 minus the share of runs that timed out, errored, hit infraError or had a modelMismatch.
+  - Autonomy /100 (autonomy tier only): share of runs completed without help, with interjections per task and the unnecessary-question rate beside it.
+  - Efficiency (a ratio, not 0..100): cost per successful run, wall clock, model, work-tool and subagent calls, each as arm / base with a bootstrap CI; "cost per quality point" carries a ceiling caveat at quality 95 or more.
+  - Skills (`cap prune-report`): load rate with a Wilson interval and exposure n, size, class and evidence verdict. No composite. Each skill gets a decision card: invocation rate, cost, paired lift and Hake normalized gain
+    (evidence rows may carry `withValue` and `withoutValue`, rates 0 to 1), the A/A noise check, and a checklist of what is missing before anyone acts. The decision-board verdict (keep, prune candidate, needs human review, incomplete) is our mapping of the class, not another scale's threshold.
+- Diligence scorecard (`report/diligence.js`, top of every report): PASS, WARN, FAIL or N/A per criterion with the measured value and the threshold. Unknown data is WARN "not recorded", never PASS. Key criteria: replicates per cell
+  (3+ PASS, 2 WARN, 1 FAIL), A/A arm or same-ref repeat, known-answer controls (capability studies; a task field `control: positive|negative`), judge coverage, judge families (3+, no Claude), judge agreement (within-one 0.9+ and exact 0.6+ PASS; under 0.75 FAIL),
+  hidden tests on every task, headroom (base at 95+ on at most 25% of tasks), model pin, provenance. Others: failures, censored credits, contamination, parse failures, both orderings, truncation, calibration (kappa 0.6+ from `calibrate score --save FILE` to `DIR/calibration/result.json`), recheck, isolation, budget, drift, task validation.
+- Rating: `anecdotal` if any key criterion FAILs; `supported` only if every applicable key criterion PASSes and nothing FAILs; otherwise `indicative`. Thresholds are in `THRESHOLDS` in `report/diligence.js`.

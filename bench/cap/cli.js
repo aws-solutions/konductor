@@ -32,6 +32,9 @@ const { cmdRun } = require('../runner/lib/run-cmd.js');
 const { loadRun } = require('../report/load.js');
 const { seedOf } = require('../runner/lib/pr-plan.js');
 const { buildPruneReport, renderPrune } = require('./prune.js');
+const { buildPruneDocument } = require('../report/prunedoc.js');
+const { buildSkillCards } = require('../report/skillcard.js');
+const { writeOutputs, detailOf, formatOf } = require('../report/generate.js');
 const { loadEvidence } = require('./evidence.js');
 const { expandGlob } = require('./usage.js');
 
@@ -461,14 +464,17 @@ function cmdPruneReport(opts) {
   const report = buildPruneReport({ repo, base: String(opts.base), harness, benchDir, runDirs: [...new Set(runDirs)], evidence, minExposure: Number(minRaw) });
   const outDir = pathOpt(opts.out) ?? path.join(os.tmpdir(), 'konductor-bench', 'cap', new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'));
   const outReal = checkScratch(outDir, repo, '--out');
-  fs.writeFileSync(path.join(outReal, 'prune-report.md'), renderPrune(report));
-  fs.writeFileSync(path.join(outReal, 'prune-report.json'), `${JSON.stringify(report, null, 2)}\n`);
+  const detail = detailOf(opts.detail);
+  const format = formatOf(opts.format);
+  const doc = buildPruneDocument(report, { detail });
+  const written = writeOutputs({ dir: outReal, name: 'prune-report', blocks: doc.blocks, charts: doc.charts, title: doc.title, format, json: { ...report, detail, decisionCards: doc.cards ?? buildSkillCards(report), scorecard: { rating: doc.rating, criteria: doc.criteria } } });
+  if (format === 'html') fs.writeFileSync(path.join(outReal, 'prune-report.md'), renderPrune(report));
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));
     console.error(`wrote ${path.join(outReal, 'prune-report.md')} and prune-report.json`);
   } else {
     process.stdout.write(renderPrune(report, { compact: true }));
-    console.log(`\nwrote ${path.join(outReal, 'prune-report.md')}\nwrote ${path.join(outReal, 'prune-report.json')}`);
+    console.log(`\n${written.filter((w) => !w.endsWith('.svg')).map((w) => `wrote ${w}`).join('\n')}`);
   }
 }
 

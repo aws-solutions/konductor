@@ -520,7 +520,7 @@ test('the command is read-only: scratch HOME untouched, run directories byte-ide
     assert.equal(digest(dir), before);
     assert.equal(env.git('status', '--porcelain'), status);
     assert.deepEqual(fs.readdirSync(env.home), []);
-    assert.deepEqual(fs.readdirSync(out).sort(), ['prune-report.json', 'prune-report.md']);
+    assert.deepEqual(fs.readdirSync(out).sort(), ['charts', 'prune-report.html', 'prune-report.json', 'prune-report.md']);
   } finally { env.done(); }
 });
 

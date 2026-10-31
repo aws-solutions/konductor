@@ -37,6 +37,12 @@
         "null"
       ]
     },
+    "control": {
+      "enum": [
+        "positive",
+        "negative"
+      ]
+    },
     "prompt": {
       "type": "string",
       "minLength": 1

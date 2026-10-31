@@ -260,4 +260,4 @@ function renderContrast(c) {
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
 }
 
-module.exports = { contrastRun, renderContrast, pickBase, orderedArms, SPECS };
+module.exports = { contrastRun, renderContrast, tableFor, pickBase, orderedArms, SPECS };
