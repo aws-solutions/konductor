@@ -16,7 +16,7 @@ const { runJudging } = require('../judge/run.js');
 const { exportSheet, scoreLabels, formatCalibration } = require('../judge/calibrate.js');
 const { loadRun, loadRuns } = require('../report/load.js');
 const { generateRunReport, generateContrast } = require('../report/generate.js');
-const { generateVerdict } = require('../report/verdictgen.js');
+const { generateVerdict, KINDS } = require('../report/verdictgen.js');
 const { buildReport, defaultBaseline } = require('../report/aggregate.js');
 const { renderMarkdown } = require('../report/render.js');
 const { recheckAll } = require('./lib/recheck.js');
@@ -189,15 +189,31 @@ function printWritten(written) {
 // One page with a keep, discard or not-enough-evidence call per arm. Each run directory keeps its own refs and its own
 // A/A pairs, so directories are pooled by exact ref, never merged into one run.
 function cmdVerdict(opts) {
-  if (opts.verdict !== 'platform') throw new Error('--verdict takes platform');
+  if (!KINDS.includes(opts.verdict)) throw new Error(`--verdict takes ${KINDS.join(' or ')}`);
   const dirs = runDirsOf(opts);
   const given = opts.out && opts.out !== true;
-  if (dirs.length > 1 && !given) throw new Error('several run directories feed one verdict; pass --out to say where verdict.md goes');
+  if (dirs.length > 1 && !given) throw new Error('several run directories feed one verdict; pass --out to say where the page goes');
   const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : 'vanilla';
+  const list = (v) => (v === undefined ? null : String(v === true ? '' : v).split(',').filter(Boolean));
   const res = generateVerdict({
     kind: opts.verdict, dirs, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), baseline, out: opts.out, format: opts.format, scoringFile: scoringOf(opts),
-    profile: optionalProfile(opts.profile),
+    profile: optionalProfile(opts.profile), testArms: list(opts['test-arms']), changedSkills: list(opts['changed-skills']), phases: phasesOf(opts),
   });
+  if (opts.verdict === 'orchestrator-pass') {
+    console.log(`Orchestrator pass rule against ${baseline} (cost at most 2.0x, quality within one vanilla run):`);
+    for (const c of res.v.cells) {
+      console.log(`  ${c.key}`);
+      const w = Math.max(...c.arms.map((a) => a.label.length));
+      for (const a of c.arms) {
+        const nums = a.aaRepeatOf ? `repeat of ${a.aaRepeatOf}` : `cost ${a.cost.ratioPerRun === null ? 'n/a' : `${a.cost.ratioPerRun.toFixed(2)}x`} per run, quality ${a.quality.delta === null ? 'n/a' : `${a.quality.delta > 0 ? '+' : ''}${a.quality.delta.toFixed(1)}`} points; ${a.reasons.join('; ')}`;
+        console.log(`    ${a.label.padEnd(w)}  ${(a.call ?? 'A/A repeat').padEnd(20)}  ${nums}`);
+      }
+      for (const r of c.ratioComparison ?? []) console.log(`    ${r.armId}: ${c.model} ratio ${r.gpt.perRun === null ? 'n/a' : `${r.gpt.perRun.toFixed(2)}x`} vs Claude ratio ${r.claude.perRun === null ? 'n/a' : `${r.claude.perRun.toFixed(2)}x`} (per run)`);
+    }
+    for (const n of res.v.notes) console.log(`  note: ${n}`);
+    printWritten(res.written);
+    return;
+  }
   const w = Math.max(...res.v.arms.map((a) => a.label.length));
   console.log(`Platform verdict against ${res.v.baselineLabel}:`);
   for (const a of res.v.arms) console.log(`  ${a.label.padEnd(w)}  ${(a.verdict ?? 'A/A repeat').padEnd(20)}  ${a.aaRepeatOf ? `repeat of ${a.aaRepeatOf}` : a.reason}`);

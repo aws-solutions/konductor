@@ -27,6 +27,7 @@ function fixtureRun(root, name, { arms, reps = 5, tasks = ['t1', 't2'], armOrder
         specs.push({
           arm, task, rep,
           hiddenTests: { passed: hidden, total: 10 }, credits: a.credits ?? 1, wallClockMs: a.wall ?? 1000,
+          ...(a.extra ?? {}), ...(a.extraFn ? a.extraFn(task, rep) : {}),
           ...(a.sha ? { commitSha: SHA[a.sha] ?? a.sha, contentHash: `tree-${a.sha}`, ref: a.ref ?? arm } : {}),
           ...(failed ? { status: failed, checks: a.failNoScore ? [] : [{ type: 'file_exists', path: 'a.txt', passed: false }], ...(a.failNoScore ? { hiddenTests: undefined } : {}) } : {}),
         });

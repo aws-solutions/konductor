@@ -54,6 +54,18 @@ test('two parallel children of the root are both depth 1 even when one of them s
   assert.equal(r.maxSpawnDepth, 2, 'only the grandchild call sits at depth 2');
 });
 
+test('a child of the first parallel call that spawns is at depth 2, not below the other child', () => {
+  const r = om.spawnTree([
+    child('root'), call('root', 'c1', brief('k-developer', 'a')), call('root', 'c2', brief('k-architect', 'b')),
+    child('s1'), call('s1', 'c3', brief('k-researcher', 'x')),
+    child('s2'), call('s2', 'c4', brief('k-tpm', 'y')),
+    done('s1', 'c3', 'ok'), done('s2', 'c4', 'ok'), done('root', 'c1', 'ok'), done('root', 'c2', 'ok'),
+  ]);
+  assert.equal(r.calls.find((c) => c.id === 'c3').depth, 2);
+  assert.equal(r.calls.find((c) => c.id === 'c4').depth, 2, 'c1 and c2 each claim one child in order; s2 is the child of c2');
+  assert.equal(r.maxSpawnDepth, 2);
+});
+
 test('the first session seen is the root, whatever its id', () => {
   const r = om.spawnTree([{ type: 'runStarted', data: { engine: 'v3' } }, call('zzz', 'c1', brief('k-developer', 'a')), child('aaa')]);
   assert.equal(r.maxSpawnDepth, 1);

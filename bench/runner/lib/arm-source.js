@@ -80,9 +80,15 @@ function filesChanged(files) {
   return { count: files.length, topLevel: topLevelOf(files) };
 }
 
+/** The skills a change touches (skills/<name>/...) and whether it touches nothing else. A file directly under skills/ names no skill. */
+function skillsIn(files) {
+  const names = [...new Set(files.map((f) => /^skills\/([^/]+)\//.exec(f)?.[1]).filter(Boolean))].sort();
+  return { names, onlySkills: files.length > 0 && files.every((f) => f.startsWith('skills/')) };
+}
+
 // Distance from origin/main as the local repository knows it. All null when it cannot be computed.
 function distanceFromMain(repo, sha, { dir = null } = {}) {
-  const none = { mergeBase: null, commitsAhead: null, filesChanged: null };
+  const none = { mergeBase: null, commitsAhead: null, filesChanged: null, changedSkills: null };
   if (!sha) return none;
   const origin = commitOf(repo, 'refs/remotes/origin/main');
   if (!origin) return none;
@@ -93,13 +99,13 @@ function distanceFromMain(repo, sha, { dir = null } = {}) {
   if (dir) {
     // Working tree against the merge-base, plus untracked files. The directory must share the repo's objects.
     const changed = git(dir, ['diff', '--name-only', '-z', mergeBase], { allowFail: true });
-    if (changed === null) return { mergeBase, commitsAhead: ahead, filesChanged: null };
+    if (changed === null) return { mergeBase, commitsAhead: ahead, filesChanged: null, changedSkills: null };
     const untracked = git(dir, ['ls-files', '--others', '--exclude-standard', '-z'], { allowFail: true }) || '';
     files = [...new Set([...changed.split('\0'), ...untracked.split('\0')].filter(Boolean))];
   } else {
     files = git(repo, ['diff', '--name-only', '-z', mergeBase, sha]).split('\0').filter(Boolean);
   }
-  return { mergeBase, commitsAhead: ahead, filesChanged: filesChanged(files) };
+  return { mergeBase, commitsAhead: ahead, filesChanged: filesChanged(files), changedSkills: skillsIn(files) };
 }
 
 const treeOf = (repo, sha) => git(repo, ['rev-parse', `${sha}^{tree}`]);
@@ -213,5 +219,5 @@ function layoutProblem(arm, repo, required) {
 }
 
 module.exports = {
-  resolveRef, validRefName, distanceFromMain, treeOf, snapshotDir, copySnapshot, describeDir, layoutProblem, commitOf, git, topLevelOf, filesChanged,
+  resolveRef, validRefName, distanceFromMain, treeOf, skillsIn, snapshotDir, copySnapshot, describeDir, layoutProblem, commitOf, git, topLevelOf, filesChanged,
 };

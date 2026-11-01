@@ -73,6 +73,7 @@ function provenanceOf(a) {
     mergeBase: a.mergeBase ?? null,
     commitsAhead: a.commitsAhead ?? null,
     filesChanged: a.filesChanged ?? null,
+    changedSkills: a.changedSkills ?? null,
   };
 }
 

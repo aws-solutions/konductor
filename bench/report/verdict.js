@@ -249,4 +249,4 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
   return { schemaVersion: 1, baseline, baselineLabel, unit: unit === 'USD' ? 'USD' : 'credits', arms, dirs: dirInfo, skippedDirs, notes, weights, noiseFloorPts: NOISE_FLOOR_PTS };
 }
 
-module.exports = { buildVerdict, decide, refLabel, sentenceFor, KEEP, DISCARD, NEE, NOISE_FLOOR_PTS };
+module.exports = { buildVerdict, decide, refLabel, sentenceFor, normalize, qualityList, aaGroups, armOrder, perCellMin, KEEP, DISCARD, NEE, NOISE_FLOOR_PTS };
