@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 /**
- * bench.js - benchmark runner for Konductor on kiro-cli or opencode (run, judge, recheck, report, compare, calibrate).
+ * bench.js - benchmark runner for Konductor on kiro-cli or opencode (run, judge, recheck, backfill, report, compare, calibrate).
  *
  *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap [--arms a,b] [--tasks id,id]
  *        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
@@ -81,6 +81,11 @@ const USAGE = `Usage:
   node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run] [--extra-tasks DIR,DIR]
        (re-evaluates the current task checks against each run's saved workspace; the first results are kept
        under checksOriginal in result.json; stream.jsonl and credit fields are never touched; safe to repeat)
+  node bench/runner/bench.js backfill --run DIR [--write]
+       (engine v3 runs saved before the runner could read v3: rewrites credits, turn duration, tool names and spawn metrics in result.json
+       from stream.jsonl with the runner's own parsers. DIR is one results cell, for example <study>/claude. Without --write it only prints
+       what it would recover. --write keeps result.json.pre-backfill, appends a "backfill" line to credit-ledger.jsonl and never edits an
+       earlier line. A timed-out or killed run has no credit data in v3 and stays censored. Run it when the cell has finished; safe to repeat)
   node bench/runner/bench.js compare --base DIR --head DIR [--min-rel 0.15] [--rule both|any] [--force] [--bench-dir DIR]
        (exit 0 no regression, 1 regression, 2 refused or error)
   node bench/runner/bench.js skills --run DIR [--bench-dir DIR] [--repo-root DIR] [--json] [--extra-tasks DIR,DIR]
@@ -208,6 +213,7 @@ async function main(argv) {
   if (cmd === 'judge') return evalCommands.cmdJudge(opts);
   if (cmd === 'report') return evalCommands.cmdReport(opts);
   if (cmd === 'recheck') return evalCommands.cmdRecheck(opts);
+  if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);
   if (cmd === 'calibrate') return evalCommands.cmdCalibrate(opts);

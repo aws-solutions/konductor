@@ -167,12 +167,16 @@ function turnSummary(streamText) {
   return { sessionId: a.sessionId, runFinishedStatus: a.runFinishedStatus, stopReason: a.stopReason, finalText: a.finalText, askedUser: a.askedUser };
 }
 
+// One aggregate per turn, then summed: a tool call id may repeat in a later turn.
+function aggregateRunDir(outDir) {
+  return mergeAggregates(turnStreamTexts(outDir).map((t) => aggregateStream(parseStream(t).events)));
+}
+
 // Parses stream.jsonl and the copied sessions. Fills `acc` as it goes so a throw part-way keeps the spend already read.
 function parseResult(outDir, { home, acc, arm, ctx }) {
   const streamText = fs.readFileSync(path.join(outDir, 'stream.jsonl'), 'utf8');
   const { events } = parseStream(streamText);
-  // One aggregate per turn, then summed: a tool call id may repeat in a later turn.
-  acc.agg = mergeAggregates(turnStreamTexts(outDir).map((t) => aggregateStream(parseStream(t).events)));
+  acc.agg = aggregateRunDir(outDir);
   acc.skills = skills.captureSkills({ runtime: 'kiro-cli', events, arm, ctx });
   copySessionsTolerant(home, outDir, acc.meta.flags);
   const { transcript, sessions } = readTranscripts(path.join(outDir, 'session'), acc.agg.sessionIds, streamText);
@@ -197,5 +201,5 @@ function collectArtifacts(home, outDir) {
 
 module.exports = {
   id, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths,
-  parseResult, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions,
+  parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions,
 };

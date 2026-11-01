@@ -28,6 +28,21 @@ function crossCheckCredits(streamCredits, sessions) {
   return { total: withTurns.length ? total : null, mismatch };
 }
 
+// The result fields read straight from the parsed stream. `bench.js backfill` rewrites exactly these from a saved stream.
+function streamFields(agg, orch = null) {
+  return {
+    turnDurationMs: agg?.turnDurationMs ?? null,
+    credits: agg && agg.meteringEntries > 0 ? agg.credits : null,
+    meteringEntries: agg ? agg.meteringEntries : null,
+    toolCalls: agg ? agg.toolCalls : null,
+    workToolCalls: agg ? agg.workToolCalls : null,
+    toolNames: agg ? agg.toolNames : null,
+    subagentCalls: agg ? agg.subagentCalls : null,
+    orch,
+    flags: agg?.nonCreditUnits?.length ? ['meteringUnit'] : [],
+  };
+}
+
 /**
  * Builds a result.json object.
  * agg: aggregateStream output (null if the run died before any parsing).
@@ -58,12 +73,12 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     if (status === 'success') status = 'error';
     error = [error, `parent session ran on ${wrongModel.join(', ')}, expected ${config.model}`].filter(Boolean).join(' | ');
   }
-  if (agg?.nonCreditUnits?.length) flags.push('meteringUnit');
+  const fromStream = streamFields(agg, orch);
+  flags.push(...fromStream.flags);
   if (transcript?.partial) flags.push('transcriptPartial');
   if (meta.infraError && status === 'success') status = 'error';
 
-  const hasMetering = agg && agg.meteringEntries > 0;
-  const credits = hasMetering ? agg.credits : null;
+  const { credits } = fromStream;
   const finished = (agg?.runFinishedStatus ?? null) !== null;
   const agentStarted = meta.agentStarted !== false;
   const censored = agentStarted && (status === 'timeout' || status === 'error') && !finished;
@@ -88,7 +103,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     stopReason: agg?.stopReason ?? null,
     runStartedAt: exec.startedAt ?? null,
     wallClockMs: exec.wallClockMs,
-    turnDurationMs: agg?.turnDurationMs ?? null,
+    turnDurationMs: fromStream.turnDurationMs,
     credits,
     creditsCensored,
     creditsLowerBound: creditsCensored ? credits ?? 0 : null,
@@ -97,7 +112,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     modelCalls: oc
       ? (usage ? { meteringEntries: usage.modelCalls, totalRequestCount: usage.modelCalls } : null)
       : agg
-        ? { meteringEntries: agg.meteringEntries, totalRequestCount: session?.totalRequestCount ?? null }
+        ? { meteringEntries: fromStream.meteringEntries, totalRequestCount: session?.totalRequestCount ?? null }
         : null,
     tokens: usage?.tokens ?? null,
     costUsd: usage?.costUsd ?? null,
@@ -105,11 +120,11 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     costUsdCharged: null,
     sessionsRolledUp: usage?.sessions ?? null,
     region: oc ? env?.region ?? null : null,
-    toolCalls: agg ? agg.toolCalls : null,
-    workToolCalls: agg ? agg.workToolCalls : null,
-    toolNames: agg ? agg.toolNames : null,
-    subagentCalls: agg ? agg.subagentCalls : null,
-    orch,
+    toolCalls: fromStream.toolCalls,
+    workToolCalls: fromStream.workToolCalls,
+    toolNames: fromStream.toolNames,
+    subagentCalls: fromStream.subagentCalls,
+    orch: fromStream.orch,
     contextUsagePercentage: agg?.contextUsagePercentage ?? null,
     transcriptBytes: transcript?.bytes ?? null,
     transcriptPartial: transcript ? Boolean(transcript.partial) : null,
@@ -165,4 +180,4 @@ function validateResult(result) {
   return validate(loadSchema('result'), result);
 }
 
-module.exports = { buildResult, errorResult, skippedResult, classifyStatus, validateResult, crossCheckCredits };
+module.exports = { streamFields, buildResult, errorResult, skippedResult, classifyStatus, validateResult, crossCheckCredits };

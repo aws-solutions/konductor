@@ -20,6 +20,7 @@ const { generateVerdict, KINDS } = require('../report/verdictgen.js');
 const { buildReport, defaultBaseline } = require('../report/aggregate.js');
 const { renderMarkdown } = require('../report/render.js');
 const { recheckAll } = require('./lib/recheck.js');
+const { backfillAll } = require('./lib/backfill.js');
 const { collectRows, summarizeSkills, renderSkillsMarkdown } = require('../report/skills.js');
 const { compareRuns, formatCompare } = require('../report/compare.js');
 const { contrastRun, renderContrast } = require('../report/contrast.js');
@@ -168,6 +169,23 @@ function cmdRecheck(opts) {
   }
   const n = (s) => out.filter((r) => r.status === s).length;
   console.log(`${dryRun ? 'would recheck' : 'rechecked'} ${n('rechecked')}, unchanged ${n('unchanged')}, skipped ${n('skipped')}`);
+}
+
+function cmdBackfill(opts) {
+  const runDir = path.resolve(need(opts, 'run'));
+  const write = Boolean(opts.write);
+  const out = backfillAll({ runDir, write });
+  for (const r of out) {
+    const label = `${r.armId}/${r.taskId}/${r.replicate}`;
+    if (r.status === 'recovered') console.log(`${label}: recovered; credits ${r.before == null ? 'n/a' : r.before} -> ${r.credits.toFixed(4)}`);
+    else if (r.status === 'unrecoverable') console.log(`${label}: unrecoverable (${r.reason})${r.note ? `; ${r.note}` : ''}`);
+    else if (r.status === 'skipped') console.log(`${label}: skipped (${r.reason})`);
+  }
+  const of = (status) => out.filter((r) => r.status === status);
+  const total = of('recovered').reduce((n, r) => n + r.credits, 0).toFixed(4);
+  const tail = `already complete ${of('complete').length}, unrecoverable ${of('unrecoverable').length}, skipped ${of('skipped').length}`;
+  if (write) console.log(`recovered ${of('recovered').length} (${total} credits), ${tail}`);
+  else console.log(`dry run, nothing written: would recover ${of('recovered').length} (${total} credits), ${tail}. Pass --write to apply.`);
 }
 
 // --run takes one directory, or several separated by commas that are merged into one run.
@@ -326,4 +344,4 @@ function cmdCalibrate(opts) {
   }
 }
 
-module.exports = { cmdJudge, cmdRecheck, cmdReport, cmdCompare, cmdContrast, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };
+module.exports = { cmdJudge, cmdRecheck, cmdBackfill, cmdReport, cmdCompare, cmdContrast, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };
