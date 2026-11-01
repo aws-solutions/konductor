@@ -7,7 +7,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseStream, subagentTargets, SUBAGENT_TOOL } = require('./stream.js');
+const { parseStream, subagentTargets, toolNameOf, isV3Call, SUBAGENT_TOOL } = require('./stream.js');
 
 const PROFILES = path.join(__dirname, '..', '..', 'profiles');
 const METRICS_FILE = path.join(PROFILES, 'orch-metrics.json');
@@ -62,12 +62,18 @@ const textOfUpdate = (u) => [...stringsOf(u.rawOutput), ...(u.content || []).map
  * Every subagent call in stream order, with the session that made it and its depth (the root session's calls are
  * depth 1). A session first seen while a call is open belongs to the earliest open call that still has an unclaimed
  * stage, so parallel children and nested spawns keep their own depth.
+ *
+ * Engine v3 runs every agent in one session. A call's own events carry the child's `agentSubtaskId`, which stands in
+ * for the child session. The call does not say who made it, so its caller is whoever produced the last event, unless
+ * that child has already returned, in which case it is the root.
  */
 function spawnTree(events) {
   const depth = new Map();
   const calls = [];
   const byId = new Map();
   let root = null;
+  let lastActor = null;
+  const returned = new Set();
   for (const ev of events) {
     const d = ev.data || {};
     const sid = d.sessionId ?? null;
@@ -81,11 +87,18 @@ function spawnTree(events) {
     }
     if (ev.type !== 'sessionUpdate') continue;
     const u = d.update || {};
-    if (u.sessionUpdate === 'tool_call' && u._meta?.kiro?.toolName === SUBAGENT_TOOL) {
+    const kiro = u._meta?.kiro;
+    const subtask = kiro?.kind === 'agent-subtask';
+    if (!subtask) lastActor = kiro?.agentSubtaskId ?? sid;
+    else if (u.sessionUpdate === 'tool_call_update' && (u.status === 'completed' || u.status === 'failed') && kiro.agentSubtaskId) returned.add(kiro.agentSubtaskId);
+    if (u.sessionUpdate === 'tool_call' && toolNameOf(u) === SUBAGENT_TOOL) {
       const id = u.toolCallId ?? `anon-${calls.length}`;
       if (byId.has(id)) { if (u.rawInput && typeof u.rawInput === 'object') Object.assign(byId.get(id).input, u.rawInput); continue; }
       const input = u.rawInput && typeof u.rawInput === 'object' ? { ...u.rawInput } : {};
-      const call = { id, caller: sid ?? root, input, targets: subagentTargets(input), claimed: 0, closed: false, status: null, output: '' };
+      const v3 = isV3Call(u);
+      const caller = v3 && subtask ? (lastActor && !returned.has(lastActor) ? lastActor : root) : sid ?? root;
+      const call = { id, caller, input, targets: subagentTargets(input, { nameIsAgent: v3 }), claimed: 0, closed: false, status: null, output: '' };
+      if (v3 && subtask && kiro.agentSubtaskId && !depth.has(kiro.agentSubtaskId)) depth.set(kiro.agentSubtaskId, (depth.get(caller) ?? 0) + 1);
       byId.set(id, call);
       calls.push(call);
     } else if (u.sessionUpdate === 'tool_call_update' && byId.has(u.toolCallId)) {

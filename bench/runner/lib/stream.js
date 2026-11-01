@@ -23,10 +23,38 @@ const OVERHEAD_TOOLS = new Set([SUBAGENT_TOOL, 'summary']);
 const SKILLS_SERVER = 'konductor-skills';
 const SKILL_TOOLS = new Set(['find_skills', 'get_skill']);
 
-// toolName lives in update._meta.kiro.toolName; titles are a last-resort fallback.
+// Engine v3 sends no toolName, only a display title. These are the titles whose tool name the engine confirms in the
+// turn summary's usedTools; any other title stays unknown.
+const V3_TITLE_TOOLS = {
+  'Read File': 'read_file',
+  'List Directory': 'list_directory',
+  'Write File': 'fs_write',
+  'Replace in File': 'str_replace',
+  'Run Command': 'execute_bash',
+  'Grep Search': 'grep_search',
+  'Append to File': 'fs_append',
+  'Load Resource': 'load_resource',
+  'Tool Call': 'tool_call',
+  'get_skill': 'get_skill',
+  '@konductor-skills/get_skill': 'get_skill',
+};
+const V3_SUBAGENT_TITLE = /^Sub-agent:/;
+
+// Engine v2 puts the name in update._meta.kiro.toolName and it always wins. Engine v3 is read from the title.
 function toolNameOf(update) {
-  return update?._meta?.kiro?.toolName ?? null;
+  const named = update?._meta?.kiro?.toolName;
+  if (named != null) return named;
+  const title = update?.title;
+  if (typeof title === 'string') {
+    if (V3_SUBAGENT_TITLE.test(title)) return SUBAGENT_TOOL;
+    if (Object.hasOwn(V3_TITLE_TOOLS, title)) return V3_TITLE_TOOLS[title];
+  }
+  // A shell command carries the model's own description as its title.
+  return update?.kind === 'execute' ? V3_TITLE_TOOLS['Run Command'] : null;
 }
+
+// True for a call that came from engine v3, which names its sub-agent target in rawInput.name.
+const isV3Call = (update) => update?._meta?.kiro?.toolName == null;
 
 function mcpOutputIsError(update) {
   const items = update?.rawOutput?.items;
@@ -35,12 +63,14 @@ function mcpOutputIsError(update) {
 
 // The agents a subagent call hands work to: the role of each pipeline stage, else a single role/agent field.
 // A call that names none is counted as (unnamed) so delegatedTo adds up to subagentCalls.
-function subagentTargets(input) {
+// nameIsAgent is for an engine v3 call, whose top-level `name` is the agent; in v2 a `name` is a stage label.
+function subagentTargets(input, { nameIsAgent = false } = {}) {
   const names = [];
   const pick = (o) => [o?.role, o?.agent, o?.agent_name, o?.agentName].find((v) => typeof v === 'string' && v.trim());
   if (input && typeof input === 'object') {
     if (Array.isArray(input.stages)) for (const st of input.stages) { const n = pick(st); if (n) names.push(n.trim()); }
     if (!names.length) { const n = pick(input); if (n) names.push(n.trim()); }
+    if (!names.length && nameIsAgent && typeof input.name === 'string' && input.name.trim()) names.push(input.name.trim());
   }
   return names.length ? names : ['(unnamed)'];
 }
@@ -124,7 +154,9 @@ function aggregateStream(events) {
   const seenToolCalls = new Set();
   const skillCallIds = new Set();
   const skillErrorIds = new Set();
+  const countedTurns = new Set();
   const subagentInputs = new Map();
+  const v3SubagentIds = new Set();
   const addInput = (id, input) => {
     if (id && subagentInputs.has(id) && input && typeof input === 'object') subagentInputs.set(id, { ...subagentInputs.get(id), ...input });
   };
@@ -151,6 +183,24 @@ function aggregateStream(events) {
         break;
       case 'sessionUpdate': {
         const u = d.update || {};
+        if (u.sessionUpdate === 'session_info_update') {
+          // Engine v3 reports spend once per turn here instead of in `metadata` events.
+          const k = u._meta?.kiro;
+          if (k?.kind !== 'turn_completion') break;
+          const turnKey = k.executionId ?? k.turnId;
+          if (turnKey && countedTurns.has(turnKey)) break;
+          if (turnKey) countedTurns.add(turnKey);
+          if (typeof k.elapsedTime === 'number') lastTurnDurationMs = k.elapsedTime;
+          for (const m of k.promptTurnSummaries || []) {
+            if (m.unit !== 'credit') {
+              if (!out.nonCreditUnits.includes(m.unit)) out.nonCreditUnits.push(m.unit);
+              continue;
+            }
+            out.credits += Number(m.usage) || 0;
+            out.meteringEntries++;
+          }
+          break;
+        }
         if (u.sessionUpdate === 'tool_call_update') {
           addInput(u.toolCallId, u.rawInput);
           if (skillCallIds.has(u.toolCallId) && (u.status === 'failed' || mcpOutputIsError(u))) skillErrorIds.add(u.toolCallId);
@@ -164,7 +214,9 @@ function aggregateStream(events) {
         out.toolNames[name ?? 'unknown'] = (out.toolNames[name ?? 'unknown'] || 0) + 1;
         if (name === SUBAGENT_TOOL) {
           out.subagentCalls++;
-          subagentInputs.set(u.toolCallId ?? `anon-${out.subagentCalls}`, u.rawInput && typeof u.rawInput === 'object' ? { ...u.rawInput } : {});
+          const callId = u.toolCallId ?? `anon-${out.subagentCalls}`;
+          subagentInputs.set(callId, u.rawInput && typeof u.rawInput === 'object' ? { ...u.rawInput } : {});
+          if (isV3Call(u)) v3SubagentIds.add(callId);
         }
         if (!OVERHEAD_TOOLS.has(name)) out.workToolCalls++;
         if (SKILL_TOOLS.has(name) && u._meta?.kiro?.mcpServerName === SKILLS_SERVER) {
@@ -184,7 +236,7 @@ function aggregateStream(events) {
   }
   out.sessionId = out.sessionIds[0] ?? null;
   out.turnDurationMs = out.runFinishedStatus === null ? null : lastTurnDurationMs;
-  for (const input of subagentInputs.values()) for (const n of subagentTargets(input)) out.delegatedTo[n] = (out.delegatedTo[n] || 0) + 1;
+  for (const [id, input] of subagentInputs) for (const n of subagentTargets(input, { nameIsAgent: v3SubagentIds.has(id) })) out.delegatedTo[n] = (out.delegatedTo[n] || 0) + 1;
   out.skillsMcp.errors = skillErrorIds.size;
   if (out.skillsMcp.calls > 0) out.skillsMcpOk = out.skillsMcp.errors < out.skillsMcp.calls;
   out.askedUser = detectAskedUser(out);
@@ -246,4 +298,4 @@ function sessionModels(session) {
   return (session?.session_state?.conversation_metadata?.user_turn_metadatas || []).map((t) => t.model ?? null);
 }
 
-module.exports = { subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
+module.exports = { toolNameOf, isV3Call, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
