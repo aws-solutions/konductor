@@ -14,6 +14,7 @@ const { buildChildEnv } = require('../env.js');
 const sandbox = require('../sandbox.js');
 const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
+const { writeArmConfig } = require('../arm-config.js');
 
 const id = 'kiro-cli';
 
@@ -134,6 +135,7 @@ function installInto(home, { arm, prepared, ctx, config, outDir }) {
     fs.writeFileSync(path.join(outDir, 'install.log'), sandbox.installInto(home, prepared, config.agentEngine) + '\n');
     meta.rewrittenAgents = sandbox.normalizeAgentModels(home, config.model);
     meta.modelNormalized = true;
+    if (arm.armConfig) writeArmConfig(home, arm.armConfig);
   }
   sandbox.copyAuthDb(ctx.authDb, home);
   return meta;

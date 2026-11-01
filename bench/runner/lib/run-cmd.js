@@ -25,6 +25,7 @@ const sandbox = require('./sandbox.js');
 const rc = require('./runconfig.js');
 const { optionalProfile, replicatesFor, aaArmFor, writeCalibrationSample } = require('./profiles.js');
 const { loadRun } = require('../../report/load.js');
+const { createInstallsGate, describeChange } = require('./isolation-gates.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -93,6 +94,7 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
+  const window = createInstallsGate().begin();
   try {
     const ctx = {
       repo, cacheDir, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb: null,
@@ -102,6 +104,11 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
     console.log(preflightTable(arms, prepared, errors));
     console.log(`prepare-only: ${prepared.size} arm(s) built and trial-installed, ${errors.size} failed; no agent was started`);
     if (errors.size) process.exitCode = 1;
+    const gate = window.end();
+    if (!gate.ok) {
+      console.error(`ISOLATION FAILURE: ${describeChange(gate)}`);
+      process.exitCode = 4;
+    }
   } finally {
     procs.removeAllScratch();
   }
@@ -217,7 +224,10 @@ async function cmdRun(opts) {
     const ctx = {
       kiroBin: kiro?.bin, repo: REPO, cacheDir, realCache, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb, config, envKeep,
       envInfo: null,
+      installsGate: createInstallsGate(),
     };
+    log(`isolation gate: hashing ${ctx.installsGate.dirs.join(', ')} before and after each run and the batch`);
+    const batchWindow = ctx.installsGate.begin();
     if (isOc) {
       ctx.opencode = oc.resolveOpencode({ cacheDir, binOverride: opts['opencode-bin'] && opts['opencode-bin'] !== true ? opts['opencode-bin'] : null });
       ctx.rgBin = oc.resolveRipgrep(opts['rg-bin'] && opts['rg-bin'] !== true ? opts['rg-bin'] : null);
@@ -259,7 +269,8 @@ async function cmdRun(opts) {
     runConfig = {
       suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, [isOc ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
       profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
-      runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent,
+      runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig,
+      isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
       variants: variants.map((v) => ({ ...v })),
       order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
       timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
@@ -316,7 +327,12 @@ async function cmdRun(opts) {
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
       costOf: isOc ? USD : CREDITS, unit,
     });
-    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, {}), null, 2) + '\n');
+    const gate = batchWindow.end();
+    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate }), null, 2) + '\n');
+    if (!gate.ok) {
+      log(`ISOLATION FAILURE: ${describeChange(gate)}. Treat this batch as invalid.`);
+      process.exitCode = 4;
+    }
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);
     log(`final ${studyLine}`);
     if (guard === 'hard') {

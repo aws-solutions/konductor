@@ -142,6 +142,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     triggerQuery: task.triggerQuery ? { ...task.triggerQuery, rep: replicate } : null,
     variant: arm.variant ?? null,
     armPrefix: arm.prefixInfo ? { ...arm.prefixInfo } : null,
+    armConfig: arm.armConfig ?? null,
     ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),
   };
 }

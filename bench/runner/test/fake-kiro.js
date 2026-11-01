@@ -24,6 +24,7 @@ const tc = { ...cfg, ...((cfg.turns || [])[Math.min(turn, (cfg.turns || []).leng
 const authFile = path.join(process.env.HOME, process.platform === 'darwin' ? 'Library/Application Support/kiro-cli' : '.local/share/kiro-cli', 'data.sqlite3');
 const started = JSON.stringify({ pid: process.pid, cwd: process.cwd(), home: process.env.HOME, args, envKeys: Object.keys(process.env), authPresent: fs.existsSync(authFile), turn: turn + 1 });
 try { fs.writeFileSync(path.join(cfg.dir, 'started.json'), started); fs.writeFileSync(path.join(cfg.dir, 'started-' + (turn + 1) + '.json'), started); } catch { /* the probe directory is read-only inside a namespace */ }
+if (tc.plantFile) { fs.mkdirSync(path.dirname(tc.plantFile), { recursive: true }); fs.writeFileSync(tc.plantFile, tc.plantText || ''); }
 if (tc.exitCode) { process.exit(tc.exitCode); }
 if (tc.sleepSec) { setTimeout(() => {}, tc.sleepSec * 1000); return; }
 const ev = (type, data) => console.log(JSON.stringify({ type, data }));

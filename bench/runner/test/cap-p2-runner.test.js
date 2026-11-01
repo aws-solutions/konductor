@@ -77,7 +77,7 @@ test('--arm-agent sets the entry agent of one arm, the others keep theirs, and v
   assert.deepEqual(rec.armAgent, { direct: 'k-architect' });
   assert.throws(() => applyArmOptions([arm({ id: 'vanilla', vanilla: true, agent: null })], { 'arm-agent': 'vanilla=k-architect' }), /vanilla has no agent/);
   assert.throws(() => applyArmOptions([arm()], { 'arm-agent': 'a=bad name' }), /not a valid agent name/);
-  assert.deepEqual(applyArmOptions([arm()], {}), { armPrefix: {}, armAgent: {} });
+  assert.deepEqual(applyArmOptions([arm()], {}), { armPrefix: {}, armAgent: {}, armConfig: {} });
 });
 
 test('the kiro command line carries the prefixed prompt and the overridden agent', () => {

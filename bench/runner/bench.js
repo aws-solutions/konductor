@@ -30,6 +30,7 @@ const USAGE = `Usage:
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        [--extra-tasks DIR,DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
+       [--arm-config name=key.path=value[;key.path=value],...]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed]
        (--profile quick runs 1 to 3 replicates (default 2) and labels a result under 3 runs anecdotal. --profile detailed runs at least 5 replicates (default 5),
        adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
@@ -42,7 +43,9 @@ const USAGE = `Usage:
        charged credits plus the largest run so far would pass --budget-credits)
        (--auth-db is the kiro-cli auth database each run's scratch HOME gets a copy of, default the standard location under HOME)
        (--arm-prefix puts the text of FILE (at most 90000 bytes) in front of the task prompt of that arm; run-config records its sha256 and size.
-       --arm-agent starts that arm in AGENT instead of its default agent. --stop-on kills the run at the first skills-server call, subagent call
+       --arm-agent starts that arm in AGENT instead of its default agent. --arm-config writes keys into that arm's scratch ~/.konductor/config.yml after the
+       install, for example --arm-config orch-coord=orchestration.mode=coordinator (orchestration.mode takes auto or coordinator; vanilla refuses it; run-config
+       and result.json record it). --stop-on kills the run at the first skills-server call, subagent call
        or end of turn (first-capability), or at the first get_skill, subagent call or end of turn (first-load); the run is flagged earlyStopped and
        has no metered credits (kiro-cli meters at the end of a turn), so its cost is unobserved. --max-tool-calls stops after that many tool calls whatever they are)
        arms: vanilla, v1.0.0, v1.1.0, v1.2.0, main, name=<git ref>, name=dir:<path> (see list-arms for the syntax)

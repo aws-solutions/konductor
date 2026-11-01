@@ -18,6 +18,7 @@ const { scanStream, fixRecall, contaminationFlags } = require('./contamination.j
 const { newConversation } = require('./autonomy.js');
 const { makeCreditMeter } = require('./credit-watch.js');
 const { makeStopWatcher } = require('./stop-watch.js');
+const { describeChange } = require('./isolation-gates.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -250,6 +251,15 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
   };
 }
 
+// A change to the real installs directory invalidates the run, whatever the agent reported. The spend stays recorded.
+function failOnLeak(result, leak) {
+  const msg = describeChange(leak);
+  result.flags = [...new Set([...(result.flags || []), 'installsChanged'])];
+  result.infraError = [result.infraError, msg].filter(Boolean).join(' | ');
+  result.error = [result.error, msg].filter(Boolean).join(' | ');
+  result.status = 'error';
+}
+
 async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFlightAtStart = null }) {
   const { config } = ctx;
   const harness = harnessFor(arm);
@@ -258,6 +268,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
   let result;
   let runRoot = null;
   let home = null;
+  const installsWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   try {
     fs.mkdirSync(outDir, { recursive: true });
     runRoot = fs.mkdtempSync(path.join(ctx.scratchDir, 'r-'));
@@ -317,6 +328,8 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     if (home) harness.removeCredentials(home);
     fs.rmSync(runRoot, { recursive: true, force: true });
   }
+  const leak = installsWindow ? installsWindow.end() : null;
+  if (leak && !leak.ok) failOnLeak(result, leak);
   const problems = validateResult(result);
   if (problems.length) result.error = [result.error, `schema: ${problems.join('; ')}`].filter(Boolean).join(' | ');
   try {

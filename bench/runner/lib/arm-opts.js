@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Per-arm run options: `--arm-prefix name=FILE` (text put in front of the task prompt) and `--arm-agent name=AGENT`
-// (the agent an arm starts in). Both are recorded in run-config.json; the prefix by hash and size only.
+// Per-arm run options: `--arm-prefix name=FILE` (text put in front of the task prompt), `--arm-agent name=AGENT`
+// (the agent an arm starts in) and `--arm-config name=key.path=value` (keys for the arm's ~/.konductor/config.yml, see
+// arm-config.js). All are recorded in run-config.json; the prefix by hash and size only.
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -60,7 +61,14 @@ function applyArmOptions(arms, opts) {
     arm.agentOverride = agent;
     armAgent[name] = agent;
   }
-  return { armPrefix, armAgent };
+  const armConfig = {};
+  for (const [name, config] of require('./arm-config.js').parseArmConfig(opts['arm-config'])) {
+    const arm = armNamed(arms, name, 'arm-config');
+    if (arm.vanilla) throw new Error(`--arm-config: arm "${name}" is vanilla and vanilla has no konductor config`);
+    arm.armConfig = config;
+    armConfig[name] = config;
+  }
+  return { armPrefix, armAgent, armConfig };
 }
 
 /** The prompt of the first turn: the arm's prefix, a blank line, the task prompt. */

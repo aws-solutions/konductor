@@ -9,6 +9,7 @@ const { executeRun } = require('./run-one.js');
 const { skippedResult, errorResult } = require('./result.js');
 const { layoutProblem } = require('./arm-source.js');
 const { openLedger } = require('./credit-ledger.js');
+const { describeChange, GATE_FILE } = require('./isolation-gates.js');
 
 const DEFAULT_CENSORED_FLOOR = 1.0;
 
@@ -210,6 +211,7 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
   };
   let active = 0;
   const plan = planRuns(tasks, arms, replicates, seed);
+  const batchWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
 
   const worker = async ({ task, arm, replicate }) => {
     const dir = path.join(outDir, arm.id, task.id, String(replicate));
@@ -251,7 +253,12 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
   };
 
   const results = await runPool(plan, parallel, worker, shouldSkip, onSkip);
-  return { results, observed: ledger.observed, charged: ledger.charged, study: study.totals(), studyLine: study.line(), guard: study.state() };
+  const installsGate = batchWindow ? batchWindow.end() : null;
+  if (installsGate) {
+    fs.writeFileSync(path.join(outDir, GATE_FILE), `${JSON.stringify({ checkedAt: new Date().toISOString(), ...installsGate }, null, 2)}\n`);
+    if (!installsGate.ok) log(`ISOLATION FAILURE: ${describeChange(installsGate)}. The runs of this batch are not trustworthy; see ${GATE_FILE}.`);
+  }
+  return { installsGate, results, observed: ledger.observed, charged: ledger.charged, study: study.totals(), studyLine: study.line(), guard: study.state() };
 }
 
 module.exports = {
