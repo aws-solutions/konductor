@@ -76,17 +76,21 @@ function chargedBefore(entries, { armId, taskId, replicate }) {
     .reduce((n, e) => n + (finite(e.charged) ? e.charged : finite(e.credits) ? e.credits : 0), 0);
 }
 
+// Keeps a copy of a file's current text next to it. An existing copy is left as it is; if it differs from the file, the
+// caller must not rewrite the file. Returns an error message, or null when the copy is in place.
+function keepCopy(file, suffix) {
+  const copy = `${file}${suffix}`;
+  const original = fs.readFileSync(file, 'utf8');
+  if (!fs.existsSync(copy)) { fs.copyFileSync(file, copy, fs.constants.COPYFILE_EXCL); return null; }
+  return fs.readFileSync(copy, 'utf8') === original ? null : `${path.basename(file)}${suffix} already exists and differs; not overwritten`;
+}
+
 // Order: keep a copy of the original, append the ledger line, then replace result.json. A run interrupted between the
 // last two is finished by the next call, which finds no difference left to charge.
 function applyOne({ entry, ledger, ledgerEntries }) {
   const file = path.join(entry.dir, 'result.json');
-  const copy = `${file}${PRE_BACKFILL}`;
-  const original = fs.readFileSync(file, 'utf8');
-  if (fs.existsSync(copy)) {
-    if (fs.readFileSync(copy, 'utf8') !== original) return { status: 'unrecoverable', reason: `result.json${PRE_BACKFILL} already exists and differs; not overwritten` };
-  } else {
-    fs.copyFileSync(file, copy, fs.constants.COPYFILE_EXCL);
-  }
+  const kept = keepCopy(file, PRE_BACKFILL);
+  if (kept) return { status: 'unrecoverable', reason: kept };
   const failuresBefore = ledger.totals().writeFailures;
   const previous = chargedBefore(ledgerEntries, entry);
   const { next } = entry.plan;
@@ -119,4 +123,4 @@ function backfillAll({ runDir, write = false, now = () => new Date().toISOString
   });
 }
 
-module.exports = { backfillAll, PRE_BACKFILL };
+module.exports = { backfillAll, PRE_BACKFILL, writeAtomic, keepCopy };

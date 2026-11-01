@@ -167,8 +167,9 @@ function collectRows(runDir, { tasks = new Map(), repoRoot = null } = {}) {
         ctxCache.v ??= armContext({ runDir: dir, armId, config, repoRoot, runtime, vanilla });
         const task = tasks.get(taskId) ?? { target: null, class: 'unknown' };
         const { events } = parseStream(fs.readFileSync(streamFile, 'utf8'));
-        const fields = resultFields({ extraction: extractSkills(events, runtime), info: ctxCache.v.info, task, arm: { vanilla } });
-        rows.push({ armId, taskId, replicate: Number(rep), taskClass: task.class, target: task.target ?? null, fields, complete: Boolean(result) });
+        const extraction = extractSkills(events, runtime);
+        const fields = resultFields({ extraction, info: ctxCache.v.info, task, arm: { vanilla } });
+        rows.push({ armId, taskId, replicate: Number(rep), taskClass: task.class, target: task.target ?? null, fields, complete: Boolean(result), extraction, sops: ctxCache.v.info?.catalog?.sops ?? [] });
         startup[armId] = ctxCache.v.startup;
       }
     }
