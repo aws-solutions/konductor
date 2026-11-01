@@ -82,8 +82,17 @@ function loadRuns(dirs) {
     const families = [...new Set(withJudg.flatMap((x) => x.j.panel?.families || []))];
     const spentByJudge = {};
     for (const x of withJudg) for (const [k, v] of Object.entries(x.j.spentByJudge || {})) spentByJudge[k] = (spentByJudge[k] || 0) + v;
+    // Judgments from before the backend label existed came from kiro. Verdicts from different backends are not comparable.
+    const backends = [...new Set(withJudg.map((x) => x.j.backend ?? 'kiro'))].sort();
+    const usdDirs = withJudg.filter((x) => x.j.spentUsd !== undefined);
+    const spentUsdByJudge = {};
+    for (const x of usdDirs) for (const [k, v] of Object.entries(x.j.spentUsdByJudge || {})) spentUsdByJudge[k] = (spentUsdByJudge[k] || 0) + v;
+    const infos = withJudg.map((x) => x.j.backendInfo).filter(Boolean);
     judgments = {
       ...withJudg[0].j,
+      backend: backends.length > 1 ? 'mixed' : backends[0], backends,
+      backendInfo: backends.length === 1 && infos.length ? { ...infos[0], models: Object.assign({}, ...infos.map((i) => i.models || {})) } : undefined,
+      ...(usdDirs.length ? { spentUsd: usdDirs.reduce((n, x) => n + x.j.spentUsd, 0), spentUsdByJudge } : {}),
       judges, modes: [...new Set(withJudg.flatMap((x) => x.j.modes || []))],
       panel: { families, small: families.length < 3 },
       spentCredits: withJudg.reduce((n, x) => n + (x.j.spentCredits || 0), 0), spentByJudge,

@@ -172,6 +172,7 @@ function renderMarkdown(report) {
   for (const [arm, scopes] of Object.entries(report.arms)) {
     for (const [scope, c] of Object.entries(scopes)) for (const msg of c.flags) flags.push(`- ${arm} / ${scope}: ${msg}`);
   }
+  if (report.judging?.backends?.length > 1) flags.push(`- judge backend: judged on different backends (${report.judging.backends.join(', ')}); verdicts from different backends are not comparable, so judge each directory with one backend`);
   if (report.judging?.panel?.small) flags.push(`- judge panel: ${report.judging.panel.families.length} model family(ies) (${report.judging.panel.families.join(', ')}); run with --allow-small-panel, so judge agreement is weak evidence`);
   out.push('## Flags', '', flags.length ? flags.join('\n') : 'None.', '');
   out.push('## Results', '');
@@ -179,9 +180,12 @@ function renderMarkdown(report) {
   const autonomy = autonomySection(report);
   if (autonomy) out.push(autonomy);
   if (report.judging) {
-    out.push('## Judging', '', table(['judge', 'records', 'errors', 'calls (cached)', 'parse failures', 'credits (all invocations)', 'median latency s', 'quote not found', 'downgraded (quote missing)'],
-      Object.entries(report.judging.byJudge).map(([j, s]) => [j, s.records, s.errors, `${s.calls} (${s.cachedCalls})`, s.parseFailures, f(s.credits, 3), f(s.medianLatencyMs === null ? null : s.medianLatencyMs / 1000, 1), pct(s.unverifiedQuoteRate), s.evidenceDowngraded])));
-    out.push('', `Total judge spend over all invocations: ${f(report.judging.spentCredits, 3)} credits. Cached calls cost 0 and show the latency measured when they ran. Pairwise results where the two orderings disagreed: ${report.judging.positionInconsistent}`, '');
+    const jg = report.judging;
+    const usd = jg.spentUsd !== null;
+    out.push('## Judging', '', judgeBackendLine(jg), '', table(['judge', 'records', 'errors', 'calls (cached)', 'parse failures', 'credits (all invocations)', ...(usd ? ['usd (all invocations)'] : []), 'median latency s', 'quote not found', 'downgraded (quote missing)'],
+      Object.entries(jg.byJudge).map(([j, s]) => [j, s.records, s.errors, `${s.calls} (${s.cachedCalls})`, s.parseFailures, f(s.credits, 3), ...(usd ? [s.usd === undefined ? 'n/a' : f(s.usd, 4)] : []), f(s.medianLatencyMs === null ? null : s.medianLatencyMs / 1000, 1), pct(s.unverifiedQuoteRate), s.evidenceDowngraded])));
+    const spend = [usd && !jg.spentCredits ? null : `${f(jg.spentCredits, 3)} credits`, usd ? `$${jg.spentUsd.toFixed(4)} USD` : null].filter(Boolean).join(' and ');
+    out.push('', `Total judge spend over all invocations: ${spend}. Cached calls cost 0 and show the latency measured when they ran. Pairwise results where the two orderings disagreed: ${jg.positionInconsistent}`, '');
     out.push('Rubric score: "scored" lowers a verdict one level when the judge\'s evidence quote is not found in the output (ellipsis, case, whitespace and markdown emphasis are ignored when matching); "raw" is the judge\'s own verdicts. "quote not found" is the share of quoted criteria whose quote was not found.', '');
     if (report.judging.stale?.length) {
       out.push(`Left out of every score and tally (${report.judging.stale.length} record(s)): judged against an earlier version of the rubric, answer key or prompt. They are still in judgments.json. Re-run the judge command to refresh them.`, '');
@@ -192,6 +196,15 @@ function renderMarkdown(report) {
   }
   if (report.skills) out.push(renderSkillsMarkdown(report.skills), '');
   return out.join('\n');
+}
+
+// States which program asked the judge models: kiro, or opencode with the settings that shaped the replies.
+function judgeBackendLine(jg) {
+  if (jg.backend === 'mixed') return `Judge backend: mixed (${jg.backends.join(', ')}). Verdicts from different backends are not comparable.`;
+  const i = jg.backendInfo;
+  if (jg.backend !== 'opencode' || !i) return `Judge backend: ${jg.backend}.`;
+  const models = Object.entries(i.models || {}).map(([j, m]) => `${j} = ${m.bedrockModelId}${m.temperatureApplied ? ', temperature 0' : ', no temperature'}`).join('; ');
+  return `Judge backend: opencode (opencode ${i.opencodeVersion ?? 'unknown'}, ${i.region ?? 'unknown region'}, system prompt sha256 ${String(i.systemPromptSha256 ?? '').slice(0, 12)}). Bedrock models: ${models}.`;
 }
 
 module.exports = { renderMarkdown };

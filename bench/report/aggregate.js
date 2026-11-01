@@ -365,7 +365,11 @@ function rawFromCriteria(rec, task) {
 }
 
 function judgingSummary(j, isStale, stale) {
-  const out = { byJudge: {}, positionInconsistent: 0, spentCredits: j.spentCredits ?? null, panel: j.panel ?? null, notJudged: j.notJudged || [], stale };
+  const backends = j.backends ?? [j.backend ?? 'kiro'];
+  const out = {
+    byJudge: {}, positionInconsistent: 0, spentCredits: j.spentCredits ?? null, spentUsd: j.spentUsd ?? null, panel: j.panel ?? null, notJudged: j.notJudged || [], stale,
+    backend: backends.length > 1 ? 'mixed' : backends[0], backends, backendInfo: j.backendInfo ?? null,
+  };
   for (const judge of j.judges) {
     const recs = [...j.rubric, ...j.pairwise].filter((r) => r.judge === judge && !isStale(r));
     const calls = recs.flatMap((r) => r.calls || []);
@@ -381,6 +385,7 @@ function judgingSummary(j, isStale, stale) {
       cachedCalls: calls.length - live.length,
       parseFailures: recs.reduce((s, r) => s + (r.parseFailures || 0), 0),
       credits: j.spentByJudge?.[judge] ?? live.reduce((s, c) => s + (c.credits || 0), 0),
+      ...(j.spentUsd !== undefined ? { usd: j.spentUsdByJudge?.[judge] ?? live.reduce((s, c) => s + (c.usd || 0), 0) } : {}),
       medianLatencyMs: lat.length ? median(lat) : null,
       evidenceDowngraded: own.filter((c) => c.evidenceDowngraded).length,
       evidenceQuoteFoundRate: evidence.length ? evidence.filter((c) => c.evidenceFound).length / evidence.length : null,

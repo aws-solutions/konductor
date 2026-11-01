@@ -122,6 +122,7 @@ function profileCheck(profile, { facts, judgments }) {
   }
   if (!facts.judging.present || !judgments) add(false, 'not judged: no judgments.json');
   else {
+    if ((facts.judging.backends || []).length > 1) add(false, `judge backend: results were judged on different backends (${facts.judging.backends.join(', ')}), and their verdicts are not comparable`);
     for (const m of profile.judging.modes) add((judgments.modes || []).includes(m), `${m} judging ${(judgments.modes || []).includes(m) ? 'was run' : 'was not run'}`);
     if (profile.judging.bothOrders) {
       const pw = facts.judging.pairwise;

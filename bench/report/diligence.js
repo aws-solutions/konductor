@@ -135,7 +135,7 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
     aaArms: aa ? aa.pair : null, sameRefRepeat, aa,
     controls: { positive: taskIds.filter((id) => tasks.get(id)?.control === 'positive').length, negative: taskIds.filter((id) => tasks.get(id)?.control === 'negative').length },
     judging: {
-      present: Boolean(j), judges, families: j?.panel?.families ?? [...new Set(judges.map(modelFamily))], claude: judges.filter((x) => ['claude', 'anthropic'].includes(modelFamily(x))),
+      present: Boolean(j), backends: j ? (j.backends ?? [j.backend ?? 'kiro']) : [], judges, families: j?.panel?.families ?? [...new Set(judges.map(modelFamily))], claude: judges.filter((x) => ['claude', 'anthropic'].includes(modelFamily(x))),
       expected: expected.length, unjudged, rubricTasks: taskIds.filter(needsRubric).length,
       parseFailures: [...rubricRecs, ...pairRecs].reduce((n, r) => n + (r.parseFailures || 0), 0),
       pairwise: { run: (j?.modes || []).includes('pairwise'), records: pairRecs.length, bothOrders: pairRecs.filter((r) => Array.isArray(r.orderings) && r.orderings.length === 2 && r.orderings.every(Boolean)).length },
