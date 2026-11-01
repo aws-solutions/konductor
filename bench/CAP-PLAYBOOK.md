@@ -126,6 +126,21 @@ A cap is optional. Without `--budget-credits` nothing stops a run, and every run
 With `--budget-credits X`, `run` stops launching at 90% of X (and when charged credits plus the largest run so far would pass X); a command that ends past 100% exits 3.
 Judging graded mode adds two calls per pair per judge, so a detailed study judges about three times as many calls as a rubric-only one.
 
+## Judge backends
+
+Judging goes through kiro-cli by default. kiro-cli adds about 7.2k to 11.4k tokens of its own agent prompt and tool definitions to every judge call, and a replay of cached prompts through a bare model path differed from the kiro answers for gpt-5.6-luna pairwise ties and for deepseek-3.2 rubric severity. `--judge-backend opencode` asks the same panel through `opencode run` on Amazon Bedrock with the tools off and a one-line system prompt. Details, the panel-to-Bedrock map and the limits are in `README.md`, section "Judge backends".
+
+- One backend per results directory, and per panel in a study. Do not judge half a study on each; the command refuses it and `report` flags pooled directories judged on different backends.
+- Costs are in USD (`--budget-usd`), read from opencode's session database; credits stay 0.
+- gpt-5.6-luna cannot run at temperature 0 on Bedrock, so a luna verdict is not a temperature-0 verdict on this backend.
+- The Bedrock model behind a name may not be what kiro serves under that name. Treat a kiro-versus-opencode difference as "the setups differ", not as proof the wrapper caused it.
+- Cross-check by judging a copy of a finished directory on the other backend, then compare the two `judgments.json` files; never merge them.
+
+```
+node bench/runner/bench.js judge --run V/claude --judge-backend opencode --aws-creds-file CREDS --aws-profile bench --aws-region us-east-1 --profile detailed --budget-usd 25
+node bench/runner/bench.js judge --run V/gpt --judge-backend opencode --aws-creds-file CREDS --profile detailed --budget-usd 25
+```
+
 ## Pruning pull request checklist
 
 - [ ] The prune-report row quoted with class, confidence and the "what would change this" text, and the report's base ref and date.

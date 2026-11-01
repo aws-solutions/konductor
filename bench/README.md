@@ -243,6 +243,42 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   Graded grades are shown beside the quality score and never feed it, so `scoring.json` still decides quality.
 - Other flags: `--mode rubric,pairwise,graded`, `--profile`, `--concurrency 2`, `--budget-credits X` (per invocation; stops new calls at 90%), `--max-file-chars`,
   `--max-bundle-chars`, `--judge-cmd CMD` (test double: prompt on stdin, reply on stdout), `--auth-db`.
+  `--judge-backend kiro|opencode` picks the program that asks the models (see "Judge backends" below).
+
+### Judge backends
+`--judge-backend kiro` (the default) asks the panel through kiro-cli. `--judge-backend opencode` asks the same panel through `opencode run` on Amazon Bedrock.
+
+Why. kiro-cli puts its own agent prompt and tool definitions in front of every judge prompt. On 252 saved judge calls that was about 7.2k to 11.4k tokens of non-judge context per call, over half of the input for a median call. A replay of 159 cached prompts through a bare model path (one-line system prompt, no tools) differed from the kiro answers in two places. gpt-5.6-luna pairwise: kiro returned a tie for 21% of prompts against 7%, and 8 of 14 pairs changed with answer order against 0 of 14. deepseek-3.2 rubric: 11 partial and 6 fail out of 162 criteria on kiro against 4 partial and 0 to 1 fail. The samples are small. The Bedrock model behind a name may also differ from the model kiro serves under that name (version, reasoning setting, sampling), so a difference does not show that the wrapper caused it. The backend lets a study be judged without the wrapper, and judging a copy of a directory on the other backend gives a cross-check.
+
+Set up.
+- An AWS shared-credentials file with a profile that can invoke the models in one region, passed as `--aws-creds-file FILE` (`--aws-profile`, default `bench`; `--aws-region`, default `us-east-1`). Per call, only that profile is copied into the call's scratch HOME, and the copy is deleted when the call ends. Credential values are scrubbed from the kept raw output and from error messages.
+- opencode: `--opencode-bin PATH`, or leave it out and the bench installs `opencode-ai@1.19.5` with install scripts off, as for the opencode harness (`--cache DIR`, default `$TMPDIR/b-cache`). The version and the binary's sha256 are recorded.
+- `--judge-backend opencode` cannot be combined with `--judge-cmd`.
+
+What a call is. One `opencode run` per judge call, in its own scratch HOME, XDG directories and empty working directory, with an allow-listed environment (no inherited credentials or login tokens), the model catalog fetch off and every tool and built-in agent off. The prompt goes in unchanged as the user message through stdin, so the argv size limit does not apply (the 120000 byte check stays on the kiro path). The system prompt is fixed and its hash is recorded in `judgments.json`: "You are an evaluator. Reply only with the JSON object the user asks for." opencode adds two things the bench cannot switch off: a line naming the model, and a small environment block (working directory, platform, date), about 100 tokens a call.
+
+Panel ids stay the logical names, so the family rules (never Claude, never the subject's family, at least 3 families, the GPT-subject substitution) are unchanged. The backend maps them:
+
+| panel id | Bedrock model id | temperature |
+|---|---|---|
+| gpt-5.6-luna | global.openai.gpt-5.6-luna | not sent (see below) |
+| deepseek-3.2 | deepseek.v3.2 | 0 |
+| glm-5 | zai.glm-5 | 0 |
+| qwen3-coder-next | qwen.qwen3-coder-next | 0 (us-east-1 only) |
+| minimax-m2.5 | minimax.minimax-m2.5 | 0 |
+
+A raw Bedrock id is refused as a judge name (its family would read differently); an id with no mapping is refused before any call.
+
+Temperature. gpt-5.6-luna rejects the temperature field on Bedrock, so luna cannot run at temperature 0; it uses the model's default sampling, and opencode also sends reasoning effort "medium" for it, which a raw Converse call does not. For the other four the agent asks for temperature 0 and the model entry allows a temperature, because opencode drops the value for a model it does not know to accept one. This was checked on opencode 1.19.5 by capturing the request it sends to a local stand-in endpoint (no model call): temperature 0 was sent for those four, none for luna, and minimax-m2.5 also gets top_p 0.95 and top_k 40 from opencode's defaults. opencode's log and session database do not record the request, so a run cannot confirm this per call. `judgments.json` records `temperatureApplied` per judge as configured, not as observed.
+
+Cost and limits. Tokens and USD come from opencode's session database for the call (USD is opencode's list-price figure; if the database cannot be read, the event stream totals are used and the call says so). Credits stay 0. Each call is a line in `credit-ledger.jsonl` with `unit: "usd"` and a `usd` field; credit totals and the credit guard never count it. `--budget-usd X` stops new calls at 90% of X and exits 3 past 100%; `--budget-credits` is refused with this backend and `--budget-usd` with kiro. A throttled call is retried with exponential backoff (2 s, doubling, capped at 60 s, up to 6 tries; failed tries cost nothing). `--concurrency` still applies (default 2). Each call also pays opencode's start-up, about 3 s, and about 1 s more to read the database.
+
+One backend per results directory. Judging a directory that already holds judgments from the other backend is refused (judgments written before the label existed count as kiro); judge a copy instead. The cache key includes the backend, the system prompt hash, the Bedrock id and the temperature setting, so kiro and opencode answers never serve each other, and kiro keys are unchanged. `judgments.json` gets `backend` and, for opencode, `backendInfo` (opencode version, binary sha256, region, system prompt and hash, the Bedrock id, agent and temperature per judge) plus `spentUsd` and `spentUsdByJudge`. `report` names the backend and, for several directories pooled with `--run A,B`, flags directories judged on different backends as not comparable; `--profile detailed` lists that as a shortfall.
+
+```
+node bench/runner/bench.js judge --run V/claude --judge-backend opencode --aws-creds-file CREDS --aws-profile bench --aws-region us-east-1 --profile detailed --budget-usd 25
+node bench/runner/bench.js report --run V/claude --profile detailed
+```
 
 ## Calibration
 `calibrate export` writes a blinded `sheet.json`/`sheet.md` and a separate `key.json`. Fill the labels,
