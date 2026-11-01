@@ -14,7 +14,7 @@ node bench/runner/bench.js run --suite pilot --profile detailed --out $OUT   # 5
 node bench/runner/bench.js report --run $A,$B,$C --verdict platform --out $V  # keep, discard or not enough evidence per arm: verdict.md and .html
 node bench/runner/bench.js compare --base $OLD --head $OUT          # regression check
 node bench/runner/bench.js recheck --run $OUT [--dry-run]                    # re-apply corrected task checks to saved workspaces
-node bench/runner/bench.js backfill --run $OUT [--write]                    # engine v3 runs saved without credits: recompute from stream.jsonl (dry run by default)
+node bench/runner/bench.js backfill --run $OUT [--credits] [--skills] [--write]  # repair finished runs from stream.jsonl: credits (default) and/or skill-load fields (dry run by default)
 node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then: calibrate score
 node --test "bench/runner/test/*.test.js"                           # unit tests
 node bench/tasks/validate-tasks.js                                  # tasks vs reference solutions
@@ -182,15 +182,21 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
   sub-agents used, so it appears to cover their spend (seen on one coordinator run). `modelCalls.meteringEntries` counts turns on v3, not model calls. v3 names a tool call by title, so tool names are mapped from the titles in `lib/stream.js` and unmapped
   titles count as `unknown`; a sub-agent call is "Sub-agent: <name>" with the target in `rawInput.name`.
-- `backfill --run DIR [--write]` repairs v3 runs saved before the runner could read this: it recomputes credits, turn duration, tool names and the
-  spawn metrics from each `stream.jsonl` with the runner's own parsers. DIR is one cell (`<study>/claude`). It is a dry run without `--write`.
-  `--write` keeps `result.json.pre-backfill`, adds `creditsBackfill`, and appends a `backfill` line to `credit-ledger.jsonl` (earlier lines are
-  never edited). A timed-out or killed run stays censored; the dry run flags one whose `result.json` also lacks the spawns its stream shows.
-  Run it after the cell finishes. Repeating it changes nothing.
+- `backfill --run DIR [--credits] [--skills] [--write]` repairs v3 runs saved before the runner could read this, from each `stream.jsonl` with
+  the runner's own parsers. DIR is one cell (`<study>/claude`). It is a dry run without `--write`. Run it after the cell finishes. Repeating it
+  changes nothing. `--credits` is the default when no mode flag is given; `--skills` adds the skill pass, and both flags run both passes, credits first.
+  - Credits: recomputes credits, turn duration, tool names and the spawn metrics. `--write` keeps `result.json.pre-backfill`, adds `creditsBackfill`, and
+    appends a `backfill` line to `credit-ledger.jsonl` (earlier lines are never edited). A timed-out or killed run stays censored; the dry run flags one
+    whose `result.json` also lacks the spawns its stream shows.
+  - Skills: recomputes the skill fields (`skillsLoaded`, `skillCallsFailed`, `targetLoaded` and the rest of `SKILL_FIELDS`) and `capInvocation`, which the
+    orchestrator pass rule and the cap reports read. It prints skill loads per arm before and after. `--write` keeps `result.json.pre-skills-backfill`
+    (a separate name, so a copy from the credit pass is never touched) and adds `skillsBackfill`. A killed or timed-out run is included, because its skill
+    calls are in the stream even though its turn never ended; no credit field is touched. A run with no stream, a task missing from `--bench-dir`, a
+    budget skip or an opencode run is skipped. `--bench-dir` and `--repo-root` work as for `skills`. A run whose copy exists and differs is refused.
 - Skill loads on engine v3: a loaded skills-server call is titled `@konductor-skills/get_skill` with the name in `rawInput.arguments.name`. A call
   made before the tool was loaded is refused (`Tool Call` failed, or a bare `get_skill` title with no input) and counts in `skillCallsFailed`, never as a
   load; the model then loads the tool and retries. `--stop-on` ignores refused calls too. The skill fields in `result.json` are written when the run
-  ends, so runs saved by an older runner keep empty `skillsLoaded`; `bench.js skills` recomputes from `stream.jsonl`, `report` reads `result.json`.
+  ends, so runs saved by an older runner keep empty `skillsLoaded`; `bench.js skills` recomputes from `stream.jsonl` without writing, `backfill --skills` writes the recomputed fields, and `report` reads `result.json`.
 - `workToolCalls` leaves out the `subagent` call and the subagent `summary` pseudo-tool. Transcript
   size sums the parent and subagent sessions (`transcriptPartial` if one is missing). Other metering
   units are flagged. `askedUser` marks a final message that ends with a question, asks for approval,
