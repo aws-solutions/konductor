@@ -14,6 +14,7 @@ node bench/runner/bench.js run --suite pilot --profile detailed --out $OUT   # 5
 node bench/runner/bench.js report --run $A,$B,$C --verdict platform --out $V  # keep, discard or not enough evidence per arm: verdict.md and .html
 node bench/runner/bench.js compare --base $OLD --head $OUT          # regression check
 node bench/runner/bench.js recheck --run $OUT [--dry-run]                    # re-apply corrected task checks to saved workspaces
+node bench/runner/bench.js backfill --run $OUT [--write]                    # engine v3 runs saved without credits: recompute from stream.jsonl (dry run by default)
 node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then: calibrate score
 node --test "bench/runner/test/*.test.js"                           # unit tests
 node bench/tasks/validate-tasks.js                                  # tasks vs reference solutions
@@ -176,6 +177,16 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   the arm's completed runs, or `--censored-floor` (default 1.0), stored as `creditsCharged`; reports use
   that value, never 0. Failure rates sit beside every cost figure. `turnDurationMs` is null without
   a `runFinished` event.
+- Engine v3 reports credits only at turn end (a `turn_completion` summary in the stream), never before. So on v3 a mid-run credit limit
+  (`--run-credit-limit`) cannot trip and the live total stays at 0 until each run finishes (`--budget-credits` still stops new runs between
+  runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
+  sub-agents used, so it appears to cover their spend (seen on one coordinator run). `modelCalls.meteringEntries` counts turns on v3, not model calls. v3 names a tool call by title, so tool names are mapped from the titles in `lib/stream.js` and unmapped
+  titles count as `unknown`; a sub-agent call is "Sub-agent: <name>" with the target in `rawInput.name`.
+- `backfill --run DIR [--write]` repairs v3 runs saved before the runner could read this: it recomputes credits, turn duration, tool names and the
+  spawn metrics from each `stream.jsonl` with the runner's own parsers. DIR is one cell (`<study>/claude`). It is a dry run without `--write`.
+  `--write` keeps `result.json.pre-backfill`, adds `creditsBackfill`, and appends a `backfill` line to `credit-ledger.jsonl` (earlier lines are
+  never edited). A timed-out or killed run stays censored; the dry run flags one whose `result.json` also lacks the spawns its stream shows.
+  Run it after the cell finishes. Repeating it changes nothing.
 - `workToolCalls` leaves out the `subagent` call and the subagent `summary` pseudo-tool. Transcript
   size sums the parent and subagent sessions (`transcriptPartial` if one is missing). Other metering
   units are flagged. `askedUser` marks a final message that ends with a question, asks for approval,
@@ -336,7 +347,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - Runner additions: `contrast --by task`; `--extra-tasks DIR` on `run`, `judge`, `report`, `contrast`, `recheck`, `skills` (tasks in
   `DIR/<id>.json`, `DIR/fixtures`, `DIR/hidden`, masked from the agent; check with `validate-tasks.js --only-extra --extra-tasks DIR`);
   `run` stops launching at 90% of `--budget-credits` or when charged credits plus the largest run so far would pass it, and `--run-credit-limit X`
-  kills one run past X credits and records it as censored.
+  kills one run past X credits and records it as censored (on engine v3 it cannot trip, see Metrics notes).
 - Reading the audit: tokens are bytes / 4, an estimate. "Unreachable" means no agent spec lists the capability, so no kiro agent can
   load it. A near-duplicate score is Jaccard on description words. Leakage fails above 5% shared 8-word shingles. Each `cap`
   command that builds hashes `~/.konductor/installs` before and after and exits 1 if it changed.
@@ -417,7 +428,7 @@ A profile changes what is collected, not how it is scored (`profiles/scoring.jso
 
 `--detail` still wins over the profile. With a profile, `cap plan` prints no default budget and `cap trigger --mode live` does not require one.
 
-Credit ledger: `run` and `judge` append one JSON line per agent run and per judge call to `credit-ledger.jsonl` in the results directory (`kind`, arm, task, replicate, `credits`, `charged`, `cached`) and print
+Credit ledger: `run` and `judge` append one JSON line per agent run and per judge call to `credit-ledger.jsonl` in the results directory (`kind`, arm, task, replicate, `credits`, `charged`, `cached`; `backfill` lines correct earlier runs) and print
 `credits: this command X (no cap), study total Y (runs R, judge J)` after each one and at the end. A censored run is totalled at its charge. `--budget-credits X` is optional: at 90% of X
 (counted for the command, not the whole directory) no new run or call starts; a command that ends past 100% exits 3. `report` prints the ledger total.
 
