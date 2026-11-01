@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { loadTasks, loadSuite, BENCH_DIR } = require('./lib/tasks.js');
 const sandbox = require('./lib/sandbox.js');
-const { DEFAULTS, MIN_PANEL_FAMILIES, checkPanel, checkJudgeModel, families } = require('../judge/config.js');
+const { DEFAULTS, MIN_PANEL_FAMILIES, checkPanel, checkJudgeModel, families, modelFamily } = require('../judge/config.js');
 const { resolveIsolation } = require('./lib/isolate.js');
 const procs = require('./lib/procs.js');
 const { loadRedactions } = require('../judge/redact.js');
@@ -63,14 +63,40 @@ function explicitLimitsOf(opts) {
   return { maxFileChars: opts['max-file-chars'] !== undefined, maxBundleChars: opts['max-bundle-chars'] !== undefined };
 }
 
+// Taken in this order to replace a judge dropped for sharing the subject's family.
+const SUBSTITUTE_JUDGES = ['deepseek-3.2', 'glm-5', 'qwen3-coder-next', 'minimax-m2.5'];
+
+// A default or suite panel never keeps a judge from the subject's own family: it is dropped and replaced from SUBSTITUTE_JUDGES
+// (one per family, never Claude), so a panel for a GPT subject becomes deepseek, glm and qwen. Judges named with --judges are not changed.
+function adaptPanel(judges, subjectModel) {
+  if (!subjectModel) return { judges };
+  const subject = modelFamily(subjectModel);
+  const kept = judges.filter((j) => modelFamily(j) !== subject);
+  const dropped = judges.filter((j) => modelFamily(j) === subject);
+  if (!dropped.length) return { judges };
+  const added = [];
+  for (const cand of SUBSTITUTE_JUDGES) {
+    if (kept.length + added.length >= judges.length) break;
+    const fam = modelFamily(cand);
+    if (fam === subject || fam === 'claude' || [...kept, ...added].some((j) => modelFamily(j) === fam)) continue;
+    added.push(cand);
+  }
+  return { judges: [...kept, ...added], substituted: { dropped, added } };
+}
+
 // --judges wins, then the suite file, then the default three-family panel. Fewer than three
 // distinct families is refused unless --allow-small-panel is passed.
 function resolveJudges({ cliJudges, suiteJudges, subjectModel = null, allowSmallPanel = false }) {
   let judges = cliJudges ? String(cliJudges).split(',').filter(Boolean) : null;
-  if (!judges) judges = suiteJudges && suiteJudges.length ? suiteJudges : DEFAULT_JUDGES;
+  let substituted;
+  if (!judges) {
+    const adapted = adaptPanel(suiteJudges && suiteJudges.length ? suiteJudges : DEFAULT_JUDGES, subjectModel);
+    judges = adapted.judges;
+    substituted = adapted.substituted;
+  }
   judges.forEach((j) => checkJudgeModel(j, subjectModel));
   checkPanel(judges, { minFamilies: allowSmallPanel ? 1 : MIN_PANEL_FAMILIES });
-  return { judges, small: families(judges).length < MIN_PANEL_FAMILIES };
+  return { judges, small: families(judges).length < MIN_PANEL_FAMILIES, ...(substituted ? { substituted } : {}) };
 }
 
 async function cmdJudge(opts) {
@@ -79,7 +105,8 @@ async function cmdJudge(opts) {
   const run = loadRun(runDir);
   let suiteJudges = [];
   try { suiteJudges = loadSuite(run.config.suite, loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir).judges; } catch { /* run without a known suite */ }
-  const { judges, small } = resolveJudges({ cliJudges: opts.judges, suiteJudges, subjectModel: run.config.model ?? null, allowSmallPanel: Boolean(opts['allow-small-panel']) });
+  const { judges, small, substituted } = resolveJudges({ cliJudges: opts.judges, suiteJudges, subjectModel: run.config.model ?? null, allowSmallPanel: Boolean(opts['allow-small-panel']) });
+  if (substituted) console.log(`subject ${run.config.model}: judge panel dropped ${substituted.dropped.join(', ')}, added ${substituted.added.join(', ') || 'nothing'} (a judge from the subject's own family is not used)`);
   const profile = optionalProfile(opts.profile);
   const modes = String(opts.mode || (profile ? profile.judging.modes.join(',') : 'rubric,pairwise')).split(',');
   if (modes.some((m) => !JUDGE_MODES.includes(m))) throw new Error(`--mode takes ${JUDGE_MODES.join(', ')}`);

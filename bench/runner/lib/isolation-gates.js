@@ -69,12 +69,19 @@ function installsDirs(homes = realHomes()) {
   return [...seen];
 }
 
+// BENCH_GATE_HOMES (comma separated) replaces the real homes the gate watches. It exists so a test can plant a write
+// without touching the account's own ~/.konductor; leave it unset for a study.
+function homesFromEnv() {
+  const v = process.env.BENCH_GATE_HOMES;
+  return v ? v.split(',').filter(Boolean) : undefined;
+}
+
 /**
  * A gate over the real installs directories. `begin()` hashes them; `end()` hashes again and returns
  * { ok, changed: [{ dir, before, after, added, removed, modified }] }.
  */
 function createInstallsGate({ homes } = {}) {
-  const dirs = installsDirs(homes);
+  const dirs = installsDirs(homes ?? homesFromEnv());
   return {
     dirs,
     begin() {
