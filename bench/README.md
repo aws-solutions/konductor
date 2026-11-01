@@ -187,6 +187,10 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   `--write` keeps `result.json.pre-backfill`, adds `creditsBackfill`, and appends a `backfill` line to `credit-ledger.jsonl` (earlier lines are
   never edited). A timed-out or killed run stays censored; the dry run flags one whose `result.json` also lacks the spawns its stream shows.
   Run it after the cell finishes. Repeating it changes nothing.
+- Skill loads on engine v3: a loaded skills-server call is titled `@konductor-skills/get_skill` with the name in `rawInput.arguments.name`. A call
+  made before the tool was loaded is refused (`Tool Call` failed, or a bare `get_skill` title with no input) and counts in `skillCallsFailed`, never as a
+  load; the model then loads the tool and retries. `--stop-on` ignores refused calls too. The skill fields in `result.json` are written when the run
+  ends, so runs saved by an older runner keep empty `skillsLoaded`; `bench.js skills` recomputes from `stream.jsonl`, `report` reads `result.json`.
 - `workToolCalls` leaves out the `subagent` call and the subagent `summary` pseudo-tool. Transcript
   size sums the parent and subagent sessions (`transcriptPartial` if one is missing). Other metering
   units are flagged. `askedUser` marks a final message that ends with a question, asks for approval,
