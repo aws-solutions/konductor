@@ -1,0 +1,16 @@
+{
+  "description": "The documents each phase of the full SDLC SOP leaves behind, from agent-sops/k-full-sdlc.sop.md (Artifact Layout, and the expected-artifact sets under Progress Tracking). Paths are relative to a root. A * stands for one directory name, such as a feature. A phase with a * is complete only when every feature that has any of its documents has all of them. An empty file does not count.",
+  "roots": [".konductor"],
+  "phases": [
+    { "id": "codebase-analysis", "name": "Codebase analysis", "documents": ["codebase-analysis/analysis.md"] },
+    { "id": "requirements", "name": "Requirements", "documents": ["requirements/business-context.md", "requirements/requirements-summary.md", "requirements/user-stories-raw.md", "requirements/user-stories-extract.md"] },
+    { "id": "design", "name": "Design", "documents": ["design/system-design.md"] },
+    { "id": "design-review", "name": "Principal engineer design review", "documents": ["design/principal-engineer-review.md"] },
+    { "id": "feature-split", "name": "Feature splitting", "documents": ["feature-split/feature-split.md"] },
+    { "id": "specs", "name": "Specs", "documents": ["specs/*/requirements.md", "specs/*/design.md", "specs/*/tasks.md"] },
+    { "id": "code-review", "name": "Code review", "documents": ["*/code-review/report.md", "*/code-review/status.md"] },
+    { "id": "testing", "name": "Testing", "documents": ["*/testing/test-gap-analysis.md", "*/testing/e2e-test-strategy.md", "*/testing/test-coverage-review-report.md"] },
+    { "id": "summary", "name": "Final summary", "documents": ["sdlc-checklist.md", "sdlc-summary.md"] },
+    { "id": "documentation", "name": "Documentation", "documents": ["README.md", "developer-guide.md"], "atWorkspaceRoot": true }
+  ]
+}

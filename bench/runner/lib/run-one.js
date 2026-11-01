@@ -124,6 +124,13 @@ function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tri
   } catch {
     acc.meta.flags.push('snapshotFailed');
   }
+  if (harness.orchMetrics) {
+    try {
+      acc.orch = harness.orchMetrics(outDir);
+    } catch {
+      acc.meta.flags.push('orchMetricsFailed');
+    }
+  }
   const checkHome = path.join(runRoot, 'check-home');
   fs.mkdirSync(path.join(checkHome, 'tmp'), { recursive: true });
   const { env } = buildCheckEnv(process.env, { home: checkHome, konductor: false });
@@ -320,7 +327,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       if (exec?.creditLimitHit) meta.flags.push('creditLimit');
       if (exec?.stopped) meta.flags.push('earlyStopped');
       if (harness.finalize && harness.finalize(outDir, ctx) > 0) meta.flags.push('credsRedacted');
-      result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
+      result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, orch: acc.orch ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
     }
   }
 

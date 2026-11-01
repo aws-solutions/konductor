@@ -145,6 +145,12 @@ function cmdRecheck(opts) {
 
 // --run takes one directory, or several separated by commas that are merged into one run.
 const runDirsOf = (opts) => String(need(opts, 'run')).split(',').filter(Boolean).map((d) => path.resolve(d));
+// --phases takes phase ids, comma separated, or "all"; absent means the phase-document rows are left out.
+function phasesOf(opts) {
+  if (opts.phases === undefined) return null;
+  if (opts.phases === true) throw new Error('--phases takes phase ids separated by commas, or all');
+  return opts.phases === 'all' ? 'all' : String(opts.phases).split(',').filter(Boolean);
+}
 const scoringOf = (opts) => (opts.scoring && opts.scoring !== true ? path.resolve(opts.scoring) : undefined);
 
 function printWritten(written) {
@@ -181,7 +187,7 @@ function cmdReport(opts) {
   if (!run.runs.some((r) => r.armId === baseline)) console.error(`warning: baseline arm "${baseline}" has no runs; pairwise columns will be empty`);
   const profile = optionalProfile(opts.profile);
   const res = generateRunReport({
-    run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline, out: opts.out, detail: opts.detail ?? profile?.report.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0], profile,
+    run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline, out: opts.out, detail: opts.detail ?? profile?.report.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0], profile, phases: phasesOf(opts),
   });
   printWritten(res.written);
   if (profile?.calibrationSample) {
@@ -238,7 +244,7 @@ function cmdContrast(opts) {
   const tasks = loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) });
   const c = contrastRun({
     run, tasks, base: opts.base, heads,
-    minRel: numOpt(opts, 'min-rel', 0.15), rule, by: opts.by === undefined ? 'class' : String(opts.by),
+    minRel: numOpt(opts, 'min-rel', 0.15), rule, by: opts.by === undefined ? 'class' : String(opts.by), phases: phasesOf(opts),
   });
   const res = generateContrast({ run, tasks, c, out: opts.out, detail: opts.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0] });
   const mdFile = res.written.find((w) => w.endsWith('contrast.md'));

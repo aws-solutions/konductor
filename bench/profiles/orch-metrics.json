@@ -1,0 +1,12 @@
+{
+  "description": "How review and rework are read from the subagent calls of a run. Every pattern is a case-insensitive regular expression. A spawn is classified from its headline (the TASK line of its brief, or the start of the brief, plus the purpose, role and stage name) and its verdict from the text it returned. An explicit 'Verdict: WORD' in the returned text wins; otherwise the fail patterns, then the pass patterns, decide; no match is 'unknown', never a pass. These are heuristics over free text: change a pattern here, not in code, and re-read a sample of runs when you do.",
+  "headlineChars": 400,
+  "fix": ["\\b(fix|rework|revise|remediate|address|correct)\\b[^.\\n]{0,100}\\b(finding|issue|comment|critical|important|major|review|reviewer|feedback|inaccurac\\w*)"],
+  "review": ["\\b(re-?review|review|verify|verification|audit|critique|adversarial)\\b", "reviewer|checker"],
+  "verdictWords": {
+    "pass": ["pass", "passed", "approved", "ok", "lgtm"],
+    "fail": ["fail", "failed", "blocked", "rejected", "needs_changes", "needs_rework", "needs_revision", "changes_requested", "not_approved"]
+  },
+  "fail": ["\\b[1-9]\\d*\\s+(critical|important|major)\\b", "^\\W*(critical|important|major)\\W{0,4}(?!none|n/a|no )\\S"],
+  "pass": ["\\bno (critical|important|major)\\b", "\\b0 (critical|important|major)\\b", "\\b(critical|important|major):\\s*none\\b"]
+}

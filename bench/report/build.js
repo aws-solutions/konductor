@@ -14,6 +14,7 @@ const { CLASS_ORDER } = require('./aggregate.js');
 const { MIN_RECALL } = require('../runner/lib/contamination.js');
 const { gradedSummary, gradedTable } = require('./graded.js');
 const { readLedger } = require('../runner/lib/credit-ledger.js');
+const { orchBlocks } = require('./orch.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const f = (v, d = 1) => (fin(v) ? v.toFixed(d) : 'n/a');
@@ -148,7 +149,7 @@ function profileBlocks(profile, check) {
   ];
 }
 
-function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, weights, detail, profile = null }) {
+function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, weights, detail, profile = null, docPhases = null }) {
   const blocks = [];
   const charts = new Map();
   const full = detail === 'full';
@@ -277,6 +278,8 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
     blocks.push(D.h(2, 'Contamination'));
     blocks.push(D.table(['arm', 'audited', 'externalFetch', 'fixRecall'], arms.map((a) => { const c = cont.filter((x) => x.arm === a); return [a, c.length, c.filter((x) => (x.contamination.externalFetch || []).length).length, c.filter((x) => (x.contamination.fixRecallChars || 0) >= MIN_RECALL).length]; })));
   }
+
+  blocks.push(...orchBlocks(run, { phases: docPhases }));
 
   blocks.push(D.h(2, 'Spend'));
   const spendRows = arms.map((a) => { const rs = rows.filter((x) => x.arm === a); return [a, rs.length, f(rs.reduce((n, x) => n + (fin(x.credits) ? x.credits : 0), 0), 2), f(mean(rs.map((x) => x.credits).filter(fin)), 2), rs.filter((x) => x.censored).length]; });

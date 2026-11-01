@@ -35,11 +35,12 @@ function crossCheckCredits(streamCredits, sessions) {
  * transcript: {chars, bytes, partial}, summed over the parent and subagent sessions.
  * usage: opencode only, {tokens, costUsd, modelCalls, sessions} summed over the parent and all subagent sessions.
  * skills: {extraction, info} from the harness (see skills.js), or null.
+ * orch: spawns, depth, review flow and phase documents (see orch-metrics.js), or null.
  * conv: the autonomy conversation (see autonomy.newConversation), for tasks with an autonomy block.
  * meta: runner-side facts {agentStarted, flags, infraError, modelNormalized, rewrittenAgents, mcpSha256,
  *   isolation, homeTripwireHits, inFlightAtStart, creditsSessionTotal}.
  */
-function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, checks, transcript, env, meta = {}, conv = null }) {
+function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, orch = null, checks, transcript, env, meta = {}, conv = null }) {
   const runtime = arm.runtime ?? 'kiro-cli';
   const oc = runtime === 'opencode';
   const flags = [...(meta.flags || [])];
@@ -108,6 +109,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     workToolCalls: agg ? agg.workToolCalls : null,
     toolNames: agg ? agg.toolNames : null,
     subagentCalls: agg ? agg.subagentCalls : null,
+    orch,
     contextUsagePercentage: agg?.contextUsagePercentage ?? null,
     transcriptBytes: transcript?.bytes ?? null,
     transcriptPartial: transcript ? Boolean(transcript.partial) : null,

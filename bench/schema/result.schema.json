@@ -136,6 +136,20 @@
         "null"
       ]
     },
+    "orch": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Spawns, spawn depth, review rounds, reworks after a pass and phase documents read from the stream and the workspace (runner/lib/orch-metrics.js)."
+    },
+    "armConfig": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Keys written to the arm scratch ~/.konductor/config.yml (--arm-config)."
+    },
     "contextUsagePercentage": {
       "type": [
         "number",

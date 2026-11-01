@@ -7,6 +7,7 @@
 const { statFor, classify, armIdentity, MIN_RUNS_FOR_CI } = require('./compare.js');
 const { buildReport, outcomeOf, OUTCOMES, CLASS_ORDER, BASIS } = require('./aggregate.js');
 const { MIN_RECALL } = require('../runner/lib/contamination.js');
+const { enrichOrch, phaseTotals } = require('./orch.js');
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 // Autonomy figures exist only on runs of a task with an autonomy block; the others report null and drop out of the mean.
@@ -37,12 +38,24 @@ const SPECS = [
   { name: 'intendedFraction', group: 'autonomy', better: 'higher', kind: 'mean', fmt: 'pct', optional: true, scored: 'intendedTests' },
   { name: 'invariantFraction', group: 'autonomy', better: 'higher', kind: 'mean', fmt: 'pct', optional: true, scored: 'invariantTests' },
   { name: 'completedWithoutHelp', group: 'autonomy', better: 'higher', kind: 'mean', fmt: 'rate', runs: 'executed', optional: true, get: (r) => (withAutonomy(r) && typeof r.completedWithoutHelp === 'boolean' ? Number(r.completedWithoutHelp) : null) },
+  // orchestration: read from result.orch (stored by the runner, or backfilled from the run directory)
+  { name: 'spawns', group: 'orchestration', better: 'lower', kind: 'mean', fmt: 'num', runs: 'finished', optional: true, get: (r) => num(r.orch?.spawns) },
+  { name: 'maxSpawnDepth', group: 'orchestration', better: 'lower', kind: 'mean', fmt: 'num', runs: 'finished', optional: true, get: (r) => num(r.orch?.maxSpawnDepth) },
+  { name: 'reviewRounds', group: 'orchestration', better: 'lower', kind: 'mean', fmt: 'num', runs: 'finished', optional: true, get: (r) => num(r.orch?.reviewRounds) },
+  { name: 'reworksAfterPass', group: 'orchestration', better: 'lower', kind: 'mean', fmt: 'num', runs: 'finished', optional: true, get: (r) => num(r.orch?.reworksAfterPass) },
+];
+
+// Added only when --phases names the phases to count; a task that is not an SDLC task would otherwise show 0% everywhere.
+const phaseSpecs = (phases) => [
+  { name: 'phaseDocsPresent', group: 'orchestration', better: 'higher', kind: 'mean', fmt: 'pct', runs: 'executed', optional: true, get: (r) => { const t = phaseTotals(r.orch, phases); return t && t.total ? t.present / t.total : null; } },
+  { name: 'phaseDocsComplete', group: 'orchestration', better: 'higher', kind: 'mean', fmt: 'rate', runs: 'executed', optional: true, get: (r) => { const t = phaseTotals(r.orch, phases); return t ? Number(t.complete) : null; } },
 ];
 
 const LABELS = {
   cost: 'cost', wallClockMs: 'wall clock', modelCalls: 'model calls', workToolCalls: 'work tool calls', subagentCalls: 'subagent calls',
   hiddenFraction: 'hidden tests passed', regressionFraction: 'regression tests passed', checksPass: 'checks all pass', rubric: 'rubric score',
   askedUser: 'asked the user', externalFetch: 'external fetch', fixRecall: 'fix recall', modelMismatch: 'model mismatch', timeouts: 'timeouts', errors: 'errors',
+  spawns: 'spawns', maxSpawnDepth: 'max spawn depth', reviewRounds: 'review rounds', reworksAfterPass: 'reworks after a pass', phaseDocsPresent: 'phase documents present', phaseDocsComplete: 'every phase document present',
   interjections: 'interjections', unmatchedQuestions: 'unmatched questions', intendedFraction: 'intended tests passed', invariantFraction: 'invariant tests passed', completedWithoutHelp: 'completed without help',
 };
 
@@ -134,8 +147,10 @@ function buildCell({ spec: specs, baseEntries, headEntries, base, head, basis, r
   return { metrics, outcomes, notes, minReplicates: { base: minReplicates(baseEntries), head: minReplicates(headEntries) } };
 }
 
-function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by = 'class' }) {
+function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by = 'class', phases = null }) {
   if (!['class', 'task'].includes(by)) throw new Error('--by takes class or task');
+  enrichOrch(run);
+  const specs = phases ? [...SPECS, ...phaseSpecs(phases)] : SPECS;
   const armIds = orderedArms(run);
   const baseArm = base ?? pickBase(armIds);
   if (!armIds.includes(baseArm)) throw new Error(`base arm "${baseArm}" has no runs in ${run.dir} (arms present: ${armIds.join(', ')})`);
@@ -166,7 +181,7 @@ function contrastRun({ run, tasks, base, heads, minRel = 0.15, rule = 'both', by
       const headEntries = entriesOf(head, scope);
       if (!baseEntries.length && !headEntries.length) continue;
       const rubric = (arm) => series[arm]?.[scope]?.rubricScore ?? [];
-      const cell = buildCell({ spec: SPECS, baseEntries, headEntries, base: baseArm, head, basis, rubric, opts });
+      const cell = buildCell({ spec: specs, baseEntries, headEntries, base: baseArm, head, basis, rubric, opts });
       cells[head][scope] = cell;
       const n = Math.min(cell.outcomes.base.n, cell.outcomes.head.n);
       if (n < MIN_RUNS_FOR_CI) anecdotal.push({ head, scope, n, kind: 'runs' });
@@ -210,8 +225,9 @@ function fmtDelta(m) {
 
 function tableFor(cell) {
   const rows = ['| metric | base (n) | head (n) | delta | delta % | verdict |', '| --- | --- | --- | --- | --- | --- |'];
-  for (const spec of SPECS) {
+  for (const spec of [...SPECS, ...phaseSpecs(null)]) {
     const m = cell.metrics[spec.name];
+    if (!m) continue;
     if (spec.optional && m.nBase === 0 && m.nHead === 0) continue;
     const label = spec.name === 'cost' ? `cost (${m.unit})` : LABELS[spec.name];
     const [abs, rel] = fmtDelta(m);

@@ -15,6 +15,7 @@ const sandbox = require('../sandbox.js');
 const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 const { writeArmConfig } = require('../arm-config.js');
+const { orchMetricsOfRunDir } = require('../orch-metrics.js');
 
 const id = 'kiro-cli';
 
@@ -184,6 +185,11 @@ function parseResult(outDir, { home, acc, arm, ctx }) {
   return acc;
 }
 
+// Spawns, depth, review flow and phase documents from the stream and the workspace snapshot taken after the run.
+function orchMetrics(outDir) {
+  return orchMetricsOfRunDir(outDir);
+}
+
 function collectArtifacts(home, outDir) {
   const agentJson = path.join(home, '.kiro/agents/konductor.json');
   if (fs.existsSync(agentJson)) fs.copyFileSync(agentJson, path.join(outDir, 'installed-agent.json'));
@@ -191,5 +197,5 @@ function collectArtifacts(home, outDir) {
 
 module.exports = {
   id, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths,
-  parseResult, turnSummary, collectArtifacts, kiroArgs, readTranscripts, copySessions,
+  parseResult, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions,
 };
