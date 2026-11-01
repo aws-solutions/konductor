@@ -274,7 +274,7 @@ function trialInstall(prepared, ctx) {
 const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
 module.exports = {
-  id, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE,
+  id, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens,
 };

@@ -24,10 +24,13 @@ const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
 // Spawns in its own process group so a timeout kills child tools too. The group is
 // registered so a runner interrupted by a signal can kill it.
-function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, creditLimit = null, creditPollMs = 1000, stop = null }) {
+function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, stdinPath = null, creditLimit = null, creditPollMs = 1000, stop = null }) {
   return new Promise((resolve) => {
     const out = fs.openSync(stdoutPath, 'w');
     const err = fs.openSync(stderrPath, 'w');
+    // A file as stdin ends at its last byte; a pipe left open would make some CLIs wait for more input.
+    const input = stdinPath ? fs.openSync(stdinPath, 'r') : null;
+    const closeAll = () => { fs.closeSync(out); fs.closeSync(err); if (input !== null) fs.closeSync(input); };
     const started = Date.now();
     let timedOut = false;
     let limitHit = false;
@@ -35,9 +38,9 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
     let metered = null;
     let child;
     try {
-      child = spawn(cmd, args, { cwd, env, stdio: ['ignore', out, err], detached: true });
+      child = spawn(cmd, args, { cwd, env, stdio: [input ?? 'ignore', out, err], detached: true });
     } catch (e) {
-      fs.closeSync(out); fs.closeSync(err);
+      closeAll();
       resolve({ exitCode: null, timedOut: false, wallClockMs: 0, error: e.message });
       return;
     }
@@ -46,7 +49,7 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
     const finish = (result) => {
       if (child.pid) procs.untrackGroup(child.pid);
       clearInterval(watcher);
-      fs.closeSync(out); fs.closeSync(err);
+      closeAll();
       resolve({ ...result, credits: meter ? meter.poll() : null, creditLimitHit: limitHit, stopped });
     };
     // Kills the process group once the credits metered so far pass the limit, or the stop watcher has a decision.

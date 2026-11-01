@@ -55,6 +55,10 @@ const USAGE = `Usage:
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
        [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR] [--profile quick|detailed]
+       [--judge-backend kiro|opencode] [--budget-usd X] [--aws-creds-file FILE] [--aws-profile bench] [--aws-region us-east-1] [--opencode-bin PATH] [--cache DIR]
+       (--judge-backend opencode asks the panel through opencode run on Amazon Bedrock (tools off, a one-line system prompt, temperature 0 where the model takes one)
+       instead of kiro-cli. It needs --aws-creds-file, costs USD (--budget-usd, not --budget-credits) and cannot be combined with --judge-cmd. Panel ids stay the same
+       (gpt-5.6-luna, deepseek-3.2, glm-5, qwen3-coder-next, minimax-m2.5) and are mapped to Bedrock ids. One results directory keeps one backend; kiro is the default)
        (--mode takes rubric, pairwise, graded. graded asks for a 1 to 5 grade of each response in both answer orders and reports where the preference flipped
        with position. --profile detailed makes rubric,pairwise,graded the default modes. Every call is a line in credit-ledger.jsonl)
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]

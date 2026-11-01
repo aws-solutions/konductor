@@ -4,6 +4,7 @@
 // Command handlers for judge, report, compare and calibrate. bench.js dispatches here.
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { loadTasks, loadSuite, BENCH_DIR } = require('./lib/tasks.js');
 const sandbox = require('./lib/sandbox.js');
@@ -12,6 +13,10 @@ const { resolveIsolation } = require('./lib/isolate.js');
 const procs = require('./lib/procs.js');
 const { loadRedactions } = require('../judge/redact.js');
 const { makeKiroCaller, makeCmdCaller } = require('../judge/model.js');
+const { makeOpencodeCaller } = require('../judge/opencode.js');
+const { BACKENDS, DEFAULT_BACKEND, checkOpencodeJudges } = require('../judge/backends.js');
+const oc = require('./lib/harness/opencode.js');
+const { readProfile } = require('./lib/harness/opencode-creds.js');
 const { runJudging } = require('../judge/run.js');
 const { exportSheet, scoreLabels, formatCalibration } = require('../judge/calibrate.js');
 const { loadRun, loadRuns } = require('../report/load.js');
@@ -101,6 +106,20 @@ function resolveJudges({ cliJudges, suiteJudges, subjectModel = null, allowSmall
   return { judges, small: families(judges).length < MIN_PANEL_FAMILIES, ...(substituted ? { substituted } : {}) };
 }
 
+const flagValue = (opts, name) => (opts[name] !== undefined && opts[name] !== true ? String(opts[name]) : null);
+
+// The opencode backend: one `opencode run` per judge call on Bedrock, tools off, credentials from a shared-credentials file.
+function makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir }) {
+  const credsFile = path.resolve(need(opts, 'aws-creds-file'));
+  const awsProfile = flagValue(opts, 'aws-profile') ?? 'bench';
+  const region = flagValue(opts, 'aws-region') ?? oc.REGION;
+  if (!/^[a-z]{2}(?:-[a-z]+)+-\d$/.test(region)) throw new Error(`--aws-region "${region}" is not an AWS region name`);
+  readProfile(credsFile, awsProfile);
+  const cacheDir = path.resolve(flagValue(opts, 'cache') ?? path.join(os.tmpdir(), 'b-cache'));
+  const resolved = oc.resolveOpencode({ cacheDir, binOverride: flagValue(opts, 'opencode-bin') });
+  return makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, awsProfile, region, timeoutMs, rawDir });
+}
+
 async function cmdJudge(opts) {
   const runDir = path.resolve(need(opts, 'run'));
   const benchDir = benchDirOf(opts);
@@ -116,10 +135,20 @@ async function cmdJudge(opts) {
   const arms = [...new Set(run.runs.map((r) => r.armId))];
   if ((modes.includes('pairwise') || modes.includes('graded')) && !arms.includes(baseline)) throw new Error(`baseline arm "${baseline}" has no runs in ${runDir} (arms present: ${arms.join(', ')}); pass --baseline ARM or --mode rubric`);
   const timeoutMs = numOpt(opts, 'judge-timeout-sec', DEFAULTS.timeoutSec) * 1000;
-  const judgeCmd = opts['judge-cmd'] || process.env.BENCH_JUDGE_CMD;
+  const backend = opts['judge-backend'] === undefined ? DEFAULT_BACKEND : opts['judge-backend'];
+  if (!BACKENDS.includes(backend)) throw new Error(`--judge-backend takes ${BACKENDS.join(' or ')}`);
+  const viaOpencode = backend === 'opencode';
+  if (viaOpencode && opts['judge-cmd']) throw new Error('--judge-cmd and --judge-backend opencode cannot be used together');
+  if (viaOpencode && opts['budget-credits'] !== undefined) throw new Error('--budget-credits does not apply to the opencode backend; use --budget-usd');
+  if (!viaOpencode && opts['budget-usd'] !== undefined) throw new Error('--budget-usd applies to the opencode backend only; use --budget-credits');
+  if (viaOpencode) checkOpencodeJudges(judges);
+  const judgeCmd = opts['judge-cmd'] || (viaOpencode ? undefined : process.env.BENCH_JUDGE_CMD);
   const log = (m) => console.error(`[judge ${new Date().toISOString().slice(11, 19)}] ${m}`);
   let caller;
-  if (judgeCmd) {
+  if (viaOpencode) {
+    caller = makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir: path.join(runDir, 'judge', 'raw') });
+    log(`backend: opencode ${caller.info.opencodeVersion}, ${caller.info.region}, system prompt sha256 ${caller.info.systemPromptSha256.slice(0, 12)}`);
+  } else if (judgeCmd) {
     caller = makeCmdCaller(String(judgeCmd), { timeoutMs });
   } else {
     const authDb = opts['auth-db'] ? path.resolve(opts['auth-db']) : sandbox.defaultAuthDb();
@@ -140,6 +169,8 @@ async function cmdJudge(opts) {
       runDir, benchDir, extraDirs: extraDirsOf(opts), judges, modes, baseline, caller, smallPanel: small,
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
+      budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
+      backend, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
       limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), log,
     });
   } finally {
@@ -149,11 +180,14 @@ async function cmdJudge(opts) {
   const recs = [...j.rubric, ...j.pairwise];
   const errors = recs.filter((r) => r.judgeError);
   const last = j.invocations[j.invocations.length - 1];
-  console.log(`judged ${j.rubric.length} rubric, ${j.pairwise.length} pairwise and ${j.graded.length} graded record(s); ${errors.length + j.graded.filter((r) => r.judgeError).length} with judgeError; live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)}); ${j.notJudged.length} run(s) not judged`);
+  const spend = viaOpencode ? `live spend $${last.spentUsd.toFixed(4)} USD (all invocations: $${j.spentUsd.toFixed(4)}), 0 credits` : `live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)})`;
+  console.log(`judged ${j.rubric.length} rubric, ${j.pairwise.length} pairwise and ${j.graded.length} graded record(s); ${errors.length + j.graded.filter((r) => r.judgeError).length} with judgeError; ${spend}; ${j.notJudged.length} run(s) not judged`);
   if (small) console.log(`warning: panel has fewer than ${MIN_PANEL_FAMILIES} model families (--allow-small-panel)`);
   console.log(j.ledgerLine);
   if (j.guardState === 'hard') {
-    console.error('credit guard: HARD STOP, this command spent past 100% of --budget-credits; calls in flight were counted, and no further call started');
+    console.error(viaOpencode
+      ? 'usd guard: HARD STOP, this command spent past 100% of --budget-usd; calls in flight were counted, and no further call started'
+      : 'credit guard: HARD STOP, this command spent past 100% of --budget-credits; calls in flight were counted, and no further call started');
     process.exitCode = 3;
   }
   console.log(`wrote ${path.join(runDir, 'judgments.json')}`);

@@ -15,8 +15,9 @@ const { withCache } = require('./model.js');
 const { makeQuoteMatcher } = require('./quote.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
+const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
 
-const MAX_PROMPT_BYTES = 120000; // one argv string is capped near 128 KiB on Linux
+const MAX_PROMPT_BYTES = 120000; // one argv string is capped near 128 KiB on Linux; the opencode backend reads the prompt from stdin
 
 const runKey = (r) => `${r.armId}|${r.taskId}|${r.replicate}`;
 // A quote that is not in the bundle weakens the verdict one level. The judge's own verdict is kept as verdictRaw.
@@ -30,15 +31,19 @@ function notJudgedReason(r) {
 }
 
 // One judged answer: call, validate, retry once with a short correction on a bad reply.
-async function judgeOnce({ caller, model, prompt, check }) {
+async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = MAX_PROMPT_BYTES }) {
   const calls = [];
   let parseFailures = 0;
   let p = prompt;
   let reason = '';
   for (let attempt = 0; attempt < 2; attempt++) {
-    if (Buffer.byteLength(p) > MAX_PROMPT_BYTES) return { error: 'prompt too large for one argument; lower the bundle limits', calls, parseFailures };
+    if (Buffer.byteLength(p) > maxPromptBytes) return { error: 'prompt too large for one argument; lower the bundle limits', calls, parseFailures };
     const r = await caller({ model, prompt: p });
-    calls.push({ credits: r.credits ?? 0, latencyMs: r.latencyMs ?? null, cached: Boolean(r.cached), ...(r.cached ? { originalCredits: r.originalCredits ?? null } : {}), ok: !r.error });
+    calls.push({
+      credits: r.credits ?? 0, latencyMs: r.latencyMs ?? null, cached: Boolean(r.cached), ...(r.cached ? { originalCredits: r.originalCredits ?? null } : {}),
+      ...(r.usd !== undefined ? { usd: r.usd, ...(r.cached ? { originalUsd: r.originalUsd ?? null } : {}), tokens: r.tokens ?? null, ...(r.retries ? { retries: r.retries } : {}) } : {}),
+      ok: !r.error,
+    });
     if (r.error) return { error: r.error, calls, parseFailures };
     const parsed = parseJsonStrict(r.text);
     const checked = parsed.ok ? check(parsed.value) : parsed;
@@ -52,15 +57,28 @@ async function judgeOnce({ caller, model, prompt, check }) {
 }
 
 async function runJudging(o) {
-  const { runDir, benchDir, extraDirs = [], judges, modes, baseline, concurrency, budgetCredits, limits, explicitLimits = {}, redactions, log = () => {} } = o;
+  const { runDir, benchDir, extraDirs = [], judges, modes, baseline, concurrency, budgetCredits, budgetUsd = null, limits, explicitLimits = {}, redactions, log = () => {} } = o;
+  const backend = o.backend ?? DEFAULT_BACKEND;
+  const backendInfo = o.backendInfo ?? null;
+  if (!BACKENDS.includes(backend)) throw new Error(`unknown judge backend "${backend}" (${BACKENDS.join(' or ')})`);
+  const usdMode = backend === 'opencode';
+  if (usdMode && budgetCredits != null) throw new Error('--budget-credits does not apply to the opencode backend; use --budget-usd');
+  if (!usdMode && budgetUsd != null) throw new Error('--budget-usd applies to the opencode backend only; use --budget-credits');
   const run = loadRun(runDir);
+  // Verdicts from two backends are not comparable, so one results directory keeps one. Files from before the label existed are kiro.
+  const earlier = run.judgments ? (run.judgments.backend ?? DEFAULT_BACKEND) : null;
+  if (earlier && earlier !== backend) {
+    throw new Error(`${runDir} was already judged on the ${earlier} backend; cannot add ${backend} judgments to it (one backend per panel per study). Judge a copy of the directory, or move judgments.json aside.`);
+  }
   const tasks = loadTasks(benchDir, { extraDirs });
   const subject = o.subjectModel ?? run.config.model ?? run.runs[0].result.model;
   judges.forEach((j) => checkJudgeModel(j, subject));
   checkPanel(judges);
-  const caller = withCache(o.caller, path.join(run.dir, 'judge', 'cache'));
+  // Kiro keeps the original cache key. Any other backend adds itself (and what its caller says matters) to the key.
+  const salt = o.cacheSalt ?? (usdMode ? (model) => `${backend}\n${model}` : null);
+  const caller = withCache(o.caller, path.join(run.dir, 'judge', 'cache'), { salt });
   // Every call is a ledger line. A budget turns the ledger into a guard that stops new calls at 90% of it.
-  const study = o.ledger ?? openLedger({ dir: run.dir, budget: budgetCredits });
+  const study = o.ledger ?? openLedger({ dir: run.dir, budget: usdMode ? budgetUsd : budgetCredits, budgetUnit: usdMode ? 'usd' : 'credits' });
 
   const candidates = run.runs.filter((r) => r.result.status !== 'budget_skipped');
   const notJudged = candidates.map((r) => ({ armId: r.armId, taskId: r.taskId, replicate: r.replicate, reason: notJudgedReason(r) })).filter((r) => r.reason);
@@ -99,7 +117,10 @@ async function runJudging(o) {
   units.sort((a, b) => (a.kind === 'rubric' ? 0 : 1) - (b.kind === 'rubric' ? 0 : 1));
 
   let spent = 0;
+  let spentUsd = 0;
   const spentByJudge = {};
+  const spentUsdByJudge = {};
+  const maxPromptBytes = usdMode ? Infinity : MAX_PROMPT_BYTES;
   const worker = async (u) => {
     const task = tasks.get(u.run.taskId);
     const answerKey = readAnswerKey(task.fixtureDir);
@@ -107,7 +128,7 @@ async function runJudging(o) {
     if (u.kind === 'rubric') {
       const b = bundles.get(runKey(u.run));
       const prompt = rubricPrompt({ task, answerKey, bundleText: b.text });
-      out = await judgeOnce({ caller, model: u.judge, prompt, check: (v) => validateRubricReply(v, task.rubric) });
+      out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check: (v) => validateRubricReply(v, task.rubric) });
     } else {
       // Order 1 puts the baseline in position A; order 2 swaps. Pairwise and graded modes share the layout.
       const mine = bundles.get(runKey(u.run)).text;
@@ -115,22 +136,28 @@ async function runJudging(o) {
       const [bundleA, bundleB] = u.order === 1 ? [theirs, mine] : [mine, theirs];
       if (u.kind === 'graded') {
         const prompt = gradedPrompt({ task, answerKey, bundleA, bundleB });
-        out = await judgeOnce({ caller, model: u.judge, prompt, check: validateGradedReply });
+        out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check: validateGradedReply });
       } else {
         const prompt = pairPrompt({ task, answerKey, bundleA, bundleB });
-        out = await judgeOnce({ caller, model: u.judge, prompt, check: validatePairReply });
+        out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check: validatePairReply });
       }
     }
     const live = out.calls.filter((c) => !c.cached).reduce((s, c) => s + c.credits, 0);
     spent += live;
     spentByJudge[u.judge] = (spentByJudge[u.judge] || 0) + live;
+    const liveUsd = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.usd || 0), 0);
+    spentUsd += liveUsd;
+    spentUsdByJudge[u.judge] = (spentUsdByJudge[u.judge] || 0) + liveUsd;
     for (const c of out.calls) {
-      study.record({ kind: 'judge', unit: 'credits', judge: u.judge, mode: u.kind === 'pair' ? 'pairwise' : u.kind, arm: u.run.armId, task: u.run.taskId, replicate: u.run.replicate, ...(u.order ? { order: u.order } : {}), credits: c.cached ? 0 : c.credits, cached: Boolean(c.cached), ok: c.ok });
+      study.record({
+        kind: 'judge', unit: usdMode ? 'usd' : 'credits', judge: u.judge, mode: u.kind === 'pair' ? 'pairwise' : u.kind, arm: u.run.armId, task: u.run.taskId, replicate: u.run.replicate, ...(u.order ? { order: u.order } : {}),
+        credits: c.cached ? 0 : c.credits, ...(usdMode ? { usd: c.cached ? 0 : (c.usd ?? null), tokens: c.cached ? null : (c.tokens ?? null) } : {}), cached: Boolean(c.cached), ok: c.ok,
+      });
     }
     log(`judged ${u.kind} ${u.judge} ${runKey(u.run)}${u.order ? ` order ${u.order}` : ''}: ${out.error ? `ERROR ${out.error}` : 'ok'}; ${study.line()}`);
     return out;
   };
-  const onSkip = () => ({ error: `budget reached (${study.stopReason() ?? `${budgetCredits} credits`})`, calls: [], parseFailures: 0 });
+  const onSkip = () => ({ error: `budget reached (${study.stopReason() ?? (usdMode ? `$${budgetUsd}` : `${budgetCredits} credits`)})`, calls: [], parseFailures: 0 });
   const outs = await runPool(units, concurrency, worker, () => study.shouldStop(), onSkip);
 
   const rubric = [];
@@ -194,13 +221,13 @@ async function runJudging(o) {
     pairwise.push({ kind: 'pairwise', judge, armId: r.armId, taskId: r.taskId, replicate: r.replicate, baselineId: baseline, verdict: null, positionInconsistent: false, orderings: [null, null], reasons: [], parseFailures: 0, calls: [], redactionsFired: {}, judgeError: `no baseline run (${baseline}) for this task and replicate` });
   }
 
-  const judgments = mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, rubric, pairwise, graded, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
+  const judgments = mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded, notJudged, calls: outs.flatMap((o) => o.calls), smallPanel: Boolean(o.smallPanel) });
   return { ...judgments, ledgerLine: study.line(), guardState: study.state() };
 }
 
 // A rerun with other judges or modes keeps earlier records; a record is replaced by the same (judge, run, kind).
 // Spend accumulates across invocations: cached calls cost 0 now, so replacing a record never erases earlier spend.
-function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
+function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
   const file = path.join(run.dir, 'judgments.json');
   const prev = run.judgments || { rubric: [], pairwise: [], graded: [], judges: [], modes: [] };
   // A unit skipped by the budget has nothing to say; it must not replace an earlier record that has a result.
@@ -218,18 +245,24 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
   const byJudge = { ...(prev.spentByJudge || {}) };
   for (const [j, v] of Object.entries(spentByJudge)) byJudge[j] = (byJudge[j] || 0) + v;
   const allJudges = [...new Set([...prev.judges, ...judges])].sort();
+  const usd = backend === 'opencode';
+  const byJudgeUsd = { ...(prev.spentUsdByJudge || {}) };
+  for (const [j, v] of Object.entries(spentUsdByJudge)) byJudgeUsd[j] = (byJudgeUsd[j] || 0) + v;
   const out = {
     schemaVersion: 1,
     createdAt: new Date().toISOString(),
     subjectModel: run.config.model ?? null,
     baseline,
+    backend,
+    ...(backendInfo ? { backendInfo: { ...(prev.backendInfo || {}), ...backendInfo, models: { ...(prev.backendInfo?.models || {}), ...(backendInfo.models || {}) } } } : {}),
     judges: allJudges,
     modes: [...new Set([...prev.modes, ...modes])].sort(),
     limits,
     panel: { families: families(allJudges), small: Boolean(prev.panel?.small || smallPanel) },
     spentCredits: (prev.spentCredits || 0) + spent,
     spentByJudge: byJudge,
-    invocations: [...(prev.invocations || []), { at: new Date().toISOString(), judges, modes, spentCredits: spent, calls: calls.length, cachedCalls: calls.filter((c) => c.cached).length }],
+    ...(usd ? { spentUsd: (prev.spentUsd || 0) + spentUsd, spentUsdByJudge: byJudgeUsd } : {}),
+    invocations: [...(prev.invocations || []), { at: new Date().toISOString(), judges, modes, spentCredits: spent, ...(usd ? { spentUsd } : {}), calls: calls.length, cachedCalls: calls.filter((c) => c.cached).length }],
     notJudged,
     rubric: merge(prev.rubric, rubric),
     pairwise: merge(prev.pairwise, pairwise),

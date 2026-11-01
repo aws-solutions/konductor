@@ -95,19 +95,27 @@ function makeCmdCaller(cmd, { timeoutMs }) {
   });
 }
 
-// Keyed by hash of (model, prompt). The prompt is stored so a leak scan can run later.
-function withCache(caller, dir) {
+// Keyed by hash of (model, prompt). The prompt is stored so a leak scan can run later. `salt(model)` adds more to the key
+// (backend, system prompt, Bedrock model id); without it the key is the original one, so earlier cached kiro answers still hit.
+function withCache(caller, dir, { salt = null } = {}) {
   return async ({ model, prompt }) => {
-    const sha = crypto.createHash('sha256').update(`${model}\n${prompt}`).digest('hex');
+    const extra = salt ? salt(model) : null;
+    const sha = crypto.createHash('sha256').update(extra === null ? `${model}\n${prompt}` : `${extra}\n${model}\n${prompt}`).digest('hex');
     const file = path.join(dir, `${sha}.json`);
     if (fs.existsSync(file)) {
       const e = JSON.parse(fs.readFileSync(file, 'utf8'));
-      return { text: e.response, credits: 0, originalCredits: e.credits, latencyMs: e.latencyMs, cached: true };
+      return {
+        text: e.response, credits: 0, originalCredits: e.credits, latencyMs: e.latencyMs, cached: true,
+        ...(e.usd !== undefined ? { usd: 0, originalUsd: e.usd, tokens: e.tokens ?? null } : {}),
+      };
     }
     const r = await caller({ model, prompt });
     if (!r.error && r.text) {
       fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(file, JSON.stringify({ model, promptSha: sha, prompt, response: r.text, credits: r.credits, latencyMs: r.latencyMs }));
+      fs.writeFileSync(file, JSON.stringify({
+        model, promptSha: sha, prompt, response: r.text, credits: r.credits, latencyMs: r.latencyMs,
+        ...(r.usd !== undefined ? { backend: 'opencode', bedrockModelId: r.bedrockModelId ?? null, usd: r.usd, tokens: r.tokens ?? null } : {}),
+      }));
     }
     return r;
   };
