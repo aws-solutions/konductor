@@ -20,7 +20,7 @@ const FLAGS = {
   contrast: ['run', 'base', 'head', 'min-rel', 'rule', 'by', 'bench-dir', 'extra-tasks', 'detail', 'format', 'out', 'scoring', 'phases'],
   'pr-plan': ['ref', 'base', 'suite', 'replicates', 'no-vanilla', 'budget-credits', 'seed', 'repo-root', 'bench-dir'],
   recheck: ['run', 'bench-dir', 'dry-run', 'extra-tasks'],
-  backfill: ['run', 'write'],
+  backfill: ['run', 'write', 'credits', 'skills', 'bench-dir', 'repo-root', 'extra-tasks'],
   skills: ['run', 'bench-dir', 'repo-root', 'json', 'extra-tasks'],
   'calibrate export': ['run', 'n', 'seed', 'out', 'bench-dir', 'max-file-chars', 'max-bundle-chars', 'redact-file'],
   'calibrate score': ['labels', 'key', 'kappa-min', 'agreement-min', 'spearman-min', 'save'],
@@ -53,7 +53,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'va
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills',
 ]);
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];

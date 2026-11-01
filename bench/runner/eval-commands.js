@@ -21,6 +21,7 @@ const { buildReport, defaultBaseline } = require('../report/aggregate.js');
 const { renderMarkdown } = require('../report/render.js');
 const { recheckAll } = require('./lib/recheck.js');
 const { backfillAll } = require('./lib/backfill.js');
+const { backfillSkills, summarizeSkillsBackfill, renderSkillsBackfill } = require('./lib/backfill-skills.js');
 const { collectRows, summarizeSkills, renderSkillsMarkdown } = require('../report/skills.js');
 const { compareRuns, formatCompare } = require('../report/compare.js');
 const { contrastRun, renderContrast } = require('../report/contrast.js');
@@ -171,9 +172,7 @@ function cmdRecheck(opts) {
   console.log(`${dryRun ? 'would recheck' : 'rechecked'} ${n('rechecked')}, unchanged ${n('unchanged')}, skipped ${n('skipped')}`);
 }
 
-function cmdBackfill(opts) {
-  const runDir = path.resolve(need(opts, 'run'));
-  const write = Boolean(opts.write);
+function backfillCredits(runDir, write) {
   const out = backfillAll({ runDir, write });
   for (const r of out) {
     const label = `${r.armId}/${r.taskId}/${r.replicate}`;
@@ -186,6 +185,35 @@ function cmdBackfill(opts) {
   const tail = `already complete ${of('complete').length}, unrecoverable ${of('unrecoverable').length}, skipped ${of('skipped').length}`;
   if (write) console.log(`recovered ${of('recovered').length} (${total} credits), ${tail}`);
   else console.log(`dry run, nothing written: would recover ${of('recovered').length} (${total} credits), ${tail}. Pass --write to apply.`);
+}
+
+function backfillSkillFields(opts, runDir, write) {
+  const benchDir = benchDirOf(opts);
+  const guess = path.resolve(benchDir, '..');
+  const repoRoot = opts['repo-root'] && opts['repo-root'] !== true ? path.resolve(opts['repo-root']) : fs.existsSync(path.join(guess, 'agent-sops')) ? guess : null;
+  const out = backfillSkills({ runDir, write, tasks: loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), repoRoot });
+  for (const r of out) {
+    const label = `${r.armId}/${r.taskId}/${r.replicate}`;
+    if (r.status === 'changed') console.log(`${label}: ${write ? 'changed' : 'would change'} skill fields${r.killed ? ' (killed or timed out; credits untouched)' : ''}`);
+    else if (r.status === 'unrecoverable') console.log(`${label}: unrecoverable (${r.reason})`);
+    else if (r.status === 'skipped') console.log(`${label}: skipped (${r.reason})`);
+  }
+  const of = (status) => out.filter((r) => r.status === status);
+  const summary = summarizeSkillsBackfill(out);
+  console.log(`\nSkill loads per arm, before -> after (listing for SOP and skill names: ${repoRoot ?? 'none, naming convention'})\n${renderSkillsBackfill(summary)}\n`);
+  const killed = summary.killed ? ` (${summary.killed} of them killed or timed out)` : '';
+  const tail = `unchanged ${of('unchanged').length}, unrecoverable ${of('unrecoverable').length}, skipped ${of('skipped').length}`;
+  if (write) console.log(`changed ${of('changed').length}${killed}, ${tail}`);
+  else console.log(`dry run, nothing written: would change ${of('changed').length} runs${killed}, ${tail}. Pass --write to apply.`);
+}
+
+// No mode flag means --credits, as before --skills existed.
+function cmdBackfill(opts) {
+  const runDir = path.resolve(need(opts, 'run'));
+  const write = Boolean(opts.write);
+  const skillsMode = Boolean(opts.skills);
+  if (opts.credits || !skillsMode) backfillCredits(runDir, write);
+  if (skillsMode) backfillSkillFields(opts, runDir, write);
 }
 
 // --run takes one directory, or several separated by commas that are merged into one run.

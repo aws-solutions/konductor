@@ -81,11 +81,16 @@ const USAGE = `Usage:
   node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run] [--extra-tasks DIR,DIR]
        (re-evaluates the current task checks against each run's saved workspace; the first results are kept
        under checksOriginal in result.json; stream.jsonl and credit fields are never touched; safe to repeat)
-  node bench/runner/bench.js backfill --run DIR [--write]
-       (engine v3 runs saved before the runner could read v3: rewrites credits, turn duration, tool names and spawn metrics in result.json
-       from stream.jsonl with the runner's own parsers. DIR is one results cell, for example <study>/claude. Without --write it only prints
-       what it would recover. --write keeps result.json.pre-backfill, appends a "backfill" line to credit-ledger.jsonl and never edits an
-       earlier line. A timed-out or killed run has no credit data in v3 and stays censored. Run it when the cell has finished; safe to repeat)
+  node bench/runner/bench.js backfill --run DIR [--credits] [--skills] [--write] [--bench-dir DIR] [--repo-root DIR] [--extra-tasks DIR,DIR]
+       (repairs finished runs from their stream.jsonl with the runner's own parsers. DIR is one results cell, for example <study>/claude.
+       --credits (the default when no mode is given): engine v3 runs saved before the runner could read v3; rewrites credits, turn duration,
+       tool names and spawn metrics. A timed-out or killed run has no credit data in v3 and stays censored.
+       --skills: rewrites the skill-load fields and capInvocation, which the orchestrator pass rule reads, and prints skills loaded per arm before
+       and after. Killed and timed-out runs are included, since their skill calls are in the stream; their credits are not touched.
+       --bench-dir and --repo-root locate the tasks and the skill listing, as for "skills". Give both modes to run them in one pass, credits first.
+       Without --write it only prints what it would change. --credits --write keeps result.json.pre-backfill, adds creditsBackfill and appends a
+       "backfill" line to credit-ledger.jsonl, never editing an earlier line. --skills --write keeps result.json.pre-skills-backfill and adds
+       skillsBackfill. Run it when the cell has finished; safe to repeat)
   node bench/runner/bench.js compare --base DIR --head DIR [--min-rel 0.15] [--rule both|any] [--force] [--bench-dir DIR]
        (exit 0 no regression, 1 regression, 2 refused or error)
   node bench/runner/bench.js skills --run DIR [--bench-dir DIR] [--repo-root DIR] [--json] [--extra-tasks DIR,DIR]
