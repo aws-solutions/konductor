@@ -56,6 +56,41 @@ function toolNameOf(update) {
 // True for a call that came from engine v3, which names its sub-agent target in rawInput.name.
 const isV3Call = (update) => update?._meta?.kiro?.toolName == null;
 
+// Engine v3 titles a call to a loaded MCP tool "@<server>/<tool>". A call made before the tool was loaded is either
+// wrapped ("Tool Call" with the tool id in rawInput.tool_id) or titled with the bare tool name; both come back failed.
+const MCP_TITLE = /^@([^/\s]+)\/(\S+)$/;
+const MCP_TOOL_ID = /^tool::([^:]+)::(\S+)$/;
+
+// { server, tool } of a v3 call to an MCP tool, else null. v2 names the tool itself and is never read here.
+function mcpCallOf(update) {
+  if (!isV3Call(update) || typeof update?.title !== 'string') return null;
+  const t = MCP_TITLE.exec(update.title);
+  if (t) return { server: t[1], tool: t[2], deferred: false };
+  const id = update.title === 'Tool Call' && typeof update.rawInput?.tool_id === 'string' ? MCP_TOOL_ID.exec(update.rawInput.tool_id) : null;
+  return id ? { server: id[1], tool: id[2], deferred: true } : null;
+}
+
+const mcpToolNameOf = (update) => mcpCallOf(update)?.tool ?? null;
+
+/**
+ * A call to the skills server, from either engine: { tool: 'get_skill'|'find_skills', deferred }, else null.
+ * v2 gives the tool and server in _meta.kiro. For v3, `deferred` marks a call made before the tool was loaded:
+ * the engine refuses it, so it names a skill at most and never loads one.
+ */
+function skillsCallOf(update) {
+  const kiro = update?._meta?.kiro;
+  if (kiro?.toolName != null) return SKILL_TOOLS.has(kiro.toolName) && kiro.mcpServerName === SKILLS_SERVER ? { tool: kiro.toolName, deferred: false } : null;
+  const mcp = mcpCallOf(update);
+  if (mcp) return mcp.server === SKILLS_SERVER && SKILL_TOOLS.has(mcp.tool) ? { tool: mcp.tool, deferred: mcp.deferred } : null;
+  return typeof update?.title === 'string' && SKILL_TOOLS.has(update.title) ? { tool: update.title, deferred: true } : null;
+}
+
+// The arguments of an MCP tool call. v3 nests them under rawInput.arguments next to the tool id; v2 sends them flat.
+function mcpInputOf(rawInput) {
+  if (!rawInput || typeof rawInput !== 'object' || typeof rawInput.tool_id !== 'string') return rawInput;
+  return rawInput.arguments && typeof rawInput.arguments === 'object' ? rawInput.arguments : {};
+}
+
 function mcpOutputIsError(update) {
   const items = update?.rawOutput?.items;
   return Array.isArray(items) && items.some((i) => i?.Json?.isError === true);
@@ -298,4 +333,4 @@ function sessionModels(session) {
   return (session?.session_state?.conversation_metadata?.user_turn_metadatas || []).map((t) => t.model ?? null);
 }
 
-module.exports = { toolNameOf, isV3Call, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
+module.exports = { toolNameOf, isV3Call, mcpToolNameOf, skillsCallOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };

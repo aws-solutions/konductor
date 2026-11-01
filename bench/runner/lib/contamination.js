@@ -13,6 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { isTestPath } = require('../../real/lib.js');
+const { toolNameOf, mcpToolNameOf, mcpInputOf } = require('./stream.js');
 
 const MIN_RECALL = 80;
 const EVIDENCE_MAX = 200;
@@ -73,8 +74,8 @@ function scanStream(events, entry) {
       if (seen.has(u.toolCallId)) continue;
       seen.add(u.toolCallId);
     }
-    const tool = u._meta?.kiro?.toolName ?? null;
-    const input = u.rawInput;
+    const tool = toolNameOf(u) ?? mcpToolNameOf(u);
+    const input = mcpInputOf(u.rawInput);
     if (!tool || !input) continue;
     let text = null;
     let commands = false;

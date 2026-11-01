@@ -6,10 +6,9 @@
 // and never touches the process; the caller kills the process group when poll() returns a decision.
 
 const fs = require('node:fs');
-const { SKILLS_SERVER, SUBAGENT_TOOL } = require('./stream.js');
+const { SUBAGENT_TOOL, toolNameOf, skillsCallOf, mcpInputOf } = require('./stream.js');
 
 const STOP_ON = ['first-capability', 'first-load', 'end_turn'];
-const KIRO_SKILL_TOOLS = new Set(['find_skills', 'get_skill']);
 
 const hasInput = (input) => input && typeof input === 'object' && Object.keys(input).length > 0;
 
@@ -19,6 +18,7 @@ const hasInput = (input) => input && typeof input === 'object' && Object.keys(in
  * `maxToolCalls` stops the run after that many distinct tool calls, whatever they are.
  * A capability call is acted on once its input is in the stream and, for a skills-server call, once its answer is too (so a
  * load counts as a load), or after `graceMs`. A subagent call is acted on at once: waiting would run the whole delegation.
+ * On engine v3 a skills call made before the tool was loaded is refused, so it is not a capability call; the retry is.
  * poll() returns null or a sticky { reason: 'first-capability'|'max-tool-calls'|'end_turn', detail }.
  */
 function makeStopWatcher(file, { runtime = 'kiro-cli', stopOn = 'end_turn', maxToolCalls = null, graceMs = 2000, now = Date.now } = {}) {
@@ -33,12 +33,18 @@ function makeStopWatcher(file, { runtime = 'kiro-cli', stopOn = 'end_turn', maxT
   const seen = new Set();
   let capability = null;
 
-  const isCapability = (tool, server) => {
+  const isCapability = (tool) => {
     if (stopOn === 'end_turn') return false;
     if (oc) return tool === 'skill' || tool === 'task';
-    if (tool === SUBAGENT_TOOL) return true;
-    if (server !== SKILLS_SERVER || !KIRO_SKILL_TOOLS.has(tool)) return false;
-    return stopOn === 'first-capability' || tool === 'get_skill';
+    return tool === SUBAGENT_TOOL;
+  };
+  // The tool name of a kiro capability call: a subagent call, or a skills-server call the engine did not refuse. Else null.
+  const kiroCapability = (u) => {
+    if (stopOn === 'end_turn') return null;
+    if (toolNameOf(u) === SUBAGENT_TOOL) return SUBAGENT_TOOL;
+    const sc = skillsCallOf(u);
+    if (!sc || sc.deferred) return null;
+    return stopOn === 'first-capability' || sc.tool === 'get_skill' ? sc.tool : null;
   };
 
   function onEvent(ev) {
@@ -57,21 +63,21 @@ function makeStopWatcher(file, { runtime = 'kiro-cli', stopOn = 'end_turn', maxT
     if (!u) return;
     if (u.sessionUpdate === 'tool_call_update') {
       if (capability && u.toolCallId === capability.id) {
-        if (hasInput(u.rawInput)) capability.input = { ...capability.input, ...u.rawInput };
+        if (hasInput(u.rawInput)) capability.input = { ...capability.input, ...mcpInputOf(u.rawInput) };
         if (u.rawOutput !== undefined || u.status === 'completed' || u.status === 'failed') capability.done = true;
       }
       return;
     }
     if (u.sessionUpdate !== 'tool_call') return;
     if (u.toolCallId && seen.has(u.toolCallId)) {
-      if (capability && u.toolCallId === capability.id && hasInput(u.rawInput)) capability.input = { ...capability.input, ...u.rawInput };
+      if (capability && u.toolCallId === capability.id && hasInput(u.rawInput)) capability.input = { ...capability.input, ...mcpInputOf(u.rawInput) };
       return;
     }
     if (u.toolCallId) seen.add(u.toolCallId);
     calls++;
-    const meta = u._meta?.kiro;
-    if (!capability && isCapability(meta?.toolName, meta?.mcpServerName)) {
-      capability = { id: u.toolCallId, detail: meta.toolName, input: u.rawInput && typeof u.rawInput === 'object' ? { ...u.rawInput } : {}, since: now(), done: meta.toolName === SUBAGENT_TOOL };
+    const tool = capability ? null : kiroCapability(u);
+    if (tool) {
+      capability = { id: u.toolCallId, detail: tool, input: u.rawInput && typeof u.rawInput === 'object' ? { ...mcpInputOf(u.rawInput) } : {}, since: now(), done: tool === SUBAGENT_TOOL };
     }
   }
 

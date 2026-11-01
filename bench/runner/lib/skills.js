@@ -6,7 +6,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { SKILLS_SERVER, SUBAGENT_TOOL, subagentTargets } = require('./stream.js');
+const { SUBAGENT_TOOL, subagentTargets, toolNameOf, isV3Call, skillsCallOf, mcpInputOf } = require('./stream.js');
 const { frontmatter, fmValue } = require('./frontmatter.js');
 
 const SKILL_FIELDS = [
@@ -14,11 +14,12 @@ const SKILL_FIELDS = [
   'startupResourceCount', 'targetLoaded', 'targetAttempted', 'targetReachable', 'sopNameSource', 'skillsScope',
 ];
 
-const KIRO_TOOLS = new Set(['get_skill', 'find_skills']);
 const lower = (s) => String(s).toLowerCase();
 
-// Text blocks a skills-server tool returned: the bytes the model saw.
+// Text blocks a skills-server tool returned: the bytes the model saw. v3 answers with { response } or a bare string.
 function textsOf(rawOutput) {
+  if (typeof rawOutput === 'string') return rawOutput ? [rawOutput] : [];
+  if (typeof rawOutput?.response === 'string') return rawOutput.response ? [rawOutput.response] : [];
   const out = [];
   for (const item of rawOutput?.items ?? []) {
     if (typeof item?.Text === 'string') out.push(item.Text);
@@ -45,16 +46,16 @@ function kiroCalls(events) {
     const u = ev?.type === 'sessionUpdate' ? ev.data?.update : null;
     if (!u) continue;
     if (u.sessionUpdate === 'tool_call') {
-      const meta = u._meta?.kiro;
-      if (!KIRO_TOOLS.has(meta?.toolName) || meta?.mcpServerName !== SKILLS_SERVER) continue;
+      const sc = skillsCallOf(u);
+      if (!sc) continue;
       const id = u.toolCallId ?? `anon-${anon++}`;
-      const c = calls.get(id) ?? { tool: meta.toolName, input: {}, output: null, status: null };
-      if (u.rawInput && typeof u.rawInput === 'object') c.input = { ...c.input, ...u.rawInput };
+      const c = calls.get(id) ?? { tool: sc.tool, input: {}, output: null, status: null };
+      if (u.rawInput && typeof u.rawInput === 'object') c.input = { ...c.input, ...mcpInputOf(u.rawInput) };
       calls.set(id, c);
     } else if (u.sessionUpdate === 'tool_call_update') {
       const c = calls.get(u.toolCallId);
       if (!c) continue;
-      if (u.rawInput && typeof u.rawInput === 'object') c.input = { ...c.input, ...u.rawInput };
+      if (u.rawInput && typeof u.rawInput === 'object') c.input = { ...c.input, ...mcpInputOf(u.rawInput) };
       if (u.rawOutput !== undefined) c.output = u.rawOutput;
       if (u.status) c.status = u.status;
     }
@@ -86,7 +87,7 @@ function inputsById(events, id) {
   let input = {};
   for (const ev of events ?? []) {
     const u = ev?.type === 'sessionUpdate' ? ev.data?.update : null;
-    if (u?.toolCallId === id && u.rawInput && typeof u.rawInput === 'object') input = { ...input, ...u.rawInput };
+    if (u?.toolCallId === id && u.rawInput && typeof u.rawInput === 'object') input = { ...input, ...mcpInputOf(u.rawInput) };
   }
   return input;
 }
@@ -108,12 +109,12 @@ function firstDecisionOf(events, runtime) {
   for (const ev of events ?? []) {
     const u = ev?.type === 'sessionUpdate' ? ev.data?.update : null;
     if (u?.sessionUpdate !== 'tool_call') continue;
-    const meta = u._meta?.kiro;
-    const skillsCall = KIRO_TOOLS.has(meta?.toolName) && meta?.mcpServerName === SKILLS_SERVER;
-    if (!skillsCall && meta?.toolName !== SUBAGENT_TOOL) continue;
-    const input = u.toolCallId ? inputsById(events, u.toolCallId) : u.rawInput ?? {};
-    if (meta.toolName === SUBAGENT_TOOL) { const [n] = subagentTargets(input); return { kind: 'subagent', name: n === '(unnamed)' ? null : n }; }
-    if (meta.toolName === 'get_skill') return { kind: 'get_skill', name: typeof input.name === 'string' ? input.name.trim() || null : null };
+    const sc = skillsCallOf(u);
+    const subagent = toolNameOf(u) === SUBAGENT_TOOL;
+    if (!sc && !subagent) continue;
+    const input = u.toolCallId ? inputsById(events, u.toolCallId) : mcpInputOf(u.rawInput) ?? {};
+    if (subagent) { const [n] = subagentTargets(input, { nameIsAgent: isV3Call(u) }); return { kind: 'subagent', name: n === '(unnamed)' ? null : n }; }
+    if (sc.tool === 'get_skill') return { kind: 'get_skill', name: typeof input.name === 'string' ? input.name.trim() || null : null };
     return { kind: 'find_skills', name: queriesOf(input)[0] ?? null };
   }
   return none;
