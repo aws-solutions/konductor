@@ -186,8 +186,9 @@ function printWritten(written) {
   if (charts.length) console.log(`wrote ${charts.length} chart(s) in ${path.dirname(charts[0])}`);
 }
 
-// One page with a keep, discard or not-enough-evidence call per arm. Each run directory keeps its own refs and its own
-// A/A pairs, so directories are pooled by exact ref, never merged into one run.
+// One page per verdict kind. platform: a keep, discard or not-enough-evidence call per arm. orchestrator-pass: a pass, fail or
+// not-enough-evidence call per arm and (harness, model) cell. Each run directory keeps its own refs and its own A/A pairs, so
+// directories are pooled by exact ref, never merged into one run.
 function cmdVerdict(opts) {
   if (!KINDS.includes(opts.verdict)) throw new Error(`--verdict takes ${KINDS.join(' or ')}`);
   const dirs = runDirsOf(opts);

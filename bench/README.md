@@ -430,3 +430,42 @@ Efficiency is a ratio and never a 0 to 100 number. A failed run with nothing to 
 - NOT ENOUGH EVIDENCE otherwise. It is forced by: fewer than 3 runs on a side, a difference inside the A/A noise, an anecdotal diligence rating. It also follows from: no A/A noise measured,
   fewer than 3 replicates in a cell, an interval that includes 0, or a quality gain with clearly lower reliability. The A/A noise is the mean quality gap between an arm and its repeat, never under 5 points.
 - Every reason that applies is printed. A directory without the baseline arm is listed and skipped.
+
+## Orchestrator study: cells, gates, metrics and the pass rule
+This is how to compare a test branch against vanilla and against main, across models and harnesses, and read the answer. Nothing here needs a cap.
+
+Cells. A cell is one (harness, model) pair. Run each cell into its own directory (one cell per directory) with the same arms, tasks, seed and profile, then give every directory to one report:
+- Kiro v3 with Claude Sonnet 5.5: `--agent-engine v3 --model claude-sonnet-5.5`.
+- Kiro v3 with GPT: `--agent-engine v3 --model gpt-5.6-sol`. The runner passes the model to `kiro-cli` and fails a run whose session ran on another model (`modelMismatch`). `judge` drops any judge from the subject's own family from a default or suite panel and takes the next one from deepseek-3.2, glm-5, qwen3-coder-next, minimax-m2.5, so a GPT subject is judged by deepseek-3.2, glm-5 and qwen3-coder-next. Judges named with `--judges` are never rewritten.
+- Claude Code cell: not built. `bench/runner` has no Claude Code harness yet, so no run of `claude` is possible. The scope, the auth routes, how cost and tokens can be read and an effort estimate are in the gap note kept with the study notes; it needs one recorded real stream before a fake can be trusted.
+
+Arms. `--arms vanilla,orch-all=dir:PATH,main,orch-coord=dir:PATH` with `--arm-config orch-coord=orchestration.mode=coordinator`. `--arm-config name=key.path=value[;key.path=value]` writes those keys into that arm's scratch `~/.konductor/config.yml` after the install, so the arm starts its session with them. `orchestration.mode` takes `auto` or `coordinator`; a misspelled orchestration key is refused, because the CLI would otherwise fall back to `auto` without saying so. Vanilla refuses the flag, `run-config.json` and `result.json` record it, and two arms at one ref with different configs are two arms: only an arm with the same ref and the same config counts as an A/A repeat. With `--profile detailed` the first konductor arm in the list is repeated automatically (put the arm under test first), which gives the A/A sentinel.
+
+Isolation gates. Both fail loudly and keep the runs.
+- The real `~/.konductor/installs` (of every real home of the account, by resolved path) is hashed before and after each run and each batch. A run whose window saw a change becomes an error with the flag `installsChanged`, its spend kept. The batch writes `isolation-gate.json` and `summary.json` records it; `run` then prints `ISOLATION FAILURE` and ends with exit code 4. A scratch HOME never needs this directory, so any change means a command ran against the real one.
+- A Claude Code run gets a scratch `CLAUDE_CONFIG_DIR` with `rules/empty.md`, 0 bytes, and nothing else under `rules/`, so the host's `~/.claude/rules` is not read. `ensureEmptyClaudeRules` refuses the real `~/.claude`. The Kiro cells do not use it.
+
+Metrics. Each run's `result.json` has an `orch` record, read from `stream.jsonl` and the workspace snapshot; `report` and `contrast` backfill older run directories from those files. `report` has an Orchestration table; `contrast` has the rows below, and `--phases ID,ID|all` adds the phase-document rows (leave it off for tasks that do not run the SDLC, where it would read 0%).
+- spawns: agents handed work through the subagent tool, one per stage. max spawn depth: how many spawns deep the deepest sits (1 is a spawn by the main agent).
+- review rounds: spawns recognised as a review. reworks after a pass: fix spawns issued while the latest review before them had passed. Both come from text rules in `profiles/orch-metrics.json` (patterns over the brief and the returned text, an explicit `Verdict: WORD` first). They are heuristics: read a sample of runs when you change a pattern, and treat an `unknown` verdict as unknown, never as a pass.
+- phase documents: whether each phase's files exist and are not empty, from `profiles/phase-documents.json` (taken from the full-SDLC SOP's artifact layout). A phase with a `*` is complete only when every feature that has any of its documents has all of them. The shipped tasks do not ask for the whole SDLC; use `--extra-tasks` for a task that does.
+
+Pass rule. `report --run DIR[,DIR...] --verdict orchestrator-pass [--baseline vanilla] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--phases ID,ID|all] --out DIR` writes `orchestrator-pass.md`, `.html` and `.json`, one call per test arm per cell: PASS, FAIL or NOT ENOUGH EVIDENCE.
+- Cost: the arm costs at most 2.0x vanilla, both as mean credits per executed run and as credits per successful run, on the cells (run directory and task) both ran.
+- Quality: the arm's mean quality minus vanilla's is not below minus the sample standard deviation (n-1) of vanilla's per-run quality scores. That is the spread of one vanilla run, so "within one run" is never looser than one run's variation. A gain always meets it; a spread of 0 allows no drop.
+- A/A sentinel: the largest gap between an arm and its repeat is the drift (quality points, and cost as a ratio). A criterion whose effect is not larger than the drift is uncertain. A clear failure on the other criterion still gives FAIL; otherwise the cell is NOT ENOUGH EVIDENCE. This means an arm that is simply as good as vanilla is NOT ENOUGH EVIDENCE rather than PASS: the study cannot tell it from drift. The page also prints whether the raw thresholds were met.
+- Also NOT ENOUGH EVIDENCE: fewer than 3 scored runs on a side, no A/A repeat in the cell, fewer than 2 scored vanilla runs, and a change that lives only in skills (the arm records the skills its diff touches, or pass `--changed-skills`) when none of those skills loaded in any run of the arm, or no load data was recorded. A mixed change only gets a note.
+- Failed and timed-out runs stay in: a run with nothing to score counts as quality 0 and its cost counts.
+- GPT cell: judged on its own ratios to vanilla. The Claude cell on the same harness is printed beside it as ratios, per run and per successful run, and their quotient. Raw credits are never compared.
+- Cells are keyed `harness engine / model`, for example `kiro-cli v3 / gpt-5.6-sol`; directories of one cell are pooled by exact ref.
+
+Commands (replace PATH with the worktree of the test branch and V with a results directory):
+```
+node bench/runner/bench.js run --suite lite --arms vanilla,orch-all=dir:PATH,main,orch-coord=dir:PATH --arm-config orch-coord=orchestration.mode=coordinator --agent-engine v3 --model claude-sonnet-5.5 --profile detailed --seed 20261101 --out V/claude
+node bench/runner/bench.js run --suite lite --arms vanilla,orch-all=dir:PATH,main,orch-coord=dir:PATH --arm-config orch-coord=orchestration.mode=coordinator --agent-engine v3 --model gpt-5.6-sol --profile detailed --seed 20261101 --out V/gpt
+node bench/runner/bench.js judge --run V/claude --profile detailed
+node bench/runner/bench.js judge --run V/gpt --profile detailed
+node bench/runner/bench.js contrast --run V/claude --base vanilla --out V/contrast-claude
+node bench/runner/bench.js report --run V/claude,V/gpt --verdict orchestrator-pass --out V/pass
+```
+Free checks before spending: `run ... --prepare-only` builds and trial-installs every arm (v3 arms with `konductor install --harness kiro-v3 --no-telemetry`) and starts no agent.

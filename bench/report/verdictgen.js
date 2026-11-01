@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// `report --verdict platform`: builds the verdict data from one or more run directories and writes verdict.md,
-// verdict.html, verdict.json and charts/verdict-quality.svg.
+// `report --verdict platform|orchestrator-pass`: builds the verdict data from one or more run directories. platform writes
+// verdict.md, verdict.html, verdict.json and charts/verdict-quality.svg; orchestrator-pass writes orchestrator-pass.md, .html and .json.
 
 const { buildVerdict } = require('./verdict.js');
 const { buildVerdictDocument } = require('./verdictdoc.js');

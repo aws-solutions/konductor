@@ -147,3 +147,25 @@ confirmed only by a lift run (`cap plan --mode improve --candidate FILE`) on the
 Move or remove: a section that tells the agent how to act belongs in the skill. Worked examples, long tables, templates and checklists the agent reads only sometimes belong in a
 reference file next to the skill (`references/NAME.md`, linked from `SKILL.md`), so they cost nothing until opened. Text that repeats the description, repeats another skill, or
 restates what the base prompt already says is removed. Keep the removed text in the commit message, not in a file.
+
+## Orchestrator study
+Use this when the question is whether a branch that changes how the orchestrator works (spawning, review, modes, preloaded skills) is worth keeping against vanilla and against main. The full rules and flags are in `README.md`, section "Orchestrator study".
+1. One cell per directory. A cell is a (harness, model) pair: Kiro v3 with Claude, Kiro v3 with GPT. Same arms, tasks, seed and `--profile detailed` in each. Put the arm under test first so the automatic A/A repeat repeats it.
+2. Free first: `--prepare-only` on each cell, then `node --test "bench/runner/test/*.test.js"` if the bench itself changed.
+3. Run, then judge, then read the verdict. A GPT cell is read as ratios to vanilla next to the Claude cell, never as raw credits.
+4. A coordinator-mode arm is the same ref with `--arm-config NAME=orchestration.mode=coordinator`; it is a second arm, not an A/A repeat.
+
+```
+node bench/runner/bench.js run --suite lite --arms vanilla,orch-all=dir:PATH,main --agent-engine v3 --model claude-sonnet-5.5 --profile detailed --prepare-only
+node bench/runner/bench.js run --suite lite --arms vanilla,orch-all=dir:PATH,main --agent-engine v3 --model claude-sonnet-5.5 --profile detailed --out V/claude
+node bench/runner/bench.js judge --run V/claude --profile detailed
+node bench/runner/bench.js contrast --run V/claude --base vanilla --out V/contrast
+node bench/runner/bench.js report --run V/claude,V/gpt --verdict orchestrator-pass --out V/pass
+```
+
+What goes wrong, and what catches it:
+- The host's `~/.claude/rules` read by a Claude Code run: every scratch `CLAUDE_CONFIG_DIR` gets a 0-byte `rules/empty.md` and nothing else.
+- A probe or install writing to the real `~/.konductor/installs`: hashed before and after every run and batch; a change fails the run (`installsChanged`) and the batch (exit code 4).
+- Same-day drift as large as the effect: the A/A repeat measures it; the pass rule calls a cell NOT ENOUGH EVIDENCE when drift is not smaller than the effect.
+- A change that lives only in a skill the agent never loads: the cell is NOT ENOUGH EVIDENCE when none of the changed skills loaded in any run of the arm. Check `skills --run V/claude` as well.
+- Review rounds and reworks after a pass come from text heuristics. Read a few runs before quoting them.

@@ -49,3 +49,53 @@ test('the shipped profiles match what the README table says', () => {
   assert.deepEqual([q.replicates.min, q.replicates.max, q.replicates.default], [1, 3, 2]);
   assert.deepEqual([d.replicates.min, d.replicates.default], [5, 5]);
 });
+
+const { checkArgs } = require('../lib/cli-flags.js');
+const op = require('../../report/orchpass.js');
+
+// Commands in a doc section: lines that start with `node bench/runner/bench.js`, with trailing-backslash continuations joined.
+function commandsIn(doc, heading) {
+  const start = doc.indexOf(`## ${heading}`);
+  assert.ok(start >= 0, `section "${heading}" not found`);
+  const rest = doc.slice(start + 3);
+  const end = rest.search(/\n## /);
+  const body = (end < 0 ? rest : rest.slice(0, end)).replace(/\\\n\s*/g, ' ');
+  return body.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('node bench/runner/bench.js'));
+}
+
+test('the README documents the orchestrator study: gates, arm config, metrics, pass rule, GPT panel and the Claude Code gap', () => {
+  const doc = read('README.md');
+  for (const re of [
+    /## Orchestrator study/, /isolation-gate\.json/, /exit code 4/, /--arm-config/, /orchestration\.mode=coordinator/, /empty\.md/, /CLAUDE_CONFIG_DIR/,
+    /--verdict orchestrator-pass/, /reworks after a pass/i, /profiles\/phase-documents\.json/, /profiles\/orch-metrics\.json/, /--phases/, /sample standard deviation/,
+    /gpt-5\.6-sol/, /qwen3-coder-next/, /--changed-skills/, /Claude Code cell/,
+  ]) assert.match(doc, re);
+});
+
+test('the README states the limits the code enforces', () => {
+  const doc = read('README.md');
+  assert.equal(op.COST_MAX, 2);
+  assert.match(doc, /at most 2\.0x/);
+  assert.match(doc, /fewer than 3 scored runs/);
+  assert.match(doc, /A criterion whose effect is not larger than the drift/);
+});
+
+test('every command in the orchestrator study section of the README and the playbook uses flags the CLI accepts', () => {
+  for (const f of ['README.md', 'CAP-PLAYBOOK.md']) {
+    const heading = f === 'README.md' ? 'Orchestrator study: cells, gates, metrics and the pass rule' : 'Orchestrator study';
+    const cmds = commandsIn(read(f), heading);
+    assert.ok(cmds.length >= 4, `${f}: found ${cmds.length} commands`);
+    for (const c of cmds) {
+      const tokens = c.split(/\s+/).slice(1);
+      const cmd = tokens[1];
+      const opts = { _: [] };
+      for (let i = 2; i < tokens.length; i++) if (tokens[i].startsWith('--')) { opts[tokens[i].slice(2)] = tokens[i + 1] && !tokens[i + 1].startsWith('--') ? tokens[i + 1] : true; }
+      assert.equal(checkArgs(cmd, opts), null, `${f}: ${c}`);
+    }
+  }
+});
+
+test('the playbook has the orchestrator study section with the cell, arm and A/A advice', () => {
+  const doc = read('CAP-PLAYBOOK.md');
+  for (const re of [/## Orchestrator study/, /A\/A/, /--arm-config/, /orchestrator-pass/, /one cell per directory/i]) assert.match(doc, re);
+});
