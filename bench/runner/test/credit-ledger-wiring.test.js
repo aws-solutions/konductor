@@ -117,3 +117,14 @@ test('the 90% stop is its own rule: small runs stop at 90% of the budget, where 
     assert.match(JSON.stringify(results.find((r) => r.status === 'budget_skipped')), /90% of the 1-credit guard/);
   } finally { s.cleanup(); }
 });
+
+test('engine v3: a ledger line carries the credits read from the turn summary, not null', async () => {
+  const s = setup({ credits: 2.5 });
+  s.ctx.config = { ...CONFIG, agentEngine: 'v3' };
+  try {
+    const { results } = await go(s, { replicates: 1 });
+    assert.equal(results[0].credits, 2.5);
+    const [entry] = readLedger(s.outDir).entries;
+    assert.deepEqual({ kind: entry.kind, credits: entry.credits, charged: entry.charged, censored: entry.censored }, { kind: 'run', credits: 2.5, charged: 2.5, censored: false });
+  } finally { s.cleanup(); }
+});

@@ -194,3 +194,60 @@ test('os.tmpdir based scratch roots use a neutral prefix', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ---- engine v3: the fake emits the v3 event shapes when the runner passes --agent-engine v3 ----
+const CONFIG_V3 = { ...CONFIG, agentEngine: 'v3' };
+const V3_CALLS = [
+  { toolName: 'subagent', rawInput: { name: 'k-architect', prompt: 'TARGET AGENT: k-architect\n\nTASK: Write the design.' }, rawOutput: 'done' },
+  { toolName: 'read_file', rawInput: { path: 'a.txt' } },
+];
+
+test('engine v3: the fake reports credits at turn end and sub-agent calls by title', async () => {
+  const s = setup({ credits: 1.25, toolCalls: V3_CALLS });
+  s.ctx.config = CONFIG_V3;
+  try {
+    await executeRun({ arm: ARM, task: s.task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir });
+    const stream = fs.readFileSync(path.join(s.outDir, 'stream.jsonl'), 'utf8');
+    assert.match(stream, /"engine":"v3"/);
+    assert.match(stream, /"kind":"turn_completion"/);
+    assert.match(stream, /"title":"Sub-agent: k-architect"/);
+    assert.equal(stream.includes('meteringUsage'), false, 'v3 has no metadata metering event');
+    assert.equal(stream.includes('"toolName"'), false, 'v3 tool calls carry no toolName');
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('engine v3: a finished run records credits, turn duration and sub-agent metrics from the stream', async () => {
+  const s = setup({ credits: 1.25, toolCalls: V3_CALLS });
+  s.ctx.config = CONFIG_V3;
+  try {
+    const r = await executeRun({ arm: ARM, task: s.task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir });
+    assert.equal(r.status, 'success');
+    assert.equal(r.credits, 1.25);
+    assert.equal(r.creditsCensored, false);
+    assert.equal(r.turnDurationMs, 100);
+    assert.equal(r.modelCalls.meteringEntries, 1);
+    assert.equal(r.subagentCalls, 1);
+    assert.deepEqual(r.toolNames, { subagent: 1, read_file: 1 });
+    assert.equal(r.orch.spawns, 1);
+    assert.equal(r.orch.maxSpawnDepth, 1);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('engine v3: a timed-out run has no credit data, so it stays censored', async () => {
+  const s = setup({ sleepSec: 30 });
+  s.ctx.config = CONFIG_V3;
+  s.task.timeoutSec = 1;
+  try {
+    const r = await executeRun({ arm: ARM, task: s.task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir });
+    assert.equal(r.status, 'timeout');
+    assert.equal(r.credits, null);
+    assert.equal(r.creditsCensored, true);
+    assert.equal(r.creditsLowerBound, 0);
+  } finally {
+    s.cleanup();
+  }
+});
