@@ -98,13 +98,13 @@ function armOrder(input) {
   return [...cfg, ...present.filter((a) => !cfg.includes(a)).sort()];
 }
 
-/** Arms of one directory that share a commit or tree: the first is the primary, the others its A/A repeats. */
+/** Arms of one directory that share a commit or tree and a config: the first is the primary, the others its A/A repeats. */
 function aaGroups(input, baselineId) {
   const byIdentity = new Map();
   for (const armId of armOrder(input)) {
     if (armId === baselineId) continue;
     const sample = input.rows.find((r) => r.armId === armId);
-    const id = sample && (sample.commitSha || sample.contentHash) ? `${sample.commitSha}|${sample.contentHash}` : null;
+    const id = sample && (sample.commitSha || sample.contentHash) ? `${sample.commitSha}|${sample.contentHash}|${JSON.stringify(sample.armConfig ?? null)}` : null;
     if (id) byIdentity.set(id, [...(byIdentity.get(id) || []), armId]);
   }
   return [...byIdentity.values()].filter((g) => g.length > 1);

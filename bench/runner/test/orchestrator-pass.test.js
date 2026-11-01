@@ -277,6 +277,24 @@ test('the written page reads as sentences: a reason starts with a capital', () =
   } finally { rm(root); }
 });
 
+test('an arm at the same ref with another config is judged on its own and is not taken for the A/A repeat', () => {
+  const root = mk();
+  try {
+    const meta = { model: CELL.model, agentEngine: 'v3', harness: 'kiro-cli' };
+    const coord = { sha: 'a', hidden: [9], credits: 9, extra: { ...meta, armConfig: { orchestration: { mode: 'coordinator' } } } };
+    const v = run(cellDir(root, 'cfg', { extraArms: { 'orch-coord': coord } }));
+    assert.equal(armOf(v, 0, 'orch-coord').aaRepeatOf, null);
+    assert.ok(armOf(v, 0, 'orch-coord').call);
+    assert.equal(armOf(v, 0, 'orch-b').aaRepeatOf, armOf(v, 0, 'orch').label);
+    assert.equal(armOf(v, 0, 'orch-coord').cost.ratioPerRun, 1.8);
+    const { analyze } = require('../../report/generate.js');
+    const { loadRun } = require('../../report/load.js');
+    const { loadTasks } = require('../lib/tasks.js');
+    const d = fixtureRun(root, 'cfg2', { arms: { vanilla: { hidden: VAN, credits: 5, extra: meta }, orch: { sha: 'a', hidden: [9], credits: 8, extra: meta }, 'orch-ac': coord, 'orch-b': { sha: 'a', hidden: [9], credits: 8, extra: meta } }, config: { model: CELL.model, agentEngine: 'v3', harness: 'kiro-cli' } });
+    assert.deepEqual(analyze({ run: loadRun(d.dir), tasks: loadTasks(d.benchDir), baseline: 'vanilla' }).facts.aa.pair, ['orch', 'orch-b'], 'the scorecard sentinel is the repeat, not the other config');
+  } finally { rm(root); }
+});
+
 test('a GPT cell with no Claude cell says so instead of comparing', () => {
   const root = mk();
   try {

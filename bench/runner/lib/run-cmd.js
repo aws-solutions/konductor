@@ -144,10 +144,10 @@ async function cmdRun(opts) {
   const armOpts = applyArmOptions(arms, opts);
   const aa = profile?.aaArm ? aaArmFor(arms) : null;
   if (aa?.spec) {
-    // The repeat runs under the same conditions as the arm it repeats, so it takes that arm's prefix and entry agent.
+    // The repeat runs under the same conditions as the arm it repeats, so it takes that arm's prefix, entry agent and config.
     const twin = arms.find((a) => a.id === aa.twin);
     const copy = resolveArm(aa.spec, REPO);
-    for (const k of ['prefixText', 'prefixInfo', 'agent', 'agentOverride']) if (twin[k] !== undefined) copy[k] = twin[k];
+    for (const k of ['prefixText', 'prefixInfo', 'agent', 'agentOverride', 'armConfig']) if (twin[k] !== undefined) copy[k] = twin[k];
     arms.push(copy);
     armIds.push(copy.id);
   }

@@ -67,7 +67,11 @@ function replicatesFor(profile, requested) {
   return n;
 }
 
-const identityOf = (a) => a.commitSha || a.contentHash || null;
+// Same ref and same konductor config: a different --arm-config is a different condition, not a repeat.
+const identityOf = (a) => {
+  const ref = a.commitSha || a.contentHash || null;
+  return ref && a.armConfig ? `${ref}|${JSON.stringify(a.armConfig)}` : ref;
+};
 const unprefixed = (id) => id.replace(/^oc-/, '');
 
 /**

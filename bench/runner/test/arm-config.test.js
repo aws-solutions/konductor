@@ -14,6 +14,7 @@ const { kiro } = require('../lib/harness/index.js');
 const { buildResult } = require('../lib/result.js');
 const { checkArgs } = require('../lib/cli-flags.js');
 const { aggregateStream } = require('../lib/stream.js');
+const P = require('../lib/profiles.js');
 
 const arms = () => [
   { id: 'vanilla', vanilla: true },
@@ -101,4 +102,12 @@ test('result.json records the arm config', () => {
     agg, session: null, checks: [], transcript: { chars: 1, bytes: 1, partial: false }, env: { kiroCliVersion: 'k', modelListSnapshotPath: null },
   });
   assert.deepEqual(r.armConfig, { orchestration: { mode: 'coordinator' } });
+});
+
+test('an arm at the same ref with a different config is a second arm, not an A/A repeat', () => {
+  const dir = { id: 'orch', vanilla: false, source: 'dir', dir: '/x/y', contentHash: 'h'.repeat(40), commitSha: null, runtime: 'kiro-cli' };
+  const coord = { ...dir, id: 'orch-coord', armConfig: { orchestration: { mode: 'coordinator' } } };
+  const r = P.aaArmFor([{ id: 'vanilla', vanilla: true }, dir, coord]);
+  assert.equal(r.spec, 'orch-b=dir:/x/y', 'orch is still repeated');
+  assert.equal(P.aaArmFor([{ id: 'vanilla', vanilla: true }, dir, { ...dir, id: 'orch-again' }]).spec, null, 'same ref and same config is an A/A pair');
 });

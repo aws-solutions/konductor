@@ -77,7 +77,7 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
   const minCell = [...cells.entries()].sort((a, b) => a[1] - b[1])[0];
 
   const identity = new Map();
-  for (const r of rows) if (r.commitSha || r.contentHash) identity.set(r.arm, `${r.commitSha}|${r.contentHash}`);
+  for (const r of rows) if (r.commitSha || r.contentHash) identity.set(r.arm, `${r.commitSha}|${r.contentHash}|${JSON.stringify(r.armConfig ?? null)}`);
   const groups = new Map();
   for (const [arm, id] of identity) groups.set(id, [...(groups.get(id) || []), arm]);
   const aaPairs = [...groups.values()].filter((g) => g.length > 1);

@@ -42,7 +42,7 @@ function buildRows(run, tasks, ctx) {
       askedUser: typeof r.askedUser === 'boolean' ? r.askedUser : null,
       startedAt: r.runStartedAt ? Date.parse(r.runStartedAt) : null, flags: r.flags || [], contamination: r.contamination || null,
       isolation: r.isolation ?? null, modelNormalized: r.modelNormalized ?? null, sessionModel: r.sessionModel ?? null, model: r.model ?? null,
-      commitSha: r.commitSha ?? null, contentHash: r.contentHash ?? null, dirty: r.dirty ?? null,
+      commitSha: r.commitSha ?? null, contentHash: r.contentHash ?? null, dirty: r.dirty ?? null, armConfig: r.armConfig ?? null,
       tripwire: (r.flags || []).includes('homeTripwire') || (r.flags || []).includes('homeTripwireTruncated'),
     });
   }
