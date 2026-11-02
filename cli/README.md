@@ -650,6 +650,12 @@ even when the last tracked entry is removed from it. If that target ran
 `install --link-bin` (see [above](#--link-bin-put-konductor-itself-on-your-path)), the
 symlink it created at `$HOME/.local/bin/konductor` is removed too.
 
+`uninstall` takes the same per-target lock as `install` (`.konductor/.install.lock`), so the
+two never overlap on one target. When the uninstall leaves no harness tracked, it removes that
+lock file; a partial uninstall and `--dry-run` leave it. The manifest's own lock file
+(`.konductor/.manifest.lock`) is not removed, so `.konductor/` is not empty after a full
+uninstall.
+
 `--dry-run` reports exactly which files would be removed for every selected target,
 without touching the filesystem in any way, flagging each individual path that has
 diverged from its manifest-recorded hash (i.e. would have local edits destroyed) - distinct
