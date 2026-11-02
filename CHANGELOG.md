@@ -39,6 +39,7 @@ not per individual commit.
   ones.
 - `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
   such as a `telemetry:` opt-out. It now changes only the named key.
+  The file is rewritten, so comments and value formatting are not kept.
 
 ## [1.2.0] - 2026-10-26
 
