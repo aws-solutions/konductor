@@ -39,6 +39,7 @@ def test_valid_fixture_passes_silently():
         ("gate-evidence-path", "gate-evidence-path: 'k-full-sdlc' gate_review_evidence"),
         ("gate-word-mapped", "gate-word-mapped: 'k-full-sdlc' maps a checker word to a gate id"),
         ("gate-result-rule", "gate-result-rule: 'k-full-sdlc' lacks the rule"),
+        ("max-fix-cycles-unrecorded", "max-fix-cycles-unrecorded (k-full-sdlc only): 'k-full-sdlc' does not say `max_fix_cycles` is written into `run.data` at minting as a non-negative integer"),
         ("verify-run-step-order", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' verify-run must come before"),
         ("verify-run-unavailable-missing", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step does not cover 'verify-run unavailable'"),
     ],

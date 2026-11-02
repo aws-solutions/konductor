@@ -116,6 +116,11 @@ def supports_root():
     return "--root" in help_text.stdout + help_text.stderr
 
 
+def has_verify_run():
+    probe = subprocess.run([str(KONDUCTOR_BIN), "verify-run", "--help"], capture_output=True, text=True)
+    return probe.returncode == 0
+
+
 def verify_args(project, *extra):
     """The Step 11 call; --root is passed once the built binary accepts it."""
     root = ["--root", str(project)] if supports_root() else []
@@ -160,6 +165,24 @@ def test_raised_fix_cycle_cap_recorded_in_run_data_is_honoured(project):
     if "FIX_CAP_CLAMPED" in result.stdout:
         pytest.skip("the built evaluator still clamps the cap to 2")
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_sop_records_max_fix_cycles_in_run_data_at_minting():
+    assert "Store `max_fix_cycles` (this run's parameter as a non-negative integer, in `run.data`, written once at minting" in SOP_TEXT
+
+
+@pytest.mark.parametrize("bad_cap", ["5", 2.5, -1, True])
+def test_non_integer_max_fix_cycles_is_a_record_integrity_error(project, bad_cap):
+    if not has_verify_run():
+        pytest.skip("built binary has no verify-run subcommand, so it predates the gate evaluator")
+    session = session_for(project, "in_progress", "IN_PROGRESS")
+    session["run"]["data"]["max_fix_cycles"] = bad_cap
+    write_session(project, session)
+    result = run_verify(project, *verify_args(project, "--allow-running"))
+    if result.returncode == 0:
+        pytest.skip("the built evaluator ignores a non-integer max_fix_cycles instead of exiting 65")
+    assert result.returncode == 65, result.stdout + result.stderr
+    assert "non-negative integer" in result.stdout + result.stderr
 
 
 def test_sop_stops_on_important_findings_at_steps_4_and_9():

@@ -115,6 +115,16 @@ def check_result_rule(name, text):
     return errors
 
 
+def check_max_fix_cycles(name, text):
+    """k-full-sdlc only: the evaluator reads the fix-cycle cap from run.data."""
+    required = ("`max_fix_cycles`", "`run.data`", "minting", "non-negative integer")
+    if any(all(part in s for part in required) for s in sentences(text)):
+        return []
+    return [
+        f"max-fix-cycles-unrecorded (k-full-sdlc only): '{name}' does not say `max_fix_cycles` is written into `run.data` at minting as a non-negative integer"
+    ]
+
+
 def check_verify_run_step(name, section):
     """Rules for the final Step of k-full-sdlc only (sdlc-summary.md, k-developer);
     check_sop runs this for no other SOP."""
@@ -144,6 +154,7 @@ def check_sop(name, text, entry):
     errors += check_word_mapping(name, text)
     errors += check_result_rule(name, text)
     if name == VERIFY_RUN_SOP:
+        errors += check_max_fix_cycles(name, text)
         errors += check_verify_run_step(name, sections.get(phases[-1], ""))
     return errors
 
