@@ -91,6 +91,9 @@ def check_phase_shape(name, entry):
     if "boundaries" in entry:
         if not boundaries_are_valid(entry["boundaries"]):
             errors.append(f"bad-entry: gated '{name}' 'boundaries' must be a list of {{phase, kind, scope}}")
+        else:
+            for phase in duplicate_phases(entry["boundaries"]):
+                errors.append(f"bad-entry: gated '{name}' boundary phase '{phase}' listed more than once")
         if "phases" not in entry:
             errors.append(f"bad-entry: gated '{name}' has 'boundaries' without 'phases'")
     return errors
@@ -113,10 +116,20 @@ def boundaries_are_valid(boundaries):
             return False
         if not all(isinstance(boundary[key], str) for key in ("phase", "kind")):
             return False
-        if boundary["scope"] not in BOUNDARY_SCOPES:
+        if not (isinstance(boundary["scope"], str) and boundary["scope"] in BOUNDARY_SCOPES):
             return False
-    seen = [boundary["phase"] for boundary in boundaries]
-    return len(set(seen)) == len(seen)
+    return True
+
+
+def duplicate_phases(boundaries):
+    """Return the phases listed by more than one boundary, in first-repeat order."""
+    seen, repeated = set(), []
+    for boundary in boundaries:
+        phase = boundary["phase"]
+        if phase in seen and phase not in repeated:
+            repeated.append(phase)
+        seen.add(phase)
+    return repeated
 
 
 def sop_phase_list(text):

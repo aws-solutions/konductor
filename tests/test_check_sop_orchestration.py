@@ -49,6 +49,12 @@ def test_valid_fixture_passes_silently():
         ("unknown-boundary-phase", "unknown-boundary-phase: gated 'alpha-gated' boundary 'zero'"),
         ("unknown-boundary-kind", "unknown-boundary-kind: gated 'alpha-gated' boundary 'one' kind 'loop-exit'"),
         ("bad-boundary-shape", "bad-entry: gated 'alpha-gated' 'boundaries' must be a list"),
+        ("bad-boundary-scope-list", "bad-entry: gated 'alpha-gated' 'boundaries' must be a list"),
+        ("bad-boundary-scope-dict", "bad-entry: gated 'alpha-gated' 'boundaries' must be a list"),
+        ("duplicate-boundary-phase", "bad-entry: gated 'alpha-gated' boundary phase 'one' listed more than once"),
+        ("bad-phases-duplicate", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
+        ("bad-phases-empty", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
+        ("bad-phases-non-string", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
         ("boundaries-without-phases", "bad-entry: gated 'alpha-gated' has 'boundaries' without 'phases'"),
     ],
 )
@@ -90,6 +96,20 @@ def test_removing_the_marker_from_a_valid_tree_fails(tmp_path):
 @pytest.mark.parametrize("args", [["a", "b"], ["--help"], ["does-not-exist"]])
 def test_bad_invocation_exits_64(args):
     assert run_check(*args).returncode == 64
+
+
+def test_full_sdlc_boundary_scopes_are_pinned():
+    import yaml
+
+    data = yaml.safe_load((REPO_ROOT / "cli/gate-config/sop-orchestration.yml").read_text(encoding="utf-8"))
+    scopes = {b["phase"]: b["scope"] for b in data["gated"]["k-full-sdlc"]["boundaries"]}
+    assert scopes == {
+        "design-review": "run",
+        "feature-splitting": "run",
+        "specs": "feature",
+        "code-review": "run",
+        "testing": "feature",
+    }
 
 
 def test_repo_tree_agrees_with_its_map():
