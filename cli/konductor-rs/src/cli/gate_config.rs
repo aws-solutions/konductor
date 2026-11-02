@@ -56,15 +56,29 @@ pub(crate) enum WordRank {
 }
 
 impl SeverityTable {
-    /// Maps a checker's word to a gate id by exact id or alias match.
-    /// Case-sensitive; surrounding whitespace is ignored.
+    /// Maps a checker's word to a gate id by id or alias match, ignoring
+    /// case. Checkers write labels such as `CRITICAL`, `Warning Gap` or
+    /// `🚨 Critical Gap`, so the word is reduced to its leading run of
+    /// letters first; emoji, punctuation and trailing words are dropped.
     pub(crate) fn rank_of_word(&self, word: &str) -> WordRank {
-        let word = word.trim();
+        let token = leading_severity_token(word);
         self.entries
             .iter()
-            .find(|entry| entry.id.to_string() == word || entry.aliases.iter().any(|a| a == word))
+            .find(|entry| {
+                entry.id.to_string().eq_ignore_ascii_case(&token)
+                    || entry.aliases.iter().any(|a| a.eq_ignore_ascii_case(&token))
+            })
             .map_or(WordRank::Unknown, |entry| WordRank::Known(entry.id))
     }
+}
+
+/// The first run of ASCII letters in `word`, upper-cased.
+fn leading_severity_token(word: &str) -> String {
+    word.chars()
+        .skip_while(|c| !c.is_ascii_alphabetic())
+        .take_while(char::is_ascii_alphabetic)
+        .map(|c| c.to_ascii_uppercase())
+        .collect()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -162,16 +176,24 @@ fn parse_severity_table(text: &str) -> Result<SeverityTable, GateConfigError> {
 }
 
 /// Each alias names one id only, so a word can never rank two ways.
+/// Words match ignoring case, so aliases that differ only by case collide.
 fn check_aliases(table: &SeverityTable) -> Result<(), String> {
-    let ids: BTreeSet<String> = table.entries.iter().map(|e| e.id.to_string()).collect();
+    let ids: BTreeSet<String> = table
+        .entries
+        .iter()
+        .map(|e| e.id.to_string().to_ascii_uppercase())
+        .collect();
     let mut seen = BTreeSet::new();
     for entry in &table.entries {
         for alias in &entry.aliases {
-            if ids.contains(alias) {
+            let folded = alias.to_ascii_uppercase();
+            if ids.contains(&folded) {
                 return Err(format!("alias '{alias}' of {} is a severity id", entry.id));
             }
-            if !seen.insert(alias.as_str()) {
-                return Err(format!("alias '{alias}' appears more than once"));
+            if !seen.insert(folded) {
+                return Err(format!(
+                    "alias '{alias}' appears more than once (ignoring case)"
+                ));
             }
         }
     }
@@ -233,14 +255,19 @@ mod tests {
     fn embedded_aliases_are_unique_and_never_ids() {
         let table = table();
         let ids: BTreeSet<String> = Severity::ALL.iter().map(|s| s.to_string()).collect();
-        let aliases: Vec<&String> = table.entries.iter().flat_map(|e| &e.aliases).collect();
-        let unique: BTreeSet<&String> = aliases.iter().copied().collect();
+        let aliases: Vec<String> = table
+            .entries
+            .iter()
+            .flat_map(|e| &e.aliases)
+            .map(|a| a.to_ascii_uppercase())
+            .collect();
+        let unique: BTreeSet<&String> = aliases.iter().collect();
         assert_eq!(
             aliases.len(),
             unique.len(),
             "duplicate alias in {aliases:?}"
         );
-        assert!(aliases.iter().all(|a| !ids.contains(*a)));
+        assert!(aliases.iter().all(|a| !ids.contains(a)));
     }
 
     #[test]
@@ -261,7 +288,115 @@ mod tests {
             );
         }
         assert_eq!(table.rank_of_word("bogus"), WordRank::Unknown);
-        assert_eq!(table.rank_of_word("important"), WordRank::Unknown);
+        assert_eq!(table.rank_of_word("bogus-severity"), WordRank::Unknown);
+        assert_eq!(table.rank_of_word(""), WordRank::Unknown);
+        assert_eq!(table.rank_of_word("🚨"), WordRank::Unknown);
+    }
+
+    #[test]
+    fn matching_ignores_case_emoji_and_trailing_words() {
+        let table = table();
+        for (word, expected) in [
+            ("important", Severity::High),
+            ("Warning", Severity::High),
+            ("Suggestion", Severity::Low),
+            ("🚨 Critical Gap", Severity::Critical),
+            ("⚠️ Warning Gap", Severity::High),
+            ("💡 Suggestion", Severity::Low),
+            ("**CRITICAL", Severity::Critical),
+            ("CRITICAL — architectural", Severity::Critical),
+            ("Medium", Severity::Medium),
+            ("Low", Severity::Low),
+        ] {
+            assert_eq!(
+                table.rank_of_word(word),
+                WordRank::Known(expected),
+                "{word}"
+            );
+        }
+    }
+
+    #[test]
+    fn aliases_differing_only_by_case_are_rejected() {
+        let text = "severities:\n  - {id: HIGH, rank: 3, aliases: [Important]}\n  - {id: LOW, rank: 1, aliases: [IMPORTANT]}\n";
+        let err = parse_severity_table(text).unwrap_err();
+        assert!(err.message.contains("more than once"), "{err}");
+        let text = "severities:\n  - {id: HIGH, rank: 3, aliases: [low]}\n  - {id: LOW, rank: 1}\n";
+        let err = parse_severity_table(text).unwrap_err();
+        assert!(err.message.contains("is a severity id"), "{err}");
+    }
+
+    /// Severity labels are the bold, bullet, table-cell or legend words the
+    /// gated SOPs' checker skills tell the reader to write.
+    fn checker_labels() -> Vec<(&'static str, Vec<&'static str>)> {
+        vec![
+            (
+                "test-coverage-analysis",
+                vec![
+                    "🚨 Critical Gap",
+                    "⚠️ Warning Gap",
+                    "💡 Suggestion",
+                    "Warning",
+                    "Critical",
+                    "High",
+                    "Medium",
+                    "Low",
+                ],
+            ),
+            (
+                "security-test-generation",
+                vec![
+                    "CRITICAL (must fix):",
+                    "IMPORTANT (should fix):",
+                    "SUGGESTION:",
+                ],
+            ),
+            (
+                "design-evaluation",
+                vec![
+                    "CRITICAL (blocks implementation):",
+                    "IMPORTANT (should address before implementation):",
+                    "SUGGESTION:",
+                ],
+            ),
+            (
+                "adversarial-design-review",
+                vec![
+                    "CRITICAL — architectural:",
+                    "CRITICAL — factual:",
+                    "IMPORTANT:",
+                    "MINOR:",
+                ],
+            ),
+            ("design-quality-check", vec!["IMPORTANT", "MINOR"]),
+            ("doc-accuracy-analyzer", vec!["High", "Medium", "Low"]),
+        ]
+    }
+
+    #[test]
+    fn labels_listed_for_each_checker_appear_in_its_skill() {
+        let skills = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../skills");
+        for (skill, labels) in checker_labels() {
+            let text = fs::read_to_string(skills.join(skill).join("SKILL.md"))
+                .unwrap_or_else(|err| panic!("{skill}: {err}"));
+            for label in labels {
+                assert!(text.contains(label), "{skill} no longer contains '{label}'");
+            }
+        }
+    }
+
+    #[test]
+    fn every_checker_label_ranks_known() {
+        let table = table();
+        for (skill, labels) in checker_labels() {
+            for label in labels {
+                assert_ne!(
+                    table.rank_of_word(label),
+                    WordRank::Unknown,
+                    "{skill}: {label}"
+                );
+            }
+        }
     }
 
     #[test]
