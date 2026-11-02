@@ -12,8 +12,11 @@
 #
 # `aliases` (optional) lists the words a checker may write for a severity
 # in its report, for example IMPORTANT for HIGH. An alias maps that word
-# to the gate id. A word that is neither an id nor an alias ranks as
-# CRITICAL. An alias appears under one id only and is never itself an id.
+# to the gate id. Matching ignores case and reads only the leading letters
+# of a label, so "Warning Gap" and "🚨 Critical Gap" match WARNING and
+# CRITICAL. A word that is neither an id nor an alias ranks as CRITICAL.
+# An alias appears under one id only (ignoring case) and is never itself
+# an id.
 #
 # ── Exit-code note (IMPORTANT — read before wiring this into anything) ────
 # `exit_code_signal: critical_gate` below is a SEMANTIC label only: it
