@@ -1619,34 +1619,34 @@ mod tests {
 
     #[test]
     fn no_cli_text_calls_exit_2_an_unresolved_critical_gate() {
-        let sources = [
-            ("cli.rs", include_str!("cli.rs")),
-            ("cli/config.rs", include_str!("cli/config.rs")),
-            ("cli/dispatch.rs", include_str!("cli/dispatch.rs")),
-            ("cli/synth/mod.rs", include_str!("cli/synth/mod.rs")),
-            (
-                "tests/config_set_concurrency.rs",
-                include_str!("../tests/config_set_concurrency.rs"),
-            ),
-            ("AGENTS.md", include_str!("../../../AGENTS.md")),
-            ("README.md", include_str!("../../README.md")),
-            ("config.yml", include_str!("../../gate-config/config.yml")),
-            (
-                "run-state.json",
-                include_str!("../../gate-config/run-state.json"),
-            ),
-            (
-                "severity-schema.yml",
-                include_str!("../../gate-config/severity-schema.yml"),
-            ),
+        let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut files = vec![
+            manifest.join("../../AGENTS.md"),
+            manifest.join("../README.md"),
+            manifest.join("../gate-config/config.yml"),
+            manifest.join("../gate-config/run-state.json"),
+            manifest.join("../gate-config/severity-schema.yml"),
         ];
+        let mut dirs = vec![manifest.join("src"), manifest.join("tests")];
+        while let Some(dir) = dirs.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    dirs.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    files.push(path);
+                }
+            }
+        }
         let stale = ["unresolved", "critical", "gate"].join(" ");
-        for (name, text) in sources {
-            let flat = text.to_lowercase().replace(['-', '\n'], " ");
+        for path in files {
+            let text = std::fs::read_to_string(&path).unwrap().to_lowercase();
+            let flat = text.replace(['-', '\n', '/', '#', '*', '!'], " ");
             let flat = flat.split_whitespace().collect::<Vec<_>>().join(" ");
             assert!(
                 !flat.contains(&stale),
-                "{name} still uses the old exit 2 wording"
+                "{} still uses the old exit 2 wording",
+                path.display()
             );
         }
     }

@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use serde_yaml::Value;
 
 use super::config::Severity;
-use super::gate_config::{GateKind, GateMap, GatedSop, Scope, SeverityTable, WordRank};
+use super::gate_config::{Boundary, GateKind, GateMap, GatedSop, Scope, SeverityTable, WordRank};
 use super::{
     EXIT_BUDGET_EXCEEDED, EXIT_CRITICAL_GATE, EXIT_HALTED, EXIT_SUCCESS_WITH_WARNINGS,
     EXIT_VERIFY_FAILED,
@@ -492,17 +492,22 @@ fn held_open_by_a_feature(
         && some_feature_has_not_cleared(session, sop, index)
 }
 
-/// True when a registered feature has not cleared a feature-scope boundary at
-/// or after phase `index`. A boundary is cleared by a string result fact; an
-/// approval gate also needs the word `approved`. A null value is absent. With
-/// no such feature the record is corrupt, not halted.
+/// True when a registered feature has not cleared the feature-scope boundary
+/// that closes phase `index`: the phase's own boundary, or for a phase with
+/// none (implementation) the next one after it. A boundary is cleared by a
+/// string result fact; an approval gate also needs the word `approved`. A null
+/// value is absent. With no such feature the record is corrupt, not halted.
 fn some_feature_has_not_cleared(session: &Session, sop: &GatedSop, index: usize) -> bool {
-    let pending: Vec<(String, GateKind)> = sop
+    let position = |b: &&Boundary| sop.phases.iter().position(|p| *p == b.phase);
+    let closing = sop
         .boundaries
         .iter()
         .filter(|b| b.scope == Scope::Feature)
-        .filter(|b| sop.phases.iter().position(|p| *p == b.phase) >= Some(index))
+        .filter(|b| position(b) >= Some(index))
+        .min_by_key(position);
+    let pending: Vec<(String, GateKind)> = closing
         .map(|b| (format!("gate_{}_result", b.phase), b.kind))
+        .into_iter()
         .collect();
     session.features.values().any(|bag| {
         pending.iter().any(|(key, kind)| match fact(bag, key) {
@@ -575,6 +580,8 @@ fn check_boundaries(session: &Session, sop: &GatedSop, ctx: &EvalContext<'_>, re
                 );
                 continue;
             }
+            // Fact types are checked for COMPLETED phases only; a word on any
+            // other phase is ignored (check_findings notes a string one).
             Some(PhaseStatus::Completed) => {}
             _ => continue,
         }
@@ -1721,6 +1728,28 @@ phases:
         let verdict = eval_running(&session);
         assert_eq!(verdict.exit, 1, "{verdict:#?}");
         assert_eq!(codes(&verdict), vec!["HALTED", "FINDING_UNRESOLVED"]);
+    }
+
+    #[test]
+    fn unfinished_specs_with_all_features_cleared_is_phase_order() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "specs", "IN_PROGRESS");
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        let verdict = eval_running(&session);
+        assert_verdict(&verdict, 65, "PHASE_ORDER");
+        assert!(!codes(&verdict).contains(&"HALTED"), "{verdict:#?}");
+    }
+
+    #[test]
+    fn unfinished_code_review_with_all_features_cleared_is_phase_order() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "code-review", "IN_PROGRESS");
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        let verdict = eval_running(&session);
+        assert_verdict(&verdict, 65, "PHASE_ORDER");
+        assert!(!codes(&verdict).contains(&"HALTED"), "{verdict:#?}");
     }
 
     #[test]

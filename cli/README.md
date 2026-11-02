@@ -882,7 +882,10 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | 65 | Content or integrity failure, distinct from a `64` usage error: an unsupported manifest/index `schema_version`, a failed checksum, or, for a SOP session file, a corrupt or invalid session, a broken record (including a non-integer `max_fix_cycles` or counter, or a wrong-typed gate fact), phase order, an unfinished phase or an unexplained skip, missing gate facts or evidence, or an in-progress session without `allow_running` |
 
   When several causes apply, the gate evaluator lists all of them but exits with the
-  first in this order: 65, 1, 3, 2, 6. The fix-cycle cap comes from the SOP recording
+  code of the first check that fires. The checks run in this order: session and
+  record integrity (65), halted (1), budget (3), findings (2), skipped gate (6). One
+  exception: a non-integer `max_fix_cycles` is found by the budget check, so after a
+  halt the exit stays 1 and the 65 cause is only listed. The fix-cycle cap comes from the SOP recording
   `max_fix_cycles` in the session; until it does, the default of 2 applies.
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
