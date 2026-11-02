@@ -8,6 +8,7 @@ Run:  cd tests && pytest test_check_sop_orchestration.py
 """
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -21,7 +22,7 @@ MEANING = "Strict means: stop at each recorded gate, record the gate facts, and 
 
 def run_check(*args) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["python3", str(SCRIPT), *map(str, args)],
+        [sys.executable, str(SCRIPT), *map(str, args)],
         capture_output=True,
         text=True,
     )
@@ -46,6 +47,10 @@ def test_valid_fixture_passes_silently():
         ("not-gated-with-marker", "unexpected-marker: not_gated 'beta-plain'"),
         ("stale-basis-heading", "stale-basis: gated 'alpha-gated' basis cites `Ship it`"),
         ("bad-entry", "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list"),
+        ("gated-marker-twice", "unexpected-marker: gated 'alpha-gated' has the marker more than once"),
+        ("unknown-top-level-key", "bad-entry: unknown top-level key 'extra'"),
+        ("missing-top-level-key", "bad-entry: missing top-level key 'version'"),
+        ("marker-wrong-type", "bad-entry: 'marker' must be a non-empty string"),
     ],
 )
 def test_failure_fixture_reports_its_code(case, expected):
