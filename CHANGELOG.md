@@ -14,6 +14,8 @@ not per individual commit.
 - Playwright end-to-end tests and screenshots for `workflow-canvas/`, run in CI.
 - HTTP API contract for the workflow canvas (`workflow-canvas/api/openapi.yaml`), checked by `npm run api:lint`.
 - Stub API for the workflow canvas (`npm run stub`, `npm run dev:stub`); `WC_API_TARGET` points the page at a real server.
+- `konductor flow check` and `konductor flow show` validate a workflow file and print its resolved form as JSON. The
+  engine behind them is the Rust workspace in `workflow-engine/`, with its own CI.
 
 ### Changed
 

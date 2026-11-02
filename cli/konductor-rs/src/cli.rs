@@ -28,6 +28,7 @@ pub(crate) mod config;
 pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
+pub(crate) mod flow;
 pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
@@ -389,6 +390,17 @@ pub enum Commands {
         no_version_check: bool,
     },
 
+    /// Check and show workflow files.
+    ///
+    /// A workflow is `<name>.yml` in `.konductor/workflows/` of the project,
+    /// then in `~/.konductor/workflows/`. Exit codes: 0 with no errors, 64
+    /// for a usage error (including a name that matches no file), 65 when
+    /// the workflow has errors.
+    Flow {
+        #[command(subcommand)]
+        action: FlowAction,
+    },
+
     /// Read or write Konductor configuration.
     ///
     /// Temporarily hidden from normal --help and dispatch while the
@@ -443,6 +455,24 @@ pub enum Commands {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum FlowAction {
+    /// Validate a workflow and report every problem with its place in the
+    /// file. Exit 0 with no errors, 65 when the workflow has errors.
+    Check {
+        /// The workflow name, which is its file name without `.yml`.
+        name: String,
+    },
+    /// Print the resolved workflow as JSON, with the text of each prompt.
+    /// The output is stable: keys are sorted, and it is the same whatever
+    /// the order of the keys in the file. Exit 65 when the workflow has
+    /// errors.
+    Show {
+        /// The workflow name, which is its file name without `.yml`.
+        name: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
 pub enum ConfigAction {
     /// Get a single config value.
     Get {
@@ -474,6 +504,7 @@ impl Commands {
             Commands::Synth { .. } => Self::SYNTH,
             Commands::Init { .. } => Self::INIT,
             Commands::Doctor { .. } => Self::DOCTOR,
+            Commands::Flow { .. } => Self::FLOW,
             Commands::Config { .. } => Self::CONFIG,
             Commands::Metrics { .. } => Self::METRICS,
             Commands::DumpSchema => "__dump_schema",
@@ -492,6 +523,7 @@ impl Commands {
     pub(crate) const SYNTH: &'static str = "synth";
     pub(crate) const INIT: &'static str = "init";
     pub(crate) const DOCTOR: &'static str = "doctor";
+    pub(crate) const FLOW: &'static str = "flow";
     pub(crate) const CONFIG: &'static str = "config";
     #[allow(dead_code)]
     pub(crate) const METRICS: &'static str = "metrics";
@@ -805,6 +837,63 @@ mod tests {
             }
             other => panic!("expected Uninstall, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parses_flow_check_and_show_with_a_name_and_the_global_json_flag() {
+        for (action, json) in [
+            ("check", false),
+            ("show", false),
+            ("check", true),
+            ("show", true),
+        ] {
+            let mut argv = vec!["konductor", Commands::FLOW, action, "hello-plan"];
+            if json {
+                argv.push("--json");
+            }
+            let cli = Cli::try_parse_from(argv).unwrap();
+            assert_eq!(cli.json, json);
+            match (action, cli.command) {
+                (
+                    "check",
+                    Some(Commands::Flow {
+                        action: FlowAction::Check { name },
+                    }),
+                )
+                | (
+                    "show",
+                    Some(Commands::Flow {
+                        action: FlowAction::Show { name },
+                    }),
+                ) => {
+                    assert_eq!(name, "hello-plan");
+                }
+                (_, other) => panic!("expected Flow {action}, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn flow_without_a_name_or_with_an_unknown_action_is_a_parse_error() {
+        for argv in [
+            vec!["konductor", Commands::FLOW, "check"],
+            vec!["konductor", Commands::FLOW, "show"],
+            vec!["konductor", Commands::FLOW, "run", "hello-plan"],
+            vec!["konductor", Commands::FLOW, "trust", "hello-plan"],
+            vec!["konductor", Commands::FLOW, "check", "a", "b"],
+        ] {
+            assert!(Cli::try_parse_from(&argv).is_err(), "{argv:?}");
+        }
+    }
+
+    #[test]
+    fn flow_names_only_the_check_and_show_actions() {
+        let command = Cli::command();
+        let flow = command
+            .find_subcommand(Commands::FLOW)
+            .expect("flow command");
+        let names: Vec<&str> = flow.get_subcommands().map(|c| c.get_name()).collect();
+        assert_eq!(names, ["check", "show"]);
     }
 
     #[test]

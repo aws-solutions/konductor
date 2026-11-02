@@ -182,6 +182,13 @@ owo-colors = "=4.2.2"
 # per repo convention.
 textwrap = { version = "=0.16.2", default-features = false, features = ["terminal_size"] }
 
+# The workflow engine: the format and its checks (`workflow-core`, which does no IO)
+# and the file source (`workflow-adapters`). Path dependencies, like
+# konductor-telemetry above. The engine is its own Cargo workspace under
+# `workflow-engine/`, not part of this crate's.
+workflow-core = { path = "../../workflow-engine/core" }
+workflow-adapters = { path = "../../workflow-engine/adapters" }
+
 [dev-dependencies]
 # Loopback HTTPS sink standing in for the real telemetry endpoint in
 # this crate's own integration tests -- see shared/telemetry-test-sink's
