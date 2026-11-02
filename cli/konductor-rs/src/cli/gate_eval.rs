@@ -4,8 +4,7 @@
 // sop-orchestration.yml and the severity words in severity-schema.yml.
 //
 // Pure: the evaluator opens no file. It takes an already-parsed session, the
-// gate map, a severity policy and an evidence check, so a new session source
-// can be added later without touching the verdict rows.
+// gate map, a severity policy and an evidence check.
 
 use std::collections::BTreeMap;
 
@@ -149,17 +148,6 @@ impl Session {
             run: parse_bag(run_value, "run")?,
             features,
         })
-    }
-}
-
-/// Where the evaluator reads phases, statuses, gate facts and counters.
-pub(crate) trait SessionSource {
-    fn session(&self) -> &Session;
-}
-
-impl SessionSource for Session {
-    fn session(&self) -> &Session {
-        self
     }
 }
 
@@ -333,8 +321,7 @@ pub(crate) fn evaluate_value(value: &Value, ctx: &EvalContext<'_>) -> Verdict {
 }
 
 /// Runs rows V2 to V9 over one session.
-pub(crate) fn evaluate(source: &dyn SessionSource, ctx: &EvalContext<'_>) -> Verdict {
-    let session = source.session();
+pub(crate) fn evaluate(session: &Session, ctx: &EvalContext<'_>) -> Verdict {
     let mut report = Report::default();
 
     let Some(sop) = check_phase_map(session, ctx, &mut report) else {
