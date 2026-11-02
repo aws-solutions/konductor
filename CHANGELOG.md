@@ -14,9 +14,10 @@ not per individual commit.
   `Orchestration: strict (phase-gated SOP)` line.
 - Gated SOPs can list their phases and gate boundaries, and `make sop-orchestration-check`
   checks them against each SOP's phase list.
-- `severity-schema.yml` maps the words checkers write (IMPORTANT, WARNING, SUGGESTION,
-  MINOR) to severity ids. Matching ignores case and reads the leading word of labels such
-  as `Warning Gap`, so the test-coverage and design-review labels all map.
+- `severity-schema.yml` maps the words checkers write for finding severities (IMPORTANT,
+  WARNING, WARNINGS, SUGGESTION, MINOR) to severity ids. Matching ignores case and reads the
+  leading word of labels such as `Warning Gap`. Any other word, an empty label, and risk,
+  priority or confidence scales such as `High Risk` rank as CRITICAL.
 
 ### Changed
 
