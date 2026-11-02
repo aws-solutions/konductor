@@ -15,33 +15,29 @@
 # to the gate id. A word that is neither an id nor an alias ranks as
 # CRITICAL. An alias appears under one id only and is never itself an id.
 #
-# ── Exit-code note (IMPORTANT — read before wiring this into anything) ────
-# `exit_code_signal: critical_gate` below is a SEMANTIC label only: it
-# documents that a CRITICAL-severity finding is the condition the
-# run-engine/conductor (not yet implemented — M5) will eventually use to
-# decide whether to emit process exit code 2 ("unresolved CRITICAL gate",
-# see AGENTS.md / cli/README.md's exit-code contract). Emitting exit code 2
-# is exclusively the run-engine's responsibility once it exists. Nothing in
-# this M1 stage (gate-config files, the config loader, or `init` scaffolding)
-# emits, references, or is permitted to emit exit code 2 — usage/config
-# errors in this stage use exit code 64 (EX_USAGE) per the existing
+# ── Exit-code note ────────────────────────────────────────────────────────
+# `exit_code_signal: critical_gate` below is a SEMANTIC label. Exit code 2
+# means an unresolved finding at or above the effective threshold. The
+# effective threshold is the configured one (CRITICAL by preset), except that
+# phase-gated SOPs never go laxer than HIGH, so an open HIGH finding (or its
+# aliases IMPORTANT and WARNING) also exits 2 there. Only the gate evaluator
+# emits it. Usage and config errors use exit code 64 (EX_USAGE) per the
 # contract in cli/konductor/konductor/constants/exit_codes.py /
 # cli/konductor-rs/src/cli.rs.
 severities:
   - id: CRITICAL
     rank: 4
     description: >-
-      A finding that must block the pipeline. Conceptually maps to the
-      run-engine's "unresolved CRITICAL gate" signal (exit code 2) — but
-      note: emitting that exit code is the run-engine/conductor's job
-      (M5, not yet implemented), never init/config/loader code.
+      A finding that must block the pipeline. An unresolved CRITICAL finding
+      exits 2 under every threshold.
     exit_code_signal: critical_gate
   - id: HIGH
     rank: 3
     aliases: [IMPORTANT, WARNING]
     description: >-
-      A finding that should block the pipeline in strict configurations,
-      but may be downgraded to a warning by scope/policy overrides.
+      A finding that blocks phase-gated SOPs, whose strict floor makes an
+      unresolved HIGH finding exit 2 even when the threshold is CRITICAL.
+      Elsewhere it blocks only when the threshold is HIGH or lower.
     exit_code_signal: null
   - id: MEDIUM
     rank: 2
