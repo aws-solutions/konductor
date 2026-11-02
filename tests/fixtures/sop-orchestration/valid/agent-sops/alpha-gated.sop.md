@@ -10,3 +10,5 @@ Fixture SOP alpha-gated.
 ## Steps
 
 ### 1. Do the thing
+
+### 2. Check the thing

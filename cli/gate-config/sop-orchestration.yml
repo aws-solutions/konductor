@@ -26,20 +26,22 @@
 # gate facts, and not proceed past an unmet gate. The `meaning` line below is
 # the sentence that follows the marker in each gated SOP; the lint checks it.
 #
-# Update a gated SOP's basis when that SOP's steps change.
+# A basis cites steps by their exact heading text in backticks, without the
+# step number. The lint fails when a cited heading is not in the SOP, so
+# renaming a step surfaces here. Update the basis when a step's gate changes.
 version: 1
 marker: 'Orchestration: strict (phase-gated SOP)'
 meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate.'
 gated:
   k-full-sdlc:
     gates: [check-threshold, approval]
-    basis: Step 4 stops on CRITICAL design-review findings until resolved or overridden; Step 5 feature split needs approval before Step 6; Step 6 specs need approval for every feature; Step 8 consolidated review verdicts need confirmation before Step 9; Step 9 stops on CRITICAL test gaps until the engineer picks a resolution.
+    basis: '`Principal Engineer Design Review` stops on CRITICAL findings until resolved or overridden; `Feature Splitting` needs approval before `Specs (Per Feature)`; `Specs (Per Feature)` need approval for every feature; `Code Review and Pull Request` consolidated review verdicts need confirmation before `Testing`; `Testing` stops on CRITICAL test gaps until the engineer picks a resolution.'
   k-design-doc-creation:
     gates: [approval, check-threshold, loop-exit]
-    basis: Phase 1 summary confirmed before Phase 2; Phase 2 needs zero CRITICAL before Phase 3; Phase 4 loop exits or hits its 5-round cap.
+    basis: '`Phase 1: Requirements Elicitation` summary confirmed before `Phase 2: Draft Generation`; `Phase 2: Draft Generation` needs zero CRITICAL before `Phase 3: Quality Gates`; `Phase 4: Adversarial Review Loop` exits or hits its 5-round cap.'
   k-principal-engineer-design-review:
     gates: [check-threshold, loop-exit]
-    basis: Step 1 quality score of 3 or more before Step 2; Step 3 adversarial loop, max 5 rounds.
+    basis: '`Quality Gate (design-quality-check)` score of 3 or more before `Architecture Principles Gate (design-evaluation)`; `Adversarial Review Loop (max 5 rounds)`.'
   kiro-spec-workflow:
     gates: [approval]
     basis: requirements.md and design.md approved before the next step; tasks.md presented for approval.

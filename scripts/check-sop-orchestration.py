@@ -9,6 +9,7 @@ Exit 0 and print nothing when they agree. Exit 1 and print one
 `<code>: <detail>` line per violation to stderr when they do not.
 Exit 64 on a bad invocation.
 """
+import re
 import sys
 from pathlib import Path
 
@@ -105,10 +106,34 @@ def check_agreement(root, gated, not_gated, marker, meaning):
             )
         if text.count(marker) > 1:
             errors.append(f"unexpected-marker: gated '{name}' has the marker more than once")
+        entry = gated[name]
+        if isinstance(entry, dict) and isinstance(entry.get("basis"), str):
+            errors += check_cited_headings(name, entry["basis"], text)
     for name in sorted(texts.keys() & not_gated.keys()):
         if marker in texts[name]:
             errors.append(f"unexpected-marker: not_gated '{name}' contains '{marker}'")
     return errors
+
+
+def step_headings(text):
+    """Heading texts at levels 2-4, with a leading step number like `4. `
+    removed so a basis can cite a step by name and survive renumbering."""
+    found = set()
+    for line in text.splitlines():
+        match = re.match(r"#{2,4} (.+?)\s*$", line)
+        if match:
+            found.add(re.sub(r"^\d+\.\s+", "", match.group(1)))
+    return found
+
+
+def check_cited_headings(name, basis, text):
+    """Each backticked phrase in a gated basis must be a heading in the SOP."""
+    headings = step_headings(text)
+    return [
+        f"stale-basis: gated '{name}' basis cites `{cited}` but {SOP_DIR / (name + SOP_SUFFIX)} has no such heading"
+        for cited in re.findall(r"`([^`]+)`", basis)
+        if cited not in headings
+    ]
 
 
 def first_line(exc):

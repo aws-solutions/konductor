@@ -5,6 +5,6 @@ meaning: 'Strict means: stop at each recorded gate, record the gate facts, and d
 gated:
   alpha-gated:
     gates: [approval]
-    basis: Step 1 output needs approval before Step 2.
+    basis: '`Do the thing` needs approval before `Check the thing`.'
 not_gated:
   beta-plain: No stop rule between steps.

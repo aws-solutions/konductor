@@ -44,6 +44,7 @@ def test_valid_fixture_passes_silently():
         ("gated-marker-indented", "missing-marker: gated 'alpha-gated'"),
         ("gated-marker-not-own-paragraph", "missing-marker: gated 'alpha-gated'"),
         ("not-gated-with-marker", "unexpected-marker: not_gated 'beta-plain'"),
+        ("stale-basis-heading", "stale-basis: gated 'alpha-gated' basis cites `Ship it`"),
         ("bad-entry", "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list"),
     ],
 )
