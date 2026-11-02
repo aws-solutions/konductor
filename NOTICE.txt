@@ -23,6 +23,7 @@ anstyle under the MIT OR Apache-2.0 license.
 anstyle-parse under the MIT OR Apache-2.0 license.
 anstyle-query under the MIT OR Apache-2.0 license.
 anstyle-wincon under the MIT OR Apache-2.0 license.
+arraydeque under the MIT/Apache-2.0 license.
 autocfg under the Apache-2.0 OR MIT license.
 backtrace under the MIT OR Apache-2.0 license.
 base64 under the MIT OR Apache-2.0 license.
@@ -109,6 +110,7 @@ rustls-pki-types under the MIT OR Apache-2.0 license.
 rustls-webpki under the ISC license.
 rustversion under the MIT OR Apache-2.0 license.
 ryu under the Apache-2.0 OR BSL-1.0 license.
+saphyr-parser under the MIT OR Apache-2.0 license.
 schemars under the MIT license.
 schemars_derive under the MIT license.
 serde under the MIT OR Apache-2.0 license.

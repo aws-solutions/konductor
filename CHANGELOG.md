@@ -24,6 +24,8 @@ not per individual commit.
 - The Execution tab runs the workflow and shows live node states.
 - A launch code trade that gets no answer shows "Still waiting for the server" with a way to stop, and ends with an error after 120 seconds.
 - The Designer tab edits stages (agent, rename, add, delete) and saves with checks while typing.
+- `konductor flow check` and `konductor flow show` validate a workflow file and print its resolved form as JSON. The
+  engine behind them is the Rust workspace in `workflow-engine/`, with its own CI.
 
 ### Changed
 

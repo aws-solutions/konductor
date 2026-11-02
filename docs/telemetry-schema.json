@@ -28,7 +28,7 @@
     },
     "targetName": {
       "type": "string",
-      "description": "Meaning depends on eventType: an agent/sub-agent name (agent_invocation/subagent_invocation); tool_name or tool_name:skill_name (mcp_tool_call); the failed subcommand's name -- init/install/update/uninstall/synth/doctor/config (cli_error); the target's harness value (package_uninstalled/package_installed/package_version_updated)."
+      "description": "Meaning depends on eventType: an agent/sub-agent name (agent_invocation/subagent_invocation); tool_name or tool_name:skill_name (mcp_tool_call); the failed subcommand's name -- init/install/update/uninstall/synth/doctor/config/flow (cli_error); the target's harness value (package_uninstalled/package_installed/package_version_updated)."
     },
     "sessionId": {
       "type": [

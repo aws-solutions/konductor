@@ -171,3 +171,37 @@ fn doctor_without_json_resolve_cwd_failure_stays_plain_text() {
         "expected the bare 'konductor: ' prefix (command-agnostic path) on stderr: {stderr:?}"
     );
 }
+
+/// `konductor flow` goes through the same helper as the other commands, so a cwd failure under `--json` is the
+/// command-agnostic envelope, and nothing is written to stderr.
+#[test]
+fn flow_json_resolve_cwd_failure_emits_json_envelope_not_plain_text() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let output = run_konductor_with_deleted_cwd(&sink, &["flow", "check", "plan", "--json"]);
+
+    assert_eq!(output.status.code(), Some(64));
+    let stdout = String::from_utf8(output.stdout).expect("stdout must be valid UTF-8");
+    assert_eq!(stdout.trim().lines().count(), 1, "{stdout:?}");
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("one json document");
+    assert_eq!(parsed["command"], "konductor");
+    assert!(parsed["error"]
+        .as_str()
+        .unwrap()
+        .contains("could not determine the current directory"));
+    assert_eq!(String::from_utf8(output.stderr).unwrap(), "");
+}
+
+/// Without `--json` the plain line goes to stderr and stdout stays empty.
+#[test]
+fn flow_resolve_cwd_failure_prints_the_plain_line_on_stderr() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let output = run_konductor_with_deleted_cwd(&sink, &["flow", "show", "plan"]);
+
+    assert_eq!(output.status.code(), Some(64));
+    assert_eq!(String::from_utf8(output.stdout).unwrap(), "");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("could not determine the current directory"),
+        "{stderr:?}"
+    );
+}
