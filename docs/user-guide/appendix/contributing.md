@@ -110,24 +110,27 @@ Create `agent-sops/<name>.sop.md` following the shape every existing SOP uses:
 ## Troubleshooting   (optional)
 ```
 
-List the SOP in `cli/gate-config/sop-orchestration.yml`, under `gated` if it stops between steps
-for an approval, a threshold check or a loop exit, otherwise under `not_gated`, with a one-line
-`basis` either way. A gated SOP also needs the marker paragraph between the title and
-`## Overview`:
+List the SOP in `cli/gate-config/sop-orchestration.yml`. A gated SOP, one that stops between steps
+for an approval, a threshold check or a loop exit, is a map with `gates` and `basis`. Any other SOP
+goes under `not_gated` as `name: reason`, one line of text. A gated SOP also needs the marker
+paragraph and the gate note between the title and `## Overview`:
 
 ```text
 # Title
 
 Orchestration: strict (phase-gated SOP)
-Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate.
+Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it or the SOP's own round cap applies; record which.
+
+Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.
 
 ## Overview
 ```
 
-A gated `basis` cites steps by their heading text in backticks, without the step number, so it
-survives renumbering. Run `make sop-orchestration-check`; it fails on an unlisted SOP, a missing
-or misplaced marker, or a cited heading that no longer exists. Run it again whenever you edit or
-renumber the steps of a listed SOP, and update `basis` if a gate moved.
+A gated `basis` cites at least one step by its heading text in backticks, without the step or phase
+number, so it survives renumbering. Run `make sop-orchestration-check`; it fails on an unlisted SOP, a
+missing or misplaced marker or gate note, a basis that cites no heading (`uncited-basis`), or a cited
+heading that no longer exists. The check needs PyYAML and exits 3 without it. Run it again whenever
+you edit or renumber the steps of a listed SOP, and update `basis` if a gate moved.
 
 Use RFC 2119 wording deliberately — `MUST`, `MUST NOT`, `SHOULD`, `MAY`. It is how an agent tells a
 hard rule from a preference, and it is why the existing SOPs behave consistently.

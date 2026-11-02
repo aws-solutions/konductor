@@ -306,10 +306,11 @@ konductor/
 │   └── k-orchestrator-routing-rules.md
 ├── cli/                          The Konductor CLI
 │   ├── README.md                 CLI-specific docs
-│   └── gate-config/              Declarative policy shipped with the CLI
+│   └── gate-config/              Declarative policy; the CLI embeds config.yml only
 │       ├── config.yml            Default configuration
 │       ├── severity-schema.yml   Finding severities
-│       └── scope-table.yml       Change tiers
+│       ├── scope-table.yml       Change tiers
+│       └── sop-orchestration.yml Gated SOP list, repository lint input
 ├── mcp/                          MCP servers the CLI installs alongside the agents
 │   ├── lib/                      Shared crates: skill-lookup-core, telemetry-net
 │   └── servers/skill-lookup/     Serves skills to Kiro CLI sessions
