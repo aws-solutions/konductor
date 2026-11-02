@@ -21,9 +21,19 @@
 # effective threshold is the configured one (CRITICAL by preset), except that
 # phase-gated SOPs never go laxer than HIGH, so an open HIGH finding (or its
 # aliases IMPORTANT and WARNING) also exits 2 there. Only the gate evaluator
-# emits it. Usage and config errors use exit code 64 (EX_USAGE) per the
-# contract in cli/konductor/konductor/constants/exit_codes.py /
-# cli/konductor-rs/src/cli.rs.
+# emits it. Argument and usage errors use exit code 64 (EX_USAGE). A session
+# file that is corrupt, invalid or inconsistent exits 65. Exit 3 is a
+# fix-cycle budget overrun. The contract lives in cli/konductor-rs/src/cli.rs.
+#
+# When several causes apply the evaluator reports all of them in `reasons` but
+# exits with the first in this order: 65 (content or integrity), 1 (halted), 3
+# (budget), 2 (unresolved finding), then 6 (skipped gate). An earlier cause
+# hides a later code, so fix the earlier one to see the next.
+#
+# A word that is neither an id nor an alias ranks as CRITICAL, except `none`:
+# the exact lowercase word `none` (after trimming) records a gate with no
+# findings. It is case-sensitive like the ids and aliases, so `None` is
+# unknown and ranks CRITICAL.
 severities:
   - id: CRITICAL
     rank: 4

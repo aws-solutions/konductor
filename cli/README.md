@@ -805,8 +805,8 @@ With `--all`, this same object shape is nested once per target under a top-level
 `targets` array instead — see [Checking every tracked install with `--all`](#checking-every-tracked-install-with---all).
 
 Exit codes: `0` when every check is `ok`/`info`/`warn`; `1` (`EXIT_HALTED`) when at
-least one is `failed`/`stale`; `64` on a usage error. Never exit code 2 — see
-[Conventions](#conventions).
+least one is `failed`/`stale`; `64` on a usage error. `doctor` never emits exit code 2,
+which only the gate evaluator uses — see [Conventions](#conventions).
 
 ### `--json` error envelope (`install`/`synth`/`doctor`)
 
@@ -863,8 +863,9 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   interleaved in a CI log or terminal session alongside other tools' output.
 - **Exit code 64 for CLI usage errors.** A bad flag, unknown command, or missing required
   argument exits **64** (`EX_USAGE`), not the more common default of 2 — exit code 2 is
-  reserved by the exit-code contract for "unresolved CRITICAL gate" (the CI-failing
-  signal), so a malformed invocation is never mistaken for a gate failure.
+  reserved by the exit-code contract for an unresolved finding at or above the effective
+  severity threshold (the CI-failing signal), so a malformed invocation is never mistaken
+  for a gate failure. 64 covers argument and usage problems only.
 - **Exit-code contract** (the conductor that emits these for its own paused-verdict
   workflow is post-launch — but one code is already reused, for its own distinct
   local meaning, by a real command ahead of that conductor existing):
@@ -872,13 +873,17 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   |------|---------|
   | 0 | All passed |
   | 1 | Halted (timeout / runtime error / parse error) — reused by `doctor` for "at least one check failed/stale" |
-  | 2 | Unresolved CRITICAL gate — CI-failing signal (**never** used for usage errors) |
-  | 3 | Budget / turn limit exceeded |
+  | 2 | Unresolved finding at or above the effective severity threshold, from the gate evaluator — CI-failing signal (**never** used for usage errors). Phase-gated SOPs never judge laxer than HIGH |
+  | 3 | Fix-cycle budget exceeded: a recorded count is above `run.data.max_fix_cycles` (default 2 when the session records none; the evaluator notes that default) |
   | 4 | User aborted a paused verdict |
   | 5 | Reserved, not yet emitted by any command. |
-  | 6 | Success with warnings — emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
+  | 6 | Success with warnings — `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink; the gate evaluator when a run completed with a skipped gate |
   | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
-  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error) |
+  | 65 | Content or integrity failure, distinct from a `64` usage error: an unsupported manifest/index `schema_version`, a failed checksum, or, for a SOP session file, a corrupt or invalid session, a broken record (including a non-integer `max_fix_cycles` or counter, or a wrong-typed gate fact), phase order, missing gate facts or evidence, or an in-progress session without `allow_running` |
+
+  When several causes apply, the gate evaluator lists all of them but exits with the
+  first in this order: 65, 1, 3, 2, 6. The fix-cycle cap comes from the SOP recording
+  `max_fix_cycles` in the session; until it does, the default of 2 applies.
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 
@@ -901,8 +906,8 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
     guidance
 - **Stubs:** `metrics` still prints "not yet implemented."
 - **Not yet started:** the run-engine/conductor (which will read/write
-  `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's
-  "unresolved CRITICAL gate" signal), and `.konductor/runs/` storage.
+  `.konductor/run-state.json`-shaped documents), a command that runs the gate evaluator
+  (which owns exit code 2's unresolved-finding signal), and `.konductor/runs/` storage.
 
 ## Current limitations
 

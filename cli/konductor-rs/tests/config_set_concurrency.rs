@@ -209,7 +209,7 @@ fn concurrent_config_set_multiprocess_no_lost_updates() {
 /// THIS test process while a REAL subprocess attempts `config set`. The
 /// subprocess must give up within its bounded wait and exit
 /// EXIT_USAGE_ERROR (64) with a clear message -- never hang, and never
-/// exit 2 (reserved for the unresolved-CRITICAL-gate signal).
+/// exit 2 (reserved for the unresolved-finding signal).
 #[test]
 fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
     use fs2::FileExt;
@@ -253,7 +253,7 @@ fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
     );
     assert_ne!(
         exit_code, 2,
-        "lock-contention must never exit code 2 (reserved for the unresolved-CRITICAL-gate signal)"
+        "lock-contention must never exit code 2 (reserved for the unresolved-finding signal)"
     );
     let stderr = String::from_utf8_lossy(&result.stderr).to_lowercase();
     assert!(
