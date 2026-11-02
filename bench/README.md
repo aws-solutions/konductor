@@ -368,7 +368,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 | haiku-5.5, partial (1 task) | 0.42 | not run | 0.66 |
 
 ## Capability benchmarking (cap)
-`cap` answers questions about one skill, SOP, agent or context file. `list`, `audit`, `variant`, `plan` and `prune-report` are free; `draft`, `trigger` and live runs spend credits.
+`cap` answers questions about one skill, SOP, agent or context file. `list`, `audit`, `variant`, `plan`, `prune-report`, `skill-plan` and `decide` are free; `draft`, `trigger`, `skill-study` and live runs spend credits.
 - `cap list` shows the registry plus a scan of the tree at `--base` (default `v1.2.0`): owner, agents that reach each capability, tasks, gaps.
   `--init` prints skeleton registry entries for unregistered ones and writes nothing.
 - `cap audit --base REF --harness kiro-cli|opencode|both` writes `cap-audit.md` and `cap-audit.json` and exits 1 on any error
@@ -384,6 +384,11 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - `cap plan --mode lift|trigger|improve --cap ID` (pass `--tasks id,id` when the registry links no lift task) prints the variant, run, contrast, judge and report commands and a credit estimate
   from the observed table. It refuses a task scored by checks alone unless `--allow-regex`, and refuses to guess credits without observed
   figures unless `--budget-credits X` is given. A skills-only change the acting agent cannot reach at startup stops with exit 2 unless `--force`.
+- `cap variant ... --overlay skill:NAME=DIR` replaces `SKILL.md` and adds `references/**` from DIR in one step (a section moved out of a skill). Only those paths are accepted, links and other files are refused, and an existing reference file is never overwritten.
+- `cap skill-plan --base REF --runs DIR[,DIR] [--tier ...] [--only a,b]` plans the per-skill study: the tiers (loaded, large, duplicates, triage), the tasks that exercise each skill, the sections that can be tested, the waves and credit, judge and wall-clock estimates from the per-run figures in the run directories. Free; `--out DIR` writes `skill-plan.md` and `.json`.
+- `cap skill-study --study DIR` runs that plan and `cap decide --study DIR` reads it. The study directory holds `study.json`, one folder per skill (`w1`, `w2`, `w3`, markers, overlay files), `controls/`, `incomplete/`, `logs/` and `decisions/`. `bench/scripts/run-skill-bench.sh` wraps it: preflight, daemon, `--status`, `--stop`, `--dry-run`, `--tier`, `--skills`.
+  Waves: 1 control, an A/A repeat and the skill deleted; 2 one section removed per arm, only if deleting the skill lost quality; 3 the same sections moved to `references/<id>.md` behind an "open when" line, only for sections whose removal lost quality. Controls run first; a failed control stops the study.
+  `cap decide` writes `decisions.md`, `decisions.json`, `evidence.json` (rows for `cap prune-report --evidence`) and `patches/<skill>.patch`. Calls: DELETE, PRUNE (each section with `skills/NAME/SKILL.md:start-end`, remove or move, tokens saved), KEEP, NEEDS DATA. Quality is the bench score on a 0 to 1 scale; a difference counts only outside the A/A spread; the margin is 0.10 and runs per side must reach 15 (our own thresholds). No DELETE or PRUNE call without passed controls, an A/A arm, valid units, enough runs, a skill that loaded in at least 30% of control runs, and a result that clears the decision-card rule (confidence medium or high). Nothing is applied.
 - Registry: `capabilities/<kind>/<name>.json`, schema `schema/capability.schema.json`, checked by every `cap` command and by
   `node tasks/validate-tasks.js`. To add one: run `cap list --init --cap ID`, save the entry under its path, fill in `owner`, link tasks,
   then run `cap audit`. Only a person edits these files; stored query splits are never recomputed.

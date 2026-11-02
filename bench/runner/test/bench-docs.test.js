@@ -99,3 +99,10 @@ test('the playbook has the orchestrator study section with the cell, arm and A/A
   const doc = read('CAP-PLAYBOOK.md');
   for (const re of [/## Orchestrator study/, /A\/A/, /--arm-config/, /orchestrator-pass/, /one cell per directory/i]) assert.match(doc, re);
 });
+
+test('the per-skill study is documented in the README and the playbook', () => {
+  const readme = fs.readFileSync(path.join(__dirname, '..', '..', 'README.md'), 'utf8');
+  const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'CAP-PLAYBOOK.md'), 'utf8');
+  for (const re of [/cap skill-plan/, /cap skill-study/, /cap decide/, /--overlay skill:NAME=DIR/, /run-skill-bench\.sh/, /DELETE, PRUNE/, /NEEDS DATA/]) assert.match(readme, re);
+  for (const re of [/Per-skill study: delete, prune or keep/, /cap skill-plan/, /run-skill-bench\.sh/, /What it cannot show/]) assert.match(playbook, re);
+});

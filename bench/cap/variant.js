@@ -169,6 +169,51 @@ function checkCandidate(kind, name, text) {
   }
 }
 
+// Files of an overlay directory: SKILL.md and references/** only, regular files only, sorted. Anything else is refused
+// so a variant cannot smuggle scripts or other skill files into the arm.
+function overlayFiles(dir) {
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error(`overlay directory not found: ${dir}`);
+  const out = [];
+  const walk = (d, rel) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isSymbolicLink() || (!e.isDirectory() && !e.isFile())) throw new Error(`overlay ${dir}: ${r} must be a regular file`);
+      if (e.isDirectory()) { walk(path.join(d, e.name), r); continue; }
+      if (r !== 'SKILL.md' && !r.startsWith('references/')) throw new Error(`overlay ${dir}: only SKILL.md and references/ files are allowed (found ${r})`);
+      out.push(r);
+    }
+  };
+  walk(dir, '');
+  if (!out.includes('SKILL.md')) throw new Error(`overlay ${dir} has no SKILL.md`);
+  return out;
+}
+
+const overlayDigest = (dir) => {
+  const h = crypto.createHash('sha256');
+  for (const f of overlayFiles(dir)) h.update(`${f}\u0000`).update(fs.readFileSync(path.join(dir, f))).update('\u0000');
+  return h.digest('hex');
+};
+
+function opOverlay(tree, arg) {
+  const { id, file: dir } = parseIdFile(arg, '--overlay');
+  const [kind, name] = parseId(id);
+  if (kind !== 'skill') throw new Error(`--overlay takes skills only (got ${id})`);
+  const dest = defFile(tree, kind, name);
+  if (!fs.existsSync(dest)) throw new Error(`${id} does not exist at the base ref; use --add for a new capability`);
+  const files = overlayFiles(dir);
+  checkCandidate(kind, name, fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8'));
+  const root = path.join(tree, 'skills', name);
+  for (const f of files) {
+    if (f !== 'SKILL.md' && fs.existsSync(path.join(root, f))) throw new Error(`${id} already has ${f} at the base ref; an overlay adds reference files and does not overwrite them`);
+  }
+  const before = readSha(dest);
+  for (const f of files) {
+    fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true });
+    fs.copyFileSync(path.join(dir, f), path.join(root, f));
+  }
+  return { op: 'overlay', id, beforeSha256: before, afterSha256: readSha(dest), files };
+}
+
 function opAdd(tree, arg, agents) {
   const { id, file: src } = parseIdFile(arg, '--add');
   const [kind, name] = parseId(id);
@@ -213,34 +258,36 @@ function opPreset(tree, preset) {
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 
-function namesFor({ drop, replace, add, preset }) {
-  const kinds = [drop.length && 'x-minus', replace.length && 'x-replace', add.length && 'x-plus', preset].filter(Boolean);
+function namesFor({ drop, replace, add, overlay = [], preset }) {
+  const kinds = [drop.length && 'x-minus', replace.length && 'x-replace', add.length && 'x-plus', overlay.length && 'x-overlay', preset].filter(Boolean);
   const armName = kinds.length === 1 ? kinds[0] : 'x-variant';
-  const first = drop[0] ?? (replace[0] ? parseIdFile(replace[0], '--replace').id : null) ?? (add[0] ? parseIdFile(add[0], '--add').id : null);
+  const first = drop[0] ?? (replace[0] ? parseIdFile(replace[0], '--replace').id : null) ?? (add[0] ? parseIdFile(add[0], '--add').id : null) ?? (overlay[0] ? parseIdFile(overlay[0], '--overlay').id : null);
   const nameOf = first ? first.slice(first.indexOf(':') + 1) : '';
-  const extra = drop.length + replace.length + add.length > 1 ? `-and-${drop.length + replace.length + add.length - 1}-more` : '';
+  const total = drop.length + replace.length + add.length + overlay.length;
+  const extra = total > 1 ? `-and-${total - 1}-more` : '';
   const variantId = slug(preset && !first ? preset : `${armName}-${nameOf}${extra}`);
   return { armName, variantId };
 }
 
 // The directory name comes from the inputs (base commit, ops, candidate file bytes, engine) so a plan can print the
 // exact path before anything is built. variantHash in variant.json is the hash of the resulting tree.
-function variantKey({ sha, drop, replace, add, toAgent, preset, agentEngine }) {
+function variantKey({ sha, drop, replace, add, overlay = [], toAgent, preset, agentEngine }) {
   const h = crypto.createHash('sha256');
   const part = (...x) => h.update(`${x.join('\u0001')}\u0000`);
   part('base', sha, 'engine', agentEngine, 'preset', preset ?? '');
   for (const id of drop) part('drop', id);
   for (const a of replace) { const { id, file } = parseIdFile(a, '--replace'); part('replace', id, fs.existsSync(file) ? readSha(file) : 'missing'); }
   for (const a of add) { const { id, file } = parseIdFile(a, '--add'); part('add', id, fs.existsSync(file) ? readSha(file) : 'missing', ...toAgent); }
+  for (const a of overlay) { const { id, file } = parseIdFile(a, '--overlay'); part('overlay', id, overlayDigest(file)); }
   return h.digest('hex');
 }
 
 /** Where a variant with these inputs is (or will be) built. Pure: reads the repo refs and candidate files, writes nothing. */
-function variantPaths({ repo, base = 'v1.2.0', drop = [], replace = [], add = [], toAgent = [], preset = null, scratch, agentEngine = 'v2' }) {
-  drop = toList(drop); replace = toList(replace); add = toList(add); toAgent = toList(toAgent);
+function variantPaths({ repo, base = 'v1.2.0', drop = [], replace = [], add = [], overlay = [], toAgent = [], preset = null, scratch, agentEngine = 'v2' }) {
+  drop = toList(drop); replace = toList(replace); add = toList(add); overlay = toList(overlay); toAgent = toList(toAgent);
   const { ref, sha } = resolveRefOnly(repo, base);
-  const { armName, variantId } = namesFor({ drop, replace, add, preset });
-  const key = variantKey({ sha, drop, replace, add, toAgent, preset, agentEngine });
+  const { armName, variantId } = namesFor({ drop, replace, add, overlay, preset });
+  const key = variantKey({ sha, drop, replace, add, overlay, toAgent, preset, agentEngine });
   const root = path.join(realOrResolve(scratch), 'variants', `${variantId}-${key.slice(0, 12)}`);
   const dir = path.join(root, 'tree');
   return { ref, sha, armName, variantId, root, dir, armSpec: `${armName}=dir:${dir}` };
@@ -250,14 +297,14 @@ function variantPaths({ repo, base = 'v1.2.0', drop = [], replace = [], add = []
  * Builds the variant and returns { root, dir, armName, armSpec, variantId, meta }. `dir` is the tree to pass as a dir arm;
  * `variant.json` sits beside it in `root`, so it never changes the arm's content hash.
  */
-function buildVariant({ repo, base = 'v1.2.0', drop = [], replace = [], add = [], toAgent = [], preset = null, scratch, agentEngine = 'v2', now = new Date() }) {
-  drop = toList(drop); replace = toList(replace); add = toList(add); toAgent = toList(toAgent);
+function buildVariant({ repo, base = 'v1.2.0', drop = [], replace = [], add = [], overlay = [], toAgent = [], preset = null, scratch, agentEngine = 'v2', now = new Date() }) {
+  drop = toList(drop); replace = toList(replace); add = toList(add); overlay = toList(overlay); toAgent = toList(toAgent);
   if (preset !== null && !PRESETS.includes(preset)) throw new Error(`--preset takes ${PRESETS.join(' or ')}`);
-  if (!drop.length && !replace.length && !add.length && !preset) throw new Error('nothing to do: give --drop, --replace, --add or --preset');
+  if (!drop.length && !replace.length && !add.length && !overlay.length && !preset) throw new Error('nothing to do: give --drop, --replace, --add, --overlay or --preset');
   if (add.length && !toAgent.length) throw new Error('--add needs --to-agent AGENT[,AGENT]');
   if (!scratch) throw new Error('--scratch DIR is required');
   const scratchReal = checkScratch(scratch, repo);
-  const planned = variantPaths({ repo, base, drop, replace, add, toAgent, preset, scratch: scratchReal, agentEngine });
+  const planned = variantPaths({ repo, base, drop, replace, add, overlay, toAgent, preset, scratch: scratchReal, agentEngine });
   const { ref, sha } = planned;
   const variantsDir = path.join(scratchReal, 'variants');
   fs.mkdirSync(variantsDir, { recursive: true });
@@ -272,6 +319,7 @@ function buildVariant({ repo, base = 'v1.2.0', drop = [], replace = [], add = []
     for (const id of drop) ops.push(opDrop(tree, id));
     for (const r of replace) ops.push(opReplace(tree, r));
     for (const a of add) ops.push(opAdd(tree, a, toAgent));
+    for (const a of overlay) ops.push(opOverlay(tree, a));
     const variantHash = armSource.snapshotDir(tree).hash;
     const { armName, variantId, root } = planned;
     fs.rmSync(root, { recursive: true, force: true });

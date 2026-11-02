@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// `bench.js cap list|audit|variant|plan`. Everything here is free: no model call, no credits, no network.
+// `bench.js cap list|audit|variant|plan|...`. Everything here is free: no model call, no credits, no network.
 
 const fs = require('node:fs');
 const os = require('node:os');
@@ -42,8 +42,9 @@ const { loadTasks } = require('../runner/lib/tasks.js');
 const { optionalProfile, replicatesFor } = require('../runner/lib/profiles.js');
 const { generateScenarios, checkCount } = require('./scenarios.js');
 const { writeControls, controlPlan, evaluateControls } = require('./controls.js');
+const { cmdSkillPlan, cmdSkillStudy, cmdDecide } = require('./skillcli.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls'];
+const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -167,6 +168,7 @@ function pseudoOps(opts) {
   for (const id of list(opts.drop)) ops.push({ op: 'drop', id });
   for (const a of list(opts.replace)) ops.push({ op: 'replace', id: a.slice(0, Math.max(a.indexOf('='), 0)) });
   for (const a of list(opts.add)) ops.push({ op: 'add', id: a.slice(0, Math.max(a.indexOf('='), 0)), agents: list(opts['to-agent']) });
+  for (const a of list(opts.overlay)) ops.push({ op: 'overlay', id: a.slice(0, Math.max(a.indexOf('='), 0)) });
   return ops;
 }
 
@@ -213,7 +215,7 @@ function cmdVariant(opts) {
   if (warn) console.error(`WARNING: ${warn} (--force)`);
   const run = () => {
     const v = buildVariant({
-      repo, base, drop: list(opts.drop), replace: list(opts.replace), add: list(opts.add), toAgent: list(opts['to-agent']),
+      repo, base, drop: list(opts.drop), replace: list(opts.replace), add: list(opts.add), overlay: list(opts.overlay), toAgent: list(opts['to-agent']),
       preset: opts.preset && opts.preset !== true ? opts.preset : null, scratch, agentEngine: engineOf(opts),
     });
     const verify = opts.verify ? verifyVariant(v, opts, repo) : null;
@@ -582,6 +584,9 @@ function cmdCap(opts) {
     if (sub === 'prune-report') return cmdPruneReport(opts);
     if (sub === 'scenarios') return cmdScenarios(opts);
     if (sub === 'controls') return cmdControls(opts);
+    if (sub === 'skill-plan') return cmdSkillPlan(opts);
+    if (sub === 'skill-study') return cmdSkillStudy(opts);
+    if (sub === 'decide') return cmdDecide(opts);
     return cmdTrigger(opts);
   };
   const fail = (e) => {

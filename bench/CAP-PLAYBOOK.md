@@ -16,6 +16,8 @@ evaluate a skill, and whether a skill should be pruned. Everything marked free s
 | `cap scenarios --cap ID --dry-run` | Which 8 or more tasks would test this skill? The dry run writes the prompt only. | free (the live call is one model call per skill) |
 | `cap controls --out DIR`, then `--check RUN` | Does this study find a lift that was planted and none for a decoy? | free to write and check; the run is a few credits per run |
 | `report --verdict platform` | Is the platform worth keeping against vanilla? One page, one call per arm. | free |
+| `cap skill-plan --base REF --runs DIR` | Which skills get a lift study, on which tasks, with how many runs and at what estimated cost? | free |
+| `cap skill-study --study DIR`, then `cap decide --study DIR` | For each skill: delete, prune (which sections, which lines, move or remove) or keep? | tens to hundreds of credits per skill |
 
 The prune report is a recommendation, never a deletion. A person decides, with the checklist at the end.
 
@@ -140,6 +142,19 @@ Judging goes through kiro-cli by default. kiro-cli adds about 7.2k to 11.4k toke
 node bench/runner/bench.js judge --run V/claude --judge-backend opencode --aws-creds-file CREDS --aws-profile bench --aws-region us-east-1 --profile detailed --budget-usd 25
 node bench/runner/bench.js judge --run V/gpt --judge-backend opencode --aws-creds-file CREDS --profile detailed --budget-usd 25
 ```
+
+## Per-skill study: delete, prune or keep
+
+The platform report says whether konductor beats vanilla. This study asks the other question, skill by skill: should this skill be deleted, pruned (and which sections, which lines, moved or removed) or kept.
+
+1. `cap skill-plan --base REF --runs 'DIR' --out PLAN` (free). Read the tier table first. A lift study needs the skill to load, so skills that never loaded in the runs on file stay in the triage tier (the free audit and, where queries exist, a trigger check). Why not all of them: a with-versus-without run of a skill nobody loads measures nothing, and one skill study at the detailed profile is hundreds of credits.
+2. Draft and add scenarios where the plan reports a shortfall (`cap scenarios`), review them by hand, add them as tasks. The plan lists the tasks it found: registry links, tasks that name the skill, tasks where it loaded.
+3. `bench/scripts/run-skill-bench.sh --dry-run`, then the real run. The script refuses while any other bench study is active and checks the credentials file path first. Controls run before any skill; if they fail, stop and fix the pipeline.
+4. `cap decide --study DIR` (the study runs it at the end). Read `decisions.md`; open the patch only for DELETE and PRUNE calls.
+
+How a call is made, in order: controls passed; an A/A arm; scores on a 0 to 1 scale; at least 15 runs per side; the skill loaded in at least 30% of control runs. Then the delete arm against the control: removing it improved quality outside the A/A spread (DELETE as a harm call); removing it stayed inside the 0.10 margin with an interval that excludes a larger loss and an A/A spread under the margin (DELETE as no effect); removing it lost quality outside the spread (the skill is needed, so test its sections). For a needed skill, a section whose removal is within the margin is removed; one whose removal lost quality but whose move to `references/` is within the margin is moved; the rest is kept. Several cuts cap the confidence at medium because they were tested one at a time: run the combined cut as one arm before merging. Anything weaker is NEEDS DATA with the reason.
+
+What it cannot show: a section moved to references may never be opened (the move arm counts the runs that opened the file; zero means the move behaved like a removal); the quality score covers the study tasks only; kiro-cli loads skills by name through the skills server, so a changed description or index entry changes whether the skill loads at all, which this study holds fixed. Small effects need more runs than a pilot has: the earlier delegation-protocol lift run was unmeasurable at n=3 for this reason.
 
 ## Pruning pull request checklist
 

@@ -89,7 +89,8 @@ function scanRunDirs(dirs, { harnesses = ['kiro-cli', 'opencode'] } = {}) {
             dir: runPath, runDir: dir, arm, task, replicate: Number(rep), harness, refKey: r.key, variant: r.variant,
             entryAgent: result.agent ?? installed?.name ?? 'konductor', entryFilter: skillFilterOf(installed),
             delegated: Object.keys(delegatedTo).filter((n) => n !== UNNAMED), delegationUnnamed: (delegatedTo[UNNAMED] ?? 0) > 0,
-            loads,
+            loads, status: result.status ?? null, credits: typeof result.credits === 'number' ? result.credits : null, wallClockMs: typeof result.wallClockMs === 'number' ? result.wallClockMs : null,
+            model: result.model ?? null, armConfig: result.armConfig ?? null,
           });
           info.counted++;
         }

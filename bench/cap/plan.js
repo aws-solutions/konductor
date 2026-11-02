@@ -221,4 +221,4 @@ function render({ mode, cap, base, picked, replicates, arms, warnings, estimateO
   return L.join('\n');
 }
 
-module.exports = { planCap, budgetFor, MODES };
+module.exports = { planCap, budgetFor, suiteFor, MODES };

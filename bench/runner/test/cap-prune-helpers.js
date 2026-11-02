@@ -89,7 +89,7 @@ const jsonl = (events) => `${events.map((e) => JSON.stringify(e)).join('\n')}\n`
 
 /**
  * Writes a run directory. arms: [{ id, ref, sha, label }] (ref null is vanilla).
- * runs: [{ arm, task, rep, agent, loads, delegate, unnamedDelegate, filter, infraError, noStream, noResult, harness }].
+ * runs: [{ arm, task, rep, agent, loads, delegate, unnamedDelegate, filter, infraError, noStream, noResult, harness, credits, wallClockMs, model, armConfig, status }].
  * filter: the installed agent's --skill-name-filter list; undefined writes no installed-agent.json.
  */
 function makeRunDir(dir, { arms, runs, config = true }) {
@@ -104,7 +104,8 @@ function makeRunDir(dir, { arms, runs, config = true }) {
     if (!r.noResult) {
       write(path.join(rd, 'result.json'), JSON.stringify({
         armId: r.arm, armLabel: arm?.label ?? r.arm, ref: arm?.ref ?? null, commitSha: arm?.sha ?? null, harness: harness === 'opencode' ? 'opencode' : 'kiro-cli-v2',
-        agent, taskId: task, replicate: rep, status: 'success', infraError: r.infraError ?? null,
+        agent, taskId: task, replicate: rep, status: r.status ?? 'success', infraError: r.infraError ?? null,
+        ...(r.credits !== undefined ? { credits: r.credits } : {}), ...(r.wallClockMs !== undefined ? { wallClockMs: r.wallClockMs } : {}), ...(r.model ? { model: r.model } : {}), ...(r.armConfig ? { armConfig: r.armConfig } : {}), ...(r.checks ? { checks: r.checks } : {}), ...(r.hiddenTests ? { hiddenTests: r.hiddenTests } : {}),
       }));
     }
     if (!r.noStream) {

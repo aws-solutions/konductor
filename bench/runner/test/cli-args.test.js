@@ -15,7 +15,7 @@ const { FLAGS, BOOLEAN_FLAGS, checkArgs, COMMANDS } = require('../lib/cli-flags.
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const COMMAND_NAMES = ['run', 'judge', 'report', 'compare', 'contrast', 'pr-plan', 'recheck', 'backfill', 'skills', 'calibrate', 'list-arms', 'cap'];
-const CAP_SUBS = ['list', 'audit', 'variant', 'plan', 'prune-report', 'scenarios', 'controls'];
+const CAP_SUBS = ['list', 'audit', 'variant', 'plan', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide'];
 
 function sandbox() {
   const root = tmp();
@@ -169,7 +169,7 @@ test('every flag in the usage text is accepted, and every accepted flag is in th
   const blocks = usage.split(/\n(?=  node bench\/runner\/bench\.js )/).filter((b) => b.startsWith('  node bench/runner/bench.js '));
   const documented = {};
   for (const b of blocks) {
-    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export|score)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls)|[a-z-]+)/);
+    const m = b.match(/^ {2}node bench\/runner\/bench\.js (calibrate (?:export|score)|cap (?:list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide)|[a-z-]+)/);
     const key = m[1];
     const flags = new Set([...b.matchAll(/--([a-z][a-z-]*)/g)].map((x) => x[1]).filter((f) => f !== 'help'));
     documented[key] = new Set([...(documented[key] || []), ...flags]);

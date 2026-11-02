@@ -405,3 +405,74 @@ test('verify refuses the real HOME and removes its scratch HOME', () => {
     assert.throws(() => verifyInstalled({ variant: v, prepared: fakePrepared(s.root, v.dir), tmpRoot: path.join(s.root, 'tmp'), home: os.homedir() }), /refused to run with the real HOME/);
   } finally { s.done(); }
 });
+
+// ---- overlay: replace SKILL.md and add references/** in one op ----
+
+function overlayDir(root, { skill = '---\nname: alpha\ndescription: Use when reviewing backend code.\n---\n\n# Alpha\n\nShort.\n', refs = { 'references/detail.md': '# Detail\n\nMoved text.\n' } } = {}) {
+  const dir = path.join(root, 'ovl');
+  fs.rmSync(dir, { recursive: true, force: true });
+  if (skill !== null) write(path.join(dir, 'SKILL.md'), skill);
+  for (const [rel, text] of Object.entries(refs)) write(path.join(dir, rel), text);
+  return dir;
+}
+
+test('overlay replaces SKILL.md, adds the reference files, and leaves every agent list alone', () => {
+  const s = setup();
+  try {
+    const dir = overlayDir(s.root);
+    const v = s.build({ overlay: [`skill:alpha=${dir}`] });
+    assert.match(fs.readFileSync(path.join(v.dir, 'skills/alpha/SKILL.md'), 'utf8'), /Short\./);
+    assert.equal(fs.readFileSync(path.join(v.dir, 'skills/alpha/references/detail.md'), 'utf8'), '# Detail\n\nMoved text.\n');
+    assert.deepEqual(lists(v, 'konductor').skills, ['alpha', 'delta']);
+    const op = v.meta.ops[0];
+    assert.equal(op.op, 'overlay');
+    assert.deepEqual(op.files, ['SKILL.md', 'references/detail.md']);
+    assert.notEqual(op.beforeSha256, op.afterSha256);
+    assert.equal(v.armName, 'x-overlay');
+  } finally { s.done(); }
+});
+
+test('overlay refuses a directory without SKILL.md, a name change, stray files, symlinks, a missing skill and a non-skill', () => {
+  const s = setup();
+  try {
+    assert.throws(() => s.build({ overlay: [`skill:alpha=${overlayDir(s.root, { skill: null })}`] }), /SKILL\.md/);
+    assert.throws(() => s.build({ overlay: [`skill:alpha=${overlayDir(s.root, { skill: '---\nname: other\n---\n\nx\n' })}`] }), /must stay "alpha"/);
+    assert.throws(() => s.build({ overlay: [`skill:alpha=${overlayDir(s.root, { refs: { 'scripts/run.sh': 'x' } })}`] }), /only SKILL\.md and references\//);
+    assert.throws(() => s.build({ overlay: [`skill:nope=${overlayDir(s.root)}`] }), /does not exist at the base ref/);
+    assert.throws(() => s.build({ overlay: [`agent:konductor=${overlayDir(s.root)}`] }), /skills only/);
+    const dir = overlayDir(s.root);
+    fs.symlinkSync('/etc/hostname', path.join(dir, 'references/link.md'));
+    assert.throws(() => s.build({ overlay: [`skill:alpha=${dir}`] }), /regular file/);
+  } finally { s.done(); }
+});
+
+test('overlay will not overwrite a reference file the base already has', () => {
+  const s = setup();
+  try {
+    const own = makeCapRepo(fs.mkdtempSync(path.join(os.tmpdir(), 'captest-')), {
+      files: (repo) => { require('./cap-helpers.js').writeFiles(repo); write(path.join(repo, 'skills/alpha/references/detail.md'), 'old\n'); },
+    });
+    assert.throws(() => buildVariant({ repo: own.repo, base: 'v0', overlay: [`skill:alpha=${overlayDir(s.root)}`], scratch: s.out }), /already has references\/detail\.md/);
+  } finally { s.done(); }
+});
+
+test('the variant directory follows the overlay content, so an edited reference file is a new variant', () => {
+  const s = setup();
+  try {
+    const { variantPaths } = require('../../cap/variant.js');
+    const a = variantPaths({ repo: s.repo, base: 'v0', overlay: [`skill:alpha=${overlayDir(s.root)}`], scratch: s.out });
+    const same = variantPaths({ repo: s.repo, base: 'v0', overlay: [`skill:alpha=${overlayDir(s.root)}`], scratch: s.out });
+    const b = variantPaths({ repo: s.repo, base: 'v0', overlay: [`skill:alpha=${overlayDir(s.root, { refs: { 'references/detail.md': 'different\n' } })}`], scratch: s.out });
+    assert.equal(a.dir, same.dir);
+    assert.notEqual(a.dir, b.dir);
+  } finally { s.done(); }
+});
+
+test('reachWarning treats an overlay like a replace', () => {
+  const s = setup();
+  try {
+    const specs = loadAgentSpecs(s.repo);
+    assert.match(reachWarning({ ops: [{ op: 'overlay', id: 'skill:gamma' }], specs, actingAgents: ['konductor'] }), /skill:gamma is not in the filter of konductor/);
+    assert.equal(reachWarning({ ops: [{ op: 'overlay', id: 'skill:alpha' }], specs, actingAgents: ['konductor'] }), null);
+  } finally { s.done(); }
+});
