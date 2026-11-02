@@ -11,7 +11,10 @@ not per individual commit.
 ### Added
 
 - The four phase-gated SOPs, such as `k-full-sdlc`, now carry an
-  `Orchestration: strict (phase-gated SOP)` line.
+  `Orchestration: strict (phase-gated SOP)` line and a sentence saying what strict means.
+  `cli/gate-config/sop-orchestration.yml` lists every SOP as gated or not gated, and
+  `make sop-orchestration-check` (run in PR validation) fails when a new SOP is unlisted, a
+  gated SOP lacks the marker, or a gated basis cites a step heading that no longer exists.
 
 ### Changed
 

@@ -110,6 +110,25 @@ Create `agent-sops/<name>.sop.md` following the shape every existing SOP uses:
 ## Troubleshooting   (optional)
 ```
 
+List the SOP in `cli/gate-config/sop-orchestration.yml`, under `gated` if it stops between steps
+for an approval, a threshold check or a loop exit, otherwise under `not_gated`, with a one-line
+`basis` either way. A gated SOP also needs the marker paragraph between the title and
+`## Overview`:
+
+```text
+# Title
+
+Orchestration: strict (phase-gated SOP)
+Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate.
+
+## Overview
+```
+
+A gated `basis` cites steps by their heading text in backticks, without the step number, so it
+survives renumbering. Run `make sop-orchestration-check`; it fails on an unlisted SOP, a missing
+or misplaced marker, or a cited heading that no longer exists. Run it again whenever you edit or
+renumber the steps of a listed SOP, and update `basis` if a gate moved.
+
 Use RFC 2119 wording deliberately — `MUST`, `MUST NOT`, `SHOULD`, `MAY`. It is how an agent tells a
 hard rule from a preference, and it is why the existing SOPs behave consistently.
 
