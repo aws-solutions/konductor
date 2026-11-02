@@ -20,21 +20,6 @@ const MAX_WALL: Duration = Duration::from_secs(10);
 
 static SCRATCH_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-const PHASES: [&str; 12] = [
-    "elicitation",
-    "codebase-analysis",
-    "requirements",
-    "design",
-    "design-review",
-    "feature-splitting",
-    "specs",
-    "implementation",
-    "code-review",
-    "testing",
-    "documentation",
-    "final-summary",
-];
-
 const EVIDENCE: [&str; 5] = [
     "out/design/principal-engineer-review.md",
     "out/feature-split/feature-split.md",
@@ -43,51 +28,16 @@ const EVIDENCE: [&str; 5] = [
     "out/login/testing/test-coverage-review-report.md",
 ];
 
-/// Session text that passes, or with `gate_code-review_result` left out so
-/// it fails with GATE_MISSING. A result word is checked strictly, so
-/// `gate_testing_result` goes last: a cut inside it changes the verdict.
+/// The two whole-file sessions, shared with the in-process truncation sweep
+/// in `src/cli/verify_run.rs`. The second one leaves out
+/// `gate_code-review_result`, so it fails with GATE_MISSING.
 fn session_text(with_code_review_result: bool) -> String {
-    let phases: String = PHASES
-        .iter()
-        .map(|id| {
-            format!("  {id}: {{name: n, status: COMPLETED, skip_reason: null, summary: done}}\n")
-        })
-        .collect();
-    let code_review_result = if with_code_review_result {
-        "      gate_code-review_result: approved\n"
+    let text = if with_code_review_result {
+        include_str!("fixtures/verify_run_sessions/passing.yml")
     } else {
-        ""
+        include_str!("fixtures/verify_run_sessions/gate_missing.yml")
     };
-    format!(
-        "run:
-  schema_version: 1
-  project_signature: sig
-  run_status: completed
-  counters: {{}}
-  data:
-    max_fix_cycles: 2
-    gate_design-review_result: none
-    gate_design-review_evidence: {}
-    gate_design-review_checker: k-architect
-    gate_feature-splitting_result: approved
-    gate_feature-splitting_evidence: {}
-    gate_feature-splitting_checker: user
-phases:
-{phases}features:
-  login:
-    counters: {{fix_cycles_used: 0}}
-    data:
-      gate_specs_result: approved
-      gate_specs_evidence: {}
-      gate_specs_checker: user
-{code_review_result}      gate_code-review_evidence: {}
-      gate_code-review_checker: user
-      gate_testing_checker: k-quality-assurance
-      gate_testing_evidence: {}
-      gate_testing_result: none
-",
-        EVIDENCE[0], EVIDENCE[1], EVIDENCE[2], EVIDENCE[3], EVIDENCE[4]
-    )
+    text.to_string()
 }
 
 /// Builds a scratch project and `HOME`, canonicalized so macOS's `/var` to
@@ -212,36 +162,36 @@ fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
     );
 }
 
-/// Checks the oracle above: a file cut at any byte, except just before the
-/// trailing newline, must not reproduce either whole-file verdict.
+/// Ties the oracle above to the real binary with three cuts of the passing
+/// session. The per-byte sweep over both sessions runs in-process in
+/// `src/cli/verify_run.rs`.
 #[test]
-fn every_truncated_session_differs_from_both_whole_file_verdicts() {
+fn truncated_sessions_differ_from_the_whole_file_except_before_the_final_newline() {
     let (base, root, home) = scratch_project("truncated_sessions");
     let sink = telemetry_test_sink::TelemetrySink::start();
-    let texts = [session_text(true), session_text(false)];
-    let mut baselines = Vec::new();
-    for text in &texts {
-        replace_atomically(&root, text);
-        baselines.push(verify_run(&root, &home, &sink));
-    }
-    let mut matches = Vec::new();
-    for (index, text) in texts.iter().enumerate() {
-        for len in 0..text.len() {
-            replace_atomically(&root, &text[..len]);
-            if baselines.contains(&verify_run(&root, &home, &sink)) {
-                matches.push((index, len));
-            }
-        }
+    let text = session_text(true);
+    replace_atomically(&root, &text);
+    let whole = verify_run(&root, &home, &sink);
+    assert_eq!(whole.0, Some(0), "{whole:?}");
+
+    let last_line = text.rfind("      gate_testing_result").unwrap();
+    let mid_line = last_line + "      gate_testing_re".len();
+    let mid_value = text.len() - "ne\n".len();
+    let before_final_newline = text.len() - 1;
+    let mut verdicts = Vec::new();
+    for cut in [mid_line, mid_value, before_final_newline] {
+        replace_atomically(&root, &text[..cut]);
+        verdicts.push((cut, verify_run(&root, &home, &sink)));
     }
     let _ = std::fs::remove_dir_all(&base);
 
-    let expected: Vec<(usize, usize)> = texts
-        .iter()
-        .enumerate()
-        .map(|(index, text)| (index, text.len() - 1))
-        .collect();
+    let (mid_line_cut, mid_value_cut, final_newline_cut) =
+        (&verdicts[0], &verdicts[1], &verdicts[2]);
+    assert_ne!(mid_line_cut.1, whole, "cut at byte {}", mid_line_cut.0);
+    assert_ne!(mid_value_cut.1, whole, "cut at byte {}", mid_value_cut.0);
     assert_eq!(
-        matches, expected,
-        "prefixes (text, bytes) that match a baseline"
+        final_newline_cut.1, whole,
+        "cut at byte {}",
+        final_newline_cut.0
     );
 }

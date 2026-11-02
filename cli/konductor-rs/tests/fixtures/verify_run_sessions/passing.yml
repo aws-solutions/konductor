@@ -1,0 +1,39 @@
+run:
+  schema_version: 1
+  project_signature: sig
+  run_status: completed
+  counters: {}
+  data:
+    max_fix_cycles: 2
+    gate_design-review_result: none
+    gate_design-review_evidence: out/design/principal-engineer-review.md
+    gate_design-review_checker: k-architect
+    gate_feature-splitting_result: approved
+    gate_feature-splitting_evidence: out/feature-split/feature-split.md
+    gate_feature-splitting_checker: user
+phases:
+  elicitation: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  codebase-analysis: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  requirements: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  design: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  design-review: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  feature-splitting: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  specs: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  implementation: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  code-review: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  testing: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  documentation: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+  final-summary: {name: n, status: COMPLETED, skip_reason: null, summary: done}
+features:
+  login:
+    counters: {fix_cycles_used: 0}
+    data:
+      gate_specs_result: approved
+      gate_specs_evidence: out/specs/login/tasks.md
+      gate_specs_checker: user
+      gate_code-review_result: approved
+      gate_code-review_evidence: out/login/code-review/report.md
+      gate_code-review_checker: user
+      gate_testing_checker: k-quality-assurance
+      gate_testing_evidence: out/login/testing/test-coverage-review-report.md
+      gate_testing_result: none

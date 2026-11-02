@@ -264,4 +264,64 @@ mod tests {
         assert!(!is_project_file(&root, ""));
         assert!(!is_project_file(&root, "/etc/hosts"));
     }
+
+    const PASSING_SESSION: &str =
+        include_str!("../../tests/fixtures/verify_run_sessions/passing.yml");
+    const GATE_MISSING_SESSION: &str =
+        include_str!("../../tests/fixtures/verify_run_sessions/gate_missing.yml");
+
+    /// `None` when the text is not YAML, which `check` reports as a usage
+    /// error instead of a verdict.
+    fn verdict_of(text: &str) -> Option<Verdict> {
+        let value: Value = serde_yaml::from_str(text).ok()?;
+        let gate_map = gate_map().unwrap();
+        let policy = SeverityPolicy {
+            table: severity_table().unwrap(),
+            threshold: Severity::High,
+        };
+        let evidence_exists = |_: &str| true;
+        let ctx = EvalContext {
+            session_prefix: "k-full-sdlc",
+            gate_map: &gate_map,
+            policy: &policy,
+            evidence_exists: &evidence_exists,
+            allow_running: false,
+        };
+        Some(evaluate_value(&value, &ctx))
+    }
+
+    /// The atomic-replace test in `tests/verify_run_atomic_replace.rs` accepts
+    /// only the two whole-file verdicts. A file cut at any byte, other than
+    /// just before the trailing newline, must not reproduce either one.
+    #[test]
+    fn every_truncated_session_differs_from_both_whole_file_verdicts() {
+        let texts = [PASSING_SESSION, GATE_MISSING_SESSION];
+        let baselines: Vec<Verdict> = texts
+            .iter()
+            .map(|text| verdict_of(text).expect("whole session must parse"))
+            .collect();
+        assert_eq!(baselines[0].exit, 0);
+        assert_ne!(baselines[0], baselines[1]);
+
+        let mut matches = Vec::new();
+        for (index, text) in texts.iter().enumerate() {
+            for len in 0..text.len() {
+                let Some(verdict) = text.get(..len).and_then(verdict_of) else {
+                    continue;
+                };
+                if baselines.contains(&verdict) {
+                    matches.push((index, len));
+                }
+            }
+        }
+        let expected: Vec<(usize, usize)> = texts
+            .iter()
+            .enumerate()
+            .map(|(index, text)| (index, text.len() - 1))
+            .collect();
+        assert_eq!(
+            matches, expected,
+            "prefixes (text, bytes) that match a baseline"
+        );
+    }
 }
