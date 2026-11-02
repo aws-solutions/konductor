@@ -323,7 +323,7 @@ mod tests {
             ("⚠️ Warning Gap", Severity::High),
             ("💡 Suggestion", Severity::Low),
             ("**CRITICAL", Severity::Critical),
-            ("CRITICAL — architectural", Severity::Critical),
+            ("CRITICAL \u{2014} architectural", Severity::Critical),
             ("Medium", Severity::Medium),
             ("Low", Severity::Low),
         ] {
@@ -381,8 +381,8 @@ mod tests {
             (
                 "adversarial-design-review",
                 vec![
-                    "CRITICAL — architectural:",
-                    "CRITICAL — factual:",
+                    "CRITICAL \u{2014} architectural:",
+                    "CRITICAL \u{2014} factual:",
                     "IMPORTANT:",
                     "MINOR:",
                 ],
