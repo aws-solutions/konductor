@@ -417,8 +417,9 @@ fn dirs_home_dir() -> Option<PathBuf> {
 ///
 /// Every other key and block in the file (for example `telemetry:`) is
 /// kept, in its original order. A key not yet in the file is appended.
-/// The file is re-serialized, so comments, anchors and the original
-/// formatting of values are not kept. A file that is not a YAML mapping
+/// The file is re-serialized, so comments (including the field reference
+/// `init` writes), YAML tags, anchors and merge keys, quoting and number
+/// spelling (`0x1F` becomes `31`, `3.10` becomes `3.1`) are not kept. A file that is not a YAML mapping
 /// is refused with `ConfigError::ProjectConfigNotMapping`, and one with
 /// duplicate keys with `ConfigError::ProjectConfigMalformed`. Either way
 /// it is left untouched.
@@ -465,7 +466,7 @@ pub fn set_config_value(
         .map_err(|source| ConfigError::LockFailed { source })?;
 
     let project_config_path = konductor_dir.join(CONFIG_FILE_NAME);
-    let mut mapping = load_project_mapping(&project_config_path)?;
+    let (mut mapping, original_text) = load_project_mapping(&project_config_path)?;
 
     let parsed = parse_field_value(key, value)?;
     mapping.insert(serde_yaml::Value::String(key.to_string()), parsed);
@@ -478,6 +479,12 @@ pub fn set_config_value(
     let serialized = serde_yaml::to_string(&mapping)
         .map_err(|source| ConfigError::SerializeFailed { source })?;
     let raw_project: Option<RawConfig> = serde_yaml::from_str(&serialized).map_err(|source| {
+        // Report line and column against the file on disk, not the
+        // re-serialized buffer. If the original parses (the bad value
+        // came from this set), fall back to the buffer's error.
+        let source = serde_yaml::from_str::<Option<RawConfig>>(&original_text)
+            .err()
+            .unwrap_or(source);
         ConfigError::ProjectConfigMalformed {
             path: project_config_path.clone(),
             source,
@@ -546,10 +553,11 @@ fn parse_field_value(key: &str, value: &str) -> Result<serde_yaml::Value, Config
 /// `config set` to edit one key while keeping every other key and block.
 /// A missing file, an empty file, or a `---`-only file (YAML `null`) is
 /// an empty mapping, matching `load_raw_config`. Any other non-mapping
-/// document is `ProjectConfigNotMapping`.
-fn load_project_mapping(path: &Path) -> Result<serde_yaml::Mapping, ConfigError> {
+/// document is `ProjectConfigNotMapping`. Also returns the file text
+/// (empty when the file is missing) so callers can report errors against it.
+fn load_project_mapping(path: &Path) -> Result<(serde_yaml::Mapping, String), ConfigError> {
     if !path.is_file() {
-        return Ok(serde_yaml::Mapping::new());
+        return Ok((serde_yaml::Mapping::new(), String::new()));
     }
     let contents =
         std::fs::read_to_string(path).map_err(|source| ConfigError::ProjectConfigNotReadable {
@@ -562,8 +570,8 @@ fn load_project_mapping(path: &Path) -> Result<serde_yaml::Mapping, ConfigError>
             source,
         })?;
     match document {
-        serde_yaml::Value::Null => Ok(serde_yaml::Mapping::new()),
-        serde_yaml::Value::Mapping(mapping) => Ok(mapping),
+        serde_yaml::Value::Null => Ok((serde_yaml::Mapping::new(), contents)),
+        serde_yaml::Value::Mapping(mapping) => Ok((mapping, contents)),
         _ => Err(ConfigError::ProjectConfigNotMapping {
             path: path.to_path_buf(),
         }),
@@ -1214,5 +1222,97 @@ mod tests {
         );
         assert_eq!(fs::read(&config_path).unwrap(), before);
         fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_reparse_error_reports_line_of_original_file() {
+        let (root, config_path) = project_with_config(
+            "set-reparse-line",
+            "# one\n# two\n# three\nversion: abc\ntier: minor\n",
+        );
+        let before = fs::read(&config_path).unwrap();
+
+        let err = set_config_value(&root, "tier", "trivial")
+            .expect_err("a wrong-typed version must fail the re-parse");
+        match err {
+            ConfigError::ProjectConfigMalformed { source, .. } => {
+                assert_eq!(source.location().map(|l| l.line()), Some(4));
+            }
+            other => panic!("unexpected error {other:?}"),
+        }
+        assert_eq!(fs::read(&config_path).unwrap(), before);
+
+        set_config_value(&root, "version", "1").expect("set version 1 must repair the file");
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_rewrites_file_and_drops_formatting_documented_in_changelog() {
+        let (root, config_path) = project_with_config(
+            "set-drops-formatting",
+            "# my comment\nn: 3.10\nb: 0x1F\nq: \"quoted\"\nx: !!binary aGk=\n",
+        );
+
+        set_config_value(&root, "tier", "major").unwrap();
+
+        let text = fs::read_to_string(&config_path).unwrap();
+        assert!(!text.contains("my comment"), "{text}");
+        assert!(text.contains("n: 3.1\n"), "{text}");
+        assert!(text.contains("b: 31\n"), "{text}");
+        assert!(text.contains("q: quoted\n"), "{text}");
+        assert!(!text.contains("!!binary"), "{text}");
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_unsupported_version_is_refused_and_file_bytes_unchanged() {
+        let (root, config_path) = project_with_config(
+            "set-unsupported-version",
+            "tier: minor\ntelemetry:\n  enabled: false\n",
+        );
+        let before = fs::read(&config_path).unwrap();
+
+        let err = set_config_value(&root, "version", "2").expect_err("version 2 must be refused");
+        assert!(
+            matches!(
+                err,
+                ConfigError::UnsupportedVersion {
+                    found: 2,
+                    supported: 1
+                }
+            ),
+            "unexpected error {err:?}"
+        );
+        assert_eq!(fs::read(&config_path).unwrap(), before);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn project_mapping_and_raw_config_agree_on_edge_case_files() {
+        for (name, contents) in [
+            ("empty", ""),
+            ("doc-marker", "---\n"),
+            ("comments", "# only a comment\n"),
+            ("null", "null\n"),
+            ("tilde", "~\n"),
+        ] {
+            let (root, path) = project_with_config(&format!("agree-{name}"), contents);
+            let (mapping, _) = load_project_mapping(&path)
+                .unwrap_or_else(|e| panic!("{name}: mapping reader failed: {e:?}"));
+            assert!(mapping.is_empty(), "{name}");
+            let raw = load_raw_config(&path)
+                .unwrap_or_else(|e| panic!("{name}: raw reader failed: {e:?}"));
+            assert!(raw.version.is_none() && raw.tier.is_none(), "{name}");
+            fs::remove_dir_all(&root).ok();
+        }
+        for (name, contents) in [("sequence", "- a\n- b\n"), ("scalar", "just text\n")] {
+            let (root, path) = project_with_config(&format!("agree-{name}"), contents);
+            assert!(load_project_mapping(&path).is_err(), "{name}");
+            assert!(load_raw_config(&path).is_err(), "{name}");
+            fs::remove_dir_all(&root).ok();
+        }
+        let missing = scratch_dir("agree-missing").join("config.yml");
+        let (mapping, text) = load_project_mapping(&missing).unwrap();
+        assert!(mapping.is_empty() && text.is_empty());
     }
 }

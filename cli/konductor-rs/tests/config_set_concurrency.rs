@@ -107,6 +107,11 @@ fn concurrent_config_set_multiprocess_no_lost_updates() {
         String::from_utf8_lossy(&init_output.stderr)
     );
 
+    let seeded_path = dir.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
+    let mut seeded = std::fs::read_to_string(&seeded_path).expect("config.yml must exist");
+    seeded.push_str("telemetry:\n  enabled: false\nunknown_scalar: kept\n");
+    std::fs::write(&seeded_path, seeded).expect("seeding extra keys must succeed");
+
     // Mirrors the review's reported 60-process / 2-key reproduction: 15
     // writers per key (kept smaller than 60 to keep CI time reasonable
     // while still exercising real contention), alternating value so the
@@ -162,6 +167,20 @@ fn concurrent_config_set_multiprocess_no_lost_updates() {
     let raw = std::fs::read_to_string(&config_path).expect("config.yml must exist");
     let parsed: serde_yaml::Value = serde_yaml::from_str(&raw)
         .expect("config.yml must remain valid YAML after concurrent writes");
+
+    assert_eq!(
+        parsed
+            .get("telemetry")
+            .and_then(|t| t.get("enabled"))
+            .and_then(|v| v.as_bool()),
+        Some(false),
+        "the telemetry block must survive concurrent writers"
+    );
+    assert_eq!(
+        parsed.get("unknown_scalar").and_then(|v| v.as_str()),
+        Some("kept"),
+        "an unknown scalar must survive concurrent writers"
+    );
 
     let severity = parsed
         .get("default_severity")
