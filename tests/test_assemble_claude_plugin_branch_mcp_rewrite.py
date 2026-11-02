@@ -157,6 +157,19 @@ def test_assembled_tree_ships_the_telemetry_hook(assembled):
     assert not matcher.search("Explore")
 
 
+def test_assembled_agents_carry_no_ignored_mcp_servers_block(assembled):
+    for agent in (assembled / "agents").glob("*.md"):
+        frontmatter = agent.read_text(encoding="utf-8").split("---")[1]
+        assert not re.search(r"^mcpServers:", frontmatter, re.M), agent.name
+    assert (assembled / ".mcp.json").is_file()
+
+
+def test_plugin_json_leaves_agents_and_skills_to_default_scans(assembled):
+    plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert "agents" not in plugin
+    assert "skills" not in plugin
+
+
 def test_assembled_agents_use_claude_code_model_ids(assembled):
     for agent in (assembled / "agents").glob("*.md"):
         model = re.search(r"^model: (.+)$", agent.read_text(encoding="utf-8"), re.M).group(1)

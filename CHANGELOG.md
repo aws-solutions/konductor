@@ -8,6 +8,11 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
+  toolchain; builds and tests stay on stable.
+
 ### Changed
 
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
@@ -25,6 +30,8 @@ not per individual commit.
   `constraints` skill and the routing rules.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
+- Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
+  non-trivial work; orchestrators route skill work to the owning specialist.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
   `.konductor/memory/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
   or `.konductor/memory`, and treating memory as content when a tracked top-level dot name is
@@ -32,6 +39,8 @@ not per individual commit.
 
 ### Fixed
 
+- Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
+  and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
   skills; it used to serve every installed skill.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
@@ -51,6 +60,10 @@ not per individual commit.
   MCP server is session-wide; the plugin release PR says to tag by hand.
 - Claude Code agents and benchmarks use the Claude Code model ID (`claude-sonnet-5-5`), and the
   plugin ships `NOTICE.txt` with README links pinned to its release.
+- `update --no-telemetry` now keeps a project opted out on later updates, and the new
+  `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
+- The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
+  agents no longer carry an `mcpServers` block that Claude Code ignores.
 
 ## [1.2.0] - 2026-10-26
 
