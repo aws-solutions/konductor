@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# gate_testing_result must stay the last line: the truncation tests cut from the end.
 run:
   schema_version: 1
   project_signature: sig
