@@ -143,7 +143,8 @@ reusable multi-step procedures to `workspace-skills` instead.
 ### Primary triggers (act on any one)
 
 - **User corrects your approach** and the corrected convention or preference is durable
-  (implicit-correction detection — capture immediately; see Notification below)
+  (implicit-correction detection — capture immediately as `[origin:agent]`; confirm before
+  tagging `[origin:user]`, see Notification below)
 - **Non-obvious convention or preference discovered** during work
   (e.g., "this project uses pnpm not npm")
 - **Design decision or architectural constraint** established during the session
