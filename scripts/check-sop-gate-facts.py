@@ -157,9 +157,9 @@ def check_override_rule(name, text):
     if not any(all(tok in s for tok in ("unattended", "never", "override")) for s in sentences(text)):
         errors.append(f"gate-override-rule: '{name}' does not say an unattended run never overrides")
     if name == VERIFY_RUN_SOP and not any(
-        all(tok in s for tok in ("round cap", "engineer", "only on that decision")) for s in sentences(text)
+        all(tok in s for tok in ("round cap", "recorded route", "no approver")) for s in sentences(text)
     ):
-        errors.append(f"gate-override-rule: '{name}' does not say the engineer decides at the round cap and the note is written only on that decision")
+        errors.append(f"gate-override-rule: '{name}' does not say an attended round cap exit is its own recorded route (finding ids plus `round cap`, no approver needed)")
     return errors
 
 
@@ -197,7 +197,7 @@ def check_verify_run_step(name, section):
     if "unrecognized subcommand" not in section:
         errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not cover 'unrecognized subcommand'")
     for code in EXIT_CODES:
-        if not re.search(rf"\bexit {code}\b", section, re.IGNORECASE):
+        if not any(re.search(rf"\bexit {code}\b", s, re.IGNORECASE) and re.search(r"\b(report|reported|records?)\b", s, re.IGNORECASE) for s in sentences(section)):
             errors.append(f"verify-run-exits (k-full-sdlc only): '{name}' final Step does not say what to do with exit {code}")
     for phrase in ("unexpected argument", "needs a build with --root"):
         if phrase not in section:

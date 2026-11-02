@@ -164,6 +164,10 @@ needs_root = pytest.mark.skipif(
     not supports_root() if KONDUCTOR_BIN.is_file() else False,
     reason="built binary has no verify-run --root; needs a build with --root",
 )
+needs_config_source = pytest.mark.skipif(
+    b"CONFIG_SOURCE" not in KONDUCTOR_BIN.read_bytes() if KONDUCTOR_BIN.is_file() else False,
+    reason="built evaluator does not report CONFIG_SOURCE; needs the project-config build",
+)
 needs_recorded_cap = pytest.mark.skipif(
     clamps_fix_cap() if KONDUCTOR_BIN.is_file() else False,
     reason="built evaluator clamps the recorded max_fix_cycles; needs the recorded-cap evaluator",
@@ -242,6 +246,18 @@ def test_override_note_alone_does_not_clear_the_result_word(layout):
 
 
 @needs_root
+@needs_config_source
+def test_project_config_under_codebase_path_is_the_reported_threshold_source(layout):
+    config_dir = layout.codebase / ".konductor"
+    config_dir.mkdir()
+    (config_dir / "config.yml").write_text("fail_on_severity_at_or_above: CRITICAL\n", encoding="utf-8")
+    result = step_11(layout, session_for(layout.output_dir, "in_progress", "IN_PROGRESS"), "--allow-running")
+    assert result.returncode == 0, combined(result)
+    assert "CONFIG_SOURCE" in result.stdout
+    assert str(config_dir / "config.yml") in result.stdout
+
+
+@needs_root
 def test_skipped_boundary_is_running_at_step_11_and_exit_6_only_once_completed(layout):
     running = session_for(layout.output_dir, "in_progress", "IN_PROGRESS", skipped="design-review")
     result = step_11(layout, running, "--allow-running")
@@ -307,13 +323,13 @@ def test_steps_4_and_9_stop_on_open_findings_and_name_the_override_path(number, 
 
 
 def test_step_4_names_the_round_cap_override():
-    assert sentence_with(step_section(4), "5-round cap", "round cap")
+    assert sentence_with(step_section(4), "5-round cap", "recorded cap exit", "no approver")
 
 
 def test_gate_facts_bullet_names_the_override_key_and_recompute_rule():
     assert sentence_with(SOP_TEXT, "`gate_<phase>_override`", "override", "engineer")
-    assert sentence_with(SOP_TEXT, "round cap", "engineer", "only on that decision")
-    assert sentence_with(step_section(4), "including at the round cap", "`gate_design-review_override`", "plus `round cap`")
+    assert sentence_with(SOP_TEXT, "round cap", "recorded route", "no approver")
+    assert sentence_with(step_section(4), "attended cap exit", "`gate_design-review_override`", "`round cap`")
     assert sentence_with(SOP_TEXT, "rewrite `gate_<phase>_result`", "not overridden")
 
 
