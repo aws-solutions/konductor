@@ -6,6 +6,7 @@ root. `valid` passes; every other case fails with the code it is named for.
 
 Run:  cd tests && pytest test_check_sop_orchestration.py
 """
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -17,7 +18,22 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "check-sop-orchestration.py"
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "sop-orchestration"
 MARKER = "Orchestration: strict (phase-gated SOP)"
-MEANING = "Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate."
+MEANING = (
+    "Strict means: stop at each recorded gate, record the gate facts, and do not "
+    "proceed past an unmet gate unless the engineer overrides it or the SOP's own "
+    "round cap applies; record which."
+)
+GATE_NOTE = (
+    "Recorded gates are the stops this SOP names; where the run keeps a session "
+    "file, record their gate facts there."
+)
+GATED_SOPS = [
+    "k-full-sdlc",
+    "k-design-doc-creation",
+    "k-principal-engineer-design-review",
+    "kiro-spec-workflow",
+]
+pytestmark = pytest.mark.skipif(importlib.util.find_spec("yaml") is None, reason="PyYAML is not installed")
 
 
 def run_check(*args) -> subprocess.CompletedProcess:
@@ -51,6 +67,13 @@ def test_valid_fixture_passes_silently():
         ("unknown-top-level-key", "bad-entry: unknown top-level key 'extra'"),
         ("missing-top-level-key", "bad-entry: missing top-level key 'version'"),
         ("marker-wrong-type", "bad-entry: 'marker' must be a non-empty string"),
+        ("wrong-gate-note", "missing-marker: gated 'alpha-gated'"),
+        ("gated-basis-uncited", "uncited-basis: gated 'alpha-gated' basis cites no step heading"),
+        ("not-gated-map-form", "bad-entry: not_gated 'beta-plain' needs a non-empty basis string"),
+        ("non-string-sop-name", "bad-entry: not_gated key 5 must be a string"),
+        ("repeated-gate-kind", "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list of distinct"),
+        ("stale-basis-numbered-heading", "stale-basis: gated 'alpha-gated' basis cites `1. Do the thing`"),
+        ("phase-heading-cited-prefixed", "stale-basis: gated 'alpha-gated' basis cites `Phase 1: Do the thing`"),
     ],
 )
 def test_failure_fixture_reports_its_code(case, expected):
@@ -82,7 +105,7 @@ def test_removing_the_marker_from_a_valid_tree_fails(tmp_path):
     root = tmp_path / "repo"
     shutil.copytree(FIXTURES / "valid", root)
     sop = root / "agent-sops" / "alpha-gated.sop.md"
-    sop.write_text(sop.read_text(encoding="utf-8").replace(MARKER + "\n" + MEANING + "\n\n", ""), encoding="utf-8")
+    sop.write_text(sop.read_text(encoding="utf-8").replace(MARKER + "\n" + MEANING + "\n\n" + GATE_NOTE + "\n\n", ""), encoding="utf-8")
     result = run_check(root)
     assert result.returncode == 1
     assert "missing-marker: gated 'alpha-gated'" in result.stderr
@@ -106,3 +129,41 @@ def test_changing_the_meaning_sentence_in_a_gated_sop_fails(tmp_path):
     result = run_check(root)
     assert result.returncode == 1
     assert "missing-marker: gated 'alpha-gated'" in result.stderr
+
+
+def test_phase_heading_is_cited_without_its_phase_label():
+    result = run_check(FIXTURES / "phase-heading-cited-bare")
+    assert result.returncode == 0, result.stderr
+
+
+def test_duplicate_sop_entry_reports_one_bad_entry():
+    result = run_check(FIXTURES / "duplicate-sop-entry")
+    assert_one_clean_bad_entry(result, "duplicate key 'beta-plain'")
+
+
+def test_non_string_sop_name_does_not_crash():
+    result = run_check(FIXTURES / "non-string-sop-name")
+    assert_one_clean_bad_entry(result, "bad-entry: not_gated key 5 must be a string")
+
+
+def test_missing_pyyaml_exits_3_with_setup_message(tmp_path):
+    (tmp_path / "yaml.py").write_text("raise ImportError('stub')\n", encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), str(FIXTURES / "valid")],
+        capture_output=True,
+        text=True,
+        env={"PYTHONPATH": str(tmp_path)},
+    )
+    assert result.returncode == 3
+    assert result.stderr.startswith("setup: PyYAML is required")
+
+
+def test_meaning_and_gate_note_are_pinned_in_the_map_and_every_gated_sop():
+    import yaml
+
+    data = yaml.safe_load((REPO_ROOT / "cli" / "gate-config" / "sop-orchestration.yml").read_text(encoding="utf-8"))
+    assert data["meaning"] == MEANING
+    assert sorted(data["gated"]) == sorted(GATED_SOPS)
+    for name in GATED_SOPS:
+        lines = (REPO_ROOT / "agent-sops" / f"{name}.sop.md").read_text(encoding="utf-8").splitlines()
+        assert lines[2:6] == [MARKER, MEANING, "", GATE_NOTE], name

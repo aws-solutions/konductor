@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 version: 1
 marker: 5
-meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate.'
+meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it or the SOP''s own round cap applies; record which.'
 gated:
   alpha-gated:
     gates: [approval]
