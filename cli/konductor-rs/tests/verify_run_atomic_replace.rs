@@ -8,15 +8,17 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
 const SESSIONS: &str = ".konductor/sessions";
 const SESSION: &str = ".konductor/sessions/k-full-sdlc-20250101T000000Z-abcd.yml";
 const MAX_READS: usize = 200;
 const MAX_WALL: Duration = Duration::from_secs(10);
+
+static SCRATCH_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 const PHASES: [&str; 12] = [
     "elicitation",
@@ -90,14 +92,11 @@ phases:
 
 /// Builds a scratch project and `HOME`, canonicalized so macOS's `/var` to
 /// `/private/var` link never splits the root check. Returns (base, root, home).
-fn scratch_project() -> (PathBuf, PathBuf, PathBuf) {
+fn scratch_project(name: &str) -> (PathBuf, PathBuf, PathBuf) {
     let base = std::env::temp_dir().join(format!(
-        "konductor-verify-run-atomic-{}-{}",
+        "konductor-verify-run-atomic-{name}-{}-{}",
         std::process::id(),
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
+        SCRATCH_COUNTER.fetch_add(1, Ordering::Relaxed)
     ));
     let root = base.join("project");
     let home = base.join("home");
@@ -145,7 +144,7 @@ fn verify_run(root: &Path, home: &Path, sink: &telemetry_test_sink::TelemetrySin
 
 #[test]
 fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
-    let (base, root, home) = scratch_project();
+    let (base, root, home) = scratch_project("never_sees_a_partial_session");
     let sink = telemetry_test_sink::TelemetrySink::start();
     let passing = session_text(true);
     let gate_missing = session_text(false);
@@ -217,7 +216,7 @@ fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
 /// trailing newline, must not reproduce either whole-file verdict.
 #[test]
 fn every_truncated_session_differs_from_both_whole_file_verdicts() {
-    let (base, root, home) = scratch_project();
+    let (base, root, home) = scratch_project("truncated_sessions");
     let sink = telemetry_test_sink::TelemetrySink::start();
     let texts = [session_text(true), session_text(false)];
     let mut baselines = Vec::new();
