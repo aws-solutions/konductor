@@ -222,7 +222,7 @@ def test_open_important_finding_without_override_stops_the_run(layout, phase):
 
 @needs_root
 @pytest.mark.parametrize("phase", ["design-review", "testing"])
-@pytest.mark.parametrize("note", ["IMPORTANT F-3 overridden by engineer jdoe", "round cap"])
+@pytest.mark.parametrize("note", ["IMPORTANT F-3 overridden by engineer jdoe", "IMPORTANT F-3 overridden by engineer jdoe, round cap"])
 def test_overridden_important_finding_lets_the_run_complete(layout, phase, note):
     kwargs = dict(results={phase: "none"}, overrides={phase: note})
     result = step_11(layout, session_for(layout.output_dir, "in_progress", "IN_PROGRESS", **kwargs), "--allow-running")
@@ -313,6 +313,7 @@ def test_step_4_names_the_round_cap_override():
 def test_gate_facts_bullet_names_the_override_key_and_recompute_rule():
     assert sentence_with(SOP_TEXT, "`gate_<phase>_override`", "override", "engineer")
     assert sentence_with(SOP_TEXT, "round cap", "engineer", "only on that decision")
+    assert sentence_with(step_section(4), "including at the round cap", "`gate_design-review_override`", "plus `round cap`")
     assert sentence_with(SOP_TEXT, "rewrite `gate_<phase>_result`", "not overridden")
 
 
@@ -338,6 +339,7 @@ def test_step_11_runs_from_the_project_root_with_root_output_dir():
         assert re.search(rf"\bexit {code}\b", section, re.IGNORECASE), code
     assert "needs a build with --root" in section
     assert "`Gate check` section" in section
+    assert sentence_with(section, "every reason and info line", "`CONFIG_SOURCE`", "`Gate check`")
 
 
 def test_missing_konductor_on_path_reports_not_found(tmp_path):

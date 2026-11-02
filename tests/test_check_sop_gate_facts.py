@@ -50,6 +50,8 @@ def test_valid_fixture_passes_silently():
         ("verify-run-root", "verify-run-root (k-full-sdlc only): 'k-full-sdlc' verify-run call must run from `codebase_path`"),
         ("verify-run-root-flag", "verify-run-root (k-full-sdlc only): 'k-full-sdlc' verify-run call must run from `codebase_path`"),
         ("verify-run-exit-unhandled", "verify-run-exits (k-full-sdlc only): 'k-full-sdlc' final Step does not say what to do with exit 65"),
+        ("verify-run-config-source", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step does not put every reason and info line, `CONFIG_SOURCE` included, under `Gate check`"),
+        ("gate-override-on-approval-boundary", "gate-fact-unknown-phase: 'k-full-sdlc' names `gate_draft_override`, but 'draft' is an approval boundary"),
         ("verify-run-gate-check-heading", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step's Expected Output does not name the `Gate check` section"),
     ],
 )

@@ -202,6 +202,8 @@ def check_verify_run_step(name, section):
     for phrase in ("unexpected argument", "needs a build with --root"):
         if phrase not in section:
             errors.append(f"verify-run-exits (k-full-sdlc only): '{name}' final Step does not cover '{phrase}'")
+    if not any("`CONFIG_SOURCE`" in s and "`Gate check`" in s for s in sentences(section)):
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not put every reason and info line, `CONFIG_SOURCE` included, under `Gate check`")
     expected = re.search(r"\*\*Expected Output:\*\*[^\n]*", section)
     if expected is None or "`Gate check`" not in expected.group(0):
         errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step's Expected Output does not name the `Gate check` section")
