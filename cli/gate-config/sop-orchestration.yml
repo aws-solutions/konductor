@@ -22,9 +22,14 @@
 # its title, above ## Overview, so installed skill descriptions are
 # unchanged. No not_gated SOP contains it.
 #
+# "strict" tells the orchestrator to stop at each recorded gate, record the
+# gate facts, and not proceed past an unmet gate. The `meaning` line below is
+# the sentence that follows the marker in each gated SOP; the lint checks it.
+#
 # Update a gated SOP's basis when that SOP's steps change.
 version: 1
 marker: 'Orchestration: strict (phase-gated SOP)'
+meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate.'
 gated:
   k-full-sdlc:
     gates: [check-threshold, approval]

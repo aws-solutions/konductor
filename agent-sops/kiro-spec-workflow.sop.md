@@ -1,6 +1,7 @@
 # Kiro Spec Workflow
 
 Orchestration: strict (phase-gated SOP)
+Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate.
 
 ## Overview
 

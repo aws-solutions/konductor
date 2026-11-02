@@ -16,6 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "check-sop-orchestration.py"
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "sop-orchestration"
 MARKER = "Orchestration: strict (phase-gated SOP)"
+MEANING = "Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate."
 
 
 def run_check(*args) -> subprocess.CompletedProcess:
@@ -75,7 +76,7 @@ def test_removing_the_marker_from_a_valid_tree_fails(tmp_path):
     root = tmp_path / "repo"
     shutil.copytree(FIXTURES / "valid", root)
     sop = root / "agent-sops" / "alpha-gated.sop.md"
-    sop.write_text(sop.read_text(encoding="utf-8").replace(MARKER + "\n\n", ""), encoding="utf-8")
+    sop.write_text(sop.read_text(encoding="utf-8").replace(MARKER + "\n" + MEANING + "\n\n", ""), encoding="utf-8")
     result = run_check(root)
     assert result.returncode == 1
     assert "missing-marker: gated 'alpha-gated'" in result.stderr
@@ -89,3 +90,13 @@ def test_bad_invocation_exits_64(args):
 def test_repo_tree_agrees_with_its_map():
     result = run_check(REPO_ROOT)
     assert result.returncode == 0, result.stderr
+
+
+def test_changing_the_meaning_sentence_in_a_gated_sop_fails(tmp_path):
+    root = tmp_path / "repo"
+    shutil.copytree(FIXTURES / "valid", root)
+    sop = root / "agent-sops" / "alpha-gated.sop.md"
+    sop.write_text(sop.read_text(encoding="utf-8").replace(MEANING, "Strict means something else."), encoding="utf-8")
+    result = run_check(root)
+    assert result.returncode == 1
+    assert "missing-marker: gated 'alpha-gated'" in result.stderr
