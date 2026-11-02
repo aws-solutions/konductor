@@ -26,6 +26,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
+use super::config_lock;
 use super::harness_select;
 use super::install::artifact::sha256_hex;
 use super::install::bin_link;
@@ -1026,6 +1027,24 @@ fn uninstall_one_impl(
 ) -> Result<UninstallCounts, UninstallError> {
     let target_path = Path::new(target_dir);
 
+    // Same lock `install` holds, so an install and an uninstall of one
+    // target run as one serial order. Skipped when `.konductor` is absent
+    // (stale target): nothing can be installing there, and acquiring would
+    // create the directory.
+    let konductor_dir = target_path.join(crate::cli::config::KONDUCTOR_DIR_NAME);
+    let install_lock = if konductor_dir.is_dir() {
+        Some(
+            config_lock::acquire_named(&konductor_dir, crate::cli::install::INSTALL_LOCK_FILE_NAME)
+                .map_err(|err| {
+                    UninstallError::usage(format!(
+                        "could not lock install target {target_dir}: {err}"
+                    ))
+                })?,
+        )
+    } else {
+        None
+    };
+
     let manifest = manifest::read_manifest(target_path)
         .map_err(|err| UninstallError::from_manifest(target_dir, err))?;
 
@@ -1291,6 +1310,22 @@ fn uninstall_one_impl(
         let (_, hook_errors) = remove_claude_telemetry_hooks(target_path);
         for err in hook_errors {
             eprintln!("konductor uninstall: warning: could not remove a telemetry hook: {err}");
+        }
+    }
+
+    // Unlinked while still held; `acquire_named` re-checks the inode, so a
+    // racing install ends up on a fresh file. Non-fatal, like the record
+    // removals above.
+    if target_fully_removed {
+        if let Some(lock) = &install_lock {
+            if let Err(err) = lock.remove_file_while_held() {
+                eprintln!(
+                    "konductor uninstall: warning: could not remove {}: {err}",
+                    konductor_dir
+                        .join(crate::cli::install::INSTALL_LOCK_FILE_NAME)
+                        .display()
+                );
+            }
         }
     }
 

@@ -27,7 +27,7 @@ use crate::cli::output::ColorMode;
 /// Serializes the opted-out check with the manifest and record writes of
 /// concurrent installs. Distinct from the manifest lock the strategies
 /// take inside, so the two never contend.
-const INSTALL_LOCK_FILE_NAME: &str = ".install.lock";
+pub(crate) const INSTALL_LOCK_FILE_NAME: &str = ".install.lock";
 
 pub mod artifact;
 pub mod bin_link;
@@ -2274,6 +2274,83 @@ mod tests {
             0
         );
         assert!(crate::cli::telemetry::read_install_info(&target).is_some());
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    fn install_lock_path(target: &Path) -> PathBuf {
+        target.join(KONDUCTOR_DIR_NAME).join(INSTALL_LOCK_FILE_NAME)
+    }
+
+    #[test]
+    fn uninstalling_the_last_harness_removes_the_install_lock_and_a_reinstall_recreates_it() {
+        let _home = HomeGuard::new("lock-last-uninstall-home");
+        let target = scratch_dir("lock-last-uninstall-target");
+        let repo_root = scratch_dir("lock-last-uninstall-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(install_lock_path(&target).is_file());
+        assert_eq!(uninstall_harness(&target, "kiro-cli-v2"), 0);
+        assert!(!install_lock_path(&target).exists());
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(install_lock_path(&target).is_file());
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn uninstalling_one_of_two_harnesses_keeps_the_install_lock() {
+        let _home = HomeGuard::new("lock-partial-uninstall-home");
+        let target = scratch_dir("lock-partial-uninstall-target");
+        let repo_root = scratch_dir("lock-partial-uninstall-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert_eq!(install_harness(&repo_root, &target, "claude", false), 0);
+        assert_eq!(uninstall_harness(&target, "claude"), 0);
+        assert!(install_lock_path(&target).is_file());
+        assert_eq!(uninstall_harness(&target, "kiro-cli-v2"), 0);
+        assert!(!install_lock_path(&target).exists());
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn dry_run_uninstall_keeps_the_install_lock() {
+        let _home = HomeGuard::new("lock-dry-run-home");
+        let target = scratch_dir("lock-dry-run-target");
+        let repo_root = scratch_dir("lock-dry-run-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        let code = crate::cli::uninstall::dispatch_uninstall(
+            Some(target.display().to_string()),
+            false,
+            Some("kiro-cli-v2".to_string()),
+            true,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+        assert!(install_lock_path(&target).is_file());
+        assert!(manifest::read_manifest(&target).ok().flatten().is_some());
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
