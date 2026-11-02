@@ -70,6 +70,16 @@ impl SeverityTable {
             })
             .map_or(WordRank::Unknown, |entry| WordRank::Known(entry.id))
     }
+
+    /// The gate severity a finding counts as. An unrecognized word is
+    /// CRITICAL, so a finding with a label nobody mapped blocks the gate
+    /// instead of slipping through it.
+    pub(crate) fn gate_severity_of_word(&self, word: &str) -> Severity {
+        match self.rank_of_word(word) {
+            WordRank::Known(severity) => severity,
+            WordRank::Unknown => Severity::Critical,
+        }
+    }
 }
 
 /// The first run of ASCII letters in `word`, upper-cased.
@@ -291,6 +301,15 @@ mod tests {
         assert_eq!(table.rank_of_word("bogus-severity"), WordRank::Unknown);
         assert_eq!(table.rank_of_word(""), WordRank::Unknown);
         assert_eq!(table.rank_of_word("🚨"), WordRank::Unknown);
+    }
+
+    #[test]
+    fn unknown_word_counts_as_critical() {
+        let table = table();
+        assert_eq!(table.gate_severity_of_word("bogus"), Severity::Critical);
+        assert_eq!(table.gate_severity_of_word(""), Severity::Critical);
+        assert_eq!(table.gate_severity_of_word("Suggestion"), Severity::Low);
+        assert_eq!(table.gate_severity_of_word("IMPORTANT"), Severity::High);
     }
 
     #[test]
