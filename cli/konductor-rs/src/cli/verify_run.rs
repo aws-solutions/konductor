@@ -18,31 +18,47 @@ use super::config::{self, Severity};
 use super::gate_config::{gate_map, severity_table, GateMap};
 use super::gate_eval::{evaluate_value, EvalContext, Reason, ReasonCode, SeverityPolicy, Verdict};
 use super::output::{self, ColorMode};
-use super::EXIT_USAGE_ERROR;
+use super::{EXIT_USAGE_ERROR, EXIT_VERIFY_FAILED};
 
 const PREFIX: &str = "konductor verify-run:";
 
 /// Runs the check and prints the verdict. Returns the process exit code.
 pub(crate) fn run(
     cwd: io::Result<PathBuf>,
+    root: Option<&Path>,
     session: &Path,
     allow_running: bool,
     json: bool,
     color: ColorMode,
 ) -> u8 {
-    let verdict = check(cwd, session, allow_running).unwrap_or_else(Invalid::into_verdict);
-    if json {
-        println!("{}", verdict_json(&verdict));
-    } else {
-        print_plain(&verdict, color);
+    match check(cwd, root, session, allow_running) {
+        Ok(verdict) => {
+            if json {
+                println!("{}", verdict_json(&verdict));
+            } else {
+                print_plain(&verdict, color);
+            }
+            verdict.exit
+        }
+        Err(invalid) => {
+            let verdict = invalid.into_verdict();
+            if json {
+                println!("{}", verdict_json(&verdict));
+            } else {
+                print_invalid(&verdict, color);
+            }
+            verdict.exit
+        }
     }
-    verdict.exit
 }
 
-/// A V1 failure: the file or the config could not be used at all.
+/// A V1 failure: the file or the config could not be used at all. A bad
+/// `--root` is an argument problem (exit 64); everything else is a content
+/// failure (exit 65).
 struct Invalid {
     code: ReasonCode,
     detail: String,
+    exit: u8,
 }
 
 impl Invalid {
@@ -50,6 +66,7 @@ impl Invalid {
         Invalid {
             code: ReasonCode::SessionInvalid,
             detail: detail.into(),
+            exit: EXIT_VERIFY_FAILED,
         }
     }
 
@@ -57,12 +74,20 @@ impl Invalid {
         Invalid {
             code: ReasonCode::ConfigInvalid,
             detail: detail.to_string(),
+            exit: EXIT_VERIFY_FAILED,
+        }
+    }
+
+    fn bad_root(detail: impl Into<String>) -> Self {
+        Invalid {
+            exit: EXIT_USAGE_ERROR,
+            ..Invalid::session(detail)
         }
     }
 
     fn into_verdict(self) -> Verdict {
         Verdict {
-            exit: EXIT_USAGE_ERROR,
+            exit: self.exit,
             reasons: vec![Reason {
                 code: self.code,
                 detail: self.detail,
@@ -74,12 +99,11 @@ impl Invalid {
 
 fn check(
     cwd: io::Result<PathBuf>,
+    root: Option<&Path>,
     session: &Path,
     allow_running: bool,
 ) -> Result<Verdict, Invalid> {
-    let root = cwd.and_then(|dir| dir.canonicalize()).map_err(|err| {
-        Invalid::session(format!("could not resolve the current directory: {err}"))
-    })?;
+    let root = resolve_root(cwd, root)?;
     let path = locate_session(&root, session)?;
     let value = read_session(&path)?;
     let threshold = configured_threshold(&root)?;
@@ -97,7 +121,42 @@ fn check(
         evidence_exists: &evidence_exists,
         allow_running,
     };
-    Ok(evaluate_value(&value, &ctx))
+    let verdict = evaluate_value(&value, &ctx);
+    if verdict.exit == EXIT_USAGE_ERROR {
+        // The evaluator reports a rejected tag or key as its own usage-class
+        // exit; here it is a content failure like any other V1 row.
+        let detail = verdict.reasons.first().map_or("", |r| r.detail.as_str());
+        return Err(Invalid::session(detail));
+    }
+    Ok(verdict)
+}
+
+/// The canonical project root: `--root` (a relative one against the current
+/// directory), or the current directory when it is not given.
+fn resolve_root(cwd: io::Result<PathBuf>, root: Option<&Path>) -> Result<PathBuf, Invalid> {
+    let Some(root) = root else {
+        return cwd.and_then(|dir| dir.canonicalize()).map_err(|err| {
+            Invalid::session(format!("could not resolve the current directory: {err}"))
+        });
+    };
+    let shown = root.display();
+    let given = if root.is_absolute() {
+        root.to_path_buf()
+    } else {
+        let cwd = cwd.map_err(|err| {
+            Invalid::session(format!("could not resolve the current directory: {err}"))
+        })?;
+        cwd.join(root)
+    };
+    let canonical = given
+        .canonicalize()
+        .map_err(|err| Invalid::bad_root(format!("--root {shown} cannot be used: {err}")))?;
+    if !canonical.is_dir() {
+        return Err(Invalid::bad_root(format!(
+            "--root {shown} is not a directory"
+        )));
+    }
+    Ok(canonical)
 }
 
 /// Resolves `session` against `root` and returns its canonical path. A
@@ -117,7 +176,7 @@ fn locate_session(root: &Path, session: &Path) -> Result<PathBuf, Invalid> {
         .map_err(|err| Invalid::session(format!("cannot resolve session file {shown}: {err}")))?;
     if !canonical.starts_with(root) {
         return Err(Invalid::session(format!(
-            "session file {shown} is outside the project root"
+            "session file {shown} is outside the root"
         )));
     }
     if !metadata.is_file() {
@@ -203,20 +262,21 @@ fn verdict_json(verdict: &Verdict) -> serde_json::Value {
     json!({"exit": verdict.exit, "reasons": reasons, "info": info})
 }
 
-/// A V1 failure goes to stderr. Any other verdict prints a summary line,
-/// then one line per reason and note, on stdout.
-fn print_plain(verdict: &Verdict, color: ColorMode) {
-    if verdict.exit == EXIT_USAGE_ERROR {
-        for reason in &verdict.reasons {
-            eprintln!(
-                "{} {}: {}",
-                output::error_prefix(color, PREFIX),
-                reason.code.code(),
-                reason.detail
-            );
-        }
-        return;
+/// A V1 failure goes to stderr, one line per reason.
+fn print_invalid(verdict: &Verdict, color: ColorMode) {
+    for reason in &verdict.reasons {
+        eprintln!(
+            "{} {}: {}",
+            output::error_prefix(color, PREFIX),
+            reason.code.code(),
+            reason.detail
+        );
     }
+}
+
+/// Any other verdict prints a summary line, then one line per reason and
+/// note, on stdout.
+fn print_plain(verdict: &Verdict, color: ColorMode) {
     let prefix = if verdict.exit == 0 {
         output::success_prefix(color, PREFIX)
     } else {
@@ -256,6 +316,22 @@ mod tests {
     fn prefix_of_an_ungated_file_is_the_text_before_the_timestamp() {
         let path = Path::new("k-plan-20250101T000000Z-abcd.yml");
         assert_eq!(session_prefix(path, &gated()), "k-plan");
+    }
+
+    #[test]
+    fn a_root_that_is_not_a_directory_is_a_usage_error() {
+        let file = std::env::current_exe().unwrap();
+        let err = resolve_root(Ok(PathBuf::from("/")), Some(&file)).unwrap_err();
+        assert_eq!(err.exit, EXIT_USAGE_ERROR);
+    }
+
+    #[test]
+    fn a_relative_root_resolves_against_the_current_directory() {
+        let base = std::env::temp_dir().canonicalize().unwrap();
+        let root = resolve_root(Ok(base.clone()), Some(Path::new(".")))
+            .ok()
+            .unwrap();
+        assert_eq!(root, base);
     }
 
     #[test]

@@ -400,10 +400,15 @@ pub enum Commands {
     /// code. Reads the session file and the project config; writes nothing.
     #[command(name = "verify-run")]
     VerifyRun {
-        /// The session file to check, relative to the current directory or
-        /// absolute. It must be a regular file inside the current directory.
+        /// The session file to check, relative to the root or absolute. It
+        /// must be a regular file inside the root.
         #[arg(long)]
         session: std::path::PathBuf,
+
+        /// The directory the session file and every recorded evidence path
+        /// must resolve under. Defaults to the current directory.
+        #[arg(long)]
+        root: Option<std::path::PathBuf>,
 
         /// Accept a session whose run is still in progress (exit 0 when
         /// nothing else fired) instead of failing it with exit 65.

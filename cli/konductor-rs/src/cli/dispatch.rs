@@ -136,12 +136,14 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
         ),
         Commands::VerifyRun {
             session,
+            root,
             allow_running,
         } => {
             // Not `resolve_cwd*`: those send a telemetry event on failure, and
             // this read-only check sends nothing.
             crate::cli::verify_run::run(
                 std::env::current_dir(),
+                root.as_deref(),
                 &session,
                 allow_running,
                 json,

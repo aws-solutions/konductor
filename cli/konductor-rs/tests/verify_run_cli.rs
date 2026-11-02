@@ -171,14 +171,18 @@ fn assert_verdict(output: &Output, exit: i32, code: &str) {
     );
 }
 
-/// Asserts a V1 failure: exit 64 and the reason on stderr.
-fn assert_invalid(output: &Output, code: &str) {
+/// Asserts a V1 content failure: exit `exit` and the reason on stderr.
+fn assert_invalid_with(output: &Output, exit: i32, code: &str) {
     let err = stderr(output);
-    assert_eq!(output.status.code(), Some(64), "stderr: {err}");
+    assert_eq!(output.status.code(), Some(exit), "stderr: {err}");
     assert!(
         err.contains(&format!("konductor verify-run: {code}: ")),
         "expected {code} on stderr: {err}"
     );
+}
+
+fn assert_invalid(output: &Output, code: &str) {
+    assert_invalid_with(output, 65, code);
 }
 
 #[test]
@@ -269,14 +273,14 @@ fn a_running_session_exits_65_unless_allowed() {
 }
 
 #[test]
-fn a_missing_session_file_exits_64() {
+fn a_missing_session_file_exits_65() {
     let project = Project::new("missing");
     assert_invalid(&project.verify(&[]), "SESSION_INVALID");
 }
 
 #[cfg(unix)]
 #[test]
-fn a_symlinked_session_file_exits_64() {
+fn a_symlinked_session_file_exits_65() {
     let project = Project::new("symlink");
     let real = project.root.join(".konductor/real.yml");
     std::fs::write(&real, serde_yaml::to_string(&passing()).unwrap()).unwrap();
@@ -287,17 +291,17 @@ fn a_symlinked_session_file_exits_64() {
 }
 
 #[test]
-fn a_session_outside_the_project_root_exits_64() {
+fn a_session_outside_the_project_root_exits_65() {
     let project = Project::new("outside");
     let outside = project.home.join("k-full-sdlc-20250101T000000Z-abcd.yml");
     std::fs::write(&outside, serde_yaml::to_string(&passing()).unwrap()).unwrap();
     let output = project.run(&["verify-run", "--session", outside.to_str().unwrap()]);
     assert_invalid(&output, "SESSION_INVALID");
-    assert!(stderr(&output).contains("outside the project root"));
+    assert!(stderr(&output).contains("outside the root"));
 }
 
 #[test]
-fn a_local_tag_is_rejected_with_exit_64() {
+fn a_local_tag_is_rejected_with_exit_65() {
     let project = Project::new("local-tag");
     let text = serde_yaml::to_string(&passing())
         .unwrap()
@@ -323,14 +327,14 @@ fn a_core_schema_tag_is_read_as_plain_data() {
 }
 
 #[test]
-fn a_non_utf8_session_file_exits_64() {
+fn a_non_utf8_session_file_exits_65() {
     let project = Project::new("non-utf8");
     std::fs::write(project.root.join(SESSION), [0xff, 0xfe, b'\n']).unwrap();
     assert_invalid(&project.verify(&[]), "SESSION_INVALID");
 }
 
 #[test]
-fn an_invalid_project_config_exits_64() {
+fn an_invalid_project_config_exits_65() {
     let project = Project::new("bad-config");
     project.write_session(&passing());
     std::fs::write(
@@ -349,10 +353,84 @@ fn usage_errors_exit_64_never_2() {
         vec!["verify-run"],
         vec!["verify-run", "--session", SESSION, "--no-such-flag"],
         vec!["verify-run", "--session"],
+        vec!["verify-run", "--session", SESSION, "--root"],
+        vec!["verify-run", "--session", SESSION, "--root", "no-such-dir"],
+        vec!["verify-run", "--session", SESSION, "--root", SESSION],
     ] {
         let output = project.run(&args);
         assert_eq!(output.status.code(), Some(64), "args {args:?}");
     }
+}
+
+/// A second directory next to the project, standing in for an output
+/// directory outside the checkout: the session and its evidence live there.
+fn output_dir_with_session(project: &Project, session: &Value) -> PathBuf {
+    let out = project.root.parent().unwrap().join("outdir");
+    for evidence in EVIDENCE {
+        let path = out.join(evidence);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, "report\n").unwrap();
+    }
+    let file = out.join(SESSION);
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    std::fs::write(file, serde_yaml::to_string(session).unwrap()).unwrap();
+    out.canonicalize().unwrap()
+}
+
+#[test]
+fn a_session_outside_the_cwd_passes_under_root() {
+    let project = Project::new("root-ok");
+    let out = output_dir_with_session(&project, &passing());
+    let output = project.run(&[
+        "verify-run",
+        "--session",
+        SESSION,
+        "--root",
+        out.to_str().unwrap(),
+    ]);
+    assert_verdict(&output, 0, "PASSED");
+}
+
+#[test]
+fn a_session_outside_root_is_refused_with_exit_65() {
+    let project = Project::new("root-outside");
+    project.write_session(&passing());
+    let out = output_dir_with_session(&project, &passing());
+    let session = project.root.join(SESSION);
+    let output = project.run(&[
+        "verify-run",
+        "--session",
+        session.to_str().unwrap(),
+        "--root",
+        out.to_str().unwrap(),
+    ]);
+    assert_invalid(&output, "SESSION_INVALID");
+    assert!(stderr(&output).contains("outside the root"));
+}
+
+#[test]
+fn evidence_outside_root_is_refused() {
+    let project = Project::new("root-evidence");
+    let mut session = passing();
+    session["run"]["data"]["gate_design-review_evidence"] =
+        Value::from("../project/out/design/principal-engineer-review.md");
+    let out = output_dir_with_session(&project, &session);
+    let output = project.run(&[
+        "verify-run",
+        "--session",
+        SESSION,
+        "--root",
+        out.to_str().unwrap(),
+    ]);
+    assert_verdict(&output, 65, "EVIDENCE_MISSING");
+}
+
+#[test]
+fn a_relative_root_resolves_against_the_cwd() {
+    let project = Project::new("root-relative");
+    output_dir_with_session(&project, &passing());
+    let output = project.run(&["verify-run", "--session", SESSION, "--root", "../outdir"]);
+    assert_verdict(&output, 0, "PASSED");
 }
 
 #[test]
@@ -370,9 +448,9 @@ fn json_output_carries_the_same_exit() {
 
     std::fs::remove_file(project.root.join(SESSION)).unwrap();
     let output = project.verify(&["--json"]);
-    assert_eq!(output.status.code(), Some(64));
+    assert_eq!(output.status.code(), Some(65));
     let doc: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(doc["exit"], 64);
+    assert_eq!(doc["exit"], 65);
     assert_eq!(doc["reasons"][0]["code"], "SESSION_INVALID");
 }
 
@@ -410,7 +488,7 @@ fn verify_run_changes_no_file_and_sends_nothing() {
 
     std::fs::write(project.root.join(".konductor/config.yml"), "tier: bogus\n").unwrap();
     let before = snapshot(&project.root);
-    assert_eq!(project.verify(&[]).status.code(), Some(64));
+    assert_eq!(project.verify(&[]).status.code(), Some(65));
     assert_eq!(before, snapshot(&project.root));
 
     assert!(

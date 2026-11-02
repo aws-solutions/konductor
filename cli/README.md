@@ -841,6 +841,7 @@ stdout instead:
 ```bash
 konductor verify-run --session .konductor/sessions/k-full-sdlc-<timestamp>-<suffix>.yml
 konductor verify-run --session <path> --allow-running   # accept a run still in progress
+konductor verify-run --session <path> --root <dir>      # verify under <dir> instead of the cwd
 konductor verify-run --session <path> --json            # one JSON object on stdout
 ```
 
@@ -855,10 +856,15 @@ config (preset, then `~/.konductor/config.yml`, then `.konductor/config.yml`) fo
 telemetry. Like every command, it appends one line to the invocation log under
 `~/.konductor/logs/`.
 
-The session path is resolved against the current directory, which is the project
-root. The file must be a regular file inside that root and must not be a symlink.
-Evidence paths in the session are relative to the root and must name a regular file
-inside it.
+`--root <dir>` names the directory everything must resolve under. It defaults to the
+current directory. A relative `--root` is resolved against the current directory, and
+the root is canonicalized (symlinks resolved) before any check. The session path is
+resolved against the root (an absolute path is used as is); the file must be a regular
+file whose canonical path is inside the root and must not be a symlink. Evidence paths
+in the session are relative to the root and must canonicalize to a regular file inside
+it. The project config is read from `<root>/.konductor/config.yml`. Use `--root` when
+the session lives in an output directory outside the checkout. A `--root` that does
+not exist or is not a directory is a usage error (exit 64).
 
 The YAML is read as plain data: a local tag such as `!custom` or a non-string mapping
 key rejects the file. A `!!` tag such as `!!python/object` is resolved to its untagged
@@ -868,7 +874,8 @@ The first row that fires sets the exit; every firing reason prints.
 
 | Row | Condition | Reason | Exit |
 | --- | --- | --- | --- |
-| V1 | The file is missing, unreadable, not UTF-8, a symlink, outside the project root, or rejected by the YAML loader. A bad argument. A `config.yml` that is present but invalid | `SESSION_INVALID`, `CONFIG_INVALID` | 64 |
+| V0 | A bad argument: a missing or unknown flag, or a `--root` that is not a directory | `SESSION_INVALID` for `--root`; clap's message otherwise | 64 |
+| V1 | The file is missing, unreadable, not UTF-8, a symlink, outside the root, or rejected by the YAML loader. A `config.yml` that is present but invalid | `SESSION_INVALID`, `CONFIG_INVALID` | 65 |
 | V2 | `schema_version` is not 1, a status outside the skill's enums, a SOP name not in the gated list or with no `phases`, or session phases that differ from that list | `RECORD_INTEGRITY` | 65 |
 | V3 | A phase `COMPLETED` after an earlier `PENDING` or `IN_PROGRESS` one, `run_status: completed` with a phase not `COMPLETED` or `SKIPPED`, or a `SKIPPED` phase with no `skip_reason` | `PHASE_ORDER`, `PHASE_INCOMPLETE`, `SKIP_UNEXPLAINED` | 65 |
 | V4 | A gate phase is `COMPLETED` (per registered feature for a feature gate) with no `gate_<phase>_result`, an approval result other than `approved`, or no `gate_<phase>_evidence` naming a file in the project | `GATE_MISSING`, `APPROVAL_MISSING`, `EVIDENCE_MISSING` | 65 |
@@ -950,8 +957,8 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | 4 | User aborted a paused verdict |
   | 5 | Reserved, not yet emitted by any command. |
   | 6 | Success with warnings. Emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink, and by `verify-run` when a run passed with a skipped gate phase |
-  | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
-  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error); for `verify-run`, a missing gate fact or an inconsistent session record |
+  | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2`. For `verify-run`, argument problems only, including a `--root` that is not a directory |
+  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error); for `verify-run`, any content failure: an unusable session file or config, a missing gate fact, or an inconsistent session record |
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 
