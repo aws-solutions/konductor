@@ -1619,9 +1619,16 @@ mod tests {
 
     #[test]
     fn no_cli_text_calls_exit_2_an_unresolved_critical_gate() {
-        let stale = ["unresolved", "CRITICAL", "gate"].join(" ");
-        for (name, text) in [
+        let sources = [
             ("cli.rs", include_str!("cli.rs")),
+            ("cli/config.rs", include_str!("cli/config.rs")),
+            ("cli/dispatch.rs", include_str!("cli/dispatch.rs")),
+            ("cli/synth/mod.rs", include_str!("cli/synth/mod.rs")),
+            (
+                "tests/config_set_concurrency.rs",
+                include_str!("../tests/config_set_concurrency.rs"),
+            ),
+            ("AGENTS.md", include_str!("../../../AGENTS.md")),
             ("README.md", include_str!("../../README.md")),
             ("config.yml", include_str!("../../gate-config/config.yml")),
             (
@@ -1632,9 +1639,13 @@ mod tests {
                 "severity-schema.yml",
                 include_str!("../../gate-config/severity-schema.yml"),
             ),
-        ] {
+        ];
+        let stale = ["unresolved", "critical", "gate"].join(" ");
+        for (name, text) in sources {
+            let flat = text.to_lowercase().replace(['-', '\n'], " ");
+            let flat = flat.split_whitespace().collect::<Vec<_>>().join(" ");
             assert!(
-                !text.contains(&stale),
+                !flat.contains(&stale),
                 "{name} still uses the old exit 2 wording"
             );
         }

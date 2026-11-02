@@ -806,7 +806,7 @@ With `--all`, this same object shape is nested once per target under a top-level
 
 Exit codes: `0` when every check is `ok`/`info`/`warn`; `1` (`EXIT_HALTED`) when at
 least one is `failed`/`stale`; `64` on a usage error. `doctor` never emits exit code 2,
-which only the gate evaluator uses — see [Conventions](#conventions).
+which only the gate evaluator uses; see [Conventions](#conventions).
 
 ### `--json` error envelope (`install`/`synth`/`doctor`)
 
@@ -873,13 +873,13 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   |------|---------|
   | 0 | All passed |
   | 1 | Halted (timeout / runtime error / parse error) — reused by `doctor` for "at least one check failed/stale" |
-  | 2 | Unresolved finding at or above the effective severity threshold, from the gate evaluator — CI-failing signal (**never** used for usage errors). Phase-gated SOPs never judge laxer than HIGH |
+  | 2 | Unresolved finding at or above the effective severity threshold, from the gate evaluator; the CI-failing signal (**never** used for usage errors). Phase-gated SOPs never judge laxer than HIGH |
   | 3 | Fix-cycle budget exceeded: a recorded count is above `run.data.max_fix_cycles` (default 2 when the session records none; the evaluator notes that default) |
   | 4 | User aborted a paused verdict |
   | 5 | Reserved, not yet emitted by any command. |
-  | 6 | Success with warnings — `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink; the gate evaluator when a run completed with a skipped gate |
+  | 6 | Success with warnings: `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink; the gate evaluator when a run completed with a skipped gate |
   | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
-  | 65 | Content or integrity failure, distinct from a `64` usage error: an unsupported manifest/index `schema_version`, a failed checksum, or, for a SOP session file, a corrupt or invalid session, a broken record (including a non-integer `max_fix_cycles` or counter, or a wrong-typed gate fact), phase order, missing gate facts or evidence, or an in-progress session without `allow_running` |
+  | 65 | Content or integrity failure, distinct from a `64` usage error: an unsupported manifest/index `schema_version`, a failed checksum, or, for a SOP session file, a corrupt or invalid session, a broken record (including a non-integer `max_fix_cycles` or counter, or a wrong-typed gate fact), phase order, an unfinished phase or an unexplained skip, missing gate facts or evidence, or an in-progress session without `allow_running` |
 
   When several causes apply, the gate evaluator lists all of them but exits with the
   first in this order: 65, 1, 3, 2, 6. The fix-cycle cap comes from the SOP recording

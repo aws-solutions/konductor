@@ -12,7 +12,7 @@
 # ── Field reference ─────────────────────────────────────────────────────────
 #   version               Config schema version. Loader rejects a config
 #                          whose `version` it does not recognize (usage
-#                          error, exit 64 — see cli.rs).
+#                          error, exit 64; see cli.rs).
 #   severities_source      Relative path (from this file's own directory)
 #                          to the severity-schema.yml this config's
 #                          severity ids are drawn from.
