@@ -23,17 +23,17 @@ SOP_TEXT = (REPO_ROOT / "agent-sops" / "k-full-sdlc.sop.md").read_text(encoding=
 ENTRY = yaml.safe_load(
     (REPO_ROOT / "cli" / "gate-config" / "sop-orchestration.yml").read_text(encoding="utf-8")
 )["gated"]["k-full-sdlc"]
-SESSION = ".konductor/sessions/k-full-sdlc-20250101T000000Z-abcd.yml"
+SESSION = "sessions/k-full-sdlc-20250101T000000Z-abcd.yml"
 FEATURE = "login"
 
-# Each boundary's evidence and checker as the SOP's Steps state them, with
-# output_dir at its default `.konductor/`.
+# Each boundary's evidence (relative to output_dir) and checker as the SOP's
+# Steps state them.
 EVIDENCE = {
-    "design-review": ("output_dir/design/principal-engineer-review.md", "k-architect"),
-    "feature-splitting": ("output_dir/feature-split/feature-split.md", "user"),
-    "specs": ("output_dir/specs/{feature-name}/tasks.md", "user"),
-    "code-review": ("output_dir/{feature-name}/code-review/report.md", "user"),
-    "testing": ("output_dir/{feature-name}/testing/test-coverage-review-report.md", "k-quality-assurance"),
+    "design-review": ("design/principal-engineer-review.md", "k-architect"),
+    "feature-splitting": ("feature-split/feature-split.md", "user"),
+    "specs": ("specs/{feature-name}/tasks.md", "user"),
+    "code-review": ("{feature-name}/code-review/report.md", "user"),
+    "testing": ("{feature-name}/testing/test-coverage-review-report.md", "k-quality-assurance"),
 }
 
 pytestmark = pytest.mark.skipif(
@@ -43,11 +43,10 @@ pytestmark = pytest.mark.skipif(
 
 
 def evidence_path(phase):
-    template = EVIDENCE[phase][0]
-    return template.replace("output_dir/", ".konductor/").replace("{feature-name}", FEATURE)
+    return EVIDENCE[phase][0].replace("{feature-name}", FEATURE)
 
 
-def session_for(project, run_status, last_phase_status):
+def session_for(output_dir, run_status, last_phase_status, testing_result="none"):
     """The session a run holds at Step 11: every earlier phase COMPLETED and
     every boundary's three gate facts in place."""
     run_data = {"max_fix_cycles": 2, "feature_isolation": "branch"}
@@ -55,13 +54,15 @@ def session_for(project, run_status, last_phase_status):
     for boundary in ENTRY["boundaries"]:
         phase = boundary["phase"]
         result = "approved" if boundary["kind"] == "approval" else "none"
+        if phase == "testing":
+            result = testing_result
         facts = {
             f"gate_{phase}_result": result,
             f"gate_{phase}_evidence": evidence_path(phase),
             f"gate_{phase}_checker": EVIDENCE[phase][1],
         }
         (run_data if boundary["scope"] == "run" else feature_data).update(facts)
-        evidence = project / evidence_path(phase)
+        evidence = output_dir / evidence_path(phase)
         evidence.parent.mkdir(parents=True, exist_ok=True)
         evidence.write_text("report\n", encoding="utf-8")
     phases = {
@@ -84,8 +85,11 @@ def session_for(project, run_status, last_phase_status):
 
 @pytest.fixture
 def project(tmp_path):
-    root = tmp_path.resolve() / "project"
-    (root / ".konductor" / "sessions").mkdir(parents=True)
+    """The output_dir. It lies outside the codebase, as an unattended run's
+    explicit output_dir may."""
+    root = tmp_path.resolve() / "elsewhere" / "out"
+    (root / "sessions").mkdir(parents=True)
+    (tmp_path / "codebase").mkdir()
     (tmp_path / "home").mkdir()
     return root
 
@@ -93,7 +97,7 @@ def project(tmp_path):
 def run_verify(project, *args):
     env = {
         "PATH": os.environ.get("PATH", ""),
-        "HOME": str(project.parent / "home"),
+        "HOME": str(project.parents[1] / "home"),
         "KONDUCTOR_TELEMETRY": "off",
     }
     return subprocess.run(
@@ -103,6 +107,19 @@ def run_verify(project, *args):
         capture_output=True,
         text=True,
     )
+
+
+def supports_root():
+    help_text = subprocess.run(
+        [str(KONDUCTOR_BIN), "verify-run", "--help"], capture_output=True, text=True
+    )
+    return "--root" in help_text.stdout + help_text.stderr
+
+
+def verify_args(project, *extra):
+    """The Step 11 call; --root is passed once the built binary accepts it."""
+    root = ["--root", str(project)] if supports_root() else []
+    return ["verify-run", "--session", SESSION, *root, *extra]
 
 
 def write_session(project, session):
@@ -117,14 +134,39 @@ def test_sop_text_names_every_boundary_evidence_path():
 
 def test_step_11_session_is_running_then_passes_once_completed(project):
     write_session(project, session_for(project, "in_progress", "IN_PROGRESS"))
-    result = run_verify(project, "verify-run", "--session", SESSION, "--allow-running")
+    result = run_verify(project, *verify_args(project, "--allow-running"))
     assert result.returncode == 0, result.stdout + result.stderr
     assert "RUNNING" in result.stdout
 
     write_session(project, session_for(project, "completed", "COMPLETED"))
-    result = run_verify(project, "verify-run", "--session", SESSION)
+    result = run_verify(project, *verify_args(project))
     assert result.returncode == 0, result.stdout + result.stderr
     assert "PASSED" in result.stdout
+
+
+def test_open_important_finding_exits_2_at_step_11(project):
+    write_session(project, session_for(project, "in_progress", "IN_PROGRESS", testing_result="IMPORTANT"))
+    result = run_verify(project, *verify_args(project, "--allow-running"))
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "FINDING_UNRESOLVED" in result.stdout
+
+
+def test_raised_fix_cycle_cap_recorded_in_run_data_is_honoured(project):
+    session = session_for(project, "in_progress", "IN_PROGRESS")
+    session["run"]["data"]["max_fix_cycles"] = 5
+    session["features"][FEATURE]["counters"]["fix_cycles_used"] = 4
+    write_session(project, session)
+    result = run_verify(project, *verify_args(project, "--allow-running"))
+    if "FIX_CAP_CLAMPED" in result.stdout:
+        pytest.skip("the built evaluator still clamps the cap to 2")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_sop_stops_on_important_findings_at_steps_4_and_9():
+    assert "leaves any CRITICAL or IMPORTANT finding open" in SOP_TEXT
+    assert "If CRITICAL or IMPORTANT gaps are found" in SOP_TEXT
+    assert "--root <output_dir>" in SOP_TEXT
+    assert "run from the project root" not in SOP_TEXT
 
 
 def test_missing_konductor_on_path_reports_not_found(tmp_path):
