@@ -26,8 +26,9 @@ def run_check(*args) -> subprocess.CompletedProcess:
     )
 
 
-def test_valid_fixture_passes_silently():
-    result = run_check(FIXTURES / "valid")
+@pytest.mark.parametrize("case", ["valid", "valid-phases-only", "valid-phase-list-no-sentinel"])
+def test_valid_fixture_passes_silently(case):
+    result = run_check(FIXTURES / case)
     assert result.returncode == 0, result.stderr
     assert result.stdout == "" and result.stderr == ""
 
@@ -48,9 +49,18 @@ def test_valid_fixture_passes_silently():
         ("phase-list-missing-bullet", "phase-list-mismatch: gated 'alpha-gated' has phases but"),
         ("unknown-boundary-phase", "unknown-boundary-phase: gated 'alpha-gated' boundary 'zero'"),
         ("unknown-boundary-kind", "unknown-boundary-kind: gated 'alpha-gated' boundary 'one' kind 'loop-exit'"),
-        ("bad-boundary-shape", "bad-entry: gated 'alpha-gated' 'boundaries' must be a list"),
-        ("bad-boundary-scope-list", "bad-entry: gated 'alpha-gated' 'boundaries' must be a list"),
-        ("bad-boundary-scope-dict", "bad-entry: gated 'alpha-gated' 'boundaries' must be a list"),
+        ("bad-boundary-shape", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-scope-list", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-scope-dict", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-scope-value", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundaries-not-list", "'boundaries' must be a list of {phase, kind, scope}"),
+        ("bad-boundary-missing-key", "'boundaries' item 1 must have exactly phase, kind, scope (missing ['scope']"),
+        ("bad-boundary-extra-key", "'boundaries' item 1 must have exactly phase, kind, scope (missing [], unexpected ['note']"),
+        ("bad-boundary-non-string", "'boundaries' item 1 'phase' must be a string"),
+        ("empty-boundaries", "'boundaries' must not be empty; omit it"),
+        ("unknown-gated-key-boundaries", "bad-entry: gated 'alpha-gated' has unknown key 'boundries'"),
+        ("unknown-gated-key-phases", "bad-entry: gated 'alpha-gated' has unknown key 'phasesz'"),
+        ("bad-phases-unhashable", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
         ("duplicate-boundary-phase", "bad-entry: gated 'alpha-gated' boundary phase 'one' listed more than once"),
         ("bad-phases-duplicate", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
         ("bad-phases-empty", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
@@ -98,18 +108,17 @@ def test_bad_invocation_exits_64(args):
     assert run_check(*args).returncode == 64
 
 
-def test_full_sdlc_boundary_scopes_are_pinned():
+def test_full_sdlc_boundaries_are_pinned():
     import yaml
 
     data = yaml.safe_load((REPO_ROOT / "cli/gate-config/sop-orchestration.yml").read_text(encoding="utf-8"))
-    scopes = {b["phase"]: b["scope"] for b in data["gated"]["k-full-sdlc"]["boundaries"]}
-    assert scopes == {
-        "design-review": "run",
-        "feature-splitting": "run",
-        "specs": "feature",
-        "code-review": "run",
-        "testing": "feature",
-    }
+    assert data["gated"]["k-full-sdlc"]["boundaries"] == [
+        {"phase": "design-review", "kind": "check-threshold", "scope": "run"},
+        {"phase": "feature-splitting", "kind": "approval", "scope": "run"},
+        {"phase": "specs", "kind": "approval", "scope": "feature"},
+        {"phase": "code-review", "kind": "approval", "scope": "run"},
+        {"phase": "testing", "kind": "check-threshold", "scope": "feature"},
+    ]
 
 
 def test_repo_tree_agrees_with_its_map():
