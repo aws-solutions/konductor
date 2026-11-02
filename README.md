@@ -360,6 +360,7 @@ Each one is explained, with a flowchart, in [SOP workflows](docs/user-guide/sop-
 
 Agents with the `persistent-memory` skill keep a small scratchpad across sessions, with no setup.
 The directory is created on first write and added to `.gitignore`.
+Agents treat your own entries as instructions only while `.konductor/memory/` is untracked by git; committed memory is read as content.
 
 | File | Holds |
 | --- | --- |
