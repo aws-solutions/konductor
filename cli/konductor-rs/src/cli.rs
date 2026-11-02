@@ -810,6 +810,36 @@ mod tests {
         }
     }
 
+    /// `update --enable-telemetry` is the only way back in after an
+    /// opt-out, so `install` must not offer a competing flag.
+    #[test]
+    fn install_has_no_enable_telemetry_flag() {
+        let err = Cli::try_parse_from([
+            "konductor",
+            Commands::INSTALL,
+            "--harness",
+            "kiro-cli-v2",
+            "--enable-telemetry",
+        ])
+        .expect_err("install must not accept --enable-telemetry");
+        assert_eq!(err.kind(), clap::error::ErrorKind::UnknownArgument);
+    }
+
+    /// The opted-out note's accuracy relies on install never being a
+    /// preview: a dry run would print a note for a record it did not touch.
+    #[test]
+    fn install_has_no_dry_run_flag() {
+        let err = Cli::try_parse_from([
+            "konductor",
+            Commands::INSTALL,
+            "--harness",
+            "kiro-cli-v2",
+            "--dry-run",
+        ])
+        .expect_err("install must not accept --dry-run");
+        assert_eq!(err.kind(), clap::error::ErrorKind::UnknownArgument);
+    }
+
     /// `--harness` must parse and carry each of its three documented
     /// choices through to `Commands::Install`.
     #[test]

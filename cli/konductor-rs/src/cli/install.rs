@@ -2079,6 +2079,369 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    const ALL_HARNESSES: [&str; 3] = ["kiro-cli-v2", "kiro-v3", "claude"];
+
+    fn seed_every_harness(repo_root: &Path) {
+        seed_synthed_agent(repo_root, "k-example");
+        seed_synthed_kiro_v3_agent(repo_root, "k-example");
+        seed_synthed_claude_agent(repo_root, "k-example");
+    }
+
+    fn any_file_has_telemetry_hook(dir: &Path) -> bool {
+        fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .any(|entry| {
+                let path = entry.path();
+                if path.is_dir() {
+                    any_file_has_telemetry_hook(&path)
+                } else {
+                    fs::read_to_string(&path).is_ok_and(|text| text.contains("__telemetry-hook"))
+                }
+            })
+    }
+
+    fn update_harness(
+        repo_root: &Path,
+        target: &Path,
+        harness: &str,
+        no_telemetry: bool,
+        enable_telemetry: bool,
+        dry_run: bool,
+    ) -> u8 {
+        crate::cli::update::dispatch_update_with(
+            Some(repo_root.display().to_string()),
+            Some(target.display().to_string()),
+            false,
+            Some(harness.to_string()),
+            no_telemetry,
+            enable_telemetry,
+            dry_run,
+            false,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        )
+    }
+
+    fn uninstall_harness(target: &Path, harness: &str) -> u8 {
+        crate::cli::uninstall::dispatch_uninstall(
+            Some(target.display().to_string()),
+            false,
+            Some(harness.to_string()),
+            false,
+            false,
+            ColorMode::disabled(),
+        )
+    }
+
+    fn assert_stays_opted_out(target: &Path, context: &str) {
+        assert!(
+            !crate::cli::telemetry::install_info_exists(target),
+            "{context}: a record was written"
+        );
+        assert!(
+            !any_file_has_telemetry_hook(target),
+            "{context}: a telemetry hook was written"
+        );
+        assert!(
+            target_is_opted_out(target),
+            "{context}: not read as opted out"
+        );
+    }
+
+    #[test]
+    fn opt_out_survives_three_plain_reinstalls_of_the_same_harness_for_every_harness() {
+        let _home = HomeGuard::new("three-reinstalls-home");
+        let repo_root = scratch_dir("three-reinstalls-repo");
+        seed_every_harness(&repo_root);
+
+        for harness in ALL_HARNESSES {
+            let target = scratch_dir(&format!("three-reinstalls-{harness}"));
+            assert_eq!(install_harness(&repo_root, &target, harness, true), 0);
+            for round in 1..=3 {
+                assert_eq!(install_harness(&repo_root, &target, harness, false), 0);
+                assert_stays_opted_out(&target, &format!("{harness} reinstall {round}"));
+            }
+            fs::remove_dir_all(&target).ok();
+        }
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn opt_out_holds_across_a_second_and_third_harness_and_a_reinstall_of_the_first() {
+        let _home = HomeGuard::new("three-harnesses-home");
+        let target = scratch_dir("three-harnesses-target");
+        let repo_root = scratch_dir("three-harnesses-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(install_harness(&repo_root, &target, "claude", true), 0);
+        for harness in ["kiro-cli-v2", "kiro-v3", "claude"] {
+            assert_eq!(install_harness(&repo_root, &target, harness, false), 0);
+            assert_stays_opted_out(&target, harness);
+        }
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn enable_telemetry_sticks_across_later_plain_installs_and_updates() {
+        let _home = HomeGuard::new("enable-sticks-home");
+        let target = scratch_dir("enable-sticks-target");
+        let repo_root = scratch_dir("enable-sticks-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        let harness = "kiro-cli-v2";
+
+        assert_eq!(install_harness(&repo_root, &target, harness, true), 0);
+        assert_eq!(
+            update_harness(&repo_root, &target, harness, false, false, false),
+            0
+        );
+        assert_stays_opted_out(&target, "plain update");
+        assert_eq!(
+            update_harness(&repo_root, &target, harness, true, false, false),
+            0
+        );
+        assert_stays_opted_out(&target, "update --no-telemetry");
+
+        assert_eq!(
+            update_harness(&repo_root, &target, harness, false, true, false),
+            0
+        );
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+
+        assert_eq!(install_harness(&repo_root, &target, harness, false), 0);
+        assert!(
+            crate::cli::telemetry::install_info_exists(&target),
+            "plain install after enable flipped back to off"
+        );
+        assert_eq!(
+            update_harness(&repo_root, &target, harness, false, false, false),
+            0
+        );
+        assert!(
+            crate::cli::telemetry::install_info_exists(&target),
+            "plain update after enable flipped back to off"
+        );
+        assert!(kiro_agent_has_telemetry_hook(&target));
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn update_enable_telemetry_dry_run_leaves_an_opted_out_target_opted_out() {
+        let _home = HomeGuard::new("enable-dry-run-home");
+        let target = scratch_dir("enable-dry-run-target");
+        let repo_root = scratch_dir("enable-dry-run-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        assert_eq!(
+            update_harness(&repo_root, &target, "kiro-cli-v2", false, true, true),
+            0
+        );
+        assert_stays_opted_out(&target, "update --enable-telemetry --dry-run");
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Uninstalling every harness removes the manifest, so the next
+    /// install has nothing tracked and is a first install: it opts in.
+    #[test]
+    fn full_uninstall_then_plain_install_is_a_first_install_that_writes_the_record() {
+        let _home = HomeGuard::new("uninstall-all-then-install-home");
+        let target = scratch_dir("uninstall-all-then-install-target");
+        let repo_root = scratch_dir("uninstall-all-then-install-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        assert_eq!(install_harness(&repo_root, &target, "claude", false), 0);
+        assert_eq!(uninstall_harness(&target, "claude"), 0);
+        assert_stays_opted_out(&target, "after uninstalling one of two");
+        assert_eq!(uninstall_harness(&target, "kiro-cli-v2"), 0);
+
+        assert!(manifest::read_manifest(&target).ok().flatten().is_none());
+        assert!(!target_is_opted_out(&target));
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(crate::cli::telemetry::read_install_info(&target).is_some());
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn reinstalling_a_harness_after_uninstalling_it_keeps_an_opted_out_target_opted_out() {
+        let _home = HomeGuard::new("uninstall-one-reinstall-home");
+        let target = scratch_dir("uninstall-one-reinstall-target");
+        let repo_root = scratch_dir("uninstall-one-reinstall-repo");
+        seed_every_harness(&repo_root);
+
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        assert_eq!(install_harness(&repo_root, &target, "claude", false), 0);
+        assert_eq!(uninstall_harness(&target, "claude"), 0);
+        for harness in ["claude", "kiro-cli-v2"] {
+            assert_eq!(install_harness(&repo_root, &target, harness, false), 0);
+            assert_stays_opted_out(&target, harness);
+        }
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Only a missing record is an opt-out. Anything else present at the
+    /// record path keeps the install's normal record handling.
+    #[test]
+    fn unusable_install_info_records_are_never_read_as_an_opt_out() {
+        let _home = HomeGuard::new("unusable-record-home");
+        let target = scratch_dir("unusable-record-target");
+        let repo_root = scratch_dir("unusable-record-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        let record_path = crate::cli::telemetry::install_info_path(&target);
+        fs::remove_file(&record_path).unwrap();
+        assert!(
+            target_is_opted_out(&target),
+            "sanity: absent record is an opt-out"
+        );
+
+        let unusable_contents = [
+            "",
+            "{not json",
+            r#"{"schema_version":99,"agent_version":null,"harness":"kiro-cli-v2","installed_at":"x"}"#,
+            r#"{"schema_version":0,"harness":"kiro-cli-v2"}"#,
+        ];
+        for contents in unusable_contents {
+            fs::write(&record_path, contents).unwrap();
+            assert!(
+                !target_is_opted_out(&target),
+                "read as opt-out: {contents:?}"
+            );
+        }
+
+        fs::remove_file(&record_path).unwrap();
+        fs::create_dir(&record_path).unwrap();
+        assert!(
+            !target_is_opted_out(&target),
+            "directory at the record path"
+        );
+        fs::remove_dir(&record_path).unwrap();
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Any current-schema record means opted in, whatever harness it
+    /// names and wherever it was copied from: the record has no root.
+    #[test]
+    fn a_present_record_means_opted_in_regardless_of_its_harness_or_origin() {
+        let _home = HomeGuard::new("record-origin-home");
+        let opted_out = scratch_dir("record-origin-opted-out");
+        let opted_in = scratch_dir("record-origin-opted-in");
+        let repo_root = scratch_dir("record-origin-repo");
+        seed_every_harness(&repo_root);
+        assert_eq!(
+            install_harness(&repo_root, &opted_out, "kiro-cli-v2", true),
+            0
+        );
+        assert_eq!(
+            install_harness(&repo_root, &opted_in, "kiro-cli-v2", false),
+            0
+        );
+        assert!(target_is_opted_out(&opted_out));
+        assert!(
+            !target_is_opted_out(&opted_in),
+            "targets must not affect each other"
+        );
+
+        let record_path = crate::cli::telemetry::install_info_path(&opted_in);
+        let other_harness = fs::read_to_string(&record_path)
+            .unwrap()
+            .replace("kiro-cli-v2", "claude");
+        fs::write(&record_path, other_harness).unwrap();
+        assert!(
+            !target_is_opted_out(&opted_in),
+            "record naming another harness"
+        );
+
+        let copied = crate::cli::telemetry::install_info_path(&opted_out);
+        fs::copy(&record_path, &copied).unwrap();
+        assert!(
+            !target_is_opted_out(&opted_out),
+            "record copied from another target"
+        );
+
+        fs::remove_dir_all(&opted_out).ok();
+        fs::remove_dir_all(&opted_in).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn opt_out_is_detected_through_symlinked_and_dotdot_target_paths() {
+        let _home = HomeGuard::new("path-identity-home");
+        let holder = scratch_dir("path-identity-holder");
+        let target = holder.join("real");
+        let symlink = holder.join("link");
+        let repo_root = scratch_dir("path-identity-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        fs::create_dir_all(&target).unwrap();
+        std::os::unix::fs::symlink(&target, &symlink).unwrap();
+
+        let alternate_spellings = [
+            symlink.clone(),
+            PathBuf::from(format!("{}/", symlink.display())),
+            PathBuf::from(format!("{}/../real", target.display())),
+        ];
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        for spelling in &alternate_spellings {
+            assert_eq!(
+                install_harness(&repo_root, spelling, "kiro-cli-v2", false),
+                0
+            );
+            assert_stays_opted_out(&target, &spelling.display().to_string());
+        }
+
+        fs::remove_dir_all(&holder).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn opting_out_through_a_symlink_is_seen_by_the_real_path() {
+        let _home = HomeGuard::new("symlink-first-home");
+        let holder = scratch_dir("symlink-first-holder");
+        let target = holder.join("real");
+        let symlink = holder.join("link");
+        let repo_root = scratch_dir("symlink-first-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        fs::create_dir_all(&target).unwrap();
+        std::os::unix::fs::symlink(&target, &symlink).unwrap();
+
+        assert_eq!(
+            install_harness(&repo_root, &symlink, "kiro-cli-v2", true),
+            0
+        );
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert_stays_opted_out(&target, "real path after opting out via symlink");
+
+        fs::remove_dir_all(&holder).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     // ── First-ever install --no-telemetry: no record to remove ──────────
 
     #[test]
