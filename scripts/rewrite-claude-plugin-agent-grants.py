@@ -19,15 +19,12 @@ FRONTMATTER_FENCE = "---"
 AGENT_GRANT_RE = re.compile(r"\bAgent\(([^)]*)\)")
 
 
-def _load_plugin(plugin_json_path: Path) -> tuple[str, set[str]]:
+def _load_plugin_name(plugin_json_path: Path) -> str:
     plugin = json.loads(plugin_json_path.read_text(encoding="utf-8"))
     name = plugin.get("name")
     if not name or not isinstance(name, str):
         raise ValueError(f'{plugin_json_path}: missing or non-string "name" field')
-    agents = plugin.get("agents") or []
-    if not isinstance(agents, list):
-        raise ValueError(f'{plugin_json_path}: "agents" must be a list of paths')
-    return name, {Path(path).stem for path in agents}
+    return name
 
 
 def _split_frontmatter(text: str) -> tuple[str, str, bool]:
@@ -76,7 +73,7 @@ def main() -> int:
         "--plugin-json",
         required=True,
         type=Path,
-        help='Rendered plugin.json used to read the plugin "name" and "agents"',
+        help='Rendered plugin.json used to read the plugin "name"',
     )
     args = parser.parse_args()
 
@@ -88,11 +85,12 @@ def main() -> int:
         return 1
 
     try:
-        plugin_name, shipped = _load_plugin(args.plugin_json)
+        plugin_name = _load_plugin_name(args.plugin_json)
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
 
+    shipped = {path.stem for path in args.agents_dir.glob("*.md")}
     rewrites: dict[Path, str] = {}
     prefixed_total = 0
     failures: list[str] = []
