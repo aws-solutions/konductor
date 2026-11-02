@@ -153,6 +153,7 @@ defaults are the kind of detail that drifts across versions.
 | `uninstall` | Remove a tracked install.                                                                                                                                                                |
 | `synth`     | Synthesize pipeline/config artifacts from a repo root without installing anywhere.                                                                                                       |
 | `doctor`    | Inspect an install or checkout and print remediation guidance for problems it finds.                                                                                                     |
+| `flow`      | Check a workflow file (`flow check <name>`) or print its resolved form as JSON (`flow show <name>`). It only reads files.                                                                |
 | `metrics`   | Show usage/run metrics (still a stub as of this writing — verify with `--help`, don't assume it stayed one).                                                                             |
 
 Every subcommand takes `-v`/`--verbose`, `--json`, and

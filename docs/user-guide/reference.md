@@ -30,7 +30,7 @@ For the agents and skills themselves, see the [Agents reference](agents.md) and
 
 ## Command table
 
-Seven commands.
+Eight commands.
 
 | Command | Purpose |
 | --- | --- |
@@ -40,6 +40,7 @@ Seven commands.
 | `konductor doctor` | Check the runtime, the installed content, the project config, and available updates |
 | `konductor init` | Create `.konductor/` and write a starter `config.yml` |
 | `konductor synth` | Parse `agents/`, `skills/`, and `agent-sops/` and write per-runtime output to `<source>/dist/` |
+| `konductor flow` | Check a workflow file (`flow check <name>`) or print its resolved form as JSON (`flow show <name>`) |
 | `konductor metrics` | Show quality trends from recent runs |
 
 `update` and `uninstall` both accept `--target <dir>`, `--all`, and `--dry-run`, and share one
