@@ -143,6 +143,10 @@ Delegation is not open. In Kiro CLI it is governed by each agent's
 `toolsSettings.subagent.availableAgents`; in Claude Code by whether the agent has an
 `Agent(...)` tool at all.
 
+The edges below are tool grants. The core rules tell specialists not to use them: a specialist
+does its own part, then returns a handoff note or a proposed parallel split to its caller. The
+grants themselves are still in the agent specs.
+
 ```mermaid
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
 flowchart LR
@@ -187,6 +191,11 @@ flowchart LR
 | `konductor-cmux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
 | `k-browser` | no delegation | **nothing** |
 | `k-media-analyzer` | no delegation | **nothing** |
+
+Run directly with no orchestrator, the caller is you. `k-adversarial-pull-request-review`
+returns its Step 2 and 3 generator passes as a proposed split and resumes at Step 4, and
+`k-code-review-workflow` returns Step 6 as a handoff for `k-architect`. Starting from `konductor`
+routes both for you.
 
 ### Why this matters: a real consequence
 
