@@ -9,7 +9,7 @@ A minimal phase-gated SOP.
 ## Progress Tracking
 
 - **Phase list.** This SOP's phases, in order, are: `draft`, `review`, and `summary`, the same ids as Steps 0 through 2.
-- **Gate facts.** The result is the highest severity word among findings still open and not overridden at the boundary, copied verbatim from the checker's report whatever its verdict word, or `none`. Write it only after the checker's report is complete. The evidence is a path relative to the project root. When the engineer overrides a finding, or a 5-round cap ends with findings open, record `gate_<phase>_override` naming the finding ids and the approver, or `round cap`. An unattended run stops and never writes an override. A boundary phase in `skip_phases` writes no gate facts, and its `SKIPPED` entry needs a `skip_reason`.
+- **Gate facts.** The result is the highest severity word among findings still open and not overridden at the boundary, copied verbatim from the checker's report whatever its verdict word, or `none`. Write it only after the checker's report is complete. The evidence is a path relative to the project root. When the engineer overrides a finding, record `gate_<phase>_override` naming the finding ids and the approver. At a 5-round cap the engineer still decides, the note names `round cap`, and it is written only on that decision. An unattended run stops and never writes an override. A boundary phase in `skip_phases` writes no gate facts, and its `SKIPPED` entry needs a `skip_reason`.
 - **Fix-cycle cap.** `max_fix_cycles` is written into `run.data` once at session minting, as a non-negative integer, even when it is the default `2`.
 
 ## Steps

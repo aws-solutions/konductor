@@ -149,13 +149,17 @@ def check_result_rule(name, text):
 def check_override_rule(name, text):
     """Needed when a boundary is check-threshold: the engineer's way past an open finding."""
     errors = []
-    way_forward = ("`gate_<phase>_override`", "override", "round cap", "engineer")
+    way_forward = ("`gate_<phase>_override`", "override", "engineer")
     if not any(all(tok in s for tok in way_forward) for s in sentences(text)):
         errors.append(
-            f"gate-override-rule: '{name}' lacks the sentence recording an engineer override or round cap exit as `gate_<phase>_override`"
+            f"gate-override-rule: '{name}' lacks the sentence recording an engineer override as `gate_<phase>_override`"
         )
     if not any(all(tok in s for tok in ("unattended", "never", "override")) for s in sentences(text)):
         errors.append(f"gate-override-rule: '{name}' does not say an unattended run never overrides")
+    if name == VERIFY_RUN_SOP and not any(
+        all(tok in s for tok in ("round cap", "engineer", "only on that decision")) for s in sentences(text)
+    ):
+        errors.append(f"gate-override-rule: '{name}' does not say the engineer decides at the round cap and the note is written only on that decision")
     return errors
 
 

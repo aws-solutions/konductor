@@ -154,10 +154,10 @@ def supports_root():
 
 
 def clamps_fix_cap():
-    """True for the evaluator that clamps a recorded cap above 2 (it carries
-    the FIX_CAP_CLAMPED note). Read from the binary's bytes so the check does
-    not depend on the behavior the cap cases assert."""
-    return b"FIX_CAP_CLAMPED" in KONDUCTOR_BIN.read_bytes()
+    """True for an evaluator that lacks the recorded-cap validation message,
+    so it clamps a recorded cap above 2. Read from the binary's bytes so the
+    check does not depend on the behavior the cap cases assert."""
+    return b"run.data.max_fix_cycles is not a non-negative integer" not in KONDUCTOR_BIN.read_bytes()
 
 
 needs_root = pytest.mark.skipif(
@@ -311,7 +311,8 @@ def test_step_4_names_the_round_cap_override():
 
 
 def test_gate_facts_bullet_names_the_override_key_and_recompute_rule():
-    assert sentence_with(SOP_TEXT, "`gate_<phase>_override`", "override", "round cap", "engineer")
+    assert sentence_with(SOP_TEXT, "`gate_<phase>_override`", "override", "engineer")
+    assert sentence_with(SOP_TEXT, "round cap", "engineer", "only on that decision")
     assert sentence_with(SOP_TEXT, "rewrite `gate_<phase>_result`", "not overridden")
 
 
