@@ -200,11 +200,12 @@ pub enum Commands {
         /// CLI harness whose skill-lookup server lacks `--install-info`
         /// keeps its previous setting until its own next `update`.
         ///
-        /// Without this flag, installing a harness at a target that already
-        /// tracks another harness and has no record keeps the target opted
-        /// out: no record is written, and a note points at `konductor update
-        /// --enable-telemetry` to opt back in. A first install, or a
-        /// reinstall of the only tracked harness, writes the record.
+        /// Without this flag, installing at a target that already tracks a
+        /// harness and has no record keeps the target opted out, including
+        /// a reinstall of the only tracked harness: no record is written,
+        /// and a note points at `konductor update --target <dir>
+        /// --enable-telemetry` to opt back in. A first install writes the
+        /// record.
         #[arg(long, display_order = 4)]
         no_telemetry: bool,
 

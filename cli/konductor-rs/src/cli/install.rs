@@ -20,7 +20,14 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::cli::config::KONDUCTOR_DIR_NAME;
+use crate::cli::config_lock;
 use crate::cli::output::ColorMode;
+
+/// Serializes the opted-out check with the manifest and record writes of
+/// concurrent installs. Distinct from the manifest lock the strategies
+/// take inside, so the two never contend.
+const INSTALL_LOCK_FILE_NAME: &str = ".install.lock";
 
 pub mod artifact;
 pub mod bin_link;
@@ -789,13 +796,6 @@ fn dispatch_install_with_remote_installer(
         ),
     );
 
-    let opt_out_carried_forward =
-        !no_telemetry && target_opted_out_with_other_harness(&destination, strategy.name());
-    let opt_out_reversed = !no_telemetry
-        && !opt_out_carried_forward
-        && target_opted_out_with_only_this_harness(&destination, strategy.name());
-    let no_telemetry = no_telemetry || opt_out_carried_forward;
-
     // A hand-edited or otherwise corrupted index can carry the same
     // target_dir more than once; write_index's upsert only fixes a
     // duplicate matching THIS install's own canonical_target_dir, and
@@ -1087,6 +1087,34 @@ fn dispatch_install_with_remote_installer(
         }
     };
 
+    // Held to the end of the function. The opted-out check reads "manifest
+    // tracks a harness, record absent", which a concurrent first install
+    // also looks like between its manifest write and its record write.
+    let _install_lock = match config_lock::acquire_named(
+        &destination.join(KONDUCTOR_DIR_NAME),
+        INSTALL_LOCK_FILE_NAME,
+    ) {
+        Ok(lock) => lock,
+        Err(err) => {
+            super::report::report_error(
+                "install",
+                "install.lock_failed",
+                &destination,
+                no_telemetry,
+                &format!(
+                    "could not lock install target {}: {err}",
+                    destination.display()
+                ),
+                Vec::new(),
+                json,
+                color,
+            );
+            return EXIT_USAGE_ERROR;
+        }
+    };
+    let opt_out_carried_forward = !no_telemetry && target_is_opted_out(&destination);
+    let no_telemetry = no_telemetry || opt_out_carried_forward;
+
     let installed_at = crate::cli::time::utc_now_iso();
     // Cloned (not moved) into the write-ahead `IndexEntry` below --
     // `write_ahead_strategies` itself stays alive as the finalize
@@ -1203,7 +1231,6 @@ fn dispatch_install_with_remote_installer(
             };
             let telemetry_note = opt_out_carried_forward
                 .then(|| carried_forward_opt_out_note(&destination))
-                .or_else(|| opt_out_reversed.then(|| reversed_opt_out_note(&destination)))
                 .into_iter()
                 .chain(telemetry_removal_warning)
                 .reduce(|note, warning| format!("{note}; {warning}"));
@@ -1285,49 +1312,21 @@ fn dispatch_install_with_remote_installer(
 }
 
 /// Whether a plain install should keep `destination` opted out: the
-/// manifest already tracks a harness other than `strategy_name` and the
-/// target-wide install record is absent, so an earlier run opted it out.
-/// A first install, a reinstall of the only tracked harness, or a broken
-/// record keeps the default of writing the record.
-fn target_opted_out_with_other_harness(destination: &Path, strategy_name: &str) -> bool {
-    let tracks_other_harness = manifest::read_manifest(destination)
+/// manifest already tracks at least one harness and the target-wide
+/// install record is absent. A first install (no manifest entry) or a
+/// broken record keeps the default of writing the record. A record
+/// deleted by hand also reads as opted out, since absence is the only
+/// opt-out signal.
+fn target_is_opted_out(destination: &Path) -> bool {
+    let tracks_a_harness = manifest::read_manifest(destination)
         .ok()
         .flatten()
-        .is_some_and(|manifest| {
-            manifest
-                .strategy_names()
-                .iter()
-                .any(|name| *name != strategy_name)
-        });
-    tracks_other_harness
+        .is_some_and(|manifest| !manifest.strategy_names().is_empty());
+    tracks_a_harness
         && matches!(
             crate::cli::telemetry::read_install_info_detailed(destination),
             Err(crate::cli::telemetry::InstallInfoAbsence::NotFound)
         )
-}
-
-/// True when the target was opted out and the manifest tracks only this
-/// harness, so a plain reinstall of it opts the target back in.
-fn target_opted_out_with_only_this_harness(destination: &Path, strategy_name: &str) -> bool {
-    let tracks_only_this_harness = manifest::read_manifest(destination)
-        .ok()
-        .flatten()
-        .is_some_and(|manifest| {
-            let names = manifest.strategy_names();
-            !names.is_empty() && names.iter().all(|name| *name == strategy_name)
-        });
-    tracks_only_this_harness
-        && matches!(
-            crate::cli::telemetry::read_install_info_detailed(destination),
-            Err(crate::cli::telemetry::InstallInfoAbsence::NotFound)
-        )
-}
-
-fn reversed_opt_out_note(destination: &Path) -> String {
-    format!(
-        "telemetry is on again: {dir} was opted out. Pass --no-telemetry to keep it off",
-        dir = destination.display()
-    )
 }
 
 fn carried_forward_opt_out_note(destination: &Path) -> String {
@@ -1951,7 +1950,7 @@ mod tests {
 
         assert_eq!(install_harness(&repo_root, &target, "claude", true), 0);
         assert!(!crate::cli::telemetry::install_info_exists(&target));
-        assert!(target_opted_out_with_other_harness(&target, "kiro-cli-v2"));
+        assert!(target_is_opted_out(&target));
 
         assert_eq!(
             install_harness(&repo_root, &target, "kiro-cli-v2", false),
@@ -1970,17 +1969,16 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// With no other harness tracked, a plain install writes the record as
-    /// before: on a fresh target, and when reinstalling the only harness
-    /// of an opted-out target.
+    /// A first install writes the record, and a plain reinstall of the
+    /// only tracked harness keeps an opted-out target opted out.
     #[test]
-    fn plain_install_without_another_tracked_harness_writes_the_record() {
-        let _home = HomeGuard::new("first-harness-writes-record-home");
-        let target = scratch_dir("first-harness-writes-record-target");
-        let repo_root = scratch_dir("first-harness-writes-record-repo");
+    fn plain_reinstall_of_the_only_tracked_harness_keeps_an_opted_out_target_opted_out() {
+        let _home = HomeGuard::new("only-harness-keeps-opt-out-home");
+        let target = scratch_dir("only-harness-keeps-opt-out-target");
+        let repo_root = scratch_dir("only-harness-keeps-opt-out-repo");
         seed_synthed_agent(&repo_root, "k-example");
 
-        assert!(!target_opted_out_with_other_harness(&target, "kiro-cli-v2"));
+        assert!(!target_is_opted_out(&target));
         assert_eq!(
             install_harness(&repo_root, &target, "kiro-cli-v2", false),
             0
@@ -1990,20 +1988,92 @@ mod tests {
 
         assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
         assert!(!crate::cli::telemetry::install_info_exists(&target));
-        assert!(!target_opted_out_with_other_harness(&target, "kiro-cli-v2"));
-        assert!(target_opted_out_with_only_this_harness(
-            &target,
-            "kiro-cli-v2"
-        ));
-        assert!(reversed_opt_out_note(&target).contains("--no-telemetry"));
+        assert!(target_is_opted_out(&target));
+        for _ in 0..2 {
+            assert_eq!(
+                install_harness(&repo_root, &target, "kiro-cli-v2", false),
+                0
+            );
+            assert!(
+                !crate::cli::telemetry::install_info_exists(&target),
+                "a plain reinstall of the only tracked harness must not opt the target back in"
+            );
+            assert!(!kiro_agent_has_telemetry_hook(&target));
+        }
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A lock file left by a dead process holds no OS lock, so it must not
+    /// block or opt out the next install.
+    #[test]
+    fn leftover_install_lock_file_does_not_block_a_first_install() {
+        let _home = HomeGuard::new("stale-install-lock-home");
+        let target = scratch_dir("stale-install-lock-target");
+        let repo_root = scratch_dir("stale-install-lock-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        let konductor_dir = target.join(KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        fs::write(konductor_dir.join(INSTALL_LOCK_FILE_NAME), b"stale").unwrap();
+
         assert_eq!(
             install_harness(&repo_root, &target, "kiro-cli-v2", false),
             0
         );
-        assert!(
-            crate::cli::telemetry::read_install_info(&target).is_some(),
-            "reinstalling the only tracked harness keeps today's default"
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A lock that cannot be created is a usage error, like the other
+    /// install write failures.
+    #[test]
+    fn install_lock_failure_on_a_read_only_target_exits_with_usage_error() {
+        use std::os::unix::fs::PermissionsExt;
+        let _home = HomeGuard::new("lock-readonly-home");
+        let target = scratch_dir("lock-readonly-target");
+        let repo_root = scratch_dir("lock-readonly-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o555)).unwrap();
+        let can_still_write = fs::write(target.join("probe"), b"").is_ok();
+
+        if !can_still_write {
+            assert_eq!(
+                install_harness(&repo_root, &target, "kiro-cli-v2", false),
+                EXIT_USAGE_ERROR
+            );
+        }
+
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o755)).unwrap();
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A record deleted by hand reads the same as an opt-out, so a plain
+    /// reinstall leaves it absent. `update --enable-telemetry` is the way
+    /// back in.
+    #[test]
+    fn plain_reinstall_after_the_record_is_deleted_by_hand_stays_opted_out() {
+        let _home = HomeGuard::new("deleted-record-stays-off-home");
+        let target = scratch_dir("deleted-record-stays-off-target");
+        let repo_root = scratch_dir("deleted-record-stays-off-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
         );
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+        crate::cli::telemetry::remove_install_info(&target).unwrap();
+
+        assert!(target_is_opted_out(&target));
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(!crate::cli::telemetry::install_info_exists(&target));
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
