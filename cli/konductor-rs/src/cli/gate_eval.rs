@@ -24,8 +24,8 @@ const SCHEMA_VERSION: u64 = 1;
 /// No configured threshold can make a phase-gated SOP laxer than this.
 const STRICT_FLOOR: Severity = Severity::High;
 
-/// The fix-cycle cap. A recorded `max_fix_cycles` can lower it, never raise it.
-const MAX_FIX_CYCLES: u64 = 2;
+/// The fix-cycle cap when the run records no `max_fix_cycles`.
+const DEFAULT_MAX_FIX_CYCLES: u64 = 2;
 
 const ORCHESTRATOR: &str = "konductor";
 
@@ -243,7 +243,6 @@ pub(crate) enum InfoCode {
     SameTypeChecker,
     SeverityUnknown,
     FindingBelowGate,
-    FixCapClamped,
     PhaseSkipped,
 }
 
@@ -253,7 +252,6 @@ impl InfoCode {
             Self::SameTypeChecker => "SAME_TYPE_CHECKER",
             Self::SeverityUnknown => "SEVERITY_UNKNOWN",
             Self::FindingBelowGate => "FINDING_BELOW_GATE",
-            Self::FixCapClamped => "FIX_CAP_CLAMPED",
             Self::PhaseSkipped => "PHASE_SKIPPED",
         }
     }
@@ -592,25 +590,17 @@ fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
     }
 }
 
-/// V6. The cap comes from the evaluator; the recorded value can only lower it.
+/// V6. The cap is the engineer's `max_fix_cycles`, recorded in `run.data` when
+/// the run is minted, and 2 when none is recorded. A session file is plain
+/// YAML that any agent can edit, so the recorded value is only as trustworthy
+/// as the file; the evaluator cannot protect it.
 fn check_fix_cycles(session: &Session, report: &mut Report) {
-    let recorded = session
-        .run
-        .data
-        .get("max_fix_cycles")
-        .and_then(Value::as_u64);
-    let cap = match recorded {
-        Some(value) if value > MAX_FIX_CYCLES => {
-            report.note(
-                InfoCode::FixCapClamped,
-                format!(
-                    "max_fix_cycles {value} is above {MAX_FIX_CYCLES}; the cap is {MAX_FIX_CYCLES}"
-                ),
-            );
-            MAX_FIX_CYCLES
+    let cap = match recorded_fix_cycle_cap(session) {
+        Ok(cap) => cap,
+        Err(detail) => {
+            report.fire(EXIT_VERIFY_FAILED, ReasonCode::RecordIntegrity, detail);
+            return;
         }
-        Some(value) => value,
-        None => MAX_FIX_CYCLES,
     };
     for (slug, bag) in &session.features {
         let used = bag.counters.get("fix_cycles_used").copied().unwrap_or(0);
@@ -621,6 +611,15 @@ fn check_fix_cycles(session: &Session, report: &mut Report) {
                 format!("feature '{slug}': fix_cycles_used {used} is above the cap {cap}"),
             );
         }
+    }
+}
+
+fn recorded_fix_cycle_cap(session: &Session) -> Result<u64, String> {
+    match session.run.data.get("max_fix_cycles") {
+        None => Ok(DEFAULT_MAX_FIX_CYCLES),
+        Some(value) => value
+            .as_u64()
+            .ok_or_else(|| "run.data.max_fix_cycles is not a non-negative integer".to_string()),
     }
 }
 
@@ -1195,14 +1194,12 @@ phases:
     }
 
     #[test]
-    fn v6_recorded_cap_above_2_is_clamped() {
-        let verdict = with_fix_cycles(Some(Value::from(5)), 3);
+    fn v6_recorded_cap_above_2_is_honored() {
+        assert_eq!(with_fix_cycles(Some(Value::from(5)), 4).exit, 0);
+        assert_eq!(with_fix_cycles(Some(Value::from(5)), 5).exit, 0);
+        let verdict = with_fix_cycles(Some(Value::from(5)), 6);
         assert_verdict(&verdict, 3, "BUDGET_EXCEEDED");
-        assert!(info_codes(&verdict).contains(&"FIX_CAP_CLAMPED"));
-
-        let verdict = with_fix_cycles(Some(Value::from(5)), 2);
-        assert_eq!(verdict.exit, 0);
-        assert!(info_codes(&verdict).contains(&"FIX_CAP_CLAMPED"));
+        assert!(verdict.info.is_empty(), "{verdict:#?}");
     }
 
     #[test]
@@ -1212,13 +1209,28 @@ phases:
     }
 
     #[test]
-    fn v6_non_integer_cap_is_2() {
-        assert_eq!(with_fix_cycles(Some(Value::from("two")), 2).exit, 0);
+    fn v6_cap_of_0_allows_no_cycles() {
+        assert_eq!(with_fix_cycles(Some(Value::from(0)), 0).exit, 0);
         assert_verdict(
-            &with_fix_cycles(Some(Value::from("two")), 3),
+            &with_fix_cycles(Some(Value::from(0)), 1),
             3,
             "BUDGET_EXCEEDED",
         );
+    }
+
+    #[test]
+    fn v6_cap_that_is_not_a_non_negative_integer_is_record_integrity() {
+        for bad in [
+            Value::from("1"),
+            Value::from(1.5),
+            Value::from(2.0),
+            Value::from(-1),
+            Value::from(true),
+        ] {
+            let verdict = with_fix_cycles(Some(bad.clone()), 0);
+            assert_verdict(&verdict, 65, "RECORD_INTEGRITY");
+            assert_eq!(codes(&verdict), vec!["RECORD_INTEGRITY"], "{bad:?}");
+        }
     }
 
     #[test]
