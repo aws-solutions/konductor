@@ -130,8 +130,13 @@ assert_rejected "numbered-list item over 500 chars" "$NUMBERED_PAYLOAD" "exceeds
 # --- Positive control: well-formed bullet entry must still pass ----------
 # Confirms the fix adds coverage without regressing existing bullet
 # handling.
-BULLET_PAYLOAD='- [2026-08-24] Project uses DynamoDB single-table design'
+BULLET_PAYLOAD='- [2026-08-24] [origin:agent] Project uses DynamoDB single-table design'
 assert_accepted "well-formed bullet entry" "$BULLET_PAYLOAD"
+
+# --- Untagged new entry is rejected --------------------------------------
+# Core rule 11 follows untagged entries as the user's own words, so a new
+# line must carry [origin:agent] or [origin:user].
+assert_rejected "new entry without an origin tag" "- [2026-08-24] Project uses DynamoDB single-table design" "no [origin:agent] or [origin:user] tag"
 
 # --- Fix-back cycle 1: derive_entry() bullet-strip anchoring -------------
 # Same attack class as above ("payload dressed as markdown"), residual

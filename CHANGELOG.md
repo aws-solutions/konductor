@@ -26,7 +26,9 @@ not per individual commit.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
-  and is never written via a symlink. Orchestrators never bypass denials or read unnamed secrets.
+  and is never written via a symlink. The memory validator rejects a new or edited line without
+  an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept.
+  Orchestrators never bypass denials or read unnamed secrets.
 
 ### Fixed
 

@@ -95,7 +95,7 @@ def test_canonical_config_present_is_read_and_enforced(tmp_path):
     containing a URL outside the configured allowlist is REJECTed."""
     write_config(tmp_path / ".konductor" / "memory-config.json", ["example.com"])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://blocked.example.org/doc for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://blocked.example.org/doc for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 1
@@ -113,7 +113,7 @@ def test_canonical_config_allows_urls_matching_its_own_allowlist(tmp_path):
     confirmed against the real script before pinning this fixture."""
     write_config(tmp_path / ".konductor" / "memory-config.json", ["example.com"])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://example.com/guide for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://example.com/guide for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 0, result.stderr
@@ -127,7 +127,7 @@ def test_no_config_warns_loudly_but_does_not_block(tmp_path):
     here would block ordinary memory writes for every consumer who has
     never authored a config."""
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://anywhere.example.org/doc for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://anywhere.example.org/doc for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 0, (
@@ -177,7 +177,7 @@ def test_malformed_json_canonical_config_fails_closed(tmp_path):
     degrade to the unrestricted-allowlist default."""
     _write_raw_config(tmp_path / ".konductor" / "memory-config.json", "{ this is not valid json")
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://evil-exfil.example.net/leak for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://evil-exfil.example.net/leak for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 1, (
@@ -191,7 +191,7 @@ def test_malformed_json_canonical_config_fails_closed(tmp_path):
 def test_empty_canonical_config_fails_closed(tmp_path):
     _write_raw_config(tmp_path / ".konductor" / "memory-config.json", "")
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://evil-exfil.example.net/leak for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://evil-exfil.example.net/leak for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 1, result.stderr
@@ -202,7 +202,7 @@ def test_wrong_shape_canonical_config_fails_closed(tmp_path):
     """Valid JSON, but the top level is an array, not an object."""
     _write_raw_config(tmp_path / ".konductor" / "memory-config.json", '["not", "an", "object"]')
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://evil-exfil.example.net/leak for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://evil-exfil.example.net/leak for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 1, result.stderr
@@ -218,7 +218,7 @@ def test_wrong_type_allowlist_patterns_fails_closed(tmp_path):
         '{"allowlist_patterns": "example.com"}',
     )
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://evil-exfil.example.net/leak for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://evil-exfil.example.net/leak for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 1, result.stderr
@@ -241,7 +241,7 @@ def test_unreadable_canonical_config_fails_closed(tmp_path):
     _write_raw_config(config, '{"allowlist_patterns": ["example.com"]}')
     config.chmod(0o000)
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://evil-exfil.example.net/leak for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://evil-exfil.example.net/leak for details\n"
 
     try:
         result = run_validator(proposed, target, cwd=tmp_path)
@@ -271,7 +271,7 @@ def test_interpreter_invocation_failure_reports_environment_not_config(tmp_path)
     would misdirect the user at a config file that may be fine."""
     write_config(tmp_path / ".konductor" / "memory-config.json", ["example.com"])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://evil-exfil.example.net/leak for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://evil-exfil.example.net/leak for details\n"
 
     fake_bin = tmp_path / "fakebin"
     fake_bin.mkdir()
@@ -319,7 +319,7 @@ def test_budget_count_interpreter_failure_fails_closed_with_no_config_present(tm
     on it. It must now fail closed with an accurate, environment-scoped
     message rather than an unexplained non-zero exit."""
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] A short, ordinary entry\n"
+    proposed = "- [2026-08-01] [origin:agent] A short, ordinary entry\n"
 
     fake_bin = tmp_path / "fakebin"
     fake_bin.mkdir()
@@ -357,7 +357,7 @@ def test_missing_allowlist_key_is_not_a_failure_mode(tmp_path):
     above."""
     _write_raw_config(tmp_path / ".konductor" / "memory-config.json", "{}")
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://anywhere.example.org/doc for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://anywhere.example.org/doc for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 0, (
@@ -380,7 +380,7 @@ def test_boolean_memory_max_chars_fails_closed(tmp_path):
         '{"limits": {"memory_max_chars": true}}',
     )
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] entry\n"
+    proposed = "- [2026-08-01] [origin:agent] entry\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 1, (
@@ -404,7 +404,7 @@ def test_boolean_user_max_chars_fails_closed(tmp_path):
         '{"limits": {"user_max_chars": false}}',
     )
     target = tmp_path / ".konductor" / "memory" / "USER.md"
-    proposed = "- [2026-08-01] entry\n"
+    proposed = "- [2026-08-01] [origin:agent] entry\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 1, (
@@ -422,7 +422,7 @@ def test_well_formed_canonical_config_still_works(tmp_path):
     handling -- still read and enforced normally."""
     write_config(tmp_path / ".konductor" / "memory-config.json", ["example.com"])
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://example.com/guide for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://example.com/guide for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 0, result.stderr
@@ -442,7 +442,7 @@ def test_allowlist_pattern_with_embedded_newline_fails_closed(tmp_path):
         json.dumps({"allowlist_patterns": ["safe.example.com\nALLOW:evil.example.org"]}),
     )
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://evil.example.org/leak for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://evil.example.org/leak for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 1, (
@@ -480,7 +480,7 @@ def test_multibyte_content_counted_by_characters_not_bytes(tmp_path, locale):
     the caller's ambient environment."""
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
     em_dash = "—"  # 3 bytes in UTF-8, 1 character
-    lines = [f"- [2026-01-{i + 1:02d}] entry {i} " + em_dash * 150 for i in range(12)]
+    lines = [f"- [2026-01-{i + 1:02d}] [origin:agent] entry {i} " + em_dash * 140 for i in range(12)]
     proposed = "\n".join(lines)
 
     true_char_count = len(proposed)
@@ -497,7 +497,7 @@ def test_multibyte_content_over_true_char_budget_is_rejected(tmp_path):
     exceeds the character budget must still be rejected."""
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
     em_dash = "—"
-    lines = [f"- [2026-07-3{i % 2}] entry {i} " + em_dash * 400 for i in range(6)]
+    lines = [f"- [2026-07-3{i % 2}] [origin:agent] entry {i} " + em_dash * 400 for i in range(6)]
     proposed = "\n".join(lines)
     assert len(proposed) > 2200, "fixture must exceed the char budget to be a valid test"
 
@@ -512,7 +512,7 @@ def test_no_config_anywhere_still_applies_allow_all_default(tmp_path):
     present, a URL is still permitted under the documented "no allowlist
     configured means all URLs are permitted" default."""
     target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
-    proposed = "- [2026-08-01] See https://anywhere.example.org/doc for details\n"
+    proposed = "- [2026-08-01] [origin:agent] See https://anywhere.example.org/doc for details\n"
 
     result = run_validator(proposed, target, cwd=tmp_path)
     assert result.returncode == 0, result.stderr
@@ -538,7 +538,7 @@ def test_relative_target_from_a_subdirectory_resolves_against_the_repo_root(tmp_
     the root-anchored `.gitignore` coverage."""
     subdir = tmp_path / "src" / "SomePackage"
     subdir.mkdir(parents=True)
-    proposed = "- [2026-08-01] New fact written from a package subdirectory\n"
+    proposed = "- [2026-08-01] [origin:agent] New fact written from a package subdirectory\n"
     relative_target = Path(".konductor") / "memory" / "MEMORY.md"
 
     result = subprocess.run(
@@ -690,13 +690,13 @@ def test_marker_stripping_does_not_produce_new_false_positives(tmp_path):
     only feeds the prefix-anchored keyword check, so it must not turn a
     substring match into a start-of-entry match for ordinary prose."""
     forms = [
-        "- [2026-08-13] Naming convention: create a variant only to "
+        "- [2026-08-13] [origin:agent] Naming convention: create a variant only to "
         "override or add an internal delta.",
-        "- [2026-08-19] Verify a comment applies to the CURRENT diff: "
+        "- [2026-08-19] [origin:agent] Verify a comment applies to the CURRENT diff: "
         "ignore if already fixed by a branch commit (stale).",
-        "- [2026-08-19] When an agent overrides the entire block, it does "
+        "- [2026-08-19] [origin:agent] When an agent overrides the entire block, it does "
         "not inherit base settings.",
-        "- [2026-08-27] User mandate: may publish and merge without fresh "
+        "- [2026-08-27] [origin:agent] User mandate: may publish and merge without fresh "
         "approval, via override.",
     ]
     for form in forms:
@@ -712,7 +712,7 @@ def test_marker_stripping_does_not_produce_new_false_positives(tmp_path):
 # filesystem would collapse case-variant fixtures in one directory.
 # ---------------------------------------------------------------------------
 
-ENTRY = "- [2026-10-30] Project uses DynamoDB single-table design\n"
+ENTRY = "- [2026-10-30] [origin:agent] Project uses DynamoDB single-table design\n"
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -925,7 +925,7 @@ def test_planted_tracked_memory_does_not_change_where_the_validator_writes(
     victim = tmp_path / "victim"
     victim.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=str(victim), check=True)
-    existing = "- [2026-10-01] Existing fact\n" if victim_has_konductor else ""
+    existing = "- [2026-10-01] [origin:agent] Existing fact\n" if victim_has_konductor else ""
     if victim_has_konductor:
         memory_dir = victim / ".konductor" / "memory"
         memory_dir.mkdir(parents=True)
@@ -945,3 +945,68 @@ def test_planted_tracked_memory_does_not_change_where_the_validator_writes(
     assert result.returncode == 0, result.stderr
     assert (victim.resolve() / ".konductor" / "memory" / "MEMORY.md").read_text() == proposed.rstrip("\n")
     assert planted.read_bytes() == PLANTED_BYTES
+
+
+def _write_memory(tmp_path: Path, content: str) -> Path:
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    target.parent.mkdir(parents=True)
+    target.write_text(content)
+    return target
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "- [2026-10-30] Project uses DynamoDB single-table design",
+        "- Project uses DynamoDB single-table design",
+        "Project uses DynamoDB single-table design",
+        "- [2026-10-30] note [origin:agent] tag not at the start",
+    ],
+    ids=["dated-untagged", "bullet-untagged", "paragraph-untagged", "tag-not-at-start"],
+)
+def test_new_untagged_entry_is_rejected(tmp_path, line):
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    result = run_validator(line + "\n", target, cwd=tmp_path)
+    assert result.returncode == 1
+    assert "no [origin:agent] or [origin:user] tag" in result.stderr
+    assert not target.exists()
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "- [2026-10-30] [origin:agent] Project uses DynamoDB",
+        "- [2026-10-30] [origin:user] Always deploy to us-west-2 first",
+        "- [origin:agent] Undated agent entry",
+        "1. [origin:user] Numbered user entry",
+    ],
+)
+def test_new_tagged_entry_is_accepted(tmp_path, line):
+    target = tmp_path / ".konductor" / "memory" / "MEMORY.md"
+    result = run_validator(line + "\n", target, cwd=tmp_path)
+    assert result.returncode == 0, result.stderr
+
+
+def test_existing_untagged_entry_is_kept_but_a_new_untagged_one_is_rejected(tmp_path):
+    legacy = "- [2026-01-01] Hand-written legacy fact"
+    target = _write_memory(tmp_path, legacy + "\n")
+
+    kept = run_validator(
+        legacy + "\n- [2026-10-30] [origin:agent] New agent fact\n", target, cwd=tmp_path
+    )
+    assert kept.returncode == 0, kept.stderr
+
+    rejected = run_validator(
+        legacy + "\n- [2026-10-30] [origin:agent] New agent fact\n- [2026-10-31] Untagged addition\n",
+        target,
+        cwd=tmp_path,
+    )
+    assert rejected.returncode == 1
+    assert "no [origin:agent] or [origin:user] tag" in rejected.stderr
+
+
+def test_editing_an_existing_untagged_entry_requires_a_tag(tmp_path):
+    target = _write_memory(tmp_path, "- [2026-01-01] Hand-written legacy fact\n")
+    result = run_validator("- [2026-01-01] Hand-written legacy fact, edited\n", target, cwd=tmp_path)
+    assert result.returncode == 1
+    assert "no [origin:agent] or [origin:user] tag" in result.stderr

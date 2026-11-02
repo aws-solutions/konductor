@@ -375,6 +375,14 @@ while IFS= read -r line; do
     fi
   done
 
+  # 4a. Provenance tag. Core rule 11 follows untagged entries as the user's
+  # own, so a line written through this script must say who wrote it. Lines
+  # already in the file are exempt above: hand-written and legacy untagged
+  # entries stay valid until someone edits them.
+  if ! [[ "$entry" =~ ^(\[[0-9]{4}-[0-9]{2}-[0-9]{2}\][[:space:]]+)?\[origin:(agent|user)\] ]]; then
+    echo "REJECT: new entry has no [origin:agent] or [origin:user] tag after the optional date: ${entry:0:80}" >&2
+    exit 1
+  fi
 done <<< "$PROPOSED"
 
 # 4. Budget check
