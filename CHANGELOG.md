@@ -51,6 +51,8 @@ not per individual commit.
   plugin ships `NOTICE.txt` with README links pinned to its release.
 - `update --no-telemetry` now keeps a project opted out on later updates, and the new
   `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
+- The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
+  agents no longer carry an `mcpServers` block that Claude Code ignores.
 
 ## [1.2.0] - 2026-10-26
 
