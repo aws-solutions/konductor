@@ -475,7 +475,11 @@ shares the machine identifier in `$HOME/.konductor/telemetry.json` with the CLI.
 | The Claude Code plugin | Turn off the plugin's `telemetry_enabled` option. The variable, `config.yml` and machine settings above also apply; `--no-telemetry` doesn't |
 
 - `--no-telemetry` also removes an opt-in record left by an earlier install, and stops a global
-  install's hooks from reporting in that project.
+  install's hooks from reporting in that project. The global install's skill-lookup server still
+  follows the record in `$HOME/.konductor`.
+- To opt a project back in, run `konductor update --enable-telemetry`. It recreates the
+  project-wide record. Skill-lookup servers launched with `--install-info` follow it at once;
+  another harness's telemetry hooks return on that harness's next `update`.
 - `telemetry.json` exists only after the first event is reported; a `--no-telemetry` install never
   creates it. Konductor never resets a consent value you set.
 - Reporting needs both the project and the machine setting to allow it. `konductor doctor` shows
