@@ -88,6 +88,18 @@ test('the agent asks on turn 1, the scripted user answers, the same session resu
   } finally { s.cleanup(); }
 });
 
+test('a question followed by a closing sentence still gets the scripted reply and a second turn', async () => {
+  const closing = 'Should the timeout be in seconds or milliseconds? Once you pick one, I will update the setting.';
+  const s = setup({ turns: [{ finalText: closing, credits: 1 }, { finalText: 'Done.', credits: 1 }] });
+  try {
+    const r = await run(s);
+    assert.equal(r.status, 'success', r.error);
+    assert.equal(r.turns, 2);
+    assert.equal(r.questionsAsked, 1);
+    assert.equal(lastArg(s.turn(2)), 'Seconds.');
+  } finally { s.cleanup(); }
+});
+
 test('credits, model calls, tool calls and wall clock are summed over the turns', async () => {
   const calls = [{ toolName: 'shell', rawInput: {} }, { toolName: 'subagent', rawInput: {} }];
   const s = setup({ toolCalls: calls, turns: [{ finalText: ASK_UNIT, credits: 1.25, delayMs: 400 }, { finalText: 'Done.', credits: 2.5, delayMs: 400 }] });

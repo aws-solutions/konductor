@@ -138,8 +138,35 @@ function listParts(paras) {
   return { lead, item: lines.at(-1) };
 }
 
+// A sentence after a question that waits on the answer ("Once you pick one, I'll ..."). A plain "let me know
+// if you need more" is not one, so a rhetorical question followed by a polite closer stays an answer.
+const AWAITS_ANSWER = /\b(once|when|after|as soon as) you\b|\byou (pick|choose|confirm|decide|answer|reply|tell|say|prefer)\b|\byour (answer|choice|pick|reply|call|preference|confirmation|decision)\b|\btell me\b|\blet me know (which|what|whether|how)\b|\b(awaiting|waiting (for|on))\b/i;
+
+// Quoted text, URLs and quote blocks hold no ask of ours.
+function plainSentences(text) {
+  const clean = String(text)
+    .replace(/^>.*$/gm, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/"[^"\n]*"|\u201c[^\u201d\n]*\u201d/g, ' ');
+  return clean.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+}
+
+const endsAsking = (s) => s.replace(/[\s*_`"')\]]+$/, '').endsWith('?');
+
+// A question that is not the last sentence: in the last paragraph with a closing sentence after it,
+// or ending the paragraph before a short closing paragraph.
+function questionBeforeClosing(paras) {
+  const own = plainSentences(paras.at(-1));
+  for (let i = Math.max(0, own.length - 3); i < own.length - 1; i++) {
+    if (endsAsking(own[i]) && own.length - 1 - i <= 2 && AWAITS_ANSWER.test(own.slice(i + 1).join(' '))) return true;
+  }
+  if (paras.length < 2 || own.length > 2 || !AWAITS_ANSWER.test(own.join(' '))) return false;
+  const before = plainSentences(paras.at(-2));
+  return before.length > 0 && endsAsking(before.at(-1));
+}
+
 // True when the run ended waiting on the user: wrong stop reason, a trailing question,
-// an approval request in the last paragraph, or a list under a question. Null when there is no final message to judge.
+// an approval request in the last paragraph, a list under a question, or a question followed by a closing sentence. Null when there is no final message to judge.
 function detectAskedUser({ finalText, stopReason, runFinishedStatus }) {
   if (runFinishedStatus == null) return null;
   if (stopReason && stopReason !== 'end_turn') return true;
@@ -147,7 +174,7 @@ function detectAskedUser({ finalText, stopReason, runFinishedStatus }) {
   if (!paras.length) return false;
   const list = listParts(paras);
   if (list) return asksIn(list.item) || asksIn(list.lead) || ANNOUNCES_ASK.test(list.lead.trim());
-  return asksIn(paras.at(-1));
+  return asksIn(paras.at(-1)) || questionBeforeClosing(paras);
 }
 
 // The part of the final text that carries the ask, for matching an answer to it: from the first of the last

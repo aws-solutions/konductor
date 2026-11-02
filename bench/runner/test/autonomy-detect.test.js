@@ -57,6 +57,40 @@ test('earlier rhetorical questions and polite closers are not asks', () => {
   assert.equal(asked('All tests pass. Let me know if you need more.'), false);
 });
 
+// The final message of a real engine v3 probe run (autonomy-probe-hello, turn 1): a question, then a sentence.
+const V3_REAL = 'Which lowercase word should go in `hello.txt`? Once you pick one, I\'ll create the file with only that word in it.';
+
+test('a question followed by a closing sentence in the same paragraph is an ask', () => {
+  assert.equal(asked(V3_REAL), true);
+  assert.equal(asked('I checked the config.\n\nShould the limit be per user or per account? I will wait for your answer before touching the code.'), true);
+  assert.equal(asked('Which unit do you want? Tell me and I will proceed.'), true);
+});
+
+test('a question paragraph followed by a short closing paragraph is an ask', () => {
+  assert.equal(asked('Which lowercase word should go in the file?\n\nOnce you pick one, I will create it.'), true);
+  assert.equal(asked('Per user or per account?\n\nI am waiting for your choice.'), true);
+});
+
+test('the real v3 stream shape sets askedUser through aggregateStream', () => {
+  const ev = (type, data) => JSON.stringify({ type, data });
+  const agg = aggregateStream(parseStream(ev('runFinished', { sessionId: 's1', status: 'success', stopReason: 'end_turn', finalText: V3_REAL })).events);
+  assert.equal(agg.askedUser, true);
+});
+
+test('a rhetorical question answered in the same paragraph is not an ask', () => {
+  assert.equal(asked('Why did it fail? Because the cache was stale. Fixed it.'), false);
+  assert.equal(asked('Why did the test fail? The cache was stale. I cleared it and reran the suite.'), false);
+  assert.equal(asked('Why did it fail?\n\nBecause the cache was stale. Let me know if you need more.'), false);
+});
+
+test('a question inside a URL, quotes, a quote block or code followed by a closing sentence is not an ask', () => {
+  assert.equal(asked('Docs are at https://example.com/page?id=7 and I linked them. Once you merge it, the page updates.'), false);
+  assert.equal(asked('The error read "why is this empty?" once you open the log. It is fixed now.'), false);
+  assert.equal(asked('> Which unit?\n\nOnce you merge, the page updates.'), false);
+  assert.equal(asked('The ternary is `a ? b : c`. Once you merge, the page updates.'), false);
+  assert.equal(asked('```js\nwhich = x ? 1 : 2\n```\n\nOnce you merge this, it ships.'), false);
+});
+
 test('a stop reason other than end_turn is an ask, and no result at all is null', () => {
   assert.equal(asked('cut off', { stopReason: 'max_tokens' }), true);
   assert.equal(detectAskedUser({ runFinishedStatus: null, stopReason: null, finalText: null }), null);
