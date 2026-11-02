@@ -173,18 +173,19 @@ An **empty** `config.yml` is not an error — every field falls through to its d
 | Code | Constant | Meaning |
 | --- | --- | --- |
 | `0` | — | Success |
-| `1` | `EXIT_HALTED` | A command ran correctly and reported failure — today that is `doctor` with one or more `failed`/`stale` checks |
-| `2` | — | **Reserved** for the run-engine's "unresolved CRITICAL gate" signal. The run-engine is not yet built, so nothing emits `2` today — and a bad invocation never will |
-| `6` | `EXIT_SUCCESS_WITH_WARNINGS` | Everything the command was responsible for succeeded, but something peripheral did not — today, `uninstall` when a tracked `--link-bin` symlink could not be removed |
-| `64` | `EXIT_USAGE_ERROR` | Usage error (`EX_USAGE`, BSD `sysexits.h`) — a bad flag, unknown command, missing argument, invalid value, or an invalid config |
-| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version |
+| `1` | `EXIT_HALTED` | A command ran correctly and reported failure — `doctor` with one or more `failed`/`stale` checks, or `verify-run` on a blocked phase |
+| `2` | `EXIT_CRITICAL_GATE` | Unresolved gating finding: an open finding at or above the effective threshold. Emitted by `verify-run`; a bad invocation never exits `2` |
+| `3` | `EXIT_BUDGET_EXCEEDED` | Budget exceeded. Emitted by `verify-run` when a feature's fix cycles go above the cap |
+| `6` | `EXIT_SUCCESS_WITH_WARNINGS` | Everything the command was responsible for succeeded, but something peripheral did not — today, `uninstall` when a tracked `--link-bin` symlink could not be removed, or `verify-run` when a run passed with a skipped gate phase |
+| `64` | `EXIT_USAGE_ERROR` | Usage error (`EX_USAGE`, BSD `sysexits.h`) — a bad flag, unknown command, missing argument, invalid value, or an invalid config. For `verify-run`, argument problems only (including a `--root` that is not a directory) |
+| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version. For `verify-run`, any content failure: an unusable session file or config, a missing gate fact, or an inconsistent session record |
 
 ### Why `64` and not `2`
 
 Most command-line tools use `2` for a usage error. Konductor uses `64` — the BSD `sysexits.h`
 `EX_USAGE` value — and reserves the low codes so a malformed invocation can never be confused with a
 substantive failure signal. If you script against the CLI, treat `64` as *you typed something wrong*
-rather than lumping every non-zero code together.
+(for `verify-run`, a bad argument; a bad session file exits `65`) rather than lumping every non-zero code together.
 
 `--help` and `--version` are not usage errors and exit `0`.
 
