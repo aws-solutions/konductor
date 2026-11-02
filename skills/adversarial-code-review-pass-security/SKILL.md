@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review-pass-security
-description: 'Reviews a diff through the lens of security concerns — information disclosure, authorization, injection, secrets. One pass of the parallelized adversarial review; the coordinator spawns this alongside integrity and schema passes.'
+description: 'Reviews a diff through the lens of security concerns — information disclosure, authorization, injection, secrets. Use only when the adversarial-code-review coordinator spawns it, alongside the integrity and schema passes.'
 version: 1.0.0
 tags: [skill, security, code-review, adversarial, pass]
 ---
