@@ -64,9 +64,11 @@ impl SeverityTable {
     /// words are dropped.
     ///
     /// Headings, counters, status words and checkbox lines are outside the
-    /// contract and come back `Unknown`. So does a label whose second word
-    /// is `RISK`, `PRIORITY` or `CONFIDENCE`: those scales share the words
-    /// High, Medium and Low but are not severities.
+    /// contract and may rank either way: `### Warnings (Should Address)`
+    /// and `- [ ] IMPORTANT` read as their leading word. A label whose
+    /// second word is `RISK`, `PRIORITY` or `CONFIDENCE` (or a plural) is
+    /// `Unknown`: those scales share the words High, Medium and Low but are
+    /// not severities.
     pub(crate) fn rank_of_word(&self, word: &str) -> WordRank {
         if is_scale_label(word) {
             return WordRank::Unknown;
@@ -110,7 +112,7 @@ fn letter_runs(word: &str) -> impl Iterator<Item = String> + '_ {
 fn is_scale_label(word: &str) -> bool {
     matches!(
         letter_runs(word).nth(1).as_deref(),
-        Some("RISK" | "PRIORITY" | "CONFIDENCE")
+        Some("RISK" | "RISKS" | "PRIORITY" | "PRIORITIES" | "CONFIDENCE")
     )
 }
 
@@ -499,7 +501,7 @@ mod tests {
     /// headings of the form `**WORD (note):**`.
     fn severity_words_in(text: &str) -> Vec<String> {
         let mut words = Vec::new();
-        let mut column: Option<usize> = None;
+        let mut column: Option<Option<usize>> = None;
         for line in text.lines().map(str::trim) {
             if !line.starts_with('|') {
                 column = None;
@@ -516,8 +518,9 @@ mod tests {
             } else if line.starts_with('|') {
                 let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
                 match column {
-                    None => column = cells.iter().position(|c| *c == "Severity"),
-                    Some(index) => {
+                    None => column = Some(cells.iter().position(|c| *c == "Severity")),
+                    Some(None) => {}
+                    Some(Some(index)) => {
                         let cell = cells.get(index).copied().unwrap_or("");
                         let cell = cell.trim_matches(|c| c == '`' || c == '*');
                         if cell.contains(|c: char| c.is_ascii_alphabetic()) {
@@ -530,9 +533,11 @@ mod tests {
         words
     }
 
-    /// An all-caps first word followed only by lowercase words, as in
-    /// `CRITICAL (must fix)`; `API Layer` and `AWS Security` do not qualify.
+    /// An all-caps first word followed only by lowercase words or a
+    /// parenthesized note, as in `CRITICAL (must fix)` or
+    /// `BLOCKER (Must Fix)`; `API Layer` and `AWS Security` do not qualify.
     fn is_severity_heading(inner: &str) -> bool {
+        let inner = inner.split_once('(').map_or(inner, |(head, _)| head);
         let mut runs = inner
             .split(|c: char| !c.is_ascii_alphabetic())
             .filter(|run| !run.is_empty());
@@ -540,6 +545,13 @@ mod tests {
             .next()
             .is_some_and(|run| run.chars().all(|c| c.is_ascii_uppercase()));
         first_is_caps && runs.all(|run| run.chars().all(|c| c.is_ascii_lowercase()))
+    }
+
+    #[test]
+    fn severity_heading_accepts_parenthesized_title_case_note() {
+        assert!(is_severity_heading("BLOCKER (Must Fix)"));
+        assert!(is_severity_heading("CRITICAL (must fix)"));
+        assert!(!is_severity_heading("API Layer"));
     }
 
     #[test]
@@ -594,7 +606,9 @@ mod tests {
             "Criticality",
             "Should Fix",
             "Priority: High",
-            "- [x] CRITICAL",
+            "High Risks",
+            "### Medium Risks",
+            "Low Risks",
         ] {
             assert_eq!(table.rank_of_word(word), WordRank::Unknown, "{word}");
             assert_eq!(
