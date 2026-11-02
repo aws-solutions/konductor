@@ -66,6 +66,11 @@ def test_bootstrap_leaves_directory_creation_to_the_validator():
     assert "Do not create the directory yourself" in text
 
 
+def test_developer_scenario_does_not_expect_the_agent_to_create_the_directory():
+    scenarios = (REPO_ROOT / "tests" / "asdlc-developer" / "developer-scenarios.json").read_text()
+    assert "creates the directory if first write" not in scenarios
+
+
 def test_gitignore_append_skips_a_symlinked_gitignore():
     """An append through a tracked `.gitignore` symlink writes outside the
     project."""
