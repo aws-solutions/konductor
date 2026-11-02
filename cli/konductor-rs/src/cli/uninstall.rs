@@ -1123,7 +1123,7 @@ fn uninstall_one_impl(
             // The picker can wait on stdin; do not make a concurrent install
             // time out behind it. The locked removal below re-reads the
             // manifest, so nothing decided here depends on the lock.
-            install_lock = None;
+            drop(install_lock.take());
             let selected_name = harness_select::select_harness(
                 target_dir,
                 &full_manifest.strategies,
