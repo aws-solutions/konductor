@@ -17,8 +17,8 @@ from pathlib import Path
 
 EX_USAGE = 64
 FACT_SUFFIXES = ("result", "evidence", "checker")
-FACT_KEY = re.compile(r"gate_([a-z0-9][a-z0-9-]*)_(result|evidence|checker)")
-STEP_HEADING = re.compile(r"^### \d+\. ", re.MULTILINE)
+FACT_KEY = re.compile(r"gate_([a-z0-9][a-z0-9-]*)_(result|evidence|checker|override)")
+STEP_HEADING = re.compile(r"^### (\d+)\. ", re.MULTILINE)
 SECTION_END = re.compile(r"^#{2,3} ", re.MULTILINE)
 CHECKER_WORDS = r"IMPORTANT|SUGGESTION|MINOR|WARNING"
 GATE_IDS = r"HIGH|MEDIUM|LOW|INFO"
@@ -28,6 +28,10 @@ WORD_MAPPING = re.compile(
     rf"|\b(?:{GATE_IDS})\b`?{MAPS_TO}`?\b(?:{CHECKER_WORDS})\b"
 )
 RELATIVE_TO_ROOT = re.compile(r"relative to (?:the project root|`output_dir`)")
+RELATIVE_TO_OUTPUT_DIR = "relative to `output_dir`"
+RELATIVE_TO_PROJECT_ROOT = "relative to the project root"
+RUN_FROM_OUTPUT_DIR = re.compile(r"(?:run from|working directory (?:set to )?)\s*`output_dir`")
+EXIT_CODES = (1, 2, 3, 6, 64, 65)
 ABSOLUTE_PATH = re.compile(r"`(?:/|~|[A-Za-z]:[\\/])")
 SUMMARY_WRITE = re.compile(r"\bwrite `sdlc-summary\.md`", re.IGNORECASE)
 VERIFY_RUN_SOP = "k-full-sdlc"
@@ -57,14 +61,31 @@ def step_sections(text, phases):
     return sections
 
 
-def check_fact_keys(name, text, sections, boundary_phases):
+def check_step_headings(name, text, phases):
+    """The phase list maps to Steps by position, so the Step headings must be
+    numbered 0..N-1 and match the phase count."""
+    numbers = [int(m.group(1)) for m in STEP_HEADING.finditer(text)]
+    if numbers == list(range(len(phases))):
+        return []
+    return [
+        f"step-phase-mismatch: '{name}' has Step headings numbered {numbers}, "
+        f"but its {len(phases)} phases need Steps 0 through {len(phases) - 1} in order"
+    ]
+
+
+def check_fact_keys(name, text, sections, boundaries):
     errors = []
-    for phase in boundary_phases:
+    boundary_phases = [b["phase"] for b in boundaries]
+    for boundary in boundaries:
+        phase = boundary["phase"]
         section = sections.get(phase, "")
-        for suffix in FACT_SUFFIXES:
+        suffixes = FACT_SUFFIXES + (("override",) if boundary["kind"] == "check-threshold" else ())
+        for suffix in suffixes:
             key = f"gate_{phase}_{suffix}"
             if key not in section:
                 errors.append(f"gate-fact-missing: '{name}' Step for '{phase}' does not name `{key}`")
+        if boundary["kind"] == "approval" and f"gate_{phase}_override" in section:
+            errors.append(f"gate-fact-unknown-phase: '{name}' names `gate_{phase}_override`, but '{phase}' is an approval boundary")
     for phase in sorted({m.group(1) for m in FACT_KEY.finditer(text)} - set(boundary_phases)):
         errors.append(f"gate-fact-unknown-phase: '{name}' names a gate fact for '{phase}', which is not a boundary")
     return errors
@@ -95,6 +116,14 @@ def check_evidence(name, text):
     return errors
 
 
+def check_evidence_root(name, text):
+    """k-full-sdlc only: Step 11 passes --root <output_dir>, so evidence must
+    be anchored to output_dir, not the project root."""
+    if RELATIVE_TO_OUTPUT_DIR in text and RELATIVE_TO_PROJECT_ROOT not in text:
+        return []
+    return [f"gate-evidence-root (k-full-sdlc only): '{name}' must anchor evidence relative to `output_dir` and nowhere relative to the project root"]
+
+
 def check_word_mapping(name, text):
     errors = []
     if not any("verbatim" in s and "checker" in s for s in sentences(text)):
@@ -106,12 +135,27 @@ def check_word_mapping(name, text):
 
 def check_result_rule(name, text):
     errors = []
-    if not any("highest" in s and "still open" in s and "whatever its verdict" in s for s in sentences(text)):
+    result_tokens = ("highest", "still open", "not overridden", "verdict")
+    if not any(all(tok in s for tok in result_tokens) for s in sentences(text)):
         errors.append(
-            f"gate-result-rule: '{name}' lacks the rule that the result is the highest severity still open, whatever its verdict"
+            f"gate-result-rule: '{name}' lacks the rule that the result is the highest severity still open and not overridden, whatever its verdict"
         )
-    if "only after the checker's report is complete" not in text:
+    written_tokens = ("only after", "checker's report", "complete")
+    if not any(all(tok in s for tok in written_tokens) for s in sentences(text)):
         errors.append(f"gate-result-rule: '{name}' does not say the result is written only after the checker's report is complete")
+    return errors
+
+
+def check_override_rule(name, text):
+    """Needed when a boundary is check-threshold: the engineer's way past an open finding."""
+    errors = []
+    way_forward = ("`gate_<phase>_override`", "override", "round cap", "engineer")
+    if not any(all(tok in s for tok in way_forward) for s in sentences(text)):
+        errors.append(
+            f"gate-override-rule: '{name}' lacks the sentence recording an engineer override or round cap exit as `gate_<phase>_override`"
+        )
+    if not any(all(tok in s for tok in ("unattended", "never", "override")) for s in sentences(text)):
+        errors.append(f"gate-override-rule: '{name}' does not say an unattended run never overrides")
     return errors
 
 
@@ -136,24 +180,44 @@ def check_verify_run_step(name, section):
     sentence = sentences(section[call:])[0]
     if not all(part in sentence for part in ("--allow-running", "--root", "`k-developer`")):
         errors.append(f"verify-run-step (k-full-sdlc only): '{name}' verify-run call must pass --allow-running and --root and go to `k-developer`")
+    if not all(part in sentence for part in ("--root <output_dir>", "`codebase_path`", "absolute")) or RUN_FROM_OUTPUT_DIR.search(sentence):
+        errors.append(
+            f"verify-run-root (k-full-sdlc only): '{name}' verify-run call must run from `codebase_path` with an absolute session path and `--root <output_dir>`"
+        )
     if write is None or write.start() < call:
         errors.append(f"verify-run-step (k-full-sdlc only): '{name}' verify-run must come before the first write of `sdlc-summary.md`")
-    for phrase in ("no session file", "verify-run unavailable", "not found", "unrecognized subcommand"):
+    if "no session file" not in section:
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not cover 'no session file'")
+    if not any("not found" in s and "verify-run unavailable" in s for s in sentences(section)):
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not cover 'verify-run unavailable' for a binary that is not found")
+    if "unrecognized subcommand" not in section:
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not cover 'unrecognized subcommand'")
+    for code in EXIT_CODES:
+        if not re.search(rf"\bexit {code}\b", section, re.IGNORECASE):
+            errors.append(f"verify-run-exits (k-full-sdlc only): '{name}' final Step does not say what to do with exit {code}")
+    for phrase in ("unexpected argument", "needs a build with --root"):
         if phrase not in section:
-            errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not cover '{phrase}'")
+            errors.append(f"verify-run-exits (k-full-sdlc only): '{name}' final Step does not cover '{phrase}'")
+    expected = re.search(r"\*\*Expected Output:\*\*[^\n]*", section)
+    if expected is None or "`Gate check`" not in expected.group(0):
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step's Expected Output does not name the `Gate check` section")
     return errors
 
 
 def check_sop(name, text, entry):
     phases = entry["phases"]
-    boundary_phases = [b["phase"] for b in entry["boundaries"]]
+    boundaries = entry["boundaries"]
     sections = step_sections(text, phases)
-    errors = check_fact_keys(name, text, sections, boundary_phases)
+    errors = check_step_headings(name, text, phases)
+    errors += check_fact_keys(name, text, sections, boundaries)
     errors += check_skip_rule(name, text)
     errors += check_evidence(name, text)
     errors += check_word_mapping(name, text)
     errors += check_result_rule(name, text)
+    if any(b["kind"] == "check-threshold" for b in boundaries):
+        errors += check_override_rule(name, text)
     if name == VERIFY_RUN_SOP:
+        errors += check_evidence_root(name, text)
         errors += check_max_fix_cycles(name, text)
         errors += check_verify_run_step(name, sections.get(phases[-1], ""))
     return errors

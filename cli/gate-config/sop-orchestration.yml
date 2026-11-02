@@ -36,7 +36,7 @@ marker: 'Orchestration: strict (phase-gated SOP)'
 gated:
   k-full-sdlc:
     gates: [check-threshold, approval]
-    basis: Step 4 stops on CRITICAL or IMPORTANT design-review findings until resolved or overridden; Step 5 feature split needs approval before Step 6; Step 6 specs need approval for every feature; Step 8 consolidated review verdicts need confirmation before Step 9; Step 9 stops on CRITICAL or IMPORTANT test gaps until the engineer picks a resolution.
+    basis: Step 4 stops on CRITICAL or IMPORTANT design-review findings until resolved or overridden; Step 5 feature split needs approval before Step 6; Step 6 specs need approval for every feature; Step 8 consolidated review verdicts need confirmation before Step 9; Step 9 stops on CRITICAL or IMPORTANT test gaps until the engineer resolves or overrides them.
     phases: [elicitation, codebase-analysis, requirements, design, design-review, feature-splitting, specs, implementation, code-review, testing, documentation, final-summary]
     boundaries:
       - {phase: design-review, kind: check-threshold, scope: run}

@@ -28,7 +28,9 @@ not per individual commit.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
-  check in `sdlc-summary.md`.
+  check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
+  The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
+  unattended run stops and reports, and a later attended resume can resolve or override.
 
 ### Fixed
 

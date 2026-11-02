@@ -42,6 +42,15 @@ def test_valid_fixture_passes_silently():
         ("max-fix-cycles-unrecorded", "max-fix-cycles-unrecorded (k-full-sdlc only): 'k-full-sdlc' does not say `max_fix_cycles` is written into `run.data` at minting as a non-negative integer"),
         ("verify-run-step-order", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' verify-run must come before"),
         ("verify-run-unavailable-missing", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step does not cover 'verify-run unavailable'"),
+        ("gate-evidence-root", "gate-evidence-root (k-full-sdlc only): 'k-full-sdlc' must anchor evidence relative to `output_dir`"),
+        ("gate-override-rule", "gate-override-rule: 'k-full-sdlc' does not say an unattended run never overrides"),
+        ("gate-override-rule-way-forward", "gate-override-rule: 'k-full-sdlc' lacks the sentence recording an engineer override"),
+        ("gate-override-key-missing", "gate-fact-missing: 'k-full-sdlc' Step for 'review' does not name `gate_review_override`"),
+        ("step-phase-mismatch", "step-phase-mismatch: 'k-full-sdlc' has Step headings numbered [0, 2, 2]"),
+        ("verify-run-root", "verify-run-root (k-full-sdlc only): 'k-full-sdlc' verify-run call must run from `codebase_path`"),
+        ("verify-run-root-flag", "verify-run-root (k-full-sdlc only): 'k-full-sdlc' verify-run call must run from `codebase_path`"),
+        ("verify-run-exit-unhandled", "verify-run-exits (k-full-sdlc only): 'k-full-sdlc' final Step does not say what to do with exit 65"),
+        ("verify-run-gate-check-heading", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step's Expected Output does not name the `Gate check` section"),
     ],
 )
 def test_failure_fixture_reports_its_code(case, expected):
@@ -49,6 +58,14 @@ def test_failure_fixture_reports_its_code(case, expected):
     assert result.returncode == 1
     assert expected in result.stderr
     assert len(result.stderr.splitlines()) == 1, result.stderr
+
+
+def test_missing_root_signal_reports_both_phrases():
+    result = run_check(FIXTURES / "verify-run-root-flag-signal")
+    assert result.returncode == 1
+    assert "does not cover 'unexpected argument'" in result.stderr
+    assert "does not cover 'needs a build with --root'" in result.stderr
+    assert len(result.stderr.splitlines()) == 2, result.stderr
 
 
 def test_verify_run_rules_apply_only_to_k_full_sdlc():
