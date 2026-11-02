@@ -93,13 +93,15 @@ Accepted before or after a subcommand.
 | `install` | `--from <PATH>` | path | No | Install from a local repo root with already-synthed content instead of fetching a release. A maintainer path — the documented workflows all install from a release |
 | `install` | `--target <DIR>` | path | No | Destination. Defaults to `$HOME` |
 | `install` | `--link-bin` | flag | No | Symlink `konductor` into `$HOME/.local/bin` |
-| `install` | `--no-telemetry` | flag | No | Suppress telemetry for this invocation |
+| `install` | `--no-telemetry` | flag | No | Opt the whole target out of telemetry. Persists for later `update` runs and also stops the skill-lookup MCP server reporting |
 | `install` | `--use-github-token` | flag | No | Authenticate the release fetch with a GitHub token |
 | `update` | `--from <PATH>` | path | No | Source repo root. No default — pass it every time |
 | `update` | `--target <DIR>` | path | No | Which tracked install to update. Conflicts with `--all` |
 | `update` | `--all` | flag | No | Update every tracked install. Conflicts with `--target` |
 | `update` | `--dry-run` | flag | No | Report what would be overwritten, per path, flagging local edits. Writes nothing |
 | `update` | `--harness <NAME>` | enum | No | Narrow the selection to one harness |
+| `update` | `--no-telemetry` | flag | No | Opt the whole target out of telemetry, durably. Conflicts with `--enable-telemetry` |
+| `update` | `--enable-telemetry` | flag | No | Opt the whole target back in to telemetry, durably. Conflicts with `--no-telemetry` |
 | `uninstall` | `--target <DIR>` | path | No | Which tracked install to remove. Conflicts with `--all` |
 | `uninstall` | `--all` | flag | No | Remove every tracked install. Conflicts with `--target` |
 | `uninstall` | `--dry-run` | flag | No | Report what would be removed, per path, flagging local edits. Writes nothing |
@@ -373,7 +375,8 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 | `k-browser` | `claude-sonnet-5.5` | — | 4 | `playwright-mcp` |
 | `k-media-analyzer` | `claude-sonnet-5.5` | — | 1 | — |
 
-Every agent runs `claude-sonnet-5.5`. The SOP column is each spec's
+Every agent runs `claude-sonnet-5.5`, the Kiro CLI form of the ID. On Claude Code, `konductor synth`
+writes it as `claude-sonnet-5-5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
 `clientConfig.claudeCli.skills`. Claude Code preloads that list only when the agent runs as a
 subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand.
