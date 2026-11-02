@@ -15,7 +15,7 @@ A minimal phase-gated SOP.
 
 ### 0. Draft
 
-- Record `gate_draft_result` (`approved`), `gate_draft_evidence` (`out/draft.md`, relative to the project root), and `gate_draft_checker` (`user`). Also record `gate_summary_result`.
+- Record `gate_draft_result` (`approved`), `gate_draft_evidence` (`out/draft.md`, relative to the project root), and `gate_draft_checker` (`user`).
 
 ### 1. Review
 
@@ -23,4 +23,4 @@ A minimal phase-gated SOP.
 
 ### 2. Summary
 
-- Delegate `konductor verify-run --session <session file> --allow-running` to `k-developer`. Then write `sdlc-summary.md` with its exit. If this run never minted a session file, the summary records `verify-run: no session file`. If `konductor` is not found or reports an `unrecognized subcommand`, the summary records `verify-run unavailable`.
+- Summarize the run.

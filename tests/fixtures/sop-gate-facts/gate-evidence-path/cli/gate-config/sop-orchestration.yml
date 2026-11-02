@@ -2,7 +2,7 @@
 version: 1
 marker: 'Orchestration: strict (phase-gated SOP)'
 gated:
-  alpha-gated:
+  k-full-sdlc:
     gates: [approval, check-threshold]
     basis: Step 0 needs approval; Step 1 stops on CRITICAL findings.
     phases: [draft, review, summary]

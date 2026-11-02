@@ -27,8 +27,10 @@ WORD_MAPPING = re.compile(
     rf"\b(?:{CHECKER_WORDS})\b`?{MAPS_TO}`?\b(?:{GATE_IDS})\b"
     rf"|\b(?:{GATE_IDS})\b`?{MAPS_TO}`?\b(?:{CHECKER_WORDS})\b"
 )
+RELATIVE_TO_ROOT = re.compile(r"relative to (?:the project root|`output_dir`)")
 ABSOLUTE_PATH = re.compile(r"`(?:/|~|[A-Za-z]:[\\/])")
 SUMMARY_WRITE = re.compile(r"\bwrite `sdlc-summary\.md`", re.IGNORECASE)
+VERIFY_RUN_SOP = "k-full-sdlc"
 VERIFY_CALL = "konductor verify-run --session"
 
 
@@ -77,8 +79,10 @@ def check_skip_rule(name, text):
 
 def check_evidence(name, text):
     errors = []
-    if "relative to the project root" not in text:
-        errors.append(f"gate-evidence-path: '{name}' does not say evidence is relative to the project root")
+    if not RELATIVE_TO_ROOT.search(text):
+        errors.append(
+            f"gate-evidence-path: '{name}' does not say evidence is relative to the project root or `output_dir`"
+        )
     for line in text.splitlines():
         for match in re.finditer(r"gate_([a-z0-9][a-z0-9-]*)_evidence", line):
             rest = line[match.end() :]
@@ -112,19 +116,21 @@ def check_result_rule(name, text):
 
 
 def check_verify_run_step(name, section):
+    """Rules for the final Step of k-full-sdlc only (sdlc-summary.md, k-developer);
+    check_sop runs this for no other SOP."""
     errors = []
     call = section.find(VERIFY_CALL)
     write = SUMMARY_WRITE.search(section)
     if call < 0:
-        return [f"verify-run-step: '{name}' final Step does not delegate `{VERIFY_CALL}`"]
+        return [f"verify-run-step (k-full-sdlc only): '{name}' final Step does not delegate `{VERIFY_CALL}`"]
     sentence = sentences(section[call:])[0]
-    if "--allow-running" not in sentence or "`k-developer`" not in sentence:
-        errors.append(f"verify-run-step: '{name}' verify-run call must pass --allow-running and go to `k-developer`")
+    if not all(part in sentence for part in ("--allow-running", "--root", "`k-developer`")):
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' verify-run call must pass --allow-running and --root and go to `k-developer`")
     if write is None or write.start() < call:
-        errors.append(f"verify-run-step: '{name}' verify-run must come before the first write of `sdlc-summary.md`")
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' verify-run must come before the first write of `sdlc-summary.md`")
     for phrase in ("no session file", "verify-run unavailable", "not found", "unrecognized subcommand"):
         if phrase not in section:
-            errors.append(f"verify-run-step: '{name}' final Step does not cover '{phrase}'")
+            errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not cover '{phrase}'")
     return errors
 
 
@@ -137,7 +143,8 @@ def check_sop(name, text, entry):
     errors += check_evidence(name, text)
     errors += check_word_mapping(name, text)
     errors += check_result_rule(name, text)
-    errors += check_verify_run_step(name, sections.get(phases[-1], ""))
+    if name == VERIFY_RUN_SOP:
+        errors += check_verify_run_step(name, sections.get(phases[-1], ""))
     return errors
 
 

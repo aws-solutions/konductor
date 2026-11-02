@@ -33,14 +33,14 @@ def test_valid_fixture_passes_silently():
 @pytest.mark.parametrize(
     "case, expected",
     [
-        ("gate-fact-missing", "gate-fact-missing: 'alpha-gated' Step for 'review' does not name `gate_review_checker`"),
-        ("gate-fact-unknown-phase", "gate-fact-unknown-phase: 'alpha-gated' names a gate fact for 'summary'"),
-        ("gate-skip-unexplained", "gate-skip-unexplained: 'alpha-gated'"),
-        ("gate-evidence-path", "gate-evidence-path: 'alpha-gated' gate_review_evidence"),
-        ("gate-word-mapped", "gate-word-mapped: 'alpha-gated' maps a checker word to a gate id"),
-        ("gate-result-rule", "gate-result-rule: 'alpha-gated' lacks the rule"),
-        ("verify-run-step-order", "verify-run-step: 'alpha-gated' verify-run must come before"),
-        ("verify-run-unavailable-missing", "verify-run-step: 'alpha-gated' final Step does not cover 'verify-run unavailable'"),
+        ("gate-fact-missing", "gate-fact-missing: 'k-full-sdlc' Step for 'review' does not name `gate_review_checker`"),
+        ("gate-fact-unknown-phase", "gate-fact-unknown-phase: 'k-full-sdlc' names a gate fact for 'summary'"),
+        ("gate-skip-unexplained", "gate-skip-unexplained: 'k-full-sdlc'"),
+        ("gate-evidence-path", "gate-evidence-path: 'k-full-sdlc' gate_review_evidence"),
+        ("gate-word-mapped", "gate-word-mapped: 'k-full-sdlc' maps a checker word to a gate id"),
+        ("gate-result-rule", "gate-result-rule: 'k-full-sdlc' lacks the rule"),
+        ("verify-run-step-order", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' verify-run must come before"),
+        ("verify-run-unavailable-missing", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step does not cover 'verify-run unavailable'"),
     ],
 )
 def test_failure_fixture_reports_its_code(case, expected):
@@ -48,6 +48,11 @@ def test_failure_fixture_reports_its_code(case, expected):
     assert result.returncode == 1
     assert expected in result.stderr
     assert len(result.stderr.splitlines()) == 1, result.stderr
+
+
+def test_verify_run_rules_apply_only_to_k_full_sdlc():
+    result = run_check(FIXTURES / "other-sop")
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize("args", [["--help"], ["a", "b"], ["/no/such/dir"]])

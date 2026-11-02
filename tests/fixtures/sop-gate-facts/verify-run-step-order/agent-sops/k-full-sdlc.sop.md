@@ -19,8 +19,8 @@ A minimal phase-gated SOP.
 
 ### 1. Review
 
-- Record `gate_review_result`, `gate_review_evidence` (`out/review.md`), and a checker.
+- Record `gate_review_result`, `gate_review_evidence` (`out/review.md`), and `gate_review_checker`.
 
 ### 2. Summary
 
-- Delegate `konductor verify-run --session <session file> --allow-running` to `k-developer`. Then write `sdlc-summary.md` with its exit. If this run never minted a session file, the summary records `verify-run: no session file`. If `konductor` is not found or reports an `unrecognized subcommand`, the summary records `verify-run unavailable`.
+- Write `sdlc-summary.md`. Then delegate `konductor verify-run --session <session file> --root <output_dir> --allow-running` to `k-developer`. If this run never minted a session file, the summary records `verify-run: no session file`. If `konductor` is not found or reports an `unrecognized subcommand`, the summary records `verify-run unavailable`.
