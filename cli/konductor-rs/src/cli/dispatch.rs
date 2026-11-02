@@ -19,10 +19,10 @@ use crate::cli::{config, init, output::ColorMode, Commands, ConfigAction};
 
 /// Entry point called by `cli::run()` once argument parsing has produced a
 /// concrete `command` to dispatch. `Init`, `Config`, `Install`, `Synth`,
-/// and `Doctor` have real behavior; every other command is a stub.
+/// `Doctor` and `VerifyRun` have real behavior; every other command is a stub.
 ///
 /// `verbose`/`json` are threaded through to `Install`/`Synth`/`Doctor`
-/// only -- the commands with real, reportable output at this milestone.
+/// (`VerifyRun` takes `json` only) -- the commands with real, reportable output at this milestone.
 /// `color` is threaded through to every arm that can print an error
 /// prefix or a colorized status report.
 ///

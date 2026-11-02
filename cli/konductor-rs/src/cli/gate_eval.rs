@@ -217,6 +217,7 @@ pub(crate) enum ReasonCode {
     FindingUnresolved,
     Passed,
     Running,
+    ArgumentInvalid,
 }
 
 impl ReasonCode {
@@ -236,6 +237,7 @@ impl ReasonCode {
             Self::FindingUnresolved => "FINDING_UNRESOLVED",
             Self::Passed => "PASSED",
             Self::Running => "RUNNING",
+            Self::ArgumentInvalid => "ARGUMENT_INVALID",
         }
     }
 }
@@ -247,6 +249,7 @@ pub(crate) enum InfoCode {
     FindingBelowGate,
     FixCapClamped,
     PhaseSkipped,
+    ConfigSource,
 }
 
 impl InfoCode {
@@ -257,6 +260,7 @@ impl InfoCode {
             Self::FindingBelowGate => "FINDING_BELOW_GATE",
             Self::FixCapClamped => "FIX_CAP_CLAMPED",
             Self::PhaseSkipped => "PHASE_SKIPPED",
+            Self::ConfigSource => "CONFIG_SOURCE",
         }
     }
 }

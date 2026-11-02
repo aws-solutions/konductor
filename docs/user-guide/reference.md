@@ -156,7 +156,7 @@ layer falls through.
 
 ### Config error messages
 
-All exit `64`.
+All exit `64`, except under `verify-run`, where an invalid config exits `65` (see [Exit-code contract](#exit-code-contract)).
 
 | Message | Cause |
 | --- | --- |
@@ -178,7 +178,7 @@ An **empty** `config.yml` is not an error — every field falls through to its d
 | `3` | `EXIT_BUDGET_EXCEEDED` | Budget exceeded. Emitted by `verify-run` when a feature's fix cycles go above the cap |
 | `6` | `EXIT_SUCCESS_WITH_WARNINGS` | Everything the command was responsible for succeeded, but something peripheral did not — today, `uninstall` when a tracked `--link-bin` symlink could not be removed, or `verify-run` when a run passed with a skipped gate phase |
 | `64` | `EXIT_USAGE_ERROR` | Usage error (`EX_USAGE`, BSD `sysexits.h`) — a bad flag, unknown command, missing argument, invalid value, or an invalid config. For `verify-run`, argument problems only (including a `--root` that is not a directory) |
-| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version. For `verify-run`, any content failure: an unusable session file or config, a missing gate fact, or an inconsistent session record |
+| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version. For `verify-run`, any content failure: an unusable session file (unreadable, not UTF-8, invalid YAML, a rejected tag or key, a symlink, outside `--root`, over 1 MiB) or config, a missing gate fact, an inconsistent session record, or a run still in progress without `--allow-running` |
 
 ### Why `64` and not `2`
 
@@ -201,7 +201,8 @@ substantive failure signal. If you script against the CLI, treat `64` as *you ty
 | Malformed config on load | Any command, against a broken `.konductor/config.yml` |
 | `init` without `--force` on an existing `.konductor/` | `konductor init` |
 | `synth` parse failure | A malformed `agents/*.agent-spec.json` |
-| Current directory cannot be resolved | — |
+| Current directory cannot be resolved (also under `verify-run`) | — |
+| `verify-run` with a `--root` that is missing or not a directory | `konductor verify-run --session s.yml --root nope` |
 
 ### Unknown-command suggestions
 

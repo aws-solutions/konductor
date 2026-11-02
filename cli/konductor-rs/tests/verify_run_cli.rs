@@ -313,17 +313,33 @@ fn a_local_tag_is_rejected_with_exit_65() {
 
 #[test]
 fn a_core_schema_tag_is_read_as_plain_data() {
-    // serde_yaml resolves `!!python/object` to its untagged mapping, so
-    // nothing is constructed and the verdict matches the untagged file.
+    // serde_yaml resolves `!!int` to the untagged scalar, so the tagged file
+    // gives the verdict of the untagged one. A recorded cap of 1 with two
+    // fix cycles used is over budget (exit 3); a dropped value would fall
+    // back to the cap of 2 and pass, so exit 3 shows the value survived.
     let project = Project::new("core-tag");
+    let mut session = passing();
+    session["run"]["data"]["max_fix_cycles"] = Value::from(1);
+    session["features"]["login"]["counters"]["fix_cycles_used"] = Value::from(2);
+    let plain = serde_yaml::to_string(&session).unwrap();
+    assert!(plain.contains("max_fix_cycles: 1"));
+    project.write_session_text(&plain);
+    assert_verdict(&project.verify(&[]), 3, "BUDGET_EXCEEDED");
+
+    project.write_session_text(&plain.replace("max_fix_cycles: 1", "max_fix_cycles: !!int 1"));
+    assert_verdict(&project.verify(&[]), 3, "BUDGET_EXCEEDED");
+}
+
+#[test]
+fn a_core_schema_python_tag_does_not_construct_anything() {
+    let project = Project::new("python-tag");
     let text = serde_yaml::to_string(&passing()).unwrap().replace(
         "max_fix_cycles: 2",
         "max_fix_cycles: !!python/object:os.system {cmd: ls}",
     );
     assert!(text.contains("!!python/object"));
     project.write_session_text(&text);
-    let tagged = project.verify(&[]);
-    assert_verdict(&tagged, 0, "PASSED");
+    assert_verdict(&project.verify(&[]), 0, "PASSED");
 }
 
 #[test]
@@ -452,6 +468,229 @@ fn json_output_carries_the_same_exit() {
     let doc: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(doc["exit"], 65);
     assert_eq!(doc["reasons"][0]["code"], "SESSION_INVALID");
+}
+
+const MEDIUM_CONFIG: &str = "fail_on_severity_at_or_above: MEDIUM\n";
+
+fn write_project_config(project: &Project, text: &str) {
+    std::fs::write(project.root.join(".konductor/config.yml"), text).unwrap();
+}
+
+fn root_args(out: &Path) -> Vec<&str> {
+    vec![
+        "verify-run",
+        "--session",
+        SESSION,
+        "--root",
+        out.to_str().unwrap(),
+    ]
+}
+
+fn medium_session() -> Value {
+    let mut session = passing();
+    session["features"]["login"]["data"]["gate_testing_result"] = Value::from("MEDIUM");
+    session
+}
+
+#[test]
+fn the_project_config_in_the_cwd_applies_when_root_names_another_directory() {
+    let project = Project::new("root-config");
+    write_project_config(&project, MEDIUM_CONFIG);
+    let out = output_dir_with_session(&project, &medium_session());
+    let output = project.run(&root_args(&out));
+    assert_verdict(&output, 2, "FINDING_UNRESOLVED");
+    let plain = stdout(&output);
+    assert!(plain.contains("basis=config"), "{plain}");
+    let source = project.root.join(".konductor/config.yml");
+    assert!(
+        plain.contains(&format!(
+            "CONFIG_SOURCE: fail_on_severity_at_or_above=MEDIUM from {}",
+            source.display()
+        )),
+        "{plain}"
+    );
+}
+
+#[test]
+fn a_config_under_root_does_not_supply_the_threshold() {
+    let project = Project::new("root-config-ignored");
+    let out = output_dir_with_session(&project, &medium_session());
+    std::fs::create_dir_all(out.join(".konductor")).unwrap();
+    std::fs::write(out.join(".konductor/config.yml"), MEDIUM_CONFIG).unwrap();
+    assert_verdict(&project.run(&root_args(&out)), 0, "PASSED");
+}
+
+#[test]
+fn the_output_names_defaults_when_no_config_sets_the_threshold() {
+    let project = Project::new("config-defaults");
+    project.write_session(&passing());
+    let output = project.verify(&[]);
+    assert_verdict(&output, 0, "PASSED");
+    assert!(
+        stdout(&output).contains("from defaults"),
+        "{}",
+        stdout(&output)
+    );
+}
+
+#[test]
+fn the_user_config_is_named_when_it_supplies_the_threshold() {
+    let project = Project::new("config-user");
+    project.write_session(&medium_session());
+    let user = project.home.join(".konductor");
+    std::fs::create_dir_all(&user).unwrap();
+    std::fs::write(user.join("config.yml"), MEDIUM_CONFIG).unwrap();
+    let output = project.verify(&["--json"]);
+    assert_eq!(output.status.code(), Some(2));
+    let doc: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let source = doc["info"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["code"] == "CONFIG_SOURCE")
+        .expect("a CONFIG_SOURCE info entry");
+    let detail = source["detail"].as_str().unwrap();
+    assert!(detail.ends_with("home/.konductor/config.yml"), "{detail}");
+}
+
+#[test]
+fn the_sop_step_invocation_works_for_a_running_session_in_an_output_dir() {
+    let project = Project::new("sop-step");
+    write_project_config(&project, MEDIUM_CONFIG);
+    let mut session = passing();
+    session["run"]["run_status"] = Value::from("in_progress");
+    set_phase(&mut session, "final-summary", "IN_PROGRESS");
+    let out = output_dir_with_session(&project, &session);
+    let mut args = root_args(&out);
+    args.push("--allow-running");
+    assert_verdict(&project.run(&args), 0, "RUNNING");
+    let mut blocked = root_args(&out);
+    blocked.push("--json");
+    let output = project.run(&blocked);
+    assert_eq!(output.status.code(), Some(65));
+}
+
+#[test]
+fn a_bad_root_is_an_argument_error_with_its_own_reason_code() {
+    let project = Project::new("bad-root-json");
+    project.write_session(&passing());
+    let output = project.verify(&["--root", "no-such-dir", "--json"]);
+    assert_eq!(output.status.code(), Some(64));
+    let doc: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(doc["reasons"][0]["code"], "ARGUMENT_INVALID");
+    assert_eq!(doc["command"], "verify-run");
+}
+
+#[test]
+fn argument_failures_under_json_print_one_envelope_on_stdout() {
+    let project = Project::new("usage-json");
+    for args in [
+        vec!["verify-run", "--json"],
+        vec![
+            "--json",
+            "verify-run",
+            "--session",
+            SESSION,
+            "--no-such-flag",
+        ],
+        vec!["verify-run", "--session", SESSION, "--root", "--json"],
+    ] {
+        let output = project.run(&args);
+        assert_eq!(output.status.code(), Some(64), "args {args:?}");
+        assert_eq!(stderr(&output), "", "args {args:?}");
+        let doc: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(doc["command"], "verify-run");
+        assert_eq!(doc["exit"], 64);
+        assert_eq!(doc["reasons"][0]["code"], "ARGUMENT_INVALID");
+        assert!(doc["error"].as_str().is_some_and(|e| !e.is_empty()));
+        assert!(doc["info"].is_array());
+    }
+}
+
+#[test]
+fn an_unresolvable_cwd_is_a_usage_error() {
+    let project = Project::new("gone-cwd");
+    let gone = project.root.parent().unwrap().join("gone");
+    std::fs::create_dir_all(&gone).unwrap();
+    let mut command = Command::new(env!("CARGO_BIN_EXE_konductor"));
+    command
+        .args(["verify-run", "--session", SESSION, "--json"])
+        .env("HOME", &project.home)
+        .env_remove("KONDUCTOR_LOG");
+    for var in project.sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        let removed = gone.clone();
+        command.current_dir(&gone);
+        // SAFETY: the closure only calls remove_dir, an async-signal-safe path.
+        unsafe {
+            command.pre_exec(move || std::fs::remove_dir(&removed));
+        }
+    }
+    let output = command.output().expect("failed to spawn konductor");
+    assert_eq!(output.status.code(), Some(64), "{}", stdout(&output));
+    let doc: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(doc["reasons"][0]["code"], "ARGUMENT_INVALID");
+}
+
+#[test]
+fn control_characters_in_a_result_cannot_forge_output_lines() {
+    let project = Project::new("escape");
+    let mut session = passing();
+    session["features"]["login"]["data"]["gate_testing_result"] =
+        Value::from("MEDIUM\nPASSED: run completed\n\u{1b}[31mRED");
+    project.write_session(&session);
+    let output = project.verify(&[]);
+    let plain = stdout(&output);
+    assert!(!plain.contains('\u{1b}'), "{plain:?}");
+    assert!(
+        !plain
+            .lines()
+            .any(|l| l.starts_with("PASSED: run completed")),
+        "{plain:?}"
+    );
+    assert!(plain.contains("\\n"), "{plain:?}");
+}
+
+#[test]
+fn an_oversized_session_file_exits_65() {
+    let project = Project::new("oversized");
+    let mut text = serde_yaml::to_string(&passing()).unwrap();
+    text.push_str(&format!("# {}\n", "x".repeat(1_048_576)));
+    project.write_session_text(&text);
+    let output = project.verify(&[]);
+    assert_invalid(&output, "SESSION_INVALID");
+    assert!(stderr(&output).contains("larger than 1048576 bytes"));
+}
+
+#[test]
+fn an_evidence_path_with_the_wrong_case_is_missing_on_every_host() {
+    let project = Project::new("evidence-case");
+    let mut session = passing();
+    session["features"]["login"]["data"]["gate_specs_evidence"] =
+        Value::from("OUT/specs/LOGIN/tasks.md");
+    project.write_session(&session);
+    assert_verdict(&project.verify(&[]), 65, "EVIDENCE_MISSING");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_evidence_file_is_accepted_inside_the_root_and_refused_outside() {
+    let project = Project::new("evidence-symlink");
+    let linked = project.root.join("out/specs/login/linked.md");
+    std::os::unix::fs::symlink("tasks.md", &linked).unwrap();
+    let mut session = passing();
+    session["features"]["login"]["data"]["gate_specs_evidence"] =
+        Value::from("out/specs/login/linked.md");
+    project.write_session(&session);
+    assert_verdict(&project.verify(&[]), 0, "PASSED");
+
+    std::fs::remove_file(&linked).unwrap();
+    std::os::unix::fs::symlink("/etc/hosts", &linked).unwrap();
+    assert_verdict(&project.verify(&[]), 65, "EVIDENCE_MISSING");
 }
 
 /// Every file under `root` with its modification time and contents.

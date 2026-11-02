@@ -841,7 +841,7 @@ stdout instead:
 ```bash
 konductor verify-run --session .konductor/sessions/k-full-sdlc-<timestamp>-<suffix>.yml
 konductor verify-run --session <path> --allow-running   # accept a run still in progress
-konductor verify-run --session <path> --root <dir>      # verify under <dir> instead of the cwd
+konductor verify-run --session <path> --root <dir>      # session and evidence must live under <dir>
 konductor verify-run --session <path> --json            # one JSON object on stdout
 ```
 
@@ -850,21 +850,31 @@ phase-gated SOP, and reports one exit code. Today only `k-full-sdlc` lists its p
 and gate boundaries in `cli/gate-config/sop-orchestration.yml`, so only its sessions can
 pass. The SOP name comes from the file name (`<sop>-<digit>...`).
 
-It reads the session file, the evidence files the session names, and the effective
-config (preset, then `~/.konductor/config.yml`, then `.konductor/config.yml`) for
+It reads the session file (at most 1 MiB), checks that the evidence files the session
+names exist (it never opens them), and reads the effective config (preset, then
+`~/.konductor/config.yml`, then `<cwd>/.konductor/config.yml`) for
 `fail_on_severity_at_or_above`. It writes nothing under the project and sends no
 telemetry. Like every command, it appends one line to the invocation log under
 `~/.konductor/logs/`.
 
-`--root <dir>` names the directory everything must resolve under. It defaults to the
-current directory. A relative `--root` is resolved against the current directory, and
-the root is canonicalized (symlinks resolved) before any check. The session path is
-resolved against the root (an absolute path is used as is); the file must be a regular
-file whose canonical path is inside the root and must not be a symlink. Evidence paths
-in the session are relative to the root and must canonicalize to a regular file inside
-it. The project config is read from `<root>/.konductor/config.yml`. Use `--root` when
-the session lives in an output directory outside the checkout. A `--root` that does
-not exist or is not a directory is a usage error (exit 64).
+The current directory is the project and the only source of policy: the threshold comes
+from `<cwd>/.konductor/config.yml` layered over the user config, never from `--root`. The
+output names the file that set it in a `CONFIG_SOURCE` info line (`defaults` when no file
+sets it), in plain and `--json` output.
+
+`--root <dir>` only bounds where files may resolve. It defaults to the current directory.
+A relative `--root` is resolved against the current directory, and the root is
+canonicalized (symlinks resolved) before any check. The session path is resolved against
+the root (an absolute path is used as is); the file must be a regular file whose canonical
+path is inside the root, and it must not be a symlink. Evidence paths in the session are
+relative to the root and must canonicalize to a regular file inside it, spelled exactly as
+on disk (a case variant is `EVIDENCE_MISSING` on every host). Unlike the session file, an
+evidence path may be a symlink when it resolves inside the root; one resolving outside is
+refused. Use `--root` when the session lives in an output directory outside the checkout,
+for example `konductor verify-run --session <file> --root <output_dir> --allow-running`
+run from the project root. A `--root` that does not exist or is not a directory is a usage
+error (exit 64). The containment checks cover static paths and symlinks. They do not
+protect against another process replacing files while the command runs.
 
 The YAML is read as plain data: a local tag such as `!custom` or a non-string mapping
 key rejects the file. A `!!` tag such as `!!python/object` is resolved to its untagged
@@ -874,7 +884,7 @@ The first row that fires sets the exit; every firing reason prints.
 
 | Row | Condition | Reason | Exit |
 | --- | --- | --- | --- |
-| V0 | A bad argument: a missing or unknown flag, or a `--root` that is not a directory | `SESSION_INVALID` for `--root`; clap's message otherwise | 64 |
+| V0 | A bad argument: a missing or unknown flag, a `--root` that is not a directory, or an unresolvable current directory | `ARGUMENT_INVALID` | 64 |
 | V1 | The file is missing, unreadable, not UTF-8, a symlink, outside the root, or rejected by the YAML loader. A `config.yml` that is present but invalid | `SESSION_INVALID`, `CONFIG_INVALID` | 65 |
 | V2 | `schema_version` is not 1, a status outside the skill's enums, a SOP name not in the gated list or with no `phases`, or session phases that differ from that list | `RECORD_INTEGRITY` | 65 |
 | V3 | A phase `COMPLETED` after an earlier `PENDING` or `IN_PROGRESS` one, `run_status: completed` with a phase not `COMPLETED` or `SKIPPED`, or a `SKIPPED` phase with no `skip_reason` | `PHASE_ORDER`, `PHASE_INCOMPLETE`, `SKIP_UNEXPLAINED` | 65 |
@@ -887,7 +897,7 @@ The first row that fires sets the exit; every firing reason prints.
 
 Info lines never change the exit: `SAME_TYPE_CHECKER`, `SEVERITY_UNKNOWN`,
 `FINDING_BELOW_GATE`, `FIX_CAP_CLAMPED` (the recorded `max_fix_cycles` is above 2, so
-the cap is 2), and `PHASE_SKIPPED`.
+the cap is 2), `PHASE_SKIPPED`, and `CONFIG_SOURCE` (which file set the threshold).
 
 **Strict floor.** The effective threshold is the configured
 `fail_on_severity_at_or_above` or `HIGH`, whichever is lower. With the preset
@@ -896,12 +906,15 @@ the cap is 2), and `PHASE_SKIPPED`.
 "a HIGH-or-above finding was left open at a gate", not a broken run.
 
 Plain output prints a summary line, `konductor verify-run: <first reason> (exit <n>)`,
-then one `<CODE>: <detail>` line per reason and per info note, on stdout. A V1 failure
-prints `konductor verify-run: <CODE>: <detail>` on stderr instead. `--json` prints one
-object on stdout in every case:
+then one `<CODE>: <detail>` line per reason and per info note, on stdout. Control
+characters in a detail print as visible escapes (`\n`, `\u{1b}`). A V1 failure prints
+`konductor verify-run: <CODE>: <detail>` on stderr instead. `--json` prints one object on
+stdout in every case, including argument errors clap rejects (stderr stays empty); `error`
+(the first reason's detail) is present for exits 64 and 65:
 
 ```json
 {
+  "command": "verify-run",
   "exit": 2,
   "reasons": [{ "code": "FINDING_UNRESOLVED", "detail": "..." }],
   "info": []
