@@ -20,11 +20,12 @@
 # is never itself an id.
 #
 # This table is a severity vocabulary only. The input is a finding's
-# severity label as the checker writes it, not a heading, counter, status
-# word or checkbox line. Risk, priority and confidence scales reuse High,
-# Medium and Low but are not severities: a label whose second word is RISK,
-# PRIORITY or CONFIDENCE ranks as CRITICAL, and a caller that holds such a
-# field applies the checker's own mapping first.
+# severity label as the checker writes it. Headings, counters, status words
+# and checkbox lines are out of contract and may rank either way. Risk,
+# priority and confidence scales reuse High, Medium and Low but are not
+# severities: a label whose second word is RISK, PRIORITY or CONFIDENCE
+# (or a plural) ranks as CRITICAL, and a caller that holds such a field
+# applies the checker's own mapping first.
 #
 # ── Exit-code note (IMPORTANT — read before wiring this into anything) ────
 # `exit_code_signal: critical_gate` below is a SEMANTIC label only: it
