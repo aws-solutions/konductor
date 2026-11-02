@@ -75,6 +75,7 @@ pub fn parse_canonical(source_dir: &Path) -> Result<CanonicalModel, ParseError> 
 
     check_dangling_context_references(&agents, &context)?;
     check_dangling_skill_references(&agents, &skills)?;
+    check_claude_preload_name_cap(&agents, &skills)?;
     check_dangling_sop_references(&agents, &sops)?;
     for warning in check_skill_scope_consistency(&agents) {
         eprintln!("konductor: warning: {warning}");
@@ -367,9 +368,44 @@ pub(crate) fn group_thousands(n: usize) -> String {
     out
 }
 
+/// Fails when an agent's `clientConfig.claudeCli.skills` lists more
+/// distinct names than Claude Code preloads. An error, not a warning:
+/// Claude Code silently drops the names past the cap, so the agent
+/// would start without skills its author declared.
+fn check_claude_preload_name_cap(
+    agents: &[parser::ParsedAgentSpec],
+    skills: &[SkillDef],
+) -> Result<(), ParseError> {
+    for agent in agents {
+        let Some(claude_cli) = &agent.client_config.claude_cli else {
+            continue;
+        };
+        let preload = claude_preload(&claude_cli.skills, skills);
+        if preload.names.len() <= CLAUDE_PRELOAD_NAME_CAP {
+            continue;
+        }
+        let dropped = &preload.names[CLAUDE_PRELOAD_NAME_CAP..];
+        return Err(ParseError {
+            file: format!("agents/{}.agent-spec.json", agent.name),
+            field: Some("clientConfig.claudeCli.skills".to_string()),
+            reason: format!(
+                "agent '{}' preloads {} clientConfig.claudeCli.skills, over Claude Code's \
+                 cap of {CLAUDE_PRELOAD_NAME_CAP} names; {} would be dropped: {}. \
+                 Move skills not needed at the first turn to \
+                 dependencies.skills.skillNames only; they stay loadable with the Skill tool.",
+                agent.name,
+                preload.names.len(),
+                dropped.len(),
+                dropped.join(", ")
+            ),
+        });
+    }
+    Ok(())
+}
+
 /// Warns, one line per agent, when an agent's `clientConfig.claudeCli.skills`
-/// exceeds the preload byte budget or Claude Code's name cap. A warning,
-/// not an error: `doctor` also runs this parse, and downstream packages
+/// exceeds the preload byte budget. A warning, not an error: the budget is
+/// a cost policy, `doctor` also runs this parse, and downstream packages
 /// that extend these agents should not break on a CLI upgrade.
 fn check_claude_preload_budget(
     agents: &[parser::ParsedAgentSpec],
@@ -381,35 +417,17 @@ fn check_claude_preload_budget(
             continue;
         };
         let preload = claude_preload(&claude_cli.skills, skills);
-        let over_budget = preload.bytes > CLAUDE_PRELOAD_BUDGET_BYTES;
-        let over_cap = preload.names.len() > CLAUDE_PRELOAD_NAME_CAP;
-        if !over_budget && !over_cap {
+        if preload.bytes <= CLAUDE_PRELOAD_BUDGET_BYTES {
             continue;
-        }
-        let mut limits = Vec::new();
-        if over_budget {
-            limits.push(format!(
-                "budget {} B",
-                group_thousands(CLAUDE_PRELOAD_BUDGET_BYTES)
-            ));
-        }
-        if over_cap {
-            let dropped = &preload.names[CLAUDE_PRELOAD_NAME_CAP..];
-            limits.push(format!(
-                "cap {CLAUDE_PRELOAD_NAME_CAP} names, {} would be dropped: {}",
-                dropped.len(),
-                dropped.join(", ")
-            ));
         }
         warnings.push(format!(
             "agent '{}' preloads {} B across {} skill(s) in clientConfig.claudeCli.skills on \
-             Claude Code ({}). \
-             Move skills not needed at the first turn to dependencies.skills.skillNames only; \
-             they stay loadable with the Skill tool.",
+             Claude Code (budget {} B). Move skills not needed at the first turn to \
+             dependencies.skills.skillNames only; they stay loadable with the Skill tool.",
             agent.name,
             group_thousands(preload.bytes),
             preload.names.len(),
-            limits.join("; ")
+            group_thousands(CLAUDE_PRELOAD_BUDGET_BYTES)
         ));
     }
     warnings
@@ -1423,7 +1441,7 @@ mod tests {
     }
 
     #[test]
-    fn claude_preload_budget_names_over_bytes_under_warns_on_cap_only() {
+    fn claude_preload_name_cap_names_over_bytes_under_errors_and_names_dropped() {
         let skill_names = names("s", 33);
         let skills: Vec<SkillDef> = skill_names
             .iter()
@@ -1431,18 +1449,27 @@ mod tests {
             .collect();
         let refs: Vec<&str> = skill_names.iter().map(String::as_str).collect();
         let agent = agent_spec_with_claude_cli_skills("k-wide", &refs);
-        let warnings = check_claude_preload_budget(&[agent], &skills);
-        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        let warnings = check_claude_preload_budget(std::slice::from_ref(&agent), &skills);
+        assert!(warnings.is_empty(), "got: {warnings:?}");
+        let err = check_claude_preload_name_cap(&[agent], &skills).unwrap_err();
+        assert_eq!(err.file, "agents/k-wide.agent-spec.json");
+        assert_eq!(err.field.as_deref(), Some("clientConfig.claudeCli.skills"));
         assert!(
-            warnings[0].contains("(cap 32 names, 1 would be dropped: s33)"),
+            err.reason
+                .contains("agent 'k-wide' preloads 33 clientConfig.claudeCli.skills"),
             "got: {}",
-            warnings[0]
+            err.reason
         );
-        assert!(!warnings[0].contains("budget"));
+        assert!(
+            err.reason
+                .contains("cap of 32 names; 1 would be dropped: s33."),
+            "got: {}",
+            err.reason
+        );
     }
 
     #[test]
-    fn claude_preload_budget_both_over_reports_both_limits() {
+    fn claude_preload_name_cap_both_over_errors_on_the_cap() {
         let skill_names = names("s", 34);
         let skills: Vec<SkillDef> = skill_names
             .iter()
@@ -1450,13 +1477,24 @@ mod tests {
             .collect();
         let refs: Vec<&str> = skill_names.iter().map(String::as_str).collect();
         let agent = agent_spec_with_claude_cli_skills("k-both", &refs);
-        let warnings = check_claude_preload_budget(&[agent], &skills);
-        assert_eq!(warnings.len(), 1, "got: {warnings:?}");
+        let err = check_claude_preload_name_cap(&[agent], &skills).unwrap_err();
         assert!(
-            warnings[0].contains("(budget 32,768 B; cap 32 names, 2 would be dropped: s33, s34)"),
+            err.reason.contains("2 would be dropped: s33, s34."),
             "got: {}",
-            warnings[0]
+            err.reason
         );
+    }
+
+    #[test]
+    fn claude_preload_name_cap_allows_exactly_the_cap() {
+        let skill_names = names("s", 32);
+        let skills: Vec<SkillDef> = skill_names
+            .iter()
+            .map(|n| skill_of_rendered_len(n, 30))
+            .collect();
+        let refs: Vec<&str> = skill_names.iter().map(String::as_str).collect();
+        let agent = agent_spec_with_claude_cli_skills("k-at-cap", &refs);
+        assert!(check_claude_preload_name_cap(&[agent], &skills).is_ok());
     }
 
     #[test]
@@ -1480,8 +1518,9 @@ mod tests {
             .iter()
             .map(|n| skill_of_rendered_len(n, 5_000))
             .collect();
-        let warnings = check_claude_preload_budget(&[agent], &skills);
+        let warnings = check_claude_preload_budget(std::slice::from_ref(&agent), &skills);
         assert!(warnings.is_empty(), "got: {warnings:?}");
+        assert!(check_claude_preload_name_cap(&[agent], &skills).is_ok());
     }
 
     fn agent_spec_with_claude_tools(

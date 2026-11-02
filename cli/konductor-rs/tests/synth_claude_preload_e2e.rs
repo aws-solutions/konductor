@@ -4,6 +4,8 @@
 // copy of this repository's own agents/skills tree, adds fixture agents
 // whose Claude Code skill preload (`clientConfig.claudeCli.skills`) is
 // too large, and checks what the synth preload lint reports for them.
+// It also fails if any agent in this repo grows past the lint's limits,
+// or lists on-demand skills without granting the Skill tool.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -159,6 +161,18 @@ fn write_fixture_agent(dir: &Path, name: &str, claude_skills: &[String]) {
 }
 
 #[test]
+fn synth_emits_no_preload_or_skill_grant_warning_for_this_repo() {
+    let dir = repo_copy("no-warning");
+    let output = synth(&dir, &[]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!stderr.contains("preloads"), "unexpected warning: {stderr}");
+    assert!(
+        !stderr.contains("does not list Skill"),
+        "unexpected warning: {stderr}"
+    );
+}
+
+#[test]
 fn synth_warns_when_a_fixture_agent_exceeds_the_byte_budget() {
     let dir = repo_copy("fat");
     write_oversized_fixture_skill(&dir, "fixture-fat-skill");
@@ -185,7 +199,7 @@ fn synth_warns_when_a_fixture_agent_exceeds_the_byte_budget() {
 }
 
 #[test]
-fn synth_warns_and_names_dropped_skills_past_the_name_cap() {
+fn synth_fails_and_names_dropped_skills_past_the_name_cap() {
     let dir = repo_copy("wide");
     let mut skill_names: Vec<String> = std::fs::read_dir(dir.join("skills"))
         .unwrap()
@@ -197,8 +211,15 @@ fn synth_warns_and_names_dropped_skills_past_the_name_cap() {
     skill_names.truncate(33);
     assert_eq!(skill_names.len(), 33, "repo needs at least 33 skills");
     write_fixture_agent(&dir, "k-fixture-wide", &skill_names);
-    let output = synth(&dir, &[]);
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let from = dir.display().to_string();
+    let output = run_konductor(&dir, &sink, &["synth", "--from", from.as_str()]);
     let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(64),
+        "expected EX_USAGE; stderr: {stderr}"
+    );
     assert!(
         stderr.contains(&format!("1 would be dropped: {}", skill_names[32])),
         "got: {stderr}"
