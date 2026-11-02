@@ -214,3 +214,14 @@ jobs:
             echo "FATAL: packaged tarball's version segment ($TARBALL_VERSION, from Cargo.toml) does not match the root VERSION file ($EXPECTED_TARBALL_VERSION). This will fail release.yml's build job after merge. Bump Cargo.toml's version to match VERSION before merging. Failing closed." >&2
             exit 1
           fi
+
+      - name: Lint the Rust crates (clippy -D warnings and rustfmt)
+        # Lint runs on a pinned toolchain so a new Rust release can't add clippy
+        # lints that fail every PR under -D warnings. Builds and tests stay on
+        # stable, like release.yml. Bump the pin deliberately in its own PR, and
+        # update the user guide with it (`make guide-check` compares them).
+        env:
+          RUST_LINT_TOOLCHAIN: 1.98.1
+        run: |
+          rustup toolchain install "$RUST_LINT_TOOLCHAIN" --profile minimal -c clippy -c rustfmt
+          make lint CARGO="cargo +$RUST_LINT_TOOLCHAIN"

@@ -8,6 +8,11 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
+  toolchain; builds and tests stay on stable.
+
 ### Changed
 
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
