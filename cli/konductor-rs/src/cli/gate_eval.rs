@@ -593,7 +593,9 @@ fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
 /// V6. The cap is the engineer's `max_fix_cycles`, recorded in `run.data` when
 /// the run is minted, and 2 when none is recorded. A session file is plain
 /// YAML that any agent can edit, so the recorded value is only as trustworthy
-/// as the file; the evaluator cannot protect it.
+/// as the file; the evaluator cannot protect it. The same cap bounds each
+/// feature's `fix_cycles_used` and the run-level `doc_fix_cycles_used` that the
+/// documentation step draws on; a count equal to the cap is within budget.
 fn check_fix_cycles(session: &Session, report: &mut Report) {
     let cap = match recorded_fix_cycle_cap(session) {
         Ok(cap) => cap,
@@ -602,6 +604,19 @@ fn check_fix_cycles(session: &Session, report: &mut Report) {
             return;
         }
     };
+    let doc_used = session
+        .run
+        .counters
+        .get("doc_fix_cycles_used")
+        .copied()
+        .unwrap_or(0);
+    if doc_used > cap {
+        report.fire(
+            EXIT_BUDGET_EXCEEDED,
+            ReasonCode::BudgetExceeded,
+            format!("run: doc_fix_cycles_used {doc_used} is above the cap {cap}"),
+        );
+    }
     for (slug, bag) in &session.features {
         let used = bag.counters.get("fix_cycles_used").copied().unwrap_or(0);
         if used > cap {
@@ -1206,6 +1221,49 @@ phases:
     fn v6_absent_cap_is_2() {
         assert_eq!(with_fix_cycles(None, 2).exit, 0);
         assert_verdict(&with_fix_cycles(None, 3), 3, "BUDGET_EXCEEDED");
+    }
+
+    fn set_doc_fix_cycles_used(session: &mut Value, used: Value) {
+        session["run"]["counters"]["doc_fix_cycles_used"] = used;
+    }
+
+    #[test]
+    fn v6_doc_fix_cycles_over_the_cap_is_budget_exceeded() {
+        let mut session = passing();
+        set_doc_fix_cycles_used(&mut session, Value::from(3));
+        let verdict = eval(&session);
+        assert_verdict(&verdict, 3, "BUDGET_EXCEEDED");
+        assert!(
+            verdict.reasons[0]
+                .detail
+                .starts_with("run: doc_fix_cycles_used 3"),
+            "{verdict:#?}"
+        );
+    }
+
+    #[test]
+    fn v6_doc_fix_cycles_at_the_cap_or_absent_passes() {
+        let mut session = passing();
+        assert_eq!(eval(&session).exit, 0);
+        set_doc_fix_cycles_used(&mut session, Value::from(2));
+        assert_eq!(eval(&session).exit, 0);
+    }
+
+    #[test]
+    fn v6_doc_fix_cycles_use_the_recorded_cap() {
+        let mut session = passing();
+        set_run_data(&mut session, "max_fix_cycles", Value::from(5));
+        set_doc_fix_cycles_used(&mut session, Value::from(5));
+        assert_eq!(eval(&session).exit, 0);
+        set_doc_fix_cycles_used(&mut session, Value::from(6));
+        assert_verdict(&eval(&session), 3, "BUDGET_EXCEEDED");
+    }
+
+    #[test]
+    fn v6_non_integer_doc_fix_cycles_is_record_integrity() {
+        let mut session = passing();
+        set_doc_fix_cycles_used(&mut session, Value::from("1"));
+        assert_verdict(&eval(&session), 65, "RECORD_INTEGRITY");
     }
 
     #[test]
