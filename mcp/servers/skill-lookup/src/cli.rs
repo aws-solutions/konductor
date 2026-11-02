@@ -50,8 +50,13 @@ pub(crate) struct Cli {
 
     /// Comma-separated glob pattern(s) (only `*` is supported as a
     /// wildcard) matched case-insensitively against each skill's
-    /// frontmatter `name`. Skills matching none of the patterns are
-    /// excluded from the index. Applied once at startup and re-applied,
+    /// frontmatter `name`. A skill that the `manifest` file next to the
+    /// skills dir (`<target>/.konductor/manifest` for
+    /// `<target>/.konductor/skills`) lists as konductor-installed, and
+    /// that matches none of the patterns, is excluded from the index.
+    /// Other skills under that root always pass, and a manifest that
+    /// exists but can't be read or parsed turns the filter off for that
+    /// root with a WARN. Applied once at startup and re-applied,
     /// unchanged, on every `reload_skills` call.
     #[arg(long = "skill-name-filter", value_name = "GLOB")]
     pub(crate) skill_name_filter: Option<String>,
@@ -68,8 +73,8 @@ pub(crate) struct Cli {
     /// Comma-separated glob pattern(s) (only `*` is supported as a
     /// wildcard) matched case-insensitively against each SOP's name (its
     /// filename with the `.sop.md` suffix stripped). SOPs matching none
-    /// of the patterns are excluded. Mirrors `--skill-name-filter`'s
-    /// shape and semantics, for prompts instead of skills.
+    /// of the patterns are excluded. Uses `--skill-name-filter`'s glob
+    /// shape but not its install-manifest check.
     #[arg(long = "agent-sop-filter", value_name = "GLOB")]
     pub(crate) agent_sop_filter: Option<String>,
 
