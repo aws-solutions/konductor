@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// dispatch.rs — command dispatch for the Konductor CLI (Rust implementation).
+// dispatch.rs - command dispatch for the Konductor CLI (Rust implementation).
 //
 // Structural extraction of the top-level `match command { ... }` out of
 // cli.rs::run() into its own module, so cli.rs stays focused on argument
@@ -19,10 +19,10 @@ use crate::cli::{config, init, output::ColorMode, Commands, ConfigAction};
 
 /// Entry point called by `cli::run()` once argument parsing has produced a
 /// concrete `command` to dispatch. `Init`, `Config`, `Install`, `Synth`,
-/// and `Doctor` have real behavior; every other command is a stub.
+/// `Doctor` and `VerifyRun` have real behavior; every other command is a stub.
 ///
 /// `verbose`/`json` are threaded through to `Install`/`Synth`/`Doctor`
-/// only -- the commands with real, reportable output at this milestone.
+/// (`VerifyRun` takes `json` only) -- the commands with real, reportable output at this milestone.
 /// `color` is threaded through to every arm that can print an error
 /// prefix or a colorized status report.
 ///
@@ -59,6 +59,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             all,
             harness,
             no_telemetry,
+            enable_telemetry,
             dry_run,
             use_github_token,
             cli,
@@ -70,6 +71,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             all,
             harness,
             no_telemetry,
+            enable_telemetry,
             dry_run,
             use_github_token,
             cli,
@@ -136,12 +138,14 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
         ),
         Commands::VerifyRun {
             session,
+            root,
             allow_running,
         } => {
             // Not `resolve_cwd*`: those send a telemetry event on failure, and
             // this read-only check sends nothing.
             crate::cli::verify_run::run(
                 std::env::current_dir(),
+                root.as_deref(),
                 &session,
                 allow_running,
                 json,
@@ -617,7 +621,7 @@ mod tests {
         assert_eq!(set_code, 0, "a valid config set must succeed");
         assert_ne!(
             set_code, 2,
-            "must never emit the reserved CRITICAL-gate code"
+            "must never emit the reserved unresolved-finding code"
         );
 
         let loaded = config::load_config(&target).expect("config must still load after set");
@@ -643,7 +647,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&target).ok();
     }
@@ -665,7 +672,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&target).ok();
     }
@@ -709,7 +719,7 @@ mod tests {
         );
         assert_ne!(
             set_code, 2,
-            "must never emit the reserved CRITICAL-gate code"
+            "must never emit the reserved unresolved-finding code"
         );
 
         let loaded =
@@ -755,7 +765,7 @@ mod tests {
         );
         assert_ne!(
             get_code, 2,
-            "must never emit the reserved CRITICAL-gate code"
+            "must never emit the reserved unresolved-finding code"
         );
 
         let list_code = dispatch_config(&target, ConfigAction::List, ColorMode::disabled());
@@ -765,7 +775,7 @@ mod tests {
         );
         assert_ne!(
             list_code, 2,
-            "must never emit the reserved CRITICAL-gate code"
+            "must never emit the reserved unresolved-finding code"
         );
 
         fs::remove_dir_all(&target).ok();
@@ -866,7 +876,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
         assert_eq!(
             fs::read(&config_path).unwrap(),
             before,

@@ -6,8 +6,10 @@ root. `valid` passes; every other case fails with the code it is named for.
 
 Run:  cd tests && pytest test_check_sop_orchestration.py
 """
+import importlib.util
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -16,18 +18,35 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "check-sop-orchestration.py"
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "sop-orchestration"
 MARKER = "Orchestration: strict (phase-gated SOP)"
+MEANING = (
+    "Strict means: stop at each recorded gate, record the gate facts, and do not "
+    "proceed past an unmet gate unless the engineer overrides it or the SOP's own "
+    "round cap applies; record which."
+)
+GATE_NOTE = (
+    "Recorded gates are the stops this SOP names; where the run keeps a session "
+    "file, record their gate facts there."
+)
+GATED_SOPS = [
+    "k-full-sdlc",
+    "k-design-doc-creation",
+    "k-principal-engineer-design-review",
+    "kiro-spec-workflow",
+]
+pytestmark = pytest.mark.skipif(importlib.util.find_spec("yaml") is None, reason="PyYAML is not installed")
 
 
 def run_check(*args) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["python3", str(SCRIPT), *map(str, args)],
+        [sys.executable, str(SCRIPT), *map(str, args)],
         capture_output=True,
         text=True,
     )
 
 
-def test_valid_fixture_passes_silently():
-    result = run_check(FIXTURES / "valid")
+@pytest.mark.parametrize("case", ["valid", "valid-phases-only", "valid-phase-list-no-sentinel"])
+def test_valid_fixture_passes_silently(case):
+    result = run_check(FIXTURES / case)
     assert result.returncode == 0, result.stderr
     assert result.stdout == "" and result.stderr == ""
 
@@ -43,12 +62,39 @@ def test_valid_fixture_passes_silently():
         ("gated-marker-indented", "missing-marker: gated 'alpha-gated'"),
         ("gated-marker-not-own-paragraph", "missing-marker: gated 'alpha-gated'"),
         ("not-gated-with-marker", "unexpected-marker: not_gated 'beta-plain'"),
+        ("stale-basis-heading", "stale-basis: gated 'alpha-gated' basis cites `Ship it`"),
         ("bad-entry", "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list"),
+        ("gated-marker-twice", "unexpected-marker: gated 'alpha-gated' has the marker more than once"),
+        ("unknown-top-level-key", "bad-entry: unknown top-level key 'extra'"),
+        ("missing-top-level-key", "bad-entry: missing top-level key 'version'"),
+        ("marker-wrong-type", "bad-entry: 'marker' must be a non-empty string"),
+        ("wrong-gate-note", "missing-marker: gated 'alpha-gated'"),
+        ("gated-basis-uncited", "uncited-basis: gated 'alpha-gated' basis cites no step heading"),
+        ("not-gated-map-form", "bad-entry: not_gated 'beta-plain' needs a non-empty basis string"),
+        ("non-string-sop-name", "bad-entry: not_gated key 5 must be a string"),
+        ("repeated-gate-kind", "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list of distinct"),
+        ("stale-basis-numbered-heading", "stale-basis: gated 'alpha-gated' basis cites `1. Do the thing`"),
+        ("phase-heading-cited-prefixed", "stale-basis: gated 'alpha-gated' basis cites `Phase 1: Do the thing`"),
         ("phase-list-mismatch", "phase-list-mismatch: gated 'alpha-gated' phases ['one', 'two'] differ"),
         ("phase-list-missing-bullet", "phase-list-mismatch: gated 'alpha-gated' has phases but"),
         ("unknown-boundary-phase", "unknown-boundary-phase: gated 'alpha-gated' boundary 'zero'"),
         ("unknown-boundary-kind", "unknown-boundary-kind: gated 'alpha-gated' boundary 'one' kind 'loop-exit'"),
-        ("bad-boundary-shape", "bad-entry: gated 'alpha-gated' 'boundaries' must be a list"),
+        ("bad-boundary-shape", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-scope-list", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-scope-dict", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-scope-value", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundaries-not-list", "'boundaries' must be a list of {phase, kind, scope}"),
+        ("bad-boundary-missing-key", "'boundaries' item 1 must have exactly phase, kind, scope (missing ['scope']"),
+        ("bad-boundary-extra-key", "'boundaries' item 1 must have exactly phase, kind, scope (missing [], unexpected ['note']"),
+        ("bad-boundary-non-string", "'boundaries' item 1 'phase' must be a string"),
+        ("empty-boundaries", "'boundaries' must not be empty; omit it"),
+        ("unknown-gated-key-boundaries", "bad-entry: gated 'alpha-gated' has unknown key 'boundries'"),
+        ("unknown-gated-key-phases", "bad-entry: gated 'alpha-gated' has unknown key 'phasesz'"),
+        ("bad-phases-unhashable", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
+        ("duplicate-boundary-phase", "bad-entry: gated 'alpha-gated' boundary phase 'one' listed more than once"),
+        ("bad-phases-duplicate", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
+        ("bad-phases-empty", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
+        ("bad-phases-non-string", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
         ("boundaries-without-phases", "bad-entry: gated 'alpha-gated' has 'boundaries' without 'phases'"),
     ],
 )
@@ -81,7 +127,7 @@ def test_removing_the_marker_from_a_valid_tree_fails(tmp_path):
     root = tmp_path / "repo"
     shutil.copytree(FIXTURES / "valid", root)
     sop = root / "agent-sops" / "alpha-gated.sop.md"
-    sop.write_text(sop.read_text(encoding="utf-8").replace(MARKER + "\n\n", ""), encoding="utf-8")
+    sop.write_text(sop.read_text(encoding="utf-8").replace(MARKER + "\n" + MEANING + "\n\n" + GATE_NOTE + "\n\n", ""), encoding="utf-8")
     result = run_check(root)
     assert result.returncode == 1
     assert "missing-marker: gated 'alpha-gated'" in result.stderr
@@ -92,6 +138,67 @@ def test_bad_invocation_exits_64(args):
     assert run_check(*args).returncode == 64
 
 
+def test_full_sdlc_boundaries_are_pinned():
+    import yaml
+
+    data = yaml.safe_load((REPO_ROOT / "cli/gate-config/sop-orchestration.yml").read_text(encoding="utf-8"))
+    assert data["gated"]["k-full-sdlc"]["boundaries"] == [
+        {"phase": "design-review", "kind": "check-threshold", "scope": "run"},
+        {"phase": "feature-splitting", "kind": "approval", "scope": "run"},
+        {"phase": "specs", "kind": "approval", "scope": "feature"},
+        {"phase": "code-review", "kind": "approval", "scope": "run"},
+        {"phase": "testing", "kind": "check-threshold", "scope": "feature"},
+    ]
+
+
 def test_repo_tree_agrees_with_its_map():
     result = run_check(REPO_ROOT)
     assert result.returncode == 0, result.stderr
+
+
+def test_changing_the_meaning_sentence_in_a_gated_sop_fails(tmp_path):
+    root = tmp_path / "repo"
+    shutil.copytree(FIXTURES / "valid", root)
+    sop = root / "agent-sops" / "alpha-gated.sop.md"
+    sop.write_text(sop.read_text(encoding="utf-8").replace(MEANING, "Strict means something else."), encoding="utf-8")
+    result = run_check(root)
+    assert result.returncode == 1
+    assert "missing-marker: gated 'alpha-gated'" in result.stderr
+
+
+def test_phase_heading_is_cited_without_its_phase_label():
+    result = run_check(FIXTURES / "phase-heading-cited-bare")
+    assert result.returncode == 0, result.stderr
+
+
+def test_duplicate_sop_entry_reports_one_bad_entry():
+    result = run_check(FIXTURES / "duplicate-sop-entry")
+    assert_one_clean_bad_entry(result, "duplicate key 'beta-plain'")
+
+
+def test_non_string_sop_name_does_not_crash():
+    result = run_check(FIXTURES / "non-string-sop-name")
+    assert_one_clean_bad_entry(result, "bad-entry: not_gated key 5 must be a string")
+
+
+def test_missing_pyyaml_exits_3_with_setup_message(tmp_path):
+    (tmp_path / "yaml.py").write_text("raise ImportError('stub')\n", encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), str(FIXTURES / "valid")],
+        capture_output=True,
+        text=True,
+        env={"PYTHONPATH": str(tmp_path)},
+    )
+    assert result.returncode == 3
+    assert result.stderr.startswith("setup: PyYAML is required")
+
+
+def test_meaning_and_gate_note_are_pinned_in_the_map_and_every_gated_sop():
+    import yaml
+
+    data = yaml.safe_load((REPO_ROOT / "cli" / "gate-config" / "sop-orchestration.yml").read_text(encoding="utf-8"))
+    assert data["meaning"] == MEANING
+    assert sorted(data["gated"]) == sorted(GATED_SOPS)
+    for name in GATED_SOPS:
+        lines = (REPO_ROOT / "agent-sops" / f"{name}.sop.md").read_text(encoding="utf-8").splitlines()
+        assert lines[2:6] == [MARKER, MEANING, "", GATE_NOTE], name
