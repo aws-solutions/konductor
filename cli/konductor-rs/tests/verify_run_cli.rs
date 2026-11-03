@@ -262,6 +262,26 @@ fn evidence_outside_the_project_exits_65() {
 }
 
 #[test]
+fn a_started_phase_after_pending_gate_phases_exits_65_phase_order() {
+    let project = Project::new("phase-order");
+    let mut session = passing();
+    session["run"]["run_status"] = Value::from("in_progress");
+    for id in ["design-review", "feature-splitting", "code-review"] {
+        set_phase(&mut session, id, "PENDING");
+    }
+    set_phase(&mut session, "final-summary", "IN_PROGRESS");
+    project.write_session(&session);
+    assert_verdict(&project.verify(&["--allow-running"]), 65, "PHASE_ORDER");
+    assert_verdict(&project.verify(&[]), 65, "PHASE_ORDER");
+
+    let output = project.verify(&["--allow-running", "--json"]);
+    assert_eq!(output.status.code(), Some(65));
+    let doc: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(doc["exit"], 65);
+    assert_eq!(doc["reasons"][0]["code"], "PHASE_ORDER");
+}
+
+#[test]
 fn a_running_session_exits_65_unless_allowed() {
     let project = Project::new("running");
     let mut session = passing();
