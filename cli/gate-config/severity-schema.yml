@@ -15,8 +15,10 @@
 # in its report, for example IMPORTANT for HIGH. An alias is one word of
 # ASCII letters and maps to the gate id. Matching ignores case and reads
 # only the leading letters of a label, so "Warning Gap" and "🚨 Critical Gap"
-# match WARNING and CRITICAL. A word that is neither an id nor an alias
-# ranks as CRITICAL. An alias appears under one id only (ignoring case) and
+# match WARNING and CRITICAL. A word that is neither an id nor an alias,
+# and an empty or whitespace-only label, ranks as CRITICAL (fail closed).
+# That rule lives in one place, SeverityTable::gate_rank_of_word, and the
+# config's `default_severity` is never applied to it. An alias appears under one id only (ignoring case) and
 # is never itself an id.
 #
 # This table is a severity vocabulary only. The input is a finding's
