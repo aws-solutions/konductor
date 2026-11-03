@@ -1,7 +1,7 @@
 ---
 name: frontend-review
 description: Reviews frontend code changes for Cloudscape compliance, React Hook Form patterns, TypeScript type safety, and test quality. Use after implementing frontend changes to catch issues before code review. Produces CRITICAL/IMPORTANT/SUGGESTION findings.
-version: 1.0.0
+version: 1.1.0
 tags: [skill, frontend, code-review, react, typescript, cloudscape, checker]
 ---
 
@@ -20,53 +20,13 @@ Use this skill when:
 - Checking React Hook Form + Zod pattern adherence
 - Assessing TypeScript type safety and test coverage
 
-## Core Concepts
+## Review Workflow
 
-### Review Focus Areas
+The rules live in `frontend-development` (its `## Rules` section). Load that skill, then:
 
-Pattern compliance (React Hook Form + Zod, `useFormContext`, `FormProvider`), Cloudscape compliance (no native HTML, no inline styles), type safety (no `any`, explicit `useForm<T>()` types), code quality (memoized handlers, stable layouts, no unnecessary wrappers), and test quality (actual value assertions, error state coverage).
-
-## Review Checklist
-
-### Pattern Compliance
-
-- [ ] React Hook Form used — not custom state hooks
-- [ ] Zod validation used — not manual validation
-- [ ] Form sub-components use `useFormContext` — no prop drilling
-- [ ] Wizard pages wrapped in `FormProvider`
-
-### Cloudscape Compliance
-
-- [ ] No native HTML elements (`<div>`, `<span>`, `<input>`, `<button>`, `<a>`)
-- [ ] No inline styles (`style={{}}`)
-- [ ] `Box` used instead of `<div>` or `<span>`
-- [ ] `KeyValuePairs` for label-value display
-- [ ] `SpaceBetween` for spacing
-- [ ] Fixed column counts in `ColumnLayout`
-- [ ] `FormField` wraps all form inputs
-
-### Type Safety
-
-- [ ] No `any` types in production code
-- [ ] Explicit types on `useForm<FormType>()` calls
-- [ ] TypeScript utility types used correctly (`Pick`, `Omit`, `Partial`)
-- [ ] No redundant type assertions
-
-### Code Quality
-
-- [ ] No unused code or imports
-- [ ] No unnecessary wrapper components
-- [ ] Event handlers memoized with `useCallback`
-- [ ] Imperative array building for 3+ conditional items (not ternary chains)
-- [ ] Stable layouts (fixed column counts)
-
-### Testing
-
-- [ ] Helper functions have unit tests
-- [ ] Form components have component tests
-- [ ] Test assertions check actual values (not just existence)
-- [ ] Error states tested
-- [ ] Edge cases covered
+1. Read every changed frontend file and its tests in full.
+2. Check each change against every rule group: form patterns, Cloudscape compliance, type safety, component quality, and testing.
+3. Classify each violation with the Quality Gate below.
 
 ## Quality Gate
 

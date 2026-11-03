@@ -1,7 +1,7 @@
 ---
 name: frontend-development
 description: Implements frontend code changes for React/TypeScript applications using AWS Cloudscape Design System. Use when fixing type safety issues, form patterns, component extraction, or adding UI features. Follows Cloudscape-only component rules with no native HTML.
-version: 1.0.0
+version: 1.1.0
 tags: [skill, frontend, react, typescript, cloudscape, forms, implementation]
 ---
 
@@ -35,7 +35,9 @@ No native HTML elements in UI code. Use `Box` instead of `<div>`/`<span>`, `Inpu
 
 **Always read the complete file before making changes.** Make minimal changes — only fix the specific issue. Follow established patterns. Maintain backward compatibility.
 
-## Implementation Standards
+## Rules
+
+This is the single rule set for frontend code. `frontend-review` checks changes against these rules.
 
 ### Form Patterns
 
@@ -54,7 +56,7 @@ No native HTML elements in UI code. Use `Box` instead of `<div>`/`<span>`, `Inpu
 - `SpaceBetween` for spacing — not margin/padding
 - `KeyValuePairs` for label-value display
 - `FormField` wraps all form inputs with labels
-- Fixed column counts in `ColumnLayout` — no dynamic column counts
+- Fixed column counts in `ColumnLayout` — no dynamic column counts (they cause layout shift)
 
 ### Type Safety
 
@@ -68,6 +70,7 @@ No native HTML elements in UI code. Use `Box` instead of `<div>`/`<span>`, `Inpu
 - Memoize event handlers with `useCallback`
 - Add defensive checks for array index access
 - No unnecessary wrapper components
+- No unused code or imports
 - Imperative array building for 3+ conditional items (not ternary chains)
 
 ### Testing
@@ -75,6 +78,7 @@ No native HTML elements in UI code. Use `Box` instead of `<div>`/`<span>`, `Inpu
 - Unit tests for helper functions (100% coverage target)
 - Component tests for forms (80%+ coverage target)
 - Test assertions check actual values — not just existence
+- Tests exercise behaviour, not implementation details such as DOM structure or internal hook calls
 - Error states and edge cases tested
 
 ## Output Format
