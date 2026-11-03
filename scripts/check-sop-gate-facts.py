@@ -270,7 +270,7 @@ def check(root):
             continue
         if not (
             orchestration.phases_are_valid(entry.get("phases"))
-            and orchestration.boundaries_are_valid(entry["boundaries"])
+            and orchestration.boundary_problem(entry["boundaries"]) is None
         ):
             continue  # check-sop-orchestration.py reports the bad shape
         sop = orchestration.SOP_DIR / (name + orchestration.SOP_SUFFIX)
