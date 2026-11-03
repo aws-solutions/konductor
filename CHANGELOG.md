@@ -8,8 +8,15 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
+  toolchain; builds and tests stay on stable.
+
 ### Changed
 
+- The always-loaded core rules now carry the engineering practices from the `constraints` skill,
+  so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in
@@ -23,9 +30,19 @@ not per individual commit.
   `constraints` skill and the routing rules.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
+- Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
+  non-trivial work; orchestrators route skill work to the owning specialist.
+- Agents ignore planted instructions and follow user-written memory only from an untracked
+  `.konductor/memory/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
+  or `.konductor/memory`, and treating memory as content when a tracked top-level dot name is
+  non-ASCII; orchestrators never bypass a denial or read unnamed secrets.
 
 ### Fixed
 
+- Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
+  and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
+- `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
+  skills; it used to serve every installed skill.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
   pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
   fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
@@ -37,6 +54,16 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
+- The Claude Code plugin tag workflow checks the published tree out into its own directory, so
+  it can still run the release scripts and create the tag.
+- The README says the mux and cmux orchestrators skip permission checks and that the plugin's AWS
+  MCP server is session-wide; the plugin release PR says to tag by hand.
+- Claude Code agents and benchmarks use the Claude Code model ID (`claude-sonnet-5-5`), and the
+  plugin ships `NOTICE.txt` with README links pinned to its release.
+- `update --no-telemetry` now keeps a project opted out on later updates, and the new
+  `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
+- The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
+  agents no longer carry an `mcpServers` block that Claude Code ignores.
 - `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
   such as a `telemetry:` opt-out. It now changes only the named key.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,

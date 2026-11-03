@@ -1,6 +1,6 @@
 ---
 name: progress-tracking
-description: Validates feature plans, tracks implementation progress, and verifies code-level requirements traceability. Use in three modes — initial (pre-implementation), progress (during), and final (post-implementation with code verification).
+description: Validates feature plans, tracks implementation progress, and verifies code-level requirements traceability. Use when validating a feature plan, tracking its progress, or checking requirements against code.
 version: 1.0.0
 tags: [skill, progress-tracking, implementation, traceability, validation]
 ---
