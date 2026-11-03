@@ -1090,3 +1090,13 @@ SOP_EDITS += [
      'Declarative policy shipped with the CLI\\n│       ├── config.yml            Default configuration\\n│       ├── severity-schema.yml   Finding severities\\n│       └── scope-table.yml       Change tiers',
      'Declarative policy; the CLI embeds config.yml only\\n│       ├── config.yml            Default configuration\\n│       ├── severity-schema.yml   Finding severities\\n│       ├── scope-table.yml       Change tiers\\n│       └── sop-orchestration.yml Gated SOP list, repository lint input'),
 ]
+
+# verify-run --max-fix-cycles: append-style edits on top of the verify-run rows above.
+SOP_EDITS += [
+    ("exit codes: 64 pinned cap",
+     "argument problems only (including a --root that is not a directory)",
+     "argument problems only (including a --root that is not a directory, or a --max-fix-cycles value that is not a non-negative integer)"),
+    ("exit codes: 65 pinned cap",
+     "an inconsistent session record, or a run still in progress without --allow-running",
+     "an inconsistent session record, a recorded max_fix_cycles above a pinned --max-fix-cycles (reason CAP_RAISED), or a run still in progress without --allow-running"),
+]

@@ -140,6 +140,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             session,
             root,
             allow_running,
+            max_fix_cycles,
         } => {
             // Not `resolve_cwd*`: those send a telemetry event on failure, and
             // this read-only check sends nothing.
@@ -148,6 +149,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
                 root.as_deref(),
                 &session,
                 allow_running,
+                max_fix_cycles,
                 json,
                 color,
             )
