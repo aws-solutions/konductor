@@ -18,40 +18,40 @@ MAP_PATH = Path("cli/gate-config/sop-orchestration.yml")
 SOP_DIR = Path("agent-sops")
 SOP_SUFFIX = ".sop.md"
 GATE_KINDS = {"approval", "check-threshold", "loop-exit"}
-TOP_LEVEL_KEYS = {"version", "marker", "meaning", "gated", "not_gated"}
+TOP_LEVEL_KEYS = {"version", "marker", "meaning", "gate_note", "gated", "not_gated"}
 EX_SETUP = 3
 EX_USAGE = 64
-GATE_NOTE = (
-    "Recorded gates are the stops this SOP names; where the run keeps a "
-    "session file, record their gate facts there."
-)
 
 
 class SetupError(Exception):
     """A tool the check needs is missing; not a repository defect."""
 
 
-def marker_is_placed(text, marker, meaning):
-    """True when the marker and meaning lines form their own paragraph
-    right after the `# ` title, the gate note is the next paragraph, and the
-    marker is nowhere in `## Overview`. The installer reads the first Overview paragraph as the
-    skill description, so the marker must stay out of it."""
+def placement_problem(text, marker, meaning, gate_note):
+    """Return why the marker block is misplaced, or None when it is right.
+
+    The marker and meaning lines must form their own paragraph right after
+    the `# ` title, the gate note must be the next paragraph, and the marker
+    must be nowhere in `## Overview`. The installer reads the first Overview
+    paragraph as the skill description, so the marker must stay out of it."""
     lines = text.splitlines()
     filled = [i for i, line in enumerate(lines) if line.strip()]
     if len(filled) < 2 or not lines[filled[0]].startswith("# "):
-        return False
+        return "the title line is missing"
     at = filled[1]
     if lines[at].rstrip() != marker:
-        return False
+        return "the marker line is not the first line after the title"
     if at + 1 >= len(lines) or lines[at + 1].rstrip() != meaning:
-        return False
+        return "the meaning line does not follow the marker"
     if at + 2 >= len(lines) or lines[at + 2].strip():
-        return False
-    if at + 3 >= len(lines) or lines[at + 3].rstrip() != GATE_NOTE:
-        return False
+        return "a blank line must follow the meaning line"
+    if at + 3 >= len(lines) or lines[at + 3].rstrip() != gate_note:
+        return f"the gate note is missing or wrong (expected: '{gate_note}')"
     if at + 4 < len(lines) and lines[at + 4].strip():
-        return False
-    return marker not in overview_text(lines)
+        return "the gate note must be its own paragraph"
+    if marker in overview_text(lines):
+        return "the marker appears inside ## Overview"
+    return None
 
 
 def overview_text(lines):
@@ -73,7 +73,11 @@ def check_map_shape(data):
         errors.append(f"bad-entry: missing top-level key '{key}'")
     for key in sorted(data.keys() - TOP_LEVEL_KEYS):
         errors.append(f"bad-entry: unknown top-level key '{key}'")
-    for key in ("marker", "meaning"):
+    if "version" in data:
+        version = data["version"]
+        if isinstance(version, bool) or not isinstance(version, int) or version != 1:
+            errors.append("bad-entry: 'version' must be 1")
+    for key in ("marker", "meaning", "gate_note"):
         value = data.get(key)
         if key in data and not (isinstance(value, str) and value.strip()):
             errors.append(f"bad-entry: '{key}' must be a non-empty string")
@@ -88,12 +92,7 @@ def check_map_shape(data):
     for name, entry in string_keyed(data.get("gated")).items():
         gates = entry.get("gates") if isinstance(entry, dict) else None
         basis = entry.get("basis") if isinstance(entry, dict) else None
-        if not (
-            isinstance(gates, list)
-            and gates
-            and set(gates) <= GATE_KINDS
-            and len(set(gates)) == len(gates)
-        ):
+        if not gates_are_valid(gates):
             errors.append(
                 f"bad-entry: gated '{name}' needs a non-empty 'gates' list of "
                 f"distinct values from {', '.join(sorted(GATE_KINDS))}"
@@ -106,6 +105,17 @@ def check_map_shape(data):
     return errors
 
 
+def gates_are_valid(gates):
+    """True for a non-empty list of distinct strings, each a known gate kind."""
+    return (
+        isinstance(gates, list)
+        and bool(gates)
+        and all(isinstance(gate, str) for gate in gates)
+        and set(gates) <= GATE_KINDS
+        and len(set(gates)) == len(gates)
+    )
+
+
 def string_keyed(section):
     """The entries of a gated or not_gated mapping whose SOP name is a string."""
     if not isinstance(section, dict):
@@ -113,7 +123,7 @@ def string_keyed(section):
     return {name: entry for name, entry in section.items() if isinstance(name, str)}
 
 
-def check_agreement(root, gated, not_gated, marker, meaning):
+def check_agreement(root, gated, not_gated, marker, meaning, gate_note):
     errors = []
     sop_files = {p.name[: -len(SOP_SUFFIX)]: p for p in (root / SOP_DIR).glob("*" + SOP_SUFFIX)}
     for name in sorted(gated.keys() & not_gated.keys()):
@@ -130,10 +140,11 @@ def check_agreement(root, gated, not_gated, marker, meaning):
             errors.append(f"bad-entry: {SOP_DIR / (name + SOP_SUFFIX)}: {first_line(exc)}")
     for name in sorted(texts.keys() & gated.keys()):
         text = texts[name]
-        if not marker_is_placed(text, marker, meaning):
+        problem = placement_problem(text, marker, meaning, gate_note)
+        if problem:
             errors.append(
                 f"missing-marker: gated '{name}' must have '{marker}' followed by "
-                f"'{meaning}' as its own paragraph right after the title, above ## Overview"
+                f"'{meaning}' as its own paragraph right after the title, above ## Overview: {problem}"
             )
         if text.count(marker) > 1:
             errors.append(f"unexpected-marker: gated '{name}' has the marker more than once")
@@ -226,8 +237,11 @@ def check(root):
     not_gated = string_keyed(data.get("not_gated"))
     marker = data.get("marker")
     meaning = data.get("meaning")
-    if all(isinstance(v, str) and v.strip() for v in (marker, meaning)):
-        errors += check_agreement(root, gated, not_gated, marker.strip(), meaning.strip())
+    gate_note = data.get("gate_note")
+    if all(isinstance(v, str) and v.strip() for v in (marker, meaning, gate_note)):
+        errors += check_agreement(
+            root, gated, not_gated, marker.strip(), meaning.strip(), gate_note.strip()
+        )
     return errors
 
 
