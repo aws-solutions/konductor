@@ -478,18 +478,13 @@ pub fn set_config_value(
     // in a string field that `load_config` accepts.
     let serialized = serde_yaml::to_string(&mapping)
         .map_err(|source| ConfigError::SerializeFailed { source })?;
-    let raw_project: Option<RawConfig> = serde_yaml::from_str(&serialized).map_err(|source| {
-        // Report line and column against the file on disk, not the
-        // re-serialized buffer. If the original parses (the bad value
-        // came from this set), fall back to the buffer's error.
-        let source = serde_yaml::from_str::<Option<RawConfig>>(&original_text)
-            .err()
-            .unwrap_or(source);
-        ConfigError::ProjectConfigMalformed {
-            path: project_config_path.clone(),
-            source,
-        }
-    })?;
+    let raw_project: Option<RawConfig> =
+        serde_yaml::from_str(&serialized).map_err(|buffer_error| {
+            ConfigError::ProjectConfigMalformed {
+                path: project_config_path.clone(),
+                source: reported_parse_error(&original_text, key, buffer_error),
+            }
+        })?;
     let preset = load_preset_defaults()?;
     let effective = validate(&merge(preset, raw_project.unwrap_or_default()))?;
 
@@ -505,6 +500,60 @@ pub fn set_config_value(
     )?;
 
     Ok(effective)
+}
+
+/// Picks the parse error to show when the edited buffer fails to
+/// re-parse, so its line refers to the file on disk. The original file's
+/// own error is used when it is a different fault than the key being set.
+/// Otherwise the buffer's error is used, with its line looked up from the
+/// failing field's key in the original text.
+fn reported_parse_error(
+    original_text: &str,
+    key: &str,
+    buffer_error: serde_yaml::Error,
+) -> serde_yaml::Error {
+    let lines: Vec<&str> = original_text.lines().collect();
+    if let Some(original_error) = serde_yaml::from_str::<Option<RawConfig>>(original_text).err() {
+        let fault_is_the_key_being_set = original_error
+            .location()
+            .and_then(|location| top_level_key_owning_line(&lines, location.line()))
+            .is_some_and(|owner| owner == key);
+        if !fault_is_the_key_being_set {
+            return original_error;
+        }
+    }
+    let message = buffer_error.to_string();
+    let message = message
+        .rsplit_once(" at line ")
+        .map_or(message.as_str(), |(head, _)| head);
+    let failing_field = message.split_once(": ").map(|(field, _)| field);
+    let line = failing_field
+        .filter(|field| _CONFIG_FIELDS.contains(field))
+        .and_then(|field| {
+            lines
+                .iter()
+                .position(|text| top_level_key(text) == Some(field))
+        });
+    match line {
+        Some(index) => serde::de::Error::custom(format!("{message} at line {}", index + 1)),
+        None => buffer_error,
+    }
+}
+
+/// Key of the top-level mapping entry that the 1-based `line` belongs to.
+fn top_level_key_owning_line<'a>(lines: &[&'a str], line: usize) -> Option<&'a str> {
+    lines
+        .iter()
+        .take(line)
+        .rev()
+        .find_map(|text| top_level_key(text))
+}
+
+fn top_level_key(line: &str) -> Option<&str> {
+    if line.starts_with(|c: char| c.is_whitespace() || c == '#' || c == '-') {
+        return None;
+    }
+    line.split_once(':').map(|(key, _)| key.trim_end())
 }
 
 /// Parses `value` against `key`'s expected type and returns it as the
@@ -1243,6 +1292,55 @@ mod tests {
         assert_eq!(fs::read(&config_path).unwrap(), before);
 
         set_config_value(&root, "version", "1").expect("set version 1 must repair the file");
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_reports_the_remaining_broken_field_when_the_set_repairs_another() {
+        let (root, config_path) =
+            project_with_config("set-two-broken", "version: abc\ntier: [1]\n");
+        let before = fs::read(&config_path).unwrap();
+
+        let err = set_config_value(&root, "version", "1")
+            .expect_err("tier is still broken after the set");
+        match &err {
+            ConfigError::ProjectConfigMalformed { source, .. } => {
+                assert!(source.to_string().contains("tier"), "{source}");
+                assert!(source.to_string().ends_with("at line 2"), "{source}");
+            }
+            other => panic!("unexpected error {other:?}"),
+        }
+        assert_eq!(fs::read(&config_path).unwrap(), before);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_reports_the_buffer_error_at_the_failing_key_line_of_the_original() {
+        let (root, config_path) = project_with_config(
+            "set-buffer-error-line",
+            "# note\nversion: abc\n\n\ntier: [1]\n",
+        );
+        let before = fs::read(&config_path).unwrap();
+
+        let err = set_config_value(&root, "version", "1").expect_err("tier is broken");
+        match &err {
+            ConfigError::ProjectConfigMalformed { source, .. } => {
+                assert!(source.to_string().contains("tier"), "{source}");
+                assert!(source.to_string().ends_with("at line 5"), "{source}");
+            }
+            other => panic!("unexpected error {other:?}"),
+        }
+        assert_eq!(fs::read(&config_path).unwrap(), before);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_repairs_a_file_broken_only_in_the_key_being_set() {
+        let (root, config_path) = project_with_config("set-repairs-only", "version: abc\n");
+
+        set_config_value(&root, "version", "1").expect("the set repairs the only fault");
+
+        assert_eq!(read_mapping(&config_path)["version"].as_u64(), Some(1));
         fs::remove_dir_all(&root).ok();
     }
 
