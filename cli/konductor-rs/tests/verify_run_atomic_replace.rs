@@ -2,35 +2,31 @@
 //
 // verify_run_atomic_replace.rs: a writer thread replaces a k-full-sdlc session
 // file by temp-file-and-rename while the real binary's `verify-run` reads it
-// in a loop. Every read must see one whole file: a passing session (exit 0)
-// or one missing a gate fact (exit 65), never a torn file (exit 64).
+// in a loop. Every read must match, exit code and stdout, the verdict for one
+// of the two whole files. A torn read shows up as any other output, usually
+// a nonzero exit with different reasons. Failure messages include the child's
+// stderr, which carries the cause when the run fails before printing a verdict.
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
 const SESSIONS: &str = ".konductor/sessions";
 const SESSION: &str = ".konductor/sessions/k-full-sdlc-20250101T000000Z-abcd.yml";
-const MAX_READS: usize = 200;
-const MAX_WALL: Duration = Duration::from_secs(10);
+/// verify-run refuses, rather than reads, a file replaced between its checks
+/// and its open. That refusal is fail-closed and never a partial read.
+const REPLACED_WHILE_OPENING: &str = "session file changed while it was opened";
+const MIN_READS: usize = 100;
+const MIN_WRITES: u64 = 50;
+const SAMPLE_DEADLINE: Duration = Duration::from_secs(60);
+const CHILD_TIMEOUT: Duration = Duration::from_secs(30);
+const WRITE_PAUSE: Duration = Duration::from_micros(200);
 
-const PHASES: [&str; 12] = [
-    "elicitation",
-    "codebase-analysis",
-    "requirements",
-    "design",
-    "design-review",
-    "feature-splitting",
-    "specs",
-    "implementation",
-    "code-review",
-    "testing",
-    "documentation",
-    "final-summary",
-];
+static SCRATCH_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 const EVIDENCE: [&str; 5] = [
     "out/design/principal-engineer-review.md",
@@ -40,77 +36,56 @@ const EVIDENCE: [&str; 5] = [
     "out/login/testing/test-coverage-review-report.md",
 ];
 
-/// Session text that passes, or with `gate_code-review_result` left out so
-/// it fails with GATE_MISSING.
-fn session_text(with_code_review_result: bool) -> String {
-    let phases: String = PHASES
-        .iter()
-        .map(|id| {
-            format!("  {id}: {{name: n, status: COMPLETED, skip_reason: null, summary: done}}\n")
-        })
-        .collect();
-    let code_review_result = if with_code_review_result {
-        "      gate_code-review_result: approved\n"
-    } else {
-        ""
-    };
-    format!(
-        "run:
-  schema_version: 1
-  project_signature: sig
-  run_status: completed
-  counters: {{}}
-  data:
-    max_fix_cycles: 2
-    gate_design-review_result: none
-    gate_design-review_evidence: {}
-    gate_design-review_checker: k-architect
-    gate_feature-splitting_result: approved
-    gate_feature-splitting_evidence: {}
-    gate_feature-splitting_checker: user
-phases:
-{phases}features:
-  login:
-    counters: {{fix_cycles_used: 0}}
-    data:
-      gate_specs_result: approved
-      gate_specs_evidence: {}
-      gate_specs_checker: user
-{code_review_result}      gate_code-review_evidence: {}
-      gate_code-review_checker: user
-      gate_testing_result: none
-      gate_testing_evidence: {}
-      gate_testing_checker: k-quality-assurance
-",
-        EVIDENCE[0], EVIDENCE[1], EVIDENCE[2], EVIDENCE[3], EVIDENCE[4]
-    )
+/// The two whole-file sessions, shared with the in-process truncation sweep
+/// in `src/cli/verify_run.rs`. The second one leaves out
+/// `gate_code-review_result`, so it fails with GATE_MISSING.
+const PASSING_SESSION: &str = include_str!("fixtures/verify_run_sessions/passing.yml");
+const GATE_MISSING_SESSION: &str = include_str!("fixtures/verify_run_sessions/gate_missing.yml");
+
+/// A scratch project and `HOME`, canonicalized so macOS's `/var` to
+/// `/private/var` link never splits the root check. The tree is removed on
+/// drop, except while a test is failing, so the failing bytes stay on disk.
+struct ScratchProject {
+    base: PathBuf,
+    root: PathBuf,
+    home: PathBuf,
 }
 
-/// Builds a scratch project and `HOME`, canonicalized so macOS's `/var` to
-/// `/private/var` link never splits the root check. Returns (base, root, home).
-fn scratch_project() -> (PathBuf, PathBuf, PathBuf) {
-    let base = std::env::temp_dir().join(format!(
-        "konductor-verify-run-atomic-{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
-    let root = base.join("project");
-    let home = base.join("home");
-    std::fs::create_dir_all(root.join(SESSIONS).join(".tmp")).unwrap();
-    std::fs::create_dir_all(&home).unwrap();
-    for evidence in EVIDENCE {
-        let path = root.join(evidence);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(path, "report\n").unwrap();
+impl ScratchProject {
+    fn new(name: &str) -> Self {
+        let base = std::env::temp_dir().join(format!(
+            "konductor-verify-run-atomic-{name}-{}-{}",
+            std::process::id(),
+            SCRATCH_COUNTER.fetch_add(1, Ordering::Relaxed)
+        ));
+        let root = base.join("project");
+        let home = base.join("home");
+        std::fs::create_dir_all(root.join(SESSIONS).join(".tmp")).unwrap();
+        std::fs::create_dir_all(&home).unwrap();
+        for evidence in EVIDENCE {
+            let path = root.join(evidence);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, "report\n").unwrap();
+        }
+        ScratchProject {
+            base: base.canonicalize().unwrap(),
+            root: root.canonicalize().unwrap(),
+            home: home.canonicalize().unwrap(),
+        }
     }
-    (
-        base.canonicalize().unwrap(),
-        root.canonicalize().unwrap(),
-        home.canonicalize().unwrap(),
-    )
+}
+
+impl Drop for ScratchProject {
+    fn drop(&mut self) {
+        if thread::panicking() {
+            eprintln!(
+                "scratch project kept for inspection: {}",
+                self.base.display()
+            );
+        } else {
+            let _ = std::fs::remove_dir_all(&self.base);
+        }
+    }
 }
 
 /// Replaces the session file the way the session-state skill requires: write
@@ -121,92 +96,208 @@ fn replace_atomically(root: &Path, text: &str) {
     std::fs::rename(&temp, root.join(SESSION)).unwrap();
 }
 
-#[derive(Debug, PartialEq)]
-enum Read {
-    Passing,
-    GateMissing,
-    Other,
+/// Exit code and stdout of one `verify-run` on the session file.
+type Verdict = (Option<i32>, String);
+
+/// One run: the verdict that is compared, and stderr, which is only shown.
+struct Observed {
+    verdict: Verdict,
+    stderr: String,
 }
 
-fn classify(output: &Output) -> Read {
-    let out = String::from_utf8_lossy(&output.stdout);
-    let has = |code: &str| out.lines().any(|l| l.starts_with(&format!("{code}: ")));
-    match output.status.code() {
-        Some(0) if has("PASSED") => Read::Passing,
-        Some(65) if has("GATE_MISSING") => Read::GateMissing,
-        _ => Read::Other,
+impl std::fmt::Display for Observed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "verdict={:?} stderr={:?}", self.verdict, self.stderr)
     }
+}
+
+fn read_pipe(pipe: Option<impl Read>) -> String {
+    let mut text = String::new();
+    if let Some(mut pipe) = pipe {
+        let _ = pipe.read_to_string(&mut text);
+    }
+    text
+}
+
+fn verify_run(project: &ScratchProject, sink: &telemetry_test_sink::TelemetrySink) -> Observed {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_konductor"));
+    command
+        .args(["verify-run", "--session", SESSION])
+        .current_dir(&project.root)
+        .env("HOME", &project.home)
+        .env_remove("KONDUCTOR_LOG")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    let mut child = command.spawn().expect("failed to spawn konductor");
+    let started = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().expect("failed to poll konductor") {
+            break status;
+        }
+        if started.elapsed() > CHILD_TIMEOUT {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!(
+                "konductor verify-run did not exit within {CHILD_TIMEOUT:?}; stderr: {}",
+                read_pipe(child.stderr.take())
+            );
+        }
+        thread::sleep(Duration::from_millis(2));
+    };
+    Observed {
+        verdict: (status.code(), read_pipe(child.stdout.take())),
+        stderr: read_pipe(child.stderr.take()),
+    }
+}
+
+/// Writes `text` and runs `verify-run` on it.
+fn verdict_of(
+    project: &ScratchProject,
+    sink: &telemetry_test_sink::TelemetrySink,
+    text: &str,
+) -> Observed {
+    replace_atomically(&project.root, text);
+    verify_run(project, sink)
 }
 
 #[test]
 fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
-    let (base, root, home) = scratch_project();
+    let project = ScratchProject::new("never_sees_a_partial_session");
     let sink = telemetry_test_sink::TelemetrySink::start();
-    let passing = session_text(true);
-    let gate_missing = session_text(false);
-    replace_atomically(&root, &passing);
+    let gate_missing = verdict_of(&project, &sink, GATE_MISSING_SESSION);
+    let passing = verdict_of(&project, &sink, PASSING_SESSION);
+    assert_eq!(passing.verdict.0, Some(0), "{passing}");
+    assert_ne!(gate_missing.verdict.0, Some(0), "{gate_missing}");
+    assert!(
+        gate_missing.verdict.1.contains("GATE_MISSING: "),
+        "{gate_missing}"
+    );
 
     let stop = Arc::new(AtomicBool::new(false));
     let writes = Arc::new(AtomicU64::new(0));
     let writer = {
-        let (stop, writes, root) = (Arc::clone(&stop), Arc::clone(&writes), root.clone());
+        let (stop, writes, root) = (Arc::clone(&stop), Arc::clone(&writes), project.root.clone());
         thread::spawn(move || {
             let mut next_is_passing = false;
             while !stop.load(Ordering::Relaxed) {
                 let text = if next_is_passing {
-                    &passing
+                    PASSING_SESSION
                 } else {
-                    &gate_missing
+                    GATE_MISSING_SESSION
                 };
                 replace_atomically(&root, text);
                 next_is_passing = !next_is_passing;
                 writes.fetch_add(1, Ordering::Relaxed);
+                thread::sleep(WRITE_PAUSE);
             }
         })
     };
 
-    let (mut passed, mut gate_missing_seen, mut other) = (0usize, 0usize, Vec::new());
+    let (mut passed, mut gate_missing_seen, mut refused, mut other) =
+        (0usize, 0usize, 0usize, Vec::new());
     let started = Instant::now();
     let mut reads = 0usize;
-    while reads < MAX_READS && started.elapsed() < MAX_WALL {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_konductor"));
-        command
-            .args(["verify-run", "--session", SESSION])
-            .current_dir(&root)
-            .env("HOME", &home)
-            .env_remove("KONDUCTOR_LOG");
-        for var in sink.env_vars() {
-            command.env(var.name, &var.value);
-        }
-        let output = command.output().expect("failed to spawn konductor");
-        match classify(&output) {
-            Read::Passing => passed += 1,
-            Read::GateMissing => gate_missing_seen += 1,
-            Read::Other => other.push(format!(
-                "exit {:?}\nstdout: {}\nstderr: {}",
-                output.status.code(),
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            )),
+    while started.elapsed() < SAMPLE_DEADLINE {
+        let observed = verify_run(&project, &sink);
+        if observed.verdict == passing.verdict {
+            passed += 1;
+        } else if observed.verdict == gate_missing.verdict {
+            gate_missing_seen += 1;
+        } else if observed.stderr.contains(REPLACED_WHILE_OPENING) {
+            refused += 1;
+        } else {
+            other.push(observed);
+            break;
         }
         reads += 1;
+        if reads >= MIN_READS && passed > 0 && gate_missing_seen > 0 {
+            break;
+        }
     }
     stop.store(true, Ordering::Relaxed);
     writer.join().expect("writer thread panicked");
+    let write_count = writes.load(Ordering::Relaxed);
 
     eprintln!(
         "atomic replace: reads={reads} passing={passed} gate_missing={gate_missing_seen} \
-         other={} writes={} elapsed_ms={}",
+         refused={refused} other={} writes={write_count} elapsed_ms={}",
         other.len(),
-        writes.load(Ordering::Relaxed),
         started.elapsed().as_millis()
     );
-    let _ = std::fs::remove_dir_all(&base);
 
-    assert!(other.is_empty(), "partial or unexpected reads: {other:#?}");
-    assert!(passed > 0, "no read saw the passing session");
     assert!(
-        gate_missing_seen > 0,
-        "no read saw the GATE_MISSING session"
+        other.is_empty(),
+        "partial or unexpected read: {}",
+        other
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("; ")
     );
+    assert!(
+        write_count >= MIN_WRITES,
+        "writer replaced the file only {write_count} times (need {MIN_WRITES}); \
+         the run did not exercise concurrent replacement"
+    );
+    assert!(
+        passed > 0 && gate_missing_seen > 0,
+        "after {reads} reads in {:?} and {write_count} writes, saw passing={passed} \
+         gate_missing={gate_missing_seen}; both states are needed for the run to mean anything",
+        started.elapsed()
+    );
+}
+
+/// The three cuts of one session, counted from its end: mid-line, mid-value,
+/// and just before the final newline.
+fn cut_points(text: &str) -> [usize; 3] {
+    let last_line = text
+        .rfind("      gate_testing_result")
+        .expect("fixture must end with a gate_testing_result line");
+    [
+        last_line + "      gate_testing_re".len(),
+        text.len() - "ne\n".len(),
+        text.len() - 1,
+    ]
+}
+
+/// Ties the oracle above to the real binary with three cuts of each whole
+/// session. The per-byte sweep over both sessions runs in-process in
+/// `src/cli/verify_run.rs`.
+#[test]
+fn truncated_sessions_differ_from_the_whole_file_except_before_the_final_newline() {
+    let project = ScratchProject::new("truncated_sessions");
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let texts = [PASSING_SESSION, GATE_MISSING_SESSION];
+    let baselines: Vec<Observed> = texts
+        .iter()
+        .map(|text| verdict_of(&project, &sink, text))
+        .collect();
+    assert_eq!(baselines[0].verdict.0, Some(0), "{}", baselines[0]);
+    assert_ne!(baselines[1].verdict.0, Some(0), "{}", baselines[1]);
+    assert_ne!(baselines[0].verdict, baselines[1].verdict);
+
+    for (index, text) in texts.iter().enumerate() {
+        let other = 1 - index;
+        for cut in cut_points(text) {
+            let observed = verdict_of(&project, &sink, &text[..cut]);
+            if cut == text.len() - 1 {
+                assert_eq!(
+                    observed.verdict, baselines[index].verdict,
+                    "text {index} cut at byte {cut}: {observed}"
+                );
+            } else {
+                assert_ne!(
+                    observed.verdict, baselines[index].verdict,
+                    "text {index} cut at byte {cut}: {observed}"
+                );
+            }
+            assert_ne!(
+                observed.verdict, baselines[other].verdict,
+                "text {index} cut at byte {cut} matches the other session: {observed}"
+            );
+        }
+    }
 }

@@ -69,7 +69,7 @@ Alongside the skill catalog, this server can also serve agent SOPs
 in precedence order) points the server at one or more SOP directories;
 unlike `--skills-dir` there is no default — if the flag is omitted, the
 server serves no prompts at all. An optional `--agent-sop-filter`
-narrows the set the same way `--skill-name-filter` does for skills,
+narrows the set with the same glob matching `--skill-name-filter` uses,
 matching case-insensitively against each SOP's name (its filename with
 the `.sop.md` suffix stripped).
 
@@ -86,18 +86,30 @@ passed, `prompts/list` simply returns an empty list and every
 | Flag | Repeatable | Default | Purpose |
 | --- | --- | --- | --- |
 | `--skills-dir <DIR>` | yes | installed root (`~/.konductor/skills/`) + `<cwd>/.konductor/skills/` | Directory to scan for skills. First occurrence wins on a name collision. |
-| `--skill-name-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each skill's frontmatter `name`; skills matching none are excluded from the index. |
+| `--skill-name-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each skill's frontmatter `name`. Only skills listed as konductor-installed in the `manifest` file next to the skills dir (`<target>/.konductor/manifest` for `<target>/.konductor/skills`; v2 `strategies[].files[].path`, or v1 `files[].path`) and matching none are excluded; other skills under that root always pass. A manifest that exists but can't be read or parsed turns the filter off for that root and logs a `skill-lookup-mcp: WARN`. |
 | `--agent-sop-paths <DIR>` | yes | none | Directory to scan for agent SOPs (`<name>.sop.md` files), served as MCP prompts. No default — omitting the flag means no prompts are served. |
-| `--agent-sop-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each SOP's name; mirrors `--skill-name-filter`'s semantics for prompts. |
+| `--agent-sop-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each SOP's name; SOPs matching none are excluded. Unlike `--skill-name-filter`, it does not consult the install manifest. |
 | `--telemetry {on\|off}` | no | `on` | Enables or disables this server process's own usage-analytics telemetry. When `off`, the periodic flush task is never started. |
+| `--install-info <PATH>` | no | none | Path to an install target's `.konductor/install-info.json`. A leading `~/` is expanded and a relative path is resolved against the working directory, as for `--skills-dir`. Unless the file holds a valid record at startup, telemetry is off, as with `--telemetry off`. `konductor install`/`update` pass this for every Kiro CLI agent whose installed server lists the flag in `--help`; older servers get `--telemetry off` when the target is opted out. |
 
 ## Telemetry
 
 This server reports anonymous, aggregated MCP tool-call counts on a
 periodic flush cycle (see `lib/skill-lookup-core/src/telemetry.rs`).
-Two independent opt-outs are available, either of which is sufficient:
+Three independent opt-outs are available, any of which is sufficient:
 
 - `--telemetry off` disables it for this server process only.
+- `--install-info <PATH>` disables it unless that file holds a valid
+  record at startup. Missing, unreadable, malformed, or a
+  `schema_version` this server does not know all count as opted out,
+  the same rule the CLI applies. The CLI points every Kiro CLI agent
+  at its target's record when the installed server supports the flag
+  (`.konductor/install-info.json` for a project, `~/.konductor/install-info.json`
+  for a global install),
+  so `konductor update --no-telemetry` and `--enable-telemetry` reach
+  every such harness installed there. Server binaries from v1.2.0 and
+  earlier reject the flag, so for those the CLI keeps passing
+  `--telemetry off` per harness.
 - `KONDUCTOR_TELEMETRY=off` disables it fleet-wide — the same
   environment variable and value `cli/konductor-rs` recognizes for its
   own opt-out — and takes effect regardless of the `--telemetry` flag's

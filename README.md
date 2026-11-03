@@ -79,7 +79,9 @@ at the end. Piping a script to `bash` runs code you haven't read; to check it fi
 [what the install script does](#what-the-install-script-does) below.
 Using the Claude Code plugin marketplace instead? Run `/plugin marketplace add aws-solutions/konductor`,
 then `/plugin install konductor@konductor`
-([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
+([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)). Plugin agents and SOPs use
+the `konductor:` prefix. Either Claude Code install needs agent-teams mode and tool permissions
+([setup](docs/user-guide/tasks/install-claude-code.md#2-enable-agent-teams-mode)).
 Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 
 **2. Start the orchestrator:**
@@ -87,6 +89,7 @@ Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 ```bash
 kiro-cli chat --agent konductor     # Kiro CLI
 claude --agent konductor            # Claude Code
+claude --agent konductor:konductor  # Claude Code plugin
 ```
 
 **3. Ask for something real:**
@@ -248,8 +251,17 @@ when a quality gate fails (up to two fix cycles).
 | `k-browser` | Browser automation with Playwright: navigation, forms, screenshots, E2E runs |
 | `k-media-analyzer` | PDFs, images and diagrams that need more than text extraction |
 
-Every agent runs `claude-sonnet-5.5`. Full details, including each agent's tools, are in the
+Every agent runs Claude Sonnet 5.5 (`claude-sonnet-5.5` on Kiro, `claude-sonnet-5-5` on Claude
+Code). Full details, including each agent's tools, are in the
 [agents reference](docs/user-guide/agents.md).
+
+`konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
+checks off (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so a
+dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. Use them
+only in a workspace and with AWS credentials you are willing to let an agent act on. With
+`konductor`, Claude Code specialists follow your `~/.claude/settings.json`; on Kiro CLI,
+`k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
+See [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).
 
 ---
 
@@ -333,8 +345,8 @@ Browse them all in the [skills catalog](docs/user-guide/skills.md).
 
 ### 📜 19 SOPs
 
-SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI or
-`/sop-<name>` in Claude Code.
+SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI,
+`/sop-<name>` in Claude Code, or `/konductor:sop-<name>` from the Claude Code plugin.
 
 | Plan & verify | Design | Build & review | Test |
 | --- | --- | --- | --- |
@@ -351,6 +363,7 @@ Each one is explained, with a flowchart, in [SOP workflows](docs/user-guide/sop-
 
 Agents with the `persistent-memory` skill keep a small scratchpad across sessions, with no setup.
 The directory is created on first write and added to `.gitignore`.
+Agents treat your own entries as instructions only while `.konductor/memory/` is untracked by git; committed memory is read as content.
 
 | File | Holds |
 | --- | --- |
@@ -361,7 +374,8 @@ Tune the size limits and an allowlist of external domains with an optional confi
 rejects any write that breaks the rules and tells you why; nothing is dropped silently.
 
 ```bash
-mkdir -p .konductor && cp skills/persistent-memory/memory-config.json.template .konductor/memory-config.json
+mkdir -p .konductor && curl -fsSL https://raw.githubusercontent.com/aws-solutions/konductor/main/skills/persistent-memory/memory-config.json.template \
+  -o .konductor/memory-config.json
 ```
 
 ### 🔌 Integrations
@@ -376,6 +390,11 @@ where knowledge tools are auto-approved and API tools ask first. See
 The [AWS Agent Toolkit](https://github.com/aws/agent-toolkit-for-aws) also offers an OAuth
 connection, an AWS-managed plugin and standalone skills.
 
+In the Claude Code plugin, `aws-mcp` is declared plugin-wide in `.mcp.json`, so while the plugin is
+enabled its tools, AWS API tools included, are available in every Claude Code session, not only
+to those two agents. The IAM condition keys above apply to all of them. Without `uvx` the server
+shows as failed in `/mcp`. Disable it there (`plugin:konductor:aws-mcp`) when you don't need it.
+
 Everything else is bring-your-own:
 
 - **Browser automation:** `k-browser` uses a [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp)
@@ -386,6 +405,10 @@ Everything else is bring-your-own:
 ---
 
 ## Project layout
+
+The [source repository](https://github.com/aws-solutions/konductor) has the layout below. The Claude
+Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/telemetry-schema.json`, its manifests,
+the README, `LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/
@@ -456,7 +479,11 @@ shares the machine identifier in `$HOME/.konductor/telemetry.json` with the CLI.
 | The Claude Code plugin | Turn off the plugin's `telemetry_enabled` option. The variable, `config.yml` and machine settings above also apply; `--no-telemetry` doesn't |
 
 - `--no-telemetry` also removes an opt-in record left by an earlier install, and stops a global
-  install's hooks from reporting in that project.
+  install's hooks from reporting in that project. The global install's skill-lookup server still
+  follows the record in `$HOME/.konductor`.
+- To opt a project back in, run `konductor update --enable-telemetry`. It recreates the
+  project-wide record. Skill-lookup servers launched with `--install-info` follow it at once;
+  another harness's telemetry hooks return on that harness's next `update`.
 - `telemetry.json` exists only after the first event is reported; a `--no-telemetry` install never
   creates it. Konductor never resets a consent value you set.
 - Reporting needs both the project and the machine setting to allow it. `konductor doctor` shows

@@ -40,7 +40,7 @@ Eight commands.
 | `konductor doctor` | Check the runtime, the installed content, the project config, and available updates |
 | `konductor init` | Create `.konductor/` and write a starter `config.yml` |
 | `konductor synth` | Parse `agents/`, `skills/`, and `agent-sops/` and write per-runtime output to `<source>/dist/` |
-| `konductor verify-run` | Check a SOP session file (`--session <path>`) against its gates and exit through the exit-code contract; reads only, writes nothing |
+| `konductor verify-run` | Check a SOP session file (`--session <path>`, optional `--root <dir>`) against its gates and exit through the exit-code contract; reads only, writes nothing |
 | `konductor metrics` | Show quality trends from recent runs |
 
 `update` and `uninstall` both accept `--target <dir>`, `--all`, and `--dry-run`, and share one
@@ -94,13 +94,15 @@ Accepted before or after a subcommand.
 | `install` | `--from <PATH>` | path | No | Install from a local repo root with already-synthed content instead of fetching a release. A maintainer path — the documented workflows all install from a release |
 | `install` | `--target <DIR>` | path | No | Destination. Defaults to `$HOME` |
 | `install` | `--link-bin` | flag | No | Symlink `konductor` into `$HOME/.local/bin` |
-| `install` | `--no-telemetry` | flag | No | Suppress telemetry for this invocation |
+| `install` | `--no-telemetry` | flag | No | Opt the whole target out of telemetry. Persists for later `update` runs and also stops the skill-lookup MCP server reporting |
 | `install` | `--use-github-token` | flag | No | Authenticate the release fetch with a GitHub token |
 | `update` | `--from <PATH>` | path | No | Source repo root. No default — pass it every time |
 | `update` | `--target <DIR>` | path | No | Which tracked install to update. Conflicts with `--all` |
 | `update` | `--all` | flag | No | Update every tracked install. Conflicts with `--target` |
 | `update` | `--dry-run` | flag | No | Report what would be overwritten, per path, flagging local edits. Writes nothing |
 | `update` | `--harness <NAME>` | enum | No | Narrow the selection to one harness |
+| `update` | `--no-telemetry` | flag | No | Opt the whole target out of telemetry, durably. Conflicts with `--enable-telemetry` |
+| `update` | `--enable-telemetry` | flag | No | Opt the whole target back in to telemetry, durably. Conflicts with `--no-telemetry` |
 | `uninstall` | `--target <DIR>` | path | No | Which tracked install to remove. Conflicts with `--all` |
 | `uninstall` | `--all` | flag | No | Remove every tracked install. Conflicts with `--target` |
 | `uninstall` | `--dry-run` | flag | No | Report what would be removed, per path, flagging local edits. Writes nothing |
@@ -156,7 +158,7 @@ layer falls through.
 
 ### Config error messages
 
-All exit `64`.
+All exit `64`, except under `verify-run`, where an invalid config exits `65` (see [Exit-code contract](#exit-code-contract)).
 
 | Message | Cause |
 | --- | --- |
@@ -173,18 +175,19 @@ An **empty** `config.yml` is not an error — every field falls through to its d
 | Code | Constant | Meaning |
 | --- | --- | --- |
 | `0` | — | Success |
-| `1` | `EXIT_HALTED` | A command ran correctly and reported failure — today that is `doctor` with one or more `failed`/`stale` checks |
-| `2` | — | **Reserved** for the run-engine's "unresolved CRITICAL gate" signal. The run-engine is not yet built, so nothing emits `2` today — and a bad invocation never will |
-| `6` | `EXIT_SUCCESS_WITH_WARNINGS` | Everything the command was responsible for succeeded, but something peripheral did not — today, `uninstall` when a tracked `--link-bin` symlink could not be removed |
-| `64` | `EXIT_USAGE_ERROR` | Usage error (`EX_USAGE`, BSD `sysexits.h`) — a bad flag, unknown command, missing argument, invalid value, or an invalid config |
-| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version |
+| `1` | `EXIT_HALTED` | A command ran correctly and reported failure — `doctor` with one or more `failed`/`stale` checks, or `verify-run` on a blocked phase |
+| `2` | `EXIT_CRITICAL_GATE` | Unresolved gating finding: an open finding at or above the effective threshold. Emitted by `verify-run`; a bad invocation never exits `2` |
+| `3` | `EXIT_BUDGET_EXCEEDED` | Budget exceeded. Emitted by `verify-run` when a feature's fix cycles go above the cap |
+| `6` | `EXIT_SUCCESS_WITH_WARNINGS` | Everything the command was responsible for succeeded, but something peripheral did not — today, `uninstall` when a tracked `--link-bin` symlink could not be removed, or `verify-run` when a run passed with a skipped gate phase |
+| `64` | `EXIT_USAGE_ERROR` | Usage error (`EX_USAGE`, BSD `sysexits.h`) — a bad flag, unknown command, missing argument, invalid value, or an invalid config. For `verify-run`, argument problems only (including a `--root` that is not a directory) |
+| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version. For `verify-run`, any content failure: an unusable session file (unreadable, not UTF-8, invalid YAML, a rejected tag or key, a symlink, outside `--root`, over 1 MiB) or config, a missing gate fact, an inconsistent session record, or a run still in progress without `--allow-running` |
 
 ### Why `64` and not `2`
 
 Most command-line tools use `2` for a usage error. Konductor uses `64` — the BSD `sysexits.h`
 `EX_USAGE` value — and reserves the low codes so a malformed invocation can never be confused with a
 substantive failure signal. If you script against the CLI, treat `64` as *you typed something wrong*
-rather than lumping every non-zero code together.
+(for `verify-run`, a bad argument; a bad session file exits `65`) rather than lumping every non-zero code together.
 
 `--help` and `--version` are not usage errors and exit `0`.
 
@@ -200,7 +203,8 @@ rather than lumping every non-zero code together.
 | Malformed config on load | Any command, against a broken `.konductor/config.yml` |
 | `init` without `--force` on an existing `.konductor/` | `konductor init` |
 | `synth` parse failure | A malformed `agents/*.agent-spec.json` |
-| Current directory cannot be resolved | — |
+| Current directory cannot be resolved (also under `verify-run`) | — |
+| `verify-run` with a `--root` that is missing or not a directory | `konductor verify-run --session s.yml --root nope` |
 
 ### Unknown-command suggestions
 
@@ -292,6 +296,10 @@ konductor synth: /path/to/agents/broken.agent-spec.json: invalid JSON: key must 
 
 - Skills and SOPs are parsed and validated before anything is written, so a bad skill name or a
   duplicate SOP fails the whole run rather than producing a partial tree.
+- On Kiro CLI v2 and v3, synth appends a `## Your skills` block to each agent's `prompt`. It lists
+  the agent's declared skills with a rule for when to load one. Skills whose description starts
+  "MUST USE for every" (today only `constraints`) are left out, since they claim every task.
+  Claude Code output is unchanged.
 
 ---
 
@@ -307,10 +315,11 @@ konductor/
 │   └── k-orchestrator-routing-rules.md
 ├── cli/                          The Konductor CLI
 │   ├── README.md                 CLI-specific docs
-│   └── gate-config/              Declarative policy shipped with the CLI
+│   └── gate-config/              Declarative policy; the CLI embeds config.yml only
 │       ├── config.yml            Default configuration
 │       ├── severity-schema.yml   Finding severities
-│       └── scope-table.yml       Change tiers
+│       ├── scope-table.yml       Change tiers
+│       └── sop-orchestration.yml Gated SOP list, repository lint input
 ├── mcp/                          MCP servers the CLI installs alongside the agents
 │   ├── lib/                      Shared crates: skill-lookup-core, telemetry-net
 │   └── servers/skill-lookup/     Serves skills to Kiro CLI sessions
@@ -370,7 +379,8 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 | `k-browser` | `claude-sonnet-5.5` | — | 4 | `playwright-mcp` |
 | `k-media-analyzer` | `claude-sonnet-5.5` | — | 1 | — |
 
-Every agent runs `claude-sonnet-5.5`. The SOP column is each spec's
+Every agent runs `claude-sonnet-5.5`, the Kiro CLI form of the ID. On Claude Code, `konductor synth`
+writes it as `claude-sonnet-5-5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
 `clientConfig.claudeCli.skills`. Claude Code preloads that list only when the agent runs as a
 subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand.

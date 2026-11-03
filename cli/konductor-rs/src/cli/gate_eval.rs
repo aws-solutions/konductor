@@ -4,18 +4,17 @@
 // sop-orchestration.yml and the severity words in severity-schema.yml.
 //
 // Pure: the evaluator opens no file. It takes an already-parsed session, the
-// gate map, a severity policy and an evidence check, so a new session source
-// can be added later without touching the verdict rows.
+// gate map, a severity policy and an evidence check.
 
 use std::collections::BTreeMap;
 
 use serde_yaml::Value;
 
 use super::config::Severity;
-use super::gate_config::{GateKind, GateMap, GatedSop, Scope, SeverityTable, WordRank};
+use super::gate_config::{Boundary, GateKind, GateMap, GatedSop, Scope, SeverityTable, WordRank};
 use super::{
     EXIT_BUDGET_EXCEEDED, EXIT_CRITICAL_GATE, EXIT_HALTED, EXIT_SUCCESS_WITH_WARNINGS,
-    EXIT_USAGE_ERROR, EXIT_VERIFY_FAILED,
+    EXIT_VERIFY_FAILED,
 };
 
 /// The skill's own `run.schema_version`.
@@ -24,8 +23,8 @@ const SCHEMA_VERSION: u64 = 1;
 /// No configured threshold can make a phase-gated SOP laxer than this.
 const STRICT_FLOOR: Severity = Severity::High;
 
-/// The fix-cycle cap. A recorded `max_fix_cycles` can lower it, never raise it.
-const MAX_FIX_CYCLES: u64 = 2;
+/// The fix-cycle cap when the run records no `max_fix_cycles`.
+const DEFAULT_MAX_FIX_CYCLES: u64 = 2;
 
 const ORCHESTRATOR: &str = "konductor";
 
@@ -99,7 +98,8 @@ pub(crate) struct Session {
 /// Why a parsed YAML value is not a usable session.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SessionError {
-    /// A construct the restricted loader refuses (V1).
+    /// A construct the restricted loader refuses (V1). Exits 65 like any
+    /// other unusable session file; 64 is for argument errors only.
     Invalid(String),
     /// Parses, but breaks the skill's schema (V2).
     Integrity(String),
@@ -152,18 +152,7 @@ impl Session {
     }
 }
 
-/// Where the evaluator reads phases, statuses, gate facts and counters.
-pub(crate) trait SessionSource {
-    fn session(&self) -> &Session;
-}
-
-impl SessionSource for Session {
-    fn session(&self) -> &Session {
-        self
-    }
-}
-
-/// Word to rank, the configured threshold, and the strict floor.
+/// Word to rank and the configured threshold.
 #[derive(Debug, Clone)]
 pub(crate) struct SeverityPolicy {
     pub(crate) table: SeverityTable,
@@ -171,8 +160,9 @@ pub(crate) struct SeverityPolicy {
 }
 
 impl SeverityPolicy {
-    /// The configured threshold or `STRICT_FLOOR`, whichever ranks lower.
-    pub(crate) fn effective_threshold(&self) -> Severity {
+    /// The threshold a phase-gated SOP judges against: the configured one or
+    /// `STRICT_FLOOR`, whichever ranks lower.
+    pub(crate) fn gated_threshold(&self) -> Severity {
         if self.threshold.rank() > STRICT_FLOOR.rank() {
             STRICT_FLOOR
         } else {
@@ -217,6 +207,7 @@ pub(crate) enum ReasonCode {
     FindingUnresolved,
     Passed,
     Running,
+    ArgumentInvalid,
 }
 
 impl ReasonCode {
@@ -236,6 +227,7 @@ impl ReasonCode {
             Self::FindingUnresolved => "FINDING_UNRESOLVED",
             Self::Passed => "PASSED",
             Self::Running => "RUNNING",
+            Self::ArgumentInvalid => "ARGUMENT_INVALID",
         }
     }
 }
@@ -245,8 +237,12 @@ pub(crate) enum InfoCode {
     SameTypeChecker,
     SeverityUnknown,
     FindingBelowGate,
-    FixCapClamped,
     PhaseSkipped,
+    FixCycleCapDefaulted,
+    LoopExitNotJudged,
+    OverrideRecorded,
+    ResultIgnored,
+    ConfigSource,
 }
 
 impl InfoCode {
@@ -255,8 +251,12 @@ impl InfoCode {
             Self::SameTypeChecker => "SAME_TYPE_CHECKER",
             Self::SeverityUnknown => "SEVERITY_UNKNOWN",
             Self::FindingBelowGate => "FINDING_BELOW_GATE",
-            Self::FixCapClamped => "FIX_CAP_CLAMPED",
             Self::PhaseSkipped => "PHASE_SKIPPED",
+            Self::FixCycleCapDefaulted => "FIX_CYCLE_CAP_DEFAULTED",
+            Self::LoopExitNotJudged => "LOOP_EXIT_NOT_JUDGED",
+            Self::OverrideRecorded => "OVERRIDE_RECORDED",
+            Self::ResultIgnored => "RESULT_IGNORED",
+            Self::ConfigSource => "CONFIG_SOURCE",
         }
     }
 }
@@ -325,7 +325,7 @@ pub(crate) fn evaluate_value(value: &Value, ctx: &EvalContext<'_>) -> Verdict {
             let mut report = Report::default();
             match err {
                 SessionError::Invalid(detail) => {
-                    report.fire(EXIT_USAGE_ERROR, ReasonCode::SessionInvalid, detail)
+                    report.fire(EXIT_VERIFY_FAILED, ReasonCode::SessionInvalid, detail)
                 }
                 SessionError::Integrity(detail) => {
                     report.fire(EXIT_VERIFY_FAILED, ReasonCode::RecordIntegrity, detail)
@@ -337,8 +337,7 @@ pub(crate) fn evaluate_value(value: &Value, ctx: &EvalContext<'_>) -> Verdict {
 }
 
 /// Runs rows V2 to V9 over one session.
-pub(crate) fn evaluate(source: &dyn SessionSource, ctx: &EvalContext<'_>) -> Verdict {
-    let session = source.session();
+pub(crate) fn evaluate(session: &Session, ctx: &EvalContext<'_>) -> Verdict {
     let mut report = Report::default();
 
     let Some(sop) = check_phase_map(session, ctx, &mut report) else {
@@ -348,6 +347,7 @@ pub(crate) fn evaluate(source: &dyn SessionSource, ctx: &EvalContext<'_>) -> Ver
     check_boundaries(session, sop, ctx, &mut report);
     check_halted(session, sop, &mut report);
     check_fix_cycles(session, &mut report);
+    note_overrides(session, sop, &mut report);
     check_findings(session, sop, ctx.policy, &mut report);
 
     if !report.fired() {
@@ -417,7 +417,7 @@ fn check_phase_map<'m>(
 fn check_phase_order(session: &Session, sop: &GatedSop, report: &mut Report) {
     let span = feature_phase_span(sop);
     for (index, earlier) in session.phases.iter().enumerate() {
-        if !earlier.status.is_unfinished() || held_open_by_a_feature(session, span, index) {
+        if !earlier.status.is_unfinished() || held_open_by_a_feature(session, sop, span, index) {
             continue;
         }
         if let Some(later) = session.phases[index + 1..]
@@ -481,16 +481,46 @@ fn feature_phase_span(sop: &GatedSop) -> Option<(usize, usize)> {
 
 /// An IN_PROGRESS per-feature phase with a later phase COMPLETED: the run
 /// moved on while a registered feature never cleared the phase.
-fn held_open_by_a_feature(session: &Session, span: Option<(usize, usize)>, index: usize) -> bool {
+fn held_open_by_a_feature(
+    session: &Session,
+    sop: &GatedSop,
+    span: Option<(usize, usize)>,
+    index: usize,
+) -> bool {
     let Some((first, last)) = span else {
         return false;
     };
     session.phases[index].status == PhaseStatus::InProgress
         && (first..=last).contains(&index)
-        && !session.features.is_empty()
         && session.phases[index + 1..]
             .iter()
             .any(|p| p.status == PhaseStatus::Completed)
+        && some_feature_has_not_cleared(session, sop, index)
+}
+
+/// True when a registered feature has not cleared the feature-scope boundary
+/// that closes phase `index`: the phase's own boundary, or for a phase with
+/// none (implementation) the next one after it. A boundary is cleared by a
+/// string result fact; an approval gate also needs the word `approved`. A null
+/// value is absent. With no such feature the record is corrupt, not halted.
+fn some_feature_has_not_cleared(session: &Session, sop: &GatedSop, index: usize) -> bool {
+    let position = |b: &&Boundary| sop.phases.iter().position(|p| *p == b.phase);
+    let closing = sop
+        .boundaries
+        .iter()
+        .filter(|b| b.scope == Scope::Feature)
+        .filter(|b| position(b) >= Some(index))
+        .min_by_key(position);
+    let pending: Vec<(String, GateKind)> = closing
+        .map(|b| (format!("gate_{}_result", b.phase), b.kind))
+        .into_iter()
+        .collect();
+    session.features.values().any(|bag| {
+        pending.iter().any(|(key, kind)| match fact(bag, key) {
+            Fact::Text(word) => *kind == GateKind::Approval && word != "approved",
+            Fact::Absent | Fact::WrongType(_) => true,
+        })
+    })
 }
 
 /// The `data` maps a boundary's facts live in, with a label for details.
@@ -505,8 +535,39 @@ fn fact_targets(session: &Session, scope: Scope) -> Vec<(String, &Bag)> {
     }
 }
 
-fn data_str<'b>(bag: &'b Bag, key: &str) -> Option<&'b str> {
-    bag.data.get(key).and_then(Value::as_str)
+/// A `data` entry read as text. A present value of another type is its own
+/// case so it is never mistaken for an absent one.
+enum Fact<'b> {
+    Absent,
+    Text(&'b str),
+    WrongType(&'static str),
+}
+
+fn fact<'b>(bag: &'b Bag, key: &str) -> Fact<'b> {
+    match bag.data.get(key) {
+        None | Some(Value::Null) => Fact::Absent,
+        Some(Value::String(text)) => Fact::Text(text),
+        Some(other) => Fact::WrongType(type_name(other)),
+    }
+}
+
+fn type_name(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Sequence(_) => "list",
+        Value::Mapping(_) => "mapping",
+        Value::Tagged(_) => "tagged value",
+    }
+}
+
+fn text_fact<'b>(bag: &'b Bag, key: &str) -> Option<&'b str> {
+    match fact(bag, key) {
+        Fact::Text(text) => Some(text),
+        Fact::Absent | Fact::WrongType(_) => None,
+    }
 }
 
 fn phase_status(session: &Session, id: &str) -> Option<PhaseStatus> {
@@ -525,6 +586,8 @@ fn check_boundaries(session: &Session, sop: &GatedSop, ctx: &EvalContext<'_>, re
                 );
                 continue;
             }
+            // Fact types are checked for COMPLETED phases only; a word on any
+            // other phase is ignored (check_findings notes a string one).
             Some(PhaseStatus::Completed) => {}
             _ => continue,
         }
@@ -538,34 +601,47 @@ fn check_boundaries(session: &Session, sop: &GatedSop, ctx: &EvalContext<'_>, re
         }
         let result_key = format!("gate_{phase}_result");
         let evidence_key = format!("gate_{phase}_evidence");
+        let checker_key = format!("gate_{phase}_checker");
         for (label, bag) in targets {
-            match data_str(bag, &result_key) {
-                None => report.fire(
+            for key in [&result_key, &evidence_key, &checker_key] {
+                if let Fact::WrongType(kind) = fact(bag, key) {
+                    report.fire(
+                        EXIT_VERIFY_FAILED,
+                        ReasonCode::RecordIntegrity,
+                        format!("{label}: {key} is a {kind}, not a string"),
+                    );
+                }
+            }
+            match fact(bag, &result_key) {
+                Fact::Absent => report.fire(
                     EXIT_VERIFY_FAILED,
                     ReasonCode::GateMissing,
                     format!("{label}: phase '{phase}' is COMPLETED with no {result_key}"),
                 ),
-                Some(result) if boundary.kind == GateKind::Approval && result != "approved" => {
+                Fact::Text(result)
+                    if boundary.kind == GateKind::Approval && result != "approved" =>
+                {
                     report.fire(
                         EXIT_VERIFY_FAILED,
                         ReasonCode::ApprovalMissing,
                         format!("{label}: {result_key} is '{result}', not 'approved'"),
                     )
                 }
-                Some(_) => {}
+                Fact::Text(_) | Fact::WrongType(_) => {}
             }
-            match data_str(bag, &evidence_key) {
-                Some(path) if (ctx.evidence_exists)(path) => {}
-                Some(path) => report.fire(
+            match fact(bag, &evidence_key) {
+                Fact::Text(path) if (ctx.evidence_exists)(path) => {}
+                Fact::Text(path) => report.fire(
                     EXIT_VERIFY_FAILED,
                     ReasonCode::EvidenceMissing,
                     format!("{label}: {evidence_key} '{path}' is not a file in the project"),
                 ),
-                None => report.fire(
+                Fact::Absent => report.fire(
                     EXIT_VERIFY_FAILED,
                     ReasonCode::EvidenceMissing,
                     format!("{label}: phase '{phase}' is COMPLETED with no {evidence_key}"),
                 ),
+                Fact::WrongType(_) => {}
             }
         }
     }
@@ -581,7 +657,7 @@ fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
                 ReasonCode::Halted,
                 format!("phase '{}' is BLOCKED", phase.id),
             );
-        } else if held_open_by_a_feature(session, span, index) {
+        } else if held_open_by_a_feature(session, sop, span, index) {
             report.fire(
                 EXIT_HALTED,
                 ReasonCode::Halted,
@@ -594,63 +670,149 @@ fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
     }
 }
 
-/// V6. The cap comes from the evaluator; the recorded value can only lower it.
+/// V6. The cap is the engineer's `max_fix_cycles`, read from `run.data`, and 2
+/// when none is recorded. The skill's SOP is what records it at minting; until
+/// it does, every run is judged against the default, and the
+/// FIX_CYCLE_CAP_DEFAULTED note says so. A session file is plain YAML that any
+/// agent can edit, so the recorded value is only as trustworthy as the file;
+/// the evaluator cannot protect it. The same cap bounds each feature's
+/// `fix_cycles_used` and the run-level `doc_fix_cycles_used` that the
+/// documentation step draws on; a count equal to the cap is within budget.
 fn check_fix_cycles(session: &Session, report: &mut Report) {
-    let recorded = session
-        .run
-        .data
-        .get("max_fix_cycles")
-        .and_then(Value::as_u64);
-    let cap = match recorded {
-        Some(value) if value > MAX_FIX_CYCLES => {
-            report.note(
-                InfoCode::FixCapClamped,
-                format!(
-                    "max_fix_cycles {value} is above {MAX_FIX_CYCLES}; the cap is {MAX_FIX_CYCLES}"
-                ),
-            );
-            MAX_FIX_CYCLES
+    let (cap, defaulted) = match recorded_fix_cycle_cap(session) {
+        Ok(found) => found,
+        Err(detail) => {
+            report.fire(EXIT_VERIFY_FAILED, ReasonCode::RecordIntegrity, detail);
+            return;
         }
-        Some(value) => value,
-        None => MAX_FIX_CYCLES,
     };
+    let basis = if defaulted {
+        report.note(
+            InfoCode::FixCycleCapDefaulted,
+            format!("run.data.max_fix_cycles is not recorded; the default cap {cap} applies"),
+        );
+        " (default cap; run.data.max_fix_cycles not recorded)"
+    } else {
+        ""
+    };
+    let doc_used = session
+        .run
+        .counters
+        .get("doc_fix_cycles_used")
+        .copied()
+        .unwrap_or(0);
+    if doc_used > cap {
+        report.fire(
+            EXIT_BUDGET_EXCEEDED,
+            ReasonCode::BudgetExceeded,
+            format!("run: doc_fix_cycles_used {doc_used} is above the cap {cap}{basis}"),
+        );
+    }
     for (slug, bag) in &session.features {
         let used = bag.counters.get("fix_cycles_used").copied().unwrap_or(0);
         if used > cap {
             report.fire(
                 EXIT_BUDGET_EXCEEDED,
                 ReasonCode::BudgetExceeded,
-                format!("feature '{slug}': fix_cycles_used {used} is above the cap {cap}"),
+                format!("feature '{slug}': fix_cycles_used {used} is above the cap {cap}{basis}"),
             );
         }
     }
 }
 
-/// V7, plus the SEVERITY_UNKNOWN, FINDING_BELOW_GATE and SAME_TYPE_CHECKER notes.
-fn check_findings(session: &Session, sop: &GatedSop, policy: &SeverityPolicy, report: &mut Report) {
-    let effective = policy.effective_threshold();
+/// The cap, and whether it is the default because none is recorded.
+fn recorded_fix_cycle_cap(session: &Session) -> Result<(u64, bool), String> {
+    match session.run.data.get("max_fix_cycles") {
+        None => Ok((DEFAULT_MAX_FIX_CYCLES, true)),
+        Some(value) => value
+            .as_u64()
+            .map(|cap| (cap, false))
+            .ok_or_else(|| "run.data.max_fix_cycles is not a non-negative integer".to_string()),
+    }
+}
+
+/// C3: an engineer override is recorded as `gate_<phase>_override`. It is
+/// surfaced for audit and never clears a finding: the evaluator keeps judging
+/// the recorded result word.
+fn note_overrides(session: &Session, sop: &GatedSop, report: &mut Report) {
     for boundary in &sop.boundaries {
-        if boundary.kind == GateKind::Approval {
+        let phase = boundary.phase.as_str();
+        let key = format!("gate_{phase}_override");
+        for (label, bag) in fact_targets(session, boundary.scope) {
+            let note = match fact(bag, &key) {
+                Fact::Absent => continue,
+                Fact::Text(note) => note.to_string(),
+                Fact::WrongType(kind) => format!("a {kind}, not a string"),
+            };
+            report.note(
+                InfoCode::OverrideRecorded,
+                format!("{label}: {key} is recorded: {note}"),
+            );
+        }
+    }
+}
+
+/// The one value that records a gate with no findings. Exact lowercase after
+/// trimming, like every other severity word.
+const NO_FINDINGS_WORD: &str = "none";
+
+/// A result word on a phase that is not COMPLETED is not judged; say so.
+fn note_ignored_words(
+    session: &Session,
+    boundary: &super::gate_config::Boundary,
+    report: &mut Report,
+) {
+    let result_key = format!("gate_{}_result", boundary.phase);
+    for (label, bag) in fact_targets(session, boundary.scope) {
+        if let Some(word) = text_fact(bag, &result_key) {
+            report.note(
+                InfoCode::ResultIgnored,
+                format!(
+                    "{label}: {result_key} '{word}' is ignored: phase '{}' is not COMPLETED",
+                    boundary.phase
+                ),
+            );
+        }
+    }
+}
+
+/// V7, plus the SEVERITY_UNKNOWN, FINDING_BELOW_GATE, SAME_TYPE_CHECKER and
+/// LOOP_EXIT_NOT_JUDGED notes. Like V4 it reads only COMPLETED phases: a
+/// result word left on a skipped or unfinished phase is not a finding.
+fn check_findings(session: &Session, sop: &GatedSop, policy: &SeverityPolicy, report: &mut Report) {
+    let threshold = policy.gated_threshold();
+    for boundary in &sop.boundaries {
+        let phase = boundary.phase.as_str();
+        if phase_status(session, phase) != Some(PhaseStatus::Completed) {
+            note_ignored_words(session, boundary, report);
             continue;
         }
-        let phase = boundary.phase.as_str();
+        match boundary.kind {
+            GateKind::Approval => continue,
+            GateKind::LoopExit => {
+                report.note(
+                    InfoCode::LoopExitNotJudged,
+                    format!("gate phase '{phase}' is a loop-exit gate; its result is not judged"),
+                );
+                continue;
+            }
+            GateKind::CheckThreshold => {}
+        }
         let result_key = format!("gate_{phase}_result");
         let checker_key = format!("gate_{phase}_checker");
         for (label, bag) in fact_targets(session, boundary.scope) {
             // Sessions record no maker, so the one same-type case visible is
             // the orchestrator checking its own run.
-            if boundary.kind == GateKind::CheckThreshold
-                && data_str(bag, &checker_key) == Some(ORCHESTRATOR)
-            {
+            if text_fact(bag, &checker_key) == Some(ORCHESTRATOR) {
                 report.note(
                     InfoCode::SameTypeChecker,
                     format!("{label}: {checker_key} is the orchestrator"),
                 );
             }
-            let Some(word) = data_str(bag, &result_key) else {
+            let Some(word) = text_fact(bag, &result_key) else {
                 continue;
             };
-            if word.trim() == "none" {
+            if word.trim() == NO_FINDINGS_WORD {
                 continue;
             }
             let (severity, known) = policy.rank_of_word(word);
@@ -662,7 +824,7 @@ fn check_findings(session: &Session, sop: &GatedSop, policy: &SeverityPolicy, re
                     ),
                 );
             }
-            if severity.rank() >= effective.rank() {
+            if severity.rank() >= threshold.rank() {
                 let basis = if severity.rank() >= policy.threshold.rank() {
                     "config"
                 } else {
@@ -672,13 +834,13 @@ fn check_findings(session: &Session, sop: &GatedSop, policy: &SeverityPolicy, re
                     EXIT_CRITICAL_GATE,
                     ReasonCode::FindingUnresolved,
                     format!(
-                        "{label}: {result_key} '{word}' is at or above {effective} (basis={basis})"
+                        "{label}: {result_key} '{word}' is at or above {threshold} (basis={basis})"
                     ),
                 );
             } else {
                 report.note(
                     InfoCode::FindingBelowGate,
-                    format!("{label}: {result_key} '{word}' is below {effective}"),
+                    format!("{label}: {result_key} '{word}' is below {threshold}"),
                 );
             }
         }
@@ -727,7 +889,7 @@ fn required<'v>(
 
 fn key_str(key: &Value) -> Result<&str, SessionError> {
     key.as_str()
-        .ok_or_else(|| SessionError::Invalid("a mapping key is not a string".to_string()))
+        .ok_or_else(|| integrity("a mapping key is not a string (checked earlier, so unreachable)"))
 }
 
 fn parse_phase(key: &Value, entry: &Value) -> Result<PhaseEntry, SessionError> {
@@ -806,9 +968,6 @@ mod tests {
             "gate_specs_result: approved",
             "gate_specs_evidence: out/specs/login/tasks.md",
             "gate_specs_checker: user",
-            "gate_code-review_result: approved",
-            "gate_code-review_evidence: out/login/code-review/report.md",
-            "gate_code-review_checker: user",
             "gate_testing_result: none",
             "gate_testing_evidence: out/login/testing/test-coverage-review-report.md",
             "gate_testing_checker: k-quality-assurance",
@@ -843,6 +1002,9 @@ mod tests {
     gate_feature-splitting_result: approved
     gate_feature-splitting_evidence: out/feature-split/feature-split.md
     gate_feature-splitting_checker: user
+    gate_code-review_result: approved
+    gate_code-review_evidence: out/login/code-review/report.md
+    gate_code-review_checker: user
 phases:
 {phases}features:
   login:
@@ -868,6 +1030,10 @@ phases:
 
     fn set_run_data(session: &mut Value, key: &str, value: Value) {
         session["run"]["data"][key] = value;
+    }
+
+    fn remove_run_data(session: &mut Value, key: &str) {
+        session["run"]["data"].as_mapping_mut().unwrap().remove(key);
     }
 
     fn set_login(session: &mut Value, key: &str, value: Value) {
@@ -944,7 +1110,7 @@ phases:
     }
 
     #[test]
-    fn effective_threshold_never_laxer_than_high() {
+    fn gated_threshold_never_laxer_than_high() {
         let table = severity_table().unwrap();
         for (configured, effective) in [
             (Severity::Critical, Severity::High),
@@ -957,7 +1123,7 @@ phases:
                 table: table.clone(),
                 threshold: configured,
             };
-            assert_eq!(policy.effective_threshold(), effective, "{configured}");
+            assert_eq!(policy.gated_threshold(), effective, "{configured}");
         }
     }
 
@@ -972,7 +1138,7 @@ phases:
     fn v1_custom_tag_is_session_invalid() {
         let mut session = passing();
         set_run_data(&mut session, "payload", session_yaml("!python/object [ls]"));
-        assert_verdict(&eval(&session), 64, "SESSION_INVALID");
+        assert_verdict(&eval(&session), 65, "SESSION_INVALID");
     }
 
     #[test]
@@ -982,7 +1148,7 @@ phases:
             .as_mapping_mut()
             .unwrap()
             .insert(Value::from(7), Value::from("x"));
-        assert_verdict(&eval(&session), 64, "SESSION_INVALID");
+        assert_verdict(&eval(&session), 65, "SESSION_INVALID");
     }
 
     #[test]
@@ -1125,7 +1291,7 @@ phases:
     #[test]
     fn v4_missing_result_is_gate_missing() {
         let mut session = passing();
-        remove_login(&mut session, "gate_code-review_result");
+        remove_run_data(&mut session, "gate_code-review_result");
         assert_verdict(&eval(&session), 65, "GATE_MISSING");
     }
 
@@ -1197,14 +1363,12 @@ phases:
     }
 
     #[test]
-    fn v6_recorded_cap_above_2_is_clamped() {
-        let verdict = with_fix_cycles(Some(Value::from(5)), 3);
+    fn v6_recorded_cap_above_2_is_honored() {
+        assert_eq!(with_fix_cycles(Some(Value::from(5)), 4).exit, 0);
+        assert_eq!(with_fix_cycles(Some(Value::from(5)), 5).exit, 0);
+        let verdict = with_fix_cycles(Some(Value::from(5)), 6);
         assert_verdict(&verdict, 3, "BUDGET_EXCEEDED");
-        assert!(info_codes(&verdict).contains(&"FIX_CAP_CLAMPED"));
-
-        let verdict = with_fix_cycles(Some(Value::from(5)), 2);
-        assert_eq!(verdict.exit, 0);
-        assert!(info_codes(&verdict).contains(&"FIX_CAP_CLAMPED"));
+        assert!(verdict.info.is_empty(), "{verdict:#?}");
     }
 
     #[test]
@@ -1213,14 +1377,72 @@ phases:
         assert_verdict(&with_fix_cycles(None, 3), 3, "BUDGET_EXCEEDED");
     }
 
+    fn set_doc_fix_cycles_used(session: &mut Value, used: Value) {
+        session["run"]["counters"]["doc_fix_cycles_used"] = used;
+    }
+
     #[test]
-    fn v6_non_integer_cap_is_2() {
-        assert_eq!(with_fix_cycles(Some(Value::from("two")), 2).exit, 0);
+    fn v6_doc_fix_cycles_over_the_cap_is_budget_exceeded() {
+        let mut session = passing();
+        set_doc_fix_cycles_used(&mut session, Value::from(3));
+        let verdict = eval(&session);
+        assert_verdict(&verdict, 3, "BUDGET_EXCEEDED");
+        assert!(
+            verdict.reasons[0]
+                .detail
+                .starts_with("run: doc_fix_cycles_used 3"),
+            "{verdict:#?}"
+        );
+    }
+
+    #[test]
+    fn v6_doc_fix_cycles_at_the_cap_or_absent_passes() {
+        let mut session = passing();
+        assert_eq!(eval(&session).exit, 0);
+        set_doc_fix_cycles_used(&mut session, Value::from(2));
+        assert_eq!(eval(&session).exit, 0);
+    }
+
+    #[test]
+    fn v6_doc_fix_cycles_use_the_recorded_cap() {
+        let mut session = passing();
+        set_run_data(&mut session, "max_fix_cycles", Value::from(5));
+        set_doc_fix_cycles_used(&mut session, Value::from(5));
+        assert_eq!(eval(&session).exit, 0);
+        set_doc_fix_cycles_used(&mut session, Value::from(6));
+        assert_verdict(&eval(&session), 3, "BUDGET_EXCEEDED");
+    }
+
+    #[test]
+    fn v6_non_integer_doc_fix_cycles_is_record_integrity() {
+        let mut session = passing();
+        set_doc_fix_cycles_used(&mut session, Value::from("1"));
+        assert_verdict(&eval(&session), 65, "RECORD_INTEGRITY");
+    }
+
+    #[test]
+    fn v6_cap_of_0_allows_no_cycles() {
+        assert_eq!(with_fix_cycles(Some(Value::from(0)), 0).exit, 0);
         assert_verdict(
-            &with_fix_cycles(Some(Value::from("two")), 3),
+            &with_fix_cycles(Some(Value::from(0)), 1),
             3,
             "BUDGET_EXCEEDED",
         );
+    }
+
+    #[test]
+    fn v6_cap_that_is_not_a_non_negative_integer_is_record_integrity() {
+        for bad in [
+            Value::from("1"),
+            Value::from(1.5),
+            Value::from(2.0),
+            Value::from(-1),
+            Value::from(true),
+        ] {
+            let verdict = with_fix_cycles(Some(bad.clone()), 0);
+            assert_verdict(&verdict, 65, "RECORD_INTEGRITY");
+            assert_eq!(codes(&verdict), vec!["RECORD_INTEGRITY"], "{bad:?}");
+        }
     }
 
     #[test]
@@ -1303,7 +1525,7 @@ phases:
     #[test]
     fn every_firing_row_is_reported_and_the_first_sets_the_exit() {
         let mut session = passing();
-        remove_login(&mut session, "gate_code-review_result");
+        remove_run_data(&mut session, "gate_code-review_result");
         set_fix_cycles_used(&mut session, 3);
         set_login(&mut session, "gate_testing_result", Value::from("CRITICAL"));
         let verdict = eval(&session);
@@ -1340,5 +1562,274 @@ phases:
                 assert_eq!(verdict.exit, expected, "threshold {threshold}, word {word}");
             }
         }
+    }
+
+    #[test]
+    fn v3_leftover_result_on_a_skipped_gate_is_not_a_finding() {
+        let mut session = passing();
+        skip_phase(&mut session, "design-review");
+        set_run_data(
+            &mut session,
+            "gate_design-review_result",
+            Value::from("CRITICAL"),
+        );
+        let verdict = eval(&session);
+        assert_verdict(&verdict, 6, "PASSED");
+        assert!(
+            !codes(&verdict).contains(&"FINDING_UNRESOLVED"),
+            "{verdict:#?}"
+        );
+    }
+
+    #[test]
+    fn v7_leftover_result_on_an_in_flight_gate_is_not_a_finding() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        set_phase(&mut session, "testing", "IN_PROGRESS");
+        set_login(&mut session, "gate_testing_result", Value::from("CRITICAL"));
+        let verdict = eval_running(&session);
+        assert!(
+            !codes(&verdict).contains(&"FINDING_UNRESOLVED"),
+            "{verdict:#?}"
+        );
+    }
+
+    #[test]
+    fn session_invalid_is_a_content_failure_not_a_usage_error() {
+        let mut session = passing();
+        set_run_data(&mut session, "payload", session_yaml("!python/object [ls]"));
+        let verdict = eval(&session);
+        assert_eq!(verdict.exit, 65);
+        assert_ne!(verdict.exit, 64);
+    }
+
+    #[test]
+    fn v6_default_cap_is_noted_and_named_in_the_budget_detail() {
+        let verdict = with_fix_cycles(None, 3);
+        assert_verdict(&verdict, 3, "BUDGET_EXCEEDED");
+        assert!(info_codes(&verdict).contains(&"FIX_CYCLE_CAP_DEFAULTED"));
+        assert!(
+            verdict.reasons[0].detail.contains("default cap"),
+            "{verdict:#?}"
+        );
+        assert!(info_codes(&with_fix_cycles(None, 0)).contains(&"FIX_CYCLE_CAP_DEFAULTED"));
+    }
+
+    #[test]
+    fn v6_recorded_cap_is_not_noted_as_defaulted() {
+        let verdict = with_fix_cycles(Some(Value::from(1)), 2);
+        assert!(!info_codes(&verdict).contains(&"FIX_CYCLE_CAP_DEFAULTED"));
+        assert!(!verdict.reasons[0].detail.contains("default cap"));
+    }
+
+    #[test]
+    fn v6_feature_counter_that_is_not_a_non_negative_integer_is_record_integrity() {
+        for bad in [Value::from(-1), Value::from("1"), Value::from(1.5)] {
+            let mut session = passing();
+            session["features"]["login"]["counters"]["fix_cycles_used"] = bad.clone();
+            assert_verdict(&eval(&session), 65, "RECORD_INTEGRITY");
+        }
+    }
+
+    #[test]
+    fn v7_no_findings_word_is_exact_lowercase() {
+        for word in ["None", "NONE"] {
+            let mut session = passing();
+            set_run_data(&mut session, "gate_design-review_result", Value::from(word));
+            let verdict = eval(&session);
+            assert_verdict(&verdict, 2, "FINDING_UNRESOLVED");
+            assert!(info_codes(&verdict).contains(&"SEVERITY_UNKNOWN"), "{word}");
+        }
+        let mut session = passing();
+        set_run_data(
+            &mut session,
+            "gate_design-review_result",
+            Value::from(" none "),
+        );
+        assert_eq!(eval(&session).exit, 0);
+    }
+
+    #[test]
+    fn loop_exit_gate_is_noted_and_not_ranked() {
+        let mut gate_map = gate_map().unwrap();
+        let sop = gate_map.gated.get_mut(PREFIX).unwrap();
+        let index = sop
+            .boundaries
+            .iter()
+            .position(|b| b.phase == "design-review")
+            .unwrap();
+        sop.boundaries[index].kind = GateKind::LoopExit;
+        let mut session = passing();
+        set_run_data(
+            &mut session,
+            "gate_design-review_result",
+            Value::from("CRITICAL"),
+        );
+        let policy = SeverityPolicy {
+            table: severity_table().unwrap(),
+            threshold: Severity::Critical,
+        };
+        let ctx = EvalContext {
+            session_prefix: PREFIX,
+            gate_map: &gate_map,
+            policy: &policy,
+            evidence_exists: &allow_all_evidence,
+            allow_running: false,
+        };
+        let verdict = evaluate_value(&session, &ctx);
+        assert_eq!(verdict.exit, 0, "{verdict:#?}");
+        assert!(info_codes(&verdict).contains(&"LOOP_EXIT_NOT_JUDGED"));
+    }
+
+    #[test]
+    fn wrong_typed_gate_facts_are_record_integrity() {
+        for (key, bad) in [
+            ("gate_design-review_result", Value::from(3)),
+            ("gate_design-review_evidence", Value::from(true)),
+            ("gate_design-review_checker", session_yaml("[a, b]")),
+        ] {
+            let mut session = passing();
+            set_run_data(&mut session, key, bad);
+            let verdict = eval(&session);
+            assert_verdict(&verdict, 65, "RECORD_INTEGRITY");
+            assert!(verdict.reasons[0].detail.contains(key), "{verdict:#?}");
+            assert_eq!(codes(&verdict), vec!["RECORD_INTEGRITY"], "{key}");
+        }
+    }
+
+    #[test]
+    fn corrupt_earlier_feature_phase_with_all_features_cleared_is_phase_order() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "testing", "IN_PROGRESS");
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        let verdict = eval_running(&session);
+        assert_verdict(&verdict, 65, "PHASE_ORDER");
+        assert!(!codes(&verdict).contains(&"HALTED"), "{verdict:#?}");
+    }
+
+    #[test]
+    fn override_fact_is_surfaced_and_does_not_clear_a_finding() {
+        let mut session = passing();
+        set_login(&mut session, "gate_testing_result", Value::from("HIGH"));
+        set_login(
+            &mut session,
+            "gate_testing_override",
+            Value::from("finding F-1 overridden by alice"),
+        );
+        let verdict = eval(&session);
+        assert_verdict(&verdict, 2, "FINDING_UNRESOLVED");
+        let note = verdict
+            .info
+            .iter()
+            .find(|i| i.code == InfoCode::OverrideRecorded)
+            .expect("override note");
+        assert!(note.detail.contains("alice"), "{note:?}");
+    }
+
+    #[test]
+    fn halted_and_finding_together_exit_1_and_list_both_reasons() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "documentation", "BLOCKED");
+        set_phase(&mut session, "final-summary", "PENDING");
+        set_login(&mut session, "gate_testing_result", Value::from("CRITICAL"));
+        let verdict = eval_running(&session);
+        assert_eq!(verdict.exit, 1, "{verdict:#?}");
+        assert_eq!(codes(&verdict), vec!["HALTED", "FINDING_UNRESOLVED"]);
+    }
+
+    #[test]
+    fn unfinished_specs_with_all_features_cleared_is_phase_order() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "specs", "IN_PROGRESS");
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        let verdict = eval_running(&session);
+        assert_verdict(&verdict, 65, "PHASE_ORDER");
+        assert!(!codes(&verdict).contains(&"HALTED"), "{verdict:#?}");
+    }
+
+    #[test]
+    fn unfinished_code_review_with_all_features_cleared_is_phase_order() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "code-review", "IN_PROGRESS");
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        let verdict = eval_running(&session);
+        assert_verdict(&verdict, 65, "PHASE_ORDER");
+        assert!(!codes(&verdict).contains(&"HALTED"), "{verdict:#?}");
+    }
+
+    #[test]
+    fn rejected_approval_in_an_earlier_feature_phase_is_halted() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "specs", "IN_PROGRESS");
+        set_login(&mut session, "gate_specs_result", Value::from("rejected"));
+        let verdict = eval_running(&session);
+        assert_eq!(verdict.exit, 1, "{verdict:#?}");
+        assert!(codes(&verdict).contains(&"HALTED"), "{verdict:#?}");
+        assert!(!codes(&verdict).contains(&"PHASE_ORDER"), "{verdict:#?}");
+    }
+
+    #[test]
+    fn null_result_in_an_earlier_feature_phase_counts_as_not_cleared() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "testing", "IN_PROGRESS");
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        set_login(&mut session, "gate_testing_result", Value::Null);
+        let verdict = eval_running(&session);
+        assert_eq!(verdict.exit, 1, "{verdict:#?}");
+        assert!(codes(&verdict).contains(&"HALTED"), "{verdict:#?}");
+    }
+
+    #[test]
+    fn ignored_result_word_on_a_skipped_gate_is_noted() {
+        let mut session = passing();
+        skip_phase(&mut session, "design-review");
+        set_run_data(
+            &mut session,
+            "gate_design-review_result",
+            Value::from("CRITICAL"),
+        );
+        let verdict = eval(&session);
+        assert!(
+            info_codes(&verdict).contains(&"RESULT_IGNORED"),
+            "{verdict:#?}"
+        );
+    }
+
+    #[test]
+    fn override_fact_is_surfaced_on_an_unfinished_phase() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "testing", "IN_PROGRESS");
+        set_phase(&mut session, "documentation", "PENDING");
+        set_phase(&mut session, "final-summary", "PENDING");
+        set_login(
+            &mut session,
+            "gate_testing_override",
+            Value::from("F-2 overridden by bob"),
+        );
+        let verdict = eval_running(&session);
+        assert!(
+            info_codes(&verdict).contains(&"OVERRIDE_RECORDED"),
+            "{verdict:#?}"
+        );
+    }
+
+    #[test]
+    fn unrecognised_severity_word_is_unknown_and_ranked_critical() {
+        let mut session = passing();
+        set_login(&mut session, "gate_testing_result", Value::from("blocker"));
+        let verdict = eval(&session);
+        assert_verdict(&verdict, 2, "FINDING_UNRESOLVED");
+        assert!(
+            info_codes(&verdict).contains(&"SEVERITY_UNKNOWN"),
+            "{verdict:#?}"
+        );
     }
 }
