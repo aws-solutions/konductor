@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use serde_yaml::Value;
 
 use super::config::Severity;
-use super::gate_config::{Boundary, GateKind, GateMap, GatedSop, Scope, SeverityTable, WordRank};
+use super::gate_config::{Boundary, GateKind, GateMap, GatedSop, Scope, SeverityTable};
 use super::{
     EXIT_BUDGET_EXCEEDED, EXIT_CRITICAL_GATE, EXIT_HALTED, EXIT_SUCCESS_WITH_WARNINGS,
     EXIT_VERIFY_FAILED,
@@ -169,14 +169,11 @@ impl SeverityPolicy {
             self.threshold
         }
     }
+}
 
-    /// A word in no list ranks as CRITICAL.
-    fn rank_of_word(&self, word: &str) -> (Severity, bool) {
-        match self.table.rank_of_word(word) {
-            WordRank::Known(severity) => (severity, true),
-            WordRank::Unknown => (Severity::Critical, false),
-        }
-    }
+/// True when `value`, ignoring case and surrounding whitespace, is `word`.
+fn is_word(value: &str, word: &str) -> bool {
+    value.trim().eq_ignore_ascii_case(word)
 }
 
 /// Everything besides the session that a verdict depends on.
@@ -511,7 +508,7 @@ fn some_feature_has_not_cleared(session: &Session, sop: &GatedSop, index: usize)
         .collect();
     session.features.values().any(|bag| {
         pending.iter().any(|(key, kind)| match fact(bag, key) {
-            Fact::Text(word) => *kind == GateKind::Approval && word != "approved",
+            Fact::Text(word) => *kind == GateKind::Approval && !is_word(word, APPROVED_WORD),
             Fact::Absent | Fact::WrongType(_) => true,
         })
     })
@@ -613,7 +610,7 @@ fn check_boundaries(session: &Session, sop: &GatedSop, ctx: &EvalContext<'_>, re
                     format!("{label}: phase '{phase}' is COMPLETED with no {result_key}"),
                 ),
                 Fact::Text(result)
-                    if boundary.kind == GateKind::Approval && result != "approved" =>
+                    if boundary.kind == GateKind::Approval && !is_word(result, APPROVED_WORD) =>
                 {
                     report.fire(
                         EXIT_VERIFY_FAILED,
@@ -746,9 +743,12 @@ fn note_overrides(session: &Session, sop: &GatedSop, report: &mut Report) {
     }
 }
 
-/// The one value that records a gate with no findings. Exact lowercase after
-/// trimming, like every other severity word.
+/// The one value that records a gate with no findings. Matched ignoring case
+/// after trimming, like every severity word.
 const NO_FINDINGS_WORD: &str = "none";
+
+/// The result an approval boundary needs, matched like `NO_FINDINGS_WORD`.
+const APPROVED_WORD: &str = "approved";
 
 /// A result word on a phase that is not COMPLETED is not judged; say so.
 fn note_ignored_words(
@@ -806,10 +806,10 @@ fn check_findings(session: &Session, sop: &GatedSop, policy: &SeverityPolicy, re
             let Some(word) = text_fact(bag, &result_key) else {
                 continue;
             };
-            if word.trim() == NO_FINDINGS_WORD {
+            if is_word(word, NO_FINDINGS_WORD) {
                 continue;
             }
-            let (severity, known) = policy.rank_of_word(word);
+            let (severity, known) = policy.table.gate_rank_of_word(word);
             if !known {
                 report.note(
                     InfoCode::SeverityUnknown,
@@ -1297,6 +1297,20 @@ phases:
     }
 
     #[test]
+    fn v4_approved_ignores_case_and_surrounding_whitespace() {
+        for word in ["Approved", "APPROVED", " approved ", "\tApproved\n"] {
+            let mut session = passing();
+            set_login(&mut session, "gate_specs_result", Value::from(word));
+            assert_eq!(eval(&session).exit, 0, "{word:?}");
+        }
+        for word in ["approvedx", "rejected", ""] {
+            let mut session = passing();
+            set_login(&mut session, "gate_specs_result", Value::from(word));
+            assert_verdict(&eval(&session), 65, "APPROVAL_MISSING");
+        }
+    }
+
+    #[test]
     fn v4_evidence_rejected_by_the_check() {
         let only_reports = |path: &str| !path.ends_with("tasks.md");
         let verdict = evaluate_with(&passing(), PREFIX, Severity::Critical, false, &only_reports);
@@ -1540,10 +1554,7 @@ phases:
         for threshold in Severity::ALL {
             let effective_rank = threshold.rank().min(Severity::High.rank());
             for word in &words {
-                let word_rank = match table.rank_of_word(word) {
-                    WordRank::Known(severity) => severity.rank(),
-                    WordRank::Unknown => Severity::Critical.rank(),
-                };
+                let word_rank = table.gate_rank_of_word(word).0.rank();
                 let mut session = passing();
                 set_run_data(
                     &mut session,
@@ -1627,21 +1638,48 @@ phases:
     }
 
     #[test]
-    fn v7_no_findings_word_is_exact_lowercase() {
-        for word in ["None", "NONE"] {
+    fn v7_no_findings_word_ignores_case_and_surrounding_whitespace() {
+        for word in ["none", "None", "NONE", " none ", "\tNone\n"] {
             let mut session = passing();
             set_run_data(&mut session, "gate_design-review_result", Value::from(word));
             let verdict = eval(&session);
-            assert_verdict(&verdict, 2, "FINDING_UNRESOLVED");
-            assert!(info_codes(&verdict).contains(&"SEVERITY_UNKNOWN"), "{word}");
+            assert_eq!(verdict.exit, 0, "{word:?}: {verdict:#?}");
+            assert!(
+                !info_codes(&verdict).contains(&"SEVERITY_UNKNOWN"),
+                "{word:?}"
+            );
         }
         let mut session = passing();
         set_run_data(
             &mut session,
             "gate_design-review_result",
-            Value::from(" none "),
+            Value::from("nonexistent"),
         );
-        assert_eq!(eval(&session).exit, 0);
+        assert_verdict(&eval(&session), 2, "FINDING_UNRESOLVED");
+    }
+
+    #[test]
+    fn in_progress_session_with_an_open_finding_exits_2() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        set_run_data(
+            &mut session,
+            "gate_design-review_result",
+            Value::from("CRITICAL"),
+        );
+        assert_verdict(&eval(&session), 2, "FINDING_UNRESOLVED");
+    }
+
+    #[test]
+    fn in_progress_session_with_a_halted_phase_exits_1() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "documentation", "BLOCKED");
+        set_phase(&mut session, "final-summary", "PENDING");
+        let verdict = eval(&session);
+        assert_eq!(codes(&verdict), vec!["HALTED"]);
+        assert_eq!(verdict.exit, 1);
     }
 
     #[test]

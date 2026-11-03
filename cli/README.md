@@ -928,11 +928,14 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | 5 | Reserved, not yet emitted by any command. |
   | 6 | Success with warnings: `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink; the gate evaluator when a run completed with a skipped gate |
   | 64 | CLI usage error (`EX_USAGE`) - never the reserved code `2` |
-  | 65 | Content or integrity failure, distinct from a `64` usage error: an unsupported manifest/index `schema_version`, a failed checksum, or, for a SOP session file, a corrupt or invalid session, a broken record (including a non-integer `max_fix_cycles` or counter, or a wrong-typed gate fact), phase order, an unfinished phase or an unexplained skip, missing gate facts or evidence, or an in-progress session without `allow_running` |
+  | 65 | Content or integrity failure, distinct from a `64` usage error: an unsupported manifest/index `schema_version`, a failed checksum, or, for a SOP session file, a corrupt or invalid session, a broken record (including a non-integer `max_fix_cycles` or counter, or a wrong-typed gate fact), phase order, an unfinished phase or an unexplained skip, missing gate facts or evidence, or, reported last and only when nothing else fired, an in-progress session without `allow_running` |
 
   When several causes apply, the gate evaluator lists all of them but exits with the
   code of the first check that fires. The checks run in this order: session and
-  record integrity (65), halted (1), budget (3), findings (2), skipped gate (6). One
+  record integrity (65), halted (1), budget (3), findings (2), then, when nothing else
+  fired, skipped gate (6) or an in-progress session without `allow_running` (65). The
+  words `none` (no findings) and `approved` match ignoring case and surrounding
+  whitespace, like severity words. One
   exception: a non-integer `max_fix_cycles` is found by the budget check, so after a
   halt the exit stays 1 and the 65 cause is only listed. The fix-cycle cap comes from the SOP recording
   `max_fix_cycles` in the session; until it does, the default of 2 applies.
