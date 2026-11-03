@@ -10,7 +10,7 @@ problem statement into a document meant to survive principal-engineer review. A 
 [`k-existing-design-review`](../sop-workflows/design.md#k-existing-design-review), evaluates design
 artifacts that already exist. A third, [`k-principal-engineer-design-review`](../sop-workflows/design.md#k-principal-engineer-design-review),
 gates a finished document before a human reviewer sees it. All three are owned by
-**`k-architect`**, which carries 38 of the package's 82 skills — the largest share of any agent.
+**`k-architect`**, which carries 37 of the package's 81 skills — the largest share of any agent.
 
 **Read this before you pick one.** `k-existing-design-review` is explicitly deprecated for authoring;
 its own header says so:
@@ -96,7 +96,7 @@ Requirements, Open Items — that you confirm before Phase 2 begins.
 The architect drafts using the outside-in structure: Problem → Requirements → Solution Overview →
 How It Works → Implementation Details → Implementation Plan. Mermaid diagrams are generated
 **before** the prose for each major section. Every significant decision — "DynamoDB single-table
-versus relational", say — gets an inline ADR via `adr-generator`: Context, Decision, Alternatives
+versus relational", say — gets an inline ADR via `decision-writing` in ADR Mode: Context, Decision, Alternatives
 Considered table, Consequences.
 
 The draft then goes through a `design-doc-guidelines` maker-checker pass. Any CRITICAL finding is

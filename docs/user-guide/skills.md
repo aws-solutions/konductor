@@ -4,7 +4,7 @@
 
 [← Back to guide index](README.md)
 
-All **82 skills** the package ships, grouped by what they are for. Each entry gives what the
+All **81 skills** the package ships, grouped by what they are for. Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -23,7 +23,7 @@ know exactly which lens you want applied.
 - [Behaviour, routing, and memory](#behaviour-routing-and-memory) — 13
 - [Requirements and product](#requirements-and-product) — 7
 - [Program and delivery management](#program-and-delivery-management) — 7
-- [Architecture and design](#architecture-and-design) — 12
+- [Architecture and design](#architecture-and-design) — 11
 - [Design quality gates](#design-quality-gates) — 6
 - [API and data modelling](#api-and-data-modelling) — 6
 - [Security](#security) — 3
@@ -106,8 +106,7 @@ Producing the design itself.
 | `non-functional-requirements` | Extracts measurable NFRs across performance, availability, security, scalability, and observability. | The design exists and "it should be fast" needs to become a number. | `k-architect` |
 | `architecture-diagram-generation` | Generates AWS architecture diagrams as draw.io XML with official service icons and directional data flows; single or multi-account. | You need a real diagram from a written design. | `k-architect` |
 | `cost-estimation` | AWS cost estimates in baseline, optimized, and high-availability scenarios. | Someone asked what this will cost to run. Needs service configs and expected load. | `k-architect` |
-| `adr-generator` | Produces inline Architecture Decision Records — Context, Decision, Status, Alternatives Considered, Consequences. | A significant design choice needs a written record. | `k-architect` |
-| `decision-writing` | How to write decision records well: structure, tone, alternatives framing, consequence articulation. | Your ADRs are technically complete but nobody can follow them. | `k-architect` |
+| `decision-writing` | How to write decision records well: structure, tone, alternatives framing, consequence articulation. Its ADR Mode produces inline Architecture Decision Records (Context, Decision, Status, Alternatives Considered, Consequences). | A significant design choice needs a written record, or your ADRs are technically complete but nobody can follow them. | `k-architect` |
 | `trade-off-evaluator` | Scores options across cost, latency, complexity, scalability, and operability into a comparison matrix plus a recommendation. | A decision has more than one credible option. | `k-architect` |
 | `deliberation-panel` | Multi-perspective deliberation: derives decision-specific axes, argues each independently, cross-examines anonymously, synthesizes a scored recommendation. Requires explicit consent. | A high-stakes decision where you want genuine disagreement, not a single voice. | `konductor`, `k-architect`, `k-developer`, `k-product-manager`, `k-researcher` |
 | `argumentation-reference` | Primer on argumentation theory — Toulmin model, fallacy taxonomy, argument scoring. | Used during adversarial review to name why an argument is weak. | `k-architect` |
@@ -227,7 +226,7 @@ Looking things up outside the repository.
 
 ## Coverage
 
-**All 82 skills are declared by at least one agent.** That matters because a skill no agent
+**All 81 skills are declared by at least one agent.** That matters because a skill no agent
 declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
 it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
@@ -248,7 +247,7 @@ Useful when deciding which agent to talk to directly.
 
 | Agent | Skills preloaded (Claude Code) |
 | --- | --- |
-| `k-architect` | 38 |
+| `k-architect` | 37 |
 | `k-developer` | 27 |
 | `k-product-manager` | 16 |
 | `k-tpm` | 14 |
