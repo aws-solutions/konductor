@@ -609,13 +609,22 @@ impl ConfigAction {
     pub(crate) const LIST: &'static str = "list";
 }
 
-/// Parse argv, remapping clap's usage-error exit code (2) to EX_USAGE (64)
-/// so it never collides with the workflow contract's "unresolved finding"
-/// code. `--help`/`--version` clap outcomes still exit 0.
-///
-/// Every invocation is logged under ~/.konductor/logs/, including the exit
-/// paths below that terminate the process directly before `run()` ever
-/// gets a `Cli` to log from.
+/// The text of a clap usage error before its `Usage:` section: the trimmed
+/// non-empty lines joined with a space, without the leading `error: `.
+fn usage_detail(err: &clap::Error) -> String {
+    let message = err.to_string();
+    let lines: Vec<&str> = message
+        .lines()
+        .take_while(|line| !line.trim().is_empty())
+        .map(str::trim)
+        .collect();
+    let joined = lines.join(" ");
+    joined
+        .strip_prefix("error: ")
+        .unwrap_or(&joined)
+        .to_string()
+}
+
 /// True when argv is a `verify-run` invocation with `--json`: its parse
 /// failures keep the one-object-on-stdout contract. The subcommand is the
 /// first argument that is not a flag, since the global flags take no value.
@@ -627,6 +636,13 @@ fn wants_verify_run_json(argv: &[String]) -> bool {
             .is_some_and(|a| a == "verify-run")
 }
 
+/// Parse argv, remapping clap's usage-error exit code (2) to EX_USAGE (64)
+/// so it never collides with the workflow contract's "unresolved finding"
+/// code. `--help`/`--version` clap outcomes still exit 0.
+///
+/// Every invocation is logged under ~/.konductor/logs/, including the exit
+/// paths below that terminate the process directly before `run()` ever
+/// gets a `Cli` to log from.
 pub fn parse_or_exit() -> Cli {
     let argv: Vec<String> = std::env::args().collect();
     match Cli::try_parse() {
@@ -654,10 +670,7 @@ pub fn parse_or_exit() -> Cli {
                 }
                 _ => {
                     if wants_verify_run_json(&argv) {
-                        let message = err.to_string();
-                        let first_line = message.lines().next().unwrap_or("");
-                        let message = first_line.strip_prefix("error: ").unwrap_or(first_line);
-                        println!("{}", verify_run::usage_error_json(message));
+                        println!("{}", verify_run::usage_error_json(&usage_detail(&err)));
                     } else {
                         eprint!("{err}");
                     }
