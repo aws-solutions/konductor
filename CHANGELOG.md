@@ -17,6 +17,8 @@ not per individual commit.
   `cli/gate-config/sop-orchestration.yml` lists every SOP as gated or not gated, and
   `make sop-orchestration-check` (run in PR validation) fails when a new SOP is unlisted, a
   gated SOP lacks the marker, or a gated basis cites a step heading that no longer exists.
+- Gated SOPs can list their phases and gate boundaries, and `make sop-orchestration-check`
+  checks them against each SOP's phase list.
 
 ### Changed
 

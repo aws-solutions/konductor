@@ -46,8 +46,9 @@ def run_check(*args) -> subprocess.CompletedProcess:
     )
 
 
-def test_valid_fixture_passes_silently():
-    result = run_check(FIXTURES / "valid")
+@pytest.mark.parametrize("case", ["valid", "valid-phases-only", "valid-phase-list-no-sentinel"])
+def test_valid_fixture_passes_silently(case):
+    result = run_check(FIXTURES / case)
     assert result.returncode == 0, result.stderr
     assert result.stdout == "" and result.stderr == ""
 
@@ -76,6 +77,27 @@ def test_valid_fixture_passes_silently():
         ("repeated-gate-kind", "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list of distinct"),
         ("stale-basis-numbered-heading", "stale-basis: gated 'alpha-gated' basis cites `1. Do the thing`"),
         ("phase-heading-cited-prefixed", "stale-basis: gated 'alpha-gated' basis cites `Phase 1: Do the thing`"),
+        ("phase-list-mismatch", "phase-list-mismatch: gated 'alpha-gated' phases ['one', 'two'] differ"),
+        ("phase-list-missing-bullet", "phase-list-mismatch: gated 'alpha-gated' has phases but"),
+        ("unknown-boundary-phase", "unknown-boundary-phase: gated 'alpha-gated' boundary 'zero'"),
+        ("unknown-boundary-kind", "unknown-boundary-kind: gated 'alpha-gated' boundary 'one' kind 'loop-exit'"),
+        ("bad-boundary-shape", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-scope-list", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-scope-dict", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-scope-value", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundaries-not-list", "'boundaries' must be a list of {phase, kind, scope}"),
+        ("bad-boundary-missing-key", "'boundaries' item 1 must have exactly phase, kind, scope (missing ['scope']"),
+        ("bad-boundary-extra-key", "'boundaries' item 1 must have exactly phase, kind, scope (missing [], unexpected ['note']"),
+        ("bad-boundary-non-string", "'boundaries' item 1 'phase' must be a string"),
+        ("empty-boundaries", "'boundaries' must not be empty; omit it"),
+        ("unknown-gated-key-boundaries", "bad-entry: gated 'alpha-gated' has unknown key 'boundries'"),
+        ("unknown-gated-key-phases", "bad-entry: gated 'alpha-gated' has unknown key 'phasesz'"),
+        ("bad-phases-unhashable", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
+        ("duplicate-boundary-phase", "bad-entry: gated 'alpha-gated' boundary phase 'one' listed more than once"),
+        ("bad-phases-duplicate", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
+        ("bad-phases-empty", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
+        ("bad-phases-non-string", "bad-entry: gated 'alpha-gated' 'phases' must be a non-empty list of unique ids"),
+        ("boundaries-without-phases", "bad-entry: gated 'alpha-gated' has 'boundaries' without 'phases'"),
     ],
 )
 def test_failure_fixture_reports_its_code(case, expected):
@@ -116,6 +138,19 @@ def test_removing_the_marker_from_a_valid_tree_fails(tmp_path):
 @pytest.mark.parametrize("args", [["a", "b"], ["--help"], ["does-not-exist"]])
 def test_bad_invocation_exits_64(args):
     assert run_check(*args).returncode == 64
+
+
+def test_full_sdlc_boundaries_are_pinned():
+    import yaml
+
+    data = yaml.safe_load((REPO_ROOT / "cli/gate-config/sop-orchestration.yml").read_text(encoding="utf-8"))
+    assert data["gated"]["k-full-sdlc"]["boundaries"] == [
+        {"phase": "design-review", "kind": "check-threshold", "scope": "run"},
+        {"phase": "feature-splitting", "kind": "approval", "scope": "run"},
+        {"phase": "specs", "kind": "approval", "scope": "feature"},
+        {"phase": "code-review", "kind": "approval", "scope": "run"},
+        {"phase": "testing", "kind": "check-threshold", "scope": "feature"},
+    ]
 
 
 def test_repo_tree_agrees_with_its_map():
@@ -160,6 +195,12 @@ def test_changed_meaning_names_the_meaning_reason(tmp_path):
 def test_gate_items_that_are_not_strings_report_one_bad_entry():
     result = run_check(FIXTURES / "gates-nested-list")
     assert_one_clean_bad_entry(result, "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list")
+
+
+def test_scalar_gates_with_boundaries_reports_only_the_bad_entry():
+    result = run_check(FIXTURES / "gates-scalar-with-boundaries")
+    assert_one_clean_bad_entry(result, "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list")
+    assert "unknown-boundary-kind" not in result.stdout + result.stderr
 
 
 @pytest.mark.parametrize("case", ["version-99", "version-true"])

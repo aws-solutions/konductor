@@ -7,5 +7,8 @@ gated:
   alpha-gated:
     gates: [approval]
     basis: '`Do the thing` needs approval before `Check the thing`.'
+    phases: [one, two]
+    boundaries:
+      - {phase: one, kind: approval, scope: run}
 not_gated:
   beta-plain: No stop rule between steps.
