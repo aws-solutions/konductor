@@ -22,14 +22,30 @@
 # A gate judges the content of an artifact. A confirmation that authorizes
 # effort on discovered or generated scope, one a caller flag such as
 # scope_confirmed can pre-authorize, is not a gate. Also not gates: parameter
-# or path preconditions, build/test/lint prerequisites, a self-check of the
-# SOP's own output, joining parallel passes, and a final verdict.
+# or path preconditions, build/test/lint prerequisites, a self-check, joining
+# parallel passes, and a final verdict.
+#
+# A check is a gate only when a reviewer's verdict or a stated severity or
+# score threshold decides whether the next phase starts. A checklist the
+# orchestrator runs on its own step's deliverable, with no reviewer and no
+# threshold, is a self-check. Example: k-full-sdlc Step 2 is a self-check;
+# its Step 4 stops on a stated severity count from a review, so it is a gate.
 #
 # Each gated SOP has the marker line below as its own paragraph right after
 # its title, above ## Overview, so installed skill descriptions are
-# unchanged. No not_gated SOP contains it.
+# unchanged. The `meaning` line below is the sentence that follows the marker
+# in each gated SOP; the lint checks it. A second paragraph, the gate note
+# kept in scripts/check-sop-orchestration.py, says where gate facts are
+# recorded. No not_gated SOP contains the marker.
 #
-# Update a gated SOP's basis when that SOP's steps change.
+# "strict" tells the orchestrator to stop at each recorded gate, record the
+# gate facts, and not proceed past an unmet gate unless the engineer overrides
+# it or the SOP's own round cap applies, recording which.
+#
+# A basis cites steps by their exact heading text in backticks, without the
+# step or phase number, and cites at least one. The lint fails when a cited
+# heading is not in the SOP, so renaming a step surfaces here. Update the
+# basis when a step's gate changes.
 #
 # A gated entry may also list, both optional (any other key is an error):
 #   phases      the SOP's phase ids in order. It must equal the ids in the
@@ -51,10 +67,11 @@
 #            feature is approved or blocked on its own.
 version: 1
 marker: 'Orchestration: strict (phase-gated SOP)'
+meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it or the SOP''s own round cap applies; record which.'
 gated:
   k-full-sdlc:
     gates: [check-threshold, approval]
-    basis: Step 4 stops on CRITICAL design-review findings until resolved or overridden; Step 5 feature split needs approval before Step 6; Step 6 specs need approval for every feature; Step 8 consolidated review verdicts need confirmation before Step 9; Step 9 stops on CRITICAL test gaps until the engineer picks a resolution. The boundaries are design-review, a check-threshold once per run where the engineer can override remaining CRITICAL findings; feature-splitting, an approval once per run; specs, an approval decided per feature; code-review, an approval once per run over the consolidated verdicts; and testing, a check-threshold decided per feature where accepting a remaining gap is the override.
+    basis: '`Principal Engineer Design Review` stops on CRITICAL findings until resolved or overridden; `Feature Splitting` needs approval before `Specs (Per Feature)`; `Specs (Per Feature)` need approval for every feature; `Code Review and Pull Request` consolidated review verdicts need confirmation before `Testing`; `Testing` stops on CRITICAL test gaps until the engineer picks a resolution. The boundaries are design-review, a check-threshold once per run where the engineer can override remaining CRITICAL findings; feature-splitting, an approval once per run; specs, an approval decided per feature; code-review, an approval once per run over the consolidated verdicts; and testing, a check-threshold decided per feature where accepting a remaining gap is the override.'
     phases: [elicitation, codebase-analysis, requirements, design, design-review, feature-splitting, specs, implementation, code-review, testing, documentation, final-summary]
     boundaries:
       - {phase: design-review, kind: check-threshold, scope: run}
@@ -64,13 +81,13 @@ gated:
       - {phase: testing, kind: check-threshold, scope: feature}
   k-design-doc-creation:
     gates: [approval, check-threshold, loop-exit]
-    basis: Phase 1 summary confirmed before Phase 2; Phase 2 needs zero CRITICAL before Phase 3; Phase 4 loop exits or hits its 5-round cap.
+    basis: '`Requirements Elicitation` summary confirmed before `Draft Generation`; `Draft Generation` needs zero CRITICAL before `Quality Gates`; `Adversarial Review Loop` exits or hits its 5-round cap.'
   k-principal-engineer-design-review:
     gates: [check-threshold, loop-exit]
-    basis: Step 1 quality score of 3 or more before Step 2; Step 3 adversarial loop, max 5 rounds.
+    basis: '`Quality Gate (design-quality-check)` score of 3 or more before `Architecture Principles Gate (design-evaluation)`; `Adversarial Review Loop (max 5 rounds)`.'
   kiro-spec-workflow:
     gates: [approval]
-    basis: requirements.md and design.md approved before the next step; tasks.md presented for approval.
+    basis: '`Generate Requirements (EARS Format)` and `Generate Design (Per-Feature)` outputs approved before the next step; `Generate Tasks (Kiro Format)` output presented for approval.'
 not_gated:
   about-konductor: Four orientation steps, no stop rule.
   k-adversarial-pull-request-review: Parallel passes, a join, a checker filter and a final verdict; no stop on a produced artifact.

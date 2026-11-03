@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 version: 1
 marker: 'Orchestration: strict (phase-gated SOP)'
+meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it or the SOP''s own round cap applies; record which.'
 gated:
   alpha-gated:
     gates: [approval]
-    basis: Step 1 output needs approval before Step 2.
+    basis: '`Do the thing` needs approval before `Check the thing`.'
     phases: [one, two]
 not_gated:
   beta-plain: No stop rule between steps.

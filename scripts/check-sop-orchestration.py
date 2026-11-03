@@ -7,12 +7,13 @@ Usage: check-sop-orchestration.py [repo-root]
 
 Exit 0 and print nothing when they agree. Exit 1 and print one
 `<code>: <detail>` line per violation to stderr when they do not.
-Exit 64 on a bad invocation.
+Exit 3 when PyYAML is not installed. Exit 64 on a bad invocation.
 
 Codes: `bad-entry` means one entry is malformed on its own. The other
 `*-mismatch` and `unknown-boundary-*` codes mean a reference that does not
 resolve to the SOP or to the entry's own `phases` and `gates`.
 """
+import collections.abc
 import re
 import sys
 from pathlib import Path
@@ -21,19 +22,29 @@ MAP_PATH = Path("cli/gate-config/sop-orchestration.yml")
 SOP_DIR = Path("agent-sops")
 SOP_SUFFIX = ".sop.md"
 GATE_KINDS = {"approval", "check-threshold", "loop-exit"}
-TOP_LEVEL_KEYS = {"version", "marker", "gated", "not_gated"}
+TOP_LEVEL_KEYS = {"version", "marker", "meaning", "gated", "not_gated"}
 GATED_ENTRY_KEYS = {"gates", "basis", "phases", "boundaries"}
 BOUNDARY_KEYS = {"phase", "kind", "scope"}
 BOUNDARY_SCOPES = {"run", "feature"}
 PHASE_LIST_BULLET = "- **Phase list.**"
 PHASE_LIST_END = "the same ids as"
+EX_SETUP = 3
 EX_USAGE = 64
+GATE_NOTE = (
+    "Recorded gates are the stops this SOP names; where the run keeps a "
+    "session file, record their gate facts there."
+)
 
 
-def marker_is_placed(text, marker):
-    """True when the marker is its own paragraph right after the `# ` title
-    and nowhere in `## Overview`. The installer reads the first Overview
-    paragraph as the skill description, so the marker must stay out of it."""
+class SetupError(Exception):
+    """A tool the check needs is missing; not a repository defect."""
+
+
+def marker_is_placed(text, marker, meaning):
+    """True when the marker and meaning lines form their own paragraph
+    right after the `# ` title, the gate note is the next paragraph, and the
+    marker is nowhere in `## Overview`. The installer reads the first Overview paragraph as the
+    skill description, so the marker must stay out of it."""
     lines = text.splitlines()
     filled = [i for i, line in enumerate(lines) if line.strip()]
     if len(filled) < 2 or not lines[filled[0]].startswith("# "):
@@ -41,7 +52,13 @@ def marker_is_placed(text, marker):
     at = filled[1]
     if lines[at].rstrip() != marker:
         return False
-    if at + 1 < len(lines) and lines[at + 1].strip():
+    if at + 1 >= len(lines) or lines[at + 1].rstrip() != meaning:
+        return False
+    if at + 2 >= len(lines) or lines[at + 2].strip():
+        return False
+    if at + 3 >= len(lines) or lines[at + 3].rstrip() != GATE_NOTE:
+        return False
+    if at + 4 < len(lines) and lines[at + 4].strip():
         return False
     return marker not in overview_text(lines)
 
@@ -65,19 +82,30 @@ def check_map_shape(data):
         errors.append(f"bad-entry: missing top-level key '{key}'")
     for key in sorted(data.keys() - TOP_LEVEL_KEYS):
         errors.append(f"bad-entry: unknown top-level key '{key}'")
-    marker = data.get("marker")
-    if "marker" in data and not (isinstance(marker, str) and marker.strip()):
-        errors.append("bad-entry: 'marker' must be a non-empty string")
+    for key in ("marker", "meaning"):
+        value = data.get(key)
+        if key in data and not (isinstance(value, str) and value.strip()):
+            errors.append(f"bad-entry: '{key}' must be a non-empty string")
     for section in ("gated", "not_gated"):
         if section in data and not isinstance(data[section], dict):
             errors.append(f"bad-entry: '{section}' must be a mapping of SOP names")
-    for name, entry in (data.get("gated") or {}).items():
+    for section in ("gated", "not_gated"):
+        names = data[section] if isinstance(data.get(section), dict) else {}
+        for name in names:
+            if not isinstance(name, str):
+                errors.append(f"bad-entry: {section} key {name!r} must be a string")
+    for name, entry in string_keyed(data.get("gated")).items():
         gates = entry.get("gates") if isinstance(entry, dict) else None
         basis = entry.get("basis") if isinstance(entry, dict) else None
-        if not (isinstance(gates, list) and gates and set(gates) <= GATE_KINDS):
+        if not (
+            isinstance(gates, list)
+            and gates
+            and set(gates) <= GATE_KINDS
+            and len(set(gates)) == len(gates)
+        ):
             errors.append(
                 f"bad-entry: gated '{name}' needs a non-empty 'gates' list of "
-                f"{', '.join(sorted(GATE_KINDS))}"
+                f"distinct values from {', '.join(sorted(GATE_KINDS))}"
             )
         if not (isinstance(basis, str) and basis.strip()):
             errors.append(f"bad-entry: gated '{name}' needs a non-empty 'basis'")
@@ -85,7 +113,7 @@ def check_map_shape(data):
             for key in sorted(entry.keys() - GATED_ENTRY_KEYS, key=str):
                 errors.append(f"bad-entry: gated '{name}' has unknown key '{key}'")
             errors += check_phase_shape(name, entry)
-    for name, basis in (data.get("not_gated") or {}).items():
+    for name, basis in string_keyed(data.get("not_gated")).items():
         if not (isinstance(basis, str) and basis.strip()):
             errors.append(f"bad-entry: not_gated '{name}' needs a non-empty basis string")
     return errors
@@ -203,7 +231,14 @@ def check_boundaries(root, gated):
     return errors
 
 
-def check_agreement(root, gated, not_gated, marker):
+def string_keyed(section):
+    """The entries of a gated or not_gated mapping whose SOP name is a string."""
+    if not isinstance(section, dict):
+        return {}
+    return {name: entry for name, entry in section.items() if isinstance(name, str)}
+
+
+def check_agreement(root, gated, not_gated, marker, meaning):
     errors = []
     sop_files = {p.name[: -len(SOP_SUFFIX)]: p for p in (root / SOP_DIR).glob("*" + SOP_SUFFIX)}
     for name in sorted(gated.keys() & not_gated.keys()):
@@ -220,17 +255,47 @@ def check_agreement(root, gated, not_gated, marker):
             errors.append(f"bad-entry: {SOP_DIR / (name + SOP_SUFFIX)}: {first_line(exc)}")
     for name in sorted(texts.keys() & gated.keys()):
         text = texts[name]
-        if not marker_is_placed(text, marker):
+        if not marker_is_placed(text, marker, meaning):
             errors.append(
-                f"missing-marker: gated '{name}' must have '{marker}' as its own "
-                "paragraph right after the title, above ## Overview"
+                f"missing-marker: gated '{name}' must have '{marker}' followed by "
+                f"'{meaning}' as its own paragraph right after the title, above ## Overview"
             )
         if text.count(marker) > 1:
             errors.append(f"unexpected-marker: gated '{name}' has the marker more than once")
+        entry = gated[name]
+        if isinstance(entry, dict) and isinstance(entry.get("basis"), str):
+            errors += check_cited_headings(name, entry["basis"], text)
     for name in sorted(texts.keys() & not_gated.keys()):
         if marker in texts[name]:
             errors.append(f"unexpected-marker: not_gated '{name}' contains '{marker}'")
     return errors
+
+
+def step_headings(text):
+    """Heading texts at levels 2-4, with a leading step number like `4. ` or
+    phase label like `Phase 4: ` removed so a basis can cite a step by name
+    and survive renumbering."""
+    found = set()
+    for line in text.splitlines():
+        match = re.match(r"#{2,4} (.+?)\s*$", line)
+        if match:
+            found.add(re.sub(r"^(?:\d+\.|Phase \d+:)\s+", "", match.group(1)))
+    return found
+
+
+def check_cited_headings(name, basis, text):
+    """A gated basis must cite at least one heading, and each backticked
+    phrase must be a heading in the SOP."""
+    cited_phrases = re.findall(r"`([^`]+)`", basis)
+    if not cited_phrases:
+        return [f"uncited-basis: gated '{name}' basis cites no step heading in backticks"]
+    headings = step_headings(text)
+    return [
+        f"stale-basis: gated '{name}' basis cites `{cited}` but {SOP_DIR / (name + SOP_SUFFIX)} "
+        "has no such heading (cite the heading without its step or phase number)"
+        for cited in cited_phrases
+        if cited not in headings
+    ]
 
 
 def first_line(exc):
@@ -243,26 +308,51 @@ def first_line(exc):
     return lines[0] if lines else type(exc).__name__
 
 
+def load_unique_keys(yaml, text):
+    """Parse YAML, rejecting a mapping that repeats a key; safe_load would
+    silently keep the last one."""
+
+    class UniqueKeyLoader(yaml.SafeLoader):
+        pass
+
+    def construct_mapping(loader, node, deep=False):
+        seen = set()
+        for key_node, _ in node.value:
+            key = loader.construct_object(key_node, deep=True)
+            if isinstance(key, collections.abc.Hashable) and key in seen:
+                raise yaml.constructor.ConstructorError(
+                    None, None, f"duplicate key {key!r}", key_node.start_mark
+                )
+            seen.add(key)
+        return yaml.SafeLoader.construct_mapping(loader, node, deep=deep)
+
+    UniqueKeyLoader.add_constructor(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping
+    )
+    return yaml.load(text, Loader=UniqueKeyLoader)
+
+
 def check(root):
     try:
         import yaml
     except ImportError:
-        return ["setup: PyYAML is required (python3 -m pip install pyyaml)"]
+        raise SetupError("setup: PyYAML is required (python3 -m pip install pyyaml)")
     map_file = root / MAP_PATH
     if not map_file.is_file():
         return [f"bad-entry: {MAP_PATH} does not exist"]
     try:
-        data = yaml.safe_load(map_file.read_text(encoding="utf-8"))
+        data = load_unique_keys(yaml, map_file.read_text(encoding="utf-8"))
     except (yaml.YAMLError, UnicodeDecodeError, OSError) as exc:
         return [f"bad-entry: {MAP_PATH}: {first_line(exc)}"]
     if not isinstance(data, dict):
         return [f"bad-entry: {MAP_PATH} must be a mapping"]
     errors = check_map_shape(data)
-    gated = data.get("gated") if isinstance(data.get("gated"), dict) else {}
-    not_gated = data.get("not_gated") if isinstance(data.get("not_gated"), dict) else {}
+    gated = string_keyed(data.get("gated"))
+    not_gated = string_keyed(data.get("not_gated"))
     marker = data.get("marker")
-    if isinstance(marker, str) and marker.strip():
-        errors += check_agreement(root, gated, not_gated, marker.strip())
+    meaning = data.get("meaning")
+    if all(isinstance(v, str) and v.strip() for v in (marker, meaning)):
+        errors += check_agreement(root, gated, not_gated, marker.strip(), meaning.strip())
     errors += check_boundaries(root, gated)
     return errors
 
@@ -275,7 +365,11 @@ def main(argv):
     if not root.is_dir():
         print(f"usage: repo root '{root}' is not a directory", file=sys.stderr)
         return EX_USAGE
-    errors = check(root)
+    try:
+        errors = check(root)
+    except SetupError as exc:
+        print(exc, file=sys.stderr)
+        return EX_SETUP
     for error in errors:
         print(error, file=sys.stderr)
     return 1 if errors else 0

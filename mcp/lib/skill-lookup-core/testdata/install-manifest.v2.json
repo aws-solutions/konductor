@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "strategies": [
+    {
+      "strategy": "claude",
+      "installed_at": "2026-01-15T09:30:00Z",
+      "destination": ".",
+      "source": "/src/konductor",
+      "status": "complete",
+      "files": [
+        {
+          "path": ".claude/skills/code-review/SKILL.md",
+          "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "provenance": "created"
+        }
+      ]
+    },
+    {
+      "strategy": "kiro-cli-v2",
+      "installed_at": "2026-01-15T09:30:00Z",
+      "destination": ".",
+      "source": "/src/konductor",
+      "status": "complete",
+      "files": [
+        {
+          "path": ".kiro/agents/k-example.json",
+          "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "provenance": "replaced_ours"
+        },
+        {
+          "path": ".konductor/skills/code-review/SKILL.md",
+          "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+          "provenance": "created"
+        },
+        {
+          "path": ".konductor/skills/code-review/references/checklist.md",
+          "sha256": null,
+          "provenance": "replaced_foreign"
+        }
+      ]
+    }
+  ]
+}
