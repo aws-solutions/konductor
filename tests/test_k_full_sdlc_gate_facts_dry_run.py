@@ -39,6 +39,16 @@ EVIDENCE = {
     "testing": ("{feature-name}/testing/test-coverage-review-report.md", "k-quality-assurance"),
 }
 
+# Where the SOP stores each boundary's gate facts, written out from its
+# Progress Tracking and Step text rather than read from the boundary config.
+SOP_SCOPE = {
+    "design-review": "run",
+    "feature-splitting": "run",
+    "specs": "feature",
+    "code-review": "run",
+    "testing": "feature",
+}
+
 pytestmark = pytest.mark.skipif(
     not KONDUCTOR_BIN.is_file(),
     reason=f"{KONDUCTOR_BIN} not found; run 'make -C cli build' first",
@@ -78,7 +88,7 @@ def session_for(
         }
         if phase in overrides:
             facts[f"gate_{phase}_override"] = overrides[phase]
-        (run_data if boundary["scope"] == "run" else feature_data).update(facts)
+        (run_data if SOP_SCOPE[phase] == "run" else feature_data).update(facts)
         evidence = output_dir / evidence_path(phase)
         evidence.parent.mkdir(parents=True, exist_ok=True)
         evidence.write_text("report\n", encoding="utf-8")
@@ -420,3 +430,11 @@ def test_bad_flag_on_a_binary_with_root_is_also_unexpected_argument(layout):
     result = run_binary(layout, "verify-run", "--no-such-flag")
     assert result.returncode == 64
     assert "unexpected argument" in result.stderr
+
+
+def test_sop_storage_model_matches_boundary_config_and_text():
+    assert {b["phase"]: b["scope"] for b in ENTRY["boundaries"]} == SOP_SCOPE
+    gate_facts = " ".join(sentence_with(SOP_TEXT, "They go in `run.data` for", "`features.<slug>.data`"))
+    assert "`run.data` for `design-review`, `feature-splitting`, and `code-review`" in gate_facts
+    assert "`features.<slug>.data` for each feature at `specs` and `testing`" in gate_facts
+    assert sentence_with(step_section(8), "record in `run.data`", "gate_code-review_result")
