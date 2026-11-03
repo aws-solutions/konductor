@@ -438,3 +438,32 @@ def test_sop_storage_model_matches_boundary_config_and_text():
     assert "`run.data` for `design-review`, `feature-splitting`, and `code-review`" in gate_facts
     assert "`features.<slug>.data` for each feature at `specs` and `testing`" in gate_facts
     assert sentence_with(step_section(8), "record in `run.data`", "gate_code-review_result")
+
+
+def test_code_review_evidence_rule_names_one_feature_report():
+    fact = sentence_with(step_section(8), "gate_code-review_evidence", "first feature in checklist order")
+    assert fact
+    assert "never leave the placeholder" in fact[0]
+
+
+@needs_root
+def test_two_feature_run_records_one_feature_report_as_code_review_evidence(layout):
+    session = session_for(layout.output_dir, "in_progress", "IN_PROGRESS")
+    feature_data = {
+        key: value.replace(FEATURE, "billing") if isinstance(value, str) else value
+        for key, value in session["features"][FEATURE]["data"].items()
+    }
+    session["features"]["billing"] = {"counters": {"fix_cycles_used": 0}, "data": feature_data}
+    for key, value in feature_data.items():
+        if key.endswith("_evidence"):
+            (layout.output_dir / value).parent.mkdir(parents=True, exist_ok=True)
+            (layout.output_dir / value).write_text("report\n", encoding="utf-8")
+    second_report = layout.output_dir / "billing" / "code-review" / "report.md"
+    second_report.parent.mkdir(parents=True)
+    second_report.write_text("report\n", encoding="utf-8")
+    result = step_11(layout, session, "--allow-running")
+    assert result.returncode == 0, combined(result)
+
+    session["run"]["data"]["gate_code-review_evidence"] = "{feature-name}/code-review/report.md"
+    result = step_11(layout, session, "--allow-running")
+    assert result.returncode != 0, combined(result)
