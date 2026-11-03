@@ -64,6 +64,8 @@ not per individual commit.
   `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
 - The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
   agents no longer carry an `mcpServers` block that Claude Code ignores.
+- The plugin README link rewrite handles `[label]: <target>` reference definitions: it pins a
+  relative target to the release tag and leaves an absolute one alone, keeping the brackets.
 
 ## [1.2.0] - 2026-10-26
 
