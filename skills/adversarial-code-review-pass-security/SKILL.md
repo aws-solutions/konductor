@@ -1,7 +1,7 @@
 ---
 name: adversarial-code-review-pass-security
 description: 'Reviews a diff through the lens of security concerns — information disclosure, authorization, injection, secrets. Use only when the adversarial-code-review coordinator spawns it, alongside the integrity and schema passes.'
-version: 1.0.0
+version: 1.1.0
 tags: [skill, security, code-review, adversarial, pass]
 ---
 
@@ -19,7 +19,7 @@ Spawned by an adversarial-review coordinator SOP (such as `k-adversarial-pull-re
 
 Review through the lens of security. In this diff, does anything:
 
-- Surface stack traces, internal IDs, table names, partition keys, or raw exception messages to the caller
+- Surface stack traces, internal IDs, table names, partition keys, internal error codes, or raw exception messages to the caller
 - Log request payloads, response bodies, or auth headers at info or debug level
 - Decode a pagination token, opaque cursor, or user-supplied ID and use it in a query without validation
 - Cross an abstraction boundary — internal service details reaching a public API surface

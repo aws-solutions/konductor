@@ -1,7 +1,7 @@
 ---
 name: adversarial-code-review-pass-schema
 description: 'Reviews a diff through the lens of schema and contract — API/schema/type changes, backward compatibility, validation completeness. Use only when the adversarial-code-review coordinator spawns it, alongside the security and integrity passes.'
-version: 1.0.0
+version: 1.1.0
 tags: [skill, schema, code-review, adversarial, pass]
 ---
 
@@ -49,8 +49,8 @@ Findings produced by this pass are candidates, not verdicts. The coordinator for
 ## Severity guidance
 
 - **CRITICAL** — breaking change to a shipped API or data model without a migration path; new field required by write path but not defaulted in read path (existing records unparseable)
-- **IMPORTANT** — validate-then-act ordering violation (validation exists but runs after a side effect); integration wiring gap (handler present, not wired to auth or middleware); missing guard on a map/optional access that will be reached at runtime
-- **SUGGESTION** — new field validated at one entry point but not another; enum change that consumers may pattern-match on
+- **IMPORTANT** — validate-then-act ordering violation (validation exists but runs after a side effect); integration wiring gap (handler present, not wired to auth or middleware); missing guard on a map/optional access that will be reached at runtime; new field missing validation or a default in one or more entry points
+- **SUGGESTION** — enum change that consumers may pattern-match on
 
 ## Output format
 
