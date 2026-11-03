@@ -15,7 +15,8 @@
 //   3 = fix-cycle budget exceeded    4 = user aborted a paused verdict
 //   6 = success with warnings       64 = argument/usage error only
 //   65 = session content or integrity failure (corrupt or invalid session,
-//        record integrity, phase order, missing gate facts or evidence, an
+//        record integrity, phase order (a started or completed phase after an
+//        earlier PENDING or IN_PROGRESS one), missing gate facts or evidence, an
 //        in-progress session without allow_running)
 //
 // ── Usage-error remap (PITFALL) ────────────────────────────────────────────

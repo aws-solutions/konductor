@@ -55,6 +55,10 @@ impl PhaseStatus {
         }
     }
 
+    fn has_started(self) -> bool {
+        matches!(self, Self::InProgress | Self::Completed)
+    }
+
     fn is_unfinished(self) -> bool {
         matches!(self, Self::Pending | Self::InProgress)
     }
@@ -408,8 +412,10 @@ fn check_phase_map<'m>(
     Some(sop)
 }
 
-/// V3. Only a COMPLETED phase counts against an earlier unfinished one:
-/// skipped phases are marked SKIPPED at minting, before earlier phases run.
+/// V3. A started (IN_PROGRESS) or COMPLETED phase counts against an earlier
+/// unfinished one: the SOP runs phases in order and marks skipped ones SKIPPED
+/// at minting, so an earlier PENDING or IN_PROGRESS phase was passed over. A
+/// later PENDING or SKIPPED phase is fine.
 fn check_phase_order(session: &Session, sop: &GatedSop, report: &mut Report) {
     let span = feature_phase_span(sop);
     for (index, earlier) in session.phases.iter().enumerate() {
@@ -418,14 +424,15 @@ fn check_phase_order(session: &Session, sop: &GatedSop, report: &mut Report) {
         }
         if let Some(later) = session.phases[index + 1..]
             .iter()
-            .find(|p| p.status == PhaseStatus::Completed)
+            .find(|p| p.status.has_started())
         {
             report.fire(
                 EXIT_VERIFY_FAILED,
                 ReasonCode::PhaseOrder,
                 format!(
-                    "phase '{}' is COMPLETED while earlier phase '{}' is {}",
+                    "phase '{}' is {} while earlier phase '{}' is {}",
                     later.id,
+                    later.status.as_str(),
                     earlier.id,
                     earlier.status.as_str()
                 ),
@@ -475,7 +482,7 @@ fn feature_phase_span(sop: &GatedSop) -> Option<(usize, usize)> {
     Some((*indices.iter().min()?, *indices.iter().max()?))
 }
 
-/// An IN_PROGRESS per-feature phase with a later phase COMPLETED: the run
+/// An IN_PROGRESS per-feature phase with a later phase started: the run
 /// moved on while a registered feature never cleared the phase.
 fn held_open_by_a_feature(
     session: &Session,
@@ -490,7 +497,7 @@ fn held_open_by_a_feature(
         && (first..=last).contains(&index)
         && session.phases[index + 1..]
             .iter()
-            .any(|p| p.status == PhaseStatus::Completed)
+            .any(|p| p.status.has_started())
         && some_feature_has_not_cleared(session, sop, index)
 }
 
@@ -658,7 +665,7 @@ fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
                 EXIT_HALTED,
                 ReasonCode::Halted,
                 format!(
-                    "phase '{}' is IN_PROGRESS after a later phase completed; a feature did not clear it",
+                    "phase '{}' is IN_PROGRESS after a later phase started; a feature did not clear it",
                     phase.id
                 ),
             );
@@ -1275,6 +1282,114 @@ phases:
         assert_eq!(verdict.exit, 0);
 
         assert_verdict(&eval(&session), 65, "RUNNING");
+    }
+
+    /// The state `k-full-sdlc` Step 11 runs `verify-run --allow-running` in,
+    /// with the gated phases before it never run and never marked SKIPPED.
+    fn unrun_gates_then_final_summary_started() -> Value {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        for id in ["code-review", "testing", "documentation"] {
+            set_phase(&mut session, id, "PENDING");
+            remove_run_data(&mut session, &format!("gate_{id}_result"));
+        }
+        for id in ["testing", "code-review"] {
+            remove_login(&mut session, &format!("gate_{id}_result"));
+            remove_login(&mut session, &format!("gate_{id}_evidence"));
+        }
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        session
+    }
+
+    #[test]
+    fn started_later_phase_after_pending_gates_is_phase_order() {
+        let session = unrun_gates_then_final_summary_started();
+        for verdict in [eval_running(&session), eval(&session)] {
+            assert_verdict(&verdict, 65, "PHASE_ORDER");
+            assert!(
+                verdict
+                    .reasons
+                    .iter()
+                    .any(|r| r.detail.contains("'final-summary'")
+                        && r.detail.contains("'code-review'")),
+                "{verdict:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn started_later_phase_after_skipped_gates_is_fine() {
+        let mut session = unrun_gates_then_final_summary_started();
+        for id in ["code-review", "testing", "documentation"] {
+            skip_phase(&mut session, id);
+        }
+        let verdict = eval_running(&session);
+        assert_eq!(codes(&verdict), vec!["RUNNING"], "{verdict:#?}");
+    }
+
+    #[test]
+    fn pending_later_phases_after_pending_phases_are_fine() {
+        let mut session = unrun_gates_then_final_summary_started();
+        set_phase(&mut session, "final-summary", "PENDING");
+        let verdict = eval_running(&session);
+        assert_eq!(codes(&verdict), vec!["RUNNING"], "{verdict:#?}");
+    }
+
+    #[test]
+    fn started_later_phase_after_in_progress_earlier_phase_is_phase_order() {
+        let mut session = unrun_gates_then_final_summary_started();
+        for id in &PHASES[4..11] {
+            set_phase(&mut session, id, "PENDING");
+        }
+        set_phase(&mut session, "design", "IN_PROGRESS");
+        let verdict = eval_running(&session);
+        assert_verdict(&verdict, 65, "PHASE_ORDER");
+        assert!(!codes(&verdict).contains(&"HALTED"));
+    }
+
+    /// A held-open feature phase stays HALTED when the later phase is only
+    /// IN_PROGRESS, not COMPLETED.
+    #[test]
+    fn feature_held_phase_with_started_later_phase_is_halted() {
+        let mut session = passing();
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "testing", "IN_PROGRESS");
+        skip_phase(&mut session, "documentation");
+        set_phase(&mut session, "final-summary", "IN_PROGRESS");
+        session["features"]["signup"] = session_yaml(&format!(
+            "counters: {{fix_cycles_used: 1}}\ndata:\n{}",
+            feature_facts("  ")
+        ));
+        session["features"]["signup"]["data"]
+            .as_mapping_mut()
+            .unwrap()
+            .remove("gate_testing_result");
+        let verdict = eval_running(&session);
+        assert_eq!(verdict.exit, 1, "{verdict:#?}");
+        assert_eq!(codes(&verdict), vec!["HALTED"]);
+    }
+
+    /// The new ordering failure is record integrity, so it outranks an open
+    /// finding like any other PHASE_ORDER, and both are listed.
+    #[test]
+    fn unrun_gates_with_an_open_finding_exit_65_and_list_both() {
+        let mut session = unrun_gates_then_final_summary_started();
+        set_run_data(
+            &mut session,
+            "gate_design-review_result",
+            Value::from("CRITICAL"),
+        );
+        let verdict = eval_running(&session);
+        assert_eq!(verdict.exit, 65, "{verdict:#?}");
+        assert!(codes(&verdict).contains(&"PHASE_ORDER"));
+        assert!(codes(&verdict).contains(&"FINDING_UNRESOLVED"));
+    }
+
+    #[test]
+    fn completed_later_phase_after_pending_gates_is_still_phase_order() {
+        let mut session = unrun_gates_then_final_summary_started();
+        set_phase(&mut session, "final-summary", "COMPLETED");
+        assert_verdict(&eval_running(&session), 65, "PHASE_ORDER");
     }
 
     /// A feature left blocked keeps its phase IN_PROGRESS while the run
