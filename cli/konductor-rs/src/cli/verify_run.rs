@@ -519,7 +519,7 @@ mod tests {
         fn verdict_of(&self, text: &str) -> Verdict {
             let session = Path::new(".konductor/sessions").join(SESSION_NAME);
             std::fs::write(self.root.join(&session), text).unwrap();
-            check(Ok(self.root.clone()), &session, false).unwrap_or_else(Invalid::into_verdict)
+            check(Ok(self.root.clone()), None, &session, false).unwrap_or_else(Invalid::into_verdict)
         }
     }
 
