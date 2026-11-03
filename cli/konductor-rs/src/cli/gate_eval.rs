@@ -962,9 +962,6 @@ mod tests {
             "gate_specs_result: approved",
             "gate_specs_evidence: out/specs/login/tasks.md",
             "gate_specs_checker: user",
-            "gate_code-review_result: approved",
-            "gate_code-review_evidence: out/login/code-review/report.md",
-            "gate_code-review_checker: user",
             "gate_testing_result: none",
             "gate_testing_evidence: out/login/testing/test-coverage-review-report.md",
             "gate_testing_checker: k-quality-assurance",
@@ -999,6 +996,9 @@ mod tests {
     gate_feature-splitting_result: approved
     gate_feature-splitting_evidence: out/feature-split/feature-split.md
     gate_feature-splitting_checker: user
+    gate_code-review_result: approved
+    gate_code-review_evidence: out/login/code-review/report.md
+    gate_code-review_checker: user
 phases:
 {phases}features:
   login:
@@ -1024,6 +1024,10 @@ phases:
 
     fn set_run_data(session: &mut Value, key: &str, value: Value) {
         session["run"]["data"][key] = value;
+    }
+
+    fn remove_run_data(session: &mut Value, key: &str) {
+        session["run"]["data"].as_mapping_mut().unwrap().remove(key);
     }
 
     fn set_login(session: &mut Value, key: &str, value: Value) {
@@ -1281,7 +1285,7 @@ phases:
     #[test]
     fn v4_missing_result_is_gate_missing() {
         let mut session = passing();
-        remove_login(&mut session, "gate_code-review_result");
+        remove_run_data(&mut session, "gate_code-review_result");
         assert_verdict(&eval(&session), 65, "GATE_MISSING");
     }
 
@@ -1515,7 +1519,7 @@ phases:
     #[test]
     fn every_firing_row_is_reported_and_the_first_sets_the_exit() {
         let mut session = passing();
-        remove_login(&mut session, "gate_code-review_result");
+        remove_run_data(&mut session, "gate_code-review_result");
         set_fix_cycles_used(&mut session, 3);
         set_login(&mut session, "gate_testing_result", Value::from("CRITICAL"));
         let verdict = eval(&session);
@@ -1756,12 +1760,8 @@ phases:
     fn rejected_approval_in_an_earlier_feature_phase_is_halted() {
         let mut session = passing();
         set_run_status(&mut session, "in_progress");
-        set_phase(&mut session, "code-review", "IN_PROGRESS");
-        set_login(
-            &mut session,
-            "gate_code-review_result",
-            Value::from("rejected"),
-        );
+        set_phase(&mut session, "specs", "IN_PROGRESS");
+        set_login(&mut session, "gate_specs_result", Value::from("rejected"));
         let verdict = eval_running(&session);
         assert_eq!(verdict.exit, 1, "{verdict:#?}");
         assert!(codes(&verdict).contains(&"HALTED"), "{verdict:#?}");
@@ -1816,9 +1816,9 @@ phases:
     }
 
     #[test]
-    fn lowercase_severity_word_is_unknown_and_ranked_critical() {
+    fn unrecognised_severity_word_is_unknown_and_ranked_critical() {
         let mut session = passing();
-        set_login(&mut session, "gate_testing_result", Value::from("critical"));
+        set_login(&mut session, "gate_testing_result", Value::from("blocker"));
         let verdict = eval(&session);
         assert_verdict(&verdict, 2, "FINDING_UNRESOLVED");
         assert!(
