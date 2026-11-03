@@ -50,9 +50,10 @@
 #
 # Trust boundary: `max_fix_cycles` and the fix-cycle counters live in the session file,
 # which the orchestrating agent writes. Without a pinned cap the evaluator trusts the
-# recorded value and cannot detect an edit after minting. `verify-run --max-fix-cycles N`
-# is how CI or an engineer supplies the budget independently of the agent; a recorded
-# value above N is exit 65 (CAP_RAISED). The rule is stated once in cli/README.md.
+# recorded value and cannot detect an edit after minting. The evaluator takes an optional
+# pinned cap, which is how CI or an engineer supplies the budget independently of the
+# agent; a recorded value above the pin is exit 65 (CAP_RAISED). The verify-run command
+# exposes the pin as an option in a later change. The rule is stated once in cli/README.md.
 #
 # A word that is neither an id nor an alias ranks as CRITICAL, except `none`:
 # the word `none`, ignoring case and surrounding whitespace, records a gate

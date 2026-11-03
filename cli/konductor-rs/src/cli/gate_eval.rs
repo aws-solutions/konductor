@@ -186,18 +186,8 @@ pub(crate) struct EvalContext<'a> {
     /// project root.
     pub(crate) evidence_exists: &'a dyn Fn(&str) -> bool,
     pub(crate) allow_running: bool,
-    /// The fix-cycle budget the caller pinned with `--max-fix-cycles`, kept
-    /// outside the session file. `None` trusts the recorded cap.
+    /// The fix-cycle budget the caller pinned, kept outside the session file. `None` trusts the recorded cap.
     pub(crate) pinned_max_fix_cycles: Option<u64>,
-}
-
-/// Parses the value of `--max-fix-cycles`. An error is a usage problem (exit 64).
-pub(crate) fn parse_pinned_max_fix_cycles(text: &str) -> Result<u64, String> {
-    let digits_only = !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit());
-    digits_only
-        .then(|| text.parse::<u64>().ok())
-        .flatten()
-        .ok_or_else(|| format!("--max-fix-cycles expects a non-negative integer, got '{text}'"))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -765,7 +755,7 @@ fn check_cap_not_raised(session: &Session, pinned: Option<u64>, report: &mut Rep
             EXIT_VERIFY_FAILED,
             ReasonCode::CapRaised,
             format!(
-                "run.data.max_fix_cycles {recorded} is above the pinned --max-fix-cycles {pin}; the recorded budget was raised"
+                "run.data.max_fix_cycles {recorded} is above the pinned cap {pin}; the recorded budget was raised"
             ),
         );
     }
@@ -1513,25 +1503,6 @@ phases:
         let mut session = passing();
         set_run_data(&mut session, "max_fix_cycles", Value::from(9));
         assert_eq!(pinned_verdict(session, false, None).exit, 0);
-    }
-
-    #[test]
-    fn pinned_cap_flag_value_parses_non_negative_integers_only() {
-        assert_eq!(parse_pinned_max_fix_cycles("0"), Ok(0));
-        assert_eq!(parse_pinned_max_fix_cycles("3"), Ok(3));
-        for bad in [
-            "",
-            " 3 ",
-            "+3",
-            "-1",
-            "2.5",
-            "two",
-            "+x",
-            "18446744073709551616",
-        ] {
-            let err = parse_pinned_max_fix_cycles(bad).unwrap_err();
-            assert!(err.contains("--max-fix-cycles"), "{bad}: {err}");
-        }
     }
 
     #[test]
