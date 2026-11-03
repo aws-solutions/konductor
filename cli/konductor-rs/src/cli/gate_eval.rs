@@ -716,9 +716,11 @@ fn check_fix_cycles(session: &Session, pinned: Option<u64>, report: &mut Report)
     }
 }
 
-/// The cap, and whether it is the default because none is recorded. Only an
-/// absent key defaults. A key that is present must hold a non-negative integer,
-/// so an empty value (null), a negative, a float, a string or a bool is an error.
+/// The cap, and whether it is the default because none is recorded.
+///
+/// Only an absent key defaults. A present key must hold a non-negative integer;
+/// null, a negative, a float, a string or a bool is an error.
+///
 /// With a pinned cap, an absent key takes the pin and a recorded value is
 /// bounded by it. A recorded value above the pin is reported by
 /// `check_cap_not_raised`; the pin is still the cap used for the budget rows.
@@ -1468,6 +1470,56 @@ phases:
         let verdict = pinned_verdict(session, true, Some(2));
         assert_eq!(verdict.exit, 65, "{verdict:#?}");
         assert_eq!(codes(&verdict), vec!["CAP_RAISED", "HALTED"]);
+    }
+
+    #[test]
+    fn cap_raised_is_listed_after_an_earlier_phase_order_failure() {
+        let mut session = passing();
+        set_run_data(&mut session, "max_fix_cycles", Value::from(9));
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "design", "PENDING");
+        let verdict = pinned_verdict(session, true, Some(2));
+        assert_eq!(verdict.exit, 65, "{verdict:#?}");
+        let found = codes(&verdict);
+        assert_eq!(found.first(), Some(&"PHASE_ORDER"), "{verdict:#?}");
+        assert!(found.contains(&"CAP_RAISED"), "{verdict:#?}");
+    }
+
+    #[test]
+    fn cap_raised_is_not_reached_when_the_phase_map_is_broken() {
+        let mut session = passing();
+        set_run_data(&mut session, "max_fix_cycles", Value::from(9));
+        session["phases"].as_mapping_mut().unwrap().remove("design");
+        let verdict = pinned_verdict(session, false, Some(2));
+        assert_verdict(&verdict, 65, "RECORD_INTEGRITY");
+        assert!(!codes(&verdict).contains(&"CAP_RAISED"), "{verdict:#?}");
+    }
+
+    fn with_pinned_doc_cycles(recorded: Option<u64>, doc_used: u64, pinned: u64) -> Verdict {
+        let mut session = passing();
+        if let Some(value) = recorded {
+            set_run_data(&mut session, "max_fix_cycles", Value::from(value));
+        }
+        set_doc_fix_cycles_used(&mut session, Value::from(doc_used));
+        pinned_verdict(session, false, Some(pinned))
+    }
+
+    #[test]
+    fn pinned_cap_bounds_the_run_level_doc_fix_cycles() {
+        assert_eq!(with_pinned_doc_cycles(None, 2, 2).exit, 0);
+        let over = with_pinned_doc_cycles(None, 3, 2);
+        assert_verdict(&over, 3, "BUDGET_EXCEEDED");
+        assert!(
+            over.reasons[0]
+                .detail
+                .starts_with("run: doc_fix_cycles_used 3"),
+            "{over:#?}"
+        );
+    }
+
+    #[test]
+    fn a_lower_recorded_cap_still_bounds_doc_fix_cycles_under_a_pin() {
+        assert_verdict(&with_pinned_doc_cycles(Some(1), 2, 5), 3, "BUDGET_EXCEEDED");
     }
 
     #[test]

@@ -938,7 +938,8 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   whitespace, like severity words. One
   exception: a malformed `max_fix_cycles` is found by the budget check, so after a
   halt the exit stays 1 and the 65 cause is only listed. A recorded cap above a pinned
-  cap (`CAP_RAISED`) is not an exception: it is found with the integrity checks. The fix-cycle cap comes from the SOP recording
+  cap (`CAP_RAISED`) is not an exception: it is found with the integrity checks.
+  The fix-cycle cap comes from the SOP recording
   `max_fix_cycles` in the session; only an absent key falls back to the default of 2. A
   key that is present must hold a non-negative integer: an empty value (`max_fix_cycles:`),
   a negative number, a float, a string, a bool or a list is a 65 integrity failure, never a silent default.
