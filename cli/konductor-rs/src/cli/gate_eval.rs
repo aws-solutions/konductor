@@ -186,12 +186,23 @@ pub(crate) struct EvalContext<'a> {
     /// project root.
     pub(crate) evidence_exists: &'a dyn Fn(&str) -> bool,
     pub(crate) allow_running: bool,
+    /// The fix-cycle budget the caller pinned with `--max-fix-cycles`, kept
+    /// outside the session file. `None` trusts the recorded cap.
+    pub(crate) pinned_max_fix_cycles: Option<u64>,
+}
+
+/// Parses the value of `--max-fix-cycles`. An error is a usage problem (exit 64).
+pub(crate) fn parse_pinned_max_fix_cycles(text: &str) -> Result<u64, String> {
+    text.trim()
+        .parse::<u64>()
+        .map_err(|_| format!("--max-fix-cycles expects a non-negative integer, got '{text}'"))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ReasonCode {
     SessionInvalid,
     RecordIntegrity,
+    CapRaised,
     PhaseOrder,
     PhaseIncomplete,
     SkipUnexplained,
@@ -210,6 +221,7 @@ impl ReasonCode {
         match self {
             Self::SessionInvalid => "SESSION_INVALID",
             Self::RecordIntegrity => "RECORD_INTEGRITY",
+            Self::CapRaised => "CAP_RAISED",
             Self::PhaseOrder => "PHASE_ORDER",
             Self::PhaseIncomplete => "PHASE_INCOMPLETE",
             Self::SkipUnexplained => "SKIP_UNEXPLAINED",
@@ -336,8 +348,9 @@ pub(crate) fn evaluate(session: &Session, ctx: &EvalContext<'_>) -> Verdict {
     };
     check_phase_order(session, sop, &mut report);
     check_boundaries(session, sop, ctx, &mut report);
+    check_cap_not_raised(session, ctx.pinned_max_fix_cycles, &mut report);
     check_halted(session, sop, &mut report);
-    check_fix_cycles(session, &mut report);
+    check_fix_cycles(session, ctx.pinned_max_fix_cycles, &mut report);
     note_overrides(session, sop, &mut report);
     check_findings(session, sop, ctx.policy, &mut report);
 
@@ -665,12 +678,12 @@ fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
 /// when none is recorded. The skill's SOP is what records it at minting; until
 /// it does, every run is judged against the default, and the
 /// FIX_CYCLE_CAP_DEFAULTED note says so. A session file is plain YAML that any
-/// agent can edit, so the recorded value is only as trustworthy as the file;
-/// the evaluator cannot protect it. The same cap bounds each feature's
+/// agent can edit, so the recorded value is only as trustworthy as the file
+/// unless the caller pins a cap (see `check_cap_not_raised`). The same cap bounds each feature's
 /// `fix_cycles_used` and the run-level `doc_fix_cycles_used` that the
 /// documentation step draws on; a count equal to the cap is within budget.
-fn check_fix_cycles(session: &Session, report: &mut Report) {
-    let (cap, defaulted) = match recorded_fix_cycle_cap(session) {
+fn check_fix_cycles(session: &Session, pinned: Option<u64>, report: &mut Report) {
+    let (cap, defaulted) = match recorded_fix_cycle_cap(session, pinned) {
         Ok(found) => found,
         Err(detail) => {
             report.fire(EXIT_VERIFY_FAILED, ReasonCode::RecordIntegrity, detail);
@@ -714,13 +727,45 @@ fn check_fix_cycles(session: &Session, report: &mut Report) {
 /// The cap, and whether it is the default because none is recorded. Only an
 /// absent key defaults. A key that is present must hold a non-negative integer,
 /// so an empty value (null), a negative, a float, a string or a bool is an error.
-fn recorded_fix_cycle_cap(session: &Session) -> Result<(u64, bool), String> {
-    match session.run.data.get("max_fix_cycles") {
-        None => Ok((DEFAULT_MAX_FIX_CYCLES, true)),
-        Some(value) => value
-            .as_u64()
-            .map(|cap| (cap, false))
-            .ok_or_else(|| "run.data.max_fix_cycles is not a non-negative integer".to_string()),
+/// With a pinned cap, an absent key takes the pin and a recorded value is
+/// bounded by it. A recorded value above the pin is reported by
+/// `check_cap_not_raised`; the pin is still the cap used for the budget rows.
+fn recorded_fix_cycle_cap(session: &Session, pinned: Option<u64>) -> Result<(u64, bool), String> {
+    match (session.run.data.get("max_fix_cycles"), pinned) {
+        (None, None) => Ok((DEFAULT_MAX_FIX_CYCLES, true)),
+        (None, Some(pin)) => Ok((pin, false)),
+        (Some(value), pin) => {
+            let recorded = value.as_u64().ok_or_else(|| {
+                "run.data.max_fix_cycles is not a non-negative integer".to_string()
+            })?;
+            Ok((pin.map_or(recorded, |pin| recorded.min(pin)), false))
+        }
+    }
+}
+
+/// A recorded `max_fix_cycles` above the pinned cap means the budget was raised
+/// after the caller fixed it. It is a record integrity failure (65) found with
+/// the other integrity checks, before the halted and budget rows, so a raised
+/// cap can never become a pass or a fix-cycle exit. A malformed recorded value
+/// is left to `check_fix_cycles`.
+fn check_cap_not_raised(session: &Session, pinned: Option<u64>, report: &mut Report) {
+    let Some(pin) = pinned else { return };
+    let Some(recorded) = session
+        .run
+        .data
+        .get("max_fix_cycles")
+        .and_then(Value::as_u64)
+    else {
+        return;
+    };
+    if recorded > pin {
+        report.fire(
+            EXIT_VERIFY_FAILED,
+            ReasonCode::CapRaised,
+            format!(
+                "run.data.max_fix_cycles {recorded} is above the pinned --max-fix-cycles {pin}; the recorded budget was raised"
+            ),
+        );
     }
 }
 
@@ -1065,6 +1110,7 @@ phases:
             policy: &policy,
             evidence_exists: evidence,
             allow_running,
+            pinned_max_fix_cycles: None,
         };
         evaluate_value(session, &ctx)
     }
@@ -1351,6 +1397,130 @@ phases:
         }
         set_fix_cycles_used(&mut session, used);
         eval(&session)
+    }
+
+    fn pinned_verdict(session: Value, allow_running: bool, pinned: Option<u64>) -> Verdict {
+        let gate_map = gate_map().unwrap();
+        let policy = SeverityPolicy {
+            table: severity_table().unwrap(),
+            threshold: Severity::Critical,
+        };
+        let ctx = EvalContext {
+            session_prefix: PREFIX,
+            gate_map: &gate_map,
+            policy: &policy,
+            evidence_exists: &allow_all_evidence,
+            allow_running,
+            pinned_max_fix_cycles: pinned,
+        };
+        evaluate_value(&session, &ctx)
+    }
+
+    fn with_pinned_cap(recorded: Option<Value>, used: u64, pinned: u64) -> Verdict {
+        let mut session = passing();
+        match recorded {
+            Some(value) => set_run_data(&mut session, "max_fix_cycles", value),
+            None => {
+                session["run"]["data"]
+                    .as_mapping_mut()
+                    .unwrap()
+                    .remove("max_fix_cycles");
+            }
+        }
+        set_fix_cycles_used(&mut session, used);
+        pinned_verdict(session, false, Some(pinned))
+    }
+
+    #[test]
+    fn pinned_cap_above_recorded_keeps_the_stricter_recorded_cap() {
+        assert_eq!(with_pinned_cap(Some(Value::from(2)), 2, 5).exit, 0);
+        assert_verdict(
+            &with_pinned_cap(Some(Value::from(2)), 3, 5),
+            3,
+            "BUDGET_EXCEEDED",
+        );
+    }
+
+    #[test]
+    fn pinned_cap_equal_to_recorded_passes_at_the_cap() {
+        assert_eq!(with_pinned_cap(Some(Value::from(2)), 2, 2).exit, 0);
+        assert_verdict(
+            &with_pinned_cap(Some(Value::from(2)), 3, 2),
+            3,
+            "BUDGET_EXCEEDED",
+        );
+    }
+
+    #[test]
+    fn pinned_cap_below_recorded_is_cap_raised() {
+        let verdict = with_pinned_cap(Some(Value::from(5)), 0, 2);
+        assert_verdict(&verdict, 65, "CAP_RAISED");
+        let detail = &verdict.reasons[0].detail;
+        assert!(detail.contains('5') && detail.contains('2'), "{detail}");
+    }
+
+    #[test]
+    fn cap_raised_hides_a_budget_exit() {
+        let verdict = with_pinned_cap(Some(Value::from(9)), 3, 2);
+        assert_eq!(verdict.exit, 65, "{verdict:#?}");
+        assert_eq!(codes(&verdict), vec!["CAP_RAISED", "BUDGET_EXCEEDED"]);
+    }
+
+    #[test]
+    fn cap_raised_fires_before_halted() {
+        let mut session = passing();
+        set_run_data(&mut session, "max_fix_cycles", Value::from(9));
+        set_run_status(&mut session, "in_progress");
+        set_phase(&mut session, "documentation", "BLOCKED");
+        set_phase(&mut session, "final-summary", "PENDING");
+        let verdict = pinned_verdict(session, true, Some(2));
+        assert_eq!(verdict.exit, 65, "{verdict:#?}");
+        assert_eq!(codes(&verdict), vec!["CAP_RAISED", "HALTED"]);
+    }
+
+    #[test]
+    fn pinned_cap_applies_when_none_is_recorded() {
+        let verdict = with_pinned_cap(None, 2, 2);
+        assert_eq!(verdict.exit, 0, "{verdict:#?}");
+        assert!(verdict.info.is_empty(), "no default note: {verdict:#?}");
+        assert_verdict(&with_pinned_cap(None, 3, 2), 3, "BUDGET_EXCEEDED");
+    }
+
+    #[test]
+    fn pinned_cap_of_zero_allows_no_fix_cycles() {
+        assert_eq!(with_pinned_cap(None, 0, 0).exit, 0);
+        assert_verdict(&with_pinned_cap(None, 1, 0), 3, "BUDGET_EXCEEDED");
+        assert_verdict(
+            &with_pinned_cap(Some(Value::from(1)), 0, 0),
+            65,
+            "CAP_RAISED",
+        );
+    }
+
+    #[test]
+    fn pinned_cap_with_a_malformed_recorded_cap_is_record_integrity() {
+        assert_verdict(
+            &with_pinned_cap(Some(Value::Null), 0, 2),
+            65,
+            "RECORD_INTEGRITY",
+        );
+    }
+
+    #[test]
+    fn unpinned_cap_is_unchanged() {
+        let mut session = passing();
+        set_run_data(&mut session, "max_fix_cycles", Value::from(9));
+        assert_eq!(pinned_verdict(session, false, None).exit, 0);
+    }
+
+    #[test]
+    fn pinned_cap_flag_value_parses_non_negative_integers_only() {
+        assert_eq!(parse_pinned_max_fix_cycles("0"), Ok(0));
+        assert_eq!(parse_pinned_max_fix_cycles(" 3 "), Ok(3));
+        for bad in ["", "-1", "2.5", "two", "+x", "18446744073709551616"] {
+            let err = parse_pinned_max_fix_cycles(bad).unwrap_err();
+            assert!(err.contains("--max-fix-cycles"), "{bad}: {err}");
+        }
     }
 
     #[test]
@@ -1753,6 +1923,7 @@ phases:
             policy: &policy,
             evidence_exists: &allow_all_evidence,
             allow_running: false,
+            pinned_max_fix_cycles: None,
         };
         let verdict = evaluate_value(&session, &ctx);
         assert_eq!(verdict.exit, 0, "{verdict:#?}");

@@ -928,7 +928,7 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | 5 | Reserved, not yet emitted by any command. |
   | 6 | Success with warnings: `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink; the gate evaluator when a run completed with a skipped gate |
   | 64 | CLI usage error (`EX_USAGE`) - never the reserved code `2` |
-  | 65 | Content or integrity failure, distinct from a `64` usage error: an unsupported manifest/index `schema_version`, a failed checksum, or, for a SOP session file, a corrupt or invalid session, a broken record (including a non-integer `max_fix_cycles` or counter, or a wrong-typed gate fact), phase order, an unfinished phase or an unexplained skip, missing gate facts or evidence, or, reported last and only when nothing else fired, an in-progress session without `allow_running` |
+  | 65 | Content or integrity failure, distinct from a `64` usage error: an unsupported manifest/index `schema_version`, a failed checksum, or, for a SOP session file, a corrupt or invalid session, a broken record (including a non-integer `max_fix_cycles` or counter, a recorded `max_fix_cycles` above a pinned `--max-fix-cycles` (`CAP_RAISED`), or a wrong-typed gate fact), phase order, an unfinished phase or an unexplained skip, missing gate facts or evidence, or, reported last and only when nothing else fired, an in-progress session without `allow_running` |
 
   When several causes apply, the gate evaluator lists all of them but exits with the
   code of the first check that fires. The checks run in this order: session and
@@ -941,9 +941,21 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   `max_fix_cycles` in the session; only an absent key falls back to the default of 2. A
   key that is present must hold a non-negative integer: an empty value (`max_fix_cycles:`),
   a negative number, a float, a string, a bool or a list is a 65 integrity failure, never a silent default.
-  Trust boundary: the session file is plain YAML written by the orchestrating agent, so
-  `verify-run` judges the recorded cap and counts but cannot tell whether the cap was edited
-  after minting. Like every `gate_<phase>_*` fact, it assumes a cooperating agent.
+  Pinned cap: `verify-run --max-fix-cycles <N>` (N a non-negative integer; anything else
+  is a `64` usage error) supplies the budget from outside the session file. With the flag,
+  a recorded `max_fix_cycles` above N is a `65` integrity failure (reason code
+  `CAP_RAISED`, naming both values) because the recorded budget was raised above the
+  pinned one. A recorded value at or below N stays the cap, so a lower recorded cap is
+  still enforced (exit `3` when exceeded). An absent key takes N instead of the default 2.
+  A present but malformed key is still a `65` integrity failure. `CAP_RAISED` is found with
+  the other record integrity checks, before the halted and budget rows, so a raised cap
+  never turns into a pass or a `3`. Without the flag nothing changes: the recorded cap is
+  trusted, and only an absent key defaults to 2.
+  Trust boundary: the session file is plain YAML written by the orchestrating agent, and
+  without the flag `verify-run` cannot tell whether the cap was edited after minting. Like
+  every `gate_<phase>_*` fact, that assumes a cooperating agent. The flag protects checks
+  that CI or an engineer runs with a budget they chose. It does not protect an agent that
+  writes the session and also runs `verify-run`, because that agent can pass any value.
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 
