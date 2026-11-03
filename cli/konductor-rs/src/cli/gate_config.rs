@@ -87,6 +87,7 @@ impl SeverityTable {
     /// the known flag from `rank_of_word`. An unrecognized or empty word is
     /// CRITICAL, so a finding with a label nobody mapped blocks the gate
     /// instead of slipping through it.
+    #[allow(dead_code)]
     pub(crate) fn gate_severity_of_word(&self, word: &str) -> Severity {
         match self.rank_of_word(word) {
             WordRank::Known(severity) => severity,

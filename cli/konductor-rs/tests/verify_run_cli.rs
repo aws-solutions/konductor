@@ -123,6 +123,9 @@ fn passing() -> Value {
     gate_feature-splitting_result: approved
     gate_feature-splitting_evidence: {}
     gate_feature-splitting_checker: user
+    gate_code-review_result: approved
+    gate_code-review_evidence: {}
+    gate_code-review_checker: user
 phases:
 {phases}features:
   login:
@@ -131,14 +134,11 @@ phases:
       gate_specs_result: approved
       gate_specs_evidence: {}
       gate_specs_checker: user
-      gate_code-review_result: approved
-      gate_code-review_evidence: {}
-      gate_code-review_checker: user
       gate_testing_result: none
       gate_testing_evidence: {}
       gate_testing_checker: k-quality-assurance
 ",
-        EVIDENCE[0], EVIDENCE[1], EVIDENCE[2], EVIDENCE[3], EVIDENCE[4]
+        EVIDENCE[0], EVIDENCE[1], EVIDENCE[3], EVIDENCE[2], EVIDENCE[4]
     ))
     .unwrap()
 }
@@ -242,7 +242,7 @@ fn fix_cycles_above_the_cap_exit_3() {
 fn a_missing_gate_result_exits_65() {
     let project = Project::new("gate-missing");
     let mut session = passing();
-    session["features"]["login"]["data"]
+    session["run"]["data"]
         .as_mapping_mut()
         .unwrap()
         .remove("gate_code-review_result");
@@ -339,7 +339,7 @@ fn a_core_schema_python_tag_does_not_construct_anything() {
     );
     assert!(text.contains("!!python/object"));
     project.write_session_text(&text);
-    assert_verdict(&project.verify(&[]), 0, "PASSED");
+    assert_verdict(&project.verify(&[]), 65, "RECORD_INTEGRITY");
 }
 
 #[test]
@@ -646,10 +646,12 @@ fn control_characters_in_a_result_cannot_forge_output_lines() {
     let output = project.verify(&[]);
     let plain = stdout(&output);
     assert!(!plain.contains('\u{1b}'), "{plain:?}");
-    assert!(
-        !plain
+    assert_eq!(
+        plain
             .lines()
-            .any(|l| l.starts_with("PASSED: run completed")),
+            .filter(|l| l.starts_with("PASSED: run completed"))
+            .count(),
+        1,
         "{plain:?}"
     );
     assert!(plain.contains("\\n"), "{plain:?}");
