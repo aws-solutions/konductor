@@ -1,0 +1,7 @@
+{"type":"agent_thought_chunk","content":"I should check the backend-review skill first."}
+{"type":"tool_call","tool_call_id":"call_1","tool_name":"fsRead","arguments":{"path":"/home/dev/.agent/skills/backend-review/SKILL.md"}}
+{"type":"tool_call_update","tool_call_id":"call_1","status":"completed","result":"# Backend Review\nCRITICAL findings go first."}
+{"type":"tool_call","tool_call_id":"call_2","tool_name":"fsRead","arguments":{"path":"src/handler.ts"}}
+{"type":"tool_call_update","tool_call_id":"call_2","status":"completed","result":"export const handler = () => {};"}
+{"type":"agent_message_chunk","content":"CRITICAL: none found. The handler looks fine."}
+{"type":"model","model":"example-model-b"}

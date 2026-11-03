@@ -1,0 +1,7 @@
+{"type":"system","subtype":"init","session_id":"sess_fixture_1","tools":["Read","Write","Skill","mcp__example__LoadSkill"],"mcp_servers":[{"name":"example","status":"connected"}]}
+{"type":"assistant","message":{"model":"example-model-a","content":[{"type":"text","text":"Let me check the file first."},{"type":"tool_use","id":"toolu_01","name":"Read","input":{"path":"src/index.ts"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_01","is_error":false,"content":"export function hello() {}"}]}}
+{"type":"assistant","message":{"model":"example-model-a","content":[{"type":"tool_use","id":"toolu_02","name":"mcp__example__LoadSkill","input":{"skillName":"backend-review"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_02","is_error":false,"content":"skill content loaded"}]}}
+{"type":"assistant","message":{"model":"example-model-a","content":[{"type":"text","text":"The file looks fine. CRITICAL: none found."}]}}
+{"type":"result","subtype":"success","result":"The file looks fine. CRITICAL: none found.","model":"example-model-a","is_error":false,"total_cost_usd":0.0123,"usage":{"input_tokens":512,"output_tokens":128,"cache_read_input_tokens":256,"cache_creation_input_tokens":64}}

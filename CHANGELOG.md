@@ -10,6 +10,16 @@ not per individual commit.
 
 ### Added
 
+- `bench/lib/trace-normalizer.js`, a dependency-free, no-I/O library that turns a Claude Code,
+  OpenCode, or Kiro CLI trace into one session record (tool calls, skill loads, usage, cost,
+  errors, completeness). It masks AWS access key ids, AWS secret-key and session-token values
+  (in text and in strings under properties of those names), and Bearer tokens of 16 or more
+  characters. It caps every stored string except `response_text`, which is redacted but never
+  truncated. Other credential formats are not detected. `options.redact` replaces the built-in
+  redactor; a caller who wants to keep the built-in rules should call `defaultRedact` from inside
+  their own function. The known limits of the built-in redactor are listed in the module header.
+  `normalizeTrace`, `defaultRedact`, and `SCHEMA_VERSION` are its stable API. Tests and synthetic
+  fixtures are in `bench/test/`; run `node --test bench/test/trace-normalizer.test.js`.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
 - The four phase-gated SOPs, such as `k-full-sdlc`, now carry an

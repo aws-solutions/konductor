@@ -1,0 +1,2 @@
+{"type":"step_start","timestamp":4000,"sessionID":"ses_fixture_error","part":{"id":"prt_fixture_error_1","sessionID":"ses_fixture_error","messageID":"msg_fixture_error_1","type":"step-start","snapshot":"snapshot-fixture-1"}}
+{"type":"error","sessionID":"ses_fixture_error","error":{"type":"provider.invalid-request","message":"the provider rejected the request: unsupported model option","status":400}}

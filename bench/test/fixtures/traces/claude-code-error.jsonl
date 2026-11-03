@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","session_id":"sess_fixture_err","tools":["Read"],"mcp_servers":[]}
+{"type":"assistant","message":{"model":"example-model-a","content":[{"type":"tool_use","id":"toolu_err1","name":"Read","input":{"path":"missing-file.txt"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_err1","is_error":true,"content":"ENOENT: no such file or directory"}]}}
+{"type":"error","message":"runtime CLI exited with code 1: fatal error"}
