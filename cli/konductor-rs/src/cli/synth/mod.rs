@@ -50,6 +50,7 @@ pub(crate) mod package;
 // path-containment predicate.
 pub(crate) mod path_safety;
 mod sidecar;
+mod skill_index;
 mod staging;
 
 #[allow(unused_imports)]
@@ -703,7 +704,7 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "clientConfig": {"kiroCli": {}}
             }"#,
         )
@@ -767,7 +768,7 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "dependencies": {
                     "mcpRegistry": {
                         "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]},
@@ -819,7 +820,7 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "dependencies": {
                     "mcpRegistry": {
                         "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]}
@@ -1330,7 +1331,7 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "dependencies": {"context": {"contextNames": ["notes.md"]}},
                 "clientConfig": {"kiroCli": {"resources": ["file://AGENTS.md"]}}
             }"#,
@@ -1670,7 +1671,7 @@ mod tests {
             br#"{
                 "schemaVersion": "1",
                 "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "config": {"description": "d", "systemPrompt": "p", "model": "claude-sonnet-5"},
                 "dependencies": {
                     "mcpRegistry": {
                         "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]}

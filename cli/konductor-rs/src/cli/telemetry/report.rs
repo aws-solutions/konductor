@@ -2351,6 +2351,34 @@ mod tests {
         fs::remove_dir_all(&source).ok();
     }
 
+    /// A hook written by an earlier opted-in install stays in agent files
+    /// after an opt-out. With the record gone it must report nothing.
+    #[test]
+    fn stale_agent_hooks_record_nothing_when_install_info_is_absent() {
+        let _guard = lock_home();
+        let home = scratch_dir("stale-hook-absent-install-info-home");
+        let target = scratch_dir("stale-hook-absent-install-info-target");
+        assert!(!install_info::install_info_path(&target).exists());
+
+        let before = default_test_transport().recorded().len();
+        with_home(&home, || {
+            report_agent_invocation(&target, "k-example", Some("session".to_string()));
+            report_subagent_invocation(
+                &target,
+                "k-example",
+                Some("session".to_string()),
+                None,
+                Some("konductor".to_string()),
+            );
+        });
+        let after = default_test_transport().recorded().len();
+
+        assert_eq!(before, after, "no record means no hook event may be sent");
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+    }
+
     /// With NEITHER file present (the target was never installed, or
     /// opted out), no event is recorded at all -- `read_install_info`
     /// returning `None` is a plain skip, not a fallback to the
