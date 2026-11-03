@@ -1100,3 +1100,10 @@ SOP_EDITS += [
      "an inconsistent session record, or a run still in progress without --allow-running",
      "an inconsistent session record, a recorded max_fix_cycles above a pinned --max-fix-cycles (reason CAP_RAISED), or a run still in progress without --allow-running"),
 ]
+
+# verify-run phase order: a started or completed phase after an unstarted one.
+SOP_EDITS += [
+    ("exit codes: 65 phase order",
+     "an inconsistent session record, a recorded max_fix_cycles above a pinned",
+     "an inconsistent session record (including a started or completed phase after an earlier phase still PENDING), a recorded max_fix_cycles above a pinned"),
+]

@@ -41,7 +41,8 @@
 #
 # When several causes apply the evaluator reports all of them in `reasons` but
 # exits with the code of the first check that fires. Checks run as: 65 (session
-# and record integrity), 1 (halted), 3 (budget), 2 (unresolved finding), then, when
+# and record integrity, including a started or completed phase after an earlier
+# PENDING or IN_PROGRESS one), 1 (halted), 3 (budget), 2 (unresolved finding), then, when
 # nothing else fired, 6 (skipped gate) or 65 (an in-progress session without
 # allow_running, checked last). A bad `max_fix_cycles` (present but not a non-negative
 # integer, including an empty value) is found by the budget check, so after
