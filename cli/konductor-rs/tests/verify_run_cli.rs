@@ -757,3 +757,38 @@ fn verify_run_changes_no_file_and_sends_nothing() {
         "verify-run sent telemetry"
     );
 }
+
+#[test]
+fn pinned_cap_below_the_recorded_cap_is_cap_raised() {
+    let project = Project::new("pin-raised");
+    project.write_session(&passing());
+    assert_verdict(
+        &project.verify(&["--max-fix-cycles", "1"]),
+        65,
+        "CAP_RAISED",
+    );
+}
+
+#[test]
+fn pinned_cap_at_or_above_the_recorded_cap_passes() {
+    let project = Project::new("pin-ok");
+    project.write_session(&passing());
+    assert_eq!(
+        project.verify(&["--max-fix-cycles", "2"]).status.code(),
+        Some(0)
+    );
+    assert_eq!(
+        project.verify(&["--max-fix-cycles", "9"]).status.code(),
+        Some(0)
+    );
+}
+
+#[test]
+fn malformed_pinned_cap_is_a_usage_error() {
+    let project = Project::new("pin-bad");
+    project.write_session(&passing());
+    for bad in ["-1", "+1", "1.5", " 1", "x", ""] {
+        let out = project.verify(&["--max-fix-cycles", bad]);
+        assert_eq!(out.status.code(), Some(64), "value {bad:?}");
+    }
+}
