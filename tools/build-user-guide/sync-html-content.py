@@ -80,8 +80,8 @@ EDITS = [
      'search/read, region list, and regional availability.'),
     # ---- every agent loads context/k-core-rules.md ---------------------------
     ("concepts context file paragraph",
-     "There is one today: <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span>, loaded by all three orchestrators. It contains",
-     "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules and the writing-habits rule, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains"),
+     "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules and the writing-habits rule, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains",
+     "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains"),
     ("concepts context files row",
      '{ k: "Context files — 1", v: "The orchestrator routing rules, always active" }',
      '{ k: "Context files — 2", v: "The core rules for every agent and the orchestrator routing rules, always active" }'),
@@ -100,14 +100,14 @@ EDITS = [
     ("troubleshooting context count", "it should report 1 registered.", "it should report 2 registered."),
     ("contributing: five files", "Four files control four different things.", "Five files control five different things."),
     ("contributing: core rules row",
-     'h1: "EDIT", h2: "EFFECT", rows: [\n          { k: "context/k-orchestrator-routing-rules.md", v: "Which specialist',
-     'h1: "EDIT", h2: "EFFECT", rows: [\n          { k: "context/k-core-rules.md", v: "Rules every agent must follow, NEVER DO rules and writing habits, loaded at session start for every agent" },\n          { k: "context/k-orchestrator-routing-rules.md", v: "Which specialist'),
+     '{ k: "context/k-core-rules.md", v: "Rules every agent must follow, NEVER DO rules and writing habits, loaded at session start for every agent" }',
+     '{ k: "context/k-core-rules.md", v: "Rules every agent must follow, NEVER DO rules, writing habits, and engineering practices, loaded at session start for every agent" }'),
     ("faq: core rules row",
-     'rows: [\n          { k: "context/k-orchestrator-routing-rules.md", v: "Change routing',
-     'rows: [\n          { k: "context/k-core-rules.md", v: "Change the core rules, the NEVER DO rules and writing habits loaded at session start for every agent" },\n          { k: "context/k-orchestrator-routing-rules.md", v: "Change routing'),
+     '{ k: "context/k-core-rules.md", v: "Change the core rules, the NEVER DO rules and writing habits loaded at session start for every agent" }',
+     '{ k: "context/k-core-rules.md", v: "Change the core rules, the NEVER DO rules, writing habits, and engineering practices loaded at session start for every agent" }'),
     ("skills catalog: constraints row",
-     "every agent \u2014 what they must never and always do, across code quality, security, and verification.",
-     "every agent: what they must always do, across code quality, security, and verification. The NEVER DO rules live in context/k-core-rules.md."),
+     "Hard behavioural rules for every agent: what they must always do, across code quality, security, and verification. The NEVER DO rules live in context/k-core-rules.md.",
+     "Workflow rules for every agent: maker-checker validation, severity ordering, the 2-strike circuit breaker, and the quality gate. The NEVER DO rules, writing habits, and engineering practices live in context/k-core-rules.md."),
     ("skills catalog: constraints reach",
      "REACH FOR IT: Always on. You never invoke it; it is the floor every agent stands on.",
      "REACH FOR IT: You never invoke it. Claude Code preloads it only into subagents; otherwise it loads on demand."),
@@ -116,8 +116,8 @@ EDITS = [
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 37 of the package's 82 skills — close to half, and by far the largest share of any agent.",
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 38 of the package's 82 skills — close to half, and by far the largest share of any agent."),
     ("reference roster note",
-     "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array, the set Claude Code preloads. It differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames but do not preload it, so both runtimes load it on demand.",
-     "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",),
+     "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",
+     "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",),
     # ---- humanize-writing is declared by every agent, preloaded by four -----
     ("skills catalog: humanize-writing row",
      '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. — REACH FOR IT: Writing or editing prose, or a draft reads machine-written. · DECLARED BY: architect, developer, product-manager, tpm preload it; every other agent loads it on demand"',
@@ -198,7 +198,14 @@ EDITS = [
      'carries fs_write and shell, so no agent is incapable of either — the difference is whether '
      'it asks first.", "Claude Code has one list. clientConfig.claudeCli.tools is the ceiling: a '
      'tool absent from it cannot be used at all. Whether a granted tool prompts is decided by '
-     'your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny."]'),
+     'your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny.", "These '
+     'rows describe agents started by konductor. konductor-mux-orchestrator and '
+     'konductor-cmux-orchestrator start each specialist with permission checks off '
+     '(--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under '
+     'them every granted tool runs without asking, MCP tools included. On Claude Code, deny rules '
+     'in your settings.json still block, and an ask rule denies the call, because each specialist '
+     'runs with -p and can\'t prompt. Add deny rules for anything a dispatched agent must never '
+     'do."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'

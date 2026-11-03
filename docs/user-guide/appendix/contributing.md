@@ -30,11 +30,16 @@ Five files control five different things. Pick the smallest one that achieves wh
 
 | Change | Edit | Effect |
 | --- | --- | --- |
-| Rules every agent must follow | `context/k-core-rules.md` | NEVER DO rules and writing habits, loaded at session start for every agent |
+| Rules every agent must follow | `context/k-core-rules.md` | NEVER DO rules, writing habits, and engineering practices, loaded at session start for every agent |
 | Which specialist handles which kind of request | `context/k-orchestrator-routing-rules.md` | Routing, loaded at session start for all three orchestrators |
 | The steps of one workflow | `agent-sops/<name>.sop.md` | That SOP's steps, constraints, and quality gates |
 | How an agent reasons about one topic | `skills/<name>/SKILL.md` | Guidance that agent loads on demand |
 | An agent's prompt, model, tools, or dependencies | `agents/<name>.agent-spec.json` | That agent, in both runtimes |
+
+For an agent with both `kiroCli` and `claudeCli` config, write `config.model` as a Kiro CLI model ID
+in its dotted form (`claude-sonnet-5.5`), or `auto`. `konductor synth` converts it for Claude Code
+(`claude-sonnet-5-5`, or `inherit` for `auto`) and fails on anything else. A Claude-only agent can
+also use Claude Code's own IDs and aliases, such as `claude-opus-4-1` or `sonnet`.
 
 ### Routing lives in two places
 
@@ -109,6 +114,28 @@ Create `agent-sops/<name>.sop.md` following the shape every existing SOP uses:
 ## Quality Gate      (optional) the conditions for done
 ## Troubleshooting   (optional)
 ```
+
+List the SOP in `cli/gate-config/sop-orchestration.yml`. A gated SOP, one that stops between steps
+for an approval, a threshold check or a loop exit, is a map with `gates` and `basis`. Any other SOP
+goes under `not_gated` as `name: reason`, one line of text. A gated SOP also needs the marker
+paragraph and the gate note between the title and `## Overview`:
+
+```text
+# Title
+
+Orchestration: strict (phase-gated SOP)
+Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it, or the SOP's own round-cap rule says to proceed; record which.
+
+Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.
+
+## Overview
+```
+
+A gated `basis` cites at least one step by its heading text in backticks, without the step or phase
+number, so it survives renumbering. Run `make sop-orchestration-check`; it fails on an unlisted SOP, a
+missing or misplaced marker or gate note, a basis that cites no heading (`uncited-basis`), or a cited
+heading that no longer exists. The check needs PyYAML and exits 3 without it. Run it again whenever
+you edit or renumber the steps of a listed SOP, and update `basis` if a gate moved.
 
 Use RFC 2119 wording deliberately — `MUST`, `MUST NOT`, `SHOULD`, `MAY`. It is how an agent tells a
 hard rule from a preference, and it is why the existing SOPs behave consistently.
@@ -198,15 +225,14 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ### Checks before you open a pull request
 
 ```bash
-cargo fmt --check
+TOOLCHAIN=1.98.1  # RUST_LINT_TOOLCHAIN in .github/workflows/validate-pr.yml
+rustup toolchain install "$TOOLCHAIN" --profile minimal -c clippy -c rustfmt
+make lint CARGO="cargo +$TOOLCHAIN"
 ```
 
-```bash
-cargo clippy -- -D warnings
-```
-
-Clippy is configured to treat every warning as an error, so a clean run is required rather than
-advisory.
+This runs `cargo clippy -- -D warnings` and `cargo fmt --check` on the `cli`, `mcp` and `shared`
+crates with the Rust version PR CI lints on. Clippy treats every warning as an error, so a clean
+run is required rather than advisory.
 
 ---
 

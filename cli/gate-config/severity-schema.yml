@@ -3,39 +3,77 @@
 # severity-schema.yml — the set of gate severities Konductor gates may
 # report, and their semantics.
 #
-# ── Scope (M1 declarative contract) ────────────────────────────────────────
-# This file is pure DATA, read by the config loader (cli/konductor-rs/
-# src/config.rs, cli/konductor/konductor/config.py) and by future gate
-# authors. It does not execute anything and is not itself validated against
-# a JSON Schema at this milestone — the loader's `severities` field is a
-# simple list of these ids, checked for a non-empty set and known ids only.
+# ── Scope ───────────────────────────────────────────────────────────────────
+# This file is pure DATA. The CLI embeds it at build time and parses the
+# ids, ranks, aliases and the `critical_gate` marker (cli/konductor-rs/src/
+# cli/gate_config.rs); a parity test in `cargo test` fails when the CLI's own
+# severity ids or ranks differ from this file or the marker is not on
+# CRITICAL alone. The config loader's `severities_source` still names this
+# file, and its severity fields accept gate ids only.
 #
-# ── Exit-code note (IMPORTANT — read before wiring this into anything) ────
-# `exit_code_signal: critical_gate` below is a SEMANTIC label only: it
-# documents that a CRITICAL-severity finding is the condition the
-# run-engine/conductor (not yet implemented — M5) will eventually use to
-# decide whether to emit process exit code 2 ("unresolved CRITICAL gate",
-# see AGENTS.md / cli/README.md's exit-code contract). Emitting exit code 2
-# is exclusively the run-engine's responsibility once it exists. Nothing in
-# this M1 stage (gate-config files, the config loader, or `init` scaffolding)
-# emits, references, or is permitted to emit exit code 2 — usage/config
-# errors in this stage use exit code 64 (EX_USAGE) per the existing
-# contract in cli/konductor/konductor/constants/exit_codes.py /
-# cli/konductor-rs/src/cli.rs.
+# `aliases` (optional) lists the words a checker may write for a severity
+# in its report, for example IMPORTANT for HIGH. An alias is one word of
+# ASCII letters and maps to the gate id. Matching ignores case and reads
+# only the leading letters of a label, so "Warning Gap" and "🚨 Critical Gap"
+# match WARNING and CRITICAL. A word that is neither an id nor an alias,
+# and an empty or whitespace-only label, ranks as CRITICAL (fail closed).
+# That rule lives in one place, SeverityTable::gate_rank_of_word, and the
+# config's `default_severity` is never applied to it. An alias appears under one id only (ignoring case) and
+# is never itself an id.
+#
+# This table is a severity vocabulary only. The input is a finding's
+# severity label as the checker writes it. Headings, counters, status words
+# and checkbox lines are out of contract and may rank either way. Risk,
+# priority and confidence scales reuse High, Medium and Low but are not
+# severities: a label whose second word is RISK, PRIORITY or CONFIDENCE
+# (or a plural) ranks as CRITICAL, and a caller that holds such a field
+# applies the checker's own mapping first.
+#
+# ── Exit-code note ────────────────────────────────────────────────────────
+# `exit_code_signal: critical_gate` below is a SEMANTIC label. Exit code 2
+# means an unresolved finding at or above the effective threshold. The
+# effective threshold is the configured one (CRITICAL by preset), except that
+# phase-gated SOPs never go laxer than HIGH, so an open HIGH finding (or its
+# aliases IMPORTANT and WARNING) also exits 2 there. Only the gate evaluator
+# emits it. Argument and usage errors use exit code 64 (EX_USAGE). A session
+# file that is corrupt, invalid or inconsistent exits 65. Exit 3 is a
+# fix-cycle budget overrun. The contract lives in cli/konductor-rs/src/cli.rs.
+#
+# When several causes apply the evaluator reports all of them in `reasons` but
+# exits with the code of the first check that fires. Checks run as: 65 (session
+# and record integrity, including a started or completed phase after an earlier
+# PENDING or IN_PROGRESS one), 1 (halted), 3 (budget), 2 (unresolved finding), then, when
+# nothing else fired, 6 (skipped gate) or 65 (an in-progress session without
+# allow_running, checked last). A bad `max_fix_cycles` (present but not a non-negative
+# integer, including an empty value) is found by the budget check, so after
+# a halt it is listed but the exit stays 1. Only an absent key defaults to 2. An earlier
+# cause hides a later code, so fix the earlier one to see the next.
+#
+# Trust boundary: `max_fix_cycles` and the fix-cycle counters live in the session file,
+# which the orchestrating agent writes. Without a pinned cap the evaluator trusts the
+# recorded value and cannot detect an edit after minting. The evaluator takes an optional
+# pinned cap, which is how CI or an engineer supplies the budget independently of the
+# agent; a recorded value above the pin is exit 65 (CAP_RAISED). The verify-run command
+# exposes the pin as an option in a later change. The rule is stated once in cli/README.md.
+#
+# A word that is neither an id nor an alias ranks as CRITICAL, except `none`:
+# the word `none`, ignoring case and surrounding whitespace, records a gate
+# with no findings. An approval boundary's result `approved` is matched the
+# same way.
 severities:
   - id: CRITICAL
     rank: 4
     description: >-
-      A finding that must block the pipeline. Conceptually maps to the
-      run-engine's "unresolved CRITICAL gate" signal (exit code 2) — but
-      note: emitting that exit code is the run-engine/conductor's job
-      (M5, not yet implemented), never init/config/loader code.
+      A finding that must block the pipeline. An unresolved CRITICAL finding
+      exits 2 under every threshold.
     exit_code_signal: critical_gate
   - id: HIGH
     rank: 3
+    aliases: [IMPORTANT, WARNING, WARNINGS]
     description: >-
-      A finding that should block the pipeline in strict configurations,
-      but may be downgraded to a warning by scope/policy overrides.
+      A finding that blocks phase-gated SOPs, whose strict floor makes an
+      unresolved HIGH finding exit 2 even when the threshold is CRITICAL.
+      Elsewhere it blocks only when the threshold is HIGH or lower.
     exit_code_signal: null
   - id: MEDIUM
     rank: 2
@@ -45,6 +83,7 @@ severities:
     exit_code_signal: null
   - id: LOW
     rank: 1
+    aliases: [SUGGESTION, MINOR]
     description: >-
       A minor finding, informational for most workflows.
     exit_code_signal: null
