@@ -44,6 +44,7 @@ def test_valid_fixture_passes_silently():
         ("verify-run-unavailable-missing", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step does not cover 'verify-run unavailable'"),
         ("gate-evidence-root", "gate-evidence-root (k-full-sdlc only): 'k-full-sdlc' must anchor evidence relative to `output_dir`"),
         ("gate-override-rule", "gate-override-rule: 'k-full-sdlc' does not say an unattended run never overrides"),
+        ("gate-round-cap-closure", "gate-override-rule: 'k-full-sdlc' does not say a recorded round-cap exit closes a finding for the result rule"),
         ("gate-override-rule-way-forward", "gate-override-rule: 'k-full-sdlc' lacks the sentence recording an engineer override"),
         ("gate-override-key-missing", "gate-fact-missing: 'k-full-sdlc' Step for 'review' does not name `gate_review_override`"),
         ("step-phase-mismatch", "step-phase-mismatch: 'k-full-sdlc' has Step headings numbered [0, 2, 2]"),

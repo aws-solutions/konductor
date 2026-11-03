@@ -119,7 +119,10 @@ def check_evidence(name, text):
 def check_evidence_root(name, text):
     """k-full-sdlc only: Step 11 passes --root <output_dir>, so evidence must
     be anchored to output_dir, not the project root."""
-    if RELATIVE_TO_OUTPUT_DIR in text and RELATIVE_TO_PROJECT_ROOT not in text:
+    evidence_sentences = [s for s in sentences(text) if "_evidence`" in s or "The evidence is" in s]
+    if any(RELATIVE_TO_OUTPUT_DIR in s for s in evidence_sentences) and not any(
+        RELATIVE_TO_PROJECT_ROOT in s for s in evidence_sentences
+    ):
         return []
     return [f"gate-evidence-root (k-full-sdlc only): '{name}' must anchor evidence relative to `output_dir` and nowhere relative to the project root"]
 
@@ -160,6 +163,10 @@ def check_override_rule(name, text):
         all(tok in s for tok in ("round cap", "recorded route", "no approver")) for s in sentences(text)
     ):
         errors.append(f"gate-override-rule: '{name}' does not say an attended round cap exit is its own recorded route (finding ids plus `round cap`, no approver needed)")
+    if name == VERIFY_RUN_SOP and not any(
+        all(tok in s for tok in ("round-cap exit", "no longer open")) for s in sentences(text)
+    ):
+        errors.append(f"gate-override-rule: '{name}' does not say a recorded round-cap exit closes a finding for the result rule")
     return errors
 
 

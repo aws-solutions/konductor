@@ -342,6 +342,8 @@ def test_gate_facts_bullet_names_the_override_key_and_recompute_rule():
     assert sentence_with(SOP_TEXT, "round cap", "recorded route", "no approver")
     assert sentence_with(step_section(4), "attended cap exit", "`gate_design-review_override`", "`round cap`")
     assert sentence_with(SOP_TEXT, "rewrite `gate_<phase>_result`", "not overridden")
+    assert sentence_with(SOP_TEXT, "round-cap exit", "no longer open")
+    assert sentence_with(step_section(4), "resolved, overridden, or closed by a recorded round-cap exit")
 
 
 def test_quality_gate_accepts_resolved_or_overridden():
