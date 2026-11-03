@@ -27,9 +27,11 @@
 #                          tier (gates design/tasks/code/tests/devil-advocate)
 #                          chosen so neither trivial nor large changes are
 #                          the out-of-the-box assumption.
-#   default_severity        Fallback severity (must be one of
-#                          severity-schema.yml's ids) applied to a finding
-#                          that does not specify its own severity.
+#   default_severity        A severity id (must be one of
+#                          severity-schema.yml's ids). Loaded and validated,
+#                          but not applied to gate evaluation: a finding
+#                          whose label is empty, whitespace-only or
+#                          unrecognized always ranks CRITICAL (fail closed).
 #   fail_on_severity_at_or_above
 #                          The lowest severity RANK (see
 #                          severity-schema.yml's `rank` field) that should

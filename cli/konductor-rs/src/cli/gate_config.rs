@@ -83,14 +83,16 @@ impl SeverityTable {
             .map_or(WordRank::Unknown, |entry| WordRank::Known(entry.id))
     }
 
-    /// The gate severity a finding counts as, for callers that do not need
-    /// the known flag from `rank_of_word`. An unrecognized or empty word is
-    /// CRITICAL, so a finding with a label nobody mapped blocks the gate
-    /// instead of slipping through it.
-    pub(crate) fn gate_severity_of_word(&self, word: &str) -> Severity {
+    /// The gate severity a finding counts as, and whether its label was
+    /// recognized. This is the only place the fail-closed rule lives: an
+    /// empty, whitespace-only or unrecognized label ranks CRITICAL (flag
+    /// `false`), so a finding nobody mapped blocks the gate instead of
+    /// slipping through it. The config's `default_severity` is never
+    /// applied here.
+    pub(crate) fn gate_rank_of_word(&self, word: &str) -> (Severity, bool) {
         match self.rank_of_word(word) {
-            WordRank::Known(severity) => severity,
-            WordRank::Unknown => Severity::Critical,
+            WordRank::Known(severity) => (severity, true),
+            WordRank::Unknown => (Severity::Critical, false),
         }
     }
 }
@@ -361,10 +363,13 @@ mod tests {
     #[test]
     fn unknown_word_counts_as_critical() {
         let table = table();
-        assert_eq!(table.gate_severity_of_word("bogus"), Severity::Critical);
-        assert_eq!(table.gate_severity_of_word(""), Severity::Critical);
-        assert_eq!(table.gate_severity_of_word("Suggestion"), Severity::Low);
-        assert_eq!(table.gate_severity_of_word("IMPORTANT"), Severity::High);
+        assert_eq!(
+            table.gate_rank_of_word("bogus"),
+            (Severity::Critical, false)
+        );
+        assert_eq!(table.gate_rank_of_word(""), (Severity::Critical, false));
+        assert_eq!(table.gate_rank_of_word("Suggestion"), (Severity::Low, true));
+        assert_eq!(table.gate_rank_of_word("IMPORTANT"), (Severity::High, true));
     }
 
     #[test]
@@ -612,8 +617,8 @@ mod tests {
         ] {
             assert_eq!(table.rank_of_word(word), WordRank::Unknown, "{word}");
             assert_eq!(
-                table.gate_severity_of_word(word),
-                Severity::Critical,
+                table.gate_rank_of_word(word),
+                (Severity::Critical, false),
                 "{word}"
             );
         }
@@ -632,8 +637,8 @@ mod tests {
         ] {
             assert_eq!(table.rank_of_word(word), WordRank::Unknown, "{word}");
             assert_eq!(
-                table.gate_severity_of_word(word),
-                Severity::Critical,
+                table.gate_rank_of_word(word),
+                (Severity::Critical, false),
                 "{word}"
             );
         }
@@ -656,10 +661,15 @@ mod tests {
     }
 
     #[test]
-    fn empty_and_emoji_only_labels_rank_critical() {
+    fn empty_whitespace_and_unknown_labels_fail_closed_to_critical() {
         let table = table();
-        assert_eq!(table.gate_severity_of_word(""), Severity::Critical);
-        assert_eq!(table.gate_severity_of_word("\u{1F6A8}"), Severity::Critical);
+        for word in ["", " ", "\t\n", "\u{1F6A8}", "bogus", "default"] {
+            assert_eq!(
+                table.gate_rank_of_word(word),
+                (Severity::Critical, false),
+                "{word:?}"
+            );
+        }
     }
 
     #[test]
