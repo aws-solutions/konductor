@@ -87,3 +87,10 @@ def test_absolute_main_urls_are_pinned_to_the_tag():
     assert "konductor/tree/v1.2.0/skills" in out
     assert "raw.githubusercontent.com/aws-solutions/konductor/v1.2.0/x.json" in out
     assert "aws-solutions/other/blob/main/a.md" in out
+
+
+def test_angle_bracket_reference_definitions_keep_their_brackets():
+    text = "[guide]: <docs/user-guide/agents.md>\n[home]: <https://example.com>\n"
+    out = module.rewrite(text, "v1.2.0")
+    assert f"[guide]: <{BLOB}docs/user-guide/agents.md>" in out
+    assert "[home]: <https://example.com>" in out

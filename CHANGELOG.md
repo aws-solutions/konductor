@@ -66,6 +66,8 @@ not per individual commit.
   agents no longer carry an `mcpServers` block that Claude Code ignores.
 - The config lock gives up with a contention error at its 5-second deadline when the lock file
   keeps being replaced under it, instead of retrying without a limit.
+- The plugin README link rewrite handles `[label]: <target>` reference definitions: it pins a
+  relative target to the release tag and leaves an absolute one alone, keeping the brackets.
 
 ## [1.2.0] - 2026-10-26
 
