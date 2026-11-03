@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 """Render .claude-plugin/plugin.json deterministically from
-scripts/claude-plugin.template.json, overriding only two fields:
+scripts/claude-plugin.template.json. It sets `version` and refuses a
+template that sets `agents` or `skills`:
 
 - `version`: read from the repo's root VERSION file, which is this repo's
   single source of truth for the released version (see
   scripts/validate-version-semver.sh and .github/workflows/release.yml's
   check-version job; the CLI's own Cargo.toml version is required to
   match VERSION before a release, never the other way around).
-- `agents`: the sorted list of *.md files under
-  generated/claude-plugin/agents/, so the manifest always reflects exactly
-  what synth produced, never hand-maintained.
+- `agents` and `skills`: the plugin tree keeps both in their default
+  directories. An explicit `agents` list replaces the agents/ scan and hides
+  the agents from `claude plugin details`, and nothing ships a second skills
+  directory, so either key in the template is an error. The agents directory
+  must still hold at least one *.md file.
 
 Also strips two keys from `metadata`, if present, defensively: the
 committed template never carries either key, but a hand-edit could
@@ -25,25 +28,10 @@ reintroduce one, and neither belongs in the rendered output:
   source content actually changed.
 
 Every other field (name, displayName, description, author, homepage,
-repository, license, keywords, defaultEnabled, skills, and the remaining
+repository, license, keywords, defaultEnabled, and the remaining
 metadata fields) is carried through from the template unchanged, in its
 original key order. This script does not know or need to know what those
-fields mean; it only knows how to compute `version` and `agents`, and (with
---path-prefix) rewrite path-shaped fields.
-
---path-prefix rewrites generated/claude-plugin/-relative template strings to
-a different root: scripts/assemble-claude-plugin-branch.sh (called from
-.github/workflows/release.yml's `publish-claude-plugin` job, and from
-`make claude-plugin-check`) is this script's only caller, and it renders
-plugin.json for the flat tree published via a candidate branch and draft PR
-into the protected `release/plugins` branch, where `agents/` and `skills/`
-sit at the tree root instead of under `generated/claude-plugin/`. Any
-template string that starts with the default prefix
-(`./generated/claude-plugin/`) has that leading segment replaced with
---path-prefix's value; every other string is left untouched. This is a
-generic, field-name-agnostic string rewrite (it also catches the template's
-static `skills` entry, not just the freshly computed `agents` list) rather
-than a special case tied to one specific field.
+fields mean; it only knows how to compute `version`.
 
 --agent-specs-dir and --mcp-output (both optional, required together) also
 render a SECOND file: .mcp.json, the plugin-level MCP server declaration
@@ -83,15 +71,14 @@ agent specs' own dependencies.mcpRegistry entry (k-architect and
 k-developer declare the same pinned `aws-mcp` command directly), with no
 separate override file in between.
 
-Called by scripts/generate-claude-plugin.sh and
-scripts/assemble-claude-plugin-branch.sh. Not meant to be run directly.
+Called by scripts/assemble-claude-plugin-branch.sh (from release.yml's
+publish-claude-plugin job and `make claude-plugin-check`). Not meant to be
+run directly.
 """
 import argparse
 import json
 import sys
 from pathlib import Path
-
-DEFAULT_PREFIX = "./generated/claude-plugin/"
 
 
 def _load_mcp_registry_union(agent_specs_dir: Path):
@@ -122,20 +109,6 @@ def _load_mcp_registry_union(agent_specs_dir: Path):
     return dict(sorted(servers.items())), None
 
 
-def _rewrite_prefix(value, path_prefix: str):
-    """Recursively replace a leading DEFAULT_PREFIX with path_prefix in every
-    string found in `value` (a JSON-decoded structure: dict/list/scalar)."""
-    if isinstance(value, str):
-        if value.startswith(DEFAULT_PREFIX):
-            return path_prefix + value[len(DEFAULT_PREFIX):]
-        return value
-    if isinstance(value, list):
-        return [_rewrite_prefix(v, path_prefix) for v in value]
-    if isinstance(value, dict):
-        return {k: _rewrite_prefix(v, path_prefix) for k, v in value.items()}
-    return value
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -144,9 +117,8 @@ def main() -> int:
         type=Path,
         help=(
             "scripts/claude-plugin.template.json (or a compatible file) to use as the "
-            "base for every field other than version/agents. Its own version/agents "
-            "values are placeholders always overwritten, kept in the template only "
-            "so the rendered output preserves their original key position."
+            "base for every field. Its version is a placeholder that is always "
+            "overwritten, kept so the rendered output preserves its key position."
         ),
     )
     parser.add_argument(
@@ -159,16 +131,7 @@ def main() -> int:
         "--agents-dir",
         required=True,
         type=Path,
-        help="Directory whose sorted *.md filenames become the agents list",
-    )
-    parser.add_argument(
-        "--path-prefix",
-        default=DEFAULT_PREFIX,
-        help=(
-            f"Replace the default '{DEFAULT_PREFIX}' path prefix with this value "
-            "everywhere it appears in the template (agents entries and any other "
-            "path-shaped field, e.g. skills). Default: no rewrite (identity)."
-        ),
+        help="Assembled agents directory; must hold at least one *.md file",
     )
     parser.add_argument(
         "--output",
@@ -244,15 +207,15 @@ def main() -> int:
     if not agent_files:
         print(f"error: no agent .md files found under {args.agents_dir}", file=sys.stderr)
         return 1
-    plugin["agents"] = [f"{DEFAULT_PREFIX}agents/{name}" for name in agent_files]
+    for key in ("agents", "skills"):
+        if key in plugin:
+            print(f"error: {args.template} sets `{key}`; leave it to the default scan", file=sys.stderr)
+            return 1
 
     metadata = plugin.get("metadata")
     if isinstance(metadata, dict):
         metadata.pop("sourcePackage", None)
         metadata.pop("generatedAt", None)
-
-    if args.path_prefix != DEFAULT_PREFIX:
-        plugin = _rewrite_prefix(plugin, args.path_prefix)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(plugin, indent=2) + "\n", encoding="utf-8")
