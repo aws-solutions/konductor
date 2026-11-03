@@ -24,10 +24,6 @@
     "end to end development"
   ],
   "defaultEnabled": true,
-  "agents": [],
-  "skills": [
-    "./generated/claude-plugin/skills/"
-  ],
   "userConfig": {
     "telemetry_enabled": {
       "type": "boolean",
