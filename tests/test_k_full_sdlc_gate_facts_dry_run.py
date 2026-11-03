@@ -206,9 +206,17 @@ def require_recorded_cap():
         skip_or_fail("built evaluator clamps the recorded max_fix_cycles; needs the recorded-cap evaluator")
 
 
+@pytest.fixture
+def require_pinned_cap():
+    require_binary()
+    if "--max-fix-cycles" not in verify_run_help()[1]:
+        skip_or_fail("built binary has no verify-run --max-fix-cycles; needs the pinned-cap build")
+
+
 needs_root = pytest.mark.usefixtures("require_root")
 needs_config_source = pytest.mark.usefixtures("require_config_source")
 needs_recorded_cap = pytest.mark.usefixtures("require_recorded_cap")
+needs_pinned_cap = pytest.mark.usefixtures("require_pinned_cap")
 
 
 def step_11_call(layout, *extra):
@@ -366,6 +374,22 @@ def test_raised_fix_cycle_cap_recorded_in_run_data_is_honoured(layout):
     session["features"][FEATURE]["counters"]["fix_cycles_used"] = 4
     result = step_11(layout, session, "--allow-running")
     assert result.returncode == 0, combined(result)
+
+
+@needs_root
+@needs_pinned_cap
+def test_stored_cap_raised_above_the_invocation_parameter_is_exit_65_cap_raised(layout):
+    session = session_for(layout.output_dir, "in_progress", "IN_PROGRESS")
+    session["run"]["data"]["max_fix_cycles"] = 5
+    result = step_11(layout, session, "--allow-running", "--max-fix-cycles", "2")
+    assert result.returncode == 65, combined(result)
+    assert "CAP_RAISED" in combined(result)
+
+
+def test_step_11_passes_the_invocation_parameter_as_the_pinned_cap():
+    section = step_section(11)
+    assert "--max-fix-cycles <max_fix_cycles>" in section
+    assert sentence_with(section, "CAP_RAISED", "exit 65", "satisfied=false")
 
 
 @needs_root

@@ -43,6 +43,7 @@ CAP_READING_PHASES = ("implementation", "code-review", "testing", "documentation
 CAP_KEY = "run.data.max_fix_cycles"
 CAP_RESUME_LABEL = "Reconciliation on resume (max_fix_cycles)"
 DISAGREEMENT_ITEM = "verify-run disagrees with the Quality Gate"
+PINNED_CAP_FLAG = re.compile(r"--max-fix-cycles <max_fix_cycles>")
 
 
 def load_orchestration_check():
@@ -221,6 +222,10 @@ def check_verify_run_step(name, section):
         errors.append(
             f"verify-run-root (k-full-sdlc only): '{name}' verify-run call must run from `codebase_path` with an absolute session path and `--root <output_dir>`"
         )
+    if not PINNED_CAP_FLAG.search(sentence):
+        errors.append(f"verify-run-pinned-cap (k-full-sdlc only): '{name}' verify-run call must pass `--max-fix-cycles <max_fix_cycles>`")
+    if not any("CAP_RAISED" in s and "exit 65" in s and "satisfied=false" in s for s in sentences(section)):
+        errors.append(f"verify-run-pinned-cap (k-full-sdlc only): '{name}' final Step does not say a `CAP_RAISED` exit 65 is a Quality Gate disagreement that forces `satisfied=false`")
     if write is None or write.start() < call:
         errors.append(f"verify-run-step (k-full-sdlc only): '{name}' verify-run must come before the first write of `sdlc-summary.md`")
     if "no session file" not in section:
