@@ -19,11 +19,10 @@ use crate::cli::{config, init, output::ColorMode, Commands, ConfigAction};
 
 /// Entry point called by `cli::run()` once argument parsing has produced a
 /// concrete `command` to dispatch. `Init`, `Config`, `Install`, `Synth`,
-/// and `Doctor` have real behavior; every other command is a stub.
+/// `Doctor` and `VerifyRun` have real behavior; every other command is a stub.
 ///
-/// `verbose`/`json` are threaded through to `Install`/`Update`/`Synth`/
-/// `Doctor` only -- the commands with real, reportable output at this
-/// milestone.
+/// `verbose`/`json` are threaded through to `Install`/`Synth`/`Doctor`
+/// (`VerifyRun` takes `json` only) -- the commands with real, reportable output at this milestone.
 /// `color` is threaded through to every arm that can print an error
 /// prefix or a colorized status report.
 ///
@@ -137,6 +136,24 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             no_version_check,
             color,
         ),
+        Commands::VerifyRun {
+            session,
+            root,
+            allow_running,
+            max_fix_cycles,
+        } => {
+            // Not `resolve_cwd*`: those send a telemetry event on failure, and
+            // this read-only check sends nothing.
+            crate::cli::verify_run::run(
+                std::env::current_dir(),
+                root.as_deref(),
+                &session,
+                allow_running,
+                max_fix_cycles,
+                json,
+                color,
+            )
+        }
         Commands::Config { action } => {
             if !config_dispatch_allowed() {
                 print_not_currently_available("config");

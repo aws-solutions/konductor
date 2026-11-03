@@ -34,11 +34,7 @@ pub(crate) mod config;
 pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
-// Only tests and the gate evaluator call it until verify-run lands.
-#[allow(dead_code)]
 pub(crate) mod gate_config;
-// Only tests call it until a command runs it.
-#[allow(dead_code)]
 pub(crate) mod gate_eval;
 pub(crate) mod harness_select;
 pub(crate) mod init;
@@ -55,6 +51,7 @@ mod time;
 mod trace;
 mod uninstall;
 mod update;
+mod verify_run;
 
 /// Test-only shared lock for every test in this crate that mutates the
 /// process-global `HOME` env var, since `std::env::set_var` has no
@@ -79,8 +76,8 @@ pub(crate) mod test_home_lock {
 }
 
 /// Exit code the workflow contract reserves for an unresolved finding at or
-/// above the effective severity threshold, emitted by the gate evaluator.
-/// Never emit this for a CLI usage error.
+/// above the effective severity threshold, emitted by the gate evaluator
+/// (`verify-run`). Never emit this for a CLI usage error.
 const EXIT_CRITICAL_GATE: u8 = 2;
 
 /// Remapped exit code for CLI usage errors (bad flag, unknown subcommand,
@@ -161,6 +158,14 @@ fn harness_value_parser() -> clap::builder::PossibleValuesParser {
             .iter()
             .map(|transformer| transformer.name()),
     )
+}
+
+/// Digits only: no sign, spaces or decimals.
+fn parse_fix_cycle_pin(raw: &str) -> Result<u64, String> {
+    if raw.is_empty() || !raw.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(format!("`{raw}` is not a non-negative integer"));
+    }
+    raw.parse::<u64>().map_err(|err| format!("`{raw}`: {err}"))
 }
 
 #[derive(Subcommand, Debug)]
@@ -463,6 +468,32 @@ pub enum Commands {
         no_version_check: bool,
     },
 
+    /// Check a SOP session file against its gates and report one exit
+    /// code. Reads the session file and the project config; writes nothing.
+    #[command(name = "verify-run")]
+    VerifyRun {
+        /// The session file to check, relative to the root or absolute. It
+        /// must be a regular file inside the root.
+        #[arg(long)]
+        session: std::path::PathBuf,
+
+        /// The directory the session file and every recorded evidence path
+        /// must resolve under. Defaults to the current directory.
+        #[arg(long)]
+        root: Option<std::path::PathBuf>,
+
+        /// Accept a session whose run is still in progress (exit 0 when
+        /// nothing else fired) instead of failing it with exit 65.
+        #[arg(long = "allow-running", action = ArgAction::SetTrue)]
+        allow_running: bool,
+
+        /// Pin the fix-cycle budget from outside the session file. A
+        /// recorded `max_fix_cycles` above N exits 65 (`CAP_RAISED`); an
+        /// absent one takes N; a lower recorded cap stays in force.
+        #[arg(long = "max-fix-cycles", value_name = "N", value_parser = parse_fix_cycle_pin)]
+        max_fix_cycles: Option<u64>,
+    },
+
     /// Read or write Konductor configuration.
     ///
     /// Temporarily hidden from normal --help and dispatch while the
@@ -548,6 +579,7 @@ impl Commands {
             Commands::Synth { .. } => Self::SYNTH,
             Commands::Init { .. } => Self::INIT,
             Commands::Doctor { .. } => Self::DOCTOR,
+            Commands::VerifyRun { .. } => Self::VERIFY_RUN,
             Commands::Config { .. } => Self::CONFIG,
             Commands::Metrics { .. } => Self::METRICS,
             Commands::DumpSchema => "__dump_schema",
@@ -566,6 +598,7 @@ impl Commands {
     pub(crate) const SYNTH: &'static str = "synth";
     pub(crate) const INIT: &'static str = "init";
     pub(crate) const DOCTOR: &'static str = "doctor";
+    pub(crate) const VERIFY_RUN: &'static str = "verify-run";
     pub(crate) const CONFIG: &'static str = "config";
     #[allow(dead_code)]
     pub(crate) const METRICS: &'static str = "metrics";
@@ -589,6 +622,33 @@ impl ConfigAction {
     pub(crate) const GET: &'static str = "get";
     pub(crate) const SET: &'static str = "set";
     pub(crate) const LIST: &'static str = "list";
+}
+
+/// The text of a clap usage error before its `Usage:` section: the trimmed
+/// non-empty lines joined with a space, without the leading `error: `.
+fn usage_detail(err: &clap::Error) -> String {
+    let message = err.to_string();
+    let lines: Vec<&str> = message
+        .lines()
+        .take_while(|line| !line.trim().is_empty())
+        .map(str::trim)
+        .collect();
+    let joined = lines.join(" ");
+    joined
+        .strip_prefix("error: ")
+        .unwrap_or(&joined)
+        .to_string()
+}
+
+/// True when argv is a `verify-run` invocation with `--json`: its parse
+/// failures keep the one-object-on-stdout contract. The subcommand is the
+/// first argument that is not a flag, since the global flags take no value.
+fn wants_verify_run_json(argv: &[String]) -> bool {
+    let mut args = argv.iter().skip(1);
+    args.clone().any(|a| a == "--json")
+        && args
+            .find(|a| !a.starts_with('-'))
+            .is_some_and(|a| a == "verify-run")
 }
 
 /// Parse argv, remapping clap's usage-error exit code (2) to EX_USAGE (64)
@@ -624,7 +684,11 @@ pub fn parse_or_exit() -> Cli {
                     std::process::exit(0);
                 }
                 _ => {
-                    eprint!("{err}");
+                    if wants_verify_run_json(&argv) {
+                        println!("{}", verify_run::usage_error_json(&usage_detail(&err)));
+                    } else {
+                        eprint!("{err}");
+                    }
                     logging::log_invocation(&argv, EXIT_USAGE_ERROR);
                     std::process::exit(EXIT_USAGE_ERROR.into());
                 }

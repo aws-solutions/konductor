@@ -63,6 +63,7 @@ pub(crate) enum Severity {
 
 impl Severity {
     /// Every severity, highest rank first, in severity-schema.yml's order.
+    #[cfg(test)]
     pub(crate) const ALL: [Severity; 5] = [
         Severity::Critical,
         Severity::High,

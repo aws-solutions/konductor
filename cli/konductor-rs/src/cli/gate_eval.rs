@@ -197,6 +197,7 @@ pub(crate) struct EvalContext<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ReasonCode {
     SessionInvalid,
+    ConfigInvalid,
     RecordIntegrity,
     CapRaised,
     PhaseOrder,
@@ -210,12 +211,14 @@ pub(crate) enum ReasonCode {
     FindingUnresolved,
     Passed,
     Running,
+    ArgumentInvalid,
 }
 
 impl ReasonCode {
     pub(crate) fn code(self) -> &'static str {
         match self {
             Self::SessionInvalid => "SESSION_INVALID",
+            Self::ConfigInvalid => "CONFIG_INVALID",
             Self::RecordIntegrity => "RECORD_INTEGRITY",
             Self::CapRaised => "CAP_RAISED",
             Self::PhaseOrder => "PHASE_ORDER",
@@ -229,6 +232,7 @@ impl ReasonCode {
             Self::FindingUnresolved => "FINDING_UNRESOLVED",
             Self::Passed => "PASSED",
             Self::Running => "RUNNING",
+            Self::ArgumentInvalid => "ARGUMENT_INVALID",
         }
     }
 }
@@ -243,6 +247,7 @@ pub(crate) enum InfoCode {
     LoopExitNotJudged,
     OverrideRecorded,
     ResultIgnored,
+    ConfigSource,
 }
 
 impl InfoCode {
@@ -256,6 +261,7 @@ impl InfoCode {
             Self::LoopExitNotJudged => "LOOP_EXIT_NOT_JUDGED",
             Self::OverrideRecorded => "OVERRIDE_RECORDED",
             Self::ResultIgnored => "RESULT_IGNORED",
+            Self::ConfigSource => "CONFIG_SOURCE",
         }
     }
 }

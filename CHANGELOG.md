@@ -23,9 +23,12 @@ not per individual commit.
   WARNING, WARNINGS, SUGGESTION, MINOR) to severity ids. Matching ignores case and reads the
   leading word of labels such as `Warning Gap`. Any other word, an empty label, and risk,
   priority or confidence scales such as `High Risk` rank as CRITICAL.
-- Groundwork for judging a SOP session file against its gates: an internal evaluator exists,
-  but no command runs it yet. Phase-gated SOPs treat an open HIGH finding as unresolved,
-  even when the threshold is CRITICAL.
+- Groundwork for judging a SOP session file against its gates: an internal evaluator.
+  Phase-gated SOPs treat an open HIGH finding as unresolved, even when the threshold is
+  CRITICAL.
+- New `konductor verify-run --session <path>` checks a SOP session file and exits through the
+  existing exit-code contract. `--root <dir>` sets the directory the session and its evidence
+  must resolve under (default: the current directory). It writes nothing.
 
 ### Changed
 
