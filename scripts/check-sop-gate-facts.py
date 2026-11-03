@@ -17,7 +17,7 @@ from pathlib import Path
 
 EX_USAGE = 64
 FACT_SUFFIXES = ("result", "evidence", "checker")
-FACT_KEY = re.compile(r"gate_([a-z0-9][a-z0-9-]*)_(result|evidence|checker|override)")
+FACT_KEY = re.compile(r"gate_([a-z0-9][a-z0-9-]*)_(result|evidence|checker|override|verdict)")
 STEP_HEADING = re.compile(r"^### (\d+)\. ", re.MULTILINE)
 SECTION_END = re.compile(r"^#{2,3} ", re.MULTILINE)
 CHECKER_WORDS = r"IMPORTANT|SUGGESTION|MINOR|WARNING"
@@ -36,6 +36,13 @@ ABSOLUTE_PATH = re.compile(r"`(?:/|~|[A-Za-z]:[\\/])")
 SUMMARY_WRITE = re.compile(r"\bwrite `sdlc-summary\.md`", re.IGNORECASE)
 VERIFY_RUN_SOP = "k-full-sdlc"
 VERIFY_CALL = "konductor verify-run --session"
+ROUND_CAP_NOTE = re.compile(r"`[^`]*round cap, approved by <alias>[^`]*`")
+STALE_OVERRIDE_WORDING = ("no approver", "attended cap exit", "recorded route", "round-cap exit")
+CODE_REVIEW = "code-review"
+CAP_READING_PHASES = ("implementation", "code-review", "testing", "documentation")
+CAP_KEY = "run.data.max_fix_cycles"
+CAP_RESUME_LABEL = "Reconciliation on resume (max_fix_cycles)"
+DISAGREEMENT_ITEM = "verify-run disagrees with the Quality Gate"
 
 
 def load_orchestration_check():
@@ -159,36 +166,44 @@ def check_override_rule(name, text):
         )
     if not any(all(tok in s for tok in ("unattended", "never", "override")) for s in sentences(text)):
         errors.append(f"gate-override-rule: '{name}' does not say an unattended run never overrides")
-    if name == VERIFY_RUN_SOP and not any(
-        all(tok in s for tok in ("round cap", "recorded route", "no approver")) for s in sentences(text)
-    ):
-        errors.append(f"gate-override-rule: '{name}' does not say an attended round cap exit is its own recorded route (finding ids plus `round cap`, no approver needed)")
-    if name == VERIFY_RUN_SOP and not any(
-        all(tok in s for tok in ("round-cap exit", "no longer open")) for s in sentences(text)
-    ):
-        errors.append(f"gate-override-rule: '{name}' does not say a recorded round-cap exit closes a finding for the result rule")
+    if name == VERIFY_RUN_SOP:
+        if not ROUND_CAP_NOTE.search(text):
+            errors.append(f"gate-override-rule: '{name}' does not give the round-cap override note as a `... round cap, approved by <alias>` template")
+        for wording in STALE_OVERRIDE_WORDING:
+            if wording in text:
+                errors.append(f"gate-override-rule: '{name}' still says '{wording}'; a round cap needs the engineer to resolve or override each finding with a named approver")
     return errors
 
 
-def check_approval_result(name, text):
-    """k-full-sdlc only: an approval boundary records `approved`, except that a
-    feature whose status.md verdict is not APPROVED records its verdict word."""
-    required = ("approval boundary", "`approved`", "`status.md`", "verdict word", "instead")
-    if any(all(part in s for part in required) for s in sentences(text)):
-        return []
-    return [
-        f"gate-approval-result (k-full-sdlc only): '{name}' lacks the sentence that an approval boundary records `approved` and a feature whose `status.md` verdict is not APPROVED records its verdict word instead"
-    ]
+def check_approval_result(name, text, sections, boundaries):
+    """k-full-sdlc only: an approval boundary always records `approved`; the
+    code-review pull request verdict goes in `gate_code-review_verdict`."""
+    errors = []
+    if any("verdict word" in s and "instead" in s for s in sentences(text)):
+        errors.append(f"gate-approval-result (k-full-sdlc only): '{name}' records a verdict word instead of `approved`; it belongs in `gate_{CODE_REVIEW}_verdict`")
+    if any(b["phase"] == CODE_REVIEW and b["kind"] == "approval" for b in boundaries):
+        section = sections.get(CODE_REVIEW, "")
+        for key in (f"gate_{CODE_REVIEW}_verdict", "`approved`"):
+            if key not in section:
+                errors.append(f"gate-approval-result (k-full-sdlc only): '{name}' Step for '{CODE_REVIEW}' does not name {key}")
+    return errors
 
 
-def check_max_fix_cycles(name, text):
-    """k-full-sdlc only: the evaluator reads the fix-cycle cap from run.data."""
+def check_max_fix_cycles(name, text, sections):
+    """k-full-sdlc only: the evaluator reads the fix-cycle cap from run.data,
+    and every step that spends fix cycles reads it from there too."""
+    errors = []
     required = ("`max_fix_cycles`", "`run.data`", "minting", "non-negative integer")
-    if any(all(part in s for part in required) for s in sentences(text)):
-        return []
-    return [
-        f"max-fix-cycles-unrecorded (k-full-sdlc only): '{name}' does not say `max_fix_cycles` is written into `run.data` at minting as a non-negative integer"
-    ]
+    if not any(all(part in s for part in required) for s in sentences(text)):
+        errors.append(
+            f"max-fix-cycles-unrecorded (k-full-sdlc only): '{name}' does not say `max_fix_cycles` is written into `run.data` at minting as a non-negative integer"
+        )
+    for phase in CAP_READING_PHASES:
+        if phase in sections and CAP_KEY not in sections[phase]:
+            errors.append(f"max-fix-cycles-unread (k-full-sdlc only): '{name}' Step for '{phase}' does not read the cap from `{CAP_KEY}`")
+    if CAP_RESUME_LABEL not in text:
+        errors.append(f"max-fix-cycles-resume (k-full-sdlc only): '{name}' lacks the '{CAP_RESUME_LABEL}' rule")
+    return errors
 
 
 def check_verify_run_step(name, section):
@@ -222,6 +237,8 @@ def check_verify_run_step(name, section):
             errors.append(f"verify-run-exits (k-full-sdlc only): '{name}' final Step does not cover '{phrase}'")
     if not any("`CONFIG_SOURCE`" in s and "`Gate check`" in s for s in sentences(section)):
         errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not put every reason and info line, `CONFIG_SOURCE` included, under `Gate check`")
+    if not any(DISAGREEMENT_ITEM in s and "satisfied=false" in s for s in sentences(section)):
+        errors.append(f"verify-run-disagreement (k-full-sdlc only): '{name}' final Step does not force `satisfied=false` and name '{DISAGREEMENT_ITEM}' as an open item")
     expected = re.search(r"\*\*Expected Output:\*\*[^\n]*", section)
     if expected is None or "`Gate check`" not in expected.group(0):
         errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step's Expected Output does not name the `Gate check` section")
@@ -242,9 +259,8 @@ def check_sop(name, text, entry):
         errors += check_override_rule(name, text)
     if name == VERIFY_RUN_SOP:
         errors += check_evidence_root(name, text)
-        errors += check_max_fix_cycles(name, text)
-        if any(b["kind"] == "approval" for b in boundaries):
-            errors += check_approval_result(name, text)
+        errors += check_max_fix_cycles(name, text, sections)
+        errors += check_approval_result(name, text, sections, boundaries)
         errors += check_verify_run_step(name, sections.get(phases[-1], ""))
     return errors
 

@@ -4,8 +4,10 @@
 Writes the session file a k-full-sdlc run produces when every step follows
 the SOP text, then runs the built binary on it the way Step 11 does: working
 directory = `codebase_path` (`codebase`), `--root` = an `output_dir` outside
-it, absolute `--session`. A binary without `verify-run --root` skips those
-cases with a visible reason (see `pytest -rs`).
+it, absolute `--session`. Without the binary, or with one that lacks a needed
+capability, binary cases skip with a visible reason (see `pytest -rs`); with
+KONDUCTOR_REQUIRE_FULL_BIN=1 they fail instead. SOP-text and shell cases
+always run.
 
 Binary: build/cli/konductor, or the path in KONDUCTOR_BIN. No network:
 telemetry is off and HOME is a scratch dir.
@@ -15,6 +17,7 @@ Run:  cd tests && pytest -rs test_k_full_sdlc_gate_facts_dry_run.py
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -26,6 +29,7 @@ SOP_TEXT = (REPO_ROOT / "agent-sops" / "k-full-sdlc.sop.md").read_text(encoding=
 ENTRY = yaml.safe_load(
     (REPO_ROOT / "cli" / "gate-config" / "sop-orchestration.yml").read_text(encoding="utf-8")
 )["gated"]["k-full-sdlc"]
+REQUIRE_FULL_BIN = os.environ.get("KONDUCTOR_REQUIRE_FULL_BIN") == "1"
 SESSION = "sessions/k-full-sdlc-20250101T000000Z-abcd.yml"
 FEATURE = "login"
 
@@ -49,10 +53,17 @@ SOP_SCOPE = {
     "testing": "feature",
 }
 
-pytestmark = pytest.mark.skipif(
-    not KONDUCTOR_BIN.is_file(),
-    reason=f"{KONDUCTOR_BIN} not found; run 'make -C cli build' first",
-)
+def skip_or_fail(reason):
+    """A missing binary or capability skips locally and fails when
+    KONDUCTOR_REQUIRE_FULL_BIN=1, so a verify-run regression cannot hide."""
+    if REQUIRE_FULL_BIN:
+        pytest.fail(reason)
+    pytest.skip(reason)
+
+
+def require_binary():
+    if not KONDUCTOR_BIN.is_file():
+        skip_or_fail(f"{KONDUCTOR_BIN} not found; run 'make build' first")
 
 
 def evidence_path(phase):
@@ -65,6 +76,7 @@ def session_for(
     last_phase_status,
     results=None,
     overrides=None,
+    verdict="APPROVED",
     skipped=None,
     skip_reason="engineer skipped it",
 ):
@@ -86,6 +98,8 @@ def session_for(
             f"gate_{phase}_evidence": evidence_path(phase),
             f"gate_{phase}_checker": EVIDENCE[phase][1],
         }
+        if phase == "code-review":
+            facts["gate_code-review_verdict"] = verdict
         if phase in overrides:
             facts[f"gate_{phase}_override"] = overrides[phase]
         (run_data if SOP_SCOPE[phase] == "run" else feature_data).update(facts)
@@ -135,6 +149,7 @@ class Layout:
 
 @pytest.fixture
 def layout(tmp_path):
+    require_binary()
     return Layout(tmp_path)
 
 
@@ -170,18 +185,30 @@ def clamps_fix_cap():
     return b"run.data.max_fix_cycles is not a non-negative integer" not in KONDUCTOR_BIN.read_bytes()
 
 
-needs_root = pytest.mark.skipif(
-    not supports_root() if KONDUCTOR_BIN.is_file() else False,
-    reason="built binary has no verify-run --root; needs a build with --root",
-)
-needs_config_source = pytest.mark.skipif(
-    b"CONFIG_SOURCE" not in KONDUCTOR_BIN.read_bytes() if KONDUCTOR_BIN.is_file() else False,
-    reason="built evaluator does not report CONFIG_SOURCE; needs the project-config build",
-)
-needs_recorded_cap = pytest.mark.skipif(
-    clamps_fix_cap() if KONDUCTOR_BIN.is_file() else False,
-    reason="built evaluator clamps the recorded max_fix_cycles; needs the recorded-cap evaluator",
-)
+@pytest.fixture
+def require_root():
+    require_binary()
+    if not supports_root():
+        skip_or_fail("built binary has no verify-run --root; needs a build with --root")
+
+
+@pytest.fixture
+def require_config_source():
+    require_binary()
+    if b"CONFIG_SOURCE" not in KONDUCTOR_BIN.read_bytes():
+        skip_or_fail("built evaluator does not report CONFIG_SOURCE; needs the project-config build")
+
+
+@pytest.fixture
+def require_recorded_cap():
+    require_binary()
+    if clamps_fix_cap():
+        skip_or_fail("built evaluator clamps the recorded max_fix_cycles; needs the recorded-cap evaluator")
+
+
+needs_root = pytest.mark.usefixtures("require_root")
+needs_config_source = pytest.mark.usefixtures("require_config_source")
+needs_recorded_cap = pytest.mark.usefixtures("require_recorded_cap")
 
 
 def step_11_call(layout, *extra):
@@ -250,7 +277,7 @@ def test_overridden_important_finding_lets_the_run_complete(layout, phase, note)
 
 @needs_root
 def test_round_cap_exit_lets_the_design_review_run_complete(layout):
-    kwargs = dict(results={"design-review": "none"}, overrides={"design-review": "F-3, F-4 round cap"})
+    kwargs = dict(results={"design-review": "none"}, overrides={"design-review": "F-3, F-4 round cap, approved by alice"})
     result = step_11(layout, session_for(layout.output_dir, "in_progress", "IN_PROGRESS", **kwargs), "--allow-running")
     assert result.returncode == 0, combined(result)
 
@@ -260,8 +287,9 @@ def test_round_cap_exit_lets_the_design_review_run_complete(layout):
 
 
 @needs_root
-def test_override_note_alone_does_not_clear_the_result_word(layout):
-    kwargs = dict(results={"design-review": "IMPORTANT"}, overrides={"design-review": "engineer jdoe"})
+@pytest.mark.parametrize("word", ["IMPORTANT", "CRITICAL"])
+def test_override_note_alone_does_not_clear_the_result_word(layout, word):
+    kwargs = dict(results={"design-review": word}, overrides={"design-review": "F-3 round cap"})
     result = step_11(layout, session_for(layout.output_dir, "in_progress", "IN_PROGRESS", **kwargs), "--allow-running")
     assert result.returncode == 2, combined(result)
 
@@ -302,11 +330,32 @@ def test_skipped_boundary_without_skip_reason_is_exit_65(layout):
 @needs_root
 def test_revalidation_pending_feature_is_not_reported_as_approved(layout):
     session = session_for(
-        layout.output_dir, "in_progress", "IN_PROGRESS", results={"code-review": "NEEDS_REVALIDATION"}
+        layout.output_dir,
+        "in_progress",
+        "IN_PROGRESS",
+        results={"code-review": "NEEDS_REVALIDATION"},
+        verdict="NEEDS_REVALIDATION",
     )
     result = step_11(layout, session, "--allow-running")
     assert result.returncode == 65, combined(result)
     assert "APPROVAL_MISSING" in result.stdout
+
+
+@needs_root
+def test_blocked_pull_request_verdict_does_not_make_the_approval_missing(layout):
+    session = session_for(layout.output_dir, "in_progress", "IN_PROGRESS", verdict="BLOCKED")
+    result = step_11(layout, session, "--allow-running")
+    assert result.returncode == 0, combined(result)
+    assert "APPROVAL_MISSING" not in combined(result)
+
+
+@needs_root
+@needs_recorded_cap
+def test_fix_cycles_over_the_recorded_cap_are_exit_3_whatever_the_invocation_says(layout):
+    session = session_for(layout.output_dir, "in_progress", "IN_PROGRESS")
+    session["features"][FEATURE]["counters"]["fix_cycles_used"] = 3
+    result = step_11(layout, session, "--allow-running")
+    assert result.returncode == 3, combined(result)
 
 
 @needs_root
@@ -330,10 +379,6 @@ def test_non_integer_max_fix_cycles_is_a_record_integrity_error(layout, bad_cap)
     assert "non-negative integer" in combined(result)
 
 
-def test_sop_records_max_fix_cycles_in_run_data_at_minting():
-    assert sentence_with(SOP_TEXT, "`max_fix_cycles`", "`run.data`", "written once at minting", "non-negative integer")
-
-
 @pytest.mark.parametrize("number, phase", [(4, "design-review"), (9, "testing")])
 def test_steps_4_and_9_stop_on_open_findings_and_name_the_override_path(number, phase):
     section = step_section(number)
@@ -343,57 +388,12 @@ def test_steps_4_and_9_stop_on_open_findings_and_name_the_override_path(number, 
     assert "attended resume" in section, number
 
 
-def test_step_4_names_the_round_cap_override():
-    assert sentence_with(step_section(4), "5-round cap", "recorded cap exit", "no approver")
-
-
-def test_gate_facts_bullet_names_the_override_key_and_recompute_rule():
-    assert sentence_with(SOP_TEXT, "`gate_<phase>_override`", "override", "engineer")
-    assert sentence_with(SOP_TEXT, "round cap", "recorded route", "no approver")
-    assert sentence_with(step_section(4), "attended cap exit", "`gate_design-review_override`", "`round cap`")
-    assert sentence_with(SOP_TEXT, "rewrite `gate_<phase>_result`", "not overridden")
-    assert sentence_with(SOP_TEXT, "round-cap exit", "no longer open")
-    assert sentence_with(step_section(4), "resolved, overridden, or closed by a recorded round-cap exit")
-
-
-def test_quality_gate_accepts_resolved_or_overridden():
-    gate = SOP_TEXT[SOP_TEXT.index("## Quality Gate"):]
-    assert sentence_with(gate, "design review ran", "gate_design-review_override")
-    assert sentence_with(gate, "testing ran", "overridden", "gate_testing_override")
-
-
-def test_revalidation_rules_rewrite_the_code_review_fact():
-    section = step_section(9)
-    assert len(sentence_with(section, "NEEDS_REVALIDATION", "rewrite", "gate_code-review_result")) == 2
-    assert sentence_with(step_section(8), "gate_code-review_result", "APPROVED", "verdict word")
-
-
-def test_approval_boundary_result_wording_agrees_between_progress_tracking_and_step_8():
-    assert sentence_with(SOP_TEXT, "approval boundary", "`approved`", "`status.md`", "verdict word", "instead")
-    assert sentence_with(step_section(8), "`approved`", "APPROVED", "`status.md` verdict word", "`NEEDS_REVALIDATION`")
-
-
-def test_project_root_is_defined_once_and_step_11_runs_from_codebase_path():
-    assert SOP_TEXT.count("**Project root.**") == 1
-    definition = sentence_with(SOP_TEXT, "Wherever this SOP says", "project root")[0]
-    assert "`codebase_path` on a brownfield project" in definition and "Step 7" in definition
-    assert sentence_with(SOP_TEXT, "On greenfield, `codebase_path` is only the directory", "not the project root")
-    assert "(the project root," not in step_section(11)
-    assert sentence_with(step_section(11), "greenfield", "directory containing the Step 7 source directory", "not the project root")
-    assert sentence_with(step_section(11), "greenfield run reads its project config from `codebase_path`", "not from the Step 7 source directory")
-
-
-def test_step_11_runs_from_codebase_path_with_root_output_dir():
-    section = step_section(11)
-    call = sentence_with(section, "konductor verify-run --session", "--root <output_dir>", "--allow-running", "`k-developer`")
-    assert call
-    for token in ("`codebase_path`", "absolute"):
-        assert token in call[0], token
-    for code in (0, 1, 2, 3, 6, 64, 65):
-        assert re.search(rf"\bexit {code}\b", section, re.IGNORECASE), code
-    assert "needs a build with --root" in section
-    assert "`Gate check` section" in section
-    assert sentence_with(section, "every reason and info line", "`CONFIG_SOURCE`", "`Gate check`")
+@needs_root
+def test_step_11_runs_from_codebase_path_with_root_output_dir(layout):
+    assert not layout.output_dir.is_relative_to(layout.codebase)
+    result = step_11(layout, session_for(layout.output_dir, "in_progress", "IN_PROGRESS"), "--allow-running")
+    assert result.returncode == 0, combined(result)
+    assert "RUNNING" in result.stdout
 
 
 def test_missing_konductor_on_path_reports_not_found(tmp_path):
@@ -413,16 +413,6 @@ def test_older_binary_signal_is_an_unrecognized_subcommand(layout):
     result = run_binary(layout, "no-such-subcommand")
     assert result.returncode == 64
     assert "unrecognized subcommand" in result.stderr
-
-
-@pytest.mark.skipif(
-    KONDUCTOR_BIN.is_file() and supports_root(),
-    reason="built binary accepts --root; the unexpected-argument signal is pinned by test_bad_flag_on_a_binary_with_root_is_also_unexpected_argument",
-)
-def test_binary_without_root_reports_unexpected_argument(layout):
-    result = run_binary(layout, *step_11_call(layout, "--allow-running"))
-    assert result.returncode == 64
-    assert "unexpected argument" in result.stderr and "--root" in result.stderr
 
 
 @needs_root
@@ -467,3 +457,13 @@ def test_two_feature_run_records_one_feature_report_as_code_review_evidence(layo
     session["run"]["data"]["gate_code-review_evidence"] = "{feature-name}/code-review/report.md"
     result = step_11(layout, session, "--allow-running")
     assert result.returncode != 0, combined(result)
+
+
+def test_missing_binary_fails_instead_of_skipping_when_the_flag_is_set(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys.modules[__name__], "KONDUCTOR_BIN", tmp_path / "absent")
+    monkeypatch.setattr(sys.modules[__name__], "REQUIRE_FULL_BIN", True)
+    with pytest.raises(pytest.fail.Exception):
+        require_binary()
+    monkeypatch.setattr(sys.modules[__name__], "REQUIRE_FULL_BIN", False)
+    with pytest.raises(pytest.skip.Exception):
+        require_binary()

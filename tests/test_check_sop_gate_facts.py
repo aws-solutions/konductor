@@ -24,8 +24,9 @@ def run_check(*args) -> subprocess.CompletedProcess:
     )
 
 
-def test_valid_fixture_passes_silently():
-    result = run_check(FIXTURES / "valid")
+@pytest.mark.parametrize("case", ["valid", "valid-code-review"])
+def test_valid_fixture_passes_silently(case):
+    result = run_check(FIXTURES / case)
     assert result.returncode == 0, result.stderr
     assert result.stdout == "" and result.stderr == ""
 
@@ -44,7 +45,7 @@ def test_valid_fixture_passes_silently():
         ("verify-run-unavailable-missing", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step does not cover 'verify-run unavailable'"),
         ("gate-evidence-root", "gate-evidence-root (k-full-sdlc only): 'k-full-sdlc' must anchor evidence relative to `output_dir`"),
         ("gate-override-rule", "gate-override-rule: 'k-full-sdlc' does not say an unattended run never overrides"),
-        ("gate-round-cap-closure", "gate-override-rule: 'k-full-sdlc' does not say a recorded round-cap exit closes a finding for the result rule"),
+        ("gate-round-cap-no-approver", "gate-override-rule: 'k-full-sdlc' still says 'no approver'"),
         ("gate-override-rule-way-forward", "gate-override-rule: 'k-full-sdlc' lacks the sentence recording an engineer override"),
         ("gate-override-key-missing", "gate-fact-missing: 'k-full-sdlc' Step for 'review' does not name `gate_review_override`"),
         ("step-phase-mismatch", "step-phase-mismatch: 'k-full-sdlc' has Step headings numbered [0, 2, 2]"),
@@ -53,7 +54,11 @@ def test_valid_fixture_passes_silently():
         ("verify-run-exit-unhandled", "verify-run-exits (k-full-sdlc only): 'k-full-sdlc' final Step does not say what to do with exit 65"),
         ("verify-run-config-source", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step does not put every reason and info line, `CONFIG_SOURCE` included, under `Gate check`"),
         ("gate-override-on-approval-boundary", "gate-override-on-approval: 'k-full-sdlc' names `gate_draft_override`, but 'draft' is an approval boundary and has no override key"),
-        ("gate-approval-result", "gate-approval-result (k-full-sdlc only): 'k-full-sdlc' lacks the sentence that an approval boundary records `approved`"),
+        ("gate-approval-result", "gate-approval-result (k-full-sdlc only): 'k-full-sdlc' records a verdict word instead of `approved`"),
+        ("gate-verdict-missing", "gate-approval-result (k-full-sdlc only): 'k-full-sdlc' Step for 'code-review' does not name gate_code-review_verdict"),
+        ("max-fix-cycles-unread", "max-fix-cycles-unread (k-full-sdlc only): 'k-full-sdlc' Step for 'implementation' does not read the cap from `run.data.max_fix_cycles`"),
+        ("max-fix-cycles-resume-missing", "max-fix-cycles-resume (k-full-sdlc only): 'k-full-sdlc' lacks the 'Reconciliation on resume (max_fix_cycles)' rule"),
+        ("verify-run-disagreement-missing", "verify-run-disagreement (k-full-sdlc only): 'k-full-sdlc' final Step does not force `satisfied=false`"),
         ("verify-run-gate-check-heading", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step's Expected Output does not name the `Gate check` section"),
     ],
 )

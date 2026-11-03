@@ -133,6 +133,9 @@ jobs:
 
       - name: Run the Python test suite (make test-py)
         # After synth so the tests that need build/cli/konductor run instead of skipping.
+        # KONDUCTOR_REQUIRE_FULL_BIN makes a missing binary or capability fail them.
+        env:
+          KONDUCTOR_REQUIRE_FULL_BIN: "1"
         run: make test-py
 
       - name: Run the Rust tests for cli, mcp and shared
