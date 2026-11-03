@@ -30,11 +30,16 @@ Five files control five different things. Pick the smallest one that achieves wh
 
 | Change | Edit | Effect |
 | --- | --- | --- |
-| Rules every agent must follow | `context/k-core-rules.md` | NEVER DO rules and writing habits, loaded at session start for every agent |
+| Rules every agent must follow | `context/k-core-rules.md` | NEVER DO rules, writing habits, and engineering practices, loaded at session start for every agent |
 | Which specialist handles which kind of request | `context/k-orchestrator-routing-rules.md` | Routing, loaded at session start for all three orchestrators |
 | The steps of one workflow | `agent-sops/<name>.sop.md` | That SOP's steps, constraints, and quality gates |
 | How an agent reasons about one topic | `skills/<name>/SKILL.md` | Guidance that agent loads on demand |
 | An agent's prompt, model, tools, or dependencies | `agents/<name>.agent-spec.json` | That agent, in both runtimes |
+
+For an agent with both `kiroCli` and `claudeCli` config, write `config.model` as a Kiro CLI model ID
+in its dotted form (`claude-sonnet-5.5`), or `auto`. `konductor synth` converts it for Claude Code
+(`claude-sonnet-5-5`, or `inherit` for `auto`) and fails on anything else. A Claude-only agent can
+also use Claude Code's own IDs and aliases, such as `claude-opus-4-1` or `sonnet`.
 
 ### Routing lives in two places
 
@@ -220,15 +225,14 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ### Checks before you open a pull request
 
 ```bash
-cargo fmt --check
+TOOLCHAIN=1.98.1  # RUST_LINT_TOOLCHAIN in .github/workflows/validate-pr.yml
+rustup toolchain install "$TOOLCHAIN" --profile minimal -c clippy -c rustfmt
+make lint CARGO="cargo +$TOOLCHAIN"
 ```
 
-```bash
-cargo clippy -- -D warnings
-```
-
-Clippy is configured to treat every warning as an error, so a clean run is required rather than
-advisory.
+This runs `cargo clippy -- -D warnings` and `cargo fmt --check` on the `cli`, `mcp` and `shared`
+crates with the Rust version PR CI lints on. Clippy treats every warning as an error, so a clean
+run is required rather than advisory.
 
 ---
 
