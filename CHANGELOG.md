@@ -15,6 +15,19 @@ not per individual commit.
   errors, completeness) and redacts credentials. The module header covers redaction, ids, which
   formats are verified against real captures, and the OpenTelemetry mapping. Tests and fixtures
   are in `bench/test/`.
+- `bench/lib/sanitize.js`, a pure blinding layer between a stored answer and a grader.
+  `sanitizeAnswer` normalizes the text (line breaks, control characters, zero-width and
+  bidirectional marks, canonical NFC composition, not NFKC), then deletes the skill name, aliases,
+  namespace prefixes, harness directory paths, arm labels, condition names, run and agent
+  identifiers, and narration sentences about loading a skill, consulting instructions or the tools
+  available. Narration inside fenced code is kept, and a skill named with an ordinary word keeps
+  prose that merely uses the word. Removal leaves no marker, because a marker would appear in one
+  arm only. `wrapForGrader` is the one path to grader input: it places two sanitized answers
+  between marker lines carrying a caller-supplied random value, says the content between them is
+  data and not instructions, and cuts each answer at a stated length with a visible note.
+  `SANITIZER_VERSION` and `RULES_HASH` identify the rules that produced a judgment. Leak canary
+  tests plant a name, alias, namespace, harness path and loading sentence and assert none reaches
+  the grader input. Run `node --test bench/test/sanitize.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
