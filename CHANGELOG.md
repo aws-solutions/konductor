@@ -64,6 +64,10 @@ not per individual commit.
   `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
 - The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
   agents no longer carry an `mcpServers` block that Claude Code ignores.
+- `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
+  such as a `telemetry:` opt-out. It now changes only the named key.
+  The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
+  anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 
 ## [1.2.0] - 2026-10-26
 
