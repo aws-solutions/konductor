@@ -124,7 +124,7 @@ paragraph and the gate note between the title and `## Overview`:
 # Title
 
 Orchestration: strict (phase-gated SOP)
-Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it or the SOP's own round cap applies; record which.
+Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it, or the SOP's own round-cap rule says to proceed; record which.
 
 Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.
 

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 marker: 'Orchestration: strict (phase-gated SOP)'
-meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it or the SOP''s own round cap applies; record which.'
+meaning: 'Strict means: fixture meaning.'
+gate_note: 'Gate note: fixture.'
 gated:
   alpha-gated:
     gates: [approval]

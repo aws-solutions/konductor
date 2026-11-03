@@ -604,7 +604,27 @@ fn argument_failures_under_json_print_one_envelope_on_stdout() {
         assert_eq!(doc["reasons"][0]["code"], "ARGUMENT_INVALID");
         assert!(doc["error"].as_str().is_some_and(|e| !e.is_empty()));
         assert!(doc["info"].is_array());
+        if args == ["verify-run", "--json"] {
+            let detail = doc["reasons"][0]["detail"].as_str().unwrap();
+            assert!(detail.contains("--session"), "detail {detail:?}");
+            assert_eq!(doc["error"], doc["reasons"][0]["detail"]);
+        }
     }
+}
+
+#[test]
+fn a_relative_session_and_root_error_names_the_resolved_path() {
+    let project = Project::new("relative-resolved");
+    let session = "out/.konductor/sessions/x.yml";
+    let output = project.run(&["verify-run", "--session", session, "--root", "out"]);
+    assert_invalid(&output, "SESSION_INVALID");
+    let message = stderr(&output);
+    assert!(message.contains(session), "{message}");
+    assert!(message.contains("(resolved to /"), "{message}");
+    assert!(
+        message.contains("project/out/out/.konductor/sessions/x.yml): "),
+        "{message}"
+    );
 }
 
 #[test]

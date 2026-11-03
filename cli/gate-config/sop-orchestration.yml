@@ -18,7 +18,8 @@
 #                    open and not overridden. A re-run that changes the result
 #                    needs no override fact.
 #   loop-exit        a review loop on the artifact reaches its exit condition
-#                    or round cap
+#                    or its round cap where the SOP says to proceed at the
+#                    cap
 # A gate judges the content of an artifact. A confirmation that authorizes
 # effort on discovered or generated scope, one a caller flag such as
 # scope_confirmed can pre-authorize, is not a gate. Also not gates: parameter
@@ -34,13 +35,12 @@
 # Each gated SOP has the marker line below as its own paragraph right after
 # its title, above ## Overview, so installed skill descriptions are
 # unchanged. The `meaning` line below is the sentence that follows the marker
-# in each gated SOP; the lint checks it. A second paragraph, the gate note
-# kept in scripts/check-sop-orchestration.py, says where gate facts are
-# recorded. No not_gated SOP contains the marker.
+# in each gated SOP; the lint checks it. A second paragraph, the `gate_note`
+# line below, says where gate facts are recorded. No not_gated SOP contains the marker.
 #
 # "strict" tells the orchestrator to stop at each recorded gate, record the
 # gate facts, and not proceed past an unmet gate unless the engineer overrides
-# it or the SOP's own round cap applies, recording which.
+# it, or the SOP's own round-cap rule says to proceed, recording which.
 #
 # A basis cites steps by their exact heading text in backticks, without the
 # step or phase number, and cites at least one. The lint fails when a cited
@@ -67,7 +67,8 @@
 #            feature is approved or blocked on its own.
 version: 1
 marker: 'Orchestration: strict (phase-gated SOP)'
-meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it or the SOP''s own round cap applies; record which.'
+meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it, or the SOP''s own round-cap rule says to proceed; record which.'
+gate_note: 'Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.'
 gated:
   k-full-sdlc:
     gates: [check-threshold, approval]
@@ -81,7 +82,7 @@ gated:
       - {phase: testing, kind: check-threshold, scope: feature}
   k-design-doc-creation:
     gates: [approval, check-threshold, loop-exit]
-    basis: '`Requirements Elicitation` summary confirmed before `Draft Generation`; `Draft Generation` needs zero CRITICAL before `Quality Gates`; `Adversarial Review Loop` exits or hits its 5-round cap.'
+    basis: '`Requirements Elicitation` summary confirmed before `Draft Generation`; `Draft Generation` needs zero CRITICAL before `Quality Gates`; `Adversarial Review Loop` exits, or at its 5-round cap the engineer resolves the remaining issues.'
   k-principal-engineer-design-review:
     gates: [check-threshold, loop-exit]
     basis: '`Quality Gate (design-quality-check)` score of 3 or more before `Architecture Principles Gate (design-evaluation)`; `Adversarial Review Loop (max 5 rounds)`.'

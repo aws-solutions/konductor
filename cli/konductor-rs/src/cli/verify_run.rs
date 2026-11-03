@@ -126,8 +126,8 @@ fn check(
         Invalid::argument(format!("could not resolve the current directory: {err}"))
     })?;
     let root = resolve_root(&cwd, root)?;
-    let path = locate_session(&root, session)?;
-    let value = read_session(&path)?;
+    let (path, validated) = locate_session(&root, session)?;
+    let value = read_session(&path, &validated)?;
     let (threshold, configured) = configured_threshold(&cwd)?;
     let gate_map = gate_map().map_err(Invalid::config)?;
     let policy = SeverityPolicy {
@@ -191,43 +191,53 @@ fn resolve_root(cwd: &Path, root: Option<&Path>) -> Result<PathBuf, Invalid> {
     Ok(canonical)
 }
 
-/// Resolves `session` against `root` and returns its canonical path. A
-/// symlink, a file outside `root`, or anything but a regular file is refused.
-fn locate_session(root: &Path, session: &Path) -> Result<PathBuf, Invalid> {
+/// Resolves `session` against `root` and returns its canonical path and the
+/// metadata of the entry it validated. A symlink, a file outside `root`, or
+/// anything but a regular file is refused.
+fn locate_session(root: &Path, session: &Path) -> Result<(PathBuf, Metadata), Invalid> {
     let shown = session.display();
     let given = root.join(session);
-    let link_metadata = std::fs::symlink_metadata(&given)
-        .map_err(|err| Invalid::session(format!("cannot read session file {shown}: {err}")))?;
+    let given = given.display();
+    let link_metadata = std::fs::symlink_metadata(root.join(session)).map_err(|err| {
+        Invalid::session(format!(
+            "cannot read session file {shown} (resolved to {given}): {err}"
+        ))
+    })?;
     if link_metadata.file_type().is_symlink() {
         return Err(Invalid::session(format!(
-            "session file {shown} is a symlink"
+            "session file {shown} (resolved to {given}) is a symlink"
         )));
     }
     if !link_metadata.is_file() {
         return Err(Invalid::session(format!(
-            "session file {shown} is not a regular file"
+            "session file {shown} (resolved to {given}) is not a regular file"
         )));
     }
-    let canonical = given
-        .canonicalize()
-        .map_err(|err| Invalid::session(format!("cannot resolve session file {shown}: {err}")))?;
+    let canonical = root.join(session).canonicalize().map_err(|err| {
+        Invalid::session(format!(
+            "cannot resolve session file {shown} (resolved to {given}): {err}"
+        ))
+    })?;
     if !canonical.starts_with(root) {
         return Err(Invalid::session(format!(
-            "session file {shown} is outside the root"
+            "session file {shown} (resolved to {given}) is outside the root"
         )));
     }
-    Ok(canonical)
+    Ok((canonical, link_metadata))
 }
 
 /// Opens the canonical path once and refuses it when the opened file is not
-/// the file `locate_session` checked. A file swapped in between the check
-/// and the open is the only seam; the read then uses this one handle.
-fn read_session(path: &Path) -> Result<Value, Invalid> {
-    let unreadable = |err: io::Error| Invalid::session(format!("cannot read session file: {err}"));
+/// the entry `locate_session` validated (same device and inode on unix; other
+/// platforms only check that the path still names a regular file). A file
+/// swapped in between the check and the open is the only seam; the read then
+/// uses this one handle.
+fn read_session(path: &Path, validated: &Metadata) -> Result<Value, Invalid> {
+    let shown = path.display();
+    let unreadable =
+        |err: io::Error| Invalid::session(format!("cannot read session file {shown}: {err}"));
     let file = File::open(path).map_err(unreadable)?;
     let opened = file.metadata().map_err(unreadable)?;
-    let on_disk = std::fs::symlink_metadata(path).map_err(unreadable)?;
-    if !opened.is_file() || on_disk.file_type().is_symlink() || !same_file(&opened, &on_disk) {
+    if !opened.is_file() || !same_file(&opened, validated) {
         return Err(Invalid::session("session file changed while it was opened"));
     }
     let mut bytes = Vec::new();
@@ -569,7 +579,9 @@ mod tests {
     }
 
     /// The atomic-replace test in `tests/verify_run_atomic_replace.rs` accepts
-    /// only the two whole-file verdicts. Two kinds of torn file are modelled:
+    /// only the two whole-file verdicts, or a fail-closed refusal (exit 65,
+    /// "changed while it was opened") that counts as a read but as neither
+    /// verdict. Two kinds of torn file are modelled:
     /// a prefix of either session cut at any byte, and a prefix of one session
     /// followed by the tail of the other, which is what an in-place write
     /// that does not truncate leaves behind. Neither may reproduce a
@@ -604,13 +616,19 @@ mod tests {
         }
 
         let mut strays = Vec::new();
-        let mut check_candidate = |candidate: &str| {
-            let verdict = project.verdict_of(candidate);
-            strays.extend(stray_match(candidate, &verdict, &texts, &baselines));
+        let mut evaluated = std::collections::HashSet::new();
+        let mut check_candidate = |candidate: String| {
+            if texts.contains(&candidate.as_str()) || !evaluated.insert(candidate.clone()) {
+                return;
+            }
+            let verdict = project.verdict_of(&candidate);
+            strays.extend(stray_match(&candidate, &verdict, &texts, &baselines));
         };
+        let mut expected = std::collections::HashSet::new();
         for text in &texts {
             for len in (0..text.len()).filter(|len| text.is_char_boundary(*len)) {
-                check_candidate(&text[..len]);
+                expected.insert(text[..len].to_string());
+                check_candidate(text[..len].to_string());
             }
         }
         for (head_index, head) in texts.iter().enumerate() {
@@ -618,15 +636,35 @@ mod tests {
                 if head_index == tail_index {
                     continue;
                 }
-                for split in (0..=head.len()).filter(|split| {
-                    head.is_char_boundary(*split) && tail.is_char_boundary(*split.min(&tail.len()))
-                }) {
+                let first_difference = head
+                    .bytes()
+                    .zip(tail.bytes())
+                    .position(|(a, b)| a != b)
+                    .unwrap_or(0);
+                let splits = |from: usize| {
+                    (from..=head.len()).filter(|split| {
+                        head.is_char_boundary(*split)
+                            && tail.is_char_boundary(*split.min(&tail.len()))
+                    })
+                };
+                for split in splits(0) {
                     if let Some(rest) = tail.get(split..) {
-                        check_candidate(&format!("{}{rest}", &head[..split]));
+                        expected.insert(format!("{}{rest}", &head[..split]));
+                    }
+                }
+                for split in splits(first_difference) {
+                    if let Some(rest) = tail.get(split..) {
+                        check_candidate(format!("{}{rest}", &head[..split]));
                     }
                 }
             }
         }
+        expected.retain(|candidate| !texts.contains(&candidate.as_str()));
+        assert_eq!(
+            evaluated, expected,
+            "skipping splits before the first differing byte must lose no distinct candidate"
+        );
+        eprintln!("distinct candidates evaluated: {}", evaluated.len());
         assert!(
             strays.is_empty(),
             "torn sessions matching a baseline: {strays:#?}"
@@ -639,6 +677,23 @@ mod tests {
             escape_control("a\nPASSED\r\u{1b}[31m\u{7f}é"),
             "a\\nPASSED\\r\\u{1b}[31m\\u{7f}é"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_session_that_is_not_the_validated_file_is_refused() {
+        let dir = std::env::temp_dir().join(format!("verify-run-swap-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let (a, b) = (dir.join("a.yml"), dir.join("b.yml"));
+        std::fs::write(&a, "x: 1\n").unwrap();
+        std::fs::write(&b, "x: 1\n").unwrap();
+        let validated = std::fs::symlink_metadata(&a).unwrap();
+        assert!(read_session(&a, &validated).is_ok());
+        let err = read_session(&b, &validated).unwrap_err();
+        assert!(err.reasons[0]
+            .detail
+            .contains("changed while it was opened"));
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

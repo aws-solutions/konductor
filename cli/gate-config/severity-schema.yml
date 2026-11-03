@@ -15,8 +15,10 @@
 # in its report, for example IMPORTANT for HIGH. An alias is one word of
 # ASCII letters and maps to the gate id. Matching ignores case and reads
 # only the leading letters of a label, so "Warning Gap" and "🚨 Critical Gap"
-# match WARNING and CRITICAL. A word that is neither an id nor an alias
-# ranks as CRITICAL. An alias appears under one id only (ignoring case) and
+# match WARNING and CRITICAL. A word that is neither an id nor an alias,
+# and an empty or whitespace-only label, ranks as CRITICAL (fail closed).
+# That rule lives in one place, SeverityTable::gate_rank_of_word, and the
+# config's `default_severity` is never applied to it. An alias appears under one id only (ignoring case) and
 # is never itself an id.
 #
 # This table is a severity vocabulary only. The input is a finding's
@@ -39,15 +41,16 @@
 #
 # When several causes apply the evaluator reports all of them in `reasons` but
 # exits with the code of the first check that fires. Checks run as: 65 (session
-# and record integrity), 1 (halted), 3 (budget), 2 (unresolved finding), then 6
-# (skipped gate). A bad `max_fix_cycles` is found by the budget check, so after
+# and record integrity), 1 (halted), 3 (budget), 2 (unresolved finding), then, when
+# nothing else fired, 6 (skipped gate) or 65 (an in-progress session without
+# allow_running, checked last). A bad `max_fix_cycles` is found by the budget check, so after
 # a halt it is listed but the exit stays 1. An earlier cause hides a later
 # code, so fix the earlier one to see the next.
 #
 # A word that is neither an id nor an alias ranks as CRITICAL, except `none`:
-# the exact lowercase word `none` (after trimming) records a gate with no
-# findings. It is case-sensitive like the ids and aliases, so `None` is
-# unknown and ranks CRITICAL.
+# the word `none`, ignoring case and surrounding whitespace, records a gate
+# with no findings. An approval boundary's result `approved` is matched the
+# same way.
 severities:
   - id: CRITICAL
     rank: 4

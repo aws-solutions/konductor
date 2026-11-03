@@ -3,7 +3,9 @@
 // verify_run_atomic_replace.rs: a writer thread replaces a k-full-sdlc session
 // file by temp-file-and-rename while the real binary's `verify-run` reads it
 // in a loop. Every read must match, exit code and stdout, the verdict for one
-// of the two whole files. A torn read shows up as any other output, usually
+// of the two whole files, except that a read may also be refused fail-closed
+// (exit 65, "changed while it was opened"). Refusals count toward the reads
+// but never as either verdict. A torn read shows up as any other output, usually
 // a nonzero exit with different reasons. Failure messages include the child's
 // stderr, which carries the cause when the run fails before printing a verdict.
 
