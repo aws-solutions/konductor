@@ -44,6 +44,8 @@ CAP_KEY = "run.data.max_fix_cycles"
 CAP_RESUME_LABEL = "Reconciliation on resume (max_fix_cycles)"
 DISAGREEMENT_ITEM = "verify-run disagrees with the Quality Gate"
 PINNED_CAP_FLAG = re.compile(r"--max-fix-cycles <max_fix_cycles>")
+PHASE_ORDER_KEY = "PHASE_ORDER"
+RECORD_BULLET = "- Record the `{phase}` phase's outcome"
 
 
 def load_orchestration_check():
@@ -250,6 +252,37 @@ def check_verify_run_step(name, section):
     return errors
 
 
+def check_record_skipped(name, sections, phases):
+    """k-full-sdlc only: Steps 2 through the one before the last must let their
+    Record bullet write SKIPPED, so a skipped phase is never left PENDING."""
+    errors = []
+    for phase in phases[2:-1]:
+        section = sections.get(phase, "")
+        start = section.find(RECORD_BULLET.format(phase=phase))
+        bullet = section[start:].split("\n", 1)[0] if start >= 0 else ""
+        if "`SKIPPED`" not in bullet:
+            errors.append(f"record-skipped-missing (k-full-sdlc only): '{name}' Step for '{phase}' has no Record bullet with a `SKIPPED` outcome")
+    return errors
+
+
+def check_pre_verify_phase_status(name, section):
+    """k-full-sdlc only: the final Step confirms no earlier phase is PENDING
+    before verify-run, and names the exit 65 PHASE_ORDER result."""
+    errors = []
+    call = section.find(VERIFY_CALL)
+    before = [
+        s for s in sentences(section[: max(call, 0)])
+        if "`verify-run`" in s and "`PENDING`" in s and PHASE_ORDER_KEY in s and "Never" in s
+    ]
+    if call >= 0 and not before:
+        errors.append(
+            f"verify-run-phase-status (k-full-sdlc only): '{name}' final Step lacks the constraint, before the verify-run call, that no earlier phase may be `PENDING` (it exits 65 with `{PHASE_ORDER_KEY}`)"
+        )
+    if not any(re.search(r"\bexit 65\b", s, re.IGNORECASE) and f"`{PHASE_ORDER_KEY}`" in s for s in sentences(section[call:] if call >= 0 else section)):
+        errors.append(f"verify-run-phase-order (k-full-sdlc only): '{name}' final Step does not name `{PHASE_ORDER_KEY}` under exit 65")
+    return errors
+
+
 def check_sop(name, text, entry):
     phases = entry["phases"]
     boundaries = entry["boundaries"]
@@ -267,6 +300,8 @@ def check_sop(name, text, entry):
         errors += check_max_fix_cycles(name, text, sections)
         errors += check_approval_result(name, text, sections, boundaries)
         errors += check_verify_run_step(name, sections.get(phases[-1], ""))
+        errors += check_pre_verify_phase_status(name, sections.get(phases[-1], ""))
+        errors += check_record_skipped(name, sections, phases)
     return errors
 
 

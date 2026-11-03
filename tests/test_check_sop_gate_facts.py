@@ -60,6 +60,9 @@ def test_valid_fixture_passes_silently(case):
         ("max-fix-cycles-resume-missing", "max-fix-cycles-resume (k-full-sdlc only): 'k-full-sdlc' lacks the 'Reconciliation on resume (max_fix_cycles)' rule"),
         ("verify-run-disagreement-missing", "verify-run-disagreement (k-full-sdlc only): 'k-full-sdlc' final Step does not force `satisfied=false`"),
         ("verify-run-gate-check-heading", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step's Expected Output does not name the `Gate check` section"),
+        ("record-skipped-missing", "record-skipped-missing (k-full-sdlc only): 'k-full-sdlc' Step for 'review' has no Record bullet with a `SKIPPED` outcome"),
+        ("verify-run-phase-status-missing", "verify-run-phase-status (k-full-sdlc only): 'k-full-sdlc' final Step lacks the constraint"),
+        ("verify-run-phase-order-missing", "verify-run-phase-order (k-full-sdlc only): 'k-full-sdlc' final Step does not name `PHASE_ORDER` under exit 65"),
     ],
 )
 def test_failure_fixture_reports_its_code(case, expected):

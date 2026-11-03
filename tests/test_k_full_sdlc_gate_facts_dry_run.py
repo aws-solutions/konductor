@@ -328,6 +328,31 @@ def test_skipped_boundary_is_running_at_step_11_and_exit_6_only_once_completed(l
 
 
 @needs_root
+def test_earlier_phase_left_pending_at_step_11_is_exit_65_phase_order(layout):
+    session = session_for(layout.output_dir, "in_progress", "IN_PROGRESS")
+    session["phases"]["documentation"].update(status="PENDING", summary=None)
+    result = step_11(layout, session, "--allow-running")
+    assert result.returncode == 65, combined(result)
+    assert "PHASE_ORDER" in result.stdout
+
+
+@needs_root
+def test_earlier_phases_completed_or_skipped_at_step_11_are_not_phase_order(layout):
+    session = session_for(layout.output_dir, "in_progress", "IN_PROGRESS")
+    session["phases"]["documentation"].update(status="SKIPPED", skip_reason="engineer skipped it", summary=None)
+    result = step_11(layout, session, "--allow-running")
+    assert result.returncode == 0, combined(result)
+    assert "PHASE_ORDER" not in combined(result)
+
+
+def test_step_11_confirms_no_earlier_phase_is_pending_before_verify_run():
+    section = step_section(11)
+    constraint = sentence_with(section, "Never run `verify-run` with an earlier phase `PENDING`", "`PHASE_ORDER`")
+    assert constraint
+    assert section.index(constraint[0]) < section.index("konductor verify-run --session")
+
+
+@needs_root
 def test_skipped_boundary_without_skip_reason_is_exit_65(layout):
     session = session_for(layout.output_dir, "in_progress", "IN_PROGRESS", skipped="design-review", skip_reason=None)
     result = step_11(layout, session, "--allow-running")
