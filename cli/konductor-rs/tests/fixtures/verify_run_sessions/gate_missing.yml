@@ -13,6 +13,8 @@ run:
     gate_feature-splitting_result: approved
     gate_feature-splitting_evidence: out/feature-split/feature-split.md
     gate_feature-splitting_checker: user
+    gate_code-review_evidence: out/login/code-review/report.md
+    gate_code-review_checker: user
 phases:
   elicitation: {name: n, status: COMPLETED, skip_reason: null, summary: done}
   codebase-analysis: {name: n, status: COMPLETED, skip_reason: null, summary: done}
@@ -33,8 +35,6 @@ features:
       gate_specs_result: approved
       gate_specs_evidence: out/specs/login/tasks.md
       gate_specs_checker: user
-      gate_code-review_evidence: out/login/code-review/report.md
-      gate_code-review_checker: user
       gate_testing_checker: k-quality-assurance
       gate_testing_evidence: out/login/testing/test-coverage-review-report.md
       gate_testing_result: none

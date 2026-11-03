@@ -17,6 +17,9 @@ use std::time::{Duration, Instant};
 
 const SESSIONS: &str = ".konductor/sessions";
 const SESSION: &str = ".konductor/sessions/k-full-sdlc-20250101T000000Z-abcd.yml";
+/// verify-run refuses, rather than reads, a file replaced between its checks
+/// and its open. That refusal is fail-closed and never a partial read.
+const REPLACED_WHILE_OPENING: &str = "session file changed while it was opened";
 const MIN_READS: usize = 100;
 const MIN_WRITES: u64 = 50;
 const SAMPLE_DEADLINE: Duration = Duration::from_secs(60);
@@ -193,7 +196,8 @@ fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
         })
     };
 
-    let (mut passed, mut gate_missing_seen, mut other) = (0usize, 0usize, Vec::new());
+    let (mut passed, mut gate_missing_seen, mut refused, mut other) =
+        (0usize, 0usize, 0usize, Vec::new());
     let started = Instant::now();
     let mut reads = 0usize;
     while started.elapsed() < SAMPLE_DEADLINE {
@@ -202,6 +206,8 @@ fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
             passed += 1;
         } else if observed.verdict == gate_missing.verdict {
             gate_missing_seen += 1;
+        } else if observed.stderr.contains(REPLACED_WHILE_OPENING) {
+            refused += 1;
         } else {
             other.push(observed);
             break;
@@ -217,7 +223,7 @@ fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
 
     eprintln!(
         "atomic replace: reads={reads} passing={passed} gate_missing={gate_missing_seen} \
-         other={} writes={write_count} elapsed_ms={}",
+         refused={refused} other={} writes={write_count} elapsed_ms={}",
         other.len(),
         started.elapsed().as_millis()
     );
