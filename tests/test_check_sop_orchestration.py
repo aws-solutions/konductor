@@ -20,9 +20,11 @@ FIXTURES = REPO_ROOT / "tests" / "fixtures" / "sop-orchestration"
 MARKER = "Orchestration: strict (phase-gated SOP)"
 MEANING = (
     "Strict means: stop at each recorded gate, record the gate facts, and do not "
-    "proceed past an unmet gate unless the engineer overrides it or the SOP's own "
-    "round cap applies; record which."
+    "proceed past an unmet gate unless the engineer overrides it, or the SOP's own "
+    "round-cap rule says to proceed; record which."
 )
+FIXTURE_MEANING = "Strict means: fixture meaning."
+FIXTURE_GATE_NOTE = "Gate note: fixture."
 GATE_NOTE = (
     "Recorded gates are the stops this SOP names; where the run keeps a session "
     "file, record their gate facts there."
@@ -127,7 +129,7 @@ def test_removing_the_marker_from_a_valid_tree_fails(tmp_path):
     root = tmp_path / "repo"
     shutil.copytree(FIXTURES / "valid", root)
     sop = root / "agent-sops" / "alpha-gated.sop.md"
-    sop.write_text(sop.read_text(encoding="utf-8").replace(MARKER + "\n" + MEANING + "\n\n" + GATE_NOTE + "\n\n", ""), encoding="utf-8")
+    sop.write_text(sop.read_text(encoding="utf-8").replace(MARKER + "\n" + FIXTURE_MEANING + "\n\n" + FIXTURE_GATE_NOTE + "\n\n", ""), encoding="utf-8")
     result = run_check(root)
     assert result.returncode == 1
     assert "missing-marker: gated 'alpha-gated'" in result.stderr
@@ -160,10 +162,51 @@ def test_changing_the_meaning_sentence_in_a_gated_sop_fails(tmp_path):
     root = tmp_path / "repo"
     shutil.copytree(FIXTURES / "valid", root)
     sop = root / "agent-sops" / "alpha-gated.sop.md"
-    sop.write_text(sop.read_text(encoding="utf-8").replace(MEANING, "Strict means something else."), encoding="utf-8")
+    sop.write_text(sop.read_text(encoding="utf-8").replace(FIXTURE_MEANING, "Strict means something else."), encoding="utf-8")
     result = run_check(root)
     assert result.returncode == 1
     assert "missing-marker: gated 'alpha-gated'" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "case, reason",
+    [
+        ("gated-missing-marker", "the marker line is not the first line after the title"),
+        ("wrong-gate-note", "the gate note is missing or wrong (expected: 'Gate note: fixture.')"),
+        ("gated-marker-in-overview", "the marker line is not the first line after the title"),
+        ("gated-marker-not-own-paragraph", "the meaning line does not follow the marker"),
+        ("gated-marker-indented", "the marker line is not the first line after the title"),
+    ],
+)
+def test_layout_failure_names_its_reason(case, reason):
+    result = run_check(FIXTURES / case)
+    assert result.returncode == 1
+    assert reason in result.stderr
+
+
+def test_changed_meaning_names_the_meaning_reason(tmp_path):
+    root = tmp_path / "repo"
+    shutil.copytree(FIXTURES / "valid", root)
+    sop = root / "agent-sops" / "alpha-gated.sop.md"
+    sop.write_text(sop.read_text(encoding="utf-8").replace(FIXTURE_MEANING, "Other."), encoding="utf-8")
+    assert "the meaning line does not follow the marker" in run_check(root).stderr
+
+
+def test_gate_items_that_are_not_strings_report_one_bad_entry():
+    result = run_check(FIXTURES / "gates-nested-list")
+    assert_one_clean_bad_entry(result, "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list")
+
+
+def test_scalar_gates_with_boundaries_reports_only_the_bad_entry():
+    result = run_check(FIXTURES / "gates-scalar-with-boundaries")
+    assert_one_clean_bad_entry(result, "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list")
+    assert "unknown-boundary-kind" not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("case", ["version-99", "version-true"])
+def test_version_must_be_one(case):
+    result = run_check(FIXTURES / case)
+    assert_one_clean_bad_entry(result, "bad-entry: 'version' must be 1")
 
 
 def test_phase_heading_is_cited_without_its_phase_label():
@@ -198,6 +241,7 @@ def test_meaning_and_gate_note_are_pinned_in_the_map_and_every_gated_sop():
 
     data = yaml.safe_load((REPO_ROOT / "cli" / "gate-config" / "sop-orchestration.yml").read_text(encoding="utf-8"))
     assert data["meaning"] == MEANING
+    assert data["gate_note"] == GATE_NOTE
     assert sorted(data["gated"]) == sorted(GATED_SOPS)
     for name in GATED_SOPS:
         lines = (REPO_ROOT / "agent-sops" / f"{name}.sop.md").read_text(encoding="utf-8").splitlines()

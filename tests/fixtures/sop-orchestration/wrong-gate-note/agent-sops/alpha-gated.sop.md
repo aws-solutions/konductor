@@ -1,7 +1,7 @@
 # alpha-gated
 
 Orchestration: strict (phase-gated SOP)
-Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it or the SOP's own round cap applies; record which.
+Strict means: fixture meaning.
 
 Recorded gates are somewhere.
 
