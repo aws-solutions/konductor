@@ -579,7 +579,9 @@ mod tests {
     }
 
     /// The atomic-replace test in `tests/verify_run_atomic_replace.rs` accepts
-    /// only the two whole-file verdicts. Two kinds of torn file are modelled:
+    /// only the two whole-file verdicts, or a fail-closed refusal (exit 65,
+    /// "changed while it was opened") that counts as a read but as neither
+    /// verdict. Two kinds of torn file are modelled:
     /// a prefix of either session cut at any byte, and a prefix of one session
     /// followed by the tail of the other, which is what an in-place write
     /// that does not truncate leaves behind. Neither may reproduce a
@@ -614,13 +616,19 @@ mod tests {
         }
 
         let mut strays = Vec::new();
-        let mut check_candidate = |candidate: &str| {
-            let verdict = project.verdict_of(candidate);
-            strays.extend(stray_match(candidate, &verdict, &texts, &baselines));
+        let mut evaluated = std::collections::HashSet::new();
+        let mut check_candidate = |candidate: String| {
+            if texts.contains(&candidate.as_str()) || !evaluated.insert(candidate.clone()) {
+                return;
+            }
+            let verdict = project.verdict_of(&candidate);
+            strays.extend(stray_match(&candidate, &verdict, &texts, &baselines));
         };
+        let mut expected = std::collections::HashSet::new();
         for text in &texts {
             for len in (0..text.len()).filter(|len| text.is_char_boundary(*len)) {
-                check_candidate(&text[..len]);
+                expected.insert(text[..len].to_string());
+                check_candidate(text[..len].to_string());
             }
         }
         for (head_index, head) in texts.iter().enumerate() {
@@ -628,15 +636,35 @@ mod tests {
                 if head_index == tail_index {
                     continue;
                 }
-                for split in (0..=head.len()).filter(|split| {
-                    head.is_char_boundary(*split) && tail.is_char_boundary(*split.min(&tail.len()))
-                }) {
+                let first_difference = head
+                    .bytes()
+                    .zip(tail.bytes())
+                    .position(|(a, b)| a != b)
+                    .unwrap_or(0);
+                let splits = |from: usize| {
+                    (from..=head.len()).filter(|split| {
+                        head.is_char_boundary(*split)
+                            && tail.is_char_boundary(*split.min(&tail.len()))
+                    })
+                };
+                for split in splits(0) {
                     if let Some(rest) = tail.get(split..) {
-                        check_candidate(&format!("{}{rest}", &head[..split]));
+                        expected.insert(format!("{}{rest}", &head[..split]));
+                    }
+                }
+                for split in splits(first_difference) {
+                    if let Some(rest) = tail.get(split..) {
+                        check_candidate(format!("{}{rest}", &head[..split]));
                     }
                 }
             }
         }
+        expected.retain(|candidate| !texts.contains(&candidate.as_str()));
+        assert_eq!(
+            evaluated, expected,
+            "skipping splits before the first differing byte must lose no distinct candidate"
+        );
+        eprintln!("distinct candidates evaluated: {}", evaluated.len());
         assert!(
             strays.is_empty(),
             "torn sessions matching a baseline: {strays:#?}"
