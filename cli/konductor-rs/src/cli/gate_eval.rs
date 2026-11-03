@@ -711,7 +711,9 @@ fn check_fix_cycles(session: &Session, report: &mut Report) {
     }
 }
 
-/// The cap, and whether it is the default because none is recorded.
+/// The cap, and whether it is the default because none is recorded. Only an
+/// absent key defaults. A key that is present must hold a non-negative integer,
+/// so an empty value (null), a negative, a float, a string or a bool is an error.
 fn recorded_fix_cycle_cap(session: &Session) -> Result<(u64, bool), String> {
     match session.run.data.get("max_fix_cycles") {
         None => Ok((DEFAULT_MAX_FIX_CYCLES, true)),
@@ -1383,6 +1385,49 @@ phases:
     fn v6_absent_cap_is_2() {
         assert_eq!(with_fix_cycles(None, 2).exit, 0);
         assert_verdict(&with_fix_cycles(None, 3), 3, "BUDGET_EXCEEDED");
+    }
+
+    fn yaml(text: &str) -> Value {
+        serde_yaml::from_str(text).unwrap()
+    }
+
+    #[test]
+    fn v6_present_cap_that_is_not_a_non_negative_integer_is_record_integrity() {
+        let shapes = [
+            ("null", Value::Null),
+            ("negative", Value::from(-1)),
+            ("float", Value::from(2.5)),
+            ("whole float", Value::from(2.0)),
+            ("string", Value::from("2")),
+            ("bool", Value::from(true)),
+            ("float above u64", Value::from(1.0e20)),
+            ("list", yaml("[2]")),
+        ];
+        for (shape, recorded) in shapes {
+            let verdict = with_fix_cycles(Some(recorded), 0);
+            assert_eq!(verdict.exit, 65, "{shape}: {verdict:#?}");
+            assert_eq!(codes(&verdict), vec!["RECORD_INTEGRITY"], "{shape}");
+            assert!(verdict.info.is_empty(), "{shape}: no default note");
+        }
+    }
+
+    #[test]
+    fn v6_present_null_cap_from_yaml_text_is_record_integrity() {
+        for text in [
+            "max_fix_cycles:",
+            "max_fix_cycles: ~",
+            "max_fix_cycles: null",
+        ] {
+            let recorded = yaml(text)["max_fix_cycles"].clone();
+            assert_verdict(&with_fix_cycles(Some(recorded), 0), 65, "RECORD_INTEGRITY");
+        }
+    }
+
+    #[test]
+    fn v6_largest_u64_cap_is_accepted() {
+        let verdict = with_fix_cycles(Some(Value::from(u64::MAX)), 2);
+        assert_eq!(verdict.exit, 0, "{verdict:#?}");
+        assert!(verdict.info.is_empty(), "{verdict:#?}");
     }
 
     fn set_doc_fix_cycles_used(session: &mut Value, used: Value) {

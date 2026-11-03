@@ -43,9 +43,15 @@
 # exits with the code of the first check that fires. Checks run as: 65 (session
 # and record integrity), 1 (halted), 3 (budget), 2 (unresolved finding), then, when
 # nothing else fired, 6 (skipped gate) or 65 (an in-progress session without
-# allow_running, checked last). A bad `max_fix_cycles` is found by the budget check, so after
-# a halt it is listed but the exit stays 1. An earlier cause hides a later
-# code, so fix the earlier one to see the next.
+# allow_running, checked last). A bad `max_fix_cycles` (present but not a non-negative
+# integer, including an empty value) is found by the budget check, so after
+# a halt it is listed but the exit stays 1. Only an absent key defaults to 2. An earlier
+# cause hides a later code, so fix the earlier one to see the next.
+#
+# Trust boundary: `max_fix_cycles` and the fix-cycle counters live in the session file,
+# which the orchestrating agent writes. The evaluator judges what is recorded and cannot
+# detect a cap edited after minting; it assumes a cooperating agent, as for all
+# gate facts.
 #
 # A word that is neither an id nor an alias ranks as CRITICAL, except `none`:
 # the word `none`, ignoring case and surrounding whitespace, records a gate
