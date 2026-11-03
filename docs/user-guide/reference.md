@@ -40,7 +40,7 @@ Eight commands.
 | `konductor doctor` | Check the runtime, the installed content, the project config, and available updates |
 | `konductor init` | Create `.konductor/` and write a starter `config.yml` |
 | `konductor synth` | Parse `agents/`, `skills/`, and `agent-sops/` and write per-runtime output to `<source>/dist/` |
-| `konductor verify-run` | Check a SOP session file (`--session <path>`, optional `--root <dir>`) against its gates and exit through the exit-code contract; reads only, writes nothing |
+| `konductor verify-run` | Check a SOP session file (`--session <path>`, optional `--root <dir>` and `--max-fix-cycles <N>`) against its gates and exit through the exit-code contract; reads only, writes nothing |
 | `konductor metrics` | Show quality trends from recent runs |
 
 `update` and `uninstall` both accept `--target <dir>`, `--all`, and `--dry-run`, and share one
@@ -179,8 +179,8 @@ An **empty** `config.yml` is not an error — every field falls through to its d
 | `2` | `EXIT_CRITICAL_GATE` | Unresolved gating finding: an open finding at or above the effective threshold. Emitted by `verify-run`; a bad invocation never exits `2` |
 | `3` | `EXIT_BUDGET_EXCEEDED` | Budget exceeded. Emitted by `verify-run` when a feature's fix cycles go above the cap |
 | `6` | `EXIT_SUCCESS_WITH_WARNINGS` | Everything the command was responsible for succeeded, but something peripheral did not — today, `uninstall` when a tracked `--link-bin` symlink could not be removed, or `verify-run` when a run passed with a skipped gate phase |
-| `64` | `EXIT_USAGE_ERROR` | Usage error (`EX_USAGE`, BSD `sysexits.h`) — a bad flag, unknown command, missing argument, invalid value, or an invalid config. For `verify-run`, argument problems only (including a `--root` that is not a directory) |
-| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version. For `verify-run`, any content failure: an unusable session file (unreadable, not UTF-8, invalid YAML, a rejected tag or key, a symlink, outside `--root`, over 1 MiB) or config, a missing gate fact, an inconsistent session record, or a run still in progress without `--allow-running` |
+| `64` | `EXIT_USAGE_ERROR` | Usage error (`EX_USAGE`, BSD `sysexits.h`) — a bad flag, unknown command, missing argument, invalid value, or an invalid config. For `verify-run`, argument problems only (including a `--root` that is not a directory, or a `--max-fix-cycles` value that is not a non-negative integer) |
+| `65` | `EXIT_VERIFY_FAILED` | A verification failed — a checksum mismatch on a fetched install source, or an unsupported `~/.konductor/installs` schema version. For `verify-run`, any content failure: an unusable session file (unreadable, not UTF-8, invalid YAML, a rejected tag or key, a symlink, outside `--root`, over 1 MiB) or config, a missing gate fact, an inconsistent session record, a recorded `max_fix_cycles` above a pinned `--max-fix-cycles` (reason `CAP_RAISED`), or a run still in progress without `--allow-running` |
 
 ### Why `64` and not `2`
 
@@ -205,6 +205,21 @@ substantive failure signal. If you script against the CLI, treat `64` as *you ty
 | `synth` parse failure | A malformed `agents/*.agent-spec.json` |
 | Current directory cannot be resolved (also under `verify-run`) | — |
 | `verify-run` with a `--root` that is missing or not a directory | `konductor verify-run --session s.yml --root nope` |
+| `verify-run` with a `--max-fix-cycles` that is not digits only (no sign, spaces or decimals) | `konductor verify-run --session s.yml --max-fix-cycles -1` |
+
+### Pinning the fix-cycle budget
+
+`konductor verify-run --session <path> --max-fix-cycles <N>` takes the fix-cycle budget from
+the command line instead of the session file.
+
+- A recorded `max_fix_cycles` above `N` exits `65` with reason `CAP_RAISED`, naming both values.
+- A recorded value at or below `N` stays the cap, so a stricter recorded cap is still enforced (exit `3` when exceeded).
+- An absent `max_fix_cycles` takes `N` instead of the default `2`.
+- A malformed `N` exits `64`. A malformed recorded value is still a `65` integrity failure.
+- Without the flag nothing changes: the recorded cap is trusted and only an absent key defaults to `2`.
+
+The flag protects checks that CI or an engineer runs with a budget they chose. It does not protect
+an agent that writes the session and also runs `verify-run`, because that agent can pass any value.
 
 ### Unknown-command suggestions
 

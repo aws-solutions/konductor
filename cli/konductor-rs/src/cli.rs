@@ -159,6 +159,14 @@ fn harness_value_parser() -> clap::builder::PossibleValuesParser {
     )
 }
 
+/// Digits only: no sign, spaces or decimals.
+fn parse_fix_cycle_pin(raw: &str) -> Result<u64, String> {
+    if raw.is_empty() || !raw.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(format!("`{raw}` is not a non-negative integer"));
+    }
+    raw.parse::<u64>().map_err(|err| format!("`{raw}`: {err}"))
+}
+
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Install Konductor into a repository.
@@ -477,6 +485,12 @@ pub enum Commands {
         /// nothing else fired) instead of failing it with exit 65.
         #[arg(long = "allow-running", action = ArgAction::SetTrue)]
         allow_running: bool,
+
+        /// Pin the fix-cycle budget from outside the session file. A
+        /// recorded `max_fix_cycles` above N exits 65 (`CAP_RAISED`); an
+        /// absent one takes N; a lower recorded cap stays in force.
+        #[arg(long = "max-fix-cycles", value_name = "N", value_parser = parse_fix_cycle_pin)]
+        max_fix_cycles: Option<u64>,
     },
 
     /// Read or write Konductor configuration.

@@ -38,10 +38,11 @@ pub(crate) fn run(
     root: Option<&Path>,
     session: &Path,
     allow_running: bool,
+    pinned_max_fix_cycles: Option<u64>,
     json: bool,
     color: ColorMode,
 ) -> u8 {
-    match check(cwd, root, session, allow_running) {
+    match check(cwd, root, session, allow_running, pinned_max_fix_cycles) {
         Ok(verdict) => {
             if json {
                 println!("{}", verdict_json(&verdict));
@@ -121,6 +122,7 @@ fn check(
     root: Option<&Path>,
     session: &Path,
     allow_running: bool,
+    pinned_max_fix_cycles: Option<u64>,
 ) -> Result<Verdict, Invalid> {
     let cwd = cwd.map_err(|err| {
         Invalid::argument(format!("could not resolve the current directory: {err}"))
@@ -142,6 +144,7 @@ fn check(
         policy: &policy,
         evidence_exists: &evidence_exists,
         allow_running,
+        pinned_max_fix_cycles,
     };
     let mut verdict = evaluate_value(&value, &ctx);
     if verdict
@@ -529,7 +532,7 @@ mod tests {
         fn verdict_of(&self, text: &str) -> Verdict {
             let session = Path::new(".konductor/sessions").join(SESSION_NAME);
             std::fs::write(self.root.join(&session), text).unwrap();
-            check(Ok(self.root.clone()), None, &session, false)
+            check(Ok(self.root.clone()), None, &session, false, None)
                 .unwrap_or_else(Invalid::into_verdict)
         }
     }
