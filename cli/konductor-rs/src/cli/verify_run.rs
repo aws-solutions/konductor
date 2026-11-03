@@ -481,6 +481,199 @@ mod tests {
         assert!(!is_project_file(&root, "/etc/hosts"));
     }
 
+    const PASSING_SESSION: &str =
+        include_str!("../../tests/fixtures/verify_run_sessions/passing.yml");
+    const GATE_MISSING_SESSION: &str =
+        include_str!("../../tests/fixtures/verify_run_sessions/gate_missing.yml");
+    const SESSION_NAME: &str = "k-full-sdlc-20250101T000000Z-abcd.yml";
+    const EVIDENCE: [&str; 5] = [
+        "out/design/principal-engineer-review.md",
+        "out/feature-split/feature-split.md",
+        "out/specs/login/tasks.md",
+        "out/login/code-review/report.md",
+        "out/login/testing/test-coverage-review-report.md",
+    ];
+
+    /// A scratch project holding the evidence files and one session file,
+    /// so `check` runs exactly as the binary does. `HOME` points at an empty
+    /// directory so no user config reaches the run; both are restored on drop.
+    struct SweepProject {
+        base: PathBuf,
+        root: PathBuf,
+        original_home: Option<std::ffi::OsString>,
+        _home_lock: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl SweepProject {
+        fn new() -> Self {
+            let home_lock = crate::cli::test_home_lock::lock_home();
+            let base = std::env::temp_dir()
+                .join(format!("konductor-verify-run-sweep-{}", std::process::id()));
+            let root = base.join("project");
+            let home = base.join("home");
+            std::fs::create_dir_all(root.join(".konductor/sessions")).unwrap();
+            std::fs::create_dir_all(&home).unwrap();
+            for evidence in EVIDENCE {
+                let path = root.join(evidence);
+                std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                std::fs::write(path, "report\n").unwrap();
+            }
+            let original_home = std::env::var_os("HOME");
+            std::env::set_var("HOME", home.canonicalize().unwrap());
+            SweepProject {
+                root: root.canonicalize().unwrap(),
+                base,
+                original_home,
+                _home_lock: home_lock,
+            }
+        }
+
+        /// The verdict `run` would print for a session file holding `text`.
+        fn verdict_of(&self, text: &str) -> Verdict {
+            let session = Path::new(".konductor/sessions").join(SESSION_NAME);
+            std::fs::write(self.root.join(&session), text).unwrap();
+            check(Ok(self.root.clone()), None, &session, false, None)
+                .unwrap_or_else(Invalid::into_verdict)
+        }
+    }
+
+    impl Drop for SweepProject {
+        fn drop(&mut self) {
+            match &self.original_home {
+                Some(home) => std::env::set_var("HOME", home),
+                None => std::env::remove_var("HOME"),
+            }
+            let _ = std::fs::remove_dir_all(&self.base);
+        }
+    }
+
+    /// True when `candidate` keeps every line of `text` that the evaluator
+    /// reads. `gate_*_checker` lines are not read, so a hybrid that damages
+    /// only those has the verdict of `text` and reproducing that baseline is
+    /// correct. The whole text and the text without its final newline pass.
+    fn keeps_every_read_line(candidate: &str, text: &str) -> bool {
+        let lines: Vec<&str> = candidate.lines().collect();
+        text.lines()
+            .filter(|line| !line.contains("_checker:"))
+            .all(|line| lines.contains(&line))
+    }
+
+    /// Describes `candidate` when its verdict equals the baseline of a text
+    /// it is not allowed to match.
+    fn stray_match(
+        candidate: &str,
+        verdict: &Verdict,
+        texts: &[&str],
+        baselines: &[Verdict],
+    ) -> Option<String> {
+        baselines
+            .iter()
+            .zip(texts)
+            .enumerate()
+            .find(|(_, (baseline, text))| {
+                *baseline == verdict && !keeps_every_read_line(candidate, text)
+            })
+            .map(|(index, _)| {
+                format!(
+                    "baseline {index} reproduced by {} bytes: {candidate:?}",
+                    candidate.len()
+                )
+            })
+    }
+
+    /// The atomic-replace test in `tests/verify_run_atomic_replace.rs` accepts
+    /// only the two whole-file verdicts, or a fail-closed refusal (exit 65,
+    /// "changed while it was opened") that counts as a read but as neither
+    /// verdict. Two kinds of torn file are modelled:
+    /// a prefix of either session cut at any byte, and a prefix of one session
+    /// followed by the tail of the other, which is what an in-place write
+    /// that does not truncate leaves behind. Neither may reproduce a
+    /// baseline unless the candidate keeps every line of that baseline's own
+    /// text that the evaluator reads (see `keeps_every_read_line`). A hybrid
+    /// that matches the other text's baseline, or has a read line cut or
+    /// garbled, fails.
+    #[test]
+    fn every_truncated_session_differs_from_both_whole_file_verdicts() {
+        let texts = [PASSING_SESSION, GATE_MISSING_SESSION];
+        for (index, text) in texts.iter().enumerate() {
+            assert!(
+                text.ends_with('\n') && !text.ends_with("\n\n"),
+                "fixture {index} must end with exactly one newline"
+            );
+        }
+        let project = SweepProject::new();
+        let baselines: Vec<Verdict> = texts.iter().map(|text| project.verdict_of(text)).collect();
+        assert_eq!(baselines[0].exit, 0, "{:?}", baselines[0]);
+        assert_ne!(baselines[1].exit, 0, "{:?}", baselines[1]);
+        assert!(
+            baselines[1]
+                .reasons
+                .iter()
+                .any(|reason| reason.code.code() == "GATE_MISSING"),
+            "{:?}",
+            baselines[1]
+        );
+        for (index, text) in texts.iter().enumerate() {
+            let trimmed = project.verdict_of(&text[..text.len() - 1]);
+            assert_eq!(trimmed, baselines[index], "text {index} minus its newline");
+        }
+
+        let mut strays = Vec::new();
+        let mut evaluated = std::collections::HashSet::new();
+        let mut check_candidate = |candidate: String| {
+            if texts.contains(&candidate.as_str()) || !evaluated.insert(candidate.clone()) {
+                return;
+            }
+            let verdict = project.verdict_of(&candidate);
+            strays.extend(stray_match(&candidate, &verdict, &texts, &baselines));
+        };
+        let mut expected = std::collections::HashSet::new();
+        for text in &texts {
+            for len in (0..text.len()).filter(|len| text.is_char_boundary(*len)) {
+                expected.insert(text[..len].to_string());
+                check_candidate(text[..len].to_string());
+            }
+        }
+        for (head_index, head) in texts.iter().enumerate() {
+            for (tail_index, tail) in texts.iter().enumerate() {
+                if head_index == tail_index {
+                    continue;
+                }
+                let first_difference = head
+                    .bytes()
+                    .zip(tail.bytes())
+                    .position(|(a, b)| a != b)
+                    .unwrap_or(0);
+                let splits = |from: usize| {
+                    (from..=head.len()).filter(|split| {
+                        head.is_char_boundary(*split)
+                            && tail.is_char_boundary(*split.min(&tail.len()))
+                    })
+                };
+                for split in splits(0) {
+                    if let Some(rest) = tail.get(split..) {
+                        expected.insert(format!("{}{rest}", &head[..split]));
+                    }
+                }
+                for split in splits(first_difference) {
+                    if let Some(rest) = tail.get(split..) {
+                        check_candidate(format!("{}{rest}", &head[..split]));
+                    }
+                }
+            }
+        }
+        expected.retain(|candidate| !texts.contains(&candidate.as_str()));
+        assert_eq!(
+            evaluated, expected,
+            "skipping splits before the first differing byte must lose no distinct candidate"
+        );
+        eprintln!("distinct candidates evaluated: {}", evaluated.len());
+        assert!(
+            strays.is_empty(),
+            "torn sessions matching a baseline: {strays:#?}"
+        );
+    }
+
     #[test]
     fn control_characters_print_as_visible_escapes() {
         assert_eq!(
