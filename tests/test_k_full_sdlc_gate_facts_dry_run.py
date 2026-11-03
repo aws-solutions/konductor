@@ -370,9 +370,10 @@ def test_project_root_is_defined_once_and_step_11_runs_from_codebase_path():
     assert sentence_with(SOP_TEXT, "On greenfield, `codebase_path` is only the directory", "not the project root")
     assert "(the project root," not in step_section(11)
     assert sentence_with(step_section(11), "greenfield", "directory containing the Step 7 source directory", "not the project root")
+    assert sentence_with(step_section(11), "greenfield run reads its project config from `codebase_path`", "not from the Step 7 source directory")
 
 
-def test_step_11_runs_from_the_project_root_with_root_output_dir():
+def test_step_11_runs_from_codebase_path_with_root_output_dir():
     section = step_section(11)
     call = sentence_with(section, "konductor verify-run --session", "--root <output_dir>", "--allow-running", "`k-developer`")
     assert call
