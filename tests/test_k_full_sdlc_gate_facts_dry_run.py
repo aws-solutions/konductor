@@ -226,12 +226,23 @@ def test_open_important_finding_without_override_stops_the_run(layout, phase):
 
 @needs_root
 @pytest.mark.parametrize("phase", ["design-review", "testing"])
-@pytest.mark.parametrize("note", ["IMPORTANT F-3 overridden by engineer jdoe", "IMPORTANT F-3 overridden by engineer jdoe, round cap"])
+@pytest.mark.parametrize("note", ["IMPORTANT F-3 overridden by engineer jdoe"])
 def test_overridden_important_finding_lets_the_run_complete(layout, phase, note):
     kwargs = dict(results={phase: "none"}, overrides={phase: note})
     result = step_11(layout, session_for(layout.output_dir, "in_progress", "IN_PROGRESS", **kwargs), "--allow-running")
     assert result.returncode == 0, combined(result)
     assert "RUNNING" in result.stdout
+
+    result = step_11(layout, session_for(layout.output_dir, "completed", "COMPLETED", **kwargs))
+    assert result.returncode == 0, combined(result)
+    assert "PASSED" in result.stdout
+
+
+@needs_root
+def test_round_cap_exit_lets_the_design_review_run_complete(layout):
+    kwargs = dict(results={"design-review": "none"}, overrides={"design-review": "F-3, F-4 round cap"})
+    result = step_11(layout, session_for(layout.output_dir, "in_progress", "IN_PROGRESS", **kwargs), "--allow-running")
+    assert result.returncode == 0, combined(result)
 
     result = step_11(layout, session_for(layout.output_dir, "completed", "COMPLETED", **kwargs))
     assert result.returncode == 0, combined(result)
