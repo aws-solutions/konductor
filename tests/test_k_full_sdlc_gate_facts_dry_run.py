@@ -3,7 +3,7 @@
 
 Writes the session file a k-full-sdlc run produces when every step follows
 the SOP text, then runs the built binary on it the way Step 11 does: working
-directory = the project root (`codebase`), `--root` = an `output_dir` outside
+directory = `codebase_path` (`codebase`), `--root` = an `output_dir` outside
 it, absolute `--session`. A binary without `verify-run --root` skips those
 cases with a visible reason (see `pytest -rs`).
 
@@ -103,7 +103,7 @@ def session_for(
 
 
 class Layout:
-    """`codebase` is the project root and the working directory of every call;
+    """`codebase` is `codebase_path` and the working directory of every call;
     `output_dir` lies outside it, as an unattended run's explicit output_dir may."""
 
     def __init__(self, tmp_path):
@@ -358,6 +358,20 @@ def test_revalidation_rules_rewrite_the_code_review_fact():
     assert sentence_with(step_section(8), "gate_code-review_result", "APPROVED", "verdict word")
 
 
+def test_approval_boundary_result_wording_agrees_between_progress_tracking_and_step_8():
+    assert sentence_with(SOP_TEXT, "approval boundary", "`approved`", "`status.md`", "verdict word", "instead")
+    assert sentence_with(step_section(8), "`approved`", "APPROVED", "`status.md` verdict word", "`NEEDS_REVALIDATION`")
+
+
+def test_project_root_is_defined_once_and_step_11_runs_from_codebase_path():
+    assert SOP_TEXT.count("**Project root.**") == 1
+    definition = sentence_with(SOP_TEXT, "Wherever this SOP says", "project root")[0]
+    assert "`codebase_path` on a brownfield project" in definition and "Step 7" in definition
+    assert sentence_with(SOP_TEXT, "On greenfield, `codebase_path` is only the directory", "not the project root")
+    assert "(the project root," not in step_section(11)
+    assert sentence_with(step_section(11), "greenfield", "directory containing the Step 7 source directory", "not the project root")
+
+
 def test_step_11_runs_from_the_project_root_with_root_output_dir():
     section = step_section(11)
     call = sentence_with(section, "konductor verify-run --session", "--root <output_dir>", "--allow-running", "`k-developer`")
@@ -392,7 +406,7 @@ def test_older_binary_signal_is_an_unrecognized_subcommand(layout):
 
 @pytest.mark.skipif(
     KONDUCTOR_BIN.is_file() and supports_root(),
-    reason="built binary accepts --root; the unexpected-argument signal is pinned by the next test",
+    reason="built binary accepts --root; the unexpected-argument signal is pinned by test_bad_flag_on_a_binary_with_root_is_also_unexpected_argument",
 )
 def test_binary_without_root_reports_unexpected_argument(layout):
     result = run_binary(layout, *step_11_call(layout, "--allow-running"))

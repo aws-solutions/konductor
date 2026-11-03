@@ -85,7 +85,7 @@ def check_fact_keys(name, text, sections, boundaries):
             if key not in section:
                 errors.append(f"gate-fact-missing: '{name}' Step for '{phase}' does not name `{key}`")
         if boundary["kind"] == "approval" and f"gate_{phase}_override" in section:
-            errors.append(f"gate-fact-unknown-phase: '{name}' names `gate_{phase}_override`, but '{phase}' is an approval boundary")
+            errors.append(f"gate-override-on-approval: '{name}' names `gate_{phase}_override`, but '{phase}' is an approval boundary and has no override key")
     for phase in sorted({m.group(1) for m in FACT_KEY.finditer(text)} - set(boundary_phases)):
         errors.append(f"gate-fact-unknown-phase: '{name}' names a gate fact for '{phase}', which is not a boundary")
     return errors
@@ -170,6 +170,17 @@ def check_override_rule(name, text):
     return errors
 
 
+def check_approval_result(name, text):
+    """k-full-sdlc only: an approval boundary records `approved`, except that a
+    feature whose status.md verdict is not APPROVED records its verdict word."""
+    required = ("approval boundary", "`approved`", "`status.md`", "verdict word", "instead")
+    if any(all(part in s for part in required) for s in sentences(text)):
+        return []
+    return [
+        f"gate-approval-result (k-full-sdlc only): '{name}' lacks the sentence that an approval boundary records `approved` and a feature whose `status.md` verdict is not APPROVED records its verdict word instead"
+    ]
+
+
 def check_max_fix_cycles(name, text):
     """k-full-sdlc only: the evaluator reads the fix-cycle cap from run.data."""
     required = ("`max_fix_cycles`", "`run.data`", "minting", "non-negative integer")
@@ -232,6 +243,8 @@ def check_sop(name, text, entry):
     if name == VERIFY_RUN_SOP:
         errors += check_evidence_root(name, text)
         errors += check_max_fix_cycles(name, text)
+        if any(b["kind"] == "approval" for b in boundaries):
+            errors += check_approval_result(name, text)
         errors += check_verify_run_step(name, sections.get(phases[-1], ""))
     return errors
 
