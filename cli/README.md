@@ -940,7 +940,7 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   halt the exit stays 1 and the 65 cause is only listed. The fix-cycle cap comes from the SOP recording
   `max_fix_cycles` in the session; only an absent key falls back to the default of 2. A
   key that is present must hold a non-negative integer: an empty value (`max_fix_cycles:`),
-  a negative number, a float, a string or a bool is a 65 integrity failure, never a silent default.
+  a negative number, a float, a string, a bool or a list is a 65 integrity failure, never a silent default.
   Trust boundary: the session file is plain YAML written by the orchestrating agent, so
   `verify-run` judges the recorded cap and counts but cannot tell whether the cap was edited
   after minting. Like every `gate_<phase>_*` fact, it assumes a cooperating agent.
