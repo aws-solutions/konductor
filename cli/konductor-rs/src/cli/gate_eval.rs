@@ -193,9 +193,11 @@ pub(crate) struct EvalContext<'a> {
 
 /// Parses the value of `--max-fix-cycles`. An error is a usage problem (exit 64).
 pub(crate) fn parse_pinned_max_fix_cycles(text: &str) -> Result<u64, String> {
-    text.trim()
-        .parse::<u64>()
-        .map_err(|_| format!("--max-fix-cycles expects a non-negative integer, got '{text}'"))
+    let digits_only = !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit());
+    digits_only
+        .then(|| text.parse::<u64>().ok())
+        .flatten()
+        .ok_or_else(|| format!("--max-fix-cycles expects a non-negative integer, got '{text}'"))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -679,8 +681,8 @@ fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
 /// it does, every run is judged against the default, and the
 /// FIX_CYCLE_CAP_DEFAULTED note says so. A session file is plain YAML that any
 /// agent can edit, so the recorded value is only as trustworthy as the file
-/// unless the caller pins a cap (see `check_cap_not_raised`). The same cap bounds each feature's
-/// `fix_cycles_used` and the run-level `doc_fix_cycles_used` that the
+/// unless the caller pins a cap (see `check_cap_not_raised`). The same cap
+/// bounds each feature's `fix_cycles_used` and the run-level `doc_fix_cycles_used` that the
 /// documentation step draws on; a count equal to the cap is within budget.
 fn check_fix_cycles(session: &Session, pinned: Option<u64>, report: &mut Report) {
     let (cap, defaulted) = match recorded_fix_cycle_cap(session, pinned) {
@@ -1516,8 +1518,17 @@ phases:
     #[test]
     fn pinned_cap_flag_value_parses_non_negative_integers_only() {
         assert_eq!(parse_pinned_max_fix_cycles("0"), Ok(0));
-        assert_eq!(parse_pinned_max_fix_cycles(" 3 "), Ok(3));
-        for bad in ["", "-1", "2.5", "two", "+x", "18446744073709551616"] {
+        assert_eq!(parse_pinned_max_fix_cycles("3"), Ok(3));
+        for bad in [
+            "",
+            " 3 ",
+            "+3",
+            "-1",
+            "2.5",
+            "two",
+            "+x",
+            "18446744073709551616",
+        ] {
             let err = parse_pinned_max_fix_cycles(bad).unwrap_err();
             assert!(err.contains("--max-fix-cycles"), "{bad}: {err}");
         }

@@ -936,13 +936,14 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   fired, skipped gate (6) or an in-progress session without `allow_running` (65). The
   words `none` (no findings) and `approved` match ignoring case and surrounding
   whitespace, like severity words. One
-  exception: a bad `max_fix_cycles` is found by the budget check, so after a
-  halt the exit stays 1 and the 65 cause is only listed. The fix-cycle cap comes from the SOP recording
+  exception: a malformed `max_fix_cycles` is found by the budget check, so after a
+  halt the exit stays 1 and the 65 cause is only listed. A recorded cap above a pinned
+  `--max-fix-cycles` (`CAP_RAISED`) is not an exception: it is found with the integrity checks. The fix-cycle cap comes from the SOP recording
   `max_fix_cycles` in the session; only an absent key falls back to the default of 2. A
   key that is present must hold a non-negative integer: an empty value (`max_fix_cycles:`),
   a negative number, a float, a string, a bool or a list is a 65 integrity failure, never a silent default.
   Pinned cap: `verify-run --max-fix-cycles <N>` (N a non-negative integer; anything else
-  is a `64` usage error) supplies the budget from outside the session file. With the flag,
+  is a `64` usage error; no sign, spaces or decimals) supplies the budget from outside the session file. With the flag,
   a recorded `max_fix_cycles` above N is a `65` integrity failure (reason code
   `CAP_RAISED`, naming both values) because the recorded budget was raised above the
   pinned one. A recorded value at or below N stays the cap, so a lower recorded cap is
