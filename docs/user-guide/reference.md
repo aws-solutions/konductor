@@ -131,7 +131,7 @@ supported.
 | `severities_source` | string | A path, relative to the CLI's policy directory, to the file defining finding severities | `severity-schema.yml` |
 | `tiers_source` | string | A path, relative to the CLI's policy directory, to the file defining change tiers | `scope-table.yml` |
 | `tier` | string | The active change tier: `trivial`, `bugfix`, `minor`, `major`, or `full` | `minor` |
-| `default_severity` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — applied to a finding that does not specify its own severity | `MEDIUM` |
+| `default_severity` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — loaded and validated, but not applied to gate evaluation; a finding with an empty, whitespace-only or unrecognized severity label always ranks `CRITICAL` | `MEDIUM` |
 | `fail_on_severity_at_or_above` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — the lowest severity treated as blocking | `CRITICAL` |
 
 Unrecognized extra keys are ignored.
