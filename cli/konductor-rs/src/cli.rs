@@ -10,12 +10,18 @@
 // cli/init.rs, cli/doctor.rs).
 //
 // ── Exit-code contract (Engineering Design §6) ─────────────────────────────
-//   0 = all passed        1 = halted        2 = unresolved CRITICAL gate
-//   3 = budget exceeded    4 = user aborted a paused verdict
+//   0 = all passed        1 = halted
+//   2 = a finding at or above the effective threshold is unresolved
+//   3 = fix-cycle budget exceeded    4 = user aborted a paused verdict
+//   6 = success with warnings       64 = argument/usage error only
+//   65 = session content or integrity failure (corrupt or invalid session,
+//        record integrity, phase order (a started or completed phase after an
+//        earlier PENDING or IN_PROGRESS one), missing gate facts or evidence, an
+//        in-progress session without allow_running)
 //
 // ── Usage-error remap (PITFALL) ────────────────────────────────────────────
 // clap defaults usage errors to exit code 2, which collides with this
-// contract's "unresolved CRITICAL gate" signal. `Cli::try_parse()` catches
+// contract's "unresolved finding" signal. `Cli::try_parse()` catches
 // that and remaps it to `EX_USAGE` (64, BSD sysexits.h); `--help`/`--version`
 // keep clap's normal exit 0.
 
@@ -28,9 +34,12 @@ pub(crate) mod config;
 pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
-// Only tests call it until the gate evaluator lands.
+// Only tests and the gate evaluator call it until verify-run lands.
 #[allow(dead_code)]
 pub(crate) mod gate_config;
+// Only tests call it until a command runs it.
+#[allow(dead_code)]
+pub(crate) mod gate_eval;
 pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
@@ -69,7 +78,8 @@ pub(crate) mod test_home_lock {
     }
 }
 
-/// Exit code the workflow contract reserves for "unresolved CRITICAL gate".
+/// Exit code the workflow contract reserves for an unresolved finding at or
+/// above the effective severity threshold, emitted by the gate evaluator.
 /// Never emit this for a CLI usage error.
 const EXIT_CRITICAL_GATE: u8 = 2;
 
@@ -93,6 +103,9 @@ const EXIT_VERIFY_FAILED: u8 = 65;
 pub(crate) const EXIT_SUCCESS_WITH_WARNINGS: u8 = 6;
 
 const EXIT_HALTED: u8 = 1;
+
+/// A recorded fix-cycle count went above the cap.
+const EXIT_BUDGET_EXCEEDED: u8 = 3;
 
 /// `--help` text styling (clap's own `Command::styles()`). Independent of
 /// `--no-color`/`NO_COLOR`: clap does its own TTY detection for `--help`
@@ -579,8 +592,8 @@ impl ConfigAction {
 }
 
 /// Parse argv, remapping clap's usage-error exit code (2) to EX_USAGE (64)
-/// so it never collides with the workflow contract's "unresolved CRITICAL
-/// gate" code. `--help`/`--version` clap outcomes still exit 0.
+/// so it never collides with the workflow contract's "unresolved finding"
+/// code. `--help`/`--version` clap outcomes still exit 0.
 ///
 /// Every invocation is logged under ~/.konductor/logs/, including the exit
 /// paths below that terminate the process directly before `run()` ever
@@ -602,7 +615,7 @@ pub fn parse_or_exit() -> Cli {
                 ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
                     // A command group invoked with no subcommand (e.g.
                     // bare `konductor config`). `Error::exit()` would exit
-                    // 2 here, colliding with the reserved CRITICAL-gate
+                    // 2 here, colliding with the reserved unresolved-finding
                     // code, so flush and exit 0 manually instead.
                     use std::io::Write as _;
                     print!("{err}");
@@ -653,15 +666,6 @@ fn run_inner(cli: Cli) -> u8 {
     };
 
     dispatch::dispatch(command, cli.verbose, cli.json, color)
-}
-
-/// `EXIT_CRITICAL_GATE` (2) is reserved for a future CRITICAL-gate feature
-/// and isn't returned by any handler yet; `EXIT_HALTED` (1) is returned
-/// today by `doctor`'s own local constant of the same value. This keeps
-/// both referenced so neither is flagged dead code.
-#[allow(dead_code)]
-fn _contract_constants_reference() -> (u8, u8) {
-    (EXIT_HALTED, EXIT_CRITICAL_GATE)
 }
 
 #[cfg(test)]
@@ -1768,8 +1772,42 @@ mod tests {
     fn usage_error_exit_code_is_not_critical_gate() {
         // Guards the pitfall documented at the top of this file: the
         // remapped usage-error code must never equal the contract's
-        // "unresolved CRITICAL gate" code.
+        // "unresolved finding" code.
         assert_ne!(EXIT_USAGE_ERROR, EXIT_CRITICAL_GATE);
+    }
+
+    #[test]
+    fn no_cli_text_calls_exit_2_an_unresolved_critical_gate() {
+        let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut files = vec![
+            manifest.join("../../AGENTS.md"),
+            manifest.join("../README.md"),
+            manifest.join("../gate-config/config.yml"),
+            manifest.join("../gate-config/run-state.json"),
+            manifest.join("../gate-config/severity-schema.yml"),
+        ];
+        let mut dirs = vec![manifest.join("src"), manifest.join("tests")];
+        while let Some(dir) = dirs.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    dirs.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    files.push(path);
+                }
+            }
+        }
+        let stale = ["unresolved", "critical", "gate"].join(" ");
+        for path in files {
+            let text = std::fs::read_to_string(&path).unwrap().to_lowercase();
+            let flat = text.replace(['-', '\n', '/', '#', '*', '!'], " ");
+            let flat = flat.split_whitespace().collect::<Vec<_>>().join(" ");
+            assert!(
+                !flat.contains(&stale),
+                "{} still uses the old exit 2 wording",
+                path.display()
+            );
+        }
     }
 
     // ── Help-text regression: `config get`'s <KEY> example must be a real

@@ -23,6 +23,9 @@ not per individual commit.
   WARNING, WARNINGS, SUGGESTION, MINOR) to severity ids. Matching ignores case and reads the
   leading word of labels such as `Warning Gap`. Any other word, an empty label, and risk,
   priority or confidence scales such as `High Risk` rank as CRITICAL.
+- Groundwork for judging a SOP session file against its gates: an internal evaluator exists,
+  but no command runs it yet. Phase-gated SOPs treat an open HIGH finding as unresolved,
+  even when the threshold is CRITICAL.
 
 ### Changed
 

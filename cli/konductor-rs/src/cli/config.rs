@@ -10,7 +10,7 @@
 //
 // ── Exit-code contract (IMPORTANT) ─────────────────────────────────────────
 // A malformed or invalid config on user invocation is a USAGE ERROR, not
-// the run-engine's "unresolved CRITICAL gate" signal. Per cli.rs's
+// the gate evaluator's "unresolved finding" signal. Per cli.rs's
 // EXIT_USAGE_ERROR (64) / EXIT_CRITICAL_GATE (2) constants: this module
 // never emits or reasons about exit code 2. Callers (cli/dispatch.rs) are
 // responsible for mapping a `ConfigError` returned from this module to

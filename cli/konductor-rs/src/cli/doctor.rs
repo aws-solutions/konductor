@@ -2059,7 +2059,10 @@ mod tests {
         );
 
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
@@ -2106,7 +2109,10 @@ mod tests {
             code, EXIT_HALTED,
             "a nonexistent --from path must not report all-clear (0)"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         let result = check_source(&ResolvedSource {
             path: nonexistent_source.clone(),
@@ -2192,7 +2198,10 @@ mod tests {
         );
 
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
@@ -2239,7 +2248,10 @@ mod tests {
         );
 
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         let result = check_source(&ResolvedSource {
             path: source.clone(),
@@ -2333,7 +2345,10 @@ mod tests {
         );
 
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
@@ -2657,7 +2672,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -2837,7 +2855,10 @@ mod tests {
             "doctor must resolve source/config against the manifest's recorded (well-formed) \
              path, not the malformed cwd"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         let resolved = resolve_source_for_checks(&cwd, None, &destination);
         assert_eq!(resolved.path, real_source);
@@ -2932,7 +2953,10 @@ mod tests {
             "a healthy fallback tree must not surface as EXIT_HALTED just because the \
              manifest's recorded source is stale"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -2993,7 +3017,10 @@ mod tests {
             code, 0,
             "an info-level fallback must not fail the overall run"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3072,7 +3099,10 @@ mod tests {
             "the manifest check surfaces the unreadable manifest itself as a real failure, \
              so the overall run must be EXIT_HALTED even though source/config are only Warn"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3123,7 +3153,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, 0);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&explicit_from).ok();
@@ -3216,7 +3249,10 @@ mod tests {
         );
         // Warn (like Info) never fails the overall run on its own.
         assert_eq!(code, 0);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3408,7 +3444,10 @@ mod tests {
             "a healthy install must not fail the overall run just because an unrelated \
              fallback tree is malformed"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3467,7 +3506,10 @@ mod tests {
             "check_manifest already reports the unreadable manifest as its own independent \
              Failed, so the overall run must correctly stay EXIT_HALTED"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -4047,7 +4089,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, 0);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         // Pin against the real dispatch path: call `run_checks`
         // itself rather than re-deriving its contents.
@@ -4148,7 +4193,10 @@ mod tests {
             code, EXIT_HALTED,
             "a malformed $HOME-tier config reached through the override seam must halt the run"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         // A second, unrelated run against a genuinely healthy scratch
         // home dir must be completely unaffected by the broken run
@@ -4468,7 +4516,10 @@ mod tests {
             false, /* no_version_check */
             ColorMode::disabled(),
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
@@ -5097,7 +5148,10 @@ mod tests {
             code, EXIT_HALTED,
             "a failing check on ANY tracked target under --all must fail the overall run"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&healthy_dest).ok();

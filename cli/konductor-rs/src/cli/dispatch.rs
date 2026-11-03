@@ -606,7 +606,7 @@ mod tests {
         assert_eq!(set_code, 0, "a valid config set must succeed");
         assert_ne!(
             set_code, 2,
-            "must never emit the reserved CRITICAL-gate code"
+            "must never emit the reserved unresolved-finding code"
         );
 
         let loaded = config::load_config(&target).expect("config must still load after set");
@@ -632,7 +632,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&target).ok();
     }
@@ -654,7 +657,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&target).ok();
     }
@@ -698,7 +704,7 @@ mod tests {
         );
         assert_ne!(
             set_code, 2,
-            "must never emit the reserved CRITICAL-gate code"
+            "must never emit the reserved unresolved-finding code"
         );
 
         let loaded =
@@ -744,7 +750,7 @@ mod tests {
         );
         assert_ne!(
             get_code, 2,
-            "must never emit the reserved CRITICAL-gate code"
+            "must never emit the reserved unresolved-finding code"
         );
 
         let list_code = dispatch_config(&target, ConfigAction::List, ColorMode::disabled());
@@ -754,7 +760,7 @@ mod tests {
         );
         assert_ne!(
             list_code, 2,
-            "must never emit the reserved CRITICAL-gate code"
+            "must never emit the reserved unresolved-finding code"
         );
 
         fs::remove_dir_all(&target).ok();
@@ -855,7 +861,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
         assert_eq!(
             fs::read(&config_path).unwrap(),
             before,
