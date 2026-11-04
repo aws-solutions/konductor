@@ -12,28 +12,10 @@ not per individual commit.
 
 - `bench/lib/trace-normalizer.js`, a dependency-free, no-I/O library that turns a Claude Code,
   OpenCode, or Kiro CLI trace into one session record (tool calls, skill loads, usage, cost,
-  errors, completeness). It masks AWS access key ids, AWS secret-key and session-token values
-  (in text and in strings under properties of those names), and Bearer tokens of 16 or more
-  characters. It caps every stored string except `response_text`, which is redacted but never
-  truncated. Other credential formats are not detected. `options.redact` replaces the built-in
-  redactor; a caller who wants to keep the built-in rules should call `defaultRedact` from inside
-  their own function. The known limits of the built-in redactor are listed in the module header.
-  `normalizeTrace`, `defaultRedact`, and `SCHEMA_VERSION` are its stable API. Each tool call
-  carries `tool_call_id`, the id the runtime reported (`null` when it has none). The module header
-  maps the record fields to the nearest OpenTelemetry GenAI attributes. The record has an
-  additive `unrecognized_events` field (event type to count) so a CLI format change is visible
-  instead of reading as an idle run; `schema_version` stays 1. The Kiro parser reads the ACP event
-  stream that kiro-cli 3.0.0 emits (`sessionUpdate` and `runFinished`), and the Claude Code parser
-  is checked against a Claude Code 2.1.318 capture. The OpenCode parser is checked against two
-  OpenCode 2.0.27 captures: one completed `read` call, and a run that reads a SKILL.md and then a
-  second file, which verifies the skill-load path (a completed `read` of `skills/<name>/SKILL.md`
-  is recorded in `skill_loads`). Failed tool states and the `error` event are not in those
-  captures. An array input element holding several newline-delimited events is split, and
-  OpenCode reports a repeated call id as `duplicate_tool_id`. Tests and fixtures are in
-  `bench/test/`: five fixtures are sanitized real captures (their names carry the CLI version)
-  and the rest are synthetic. Run `node --test "bench/test/**/*.test.js"`.
-- PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22, apart from the
-  `tests/scripts` suite that `npm test` also runs.
+  errors, completeness) and redacts credentials. The module header covers redaction, ids, which
+  formats are verified against real captures, and the OpenTelemetry mapping. Tests and fixtures
+  are in `bench/test/`.
+- PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
 - The four phase-gated SOPs, such as `k-full-sdlc`, now carry an
