@@ -400,6 +400,19 @@ test('a credential error is an infra error and not a model failure', async () =>
   }
 });
 
+test('a credential error with no result line (killed or timed out) is still an infra error with a reason', async () => {
+  const s = setup('synthetic-credential-error-killed', { exitCode: 143 });
+  try {
+    const r = await run(s);
+    assert.equal(r.status, 'error');
+    assert.match(r.infraError, /could not load AWS credentials/);
+    assert.equal(r.claudeCode.errorKind, 'credentials');
+    assert.equal(r.flags.includes('modelMismatch'), false);
+  } finally {
+    s.cleanup();
+  }
+});
+
 test('an API error with no model seen is an error with its reason, not a model mismatch', async () => {
   const s = setup('model-400', { exitCode: 1 });
   try {

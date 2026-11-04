@@ -125,6 +125,19 @@ test('credential error is its own kind so the runner can call it an infra error'
   assert.equal(a.retries.cloud_credential_error, 2);
 });
 
+test('credential retries and nothing else, with no result line, are still a credentials error', () => {
+  const retry = (n) => ({ type: 'system', subtype: 'api_retry', attempt: n, max_retries: 2, error: 'cloud_credential_error', session_id: 's1' });
+  const only = cc.aggregateEvents([retry(1), retry(2)], { expectedModel: 'claude-sonnet-5-5' });
+  assert.equal(only.resultCount, 0);
+  assert.equal(only.errorKind, 'credentials');
+  assert.equal(only.retries.cloud_credential_error, 2);
+  const killed = agg('synthetic-credential-error-killed');
+  assert.equal(killed.errorKind, 'credentials');
+  const withReply = cc.aggregateEvents([retry(1), { type: 'assistant', message: { id: 'm1', model: 'claude-sonnet-5-5', content: [{ type: 'text', text: 'hi' }], usage: { input_tokens: 1, output_tokens: 1 } } }], { expectedModel: 'claude-sonnet-5-5' });
+  assert.equal(withReply.errorKind, null, 'a run that got a reply from the model is not a credentials failure');
+  assert.equal(agg('sigterm').errorKind, null);
+});
+
 test('SIGTERM stream: no result, censored, tokens from assistant usage, no cost without rates', () => {
   const a = agg('sigterm');
   assert.equal(a.runFinishedStatus, null);

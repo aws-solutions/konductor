@@ -16,3 +16,4 @@ list is emptied and `skills` is cut to six names to keep the files small; em and
 | delegation-dashed-pin | clean delegation with the dashed model pin: two result events (the sub-agent finished in the background and the session resumed), two `modelUsage` keys with the same canonical model, a SessionStart hook |
 | sigterm | killed mid-tool: no `result` line |
 | synthetic-credential-error | NOT captured. Built from `model-400` plus two `api_retry` events with `error: cloud_credential_error`, the shape the operator's re-check script looks for |
+| synthetic-credential-error-killed | NOT captured. The first three lines of synthetic-credential-error: `init` and two `cloud_credential_error` retries, then the process ended before any message or `result` line (killed or timed out) |

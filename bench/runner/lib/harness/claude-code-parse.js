@@ -275,6 +275,8 @@ function aggregateEvents(events, { expectedModel = null, rates = null } = {}) {
     out.costUsd = rate && usageById.size ? priceTokens(out.tokens, rate) : null;
     out.spawn.spawned = out.subagentCalls;
     for (const m of messageModels) canonical.add(canonicalModelOf(m));
+    // Killed or timed out before the model ever answered: the credential retries are the only evidence of why.
+    if ((out.retries.cloud_credential_error ?? 0) > 0 && usageById.size === 0 && messageModels.size === 0) out.errorKind = 'credentials';
   }
   out.tokens.total = totalTokens(out.tokens);
 
