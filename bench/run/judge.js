@@ -62,6 +62,13 @@
  * stored with status `unparsable`, and a failed call with the plugin's status, so the pair's seat
  * then counts as `invalid` or `unscored` in the aggregation (aggregate.js).
  *
+ * ## Control skills
+ *
+ * When the skill has a treatment spec (treatment-check.js), each task's stored with-arm run is
+ * checked against it when the result is built, and a pair counts only if the run took the control's
+ * direction. The check reads the stored reply and changed files, not what the judge was shown. A
+ * skill with no spec is not checked, so every pair counts.
+ *
  * ## The judge sees
  *
  * The prompt is built only by `judgePrompt` (judge-prompt.js). Of a task it gets the task object
@@ -77,6 +84,7 @@ const { validateJudgeConfig } = require('../lib/judge-roster');
 const { planJobs } = require('../lib/plan');
 const { collectOutcomes } = require('../lib/score');
 const { parseReply, MAX_REPLY_CHARS } = require('../lib/judge-reply');
+const { treatmentFor, treatmentText } = require('../lib/treatment-check');
 const {
   PROVENANCE_VERSION,
   ARMS,
@@ -278,6 +286,10 @@ function finish(run) {
   const allPairs = taskSet.tasks.flatMap((task) => ARMS.map((arm) => pairsByTask.get(task.id)[arm]));
   const loaded = Object.fromEntries(taskSet.tasks.map((task) => [task.id, pairsByTask.get(task.id).with.loaded === true]));
   const rule = decisionRuleSha256();
+  // A control skill's pair counts only if its stored with-arm run took the control's direction. A
+  // skill with no treatment spec gets a record for every task that says it needs no check. The
+  // records follow from the stored pairs and the specs, and both are covered by the result inputs.
+  const treatment = treatmentFor(skill, taskSet, (id) => treatmentText(pairsByTask.get(id).with));
   const inputs = resultInputs({
     skill,
     ruleSha256: rule,
@@ -298,6 +310,7 @@ function finish(run) {
     deltas,
     refused,
     loaded,
+    treatment,
     cfg: { judges: settings.judges },
   });
   const record = {

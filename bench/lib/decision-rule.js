@@ -23,8 +23,13 @@
  *
  * Changing a number or a table entry changes `decisionRuleSha256()` by itself. Changing the logic
  * does not, so bump DECISION_RULE_VERSION on any change to how a result is computed.
+ *
+ * The digest also covers the control treatment specs (treatment-check.js), because they decide
+ * which control pairs count. Computing it reads the spec directory, so editing a spec makes every
+ * stored result stale and they re-aggregate from stored judgments.
  */
 const { sha256 } = require('./provenance');
+const { specSha256 } = require('./treatment-check');
 
 /** Name of this rule, recorded with every result. */
 const DECISION_RULE_NAME = 'paired-t/v1';
@@ -69,9 +74,10 @@ const tCritical = (df, level) =>
 
 /**
  * Everything the digest covers: the rule's name and version, the word-check gate's identifier,
- * every threshold and both tables.
+ * every threshold, both tables and the digest of the treatment specs. `options.treatmentDir`
+ * names another spec directory, for a tool that checks specs before they are installed.
  */
-const decisionRuleFields = () => ({
+const decisionRuleFields = (options = {}) => ({
   decision_rule_name: DECISION_RULE_NAME,
   decision_rule_version: DECISION_RULE_VERSION,
   word_check_gate: WORD_CHECK_GATE_ID,
@@ -81,13 +87,14 @@ const decisionRuleFields = () => ({
   MIN_SEATS_PER_PAIR,
   T_975,
   T_990,
+  treatment_specs: specSha256(options.treatmentDir),
 });
 
 /** Digest of a set of rule fields, as returned by `decisionRuleFields()`. */
 const digestRuleFields = (fields) => sha256(fields);
 
-/** Digest of the rule as it is in this file. */
-const decisionRuleSha256 = () => digestRuleFields(decisionRuleFields());
+/** Digest of the rule as it is in this file and the treatment specs as they are on disk. */
+const decisionRuleSha256 = (options) => digestRuleFields(decisionRuleFields(options));
 
 module.exports = {
   DECISION_RULE_NAME,

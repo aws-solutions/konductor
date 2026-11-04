@@ -9,6 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const rule = require('../lib/decision-rule');
+const { specSha256 } = require('../lib/treatment-check');
 
 const HEX = /^[0-9a-f]{64}$/;
 
@@ -76,6 +77,7 @@ test('the digest covers the version, every threshold, both tables and the gate i
     'T_990',
     'decision_rule_name',
     'decision_rule_version',
+    'treatment_specs',
     'word_check_gate',
   ]);
   // The covered values are the exported ones, so an edit to an export reaches the digest.
@@ -86,6 +88,7 @@ test('the digest covers the version, every threshold, both tables and the gate i
   assert.equal(fields.PRUNE_FLOOR, rule.PRUNE_FLOOR);
   assert.equal(fields.MIN_DECISION_PAIRS, rule.MIN_DECISION_PAIRS);
   assert.equal(fields.MIN_SEATS_PER_PAIR, rule.MIN_SEATS_PER_PAIR);
+  assert.equal(fields.treatment_specs, specSha256());
   assert.deepEqual(fields.T_975, rule.T_975);
   assert.deepEqual(fields.T_990, rule.T_990);
 });
@@ -101,6 +104,7 @@ test('changing any threshold, version, identifier or table entry changes the dig
     PRUNE_FLOOR: base.PRUNE_FLOOR - 0.01,
     MIN_DECISION_PAIRS: base.MIN_DECISION_PAIRS + 1,
     MIN_SEATS_PER_PAIR: base.MIN_SEATS_PER_PAIR + 1,
+    treatment_specs: 'f'.repeat(64),
   };
   for (const [key, value] of Object.entries(changes)) {
     assert.notEqual(rule.digestRuleFields({ ...base, [key]: value }), baseDigest, key);

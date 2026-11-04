@@ -126,6 +126,18 @@ not per individual commit.
   leaves directories at 0700 and files at 0600 (skipped where modes are not enforced), and that
   the core, driver and replay sources import no network, process or provider module. Run
   `node --test bench/test/pipeline.test.js`.
+- `bench/lib/treatment-check.js`, the treatment check for a control skill. A control pair counts
+  only when its stored with-arm run shows the control's direction was taken: `checkTreatment`
+  reads the reply and the final text of every changed file, never the sanitized text, and a
+  refusal marker wins over a followed marker. A spec is `bench/controls/treatment/<skill>.json`,
+  keyed by the task's `target_section`; a skill with no spec, or a section the spec does not name,
+  is not checked and its pairs all count, which is the case for every real skill. `treatmentFor`
+  maps a task set, `treatmentText` builds the text to read, `loadSpec` throws on a pattern that
+  does not compile, and `specSha256` hashes every spec file. `decisionRuleSha256()` now covers
+  that hash (`treatment_specs`), so editing a spec makes stored results stale and they rebuild
+  from stored judgments with no model call. `bench/run/judge.js` runs the check when it builds a
+  result and passes the records to `aggregateSkill`. Run `node --test
+  bench/test/treatment-check.test.js bench/test/decision-rule.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
