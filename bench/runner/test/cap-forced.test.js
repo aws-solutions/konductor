@@ -41,11 +41,13 @@ test('the forced instruction names the skill once and the harness tool, with no 
   assert.throws(() => F.forcedPrefix({ name: 'a b' }), /not a skill name/);
 });
 
-test('--forced-load takes low-load or always, and low-load runs only under the load floor', () => {
+test('--forced-load takes low-load, always or off, and low-load runs only under the load floor', () => {
   assert.equal(F.checkMode(undefined), null);
   assert.equal(F.checkMode('always'), 'always');
-  assert.throws(() => F.checkMode(true), /low-load or always/);
-  assert.throws(() => F.checkMode('sometimes'), /low-load or always/);
+  assert.equal(F.checkMode('off'), 'off');
+  assert.equal(F.forcedWanted('off', 0, 0.3).run, false);
+  assert.throws(() => F.checkMode(true), /low-load, always or off/);
+  assert.throws(() => F.checkMode('sometimes'), /low-load, always or off/);
   assert.equal(F.forcedWanted(null, 0, 0.3).run, false);
   assert.equal(F.forcedWanted('always', 1, 0.3).run, true);
   assert.equal(F.forcedWanted('always', null, 0.3).run, true);
@@ -268,7 +270,7 @@ test('cap skill-study accepts --forced-load and rejects a bad value', () => {
   try {
     const r = spawnSync(process.execPath, [BENCH_JS, 'cap', 'skill-study', '--study', path.join(root, 's'), '--init', '--forced-load', 'often', '--repo-root', root, '--bench-dir', root], { encoding: 'utf8', env: cliEnv(root) });
     assert.equal(r.status, 2);
-    assert.match(r.stderr, /--forced-load takes low-load or always/);
+    assert.match(r.stderr, /--forced-load takes low-load, always or off/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -454,5 +456,23 @@ test('a dry run creates no directory and saves no flag', async () => {
     assert.equal(calls.length, 0);
     assert.deepEqual(listTree(s.studyDir), before);
     assert.equal(readJson(path.join(s.studyDir, 'study.json')).settings.forcedLoad, undefined);
+  } finally { s.e.done(); }
+});
+
+test('--forced-load off clears a saved forced load: the resume runs no forced wave and saves off', async () => {
+  const s = setup();
+  try {
+    const first = fakeExec({ unloaded: ['ctl', 'ctl-b'], failRuns: /w1f$/ });
+    await runStudy({ studyDir: s.studyDir, exec: first.exec, log: () => {}, overrides: { forcedLoad: 'low-load' } });
+    assert.equal(readJson(path.join(s.studyDir, 'study.json')).settings.forcedLoad, 'low-load');
+    const lines = [];
+    const off = fakeExec({ unloaded: ['ctl', 'ctl-b'] });
+    await runStudy({ studyDir: s.studyDir, exec: off.exec, log: (m) => lines.push(m), overrides: { forcedLoad: 'off' } });
+    assert.equal(runsOf(off.calls).some((x) => armsOf(x).includes('frc')), false, 'no forced wave');
+    assert.equal(readJson(path.join(s.studyDir, 'study.json')).settings.forcedLoad, 'off');
+    assert.ok(lines.some((l) => /--forced-load off: from the flag \(study\.json had low-load\); saved to study\.json/.test(l)), lines.join('\n'));
+    const later = fakeExec({ unloaded: ['ctl', 'ctl-b'] });
+    await runStudy({ studyDir: s.studyDir, exec: later.exec, log: () => {} });
+    assert.equal(runsOf(later.calls).some((x) => armsOf(x).includes('frc')), false, 'a later resume without the flag stays off');
   } finally { s.e.done(); }
 });

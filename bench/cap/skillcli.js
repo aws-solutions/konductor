@@ -65,7 +65,7 @@ function planArgs(opts) {
     model: val(opts.model) ?? 'claude-sonnet-5.5', agentEngine: val(opts['agent-engine']) ?? 'v3', armConfig: val(opts['arm-config']) ?? null,
     creditsPerRun: creditsPerRun(opts['credits-per-run']), secPerRun: num(opts['sec-per-run'], 'sec-per-run') ?? null, judgeUsdPerRun: num(opts['judge-usd-per-run'], 'judge-usd-per-run'),
     budgetCredits: num(opts['budget-credits'], 'budget-credits') ?? null, allowRegex: Boolean(opts['allow-regex']),
-    screen: Boolean(opts.screen), screenTasks: num(opts['screen-tasks'], 'screen-tasks') ?? 5, forcedLoad: checkMode(opts['forced-load']),
+    screen: Boolean(opts.screen), screenTasks: num(opts['screen-tasks'], 'screen-tasks') ?? 5, forcedLoad: checkMode(opts['forced-load']) === 'off' ? null : checkMode(opts['forced-load']),
   };
 }
 

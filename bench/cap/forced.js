@@ -16,7 +16,8 @@ const { diffCI } = require('../report/stats.js');
 const { compareArms, variantStatus, MARGIN, NOISE_FLOOR, MIN_RUNS, LOAD_MIN } = require('./decide.js');
 
 const HARNESSES = ['kiro-cli', 'opencode'];
-const MODES = ['low-load', 'always'];
+// `off` clears a forced load saved in study.json; it is saved like the other two so a resume stays off.
+const MODES = ['low-load', 'always', 'off'];
 // The forced arm, its A/A repeat (same ref, same prefix) and the skill deleted (with the filler), all in one run of their
 // own. The forced arms run apart from the unforced control so that wave 1 keeps its own A/A pair and comparison count.
 const FORCED_ARMS = ['frc', 'frc-b', 'del'];
@@ -77,10 +78,10 @@ function forcedFiller(forcedText) {
 
 const prefixHash = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
-/** `--forced-load` value: off when absent, low-load or always. */
+/** `--forced-load` value: null when absent, else low-load, always or off (off is kept so it can be saved). */
 function checkMode(v) {
   if (v === undefined || v === null || v === false) return null;
-  if (v === true || !MODES.includes(String(v))) throw new Error(`--forced-load takes ${MODES.join(' or ')}`);
+  if (v === true || !MODES.includes(String(v))) throw new Error('--forced-load takes low-load, always or off');
   return String(v);
 }
 

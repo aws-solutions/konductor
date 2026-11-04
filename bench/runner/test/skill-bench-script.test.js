@@ -298,7 +298,7 @@ test('--forced-load is checked and forwarded: the plan gets the forced-wave line
   try {
     const bad = s.run(['--dry-run', '--forced-load', 'often']);
     assert.equal(bad.status, 2);
-    assert.match(bad.stderr, /--forced-load takes low-load\|always/);
+    assert.match(bad.stderr, /--forced-load takes low-load\|always\|off/);
     const plan = s.run(['--dry-run', '--tier', 'loaded', '--skills', 'sectioned', '--forced-load', 'always']);
     assert.equal(plan.status, 0, plan.stderr + plan.stdout);
     assert.match(plan.stdout, /## Forced-load wave \(its own line, an estimate\)/);
@@ -394,5 +394,15 @@ test('the daemon child gets all three flags and passes them to its run', async (
     assert.ok(init && hasFlags(init), 'init');
     assert.ok(run && hasFlags(run), 'the child run');
     assert.match(fs.readFileSync(path.join(s.state, 'skill-bench.log'), 'utf8'), /DONE/);
+  } finally { s.done(); }
+});
+
+test('run-skill-bench.sh accepts --forced-load off and forwards it to the study init and run', () => {
+  const s = sandbox();
+  try {
+    const { cli, calls } = recorder(s);
+    const r = s.run(['--foreground', '--forced-load', 'off'], { CLI_JS: cli });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    for (const k of ['init', 'run']) assert.ok(calls().find((a) => kind(a) === k).join(' ').includes('--forced-load off'), k);
   } finally { s.done(); }
 });

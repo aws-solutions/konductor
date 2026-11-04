@@ -169,7 +169,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js cap skill-plan --base REF [--runs DIR[,DIR...]] [--runs-glob GLOB] [--tier loaded|large|duplicates|triage|all] [--only a,b]
        [--tasks-per-skill N] [--reps N] [--max-sections N] [--min-section-bytes N] [--large a,b] [--large-top N] [--duplicates a:b,c:d]
        [--agent-engine v2|v3] [--model M] [--arm-config name=key.path=value] [--credits-per-run X|low,mid,high] [--sec-per-run N] [--judge-usd-per-run X]
-       [--budget-credits X] [--profile quick|detailed] [--allow-regex] [--screen] [--screen-tasks N] [--forced-load low-load|always] [--out DIR] [--json] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       [--budget-credits X] [--profile quick|detailed] [--allow-regex] [--screen] [--screen-tasks N] [--forced-load low-load|always|off] [--out DIR] [--json] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (read-only, no credits: which skills get which study. Tiers: loaded (the skill loaded in a finished run), large (named large skills and the biggest),
        duplicates (near-duplicate and named pairs), triage (the rest: free checks only, because a skill nobody loads cannot show lift). Per skill: the tasks
        that exercise it (registry links, tasks naming it, tasks where it loaded), the shortfall against the profile minimum, the sections that can be tested,
@@ -182,7 +182,7 @@ const USAGE = `Usage:
        [--model M] [--arm-config name=key.path=value] [--credits-per-run X|low,mid,high] [--sec-per-run N] [--judge-usd-per-run X] [--budget-credits X]
        [--profile quick|detailed] [--allow-regex] [--screen] [--screen-tasks N] [--seed N] [--scratch DIR] [--control-reps N] [--judge-backend kiro|opencode] [--aws-creds-file FILE]
        [--aws-profile NAME] [--aws-region R] [--budget-usd X] [--wave-budget-credits X] [--auth-db FILE] [--cache DIR] [--cargo-target DIR] [--kiro-bin PATH]
-       [--opencode-bin PATH] [--forced-load low-load|always] [--forced-held-min X] [--waves 1|all] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       [--opencode-bin PATH] [--forced-load low-load|always|off] [--forced-held-min X] [--waves 1|all] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (the per-skill study in one shared directory. --init plans it into study.json (idempotent for the same base); --status shows waves, runs and credits;
        --dry-run prints each wave and its exact commands and builds nothing; with none of them it runs: the known-answer controls first (a failed control stops the study),
        then per skill wave 1, then wave 2 only if removing the skill lost quality, then wave 3 for the sections whose removal lost quality, judging each wave
@@ -190,7 +190,7 @@ const USAGE = `Usage:
        --forced-load adds wave 1f after wave 1: the skill forced to load (frc and its A/A repeat frc-b) against the skill deleted (with a neutral filler of the
        same word count), for skills that loaded in under 30% of wave 1 control runs (low-load; an unknown rate does not run it) or for all (always). It is reported in
        its own section of decisions.md, never feeds a call, and a failure is recorded in w1f.failed without stopping the study. --forced-held-min X (default 0.9)
-       is the share of runs each forced arm (frc and frc-b) must load the skill in. --waves 1 runs the controls and wave 1 only and skips the forced wave and waves 2 and 3.
+       is the share of runs each forced arm (frc and frc-b) must load the skill in. --forced-load off clears a value saved in the study. --waves 1 runs the controls and wave 1 only and skips the forced wave and waves 2 and 3.
        Spends credits only when it runs; run it with no other bench study active)
   node bench/runner/bench.js cap decide --study DIR [--out DIR] [--no-patches] [--forced-held-min X] [--json] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (read-only, no credits: one call per skill from the study waves: DELETE, PRUNE (sections to remove or move, with SKILL.md line ranges), KEEP or NEEDS DATA,

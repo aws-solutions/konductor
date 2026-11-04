@@ -22,7 +22,8 @@
 #   bash run-skill-bench.sh --status            daemon state, waves done, runs and credits so far, last log lines
 #   bash run-skill-bench.sh --stop              SIGTERM the daemon (the runner flushes its summary as interrupted)
 #   Options: --tier triage|loaded|large|duplicates|all   (default all)    --skills a,b   only these skills
-#            --forced-load low-load|always   add wave 1f, the skill forced to load against it deleted (reported apart, never a call)
+#            --forced-load low-load|always|off   add wave 1f, the skill forced to load against it deleted (reported apart, never a call);
+#                                  off clears a value saved in the study
 #            --forced-held-min X   share of runs each forced arm must load the skill in (above 0, at most 1; default 0.9)
 #            --waves 1|all         1 runs the controls and wave 1 only (no forced wave, no waves 2 and 3); default all
 #   --forced-load, --forced-held-min and --waves go to every cap skill-study call (init, dry run, run, the daemon child);
@@ -115,7 +116,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 case "$TIER" in triage|loaded|large|duplicates|all) ;; *) echo "--tier takes triage|loaded|large|duplicates|all" >&2; exit 2 ;; esac
-case "$FORCED_LOAD" in ''|low-load|always) ;; *) echo "--forced-load takes low-load|always" >&2; exit 2 ;; esac
+case "$FORCED_LOAD" in ''|low-load|always|off) ;; *) echo "--forced-load takes low-load|always|off" >&2; exit 2 ;; esac
 case "$WAVES" in ''|1|all) ;; *) echo "--waves takes 1|all" >&2; exit 2 ;; esac
 if [ -n "$FORCED_HELD_MIN" ]; then
   awk -v x="$FORCED_HELD_MIN" 'BEGIN { exit !(x ~ /^(0?\.[0-9]+|1(\.0*)?|0\.?)$/ && x + 0 > 0 && x + 0 <= 1) }' \

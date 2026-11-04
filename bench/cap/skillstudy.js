@@ -472,7 +472,7 @@ async function skillSteps({ study, studyDir, rec, step, log, dryRun, result, con
     if (!skillWaveComplete(study, studyDir, rec, 1)) return;
   } else if (!(await runWave(1, ['ctl', 'ctl-b', 'del']))) return;
   if (wave1Only) { log(`${rec.name}: --waves 1, so the forced wave and waves 2 and 3 are skipped`); return; }
-  const forcedMode = study.settings.forcedLoad ?? null;
+  const forcedMode = study.settings.forcedLoad && study.settings.forcedLoad !== 'off' ? study.settings.forcedLoad : null;
   if (dryRun && forcedMode) log(`${rec.name} wave ${FORCED_WAVE}: arms ${FORCED_ARMS.join(', ')} (forced load, reported apart, never used for a call); ${forcedMode === 'always' ? 'runs for every skill' : `runs only if the skill loaded in under ${Math.round(LOAD_MIN * 100)}% of wave 1 control runs`}`);
   if (dryRun || controlsTrusted === false) return;
   if (forcedMode) {
