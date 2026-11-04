@@ -173,6 +173,21 @@ test('an --out inside the checkout is refused', () => {
   assert.match(r.stderr, /--out must be outside the checkout/);
 });
 
+test('a relative --out that resolves into the checkout is refused, and so is a comma in --out', () => {
+  const s = setup();
+  const checkout = path.join(__dirname, '..', '..', '..');
+  const withOut = (out) => [...FULL(s).map((a) => (a === s.out ? out : a)), '--dry-run'];
+  for (const out of ['./out-rel', 'bench/../out-rel']) {
+    const r = spawnSync('bash', [SCRIPT, ...withOut(out)], { encoding: 'utf8', cwd: checkout, env: { ...process.env, PATH: `${s.bin}:${process.env.PATH}`, HOME: s.home, PILOT_BENCH_JS: FAKE_BENCH, PILOT_FAKE_LOG: s.log, PILOT_SCRATCH_ROOT: s.scratch, PILOT_PROC_PATTERN: 'pilot-2x2-no-such-process', PILOT_MIN_FREE_GB: '1' } });
+    assert.equal(r.status, 2, r.stdout + r.stderr);
+    assert.match(r.stderr, /--out must be outside the checkout/);
+  }
+  const comma = run(s, withOut(path.join(s.root, 'a,b')));
+  assert.equal(comma.status, 2, comma.stdout + comma.stderr);
+  assert.match(comma.stderr, /--out must not contain a comma/);
+  assert.equal(fs.existsSync(path.join(checkout, 'out-rel')), false);
+});
+
 test('a full run goes Kiro vanilla, Kiro konductor, Claude Code vanilla, Claude Code konductor, judging, then the table, and leaves no secret and no scratch', () => {
   const s = setup();
   const r = run(s, FULL(s));

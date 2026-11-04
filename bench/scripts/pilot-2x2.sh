@@ -162,8 +162,10 @@ for t in "${TASKS[@]}"; do
   case "$t" in '' | *[!a-z0-9._-]*) die "task id '$t' is not a task id (lowercase letters, digits, . _ -)" ;; esac
 done
 [ "$(printf '%s\n' "${TASKS[@]}" | sort -u | wc -l)" -eq "${#TASKS[@]}" ] || die "--tasks lists a task twice"
-case "$OUT" in "$REPO" | "$REPO"/*) die "--out must be outside the checkout ($REPO)" ;; esac
 OUT="$(realpath -m -- "$OUT")"
+REPO_REAL="$(cd "$REPO" && pwd -P)"
+case "$OUT" in "$REPO" | "$REPO"/* | "$REPO_REAL" | "$REPO_REAL"/*) die "--out must be outside the checkout ($REPO)" ;; esac
+case "$OUT" in *,*) die "--out must not contain a comma (the table step takes comma separated directory lists)" ;; esac
 [ -f "$BENCH_JS" ] || die "bench runner not found at $BENCH_JS"
 command -v node >/dev/null 2>&1 || die "node is not on PATH"
 SHA="$(git -C "$REPO" rev-parse --verify --quiet "${REF}^{commit}")" || die "--konductor-ref $REF is not a commit in $REPO"
