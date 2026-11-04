@@ -37,6 +37,15 @@ not per individual commit.
   `bench/lib/verdict.js` maps the two scores a judge gave to answers A and B onto the with and
   without arm and returns their gap, with minus without; an unknown presentation order throws.
   Run `node --test bench/test/judge-scale.test.js bench/test/verdict.test.js`.
+- `bench/lib/workspace-changes.js`, a pure `workspaceChanges(start, final, limits)` that compares
+  two workspace snapshots (plain objects from relative path to text) and lists every added,
+  edited or deleted file, sorted by path, as `{ path, change, content, truncated, omitted }`, so a
+  judge can grade the work a run did and not only its reply. Limits have documented defaults:
+  characters per file, characters across all files, and number of files. A file over its cap is
+  cut and marked `truncated`; past the total or count cap the remaining entries list path and
+  change only and are marked `omitted`. An unknown option or a limit that is not a positive
+  integer throws, and so does an absolute path or one containing `..` in either snapshot. The
+  module does not scan content for secrets. Run `node --test bench/test/workspace-changes.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
