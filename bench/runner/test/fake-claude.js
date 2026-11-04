@@ -33,6 +33,7 @@ for (const base of cfg.tmpBases || [process.env.TMPDIR]) {
   fs.writeFileSync(path.join(d, 'task.output'), 'x');
   made.push(d);
 }
+for (const name of cfg.foreign || []) fs.mkdirSync(path.join(cfg.foreignBase, 'claude-' + process.getuid(), name, 'tasks'), { recursive: true });
 fs.writeFileSync(path.join(cfg.dir, 'made-' + process.pid + '.json'), JSON.stringify(made));
 if (cfg.sleepSec) { setTimeout(() => {}, cfg.sleepSec * 1000); return; }
 fs.writeFileSync(path.join(process.cwd(), 'hello.txt'), cfg.helloText || 'hello\\n');

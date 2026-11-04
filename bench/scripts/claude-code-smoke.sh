@@ -18,8 +18,9 @@
 #   4. Runs `bench.js run` twice: a vanilla task, then a task that makes the konductor arm delegate to a sub-agent.
 #   5. Prints PASS or FAIL per criterion: result.json parses and matches the schema, the run succeeded, cost > 0, one
 #      canonical model, the konductor run delegated at least once with no failed spawn, 11 agents installed with the
-#      model pin, no credential value in any output, nothing left in /tmp/claude-<uid>, nothing left in the scratch dirs.
-#   6. Removes everything it created (scratch directories, new /tmp/claude-<uid> entries), also on Ctrl-C.
+#      model pin, no credential value in any output, nothing of this run left in /tmp/claude-<uid>, nothing left in the scratch dirs.
+#   6. Removes everything it created (scratch directories, this run's /tmp/claude-<uid> entries), also on Ctrl-C. Entries of
+#      other Claude Code sessions are never touched.
 #
 # Options:
 #   --profile NAME      AWS profile to export credentials from (not needed when AWS_ACCESS_KEY_ID and
@@ -36,7 +37,7 @@
 #   --isolate MODE      passed to bench.js (auto, unshare, sandbox-exec, none; none also passes --allow-unisolated)
 #   --budget-usd X      total cap (default 1.5)       --run-budget-usd X   per-run cap (default 0.6)
 #   --out DIR           copy the two result directories and the verdict here before cleanup
-#   --keep              keep the scratch directory and any new /tmp/claude-<uid> entries
+#   --keep              keep the scratch directory and this run's /tmp/claude-<uid> entries
 #   --dry-run           print the plan and the commands; run nothing and read no credentials
 #
 # Exit codes: 0 all criteria passed, 1 a criterion failed, 2 usage or preflight error (nothing was run).
@@ -69,7 +70,7 @@ KEEP=0
 DRY_RUN=0
 
 SCRATCH=""
-CLAUDE_TMP_BEFORE=""
+SCRATCH_SLUG=""
 FAILED=0
 UID_NUM="$(id -u)"
 
@@ -109,19 +110,21 @@ case "$ONLY" in vanilla | konductor | both) ;; *) die "--only takes vanilla, kon
 command -v node >/dev/null 2>&1 || die "node is not on PATH"
 
 # ---------------------------------------------------------------- cleanup
-snapshot_claude_tmp() {
+# Claude Code names a task directory after the working directory it ran in, with every non-alphanumeric character
+# replaced by "-". Every run here works under $SCRATCH, so its directories start with the slug of $SCRATCH; entries
+# of any other session in the same temp directory never match.
+own_claude_tmp() {
   local d="$CLAUDE_TMP_BASE/claude-$UID_NUM"
-  if [ -e "$d" ]; then find "$d" -mindepth 0 -maxdepth 2 2>/dev/null | LC_ALL=C sort; fi
+  if [ -n "$SCRATCH_SLUG" ] && [ -d "$d" ]; then find "$d" -mindepth 1 -maxdepth 1 -name "${SCRATCH_SLUG}*" 2>/dev/null | LC_ALL=C sort; fi
 }
 
 # shellcheck disable=SC2329  # called from cleanup, which runs from the trap
-remove_new_claude_tmp() {
-  local d="$CLAUDE_TMP_BASE/claude-$UID_NUM" new p
-  new="$(LC_ALL=C comm -13 <(printf '%s\n' "$CLAUDE_TMP_BEFORE") <(snapshot_claude_tmp) | sed '/^$/d')"
-  [ -n "$new" ] || return 0
+remove_own_claude_tmp() {
+  local d="$CLAUDE_TMP_BASE/claude-$UID_NUM" p
   while IFS= read -r p; do
-    case "$p" in "$d" | "$d"/*) [ -e "$p" ] && rm -rf -- "$p" ;; esac
-  done <<<"$new"
+    [ -n "$p" ] && rm -rf -- "$p"
+  done < <(own_claude_tmp)
+  rmdir -- "$d" 2>/dev/null || true
 }
 
 # shellcheck disable=SC2329  # installed with trap
@@ -131,9 +134,9 @@ cleanup() {
   set +e
   AWS_ACCESS_KEY_ID="" AWS_SECRET_ACCESS_KEY="" AWS_SESSION_TOKEN=""
   if [ -n "$SCRATCH" ] && [ "$KEEP" -eq 1 ]; then
-    say "kept scratch directory: $SCRATCH (and any new $CLAUDE_TMP_BASE/claude-$UID_NUM entries)"
+    say "kept scratch directory: $SCRATCH (and this run's $CLAUDE_TMP_BASE/claude-$UID_NUM entries)"
   elif [ -n "$SCRATCH" ]; then
-    remove_new_claude_tmp
+    remove_own_claude_tmp
     case "$SCRATCH" in "$SCRATCH_ROOT"/claude-code-smoke.??*) [ -d "$SCRATCH" ] && rm -rf -- "$SCRATCH" ;; esac
   fi
   exit "$rc"
@@ -224,14 +227,14 @@ say "region $REGION, konductor arm $ARM_SPEC, caps \$$RUN_BUDGET_USD per run and
 SCRATCH="$(mktemp -d "$SCRATCH_ROOT/claude-code-smoke.XXXXXX")"
 trap cleanup EXIT INT TERM
 mkdir -p "$SCRATCH/home" "$SCRATCH/tmp"
-CLAUDE_TMP_BEFORE="$(snapshot_claude_tmp)"
+SCRATCH_SLUG="$(cd "$SCRATCH" && pwd -P | sed 's/[^A-Za-z0-9]/-/g')"
 node "$HELPER" make-bench "$SCRATCH/bench" >/dev/null
 
 if [ "$DRY_RUN" -eq 1 ]; then
   say "dry run: no credentials are read and nothing is started"
   if [ "$ONLY" != konductor ]; then run_bench smoke-hello cc-vanilla "$SCRATCH/out-vanilla"; fi
   if [ "$ONLY" != vanilla ]; then run_bench smoke-delegate "$ARM_SPEC" "$SCRATCH/out-konductor"; fi
-  say "then: verify both result directories, check /tmp/claude-$UID_NUM and $SCRATCH/tmp for leftovers, clean up"
+  say "then: verify both result directories, check /tmp/claude-$UID_NUM and $SCRATCH/tmp for leftovers of this run, clean up"
   exit 0
 fi
 
@@ -253,8 +256,8 @@ printf '%s\n' "$VERIFY_OUT"
 
 echo
 echo "== leftovers =="
-NEW_TMP="$(LC_ALL=C comm -13 <(printf '%s\n' "$CLAUDE_TMP_BEFORE") <(snapshot_claude_tmp) | sed '/^$/d')"
-if [ -z "$NEW_TMP" ]; then verdict PASS "nothing new in $CLAUDE_TMP_BASE/claude-$UID_NUM"; else verdict FAIL "new entries in $CLAUDE_TMP_BASE/claude-$UID_NUM (removed on exit): $(printf '%s' "$NEW_TMP" | head -3 | tr '\n' ' ')"; fi
+NEW_TMP="$(own_claude_tmp)"
+if [ -z "$NEW_TMP" ]; then verdict PASS "nothing left for this run in $CLAUDE_TMP_BASE/claude-$UID_NUM"; else verdict FAIL "left for this run in $CLAUDE_TMP_BASE/claude-$UID_NUM (removed on exit): $(printf '%s' "$NEW_TMP" | head -3 | tr '\n' ' ')"; fi
 LEFT="$(find "$SCRATCH/tmp" -mindepth 1 -maxdepth 2 2>/dev/null | head -5 | tr '\n' ' ')"
 if [ -z "$LEFT" ]; then verdict PASS "nothing left in the run scratch directory"; else verdict FAIL "left in the run scratch directory: $LEFT"; fi
 if find "$SCRATCH/home" "$SCRATCH/tmp" \( -name '.aws' -o -name 'credentials' \) 2>/dev/null | grep -q .; then verdict FAIL "a credentials file exists under the scratch directory"; else verdict PASS "no credentials file under the scratch directory"; fi

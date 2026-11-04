@@ -87,7 +87,7 @@ test('vanilla smoke end to end: credentials exported from a profile, every crite
     assert.match(r.stdout, /PASS credential preflight under claude's environment: account \*\*\*\*9012/);
     for (const re of [/PASS {2}vanilla: result\.json parses/, /PASS {2}vanilla: result\.json matches the schema/, /PASS {2}vanilla: run succeeded/, /PASS {2}vanilla: cost > 0 and not censored/,
       /PASS {2}vanilla: one canonical model \(claude-sonnet-5-5; expected claude-sonnet-5-5\)/, /PASS {2}vanilla: task checks passed/, /PASS {2}vanilla: no credential value in any output file/,
-      /PASS {2}nothing new in/, /PASS {2}nothing left in the run scratch directory/, /SMOKE: PASS/]) assert.match(r.stdout, re);
+      /PASS {2}nothing left for this run in/, /PASS {2}nothing left in the run scratch directory/, /SMOKE: PASS/]) assert.match(r.stdout, re);
     assert.match(r.stdout, /INFO {2}claude's task directory was found under the run TMPDIR/);
     assert.equal(started(s), true);
     assert.equal(fs.readdirSync(s.scratchRoot).length, 0, 'the scratch directory is removed');
@@ -120,10 +120,28 @@ test('a task directory claude leaves in the default temp dir is reported as a fa
   try {
     const r = smoke(s, ['--profile', 'good', '--only', 'vanilla', '--isolate', 'none']);
     assert.equal(r.status, 1, r.stdout + r.stderr);
-    assert.match(r.stdout, /FAIL {2}new entries in .*claude-\d+ \(removed on exit\)/);
+    assert.match(r.stdout, /FAIL {2}left for this run in .*claude-\d+ \(removed on exit\)/);
     assert.match(r.stdout, /SMOKE: FAIL/);
     assert.deepEqual(fs.readdirSync(s.claudeTmp), [], 'the new entries are removed');
     assert.equal(fs.readdirSync(s.scratchRoot).length, 0);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('an entry another Claude Code session makes in the same temp directory is neither reported nor removed', () => {
+  const s = setup();
+  const cfgFile = path.join(path.dirname(s.bin), 'fake-claude.config.json');
+  const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
+  Object.assign(cfg, { foreign: ['-home-someone-other-project'], foreignBase: s.claudeTmp });
+  fs.writeFileSync(cfgFile, JSON.stringify(cfg));
+  const other = path.join(s.claudeTmp, `claude-${process.getuid()}`, '-home-someone-other-project');
+  try {
+    const r = smoke(s, ['--profile', 'good', '--only', 'vanilla', '--isolate', 'none']);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /PASS {2}nothing left for this run in .*claude-\d+/);
+    assert.match(r.stdout, /SMOKE: PASS/);
+    assert.equal(fs.existsSync(other), true, 'the other session\'s task directory is still there');
   } finally {
     s.cleanup();
   }
