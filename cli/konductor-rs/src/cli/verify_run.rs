@@ -19,12 +19,11 @@ use std::path::{Component, Path, PathBuf};
 use serde_json::json;
 use serde_yaml::Value;
 
-use super::config::{self, Severity, CONFIG_FILE_NAME, KONDUCTOR_DIR_NAME};
+use super::config::{self, Severity};
 use super::gate_config::{gate_map, severity_table, GateMap};
 use super::gate_eval::{
     evaluate_value, EvalContext, Info, InfoCode, Reason, ReasonCode, SeverityPolicy, Verdict,
 };
-use super::install::index::env_home_dir;
 use super::output::{self, ColorMode};
 use super::{EXIT_USAGE_ERROR, EXIT_VERIFY_FAILED};
 
@@ -130,7 +129,7 @@ fn check(
     let root = resolve_root(&cwd, root)?;
     let (path, validated) = locate_session(&root, session)?;
     let value = read_session(&path, &validated)?;
-    let (threshold, configured) = configured_threshold(&cwd)?;
+    let (threshold, configured, source) = configured_threshold(&cwd)?;
     let gate_map = gate_map().map_err(Invalid::config)?;
     let policy = SeverityPolicy {
         table: severity_table().map_err(Invalid::config)?,
@@ -163,10 +162,7 @@ fn check(
         0,
         Info {
             code: InfoCode::ConfigSource,
-            detail: format!(
-                "fail_on_severity_at_or_above={configured} from {}",
-                config_source(&cwd)
-            ),
+            detail: format!("fail_on_severity_at_or_above={configured} from {source}"),
         },
     );
     Ok(verdict)
@@ -270,35 +266,18 @@ fn same_file(_a: &Metadata, _b: &Metadata) -> bool {
 }
 
 /// The `fail_on_severity_at_or_above` that applies to the project at `cwd`,
-/// parsed and as written. A present but invalid config fails the check
+/// parsed and as written, and the file that set it (`defaults` when only
+/// the shipped preset does). A present but invalid config fails the check
 /// rather than falling back to the preset.
-fn configured_threshold(cwd: &Path) -> Result<(Severity, String), Invalid> {
-    let config = config::load_config(cwd).map_err(Invalid::config)?;
+fn configured_threshold(cwd: &Path) -> Result<(Severity, String, String), Invalid> {
+    let (config, source) =
+        config::load_config_with_threshold_source(cwd).map_err(Invalid::config)?;
     let configured = config.fail_on_severity_at_or_above;
     let threshold = configured
         .parse::<Severity>()
         .map_err(|()| Invalid::config(format!("unknown severity '{configured}'")))?;
-    Ok((threshold, configured))
-}
-
-/// The config file that sets the threshold: the project file, else the user
-/// file, else the shipped defaults. Mirrors the layering in `load_config`.
-fn config_source(cwd: &Path) -> String {
-    let project = cwd.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
-    let user = env_home_dir().map(|home| home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME));
-    [Some(project), user]
-        .into_iter()
-        .flatten()
-        .find(|path| sets_threshold(path))
-        .map_or_else(|| "defaults".to_string(), |path| path.display().to_string())
-}
-
-fn sets_threshold(path: &Path) -> bool {
-    std::fs::read_to_string(path)
-        .ok()
-        .and_then(|text| serde_yaml::from_str::<Value>(&text).ok())
-        .and_then(|doc| doc.get("fail_on_severity_at_or_above").cloned())
-        .is_some_and(|value| !value.is_null())
+    let source = source.map_or_else(|| "defaults".to_string(), |path| path.display().to_string());
+    Ok((threshold, configured, source))
 }
 
 /// The SOP name in `<sop>-<digit>...`: the longest gated name that fits.

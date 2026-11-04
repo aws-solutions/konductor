@@ -221,8 +221,8 @@ the original.
 saving a durable fact — notify immediately after writing.**
 
 If the capture turns out to be situational, the user can say "don't save that" in the next
-turn and the entry can be removed. Removing an `[origin:user]` entry is allowed only when the
-user asks; the provenance gate above covers every other change.
+turn and the entry can be removed. Removing an `[origin:user]` or untagged entry is allowed only
+when the user asks; the provenance gate above covers every other change.
 
 Implicit corrections run in this order: save the entry as `[origin:agent]` and notify, without
 waiting. Then ask the one-line question. If the user confirms the quoted words, retag that same

@@ -900,6 +900,12 @@ phase-gated SOP, and reports one exit code. Today only `k-full-sdlc` lists its p
 and gate boundaries in `cli/gate-config/sop-orchestration.yml`, so only its sessions can
 pass. The SOP name comes from the file name (`<sop>-<digit>...`).
 
+The session keys it reads come from `gate_facts` in the same file: `gate_<phase>_result`,
+`gate_<phase>_evidence`, `gate_<phase>_checker`, and `gate_<phase>_override` for each boundary, and
+`run.data.max_fix_cycles` for the fix-cycle cap. `k-full-sdlc`'s Progress Tracking section says
+when it writes each one, and `make sop-orchestration-check` fails when a gated SOP stops naming
+the keys of its boundaries.
+
 It reads the session file (at most 1 MiB), checks that the evidence files the session
 names exist (it never opens them), and reads the effective config (preset, then
 `~/.konductor/config.yml`, then `<cwd>/.konductor/config.yml`) for

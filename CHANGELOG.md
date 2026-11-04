@@ -81,10 +81,30 @@ not per individual commit.
   `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
 - The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
   agents no longer carry an `mcpServers` block that Claude Code ignores.
+- The config lock gives up with a contention error at its 5-second deadline when the lock file
+  keeps being replaced under it, instead of retrying without a limit.
+- The plugin README link rewrite handles `[label]: <target>` reference definitions: it pins a
+  relative target to the release tag and leaves an absolute one alone, keeping the brackets.
 - `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
   such as a `telemetry:` opt-out. It now changes only the named key.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
+- `konductor config set` keeps an existing `config.yml`'s permission bits and refuses a symlinked
+  `.konductor/` or `config.yml` instead of writing through it.
+- `k-full-sdlc` now records the gate facts `konductor verify-run` checks, under keys listed once in
+  the `gate_facts` block of `sop-orchestration.yml`, and records `run.data.max_fix_cycles`, so a run
+  with a raised budget is no longer judged against the default of 2.
+  `make sop-orchestration-check` fails when a gated SOP stops naming its boundaries' keys.
+- `verify-run`'s `CONFIG_SOURCE` line now comes from the same config read as the threshold.
+- Orchestrators run `git` reads as `git --no-pager -c core.fsmonitor=` with `--no-ext-diff
+  --no-textconv --submodule=short` (and `--no-show-signature` on `log` and `show`), so repository
+  config cannot make a read-only `git` command run a program.
+- The orchestrator routing rules list memory and skill capture as direct work, matching what
+  Memory & Skill Reflexes ask for.
+- The routing rules' example search that skips `.env` files keeps `.env.example` in its results.
+- `persistent-memory` allows removing an untagged entry when the user asks, as the agent prompts do.
+- `verify-run` rejects a misspelled key in `sop-orchestration.yml`, such as `boundries`, instead of
+  reading it as a SOP with no gate boundaries.
 
 ## [1.2.0] - 2026-10-26
 

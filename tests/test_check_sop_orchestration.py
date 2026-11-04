@@ -81,7 +81,7 @@ def test_valid_fixture_passes_silently(case):
         ("phase-list-missing-bullet", "phase-list-mismatch: gated 'alpha-gated' has phases but"),
         ("unknown-boundary-phase", "unknown-boundary-phase: gated 'alpha-gated' boundary 'zero'"),
         ("unknown-boundary-kind", "unknown-boundary-kind: gated 'alpha-gated' boundary 'one' kind 'loop-exit'"),
-        ("bad-boundary-shape", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-shape", "bad-entry: gated 'alpha-gated' 'boundaries' item 1 must be a mapping with keys phase, kind, scope"),
         ("bad-boundary-scope-list", "'boundaries' item 1 'scope' must be one of feature, run"),
         ("bad-boundary-scope-dict", "'boundaries' item 1 'scope' must be one of feature, run"),
         ("bad-boundary-scope-value", "'boundaries' item 1 'scope' must be one of feature, run"),
@@ -246,3 +246,85 @@ def test_meaning_and_gate_note_are_pinned_in_the_map_and_every_gated_sop():
     for name in GATED_SOPS:
         lines = (REPO_ROOT / "agent-sops" / f"{name}.sop.md").read_text(encoding="utf-8").splitlines()
         assert lines[2:6] == [MARKER, MEANING, "", GATE_NOTE], name
+
+
+GATE_FACTS_BLOCK = """gate_facts:
+  result: 'gate_{phase}_result'
+  evidence: 'gate_{phase}_evidence'
+  checker: 'gate_{phase}_checker'
+  override: 'gate_{phase}_override'
+  fix_cycle_cap: max_fix_cycles
+"""
+MAP_PATH = Path("cli/gate-config/sop-orchestration.yml")
+ONE_KEYS = "Record `gate_one_result`, `gate_one_evidence` and `gate_one_checker`."
+
+
+def tree_with_gate_facts(tmp_path, sop_note=ONE_KEYS, facts=GATE_FACTS_BLOCK, kind="approval"):
+    """The `valid` tree with a gate_facts block and a note in the gated SOP."""
+    root = tmp_path / "repo"
+    shutil.copytree(FIXTURES / "valid", root)
+    map_file = root / MAP_PATH
+    text = map_file.read_text(encoding="utf-8").replace("gated:\n", facts + "gated:\n", 1)
+    if kind != "approval":
+        text = text.replace("gates: [approval]", f"gates: [{kind}]").replace("kind: approval", f"kind: {kind}")
+    map_file.write_text(text, encoding="utf-8")
+    sop = root / "agent-sops" / "alpha-gated.sop.md"
+    sop.write_text(sop.read_text(encoding="utf-8") + "\n" + sop_note + "\n", encoding="utf-8")
+    return root
+
+
+def test_gated_sop_naming_its_gate_facts_passes(tmp_path):
+    result = run_check(tree_with_gate_facts(tmp_path))
+    assert result.returncode == 0, result.stderr
+
+
+def test_gated_sop_missing_a_gate_fact_key_fails(tmp_path):
+    root = tree_with_gate_facts(tmp_path, sop_note="Record `gate_one_result` and `gate_one_evidence`.")
+    result = run_check(root)
+    assert result.returncode == 1
+    assert "missing-gate-fact: gated 'alpha-gated' does not name `gate_one_checker` for boundary 'one'" in result.stderr
+
+
+def test_unbackticked_gate_fact_key_does_not_count(tmp_path):
+    root = tree_with_gate_facts(tmp_path, sop_note="Record gate_one_result, gate_one_evidence, gate_one_checker.")
+    result = run_check(root)
+    assert result.returncode == 1
+    assert "does not name `gate_one_result`" in result.stderr
+
+
+def test_check_threshold_boundary_also_needs_its_override_key(tmp_path):
+    root = tree_with_gate_facts(tmp_path, kind="check-threshold")
+    result = run_check(root)
+    assert result.returncode == 1
+    assert "does not name `gate_one_override`" in result.stderr
+    root = tree_with_gate_facts(tmp_path / "b", sop_note=ONE_KEYS + " Override: `gate_one_override`.", kind="check-threshold")
+    assert run_check(root).returncode == 0
+
+
+def test_sop_naming_the_cap_must_record_it_in_run_data(tmp_path):
+    root = tree_with_gate_facts(tmp_path, sop_note=ONE_KEYS + " Takes `max_fix_cycles`.")
+    result = run_check(root)
+    assert result.returncode == 1
+    assert "missing-gate-fact: gated 'alpha-gated' names max_fix_cycles but not `run.data.max_fix_cycles`" in result.stderr
+    root = tree_with_gate_facts(tmp_path / "b", sop_note=ONE_KEYS + " Records `run.data.max_fix_cycles`.")
+    assert run_check(root).returncode == 0
+
+
+@pytest.mark.parametrize(
+    "facts, expected",
+    [
+        ("gate_facts: []\n", "must be a mapping with exactly the keys"),
+        (GATE_FACTS_BLOCK + "  note: 'gate_{phase}_note'\n", "must be a mapping with exactly the keys"),
+        (GATE_FACTS_BLOCK.replace("'gate_{phase}_result'", "'gate_result'"), "'result' must be a string containing {phase} exactly once"),
+        (GATE_FACTS_BLOCK.replace("'gate_{phase}_checker'", "'gate_{phase}_result'"), "templates must all differ"),
+        (GATE_FACTS_BLOCK.replace("fix_cycle_cap: max_fix_cycles", "fix_cycle_cap: 'cap_{phase}'"), "'fix_cycle_cap' must be a non-empty key"),
+    ],
+)
+def test_malformed_gate_facts_is_one_bad_entry(tmp_path, facts, expected):
+    result = run_check(tree_with_gate_facts(tmp_path, facts=facts))
+    assert_one_clean_bad_entry(result, f"bad-entry: 'gate_facts' {expected}")
+
+
+def test_map_without_gate_facts_skips_the_gate_fact_check():
+    result = run_check(FIXTURES / "valid")
+    assert result.returncode == 0, result.stderr
