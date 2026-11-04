@@ -74,6 +74,7 @@ test('the constants name the gates, the warnings and the roles', () => {
       FIXTURES_MISMATCH: 'fixtures_mismatch',
       START_PASSES: 'start_passes',
       REFERENCE_PASSES: 'reference_passes',
+      SKILL_ONLY_WORDING: 'skill_only_wording',
       WORK_BUDGET_EXHAUSTED: 'work_budget_exhausted',
     },
   );

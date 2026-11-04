@@ -291,7 +291,11 @@ function echo(value) {
   return JSON.stringify(text.length > MAX_ECHO ? `${text.slice(0, MAX_ECHO)}...` : text);
 }
 
-/** The folded, stemmed words of `text` (I-5), in order. */
+/**
+ * The folded, stemmed words of `text` (I-5), in order. Exported with `runsOf` and RUBRIC_QUOTE_WORDS
+ * for task-lint.js, whose skill-only-wording check compares the wording of a check with the skill
+ * text the way the rubric quoting rule compares a rubric item.
+ */
 function wordsOf(text) {
   return (foldedText(text).match(WORD_PATTERN) || []).map(stemmedWord);
 }
@@ -708,6 +712,8 @@ function collectSetProblems(tasks, options, problems, firstUse) {
 }
 
 module.exports = {
+  wordsOf,
+  runsOf,
   KINDS,
   TASK_FIELDS,
   MAX_TASK_WORDS,

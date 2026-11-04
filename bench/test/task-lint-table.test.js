@@ -4,7 +4,7 @@
  * lint), a warning (advice, `ok` stays true) or gone (no code path can report it).
  *
  *   gate:     task_invalid, snapshot_invalid, skill_text_missing, fixtures_mismatch, start_passes,
- *             reference_passes (when a reference is given), work_budget_exhausted
+ *             reference_passes (when a reference is given), skill_only_wording, work_budget_exhausted
  *   warning:  start_fails, unearned_checks, duplicate_checks, trespass_fails, no_reference
  *             (reference_passes when none is given), stay_out_task, literal_in_request
  *   gone:     cheater_fails, cheater_search_incomplete, unattackable_checks, stuffed_ignored
@@ -96,6 +96,14 @@ test('reference_passes is a gate when a reference is given', () => {
   assert.deepEqual(gates(report), [CONDITIONS.REFERENCE_PASSES]);
 });
 
+test('skill_only_wording is a gate', () => {
+  const skillText = `${SKILL_TEXT}\nEnd every entry with the line: Reviewed by the release desk.\n`;
+  const checks = [...makeTask().checks, { type: 'contains', path: 'CHANGELOG.md', pattern: 'Reviewed by the release desk' }];
+  const report = lintTask(makeTask({ checks }), { start: START, reference: { ...REFERENCE, 'CHANGELOG.md': 'Reviewed by the release desk\n--dry-run\n' } }, { skillText });
+  assert.equal(report.ok, false);
+  assert.deepEqual(gates(report), [CONDITIONS.SKILL_ONLY_WORDING]);
+});
+
 test('work_budget_exhausted is a gate', () => {
   const stingy = createBudget({ ms: 60000, runs: 3 });
   const report = lintTask(makeTask(), { start: START, reference: REFERENCE }, { ...OPTIONS, budget: stingy });
@@ -179,7 +187,7 @@ test('cheater_fails, cheater_search_incomplete and unattackable_checks are gone'
 test('the attacker registry and the cheater builders are gone from the module', () => {
   assert.deepEqual(
     Object.keys(lint).sort(),
-    ['CONDITIONS', 'EARNED_KINDS', 'MAX_LISTED_CHECKS', 'MAX_SNAPSHOT_CHARS', 'MAX_SNAPSHOT_FILES', 'MAX_SNAPSHOT_FILE_CHARS', 'MIN_EARNED_SHARE', 'REQUIRED_ROLES', 'ROLES', 'STAY_OUT_KINDS', 'WARNINGS', 'lintTask'],
+    ['CONDITIONS', 'EARNED_KINDS', 'MAX_LISTED_CHECKS', 'MAX_SNAPSHOT_CHARS', 'MAX_SNAPSHOT_FILES', 'MAX_SNAPSHOT_FILE_CHARS', 'MIN_EARNED_SHARE', 'REQUIRED_ROLES', 'ROLES', 'SKILL_ONLY_WORDING_VERSION', 'STAY_OUT_KINDS', 'WARNINGS', 'lintTask'],
   );
   assert.equal(Object.hasOwn(lint, 'MIN_RESISTED_SHARE'), false);
 });

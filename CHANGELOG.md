@@ -258,6 +258,17 @@ not per individual commit.
   fields a runner must never show the subject. The work budget for one lint is 3000 pattern runs
   in 8 seconds (`BUDGET_LIMITS.lint`). Run `node --test bench/test/task-lint.test.js
   bench/test/task-lint-table.test.js`.
+- The task lint gate `skill_only_wording`. Whatever both arms can see cancels in the gap between
+  them; only the skill text is held by the with-skill arm alone. For each `contains` check the lint
+  takes the short texts its pattern accepts, reads them as the rubric quoting rule reads a rubric
+  item (folded and stemmed words, punctuation ignored), compares a text of fewer than six words
+  whole and a longer one by every run of six, and fails the task when such wording is in the skill
+  text and in none of the request, the start paths and the start files. The message names the
+  check and says to check structure the request names or to drop the check, since the judge still
+  scores that point. A skill the caller marks with `options.skillSpecific: true` is exempt; the
+  run driver reads that flag from the control manifest, so a task cannot exempt itself. A
+  paraphrase of the skill is not found. A pattern with several branches fails when any branch is
+  skill-only. Run `node --test bench/test/task-lint-skill-wording.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.

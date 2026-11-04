@@ -29,6 +29,9 @@
  *   reference_passes     Only when a reference snapshot is given. A reference solution, a workspace
  *                        where the work is done properly, passes every check. A check the reference
  *                        fails is wrong and would punish the arm that did the work right.
+ *   skill_only_wording   A `contains` check accepts a short text whose wording is in the skill text
+ *                        and in neither the request nor any start file (below). Skipped when
+ *                        `options.skillSpecific` is true.
  *   work_budget_exhausted  The work budget ran out (checks.js "Total cost"), so some patterns were not
  *                        run and no verdict rests on all of them. Added whatever else passed.
  *
@@ -69,6 +72,27 @@
  * work-based advice (`start_fails`, `unearned_checks`) does not apply to it; `start_passes` applies
  * in its place. One `file_exists` or `contains` check puts the task back on the ordinary path.
  *
+ * Skill-only wording. Whatever both arms can see (the request, the start files, what the model
+ * already knows) cancels in the gap between them. The one text that only the with-skill arm holds
+ * is the skill, so a check whose wording is in the skill and nowhere else lets that arm pass by
+ * copying, and the gap would read `keep` for the wrong reason. For each `contains` check the lint
+ * takes the short texts its pattern accepts (`candidateMatches`, confirmed against the real
+ * expression under the time limit) and reads them as the rubric quoting rule reads a rubric item:
+ * folded and stemmed words (text-fold.js, task-schema.js `wordsOf`), punctuation ignored. A text
+ * of fewer than RUBRIC_QUOTE_WORDS words is compared whole; a longer one by every run of that many
+ * words. A text fails when such a unit occurs in the skill text and in none of the request, the
+ * start paths and the start files. The message names the check; the fix is to check structure the
+ * request names, or to drop the check, since the judge still scores that point.
+ *   - A pattern with several branches fails when any branch is skill-only, even if another branch
+ *     is in the request. Drop or reword the branch.
+ *   - A paraphrase of the skill is not found. Pattern matching cannot decide that; the judge and
+ *     the rubric cover it. This is a known limit, not a promise.
+ *   - A skill whose wording is the point (a control whose rules only it can teach) is exempt:
+ *     the caller passes `options.skillSpecific: true`. The flag comes from the caller, not from the
+ *     task, so a task cannot exempt itself; the run driver reads it from the control manifest
+ *     (controls.js `isSkillSpecific`), which is the one list of such skills. Any value other than
+ *     `true` leaves the check on.
+ *
  * A task with no checks is judged by the rubric alone. The lint has nothing to say about checks it
  * does not have, so such a task gets no `start_fails`, `unearned_checks` or `no_reference` warning.
  *
@@ -87,10 +111,11 @@
  *             null when the checks were not evaluated or no reference was given. A stay-out task
  *             has a third key, `trespass`.
  *
- * `options.skillText` is required and is passed to `validateTask`.
+ * `options.skillText` is required and is passed to `validateTask`. `options.skillSpecific` (see
+ * above) and `options.budget` are optional.
  */
 
-const { validateTask } = require('./task-schema');
+const { validateTask, RUBRIC_QUOTE_WORDS, wordsOf, runsOf } = require('./task-schema');
 const {
   evalChecks,
   compilePattern,
@@ -112,8 +137,12 @@ const CONDITIONS = Object.freeze({
   FIXTURES_MISMATCH: 'fixtures_mismatch',
   START_PASSES: 'start_passes',
   REFERENCE_PASSES: 'reference_passes',
+  SKILL_ONLY_WORDING: 'skill_only_wording',
   WORK_BUDGET_EXHAUSTED: 'work_budget_exhausted',
 });
+
+/** Bump when the skill-only-wording rule changes, so a stored lint of another rule can be told apart. */
+const SKILL_ONLY_WORDING_VERSION = 1;
 
 const WARNINGS = Object.freeze({
   START_FAILS: 'start_fails',
@@ -488,6 +517,78 @@ function trespassWarning(task, results, unbuildable) {
   return parts.length === 0 ? null : warning(WARNINGS.TRESPASS_FAILS, parts.join('; '));
 }
 
+/**
+ * The runs of `size` words that occur in any of `texts`, as a lookup by size. A run is the stemmed
+ * words of `wordsOf`, joined by a space; the sets are built the first time a size is asked for.
+ */
+function corpusOf(texts) {
+  const wordLists = texts.map((text) => wordsOf(text));
+  const bySize = new Map();
+  return {
+    has(run, size) {
+      let runs = bySize.get(size);
+      if (runs === undefined) {
+        runs = new Set();
+        for (const words of wordLists) for (const found of runsOf(words, size)) runs.add(found);
+        bySize.set(size, runs);
+      }
+      return runs.has(run);
+    },
+  };
+}
+
+/** The text of every start entry that a subject can read: the paths, and the content of each text file. */
+function startTexts(start) {
+  return [...Object.keys(start), ...Object.values(start).filter((content) => typeof content === 'string')];
+}
+
+/**
+ * The first unit of `words` (the whole text when it is shorter than RUBRIC_QUOTE_WORDS, else a run
+ * of that many words) that is in the skill and not in what both arms can see, or null.
+ */
+function firstSkillOnlyUnit(words, skill, visible) {
+  const size = Math.min(words.length, RUBRIC_QUOTE_WORDS);
+  for (let at = 0; at + size <= words.length; at += 1) {
+    const unit = words.slice(at, at + size).join(' ');
+    if (skill.has(unit, size) && !visible.has(unit, size)) return unit;
+  }
+  return null;
+}
+
+/** At most this many characters of a check's text are echoed in the message. */
+const MAX_ECHOED_TEXT = 60;
+
+/**
+ * The `skill_only_wording` failure, or null: the `contains` checks that accept a short text whose
+ * wording is only in the skill text. See "Skill-only wording" in the header.
+ */
+function skillOnlyWordingFailure(task, start, skillText) {
+  const skill = corpusOf([skillText]);
+  const visible = corpusOf([task.task, ...startTexts(start)]);
+  const found = [];
+  task.checks.forEach((check, index) => {
+    if (check.type !== 'contains') return;
+    const { regex } = compilePattern(check.pattern);
+    if (!regex) return;
+    for (const text of candidateMatches(check.pattern)) {
+      const words = wordsOf(text);
+      if (words.length === 0) continue;
+      if (firstSkillOnlyUnit(words, skill, visible) === null) continue;
+      // A candidate is a guess built from the pattern's syntax; the real expression decides.
+      if (testBounded(regex, text) !== true) continue;
+      const shown = text.length > MAX_ECHOED_TEXT ? `${text.slice(0, MAX_ECHOED_TEXT)}...` : text;
+      found.push(`${describe(task, index)} (${JSON.stringify(shown)})`);
+      break;
+    }
+  });
+  if (found.length === 0) return null;
+  return failure(
+    CONDITIONS.SKILL_ONLY_WORDING,
+    `these contains checks accept wording that is in the skill text and in neither the request nor the start files, so the with-skill arm can pass them by copying the skill: ${listed(found, MAX_LISTED_CHECKS)}; ` +
+      'check structure that the request names, or drop the check, since the judge still scores that point',
+  );
+}
+
 /** The failure for a lint whose work budget ran out, or null. Some patterns were not run, so no verdict rests on all of them. */
 function budgetFailure() {
   const spent = exhaustionReason();
@@ -600,6 +701,8 @@ function lintUnderBudget(task, snapshots, options) {
       ),
     );
   }
+  // Only an explicit true exempts a skill: anything else leaves the check on.
+  if (options.skillSpecific !== true) failures.push(skillOnlyWordingFailure(task, pristine, options.skillText));
   // Last, so it sees every run the steps above made. An exhausted budget fails the lint whatever else is true.
   failures.push(budgetFailure());
 
@@ -631,6 +734,7 @@ module.exports = {
   WARNINGS,
   ROLES,
   REQUIRED_ROLES,
+  SKILL_ONLY_WORDING_VERSION,
   EARNED_KINDS,
   STAY_OUT_KINDS,
   MIN_EARNED_SHARE,
