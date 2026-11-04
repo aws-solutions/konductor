@@ -234,6 +234,17 @@ not per individual commit.
   holds the workspace-relative path rules (the run store's name rules stay in `slug.js`). Run
   `node --test bench/test/checks.test.js bench/test/negatives-cost.test.js
   bench/test/pattern-syntax.test.js bench/test/safe-path.test.js bench/test/text-fold.test.js`.
+- `bench/lib/task-schema.js`, the benchmark task shape (`id`, `skill`, `kind`, `task`, `rubric`,
+  `target_section`, `fixtures`, `checks`) with `validateTask` and `validateTaskSet`, which return
+  problem strings and never throw. Given the skill text, a rubric item that repeats six or more
+  consecutive words of it is a problem, after case, accents, look-alike letters, small words and
+  up to two inserted words are ignored, and `target_section` must be a heading of the skill.
+  `bench/lib/snapshot-loader.js` reads a directory into a snapshot with file-count and size limits,
+  skips symbolic links, `.git` and `node_modules`, and refuses credential files and content that
+  looks like a credential. `bench/lib/arms.js` builds the with-skill and without-skill arms from
+  one agent configuration and skill set so they differ by exactly the target skill, and records
+  the load mode. Run `node --test bench/test/task-schema.test.js bench/test/snapshot-loader.test.js
+  bench/test/arms.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
