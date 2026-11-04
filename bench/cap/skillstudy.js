@@ -503,4 +503,4 @@ function makeExec({ cwd, env = process.env, nodeBin = process.execPath, timeoutS
   return exec;
 }
 
-module.exports = { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec, paths, runArgv, judgeArgv, STUDY_FILE };
+module.exports = { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec, paths, runArgv, judgeArgv, waveWhere, skillWaveComplete, STUDY_FILE };

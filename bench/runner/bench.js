@@ -8,7 +8,7 @@
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
- *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import ...   (capability benchmarking; draft, trigger and live runs cost credits)
+ *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/README.md.
@@ -201,6 +201,11 @@ const USAGE = `Usage:
        sheet.json and key.json that calibrate score reads and into DIR/calibration/result.json, which report reads; it prints judge-vs-human
        kappa, agreement and Spearman and checks any evidence quotes against the output. A file that rates nothing is refused. An existing
        rater's ratings, or a result.json this page did not write, are kept unless --force; nothing is written when the import is refused)
+  node bench/runner/bench.js cap criteria --study DIR | --runs DIR[,DIR] | --runs-glob 'DIR/*' [--baseline ARM] [--aa ARM] [--out DIR] [--json] [--margin 0.1]
+       [--saturated 0.95] [--judge-disagree 0.3] [--replicate-sd 0.4] [--min-runs 5] [--no-adjust] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       (read-only, no model call, advisory: per rubric criterion and check, the pass rate per arm and the variant minus baseline difference with an interval,
+       flagged NON-DISCRIMINATING, SATURATED or HIGH-VARIANCE (or reported INSUFFICIENT-DATA) from the judgments and check results on disk. Writes criteria.md and criteria.json to --out
+       (default DIR/criteria for --study). Changes no call, margin or floor of cap decide)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
   node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--save FILE]

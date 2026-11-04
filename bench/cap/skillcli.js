@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// `bench.js cap skill-plan | skill-study | decide`. skill-plan and decide are free. skill-study spends credits only
+// `bench.js cap skill-plan | skill-study | decide | criteria`. skill-plan, decide and criteria are free. skill-study spends credits only
 // when it runs (not with --init, --status or --dry-run) and calls bench.js run and judge as child processes.
 
 const fs = require('node:fs');
@@ -11,6 +11,7 @@ const { optionalProfile } = require('../runner/lib/profiles.js');
 const { planSkillStudy, renderPlan, LARGE_DEFAULT, DUPLICATE_PAIRS_DEFAULT, TIERS } = require('./skillplan.js');
 const { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec } = require('./skillstudy.js');
 const { expandGlob } = require('./usage.js');
+const { analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCriteria } = require('./criteria.js');
 
 const list = (v) => (v === undefined || v === true || v === '' ? [] : String(v).split(',').filter(Boolean));
 const val = (v) => (v === undefined || v === true ? undefined : String(v));
@@ -137,4 +138,55 @@ function cmdDecide(opts) {
   console.log(`wrote ${path.join(r.outDir, 'decisions.md')}, decisions.json, evidence.json and patches/ (nothing was applied)`);
 }
 
-module.exports = { cmdSkillPlan, cmdSkillStudy, cmdDecide };
+// Thresholds for cap criteria: a plain decimal in the given range, checked before anything is read.
+function threshold(v, name, { min, max, minOpen = false, integer = false, what }) {
+  if (v === undefined) return undefined;
+  const text = v === true ? '' : String(v).trim();
+  const n = /^\d+(\.\d+)?$|^\.\d+$/.test(text) ? Number(text) : NaN;
+  const ok = Number.isFinite(n) && (minOpen ? n > min : n >= min) && n <= max && (!integer || Number.isInteger(n));
+  if (!ok) throw new Error(`--${name} takes ${what} (got ${v === true ? 'no value' : `"${v}"`})`);
+  return n;
+}
+
+const CRITERIA_FLAGS = [
+  ['margin', 'margin', { min: 0, max: 1, minOpen: true, what: 'a number above 0 and at most 1' }],
+  ['saturated', 'saturated', { min: 0.5, max: 1, minOpen: true, what: 'a number above 0.5 and at most 1' }],
+  ['judgeDisagree', 'judge-disagree', { min: 0, max: 1, what: 'a share from 0 to 1' }],
+  ['replicateSd', 'replicate-sd', { min: 0, max: 1, what: 'a standard deviation from 0 to 1' }],
+  ['minRuns', 'min-runs', { min: 1, max: Number.MAX_SAFE_INTEGER, integer: true, what: 'a whole number of 1 or more' }],
+];
+
+function criteriaConfig(opts) {
+  const out = {};
+  for (const [key, flag, rule] of CRITERIA_FLAGS) { const n = threshold(opts[flag], flag, rule); if (n !== undefined) out[key] = n; }
+  if (opts['no-adjust']) out.adjust = false;
+  return out;
+}
+
+function cmdCriteria(opts) {
+  const config = criteriaConfig(opts);
+  const studyArg = val(opts.study);
+  const dirs = runDirsOf(opts);
+  if (!studyArg && !dirs.length) throw new Error('--study DIR or --runs DIR[,DIR] is required');
+  if (studyArg && dirs.length) throw new Error('give --study or --runs, not both');
+  const extra = list(opts['extra-tasks']).map((d) => path.resolve(d));
+  let groups;
+  let outDir = pathOpt(opts.out);
+  let source;
+  if (studyArg) {
+    const studyDir = path.resolve(studyArg);
+    groups = analyzeStudy({ studyDir, config, benchDir: pathOpt(opts['bench-dir']), extraTasks: extra.length ? extra : null });
+    outDir = outDir ?? path.join(studyDir, 'criteria');
+    source = `study ${studyDir}`;
+  } else {
+    groups = analyzeRuns({ dirs, benchDir: pathOpt(opts['bench-dir']) ?? BENCH_DIR, extraTasks: extra, baseline: val(opts.baseline) ?? null, aa: val(opts.aa) ?? null, config });
+    source = `runs ${dirs.join(', ')}`;
+  }
+  const report = buildCriteriaReport(groups, { source, config });
+  const written = outDir ? writeCriteria(outDir, report) : [];
+  if (opts.json) console.log(JSON.stringify(report, null, 2));
+  else if (!outDir) console.log(renderCriteria(report));
+  else console.log(`${report.summary.flagged} of ${report.summary.items} items flagged (${Object.entries(report.summary.byFlag).map(([k, n]) => `${k} ${n}`).join(', ')}); wrote ${written.join(', ')} (advisory; no call was changed)`);
+}
+
+module.exports = { cmdSkillPlan, cmdSkillStudy, cmdDecide, cmdCriteria, criteriaConfig };
