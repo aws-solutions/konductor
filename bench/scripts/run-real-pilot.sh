@@ -315,7 +315,8 @@ cleanup_scratch() {
   for d in "$CUR_SH" "$CUR_TD"; do
     case "$d" in "$SCRATCH_PARENT"/xq-home.*|"$SCRATCH_PARENT"/xq.*) rm -rf -- "$d" ;; esac
   done
-  CUR_SH=""; CUR_TD=""
+  case "$CHILD_PIDFILE" in "$SCRATCH_PARENT"/xq-child.*) rm -f -- "$CHILD_PIDFILE" ;; esac
+  CUR_SH=""; CUR_TD=""; CHILD_PIDFILE=""
 }
 on_term() {
   STOPPING=1
@@ -323,13 +324,14 @@ on_term() {
   if [ -n "$CHILD_PIDFILE" ] && [ -s "$CHILD_PIDFILE" ]; then kill -TERM "$(cat "$CHILD_PIDFILE")" 2>/dev/null; fi
 }
 trap on_term TERM INT HUP
+trap cleanup_scratch EXIT
 
 # run_bench <tasklog> <timeout-sec> <bench.js args...>; returns the runner's exit code
 run_bench() {
   local tasklog=$1 limit=$2; shift 2
   CUR_SH=$(mktemp -d "$SCRATCH_PARENT/xq-home.XXXXXX") || return 99
-  CUR_TD=$(mktemp -d "$SCRATCH_PARENT/xq.XXXXXX") || return 99
-  CHILD_PIDFILE=$(mktemp "$SCRATCH_PARENT/xq-child.XXXXXX") || return 99
+  CUR_TD=$(mktemp -d "$SCRATCH_PARENT/xq.XXXXXX") || { cleanup_scratch; return 99; }
+  CHILD_PIDFILE=$(mktemp "$SCRATCH_PARENT/xq-child.XXXXXX") || { cleanup_scratch; return 99; }
   mkdir -p "$(dirname "$tasklog")"
   (
     (
@@ -342,8 +344,7 @@ run_bench() {
   ) &
   local pid=$! rc
   wait "$pid"; rc=$?
-  if [ "$STOPPING" = 1 ]; then wait "$pid" 2>/dev/null; rc=$?; fi
-  rm -f -- "$CHILD_PIDFILE"; CHILD_PIDFILE=""
+  while kill -0 "$pid" 2>/dev/null; do wait "$pid"; rc=$?; done
   cleanup_scratch
   return "$rc"
 }

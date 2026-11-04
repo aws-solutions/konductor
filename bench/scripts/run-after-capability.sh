@@ -289,7 +289,7 @@ drop_scratch() {
 }
 new_scratch() {
   CUR_SH=$(mktemp -d "$SCRATCH_PARENT/ac-home.XXXXXX") || return 1
-  CUR_TD=$(mktemp -d "$SCRATCH_PARENT/ac-tmp.XXXXXX") || return 1
+  CUR_TD=$(mktemp -d "$SCRATCH_PARENT/ac-tmp.XXXXXX") || { drop_scratch; return 1; }
 }
 
 # ---------------------------------------------------------------- signals, naps and waiting for a child

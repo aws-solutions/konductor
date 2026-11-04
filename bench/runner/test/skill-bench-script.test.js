@@ -254,3 +254,31 @@ test('the default mode daemonizes: it returns at once, the child runs the study,
     assert.match(fs.readFileSync(path.join(s.state, 'skill-bench.log'), 'utf8'), /DONE: decisions are in/);
   } finally { s.done(); }
 });
+
+test('SIGTERM while the runner is busy: the script waits for the runner to finish, then removes its scratch dirs', async () => {
+  const s = sandbox();
+  try {
+    const fake = path.join(s.e.root, 'slow-cli.js');
+    const marker = path.join(s.e.root, 'started');
+    const flushed = path.join(s.e.root, 'flushed');
+    fs.writeFileSync(fake, `
+const fs = require('fs'), path = require('path');
+if (fs.existsSync(${JSON.stringify(marker)})) process.exit(0);
+fs.writeFileSync(${JSON.stringify(marker)}, 'x');
+process.on('SIGTERM', () => setTimeout(() => {
+  fs.writeFileSync(path.join(process.env.TMPDIR, 'late'), 'x');
+  fs.writeFileSync(${JSON.stringify(flushed)}, 'x');
+  process.exit(0);
+}, 700));
+setInterval(() => {}, 1000);
+`);
+    const p = spawn('bash', [SCRIPT, '--dry-run'], { env: { ...s.base, CLI_JS: fake }, cwd: s.e.root, stdio: 'ignore' });
+    const exited = new Promise((resolve) => p.on('exit', resolve));
+    for (let i = 0; i < 100 && !fs.existsSync(marker); i++) await new Promise((r) => setTimeout(r, 100));
+    assert.ok(fs.existsSync(marker), 'the runner started');
+    p.kill('SIGTERM');
+    await exited;
+    assert.ok(fs.existsSync(flushed), 'the runner flushed while its TMPDIR still existed');
+    assert.deepEqual(fs.readdirSync(s.base.TMPDIR).filter((n) => n.startsWith('xq')), []);
+  } finally { s.done(); }
+});

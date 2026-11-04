@@ -781,7 +781,8 @@ if [ "$MODE" = once ]; then
   exit 0
 fi
 
-cleanup_watch() { printf '\033[?25h\n'; exit 0; }
+SLEEP_PID=""
+cleanup_watch() { [ -n "$SLEEP_PID" ] && kill "$SLEEP_PID" 2>/dev/null; printf '\033[?25h\n'; exit 0; }
 trap cleanup_watch INT TERM
 printf '\033[?25l\033[2J'
 while :; do
@@ -791,6 +792,7 @@ while :; do
   printf '\033[H'
   printf '%s\n' "$frame" | sed $'s/$/\033[K/'
   printf '(refresh every %ss, Ctrl-C to exit, frame took %ss)\033[K\n\033[J' "$WATCH_S" "$(($(date +%s) - t0))"
-  sleep "$WATCH_S" &
-  wait $!
+  sleep "$WATCH_S" & SLEEP_PID=$!
+  wait "$SLEEP_PID"
+  SLEEP_PID=""
 done

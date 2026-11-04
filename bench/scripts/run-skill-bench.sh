@@ -189,15 +189,18 @@ on_term() {
   [ -n "$CHILD_PID" ] && kill -TERM "$CHILD_PID" 2>/dev/null
 }
 trap on_term TERM INT HUP
+trap cleanup_scratch EXIT
 
 # run_node <args...>: node bench.js with a scratch HOME and a TMPDIR without "bench" in its path. The scratch HOME has no
 # rustup settings, so the real toolchain dirs are passed explicitly or cargo finds no default toolchain.
 run_node() {
   CUR_SH=$(mktemp -d "$SCRATCH_PARENT/xq-home.XXXXXX") || return 99
-  CUR_TD=$(mktemp -d "$SCRATCH_PARENT/xq.XXXXXX") || return 99
+  CUR_TD=$(mktemp -d "$SCRATCH_PARENT/xq.XXXXXX") || { cleanup_scratch; return 99; }
   ( cd "$REPO" && exec env HOME="$CUR_SH" TMPDIR="$CUR_TD" CARGO_HOME="$REAL_HOME/.cargo" RUSTUP_HOME="$REAL_HOME/.rustup" node "$CLI_JS" "$@" ) &
   CHILD_PID=$!
   wait "$CHILD_PID"; local rc=$?
+  # a trapped signal ends wait early; keep waiting so the scratch dirs outlive the runner's final flush
+  while kill -0 "$CHILD_PID" 2>/dev/null; do wait "$CHILD_PID"; rc=$?; done
   CHILD_PID=""
   cleanup_scratch
   return "$rc"
