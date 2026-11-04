@@ -31,6 +31,8 @@ const { collectRows, summarizeSkills, renderSkillsMarkdown } = require('../repor
 const { compareRuns, formatCompare } = require('../report/compare.js');
 const { contrastRun, renderContrast } = require('../report/contrast.js');
 const { optionalProfile, profileCheck, writeCalibrationSample } = require('./lib/profiles.js');
+const { buildFactorial, renderFactorial, SPECS: FACTORIAL_CELLS } = require('../report/factorial.js');
+const { toMarkdown } = require('../report/doc.js');
 const { MODES: JUDGE_MODES } = require('../judge/config.js');
 
 // One judge per model family: gpt, deepseek, glm. Override with --judges (qwen3-coder-next, minimax-m2.5 also work).
@@ -406,4 +408,30 @@ function cmdCalibrate(opts) {
   }
 }
 
-module.exports = { cmdJudge, cmdRecheck, cmdBackfill, cmdReport, cmdCompare, cmdContrast, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };
+// The 2x2 pilot table from four judged run directories. Reads only; --out writes factorial-2x2.md and .json.
+function cmdReport2x2(opts) {
+  try {
+    const dirs = {};
+    for (const c of FACTORIAL_CELLS) {
+      const v = opts[c.flag];
+      if (!v || v === true) throw new Error(`--${c.flag} is required (one or more judged run directories, comma separated)`);
+      dirs[c.id] = String(v).split(',').filter(Boolean);
+    }
+    const res = buildFactorial({ dirs, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), scoringFile: scoringOf(opts) });
+    const md = toMarkdown(renderFactorial(res));
+    if (opts.json) console.log(JSON.stringify(res, null, 2));
+    else console.log(md);
+    if (opts.out && opts.out !== true) {
+      const dir = path.resolve(opts.out);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'factorial-2x2.md'), md);
+      fs.writeFileSync(path.join(dir, 'factorial-2x2.json'), `${JSON.stringify(res, null, 2)}\n`);
+      console.error(`wrote ${path.join(dir, 'factorial-2x2.md')}\nwrote ${path.join(dir, 'factorial-2x2.json')}`);
+    }
+  } catch (e) {
+    console.error(`report-2x2: ${e.message}`);
+    process.exitCode = 2;
+  }
+}
+
+module.exports = { cmdReport2x2, cmdJudge, cmdRecheck, cmdBackfill, cmdReport, cmdCompare, cmdContrast, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };
