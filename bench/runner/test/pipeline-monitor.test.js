@@ -13,8 +13,9 @@ const { sandbox, makePatch, chain, out, opts } = require('./pipeline-helpers.js'
 const HAS_JQ = spawnSync('jq', ['--version']).status === 0;
 const jqOpts = HAS_JQ ? opts : { skip: 'jq is not installed' };
 
+// Wide enough that the monitor clips no line, so the assertions hold whatever the length of the repo or temp path.
 function mon(s, args = [], extra = {}) {
-  return s.spawn('monitor.sh', args, { STATE_DIR: s.state, MON_PROC_RE: 'no-such-process-pattern', MON_DISK_PATH: s.root, MON_COLS: '140', ...extra });
+  return s.spawn('monitor.sh', args, { STATE_DIR: s.state, MON_PROC_RE: 'no-such-process-pattern', MON_DISK_PATH: s.root, MON_COLS: '1000', ...extra });
 }
 const listing = (dir) => fs.readdirSync(dir).sort();
 
