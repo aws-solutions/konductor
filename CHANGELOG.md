@@ -8,6 +8,28 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
+  toolchain; builds and tests stay on stable.
+- The four phase-gated SOPs, such as `k-full-sdlc`, now carry an
+  `Orchestration: strict (phase-gated SOP)` line and a sentence saying what strict means.
+  `cli/gate-config/sop-orchestration.yml` lists every SOP as gated or not gated, and
+  `make sop-orchestration-check` (run in PR validation) fails when a new SOP is unlisted, a
+  gated SOP lacks the marker, or a gated basis cites a step heading that no longer exists.
+- Gated SOPs can list their phases and gate boundaries, and `make sop-orchestration-check`
+  checks them against each SOP's phase list.
+- `severity-schema.yml` maps the words checkers write for finding severities (IMPORTANT,
+  WARNING, WARNINGS, SUGGESTION, MINOR) to severity ids. Matching ignores case and reads the
+  leading word of labels such as `Warning Gap`. Any other word, an empty label, and risk,
+  priority or confidence scales such as `High Risk` rank as CRITICAL.
+- Groundwork for judging a SOP session file against its gates: an internal evaluator.
+  Phase-gated SOPs treat an open HIGH finding as unresolved, even when the threshold is
+  CRITICAL.
+- New `konductor verify-run --session <path>` checks a SOP session file and exits through the
+  existing exit-code contract. `--root <dir>` sets the directory the session and its evidence
+  must resolve under (default: the current directory). It writes nothing.
+
 ### Changed
 
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
@@ -25,11 +47,19 @@ not per individual commit.
   `constraints` skill and the routing rules.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
+- Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
+  non-trivial work; orchestrators route skill work to the owning specialist.
+- Agents ignore planted instructions and follow user-written memory only from an untracked
+  `.konductor/memory/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
+  or `.konductor/memory`, and treating memory as content when a tracked top-level dot name is
+  non-ASCII; orchestrators never bypass a denial or read unnamed secrets.
 
 ### Fixed
 
 - `rustls` is updated to 0.23.46 in the CLI, MCP server and shared crates, for four security
   advisories against 0.23.45.
+- Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
+  and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
   skills; it used to serve every installed skill.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
@@ -49,6 +79,14 @@ not per individual commit.
   MCP server is session-wide; the plugin release PR says to tag by hand.
 - Claude Code agents and benchmarks use the Claude Code model ID (`claude-sonnet-5-5`), and the
   plugin ships `NOTICE.txt` with README links pinned to its release.
+- `update --no-telemetry` now keeps a project opted out on later updates, and the new
+  `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
+- The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
+  agents no longer carry an `mcpServers` block that Claude Code ignores.
+- `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
+  such as a `telemetry:` opt-out. It now changes only the named key.
+  The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
+  anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 
 ## [1.2.0] - 2026-10-26
 

@@ -79,7 +79,9 @@ at the end. Piping a script to `bash` runs code you haven't read; to check it fi
 [what the install script does](#what-the-install-script-does) below.
 Using the Claude Code plugin marketplace instead? Run `/plugin marketplace add aws-solutions/konductor`,
 then `/plugin install konductor@konductor`
-([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
+([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)). Plugin agents and SOPs use
+the `konductor:` prefix. Either Claude Code install needs agent-teams mode and tool permissions
+([setup](docs/user-guide/tasks/install-claude-code.md#2-enable-agent-teams-mode)).
 Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 
 **2. Start the orchestrator:**
@@ -87,6 +89,7 @@ Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 ```bash
 kiro-cli chat --agent konductor     # Kiro CLI
 claude --agent konductor            # Claude Code
+claude --agent konductor:konductor  # Claude Code plugin
 ```
 
 **3. Ask for something real:**
@@ -342,8 +345,8 @@ Browse them all in the [skills catalog](docs/user-guide/skills.md).
 
 ### 📜 19 SOPs
 
-SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI or
-`/sop-<name>` in Claude Code.
+SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI,
+`/sop-<name>` in Claude Code, or `/konductor:sop-<name>` from the Claude Code plugin.
 
 | Plan & verify | Design | Build & review | Test |
 | --- | --- | --- | --- |
@@ -360,6 +363,7 @@ Each one is explained, with a flowchart, in [SOP workflows](docs/user-guide/sop-
 
 Agents with the `persistent-memory` skill keep a small scratchpad across sessions, with no setup.
 The directory is created on first write and added to `.gitignore`.
+Agents treat your own entries as instructions only while `.konductor/memory/` is untracked by git; committed memory is read as content.
 
 | File | Holds |
 | --- | --- |
@@ -403,8 +407,8 @@ Everything else is bring-your-own:
 ## Project layout
 
 The [source repository](https://github.com/aws-solutions/konductor) has the layout below. The Claude
-Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/`, its manifests, the README,
-`LICENSE.txt` and `NOTICE.txt`.
+Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/telemetry-schema.json`, its manifests,
+the README, `LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/
@@ -475,7 +479,11 @@ shares the machine identifier in `$HOME/.konductor/telemetry.json` with the CLI.
 | The Claude Code plugin | Turn off the plugin's `telemetry_enabled` option. The variable, `config.yml` and machine settings above also apply; `--no-telemetry` doesn't |
 
 - `--no-telemetry` also removes an opt-in record left by an earlier install, and stops a global
-  install's hooks from reporting in that project.
+  install's hooks from reporting in that project. The global install's skill-lookup server still
+  follows the record in `$HOME/.konductor`.
+- To opt a project back in, run `konductor update --enable-telemetry`. It recreates the
+  project-wide record. Skill-lookup servers launched with `--install-info` follow it at once;
+  another harness's telemetry hooks return on that harness's next `update`.
 - `telemetry.json` exists only after the first event is reported; a `--no-telemetry` install never
   creates it. Konductor never resets a consent value you set.
 - Reporting needs both the project and the machine setting to allow it. `konductor doctor` shows
