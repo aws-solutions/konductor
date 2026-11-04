@@ -4,16 +4,18 @@ import { applyTheme } from '@cloudscape-design/components/theming';
 import {
   APP_THEME,
   BAND,
+  FONT_CODE,
   FONT_TEXT,
   TAB_STRIP_SELECTOR,
   TAB_STRIP_THEME,
   type ThemeMode,
 } from './tokens';
 
-// The band colours that `chrome.css` reads, as custom properties.
+// The values that `chrome.css` reads, as custom properties.
 const BAND_VARIABLES = {
   '--wf-band-background': BAND.background,
   '--wf-band-divider': BAND.divider,
+  '--wf-font-code': FONT_CODE,
 } as const;
 
 /**

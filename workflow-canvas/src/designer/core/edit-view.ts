@@ -12,6 +12,15 @@ export function canEdit(state: EditState): boolean {
   return !state.saved.readOnly;
 }
 
+/** The words that say why the stages cannot be changed while a file loads. */
+export const RELOADING_REASON = 'The workflow is being loaded again.';
+
+/** Why the stages cannot be changed now, or `undefined` when they can. */
+export function changeBlocker(state: EditState): string | undefined {
+  if (!canEdit(state)) return READ_ONLY_REASON;
+  return state.save.phase === 'reloading' ? RELOADING_REASON : undefined;
+}
+
 /** Whether the draft differs from the saved workflow. */
 export function isDirty(state: EditState): boolean {
   return !sameStages(stagesOf(state.draft), state.saved.view.stages);
@@ -51,7 +60,7 @@ export function saveBlocker(state: EditState): string | undefined {
     case 'saving':
       return 'The workflow is being saved.';
     case 'reloading':
-      return 'The workflow is being loaded again.';
+      return RELOADING_REASON;
     case 'conflict':
       return 'The file changed on disk. Reload it first.';
     default:
@@ -66,4 +75,23 @@ export function saveBlocker(state: EditState): string | undefined {
 /** Whether the draft can be saved now. */
 export function canSave(state: EditState): boolean {
   return saveBlocker(state) === undefined;
+}
+
+/** How the status line shows the state of saving. */
+export type SaveStatusKind = 'pending' | 'warning' | 'in-progress' | 'success';
+
+/** The words and the kind of the line that says whether work is saved. */
+export function saveStatus(state: EditState): {
+  kind: SaveStatusKind;
+  text: string;
+} {
+  const { phase } = state.save;
+  if (phase === 'saving') return { kind: 'in-progress', text: 'Saving' };
+  if (phase === 'reloading') return { kind: 'in-progress', text: 'Loading' };
+  if (isDirty(state)) return { kind: 'warning', text: 'Unsaved changes' };
+  if (phase === 'saved') return { kind: 'success', text: 'Saved' };
+  if (phase === 'reloaded') {
+    return { kind: 'success', text: 'Loaded again from the server' };
+  }
+  return { kind: 'pending', text: 'No changes' };
 }

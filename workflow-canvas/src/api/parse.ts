@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError } from './api';
 import type {
+  CheckResult,
   DiagnosticView,
   RunStageView,
   RunStatus,
   RunView,
+  SaveResult,
   Session,
   Severity,
   StageRunStatus,
@@ -205,6 +207,26 @@ export function parseWorkflowDocument(body: unknown): WorkflowDocument {
   };
 }
 
+/** Reads a `SaveResponse`; unknown fields are ignored. */
+export function parseSaveResult(body: unknown): SaveResult {
+  const saved = objectOf(body);
+  const view = parseView(saved.view);
+  return {
+    hash: stringOf(saved.hash),
+    view: view ?? fail(),
+    diagnostics: parseDiagnostics(saved.diagnostics),
+  };
+}
+
+/** Reads a `CheckResponse`; unknown fields are ignored. */
+export function parseCheckResult(body: unknown): CheckResult {
+  const check = objectOf(body);
+  return {
+    view: parseView(check.view),
+    diagnostics: parseDiagnostics(check.diagnostics),
+  };
+}
+
 /**
  * The sentence of an `Error` body, followed by its `fix` (what to do about it),
  * or `undefined` when it has no sentence.
@@ -224,9 +246,31 @@ export function errorRunIdOf(body: unknown): string | undefined {
     : undefined;
 }
 
+/** The `current_hash` of a 409 `Error` body, or `undefined` when it has none. */
+export function errorCurrentHashOf(body: unknown): string | undefined {
+  return isObject(body) &&
+    typeof body.current_hash === 'string' &&
+    body.current_hash !== ''
+    ? body.current_hash
+    : undefined;
+}
+
 /** The `code` of an `Error` body, or `undefined` when it has none. */
 export function errorCodeOf(body: unknown): string | undefined {
   return isObject(body) && typeof body.code === 'string'
     ? body.code
     : undefined;
+}
+
+/**
+ * The `diagnostics` of an `Error` body, or none when it has none or they
+ * cannot be read: the sentence of the error is still shown.
+ */
+export function errorDiagnosticsOf(body: unknown): DiagnosticView[] {
+  if (!isObject(body) || !Array.isArray(body.diagnostics)) return [];
+  try {
+    return parseDiagnostics(body.diagnostics);
+  } catch {
+    return [];
+  }
 }

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { Locator } from '@playwright/test';
 import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { test as editing, expect } from '../support/editing-fixtures';
 import { test as base } from '../support/fixtures';
@@ -57,6 +58,25 @@ editing(
   },
 );
 
+// A problem appears while the person types. It must not push the field they
+// type in, or the graph, down the page. Layout is not drawn in jsdom, so this
+// needs a browser.
+editing(
+  'keeps the name field and the graph where they are when a problem appears',
+  async ({ designer }) => {
+    const graph = designer.page.getByRole('region', { name: 'Workflow graph' });
+    const top = async () => (await designer.name.boundingBox())?.y;
+    const before = { name: await top(), graph: await graph.boundingBox() };
+
+    await designer.rename('Bad');
+    await expect(designer.page.getByTestId('problems')).toBeVisible();
+
+    expect({ name: await top(), graph: await graph.boundingBox() }).toEqual(
+      before,
+    );
+  },
+);
+
 // The Designer is a grid of the graph and Properties; a note above them takes
 // the whole row, so the graph keeps the wide column. Layout is not drawn in
 // jsdom, so this needs a browser.
@@ -75,23 +95,28 @@ base(
     await canvas.open(STUB_LAUNCH_CODE);
     await canvas.expectWorkflowDrawn();
 
-    const note = await page.getByTestId('read-only-note').boundingBox();
-    const [, , card, properties] = await page
-      .locator('.wf-designer > *')
-      .evaluateAll((items) =>
-        items.map((item) => {
-          const { x, y, width, height } = item.getBoundingClientRect();
-          return { x, y, width, height };
-        }),
-      );
+    const boxOf = (locator: Locator) =>
+      locator.evaluate((element) => {
+        const { x, y, width, height } = element.getBoundingClientRect();
+        return { x, y, width, height };
+      });
+    const items = page.locator('.wf-designer > *');
+    const note = await boxOf(page.getByTestId('read-only-note'));
+    const card = await boxOf(
+      items.filter({
+        has: page.getByRole('region', { name: 'Workflow graph' }),
+      }),
+    );
+    const properties = await boxOf(
+      items.filter({ has: page.getByRole('heading', { name: 'Properties' }) }),
+    );
 
-    expect(note).not.toBeNull();
-    expect(card!.width).toBeGreaterThan(properties!.width);
-    expect(card!.x).toBeLessThan(properties!.x);
-    expect(card!.y).toBeGreaterThanOrEqual(note!.y + note!.height);
-    expect(Math.abs(card!.y - properties!.y)).toBeLessThan(1);
-    expect(note!.x + note!.width).toBeGreaterThanOrEqual(
-      properties!.x + properties!.width - 1,
+    expect(card.width).toBeGreaterThan(properties.width);
+    expect(card.x).toBeLessThan(properties.x);
+    expect(card.y).toBeGreaterThanOrEqual(note.y + note.height);
+    expect(Math.abs(card.y - properties.y)).toBeLessThan(1);
+    expect(note.x + note.width).toBeGreaterThanOrEqual(
+      properties.x + properties.width - 1,
     );
   },
 );

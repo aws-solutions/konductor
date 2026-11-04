@@ -14,6 +14,8 @@ function apiWith(
   return {
     createSession,
     getWorkflow,
+    saveWorkflow: vi.fn(),
+    checkWorkflow: vi.fn(),
     startRun: vi.fn(),
     getRun: vi.fn(),
   };

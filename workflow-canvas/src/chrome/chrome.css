@@ -25,3 +25,7 @@
   padding: 0;
   list-style: none;
 }
+
+code {
+  font-family: var(--wf-font-code);
+}

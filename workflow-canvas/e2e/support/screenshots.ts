@@ -29,13 +29,17 @@ async function waitForFonts(page: Page): Promise<void> {
 
 /**
  * Saves a full-page PNG as `e2e/screenshots/<name>.png`, rendered with the
- * bundled fonts, with animations and the caret frozen so repeated runs match.
+ * bundled fonts, with animations and the caret frozen and the pointer moved off
+ * the page, so repeated runs match.
  */
 export async function saveFullPageScreenshot(
   page: Page,
   name: string,
 ): Promise<void> {
   await waitForFonts(page);
+  // A button that was just clicked and is now off shows its reason in a tooltip
+  // while the pointer is over it, which comes up a moment later or not.
+  await page.mouse.move(0, 0);
   await page.screenshot({
     path: path.join(SCREENSHOT_DIR, `${name}.png`),
     fullPage: true,

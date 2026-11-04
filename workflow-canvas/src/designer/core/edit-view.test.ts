@@ -10,6 +10,7 @@ import {
   isDirty,
   problemsOfDraft,
   saveBlocker,
+  saveStatus,
   textOf,
 } from './edit-view';
 
@@ -196,5 +197,54 @@ describe('problemsOfDraft', () => {
     expect(problemsOfDraft(state)).toEqual([
       { message: 'Wrong.', severity: 'error' },
     ]);
+  });
+});
+
+describe('saveStatus', () => {
+  it.each([
+    ['nothing changed', [], 'pending', 'No changes'],
+    ['a change', [AGENT_CHANGE], 'warning', 'Unsaved changes'],
+    [
+      'a save under way',
+      [AGENT_CHANGE, { type: 'save' }],
+      'in-progress',
+      'Saving',
+    ],
+    ['a reload under way', [{ type: 'reload' }], 'in-progress', 'Loading'],
+    [
+      'a reload that ended',
+      [{ type: 'reload' }, { type: 'reloaded', document: HELLO_DOCUMENT }],
+      'success',
+      'Loaded again from the server',
+    ],
+  ] as const)('says it for %s', (_, events, kind, text) => {
+    expect(saveStatus(run(...events))).toEqual({ kind, text });
+  });
+
+  it('says Saved after a save, until the draft changes', () => {
+    const saved = run(
+      AGENT_CHANGE,
+      { type: 'save' },
+      {
+        type: 'saved',
+        text: 'x',
+        result: {
+          hash: 'b'.repeat(64),
+          view: {
+            ...HELLO_DOCUMENT.view!,
+            stages: [
+              { name: 'draft', agent: 'k-tpm' },
+              HELLO_DOCUMENT.view!.stages[1]!,
+            ],
+          },
+          diagnostics: [],
+        },
+      },
+    );
+
+    expect(saveStatus(saved)).toEqual({ kind: 'success', text: 'Saved' });
+    expect(saveStatus(reduce(saved, { type: 'add' })!).text).toBe(
+      'Unsaved changes',
+    );
   });
 });

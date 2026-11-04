@@ -3,7 +3,7 @@ import AppLayout from '@cloudscape-design/components/app-layout';
 import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
 import Tabs from '@cloudscape-design/components/tabs';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { Breadcrumbs } from './chrome/Breadcrumbs';
 import './chrome/chrome.css';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
@@ -21,7 +21,11 @@ import { useGoal } from './execution/use-goal';
 import type { SwapRisk } from './launch/swap-guard';
 import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
-import { openWorkflowName, type LoadResult } from './workflow/load-workflow';
+import {
+  openWorkflowName,
+  withDocument,
+  type LoadResult,
+} from './workflow/load-workflow';
 
 /**
  * Root component: the top bar, then the page header (breadcrumbs and title)
@@ -58,10 +62,17 @@ export function App({
   const [mode, toggleMode] = useThemeMode();
   // The Designer edits a draft; the run and the Execution tab use the file
   // as it is saved.
-  const editor = useEditor(result?.ok ? result.workflow : undefined);
+  const editor = useEditor(result?.ok ? result.workflow : undefined, scheduler);
   const unsaved = editor ? isDirty(editor.state) : false;
   // The draft lives in the page, so leaving the page loses the changes.
   useLeaveGuard(unsaved, window);
+  // One object until the saved file changes, as the tab draws a new canvas
+  // for each new result.
+  const document = editor?.state.saved;
+  const saved = useMemo(
+    () => (document ? withDocument(result, document) : result),
+    [result, document],
+  );
   const running = isInFlight(execution.state);
   useEffect(
     () => swapRisk?.set({ draft: unsaved, run: running }),
@@ -80,9 +91,7 @@ export function App({
           <ContentLayout
             defaultPadding
             headerVariant="high-contrast"
-            breadcrumbs={
-              <Breadcrumbs workflowName={openWorkflowName(result)} />
-            }
+            breadcrumbs={<Breadcrumbs workflowName={openWorkflowName(saved)} />}
             header={<Header variant="h1">Workflow canvas</Header>}
           >
             {notice}
@@ -102,7 +111,7 @@ export function App({
                     label: 'Execution',
                     content: (
                       <Execution
-                        result={result}
+                        result={saved}
                         execution={execution}
                         goal={goal}
                         onGoalChange={setGoal}

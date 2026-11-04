@@ -16,6 +16,8 @@ function pageWith(createSession: WorkflowApi['createSession']) {
   const api: WorkflowApi = {
     createSession,
     getWorkflow: vi.fn().mockResolvedValue(HELLO_DOCUMENT),
+    saveWorkflow: vi.fn(),
+    checkWorkflow: vi.fn(),
     startRun: vi.fn(),
     getRun: vi.fn(),
   };
