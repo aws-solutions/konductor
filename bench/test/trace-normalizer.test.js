@@ -15,11 +15,20 @@
  *      - claude-code-2.1.318-skill-tool.jsonl: the same CLI and flags; the model loads a synthetic
  *        project skill through the `Skill` tool. Sanitized like the others; no event or field was
  *        added or removed. This verifies the Claude Code skill-load path.
+ *      - claude-code-2.1.316-skill-success.jsonl, claude-code-2.1.314-skill-blocked.jsonl,
+ *        claude-code-2.1.306-tool-error.jsonl: Claude Code subject runs from the poc run data: a
+ *        `Skill` call that succeeds, a `Skill` call blocked by permission rules (with its
+ *        `system/permission_denied` event), and a failed `Bash` call. They are sanitized like the
+ *        others, and in addition every prompt, answer, thinking text, skill body and tool result
+ *        text is replaced with synthetic text of similar length. Their event order, field names and
+ *        nesting are as the CLI emitted them; the lists in `system/init` that name installed
+ *        agents, plugins, skills, MCP servers and slash commands are emptied, and the skill name
+ *        is `sample-skill`.
  *      - kiro-cli-3.0.0-read.jsonl, kiro-cli-3.0.0-skill-read.jsonl: kiro-cli 3.0.0,
  *        `chat --output-format stream-json`; the second run reads a SKILL.md.
  *      - opencode-2.0.27-read.jsonl: opencode 2.0.27, `run --format json`, one completed `read`
- *        call. It was captured in an earlier run than the skill-read capture. It was sanitized like
- *        the others (ids, timestamps, the planted marker); no event was added.
+ *        call. It was sanitized like the others (ids, timestamps, the planted marker); no event
+ *        was added.
  *      - opencode-2.0.27-skill-read.jsonl: opencode 2.0.27, `run --format json`, a fresh run
  *        in which the model reads a `skills/sample-notes/SKILL.md`, reads a second file, then
  *        answers. The skill and notes are synthetic. Sanitized like the others (ids, absolute
@@ -30,6 +39,10 @@
  *    bench/lib/trace-normalizer.js. It shows how the parser treats that shape, not what a
  *    release emits. The synthetic kiro-* fixtures use the flat shape, which no release is known to
  *    emit.
+ * The parser was also cross-checked against 1,487 poc Claude Code subject traces (CLI 2.1.305 to
+ * 2.1.316). All 1,487 agreed with the poc runner's own skill-loaded result. Those traces are not
+ * in the repo. The agreement test below applies the same check to the real Claude Code fixtures
+ * that are.
  * Only the real captures prove a format. Every other trace is built inline from the helpers
  * below, and those inline Kiro ACP events are synthetic too. That includes the `get_skill` tests:
  * no kiro-cli capture of an MCP tool call exists yet, so the Kiro `get_skill` path is unverified. No test makes a network or model
@@ -282,7 +295,7 @@ test('the CHANGELOG entry is found, and does not end at a following bullet or he
 
 test('fixtures, library, test source and CHANGELOG entry hold no private paths, identities, credentials or hosts', () => {
   const fixtureNames = fs.readdirSync(FIXTURES_DIR);
-  assert.ok(fixtureNames.length >= 18, 'twelve synthetic fixtures plus the six real captures');
+  assert.ok(fixtureNames.length >= 21, 'twelve synthetic fixtures plus the nine real captures');
   const sources = fixtureNames.map((name) => [`fixtures/traces/${name}`, loadFixture(name)]);
   sources.push(['bench/test/trace-normalizer.test.js', fs.readFileSync(__filename, 'utf8')]);
   sources.push(['bench/lib/trace-normalizer.js', fs.readFileSync(LIBRARY_PATH, 'utf8')]);
@@ -2209,7 +2222,7 @@ test('adding tool_call_id is additive: schema_version stays 1 and the other call
 });
 
 // --- Real captures -----------------------------------------------------------------------------
-// These five fixtures are sanitized captures of the CLIs (see the header). The
+// These fixtures are sanitized captures of the CLIs (see the header). The
 // assertions read key fields the way a consumer would, so a change in what a CLI emits, or a
 // parser regression, fails here and not only in a hand-written shape.
 
@@ -2217,6 +2230,9 @@ const OPENCODE_REAL = 'opencode-2.0.27-read.jsonl';
 const OPENCODE_REAL_SKILL = 'opencode-2.0.27-skill-read.jsonl';
 const CLAUDE_REAL = 'claude-code-2.1.318-read.jsonl';
 const CLAUDE_REAL_SKILL = 'claude-code-2.1.318-skill-tool.jsonl';
+const CLAUDE_POC_SKILL_OK = 'claude-code-2.1.316-skill-success.jsonl';
+const CLAUDE_POC_SKILL_BLOCKED = 'claude-code-2.1.314-skill-blocked.jsonl';
+const CLAUDE_POC_TOOL_ERROR = 'claude-code-2.1.306-tool-error.jsonl';
 const KIRO_REAL_READ = 'kiro-cli-3.0.0-read.jsonl';
 const KIRO_REAL_SKILL = 'kiro-cli-3.0.0-skill-read.jsonl';
 
@@ -2277,6 +2293,102 @@ test('real capture, Claude Code 2.1.318: a Skill call whose result is missing is
   const record = normalizeTrace('claude-code', lines.join('\n'));
   assert.equal(record.tool_calls[0].status, 'unknown');
   assert.deepEqual(record.skill_loads, []);
+});
+
+const eventsOf = (name) => loadFixture(name).trim().split('\n').map((line) => JSON.parse(line));
+
+test('real capture, Claude Code 2.1.316: a Skill call that succeeds is a skill load', () => {
+  const record = normalizeTrace('claude-code', loadFixture(CLAUDE_POC_SKILL_OK));
+  assert.equal(record.tool_calls.length, 1);
+  const [call] = record.tool_calls;
+  assert.equal(call.tool_call_id, 'toolu_fixture_1');
+  assert.equal(call.raw_tool_name, 'Skill');
+  assert.equal(call.tool_name, 'skill');
+  assert.deepEqual(call.arguments, { skill: 'sample-skill' });
+  assert.equal(call.status, 'completed');
+  assert.equal(call.result, 'Launching skill: sample-skill');
+  assert.deepEqual(record.skill_loads, [
+    { skill_name: 'sample-skill', source: 'dedicated-event', raw_path: null, subagent: false },
+  ]);
+  assert.equal(record.model_id, 'claude-sonnet-5-5');
+  assert.deepEqual(record.available_tools, ['Skill']);
+  assert.equal(record.complete, true);
+  assert.deepEqual(record.errors, []);
+  assert.equal(record.parse_errors, 0);
+  assert.deepEqual(record.unrecognized_events, {});
+});
+
+test('real capture, Claude Code 2.1.314: a Skill call blocked by permission rules is an error and not a load', () => {
+  const events = eventsOf(CLAUDE_POC_SKILL_BLOCKED);
+  const denied = events.filter((e) => e.type === 'system' && e.subtype === 'permission_denied');
+  assert.equal(denied.length, 1, 'the capture holds the system/permission_denied event');
+  assert.equal(denied[0].tool_name, 'Skill');
+
+  const record = normalizeTrace('claude-code', loadFixture(CLAUDE_POC_SKILL_BLOCKED));
+  assert.equal(record.tool_calls.length, 1);
+  const [call] = record.tool_calls;
+  assert.equal(call.raw_tool_name, 'Skill');
+  assert.deepEqual(call.arguments, { skill: 'sample-skill' });
+  assert.equal(call.status, 'error');
+  assert.equal(typeof call.result, 'string');
+  assert.deepEqual(record.skill_loads, []);
+  assert.deepEqual(
+    record.errors.map((e) => [e.type, e.message]),
+    [['tool_error', 'tool_use_id toolu_fixture_1 returned an error']],
+  );
+  assert.equal(record.complete, true);
+  assert.equal(record.parse_errors, 0);
+  // system/permission_denied is skipped on purpose, so nothing is left in the tally.
+  assert.deepEqual(record.unrecognized_events, {});
+});
+
+test('real capture, Claude Code 2.1.306: a failed Bash call has status error and is not a skill load', () => {
+  const events = eventsOf(CLAUDE_POC_TOOL_ERROR);
+  const thinking = events.filter((e) => e.type === 'system' && e.subtype === 'thinking_tokens');
+  assert.equal(thinking.length, 4, 'the capture holds system/thinking_tokens events');
+
+  const record = normalizeTrace('claude-code', loadFixture(CLAUDE_POC_TOOL_ERROR));
+  assert.equal(record.tool_calls.length, 1);
+  const [call] = record.tool_calls;
+  assert.equal(call.tool_call_id, 'toolu_fixture_1');
+  assert.equal(call.raw_tool_name, 'Bash');
+  assert.equal(call.tool_name, 'bash');
+  assert.deepEqual(Object.keys(call.arguments), ['command']);
+  assert.equal(call.status, 'error');
+  assert.equal(typeof call.result, 'string');
+  assert.deepEqual(record.skill_loads, []);
+  assert.deepEqual(
+    record.errors.map((e) => [e.type, e.message]),
+    [['tool_error', 'tool_use_id toolu_fixture_1 returned an error']],
+  );
+  assert.equal(record.complete, true);
+  assert.equal(record.parse_errors, 0);
+  assert.deepEqual(record.unrecognized_events, {});
+});
+
+// --- Agreement between the parser and a known skill-loaded value --------------------------------
+// Every real Claude Code fixture must be in this table, with whether the run loaded a skill. The
+// values come from reading each capture: a `Skill` call whose result is not an error is a load.
+
+const CLAUDE_REAL_EXPECTED_SKILL_LOADED = {
+  [CLAUDE_REAL]: false,
+  [CLAUDE_REAL_SKILL]: true,
+  [CLAUDE_POC_SKILL_OK]: true,
+  [CLAUDE_POC_SKILL_BLOCKED]: false,
+  [CLAUDE_POC_TOOL_ERROR]: false,
+};
+
+test('the parser agrees with the expected skill-loaded value on every real Claude Code fixture', () => {
+  const realClaudeFixtures = fs
+    .readdirSync(FIXTURES_DIR)
+    .filter((name) => /^claude-code-\d+\.\d+\.\d+-.+\.jsonl$/.test(name))
+    .sort();
+  assert.deepEqual(realClaudeFixtures, Object.keys(CLAUDE_REAL_EXPECTED_SKILL_LOADED).sort());
+  for (const name of realClaudeFixtures) {
+    const record = normalizeTrace('claude-code', loadFixture(name));
+    assert.equal(record.skill_loads.length > 0, CLAUDE_REAL_EXPECTED_SKILL_LOADED[name], name);
+    assert.deepEqual(record.unrecognized_events, {}, name);
+  }
 });
 
 test('real capture, OpenCode 2.0.27: one read call, its result, the answer, usage, cost and completeness', () => {
@@ -2980,6 +3092,7 @@ test('a bad line inside a multi-event element counts one parse error and the oth
 test('feeding a real capture as arbitrary multi-line chunks gives the same record as the whole string', () => {
   for (const [runtime, name] of [
     ['claude-code', CLAUDE_REAL],
+    ['claude-code', CLAUDE_POC_SKILL_OK],
     ['kiro', KIRO_REAL_READ],
     ['kiro', KIRO_REAL_SKILL],
     ['opencode', OPENCODE_REAL],
