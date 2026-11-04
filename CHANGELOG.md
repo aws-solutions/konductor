@@ -72,6 +72,16 @@ not per individual commit.
   found again. A pair carries a `runner_fingerprint`, an opaque string the runner plugin supplies
   to say what produced the run. `PROVENANCE_VERSION` is 1. Run
   `node --test bench/test/provenance.test.js`.
+- `bench/lib/store.js`, the run store. `openStore(runDir)` keeps pairs, judgments and results as
+  JSON under one run directory (`pairs/<skill>/<task>/<arm>.json`,
+  `judgments/<skill>/<task>/<seat>.<order>.json`, `results/<skill>.json`). Every name goes
+  through `slug.js` and every path is checked to lie inside the run directory; a write through a
+  link is refused. Directories the store creates are 0700 and files 0600, written to a temporary
+  name and renamed into place. Freshness is strict: `pairCurrent`, `judgmentDone`,
+  `judgmentSettled` and `resultCurrent` treat a record that lacks any field of its format, or
+  carries another digest, rule digest or provenance version, as not current. A judgment that gave
+  no usable reply is retried until `MAX_ATTEMPTS` (3), then settled. Run
+  `node --test bench/test/store.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
