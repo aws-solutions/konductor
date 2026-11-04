@@ -9,7 +9,7 @@ import './chrome/chrome.css';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { Designer } from './designer/Designer';
 import { useSettled } from './designer/use-settled';
-import type { Scheduler } from './execution/core';
+import type { RunMemory, Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
 import { RunAnnouncements } from './execution/RunAnnouncements';
 import { timerScheduler } from './execution/timer-scheduler';
@@ -29,11 +29,14 @@ export function App({
   load,
   notice,
   scheduler = timerScheduler,
+  runMemory,
 }: {
   load: Promise<LoadResult>;
   /** Shown above the tabs, such as the refusal of a pasted launch address. */
   notice?: ReactNode;
   scheduler?: Scheduler;
+  /** Keeps the latest run across a reload; a page without it starts afresh. */
+  runMemory?: RunMemory;
 }) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
@@ -42,6 +45,7 @@ export function App({
   const execution = useExecution(
     result?.ok ? result.workflow.runs : undefined,
     scheduler,
+    runMemory,
   );
   const [goal, setGoal] = useGoal(result);
   const [mode, toggleMode] = useThemeMode();

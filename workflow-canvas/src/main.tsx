@@ -4,8 +4,10 @@ import './theme/fonts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { sessionRunMemory } from './execution/run-memory';
 import { createHttpApi } from './api/http-api';
 import { LaunchNotice } from './launch/LaunchNotice';
+import { LaunchWait } from './launch/LaunchWait';
 import { takeLaunchCode, watchLaunchCode } from './launch/launch-code';
 import { sessionStorageMemory } from './launch/session-memory';
 import { installTheme } from './theme/install';
@@ -24,11 +26,20 @@ const source = createWorkflowSource(
 );
 watchLaunchCode(window, (code) => void source.offer(code));
 
+const runMemory = sessionRunMemory(window);
+
 function Root() {
+  const load = useWorkflowSource(source);
   return (
     <App
-      load={useWorkflowSource(source)}
-      notice={<LaunchNotice source={source} />}
+      load={load}
+      notice={
+        <>
+          <LaunchWait load={load} source={source} />
+          <LaunchNotice source={source} />
+        </>
+      }
+      runMemory={runMemory}
     />
   );
 }

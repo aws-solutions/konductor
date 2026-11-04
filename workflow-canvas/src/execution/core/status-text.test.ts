@@ -26,6 +26,25 @@ describe('statusText for a run that was already active', () => {
   });
 });
 
+describe('statusText for a joined run that has ended', () => {
+  it('says it was already in progress', () => {
+    expect(
+      statusText({ phase: 'finished', run: helloRun(2), joined: true }),
+    ).toBe(
+      'The run that was already in progress passed. 2 of 2 stages done. Exit code 0.',
+    );
+    expect(
+      statusText({
+        phase: 'finished',
+        run: helloRun(0, { blockedAt: 1 }),
+        joined: true,
+      }),
+    ).toBe(
+      'The run that was already in progress halted at review. 1 of 2 stages done. Exit code 1.',
+    );
+  });
+});
+
 describe('statusText and statusKind', () => {
   it.each<[string, ExecutionState, string, string]>([
     ['idle', IDLE, 'Ready. Press Run to start.', 'idle'],

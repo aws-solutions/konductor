@@ -20,6 +20,8 @@ export interface WorkflowSource {
   subscribeNotice(listener: () => void): () => void;
   /** Drops the notice. */
   dismissNotice(): void;
+  /** Stops waiting for the launch code of the first load; a no-op after it. */
+  cancel(): void;
 }
 
 /**
@@ -33,7 +35,8 @@ export function createWorkflowSource(
   firstCode: string | undefined,
   memory: SessionMemory,
 ): WorkflowSource {
-  let current = loadOnOpen(api, firstCode, memory);
+  const firstLoad = new AbortController();
+  let current = loadOnOpen(api, firstCode, memory, firstLoad.signal);
   let lastOffer = 0;
   let shownOffer = 0;
   let shownWorkflowOffer = 0;
@@ -86,6 +89,7 @@ export function createWorkflowSource(
       return () => noticeListeners.delete(listener);
     },
     dismissNotice: () => setNotice(undefined),
+    cancel: () => firstLoad.abort(),
     async offer(code) {
       const offer = ++lastOffer;
       await offerLoaded(offer, await loadWorkflow(api, code, memory));
