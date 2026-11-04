@@ -29,6 +29,9 @@ not per individual commit.
 - New `konductor verify-run --session <path>` checks a SOP session file and exits through the
   existing exit-code contract. `--root <dir>` sets the directory the session and its evidence
   must resolve under (default: the current directory). It writes nothing.
+- `make version-check` fails a PR or release when a crate, a lockfile entry for a Konductor
+  product crate (manifest under `cli/`, `mcp/` or `shared/`) or the CHANGELOG heading disagrees
+  with `VERSION`. Independently versioned path crates elsewhere are not checked.
 
 ### Changed
 
@@ -89,6 +92,12 @@ not per individual commit.
   such as a `telemetry:` opt-out. It now changes only the named key.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
+
+### Security
+
+- `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
+  GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
+  GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
 
 ## [1.2.0] - 2026-10-26
 
