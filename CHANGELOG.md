@@ -202,6 +202,23 @@ not per individual commit.
   introduced as provisional. It copies named numeric and fixed-word fields only, so no task id,
   answer, file path or file content, and no text a treatment check matched, can reach it; a key
   that is not a valid skill name prints as "(unnamed skill)".
+- `bench/test/word-check-pipeline.test.js`, word-check results through the whole offline pipeline.
+  Each row of the combination table runs through the store, the judge driver and a replay of the
+  stored judgments into a second store, which must give the same result: judge keep with checks
+  that agree or are flat stays `keep`; judge keep with the with arm passing fewer checks but an
+  interval that includes 0 stays `keep` with the negative gap in the result; an interval entirely
+  below 0 becomes review; judge prune with a clear with-arm gain becomes review; a task with no
+  checks counts in the judge mean and is left out of `k`; fewer than 8 pairs with checks leaves the
+  judge verdict with the gate off and says so; a judge review stays review. A `null` check entry
+  gives that pair no share and leaves it out of `k`. The pair digest covers `check_results`, and
+  editing one makes the result stale and rebuilds it with no plugin call. Word checks do not
+  change a judge input or a judge gap. Run `node --test bench/test/word-check-pipeline.test.js`.
+- `bench/test/report.test.js`, tests for the report: two pinned full reports (all controls
+  passing, and one failing control with the skill marked untrusted), the gate wording, order
+  independence, a stored record rendering like its aggregate, and checks that no answer, file
+  content, task id, matched snippet, other skill name or injected heading reaches the text, in a
+  hand-built run and in a run through the store and the judge driver. Run `node --test
+  bench/test/report.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.

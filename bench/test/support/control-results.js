@@ -16,21 +16,33 @@ const NO_DIFFERENCE = Object.freeze([0.33, -0.33, 0, 0.67, -0.67, 0, 0.33, -0.33
 /**
  * The `aggregateSkill` result of a skill whose task i has the gap `gaps[i]` on every judge call.
  * `options.loaded(i)` says whether task i's with run loaded the skill; `options.treatment` is the
- * optional `treatment` input of `aggregateSkill`.
+ * optional `treatment` input of `aggregateSkill`; `options.wordChecks(i)` returns
+ * `{ with, without }` check results for task i, or undefined for a task with no checks.
  */
-function aggregateOf(skill, gaps, { loaded = () => true, treatment } = {}) {
+function aggregateOf(skill, gaps, { loaded = () => true, treatment, wordChecks = () => undefined } = {}) {
   const taskSet = { tasks: gaps.map((_, i) => ({ id: `t${i + 1}`, target_section: 'Section' })) };
   const cfg = { judges: roster(3) };
   const deltas = {};
   const loadedMap = {};
+  const checks = {};
   gaps.forEach((gap, i) => {
     const id = `t${i + 1}`;
     deltas[id] = Object.fromEntries(
       cfg.judges.map((j) => [j.seat, { 'with-first': gap, 'without-first': gap }]),
     );
     loadedMap[id] = loaded(i);
+    const words = wordChecks(i);
+    if (words) checks[id] = words;
   });
-  return aggregateSkill({ skill, taskSet, deltas, loaded: loadedMap, treatment, cfg });
+  return aggregateSkill({
+    skill,
+    taskSet,
+    deltas,
+    loaded: loadedMap,
+    treatment,
+    wordChecks: checks,
+    cfg,
+  });
 }
 
 module.exports = { WITH_WINS, WITHOUT_WINS, NO_DIFFERENCE, aggregateOf };
