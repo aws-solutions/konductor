@@ -315,3 +315,84 @@ test('--forced-load is checked and forwarded: the plan gets the forced-wave line
     assert.doesNotMatch(without.stdout, /wave 1f/);
   } finally { s.done(); }
 });
+
+// A stand-in for bench.js that records each call's arguments, one JSON line per call, and exits 0.
+function recorder(s) {
+  const log = path.join(s.e.root, 'calls.jsonl');
+  const cli = path.join(s.e.root, 'fake-bench.js');
+  fs.writeFileSync(cli, `require('fs').appendFileSync(${JSON.stringify(log)}, JSON.stringify(process.argv.slice(2)) + '\\n');\n`);
+  const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+  return { cli, calls };
+}
+const STUDY_FLAGS = ['--forced-load', 'low-load', '--forced-held-min', '0.8', '--waves', '1'];
+const hasFlags = (argv) => ['--forced-load low-load', '--forced-held-min 0.8', '--waves 1'].every((p) => argv.join(' ').includes(p));
+const kind = (argv) => (argv[1] === 'skill-plan' ? 'plan' : argv.includes('--init') ? 'init' : argv.includes('--dry-run') ? 'dry-run' : argv.includes('--status') ? 'status' : 'run');
+
+test('--waves and --forced-held-min are checked before anything runs', () => {
+  const s = sandbox();
+  try {
+    const { cli, calls } = recorder(s);
+    for (const [args, msg] of [
+      [['--waves', '2'], /--waves takes 1\|all/], [['--waves'], /--waves needs a value/],
+      [['--forced-held-min', '1.5'], /share above 0 and at most 1/], [['--forced-held-min', '0'], /share above 0/], [['--forced-held-min', 'x'], /share above 0/],
+    ]) {
+      const r = s.run(['--foreground', ...args], { CLI_JS: cli });
+      assert.equal(r.status, 2, args.join(' '));
+      assert.match(r.stderr, msg);
+    }
+    assert.deepEqual(calls(), [], 'no bench.js call was made');
+    assert.deepEqual(fs.readdirSync(s.results), []);
+  } finally { s.done(); }
+});
+
+test('the dry run passes --forced-load, --forced-held-min and --waves to the study, and only --forced-load to a plan', () => {
+  const s = sandbox();
+  try {
+    const { cli, calls } = recorder(s);
+    assert.equal(s.run(['--dry-run', ...STUDY_FLAGS], { CLI_JS: cli }).status, 0);
+    const plan = calls().find((a) => kind(a) === 'plan');
+    assert.ok(plan.join(' ').includes('--forced-load low-load'));
+    assert.ok(!plan.includes('--waves') && !plan.includes('--forced-held-min'), 'skill-plan estimates every wave and takes neither');
+    const study = path.join(s.results, 'skill-bench-x');
+    fs.mkdirSync(study);
+    fs.writeFileSync(path.join(s.state, 'skill-bench.study'), `${study}\n`);
+    assert.equal(s.run(['--dry-run', ...STUDY_FLAGS], { CLI_JS: cli }).status, 0);
+    assert.ok(hasFlags(calls().find((a) => kind(a) === 'dry-run')));
+  } finally { s.done(); }
+});
+
+test('a foreground run and a resume pass all three flags to the study init and the run', () => {
+  const s = sandbox();
+  try {
+    const { cli, calls } = recorder(s);
+    const first = s.run(['--foreground', ...STUDY_FLAGS], { CLI_JS: cli });
+    assert.equal(first.status, 0, first.stdout + first.stderr);
+    const again = s.run(['--foreground', ...STUDY_FLAGS], { CLI_JS: cli });
+    assert.equal(again.status, 0, again.stdout + again.stderr);
+    assert.match(again.stdout, /resuming study/);
+    const byKind = (k) => calls().filter((a) => kind(a) === k);
+    assert.equal(byKind('init').length, 2);
+    assert.equal(byKind('run').length, 2);
+    for (const a of [...byKind('init'), ...byKind('run')]) assert.ok(hasFlags(a), a.join(' '));
+  } finally { s.done(); }
+});
+
+test('the daemon child gets all three flags and passes them to its run', async () => {
+  const s = sandbox();
+  try {
+    const { cli, calls } = recorder(s);
+    const r = s.run([...STUDY_FLAGS], { CLI_JS: cli });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /LAUNCHED: pid (\d+)/);
+    const pid = Number(/LAUNCHED: pid (\d+)/.exec(r.stdout)[1]);
+    const alive = () => { try { process.kill(pid, 0); return true; } catch { return false; } };
+    for (let i = 0; i < 100 && (alive() || !calls().some((a) => kind(a) === 'run')); i++) await new Promise((res) => setTimeout(res, 100));
+    if (alive()) process.kill(pid, 'SIGTERM');
+    assert.equal(alive(), false, 'the daemon child finished');
+    const init = calls().find((a) => kind(a) === 'init');
+    const run = calls().find((a) => kind(a) === 'run');
+    assert.ok(init && hasFlags(init), 'init');
+    assert.ok(run && hasFlags(run), 'the child run');
+    assert.match(fs.readFileSync(path.join(s.state, 'skill-bench.log'), 'utf8'), /DONE/);
+  } finally { s.done(); }
+});
