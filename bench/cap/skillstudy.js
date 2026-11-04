@@ -121,7 +121,7 @@ function materialize(study, rec, armIds, studyDir) {
 
 /**
  * The forced-load wave: the base ref twice with a first instruction to load the skill (frc and its A/A repeat frc-b), and
- * the skill deleted (del) with a neutral filler instruction of the same length. Both instruction files are kept in the
+ * the skill deleted (del) with a neutral filler instruction of about the same word count. Both instruction files are kept in the
  * skill's study folder next to the overlays, and their hashes go into the arms file so the gate can check every run.
  */
 function materializeForced(study, rec, studyDir) {
@@ -129,7 +129,7 @@ function materializeForced(study, rec, studyDir) {
   const del = materialize(study, rec, ['del'], studyDir);
   const dir = paths(studyDir).skill(rec.name);
   const instruction = forcedPrefix({ name: rec.name, harness: 'kiro-cli' });
-  const texts = { forced: `${instruction}\n`, filler: `${forcedFiller(instruction.length)}\n` };
+  const texts = { forced: `${instruction}\n`, filler: `${forcedFiller(instruction)}\n` };
   const files = { forced: path.join(dir, 'forced-prefix.txt'), filler: path.join(dir, 'forced-filler.txt') };
   for (const f of Object.values(files)) if (/[,=]/.test(f)) throw new Error(`the study path ${f} holds a comma or an equals sign, which --arm-prefix cannot carry`);
   fs.mkdirSync(dir, { recursive: true });

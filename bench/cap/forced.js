@@ -5,8 +5,8 @@
 // The arm is the base ref with a fixed first instruction in front of the task prompt (`run --arm-prefix`) that names the
 // skill and says to load it with the harness's own skill tool. Nothing else changes: same agents, same skill index, same
 // description. Whether the skill really loaded is read from the run stream with the usual load detection. The delete arm
-// of the same run gets a neutral filler instruction of the same length in the same place, so the main contrast is not
-// "an instruction against none".
+// of the same run gets a neutral filler instruction of about the same word count in the same place, so the main contrast
+// is not "an instruction against none".
 //
 // A forced result is reported beside the organic arms and never feeds a DELETE, PRUNE or KEEP call: it answers "does the
 // skill help when it is loaded", not "should the agent keep it", which also depends on whether the agent ever loads it.
@@ -41,29 +41,38 @@ function forcedPrefix({ name, harness = 'kiro-cli' }) {
   ].join(' ');
 }
 
-const FILLER_WORDS = 'Before you do anything else, read the task below. Note what it asks for. Then do the task. Go one step at a time. Check your work. Keep the answer short. Say what you changed. Stop when it is done.'.split(' ');
+// Neutral sentences for the delete arm's instruction, longest first. None names a skill or a tool, or asks for a load.
+const FILLER_SENTENCES = [
+  'Before you do anything else, read the task below from start to finish.',
+  'Note what it asks for and what a good result would look like.',
+  'Then do the task, one step at a time.',
+  'Check your work before you finish.',
+  'Keep the answer short.',
+  'Say what you changed.',
+  'Begin now.',
+];
+const FILLER_TOLERANCE = 0.1;
+const wordCount = (text) => String(text).trim().split(/\s+/).filter(Boolean).length;
 
 /**
- * A neutral instruction of exactly `length` characters that names no skill and asks for no tool: whole sentences from a
- * fixed text, with extra spaces between sentences to make up the length (the runner strips trailing space, so none goes at the end).
+ * A neutral instruction for the delete arm whose word count is within 10% of `forcedText`'s, built the same way every
+ * time: sentences from the fixed list in order, each one taken if it still fits under the upper bound, cycling until the
+ * count reaches the lower bound. Single spaces only. It names no skill or tool.
  */
-function forcedFiller(length) {
-  if (!Number.isInteger(length) || length < 40) throw new Error('the filler needs a length of at least 40 characters');
-  const words = [];
-  for (let i = 0; ; i++) {
-    const w = FILLER_WORDS[i % FILLER_WORDS.length];
-    const next = words.length ? `${words.join(' ')} ${w}` : w;
-    if (next.length > length) break;
-    words.push(w);
+function forcedFiller(forcedText) {
+  const target = wordCount(forcedText);
+  if (target < 10) throw new Error('the filler needs a forced instruction of at least 10 words');
+  const lo = Math.ceil(target * (1 - FILLER_TOLERANCE));
+  const hi = Math.floor(target * (1 + FILLER_TOLERANCE));
+  const out = [];
+  let n = 0;
+  for (let i = 0; n < lo && i < FILLER_SENTENCES.length * 8; i++) {
+    const sentence = FILLER_SENTENCES[i % FILLER_SENTENCES.length];
+    const k = wordCount(sentence);
+    if (n + k <= hi) { out.push(sentence); n += k; }
   }
-  while (words.length > 1 && !/[.]$/.test(words[words.length - 1])) words.pop();
-  // Make up the length with extra spaces spread over the gaps between sentences.
-  const sentences = words.join(' ').split('. ');
-  const gaps = Math.max(1, sentences.length - 1);
-  const missing = length - words.join(' ').length;
-  const pad = Array.from({ length: gaps }, (_, i) => Math.floor(missing / gaps) + (i < missing % gaps ? 1 : 0));
-  if (sentences.length === 1) return `${sentences[0]}${' '.repeat(missing)}`.slice(0, length);
-  return sentences.reduce((acc, x, i) => (i === 0 ? x : `${acc}.${' '.repeat(1 + pad[i - 1])}${x}`), '');
+  if (n < lo) throw new Error(`no filler within ${Math.round(FILLER_TOLERANCE * 100)}% of ${target} words`);
+  return out.join(' ');
 }
 
 const prefixHash = (text) => crypto.createHash('sha256').update(text).digest('hex');
@@ -142,12 +151,15 @@ function forcedSummary({ arms, organic = null, comparisons = 1, heldMin = FORCED
   const frc = arms?.frc;
   const aa = arms?.['frc-b'];
   const del = arms?.del;
-  const out = { arm: ARM_LABEL, usedForCall: false, organicLoad: organic, forcedLoad: null, heldMin, held: false, aaSpread: null, comparison: null, status: 'unclear', reading: READING.unclear, notes: [] };
+  const out = { arm: ARM_LABEL, usedForCall: false, organicLoad: organic, forcedLoad: null, forcedLoadByArm: {}, heldMin, held: false, aaSpread: null, comparison: null, status: 'unclear', reading: READING.unclear, notes: [] };
   if (!frc || !del) { out.notes.push('the forced wave has no forced arm or no delete arm'); return out; }
   out.forcedLoad = rateOf([frc, aa]);
-  out.held = out.forcedLoad.rate !== null && out.forcedLoad.rate >= heldMin;
-  if (!out.held) out.notes.push(`the skill loaded in ${out.forcedLoad.loaded} of ${out.forcedLoad.of} forced runs, under ${Math.round(heldMin * 100)}%: the forced arm mixes loaded and unloaded runs`);
-  if (!aa) out.notes.push('no A/A repeat of the forced arm, so the noise floor is the minimum');
+  // Forcing holds only when each forced arm, frc and its repeat frc-b, reaches the bar on its own.
+  out.forcedLoadByArm = { frc: rateOf([frc]), ...(aa ? { 'frc-b': rateOf([aa]) } : {}) };
+  const low = Object.entries(out.forcedLoadByArm).filter(([, r]) => r.rate === null || r.rate < heldMin);
+  out.held = Boolean(aa) && !low.length;
+  for (const [id, r] of low) out.notes.push(`${id} loaded the skill in ${r.loaded} of ${r.of} runs, under ${Math.round(heldMin * 100)}%: forcing did not hold, so the forced arms mix loaded and unloaded runs`);
+  if (!aa) out.notes.push('no A/A repeat of the forced arm, so the noise floor is the minimum and forcing cannot be shown to hold in both arms');
   const aaCmp = aa ? compareArms(aa.scores, frc.scores) : { delta: null };
   out.aaSpread = aaCmp.delta === null ? 0 : Math.abs(aaCmp.delta);
   const st = familyStatus(del, frc, out.aaSpread, comparisons);
@@ -169,6 +181,7 @@ function forcedFailure(reason) {
 }
 
 const r3 = (v) => (typeof v === 'number' ? Number(v.toFixed(3)) : v);
+const armRates = (f) => (f.forcedLoadByArm && Object.keys(f.forcedLoadByArm).length ? Object.entries(f.forcedLoadByArm).map(([id, r]) => `${id} ${pct(r)}`).join(', ') : 'n/a');
 const pct = (x) => (x && x.rate !== null ? `${x.loaded} of ${x.of} (${Math.round(x.rate * 100)}%)` : 'n/a');
 const cell = (v) => String(v ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 const levelText = (l) => `${Number((l * 100).toFixed(2))}%`;
@@ -180,16 +193,16 @@ function renderForced(decisions) {
   const read = rows.filter((d) => !d.forced.failed);
   const m = read[0]?.forced.comparison?.comparisons ?? read.length;
   const L = ['## Forced-load arm (reported apart, never used for a call)', ''];
-  L.push('The forced arm is the base ref with a first instruction that names the skill and says to load it. It is compared with the skill deleted, whose first instruction is a neutral filler of the same length in the same place, in a run of its own with an A/A repeat of the forced arm. Forced against deleted is the main contrast; forced against its repeat is the noise. It shows whether the skill helps once loaded. It does not change any call above: a skill the agent rarely loads on its own can help when forced and still cost every session that never loads it.', '');
+  L.push('The forced arm is the base ref with a first instruction that names the skill and says to load it. It is compared with the skill deleted, whose first instruction is neutral filler of about the same number of words (within 10%) in the same place, in a run of its own with an A/A repeat of the forced arm. Forced against deleted is the main contrast; forced against its repeat is the noise. It shows whether the skill helps once loaded. It does not change any call above: a skill the agent rarely loads on its own can help when forced and still cost every session that never loads it.', '');
   L.push('Remaining confound: the two instructions differ in text (one names the skill and asks for a load, the filler names nothing), and the forced arm spends an extra turn loading the skill. A difference is the skill plus those two, not the skill alone.', '');
-  L.push(`| skill | organic load (control) | forced load | status | delete minus forced | runs | A/A spread | reading |`, '|---|---|---|---|---|---|---|---|');
+  L.push(`| skill | organic load (control) | forced load per arm | held | status | delete minus forced | runs | A/A spread | reading |`, '|---|---|---|---|---|---|---|---|---|');
   for (const d of rows) {
     const f = d.forced;
     const c = f.comparison;
     const delta = c && c.delta !== null ? `${r3(c.delta)}${c.ci ? ` (${levelText(c.level ?? 0.95)} interval ${r3(c.ci.lo)} to ${r3(c.ci.hi)})` : ''}` : 'n/a';
-    L.push(`| ${[d.name, pct(f.organicLoad), pct(f.forcedLoad), f.status, delta, c ? `${c.nHead} vs ${c.nBase}` : 'n/a', f.aaSpread === undefined ? 'n/a' : r3(f.aaSpread), [f.reading, ...f.notes].join('; ')].map(cell).join(' | ')} |`);
+    L.push(`| ${[d.name, pct(f.organicLoad), f.failed ? 'n/a' : armRates(f), f.failed ? 'n/a' : f.held ? 'yes' : 'no', f.status, delta, c ? `${c.nHead} vs ${c.nBase}` : 'n/a', f.aaSpread === undefined ? 'n/a' : r3(f.aaSpread), [f.reading, ...f.notes].join('; ')].map(cell).join(' | ')} |`);
   }
-  L.push('', `The forced comparisons are their own family of ${m} (one per skill with a finished forced wave), each interval at ${levelText(1 - FAMILY_ALPHA / Math.max(1, m))} (Bonferroni), and the status comes from that interval. Wave 1 and the calls keep their own 95% intervals. The forced runs were not counted in any call, any evidence row or the A/A spread of wave 1. Forcing counts as held when at least ${Math.round((read[0]?.forced.heldMin ?? FORCED_LOAD_MIN) * 100)}% of forced runs loaded the skill.`, '');
+  L.push('', `The forced comparisons are their own family of ${m} (one per skill with a finished forced wave), each interval at ${levelText(1 - FAMILY_ALPHA / Math.max(1, m))} (Bonferroni), and the status comes from that interval. Wave 1 and the calls keep their own 95% intervals. The forced runs were not counted in any call, any evidence row or the A/A spread of wave 1. Forcing counts as held only when frc and its repeat frc-b each loaded the skill in at least ${Math.round((read[0]?.forced.heldMin ?? FORCED_LOAD_MIN) * 100)}% of their runs (\`--forced-held-min\`).`, '');
   return L;
 }
 

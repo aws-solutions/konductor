@@ -188,9 +188,9 @@ const USAGE = `Usage:
        then per skill wave 1, then wave 2 only if removing the skill lost quality, then wave 3 for the sections whose removal lost quality, judging each wave
        on the opencode backend with --aws-creds-file, and finally cap decide. Resumable: a finished wave is skipped, an unfinished one is moved to incomplete/.
        --forced-load adds wave 1f after wave 1: the skill forced to load (frc and its A/A repeat frc-b) against the skill deleted (with a neutral filler of the
-       same length), for skills that loaded in under 30% of wave 1 control runs (low-load; an unknown rate does not run it) or for all (always). It is reported in
+       same word count), for skills that loaded in under 30% of wave 1 control runs (low-load; an unknown rate does not run it) or for all (always). It is reported in
        its own section of decisions.md, never feeds a call, and a failure is recorded in w1f.failed without stopping the study. --forced-held-min X (default 0.9)
-       is the share of forced runs that must load the skill. --waves 1 runs the controls and wave 1 only and skips the forced wave and waves 2 and 3.
+       is the share of runs each forced arm (frc and frc-b) must load the skill in. --waves 1 runs the controls and wave 1 only and skips the forced wave and waves 2 and 3.
        Spends credits only when it runs; run it with no other bench study active)
   node bench/runner/bench.js cap decide --study DIR [--out DIR] [--no-patches] [--forced-held-min X] [--json] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (read-only, no credits: one call per skill from the study waves: DELETE, PRUNE (sections to remove or move, with SKILL.md line ranges), KEEP or NEEDS DATA,

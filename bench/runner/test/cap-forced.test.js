@@ -61,26 +61,29 @@ test('fail closed: low-load with an unknown load rate does not run the forced wa
   }
 });
 
-test('the filler for the delete arm has the length of the forced instruction and names no skill or tool', () => {
+const words = (t) => t.trim().split(/\s+/).length;
+
+test('the filler for the delete arm matches the forced instruction in word count within 10%, with single spaces and no skill or tool', () => {
   for (const name of ['a', 'backend-review', 'legacy-to-agentic-estimate', 'x'.repeat(60)]) {
     for (const harness of F.HARNESSES) {
       const p = F.forcedPrefix({ name, harness });
-      const f = F.forcedFiller(p.length);
-      assert.equal(f.length, p.length, `${name} ${harness}`);
-      assert.equal(f, f.trim(), 'no leading or trailing space for the runner to strip');
+      const f = F.forcedFiller(p);
+      assert.ok(Math.abs(words(f) - words(p)) <= words(p) * 0.1, `${name} ${harness}: ${words(f)} against ${words(p)} words`);
+      assert.doesNotMatch(f, / {2,}/, 'no runs of spaces');
+      assert.equal(f, f.trim());
       assert.ok(!f.includes(name) || name.length < 3, `${name} in the filler`);
       assert.doesNotMatch(f, /skill|tool|get_skill|load/i);
       assert.doesNotMatch(f, /[–—\n]/);
+      assert.equal(F.forcedFiller(p), f, 'the same input gives the same filler');
     }
   }
   const { promptFor } = require('../lib/arm-opts.js');
   const task = { prompt: 'Do the task.' };
   const p = F.forcedPrefix({ name: 'alpha' });
   const forced = promptFor({ prefixText: `${p}\n` }, task);
-  const filled = promptFor({ prefixText: `${F.forcedFiller(p.length)}\n` }, task);
-  assert.equal(forced.length, filled.length);
-  assert.equal(forced.indexOf('\n\nDo the task.'), filled.indexOf('\n\nDo the task.'), 'the task starts at the same place');
-  assert.throws(() => F.forcedFiller(10), /at least 40/);
+  const filled = promptFor({ prefixText: `${F.forcedFiller(p)}\n` }, task);
+  assert.ok(forced.endsWith('\n\nDo the task.') && filled.endsWith('\n\nDo the task.'), 'both instructions sit in front of the task, the same way');
+  assert.throws(() => F.forcedFiller('too short to match'), /at least 10 words/);
 });
 
 test('--forced-held-min takes a share above 0 and at most 1', () => {
@@ -118,18 +121,30 @@ test('the forced comparisons are a Bonferroni family: a gap that is "helps" alon
   assert.notEqual(many.status, 'lost');
 });
 
-test('the held bar is configurable', () => {
-  const half = (n = 16) => Array.from({ length: n }, (_, i) => i % 5 !== 0);
-  const a = { ...arm(spread(0.8)), loaded: half() };
+test('the held bar is configurable and must hold in both forced arms', () => {
+  const some = (n = 16) => Array.from({ length: n }, (_, i) => i % 5 !== 0);
+  const a = { ...arm(spread(0.8)), loaded: some() };
   const arms = { frc: a, 'frc-b': a, del: arm(spread(0.4), false) };
   assert.equal(F.forcedSummary({ arms }).held, false);
   assert.equal(F.forcedSummary({ arms, heldMin: 0.75 }).held, true);
+  const full = arm(spread(0.8));
+  const oneLow = F.forcedSummary({ arms: { frc: full, 'frc-b': a, del: arm(spread(0.4), false) } });
+  assert.equal(oneLow.forcedLoad.rate >= 0.85, true, 'pooled, the two arms would pass a 0.85 bar');
+  assert.equal(oneLow.held, false, 'but frc-b alone is under 0.9');
+  assert.deepEqual(oneLow.forcedLoadByArm.frc, { loaded: 16, of: 16, rate: 1 });
+  assert.equal(oneLow.forcedLoadByArm['frc-b'].loaded, 12);
+  assert.match(oneLow.notes.join(' '), /frc-b loaded the skill in 12 of 16 runs, under 90%/);
+  assert.doesNotMatch(oneLow.notes.join(' '), /^frc loaded/);
+  assert.equal(F.forcedSummary({ arms: { frc: full, del: arm(spread(0.4), false) } }).held, false, 'without the repeat, held cannot be shown');
+  const md = F.renderForced([{ name: 'x', forced: oneLow }]).join('\n');
+  assert.match(md, /\| frc 16 of 16 \(100%\), frc-b 12 of 16 \(75%\) \| no \|/);
+  assert.match(md, /each loaded the skill in at least 90% of their runs/);
 });
 
 test('forcing that did not hold is flagged, and a missing A/A repeat is noted', () => {
   const s = F.forcedSummary({ arms: { frc: arm(spread(0.8), false), del: arm(spread(0.8), false) } });
   assert.equal(s.held, false);
-  assert.match(s.notes.join(' '), /loaded in 0 of 16 forced runs/);
+  assert.match(s.notes.join(' '), /frc loaded the skill in 0 of 16 runs, under 90%/);
   assert.match(s.notes.join(' '), /no A\/A repeat/);
   assert.equal(F.forcedSummary({ arms: {} }).status, 'unclear');
 });
@@ -156,8 +171,8 @@ test('low-load: a skill that never loads in wave 1 gets wave 1f with the prefix 
     const forcedText = fs.readFileSync(pre.frc, 'utf8');
     const fillerText = fs.readFileSync(pre.del, 'utf8');
     assert.match(forcedText, /load the skill named "sectioned" with the get_skill tool/);
-    assert.equal(fillerText.length, forcedText.length);
-    assert.doesNotMatch(fillerText, /sectioned|skill/);
+    assert.ok(Math.abs(words(fillerText) - words(forcedText)) <= words(forcedText) * 0.1);
+    assert.doesNotMatch(fillerText, /sectioned|skill| {2}/);
     assert.ok(runsOf(b.calls).filter((x) => !armsOf(x).includes('frc')).every((x) => flag(x, 'arm-prefix') === null), 'no other run carries a prefix');
     const judge = b.calls.find((x) => x[0] === 'judge' && /w1f$/.test(flag(x, 'run')));
     assert.ok(judge);
@@ -181,7 +196,7 @@ test('low-load: a skill that never loads in wave 1 gets wave 1f with the prefix 
 
     const md = fs.readFileSync(path.join(forced.studyDir, 'decisions/decisions.md'), 'utf8');
     assert.match(md, /## Forced-load arm \(reported apart, never used for a call\)/);
-    assert.match(md, /\| sectioned \| 0 of 16 \(0%\) \| 32 of 32 \(100%\) \| lost \|/);
+    assert.match(md, /\| sectioned \| 0 of 16 \(0%\) \| frc 16 of 16 \(100%\), frc-b 16 of 16 \(100%\) \| yes \| lost \|/);
     assert.match(md, /Remaining confound: the two instructions differ in text/);
     assert.match(md, /extra turn loading the skill/);
     assert.match(md, /forced load helps; fix the description/);
