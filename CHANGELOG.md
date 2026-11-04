@@ -82,6 +82,16 @@ not per individual commit.
   carries another digest, rule digest or provenance version, as not current. A judgment that gave
   no usable reply is retried until `MAX_ATTEMPTS` (3), then settled. Run
   `node --test bench/test/store.test.js`.
+- `bench/lib/plan.js` and `bench/lib/judge-roster.js`. `planJobs({ [skill]: taskSet }, config)`
+  lists the subject runs (one per task and arm) and the judge calls (one per task, seat and
+  presentation order). It has no clock and no random seed, so a resumed run plans the same jobs.
+  With fewer orders per pair than orders, `ordersFor` alternates the orders down a seat's jobs,
+  starting at a point chosen by a hash of the skill and the seat, so each order is used
+  `floor(k/n)` or `ceil(k/n)` times. The judge roster is user configuration, never code: each
+  seat is `{ seat, family, plugin, model }`, and `validateRoster` requires at least three seats
+  with distinct families and unique seat labels, rejecting an unknown field and reporting every
+  problem at once. No model id appears in the code, a default config or a fixture. Run
+  `node --test bench/test/plan.test.js bench/test/judge-roster.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
