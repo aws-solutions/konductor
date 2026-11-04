@@ -99,6 +99,22 @@ not per individual commit.
   same input. A key with no stored reply is an error, never a made-up reply; `canServe(digest)`
   lets a driver check every pending call first. `createReplayPlugin({ records })` and
   `replayFromStore(store, skills)` build one. Run `node --test bench/test/replay.test.js`.
+- `bench/run/judge.js`, the judge driver, as a library with no command line, no spend ledger and
+  no provider code. `runJudging` plans the judge calls of a skill, skips every judgment that is
+  already settled, renders each prompt with `judgePrompt`, calls the seat's grader plugin, reads
+  the reply in core (`bench/lib/judge-reply.js` and the scale's `parse`), stores the judgment
+  atomically and builds the skill result. A plugin is `{ id, runGrader, canServe? }`;
+  `runGrader({ prompt, model, limits, seed, input_sha256 })` returns
+  `{ status, raw_text, usage, cost, error? }` with `status` one of `ok`, `refused`, `invalid`,
+  `transient` or `credential_error`, and the contract is written in the module header. A failed
+  call or a reply core cannot read is stored with its status and retried up to `MAX_ATTEMPTS`
+  times, after which the pair's seat counts as `invalid` or `unscored`; a credential error stops
+  the run and keeps finished work; a plugin that can say what it serves (`canServe`) is checked
+  for every pending call before the first one is made. `scoreSkill` builds the result from stored
+  judgments with no plugin, re-reading each stored reply (`bench/lib/score.js`) and un-blinding it
+  to the with and without arm. A result made under another decision rule or from other inputs is
+  rebuilt at no cost. Run `node --test bench/test/judge.test.js bench/test/judge-reply.test.js
+  bench/test/score.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
