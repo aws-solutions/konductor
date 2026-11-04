@@ -18,7 +18,7 @@ const { secretLiterals, scrubString } = require('../runner/lib/scrub.js');
 const { loadRun, readJson } = require('../report/load.js');
 const { buildBundle } = require('../judge/bundle.js');
 const { effectiveLimits } = require('../judge/config.js');
-const { drawSample, scoreLabels } = require('../judge/calibrate.js');
+const { drawSample, scoreLabels, raterKappas } = require('../judge/calibrate.js');
 const { makeQuoteMatcher } = require('../judge/quote.js');
 const { VERDICTS, RATINGS_KIND, RATINGS_SCHEMA, renderViewer } = require('./review-viewer.js');
 
@@ -216,7 +216,7 @@ const writeJson = (file, value) => { fs.mkdirSync(path.dirname(file), { recursiv
  * The combined sheet.json and key.json beside the key pool all raters: every output appears once per rater, so
  * `calibrate score` and scoreLabels count each rater's labels as their own criterion pairs against each judge. The
  * combined result goes to <run>/calibration/result.json, which the report reads, with each rater's own figures under
- * `byRater`.
+ * `byRater` and each rater's kappa under `raterKappa`. The pooled result it replaces is copied to result.prev.json first.
  *
  * Nothing is written when the file is invalid, rates nothing, would replace a rater already on file, or when the result
  * path holds a result that this page did not write. --force (`force`) allows the last two.
@@ -286,8 +286,15 @@ function importRatings({ ratingsFile, keyFile, rater: raterOpt, outDir, save, fo
   const res = scoreLabels({ labelsFile: sheetPath, keyFile: sheetKeyPath, thresholds });
   res.source = { kind: 'review', viewerId: key.viewerId, pooled: true, raters: raterIds };
   res.byRater = byRater;
+  res.raterKappa = { kappaMin: thresholds.kappaMin, raters: raterKappas(byRater, thresholds.kappaMin) };
+  // One level of backup: the pooled result this import replaces is kept as result.prev.json (any older .prev is replaced).
+  let backupPath = null;
+  if (fs.existsSync(savePath)) {
+    backupPath = savePath.replace(/(\.json)?$/, '.prev.json');
+    fs.copyFileSync(savePath, backupPath);
+  }
   writeJson(savePath, res);
-  return { res, raterId, raters: raterIds, raterFile, sheetPath, sheetKeyPath, savePath, quotes, rated: ratings.items.filter((it) => labeledCount(it) > 0).length };
+  return { res, raterId, raters: raterIds, raterFile, sheetPath, sheetKeyPath, savePath, backupPath, quotes, rated: ratings.items.filter((it) => labeledCount(it) > 0).length };
 }
 
 module.exports = { writeReview, importRatings, validateRatings, raterIdOf, groupSample, sampleParams, ReviewError, KEY_FILE, PAGE_FILE };

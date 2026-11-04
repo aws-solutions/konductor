@@ -12,6 +12,8 @@ const { tmp, makeBench, makeRun, writeJudgments } = require('./helpers.js');
 const { DEFAULTS } = require('../../judge/config.js');
 const { compileRedactions, DEFAULT_REDACTIONS } = require('../../judge/redact.js');
 const { writeReview, importRatings, validateRatings, sampleParams, raterIdOf } = require('../../cap/review.js');
+const { formatRaterKappas, raterKappas } = require('../../judge/calibrate.js');
+const { readCalibration } = require('../../report/generate.js');
 const viewer = require('../../cap/review-viewer.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
@@ -127,7 +129,9 @@ function rate(r, { quote } = {}) {
   return viewer.ratingsPayload(data, state, '2026-11-04T00:00:00Z');
 }
 
-function judgePanel(runDir) {
+// The "good" judge agrees with the truth table, the "bad" one inverts it. A rater's kappa is the lowest over the panel,
+// so tests that read a rater's kappa pass `only: ['good']`.
+function judgePanel(runDir, { only = ['bad', 'good'] } = {}) {
   const rubric = [];
   for (const arm of ['vanilla', 'v1.2.0']) {
     for (let rep = 1; rep <= 3; rep++) {
@@ -136,7 +140,7 @@ function judgePanel(runDir) {
       rubric.push({ judge: 'bad', arm, rep, criteria: { c1: truth === 'pass' ? 'fail' : 'pass', c2: 'fail' }, score: truth === 'pass' ? 0 : 0.25 });
     }
   }
-  writeJudgments(runDir, { judges: ['bad', 'good'], rubric });
+  writeJudgments(runDir, { judges: only, rubric: rubric.filter((x) => only.includes(x.judge)) });
 }
 
 test('import joins ratings to runs through the key, writes the calibrate files and result.json, and scores kappa', () => {
@@ -230,7 +234,7 @@ test('a ratings file that rates nothing, or has no rater id, is refused and writ
 test('two raters coexist: each is kept and scored alone, and the combined result pools both', () => {
   const f = fixture();
   try {
-    judgePanel(f.runDir);
+    judgePanel(f.runDir, { only: ['good'] });
     const r = writeReview(opts(f, { n: 6, seed: 2 }));
     const a = path.join(f.root, 'a.json');
     fs.writeFileSync(a, JSON.stringify(rate(r)));
@@ -250,6 +254,43 @@ test('two raters coexist: each is kept and scored alone, and the combined result
     assert.equal(out.res.judges.good.nCriteria, 24, 'pooled: each rater adds its own criterion pairs');
     assert.equal(readJson(out.sheetPath).items.length, 12);
     assert.ok(out.res.judges.good.kappa < 1 && out.res.judges.good.kappa > out.res.byRater.second.judges.good.kappa);
+    // Per rater kappa beside the pooled one: the lowest judge kappa each, the lowest marked, under the pooled bar flagged.
+    const rk = readJson(out.savePath).raterKappa;
+    assert.equal(rk.kappaMin, DEFAULTS.thresholds.kappaMin);
+    const byId = Object.fromEntries(rk.raters.map((x) => [x.rater, x]));
+    assert.equal(byId.second.kappa, out.res.byRater.second.judges.good.kappa);
+    assert.deepEqual([byId.second.lowest, byId.second.below], [true, true]);
+    assert.equal(byId.tester.lowest, false);
+    assert.deepEqual([byId.tester.kappa, byId.tester.below], [1, false]);
+    assert.match(formatRaterKappas(rk.raters, rk.kappaMin), /\*\*second -?\d\.\d\d \(lowest, below 0\.6\)\*\*/);
+    // The report's calibration row shows the same per-rater figures with the report's own bar.
+    const cal = readCalibration({ dir: f.runDir });
+    assert.equal(cal.kappa, Math.min(...Object.values(out.res.judges).map((x) => x.kappa)));
+    assert.deepEqual(Object.keys(cal.byRater).sort(), ['second', 'tester']);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('each import keeps the pooled result it replaces as result.prev.json', () => {
+  const f = fixture();
+  try {
+    judgePanel(f.runDir, { only: ['good'] });
+    const r = writeReview(opts(f, { n: 6, seed: 2 }));
+    const a = path.join(f.root, 'a.json');
+    fs.writeFileSync(a, JSON.stringify(rate(r)));
+    const one = importRatings({ ratingsFile: a, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    assert.equal(one.backupPath, null, 'nothing to keep on the first import');
+    const firstBytes = fs.readFileSync(one.savePath, 'utf8');
+    const b = path.join(f.root, 'b.json');
+    fs.writeFileSync(b, JSON.stringify({ ...rate(r), rater: 'second' }));
+    const two = importRatings({ ratingsFile: b, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    assert.equal(two.backupPath, path.join(f.runDir, 'calibration', 'result.prev.json'));
+    assert.equal(fs.readFileSync(two.backupPath, 'utf8'), firstBytes);
+    assert.deepEqual(readJson(two.savePath).source.raters, ['second', 'tester']);
+    assert.ok(raterKappas(readJson(two.savePath).byRater, 0.6).every((x) => x.kappa === 1));
+    // A refused import leaves both files alone.
+    const prevBytes = fs.readFileSync(two.backupPath, 'utf8');
+    assert.throws(() => importRatings({ ratingsFile: b, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }), /pass --force/);
+    assert.equal(fs.readFileSync(two.backupPath, 'utf8'), prevBytes);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
@@ -350,7 +391,7 @@ test('the page script wires up and exports the ratings with a stub DOM, and make
 test('cap review and cap review-import from the command line', () => {
   const f = fixture();
   try {
-    judgePanel(f.runDir);
+    judgePanel(f.runDir, { only: ['good'] });
     const env = { PATH: process.env.PATH, HOME: f.root, TMPDIR: process.env.TMPDIR };
     const cli = (args) => spawnSync(process.execPath, [BENCH_JS, ...args], { env, encoding: 'utf8' });
     const a = cli(['cap', 'review', '--run', f.runDir, '--bench-dir', f.bench, '--n', '6', '--seed', '2']);
@@ -365,6 +406,7 @@ test('cap review and cap review-import from the command line', () => {
     assert.match(b.stdout, /good\s+PASS/);
     assert.match(b.stdout, /Evidence quotes: none given/);
     assert.match(b.stdout, /rater "tester" kept in/);
+    assert.match(b.stdout, /Per rater \(lowest judge kappa each, bar 0\.6\): tester 1\.00/);
     const again = cli(['cap', 'review-import', '--ratings', ratingsFile, '--key', keyPath]);
     assert.equal(again.status, 2);
     assert.match(again.stderr, /pass --force/);

@@ -110,6 +110,6 @@ test('the per-skill study is documented in the README and the playbook', () => {
 test('the README and playbook describe the side-by-side review page and its import', () => {
   const readme = fs.readFileSync(path.join(__dirname, '..', '..', 'README.md'), 'utf8');
   const playbook = fs.readFileSync(path.join(__dirname, '..', '..', 'CAP-PLAYBOOK.md'), 'utf8');
-  for (const re of [/cap review --run DIR/, /cap review-import --ratings FILE/, /review-key\.json/, /opens no port/, /--sample-only/, /raters\/ID\//, /pooled/, /unless `--force`, so a second import never replaces the first/]) assert.match(readme, re);
+  for (const re of [/cap review --run DIR/, /cap review-import --ratings FILE/, /review-key\.json/, /opens no port/, /--sample-only/, /raters\/ID\//, /pooled/, /unless `--force`, so a second import never replaces the first/, /result\.prev\.json/, /raterKappa/]) assert.match(readme, re);
   for (const re of [/cap review --run DIR/, /cap review-import/]) assert.match(playbook, re);
 });

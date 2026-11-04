@@ -46,7 +46,7 @@ const { cmdSkillPlan, cmdSkillStudy, cmdDecide } = require('./skillcli.js');
 const { writeReview, importRatings } = require('./review.js');
 const { DEFAULTS } = require('../judge/config.js');
 const { loadRedactions } = require('../judge/redact.js');
-const { formatCalibration } = require('../judge/calibrate.js');
+const { formatCalibration, formatRaterKappas } = require('../judge/calibrate.js');
 
 const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import'];
 const DEFAULT_BASE = 'v1.2.0';
@@ -622,8 +622,10 @@ function cmdReviewImport(opts) {
   console.log([
     formatCalibration(r.res), '',
     `Evidence quotes: ${q.checked ? `${q.found} of ${q.checked} found in the output${q.notFound.length ? `; not found: ${q.notFound.join(', ')}` : ''}` : 'none given'}`,
+    `Per rater (lowest judge kappa each, bar ${r.res.raterKappa.kappaMin}): ${formatRaterKappas(r.res.raterKappa.raters, r.res.raterKappa.kappaMin).replace(/\*\*/g, '')}`,
     `rater "${r.raterId}" kept in ${r.raterFile}; raters on file: ${r.raters.join(', ')} (the table pools them; each rater's own figures are in raters/<id>/result.json and under byRater)`,
     `wrote ${r.sheetPath} and ${r.sheetKeyPath} (calibrate score reads these) and ${r.savePath} (the report reads this)`,
+    ...(r.backupPath ? [`the previous pooled result was kept as ${r.backupPath}`] : []),
   ].join('\n'));
 }
 

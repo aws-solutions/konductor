@@ -166,4 +166,33 @@ function formatCalibration(res) {
   return lines.join('\n');
 }
 
-module.exports = { exportSheet, scoreLabels, formatCalibration, drawSample };
+/**
+ * One kappa per rater from a review import's byRater: the lowest finite judge-vs-human kappa, the same reduction the
+ * report applies to the pooled result. Sorted by rater id; `lowest` marks the minimum and `below` a kappa under kappaMin,
+ * the threshold already used for the pooled value. A rater with no finite kappa has kappa null and is neither.
+ */
+function raterKappas(byRater, kappaMin) {
+  const rows = Object.entries(byRater || {}).sort(([a], [b]) => a.localeCompare(b)).map(([rater, r]) => {
+    const ks = Object.values(r.judges || {}).map((s) => s.kappa).filter((k) => typeof k === 'number' && Number.isFinite(k));
+    const kappa = ks.length ? Math.min(...ks) : null;
+    return { rater, kappa, below: kappa !== null && kappa < kappaMin, lowest: false };
+  });
+  const finiteRows = rows.filter((r) => r.kappa !== null);
+  if (finiteRows.length) {
+    const min = Math.min(...finiteRows.map((r) => r.kappa));
+    for (const r of finiteRows) if (r.kappa === min) r.lowest = true;
+  }
+  return rows;
+}
+
+/** "alice 1.00, **bob 0.25 (lowest, below 0.6)**": the lowest in bold, any rater under kappaMin marked. */
+function formatRaterKappas(rows, kappaMin) {
+  return rows.map((r) => {
+    if (r.kappa === null) return `${r.rater} n/a`;
+    const tags = [r.lowest && rows.length > 1 ? 'lowest' : null, r.below ? `below ${kappaMin}` : null].filter(Boolean);
+    const text = `${r.rater} ${r.kappa.toFixed(2)}${tags.length ? ` (${tags.join(', ')})` : ''}`;
+    return r.lowest && rows.length > 1 ? `**${text}**` : text;
+  }).join(', ');
+}
+
+module.exports = { exportSheet, scoreLabels, formatCalibration, drawSample, raterKappas, formatRaterKappas };

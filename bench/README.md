@@ -322,7 +322,14 @@ With several raters on file, each is scored alone (`raters/ID/result.json`), and
 against each judge in the same kappa, agreement and Spearman code `calibrate score` uses. The command prints that table, says how many
 evidence quotes were found in the output (the judges' quote rule), and saves the pooled result, with each rater's figures under `byRater`,
 to `DIR/calibration/result.json`, where `report` and the detailed profile look for it. A `result.json` that this page did not write is
-kept unless `--force` or `--save FILE`. A refused import writes nothing.
+kept unless `--force` or `--save FILE`. A refused import writes nothing. A new rater id needs no `--force`; only replacing a rater
+already on file does. Before each import rewrites the pooled result, the one it replaces is copied to `result.prev.json` beside it
+(one level: an older `result.prev.json` is replaced).
+
+Each rater's kappa is shown next to the pooled one: the lowest judge-vs-human kappa for that rater, the same reduction the report
+applies to the pooled result. The import prints them, `result.json` keeps them under `raterKappa`, and the report's Human calibration
+row lists them after the pooled kappa with the lowest in bold. A rater under the kappa bar used for the pooled value (0.6 by default,
+`--kappa-min` on import) is marked "below". The row's status still follows the pooled kappa.
 
 ```
 node bench/runner/bench.js cap review --run V/claude
