@@ -4,14 +4,19 @@ import {
   type PlaywrightTestConfig,
   type Project,
 } from '@playwright/test';
+import { appPort, originOf } from './stub-api/address';
+import { exitOnConfigError } from './stub-api/config-error';
 import { apiTargetOrExit } from './stub-api/target';
-import {
-  APP_URL,
-  STUB_LAUNCH_CODE,
-  webServersFor,
-} from './stub-api/web-servers';
+import { STUB_LAUNCH_CODE, webServersFor } from './stub-api/web-servers';
 
 export { STUB_LAUNCH_CODE };
+
+/**
+ * Where the built page is served: `WC_APP_PORT`, or 4173. This is the only
+ * place that reads the variable.
+ */
+export const APP_PORT = exitOnConfigError(() => appPort());
+export const APP_URL = originOf(APP_PORT);
 
 /**
  * Where the API listens during a run: the stub, or the server named by
@@ -42,9 +47,11 @@ export const stableRendering: NonNullable<Project['use']> = {
 /** Settings shared by the functional run and the screenshot capture. */
 export const sharedConfig: PlaywrightTestConfig = {
   outputDir: 'test-results',
+  // Opens the session that the tests share, once the servers are up.
+  globalSetup: './e2e/global-setup.ts',
   forbidOnly: Boolean(process.env.CI),
   // A flaky test must fail the run, not pass on a retry.
   retries: 0,
   use: { baseURL: APP_URL, trace: 'retain-on-failure' },
-  webServer: webServersFor(API_TARGET),
+  webServer: webServersFor(API_TARGET, APP_PORT),
 };

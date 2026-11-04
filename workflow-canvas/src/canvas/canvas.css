@@ -1,0 +1,106 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/* Colours of the light theme for the parts that the canvas draws itself. */
+.wf-canvas {
+  --wf-canvas-bg: #f5f3ee;
+  --wf-canvas-dots: #c9c1b3;
+  --wf-edge: #5f6b7a;
+  --wf-focus: #0b57d0;
+  --wf-node-bg: #ffffff;
+  --wf-node-border: #7a7490;
+  --wf-text: #16131f;
+  --wf-text-muted: #56516a;
+  --wf-port-bg: #414d5c;
+  --wf-port-text: #ffffff;
+  --wf-port-ring: #16131f;
+
+  border-radius: 12px;
+  background: var(--wf-canvas-bg);
+}
+
+/* The ring that shows which node the keyboard is on. */
+.wf-canvas .react-flow__node:focus-visible {
+  border-radius: 12px;
+  outline: 3px solid var(--wf-focus);
+  outline-offset: 3px;
+}
+
+.wf-node {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 10px 12px;
+  border: 2px solid var(--wf-node-border);
+  border-radius: 12px;
+  background: var(--wf-node-bg);
+  color: var(--wf-text);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.wf-node-title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wf-node-sub {
+  overflow: hidden;
+  color: var(--wf-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The outcome of the intent wraps onto up to three lines. */
+.wf-node-intent-outcome {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--wf-text-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.wf-node-end {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* A run order port: a small square with an S, at the right of the node. */
+.react-flow .wf-port {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  min-width: 0;
+  min-height: 0;
+  border: 2px solid var(--wf-port-ring);
+  border-radius: 4px;
+  background: var(--wf-port-bg);
+  color: var(--wf-port-text);
+  /* Inherit the page font. Naming a system family here (Arial) would resolve
+     to a different face per host and make the screenshots differ. */
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.react-flow .wf-port-in {
+  top: 0;
+  right: 16px;
+  left: auto;
+  transform: translate(50%, -50%);
+}
+
+.react-flow .wf-port-out {
+  right: 16px;
+  bottom: 0;
+  left: auto;
+  transform: translate(50%, 50%);
+}

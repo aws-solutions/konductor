@@ -8,6 +8,7 @@ import { TAB_NAMES } from '../support/workflow-canvas-page';
 for (const name of TAB_NAMES) {
   test(`capture the ${name} tab`, async ({ canvas }) => {
     await canvas.selectTab(name);
+    await canvas.expectTabLoaded(name);
 
     await saveFullPageScreenshot(canvas.page, `${name.toLowerCase()}-tab`);
   });

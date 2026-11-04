@@ -10,6 +10,7 @@
     "vite.config.ts",
     "playwright.*.ts",
     "api/**/*.ts",
-    "stub-api/**/*.ts"
+    "stub-api/**/*.ts",
+    "test-support/**/*.ts"
   ]
 }

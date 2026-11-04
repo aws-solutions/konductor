@@ -3,12 +3,34 @@ import '@cloudscape-design/global-styles/index.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { createHttpApi } from './api/http-api';
+import { LaunchNotice } from './launch/LaunchNotice';
+import { takeLaunchCode, watchLaunchCode } from './launch/launch-code';
+import { sessionStorageMemory } from './launch/session-memory';
+import { useWorkflowSource } from './workflow/use-workflow-source';
+import { createWorkflowSource } from './workflow/workflow-source';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');
 
+const source = createWorkflowSource(
+  createHttpApi(),
+  takeLaunchCode(window),
+  sessionStorageMemory(window),
+);
+watchLaunchCode(window, (code) => void source.offer(code));
+
+function Root() {
+  return (
+    <App
+      load={useWorkflowSource(source)}
+      notice={<LaunchNotice source={source} />}
+    />
+  );
+}
+
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <Root />
   </StrictMode>,
 );
