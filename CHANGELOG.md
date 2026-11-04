@@ -29,6 +29,9 @@ not per individual commit.
 - New `konductor verify-run --session <path>` checks a SOP session file and exits through the
   existing exit-code contract. `--root <dir>` sets the directory the session and its evidence
   must resolve under (default: the current directory). It writes nothing.
+- `make version-check` fails a PR or release when a crate, a lockfile entry for a Konductor
+  product crate (manifest under `cli/`, `mcp/` or `shared/`) or the CHANGELOG heading disagrees
+  with `VERSION`. Independently versioned path crates elsewhere are not checked.
 
 ### Changed
 
