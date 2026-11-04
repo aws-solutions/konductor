@@ -86,6 +86,12 @@ not per individual commit.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 
+### Security
+
+- `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
+  GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
+  GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
+
 ## [1.2.0] - 2026-10-26
 
 ### Added
