@@ -4,7 +4,8 @@ import type { WorkflowView } from '../api/types';
 /**
  * The node geometry that the limits below were estimated for. `canvas.css`
  * sets the fonts, padding and line clamp, and the width is `NODE_WIDTH`;
- * `clipping.test.ts` fails when any of them drifts from these values.
+ * `test-support/clipping-geometry.test.ts` fails when any of them drifts from
+ * these values.
  */
 export const ESTIMATED_FOR = {
   nodeWidthPx: 280,
