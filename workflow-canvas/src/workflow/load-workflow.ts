@@ -174,10 +174,14 @@ async function openWithCode(
   launchCode: string,
   memory: SessionMemory,
   pasted: boolean,
+  signal?: AbortSignal,
 ): Promise<LoadResult> {
   const startKept = memory.recall();
   try {
-    const { token, harness, apiVersion } = await api.createSession(launchCode);
+    const { token, harness, apiVersion } = await api.createSession(
+      launchCode,
+      signal,
+    );
     if (apiVersion !== SUPPORTED_API_VERSION) return failure(UNSUPPORTED_API);
     const session = { token, harness };
     keepEarly(memory, session, startKept, pasted && startKept !== undefined);
@@ -247,15 +251,17 @@ export async function loadWorkflow(
  * of the code replaces the kept one at once, as no workflow is on the page
  * yet, and a code that fails (as a spent one does) falls back to the sessions
  * kept before it. The error of the code is shown only if those fail too.
+ * Aborting `signal` ends the trade of the code.
  */
 export async function loadOnOpen(
   api: WorkflowApi,
   launchCode: string | undefined,
   memory: SessionMemory,
+  signal?: AbortSignal,
 ): Promise<LoadResult> {
   if (launchCode === undefined) return loadWorkflow(api, undefined, memory);
   const before = resumable(memory);
-  const result = await openWithCode(api, launchCode, memory, false);
+  const result = await openWithCode(api, launchCode, memory, false, signal);
   return result.ok ? result : resumeAny(api, before, memory, result.message);
 }
 

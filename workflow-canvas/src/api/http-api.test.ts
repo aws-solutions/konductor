@@ -634,7 +634,7 @@ describe('createHttpApi, when a call does not go through', () => {
       await outcome;
     });
 
-    it('gives the launch code no timeout, as it works once', async () => {
+    it('does not cut the launch code short at the ordinary timeout', async () => {
       vi.useFakeTimers();
       let answer: (response: Response) => void = () => {};
       let aborted = false;

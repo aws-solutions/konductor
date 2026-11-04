@@ -22,6 +22,19 @@ const RUN_ACCEPTED_UNREADABLE =
 /** How long a call may take before the page gives up on it. */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
+/**
+ * How long the launch code trade may take. The code works once, so this is far
+ * longer than an ordinary call: a healthy server answers in milliseconds, and
+ * the code is valid for 60 seconds, so twice that ends only a hung server.
+ */
+export const LAUNCH_CODE_TIMEOUT_MS = 120_000;
+
+const LAUNCH_UNANSWERED =
+  'The server did not answer the launch code, and may have used it. Open the launch address again. If the server refuses it, get a new launch address from the server.';
+
+const LAUNCH_CANCELLED =
+  'You stopped waiting for the server, which may have used the launch code. Open the launch address again. If the server refuses it, get a new launch address from the server.';
+
 // A body that is not JSON is `undefined`. Any other failure to read it, such
 // as a connection that dropped or a timeout, is thrown.
 async function bodyOf(response: Response): Promise<unknown> {
@@ -113,19 +126,32 @@ function bearer(token: string): Record<string, string> {
 export function createHttpApi(
   fetchFn: Fetch = fetch,
   timeoutMs = REQUEST_TIMEOUT_MS,
+  launchTimeoutMs = LAUNCH_CODE_TIMEOUT_MS,
 ): WorkflowApi {
   const call = (path: string, init: RequestInit, signal?: AbortSignal) =>
     send(fetchFn, timeoutMs, path, init, signal);
   return {
-    async createSession(code) {
-      // No timeout: the launch code works once, so giving up on a slow answer
-      // after the server has traded it would leave the page with no way in.
-      const body = await send(fetchFn, undefined, '/api/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-      return parseSession(body);
+    async createSession(code, signal) {
+      try {
+        const body = await send(
+          fetchFn,
+          launchTimeoutMs,
+          '/api/session',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code }),
+          },
+          signal,
+        );
+        return parseSession(body);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 0) throw error;
+        throw new ApiError(
+          signal?.aborted ? LAUNCH_CANCELLED : LAUNCH_UNANSWERED,
+          0,
+        );
+      }
     },
     async getWorkflow(token) {
       const body = await call('/api/workflow', {

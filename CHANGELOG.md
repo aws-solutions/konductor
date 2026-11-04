@@ -22,6 +22,7 @@ not per individual commit.
 - The workflow canvas API contract says where the session token may be kept (`sessionStorage` only) and requires the served page to send a `Content-Security-Policy` header with `frame-ancestors 'none'`.
 - The workflow canvas uses the Konductor docs theme, with light and dark modes, and system colours in forced-colors mode.
 - The Execution tab runs the workflow and shows live node states.
+- A launch code trade that gets no answer shows "Still waiting for the server" with a way to stop, and ends with an error after 120 seconds.
 
 ### Changed
 
