@@ -6,6 +6,7 @@
 // turns plain facts into criteria, so every rule can be tested at its boundary without a run on disk.
 
 const { modelFamily } = require('../judge/config.js');
+const { raterKappas, formatRaterKappas } = require('../judge/calibrate.js');
 const { MIN_RECALL } = require('../runner/lib/contamination.js');
 const { qualityOfRun, DEFAULT_WEIGHTS } = require('./scores.js');
 const { checksRevision } = require('../runner/lib/recheck.js');
@@ -209,7 +210,10 @@ function evaluate(f, t = THRESHOLDS) {
   }
 
   if (!needsJudging && !jg.present) add(C('calibration', 'Human calibration', false, 'N/A', 'no judges', 'kappa >= 0.6'));
-  else if (f.calibration && finite(f.calibration.kappa)) add(C('calibration', 'Human calibration', false, f.calibration.kappa >= t.kappaMin ? 'PASS' : 'WARN', `kappa ${f.calibration.kappa.toFixed(2)}${f.calibration.kappa >= t.kappaMin ? '' : ' (uncalibrated)'}`, `kappa >= ${t.kappaMin}`));
+  else if (f.calibration && finite(f.calibration.kappa)) {
+    const perRater = f.calibration.byRater ? `; per rater: ${formatRaterKappas(raterKappas(f.calibration.byRater, t.kappaMin), t.kappaMin)}` : '';
+    add(C('calibration', 'Human calibration', false, f.calibration.kappa >= t.kappaMin ? 'PASS' : 'WARN', `kappa ${f.calibration.kappa.toFixed(2)}${f.calibration.kappa >= t.kappaMin ? '' : ' (uncalibrated)'}${perRater}`, `kappa >= ${t.kappaMin}`));
+  }
   else add(C('calibration', 'Human calibration', false, 'WARN', 'uncalibrated: no calibration result recorded', `kappa >= ${t.kappaMin}`));
 
   const ck = f.checks;

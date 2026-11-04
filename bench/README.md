@@ -303,6 +303,54 @@ then `calibrate score` prints judge-vs-human and judge-vs-judge agreement, Cohen
 with PASS or WARN (defaults 0.6, 0.7, 0.6; `--kappa-min`, `--agreement-min`, `--spearman-min`). Under
 about 30 criterion pairs is indicative only.
 
+`cap review --run DIR` is the same check with the outputs side by side. It writes `DIR/calibration/review/review.html`, one static file
+with the data, style and script inline: it loads nothing, opens no port and needs no server (a Content-Security-Policy allows only its own
+script and style, and no connections). It draws the runs `calibrate export` would draw, with n and seed taken from `calibration-sample.json`
+when the detailed profile wrote one, and for each drawn task and replicate shows every arm's run of it (`--sample-only` shows the drawn
+runs alone). The outputs are the judge bundles, with the same redaction and then credential scrubbing. Each task's outputs carry the
+letters A, B and so on in a seeded random order. Which arm is behind each letter is kept in `review-key.json`, which goes to its own
+directory, `DIR/calibration/review-key/` by default (`--key-out DIR`; a key directory that is the page directory or inside it is refused),
+so the page directory holds only `review.html` and can be handed to the rater whole. If the page directory already holds what a review
+or an import writes (`review-key.json`, `key.json`, `sheet.json`, a `raters/` directory, an `.import-*` staging directory, or a
+temporary `*.json.tmp-PID` of one of those files), `cap review` refuses and writes nothing, even with `--force`: move or delete it first.
+Other files there, such as a downloaded `ratings-*.json`, are left alone. The key records the run directory relative to itself and no absolute path, and the page's
+viewer id does not depend on where the run is. For each output it also records a hash of what the rater saw: the `stream.jsonl`
+bytes, the shown checks (`checksOriginal` when a recheck kept them, else `checks`), the questions and turns, and the raw bytes of the
+workspace files the bundle was built from. A `recheck` does not change it.
+The rater marks each criterion pass, partial or fail (an evidence quote and notes are optional), the
+browser keeps the ratings in local storage, and Download ratings saves them as a JSON file. Load ratings resumes from such a file.
+
+`cap review-import --ratings FILE --key DIR/calibration/review-key/review-key.json` checks the file against the key (same page, known items
+and criteria, verdicts pass, partial, fail or null) and joins each letter back to its arm, task and replicate. `--key` is always
+required; a key is never looked for next to the page or the ratings. The run is found from the key's own location, so a run moved
+together with its key still imports; for a run moved without its key, pass `--run DIR`. An import refuses a directory that lacks the
+key's runs, or where any rated output no longer shows what the page showed (a re-run in the same layout, a changed stream or
+an edited workspace file), and names the first such output. A key from an older or unknown version is refused with the advice to regenerate the page
+with `cap review --run DIR`; ratings made on the old page will not import. Ratings are kept per rater in `raters/ID/` beside the key; the id is `--rater ID`, else the Rater name typed on the page. A file that rates no criterion, or has no
+rater id, is refused. Importing a rater that is already on file is refused unless `--force`, so a second import never replaces the first.
+
+With several raters on file, each is scored alone (`raters/ID/result.json`), and all of them are pooled for the combined result: the
+`sheet.json` and `key.json` beside the key (the key names the run relative to itself) list every output once per rater, so each rater's labels count as their own criterion pairs
+against each judge in the same kappa, agreement and Spearman code `calibrate score` uses. The command prints that table, says how many
+evidence quotes were found in the output (the judges' quote rule), and saves the pooled result, with each rater's figures under `byRater`,
+to `DIR/calibration/result.json`, where `report` and the detailed profile look for it. A `result.json` that this page did not write is
+kept unless `--force` or `--save FILE`. A refused import writes nothing, and an import that fails partway leaves the
+rater off file: it scores in a staging directory beside the key (removed when the import ends; a stale staging directory from a
+killed run is cleared by the next import), then writes the backup, the per-rater and pooled files and the result, and the rater's own
+`ratings.json` last. Rater, criterion and item ids are plain ids, so names such as `__proto__` work. A new rater id needs no `--force`; only replacing a rater
+already on file does. Before each import rewrites the pooled result, the one it replaces is copied to `result.prev.json` beside it
+(one level: an older `result.prev.json` is replaced).
+
+Each rater's kappa is shown next to the pooled one: the lowest judge-vs-human kappa for that rater, the same reduction the report
+applies to the pooled result. The import prints them, `result.json` keeps them under `raterKappa`, and the report's Human calibration
+row lists them after the pooled kappa with the lowest in bold. A rater under the kappa bar used for the pooled value (0.6 by default,
+`--kappa-min` on import) is marked "below". The row's status still follows the pooled kappa.
+
+```
+node bench/runner/bench.js cap review --run V/claude
+node bench/runner/bench.js cap review-import --ratings ~/Downloads/ratings-VIEWER.json --key V/claude/calibration/review-key/review-key.json --rater alice
+```
+
 ## Benchmark a PR or work in progress
 Any commit or working tree can be an arm: `--arms vanilla,v1.2.0,pr-95=<ref>,wip=dir:<path>`. A name is
 `[a-z0-9][a-z0-9._-]{0,40}`; `vanilla`, `main` and `vX.Y.Z` are reserved. A bare ref (`feat/x`) is refused.

@@ -117,7 +117,8 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions }) {
   parts.push(`## Deterministic check results\n${shownChecks.map(checkLine).join('\n') || '(none)'}`);
 
   const { text, fired } = redact(parts.join('\n\n'), redactions);
-  return { text, fired, meta };
+  // changed and deleted name the workspace files the bundle was built from, so a reader can tell later whether they moved.
+  return { text, fired, meta, changed: changed.map((f) => f.rel), deleted };
 }
 
 module.exports = { buildBundle, finalTextOf };

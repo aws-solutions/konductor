@@ -43,8 +43,12 @@ const { optionalProfile, replicatesFor } = require('../runner/lib/profiles.js');
 const { generateScenarios, checkCount } = require('./scenarios.js');
 const { writeControls, controlPlan, evaluateControls } = require('./controls.js');
 const { cmdSkillPlan, cmdSkillStudy, cmdDecide } = require('./skillcli.js');
+const { writeReview, importRatings } = require('./review.js');
+const { DEFAULTS } = require('../judge/config.js');
+const { loadRedactions } = require('../judge/redact.js');
+const { formatCalibration, formatRaterKappas } = require('../judge/calibrate.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide'];
+const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -572,6 +576,60 @@ function cmdControls(opts) {
   ].join('\n'));
 }
 
+// ---- review ----
+
+function posNum(opts, name, { int = false } = {}) {
+  if (opts[name] === undefined) return undefined;
+  const n = Number(opts[name]);
+  if (!Number.isFinite(n) || n <= 0 || (int && !Number.isInteger(n))) throw new Error(`--${name} must be a positive ${int ? 'integer' : 'number'}`);
+  return n;
+}
+
+function cmdReview(opts) {
+  const { benchDir, extraTasks } = common(opts);
+  const runDir = pathOpt(opts.run);
+  if (!runDir) throw new Error('--run DIR is required (a results directory, for example a study wave)');
+  let seed;
+  if (opts.seed !== undefined) {
+    seed = Number(opts.seed);
+    if (!Number.isInteger(seed)) throw new Error('--seed must be an integer');
+  }
+  const r = writeReview({
+    runDir, benchDir, extraTasks, n: posNum(opts, 'n', { int: true }), seed, sampleOnly: Boolean(opts['sample-only']),
+    limits: { maxFileChars: posNum(opts, 'max-file-chars', { int: true }) ?? DEFAULTS.limits.maxFileChars, maxBundleChars: posNum(opts, 'max-bundle-chars', { int: true }) ?? DEFAULTS.limits.maxBundleChars },
+    explicitLimits: { maxFileChars: opts['max-file-chars'] !== undefined, maxBundleChars: opts['max-bundle-chars'] !== undefined },
+    redactions: loadRedactions(opts['redact-file'] && opts['redact-file'] !== true ? opts['redact-file'] : null),
+    outDir: pathOpt(opts.out), keyOutDir: pathOpt(opts['key-out']), force: Boolean(opts.force),
+  });
+  console.log([
+    `wrote ${r.pagePath} (${r.groups} task(s), ${r.outputs} output(s) to rate; n ${r.params.n}, seed ${r.params.seed} from ${r.params.from}; viewer ${r.viewerId})`,
+    `and ${r.keyPath}, in its own directory because it names the arm behind each letter: give the rater ${r.dir} only.`,
+    'Open the page in a browser (it loads nothing and needs no server), rate, choose Download ratings, then run:',
+    `  node bench/runner/bench.js cap review-import --ratings FILE --key ${r.keyPath}`,
+  ].join('\n'));
+}
+
+function cmdReviewImport(opts) {
+  const ratingsFile = pathOpt(opts.ratings);
+  if (!ratingsFile) throw new Error('--ratings FILE is required (the JSON file the review page downloaded)');
+  if (!pathOpt(opts.key)) throw new Error('--key FILE is required: the review-key.json that cap review wrote to its own directory (review-key/ by default); it is never looked for next to the page');
+  const t = DEFAULTS.thresholds;
+  const r = importRatings({
+    ratingsFile, keyFile: pathOpt(opts.key), run: pathOpt(opts.run), rater: opts.rater && opts.rater !== true ? String(opts.rater) : undefined, outDir: pathOpt(opts.out), save: pathOpt(opts.save), force: Boolean(opts.force),
+    thresholds: { kappaMin: posNum(opts, 'kappa-min') ?? t.kappaMin, agreementMin: posNum(opts, 'agreement-min') ?? t.agreementMin, spearmanMin: posNum(opts, 'spearman-min') ?? t.spearmanMin },
+  });
+  if (opts.json) { console.log(JSON.stringify(r.res, null, 2)); return; }
+  const q = r.quotes;
+  console.log([
+    formatCalibration(r.res), '',
+    `Evidence quotes: ${q.checked ? `${q.found} of ${q.checked} found in the output${q.notFound.length ? `; not found: ${q.notFound.join(', ')}` : ''}` : 'none given'}`,
+    `Per rater (lowest judge kappa each, bar ${r.res.raterKappa.kappaMin}): ${formatRaterKappas(r.res.raterKappa.raters, r.res.raterKappa.kappaMin).replace(/\*\*/g, '')}`,
+    `rater "${r.raterId}" kept in ${r.raterFile}; raters on file: ${r.raters.join(', ')} (the table pools them; each rater's own figures are in raters/<id>/result.json and under byRater)`,
+    `wrote ${r.sheetPath} and ${r.sheetKeyPath} (calibrate score reads these) and ${r.savePath} (the report reads this)`,
+    ...(r.backupPath ? [`the previous pooled result was kept as ${r.backupPath}`] : []),
+  ].join('\n'));
+}
+
 function cmdCap(opts) {
   const sub = opts._[0];
   if (!SUBCOMMANDS.includes(sub)) { console.error(`bench: cap takes ${SUBCOMMANDS.join(', ')}`); process.exitCode = 2; return; }
@@ -588,6 +646,8 @@ function cmdCap(opts) {
     if (sub === 'skill-plan') return cmdSkillPlan(opts);
     if (sub === 'skill-study') return cmdSkillStudy(opts);
     if (sub === 'decide') return cmdDecide(opts);
+    if (sub === 'review') return cmdReview(opts);
+    if (sub === 'review-import') return cmdReviewImport(opts);
     return cmdTrigger(opts);
   };
   const fail = (e) => {

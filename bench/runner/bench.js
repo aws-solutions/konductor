@@ -8,7 +8,7 @@
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
- *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide ...   (capability benchmarking; draft, trigger and live runs cost credits)
+ *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/README.md.
@@ -186,6 +186,21 @@ const USAGE = `Usage:
        (read-only, no credits: one call per skill from the study waves: DELETE, PRUNE (sections to remove or move, with SKILL.md line ranges), KEEP or NEEDS DATA,
        with confidence, lift against the control with an interval, the A/A spread, tokens saved and a unified diff per DELETE or PRUNE under patches/. No call
        unless the controls passed, an A/A arm exists, scores are on a 0 to 1 scale, enough runs back it and the skill loaded. Nothing is applied)
+  node bench/runner/bench.js cap review --run DIR [--n N] [--seed S] [--sample-only] [--out DIR] [--key-out DIR] [--force] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
+       (free, no model call: a static review page, review.html, for a person to rate the calibration sample side by side, one task at a time,
+       pass, partial or fail per rubric criterion. n and seed default to the run's calibration-sample.json, else 25 and 1. Each task shows every
+       arm's run of the drawn task and replicate (--sample-only: the drawn runs only) under the letters A, B, ... in a seeded random order; the
+       letter-to-arm map goes to review-key.json in its own directory, never the page's. Outputs are the judge bundles, with the same redaction
+       plus credential scrubbing. The page loads nothing and needs no server; ratings download as a JSON file. Defaults: --out
+       DIR/calibration/review, --key-out DIR/calibration/review-key. The key records the run relative to itself, not as an absolute path)
+  node bench/runner/bench.js cap review-import --ratings FILE --key FILE [--run DIR] [--rater ID] [--out DIR] [--save FILE] [--force] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--json]
+       (free: checks the downloaded ratings against review-key.json (always given with --key; never looked for next to the page), finds the
+       run from the key's own location or --run DIR when the run moved without its key, joins each letter back to its run and keeps the
+       ratings per rater under raters/ID/ in the key's directory (ID from --rater, else the Rater name on the page). Each rater is scored alone, and all raters on file are pooled into the
+       sheet.json and key.json that calibrate score reads and into DIR/calibration/result.json, which report reads; it prints judge-vs-human
+       kappa, agreement and Spearman and checks any evidence quotes against the output. A file that rates nothing is refused. An existing
+       rater's ratings, or a result.json this page did not write, are kept unless --force; nothing is written when the import is refused)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
   node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--save FILE]

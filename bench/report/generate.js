@@ -26,17 +26,23 @@ function checkChoice(name, value, allowed, fallback) {
 const detailOf = (v) => checkChoice('detail', v, DETAILS, 'full');
 const formatOf = (v) => checkChoice('format', v, FORMATS, 'both');
 
-/** First calibration result beside the run: <run>/calibration/result.json written by `calibrate score --save`. */
+/**
+ * The calibration result beside the run: <run>/calibration/result.json written by `calibrate score --save` or
+ * `cap review-import`. kappa is the lowest judge kappa over every directory; raters lists, for a review import, each
+ * rater's lowest judge kappa (prefixed by the directory name when several directories are pooled).
+ */
 function readCalibration(run) {
   const dirs = run.dirs || [run.dir];
   const kappas = [];
+  const raters = [];
   for (const d of dirs) {
     try {
       const res = readJson(path.join(d, 'calibration', 'result.json'));
       for (const s of Object.values(res.judges || {})) if (typeof s.kappa === 'number' && Number.isFinite(s.kappa)) kappas.push(s.kappa);
+      for (const [rater, r] of Object.entries(res.byRater || {})) raters.push([dirs.length > 1 ? `${path.basename(d)}/${rater}` : rater, r]);
     } catch { /* no calibration recorded */ }
   }
-  return kappas.length ? { kappa: Math.min(...kappas) } : null;
+  return kappas.length ? { kappa: Math.min(...kappas), byRater: raters.length ? Object.fromEntries(raters) : null } : null;
 }
 
 function readSpend(run) {
@@ -109,4 +115,4 @@ function generateContrast({ run, tasks, c, out, detail, format, scoringFile, def
   return { written, card: a.card, markdown: require('fs').existsSync(path.join(dir, 'contrast.md')) ? fs.readFileSync(path.join(dir, 'contrast.md'), 'utf8') : '' };
 }
 
-module.exports = { generateRunReport, generateContrast, analyze, writeOutputs, outPaths, detailOf, formatOf, DETAILS, FORMATS };
+module.exports = { generateRunReport, generateContrast, analyze, writeOutputs, outPaths, detailOf, formatOf, DETAILS, FORMATS, readCalibration };

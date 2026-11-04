@@ -88,6 +88,16 @@ test('both orderings: all records, none, or some', () => {
   assert.equal(status(good({ judging: { ...good().judging, pairwise: { run: false, records: 0, bothOrders: 0 } } }), 'orders'), 'N/A');
 });
 
+test('calibration: each rater of a review import is shown beside the pooled kappa, the lowest in bold, any under the bar marked', () => {
+  const byRater = { alice: { judges: { j1: { kappa: 0.9 }, j2: { kappa: 0.8 } } }, bob: { judges: { j1: { kappa: 0.4 }, j2: { kappa: null } } } };
+  const row = by(evaluate(good({ calibration: { kappa: 0.65, byRater } })), 'calibration');
+  assert.equal(row.status, 'PASS', 'the status still follows the pooled kappa');
+  assert.equal(row.value, 'kappa 0.65; per rater: alice 0.80, **bob 0.40 (lowest, below 0.6)**');
+  const one = by(evaluate(good({ calibration: { kappa: 0.5, byRater: { alice: { judges: { j1: { kappa: 0.5 } } } } } })), 'calibration');
+  assert.equal(one.value, 'kappa 0.50 (uncalibrated); per rater: alice 0.50 (below 0.6)');
+  assert.equal(by(evaluate(good()), 'calibration').value, 'kappa 0.70', 'no per-rater text without a review import');
+});
+
 test('calibration: kappa 0.6 passes; lower or missing is WARN uncalibrated', () => {
   assert.equal(status(good({ calibration: { kappa: 0.6 } }), 'calibration'), 'PASS');
   assert.equal(status(good({ calibration: { kappa: 0.59 } }), 'calibration'), 'WARN');

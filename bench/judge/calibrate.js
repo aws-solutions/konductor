@@ -105,14 +105,18 @@ function stats(critPairs, scorePairs, thresholds) {
 
 function scoreLabels({ labelsFile, keyFile, thresholds }) {
   const sheet = readJson(labelsFile);
-  const key = readJson(keyFile || path.join(path.dirname(labelsFile), 'key.json'));
-  const run = loadRun(key.runDir);
+  const keyPath = keyFile || path.join(path.dirname(labelsFile), 'key.json');
+  const key = readJson(keyPath);
+  // A relative runDir is relative to the key file, so a key kept inside the run still works after the run moves.
+  const run = loadRun(path.resolve(path.dirname(keyPath), key.runDir));
   const records = (run.judgments?.rubric || []).filter((r) => !r.judgeError);
   const judges = run.judgments?.judges || [];
   const recOf = (judge, k) => records.find((r) => r.judge === judge && r.armId === k.armId && r.taskId === k.taskId && r.replicate === k.replicate);
 
   const out = { thresholds, itemsTotal: sheet.items.length, itemsLabeled: 0, judges: {}, judgeVsJudge: {} };
-  const humanOf = (it) => it.rubric.map((r) => ({ id: r.id, verdict: it.labels[r.id] })).filter((c) => VERDICTS.includes(c.verdict));
+  // Own keys only: a criterion or item id such as "constructor" must not read an inherited property.
+  const ownGet = (o, k) => (o && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined);
+  const humanOf = (it) => it.rubric.map((r) => ({ id: r.id, verdict: ownGet(it.labels, r.id) })).filter((c) => VERDICTS.includes(c.verdict));
   const labeledItems = sheet.items.filter((it) => humanOf(it).length === it.rubric.length);
   out.itemsLabeled = labeledItems.length;
 
@@ -120,7 +124,8 @@ function scoreLabels({ labelsFile, keyFile, thresholds }) {
     const crit = [];
     const score = [];
     for (const it of sheet.items) {
-      const rec = recOf(judge, key.items[it.itemId]);
+      const k = ownGet(key.items, it.itemId);
+      const rec = k && recOf(judge, k);
       if (!rec) continue;
       const human = humanOf(it);
       const jv = new Map(rec.criteria.map((c) => [c.id, c.verdict]));
@@ -166,4 +171,33 @@ function formatCalibration(res) {
   return lines.join('\n');
 }
 
-module.exports = { exportSheet, scoreLabels, formatCalibration, drawSample };
+/**
+ * One kappa per rater from a review import's byRater: the lowest finite judge-vs-human kappa, the same reduction the
+ * report applies to the pooled result. Sorted by rater id; `lowest` marks the minimum and `below` a kappa under kappaMin,
+ * the threshold already used for the pooled value. A rater with no finite kappa has kappa null and is neither.
+ */
+function raterKappas(byRater, kappaMin) {
+  const rows = Object.entries(byRater || {}).sort(([a], [b]) => a.localeCompare(b)).map(([rater, r]) => {
+    const ks = Object.values(r.judges || {}).map((s) => s.kappa).filter((k) => typeof k === 'number' && Number.isFinite(k));
+    const kappa = ks.length ? Math.min(...ks) : null;
+    return { rater, kappa, below: kappa !== null && kappa < kappaMin, lowest: false };
+  });
+  const finiteRows = rows.filter((r) => r.kappa !== null);
+  if (finiteRows.length) {
+    const min = Math.min(...finiteRows.map((r) => r.kappa));
+    for (const r of finiteRows) if (r.kappa === min) r.lowest = true;
+  }
+  return rows;
+}
+
+/** "alice 1.00, **bob 0.25 (lowest, below 0.6)**": the lowest in bold, any rater under kappaMin marked. */
+function formatRaterKappas(rows, kappaMin) {
+  return rows.map((r) => {
+    if (r.kappa === null) return `${r.rater} n/a`;
+    const tags = [r.lowest && rows.length > 1 ? 'lowest' : null, r.below ? `below ${kappaMin}` : null].filter(Boolean);
+    const text = `${r.rater} ${r.kappa.toFixed(2)}${tags.length ? ` (${tags.join(', ')})` : ''}`;
+    return r.lowest && rows.length > 1 ? `**${text}**` : text;
+  }).join(', ');
+}
+
+module.exports = { exportSheet, scoreLabels, formatCalibration, drawSample, raterKappas, formatRaterKappas };
