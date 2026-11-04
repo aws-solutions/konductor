@@ -17,7 +17,7 @@ const DEFAULT_EXCLUDES = [
   '.local/share/kiro-cli/run', '.local/share/kiro-cli/data.sqlite3', '.local/share/kiro-cli/data.sqlite3-wal',
   '.local/share/kiro-cli/data.sqlite3-shm', '.local/share/kiro-cli/feed.json', '.local/share/kiro-cli/feed-cache.json',
   '.local/share/kiro-cli/feed-cache.etag', '.local/share/kiro-cli/feed-cache.source',
-  '.cache', '.npm', '.cargo', '.rustup', '.mise', 'workspace',
+  '.local/share/mise', '.cache', '.npm', '.cargo', '.rustup', '.mise', 'workspace',
   '*.lock', '*_history', '*.zcompdump',
 ];
 const REPO_EXCLUDES = ['bench/results', '**/node_modules', '**/target', '.git/index', '*.lock'];
@@ -55,6 +55,14 @@ function walk(root, rel, depth, ctx) {
   }
 }
 
+const CREDENTIAL_PATH = /(^|\/)\.aws(\/|$)|(^|\/)(credentials|\.credentials\.json)$/;
+
+/** A line for hits on credentials paths: a run cannot write there (the scratch HOME hides them), so another process did. */
+function credentialPathNote(hits) {
+  if (!hits.some((h) => CREDENTIAL_PATH.test(h))) return null;
+  return 'a hit is on a credentials path; it may come from an external refresh in another shell, not from the run';
+}
+
 /**
  * roots: [{dir, depth, exclude: [relative prefixes or '*suffix']}]. absExclude lists
  * absolute dirs to skip everywhere (output, cache, scratch). start() touches the marker;
@@ -75,7 +83,7 @@ function createTripwire({ markerPath, roots, extraExcludes = [], absExclude = []
         ctx.patterns = [...(r.exclude || []), ...extraExcludes];
         walk(r.dir, '', r.depth, ctx);
       }
-      return { hits: ctx.hits.slice(0, MAX_REPORTED), allHits: ctx.hits, total: ctx.hits.length, truncated: ctx.truncated };
+      return { hits: ctx.hits.slice(0, MAX_REPORTED), allHits: ctx.hits, total: ctx.hits.length, truncated: ctx.truncated, note: credentialPathNote(ctx.hits) };
     },
   };
 }
@@ -97,4 +105,4 @@ function tripwireFlags(trip, isolationMode, flaggedInHome = []) {
   return [...(risky ? ['homeTripwire'] : []), ...(trip.truncated ? ['homeTripwireTruncated'] : [])];
 }
 
-module.exports = { createTripwire, tripwireFlags, DEFAULT_EXCLUDES, REPO_EXCLUDES };
+module.exports = { createTripwire, tripwireFlags, credentialPathNote, DEFAULT_EXCLUDES, REPO_EXCLUDES };

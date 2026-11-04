@@ -9,7 +9,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const net = require('node:net');
 const { makeIsolation, probeUnshare, resolveIsolation, writableTrees, runtimeSockets, realHomes } = require('../lib/isolate.js');
-const { createTripwire, tripwireFlags, REPO_EXCLUDES } = require('../lib/tripwire.js');
+const { createTripwire, tripwireFlags, credentialPathNote, DEFAULT_EXCLUDES, REPO_EXCLUDES } = require('../lib/tripwire.js');
 const { makeScratchRoot } = require('./scratch.js');
 const { mkScratch } = require('./scratch.js');
 
@@ -222,6 +222,45 @@ test('tripwire reports entries changed after the marker and respects excludes', 
     assert.equal(res.hits.some((h) => h.includes('/skip')), false);
     assert.equal(res.hits.some((h) => h.includes('node_modules')), false);
     assert.equal(res.truncated, false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the default home excludes cover the mise data directory and still report other changes under .local/share', () => {
+  const root = mkScratch('trip-');
+  try {
+    fs.mkdirSync(path.join(root, 'home/.local/share/mise/installs'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'home/.local/share/other'), { recursive: true });
+    const t = createTripwire({ markerPath: path.join(root, 'm'), roots: [{ dir: path.join(root, 'home'), depth: 5, exclude: DEFAULT_EXCLUDES }] });
+    t.start();
+    spawnSync('sleep', ['0.05']);
+    fs.writeFileSync(path.join(root, 'home/.local/share/mise/installs/tool'), 'x');
+    assert.deepEqual(t.check().hits, []);
+    fs.writeFileSync(path.join(root, 'home/.local/share/other/data'), 'x');
+    const hits = t.check().hits;
+    assert.ok(hits.includes(path.join(root, 'home/.local/share/other/data')));
+    assert.equal(hits.some((h) => h.includes('/mise')), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a tripwire hit on a credentials path carries a note that an external refresh may have caused it', () => {
+  const root = mkScratch('trip-');
+  try {
+    fs.mkdirSync(path.join(root, 'home/.aws'), { recursive: true });
+    const t = createTripwire({ markerPath: path.join(root, 'm'), roots: [{ dir: path.join(root, 'home'), depth: 3 }] });
+    t.start();
+    spawnSync('sleep', ['0.05']);
+    fs.writeFileSync(path.join(root, 'home/notes.txt'), 'x');
+    assert.equal(t.check().note, null);
+    fs.writeFileSync(path.join(root, 'home/.aws/credentials'), 'x');
+    const res = t.check();
+    assert.match(res.note, /credentials path; it may come from an external refresh in another shell/);
+    assert.equal(credentialPathNote([]), null);
+    assert.equal(credentialPathNote(['/h/.claude/.credentials.json']) === null, false);
+    assert.equal(credentialPathNote(['/h/credentials-notes.txt']), null);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
