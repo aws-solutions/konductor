@@ -259,8 +259,12 @@ The rest wraps the core, so the rules can be tested without a browser:
   The token lasts for the life of the tab, including copies made by Duplicate
   tab or `window.open`, and a browser may restore it with the tab. Script on the
   page can read it, so `index.html` carries a Content-Security-Policy that lets
-  the page run only its own files and allows no `<base>` or form target; a
-  server that sends the page should send the same policy as a header.
+  the page run only its own files and allows no `<base>` or form target. That
+  `<meta>` policy cannot set `frame-ancestors` and is only a fallback. A server
+  that sends the page must send the same policy as an HTTP header, with
+  `frame-ancestors 'none'` added (see **The page** in `api/openapi.yaml`). The
+  server's token lasts until it stops, with no idle timeout, so a kept token
+  does not change how long a session lives.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas.
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
