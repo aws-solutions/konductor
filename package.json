@@ -8,7 +8,7 @@
     "generate-notice": "node scripts/generate-notice.js",
     "benchmark": "node scripts/benchmark.js",
     "benchmark:regression": "node tests/scripts/check-benchmark-regression.js",
-    "test": "node --test \"tests/scripts/**/*.test.js\""
+    "test": "node --test \"tests/scripts/**/*.test.js\" \"bench/test/**/*.test.js\""
   },
   "engines": {
     "node": ">=22"

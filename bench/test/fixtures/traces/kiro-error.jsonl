@@ -1,0 +1,3 @@
+{"type":"tool_call","tool_call_id":"call_err1","tool_name":"fsRead","arguments":{"path":"missing.txt"}}
+{"type":"tool_call_update","tool_call_id":"call_err1","status":"error","error":"ENOENT: no such file or directory"}
+{"type":"error","message":"runtime CLI exited with a non-interactive refusal"}

@@ -1,0 +1,5 @@
+{"type":"system","subtype":"init","session_id":"sess_fixture_degraded","tools":["Read"],"mcp_servers":[]}
+{"type":"assistant","message":{"model":"example-model-a","content":[{"type":"tool_use","id":"toolu_deg1","name":"Read","input":{"path":"only-one-of-three.txt"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_deg1","is_error":false,"content":"partial content"}]}}
+{"type":"assistant","message":{"model":"example-model-a","content":[{"type":"text","text":"I was only able to check one of the three required sources."}]}}
+{"type":"result","subtype":"success","result":"I was only able to check one of the three required sources.","model":"example-model-a","is_error":false,"total_cost_usd":0.0030,"usage":{"input_tokens":80,"output_tokens":30,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}

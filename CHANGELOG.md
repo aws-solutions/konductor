@@ -10,6 +10,12 @@ not per individual commit.
 
 ### Added
 
+- `bench/lib/trace-normalizer.js`, a dependency-free, no-I/O library that turns a Claude Code,
+  OpenCode, or Kiro CLI trace into one session record (tool calls, skill loads, usage, cost,
+  errors, completeness) and redacts credentials. The module header covers redaction, ids, which
+  formats are verified against real captures, and the OpenTelemetry mapping. Tests and fixtures
+  are in `bench/test/`.
+- PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
 - The four phase-gated SOPs, such as `k-full-sdlc`, now carry an

@@ -1,0 +1,2 @@
+{"type":"step_start","timestamp":2000,"sessionID":"ses_fixture_notool","part":{"id":"prt_fixture_notool_1","sessionID":"ses_fixture_notool","messageID":"msg_fixture_notool_1","type":"step-start","snapshot":"snapshot-fixture-1"}}
+{"type":"text","timestamp":2010,"sessionID":"ses_fixture_notool","part":{"id":"prt_fixture_notool_2","sessionID":"ses_fixture_notool","messageID":"msg_fixture_notool_1","type":"text","text":"OK","time":{"start":2005,"end":2010}}}
