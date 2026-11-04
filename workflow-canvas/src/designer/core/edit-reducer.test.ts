@@ -4,6 +4,7 @@ import type { DiagnosticView, SaveResult } from '../../api/types';
 import { HELLO_DOCUMENT, HELLO_VIEW } from '../../test-support/fixtures';
 import { stagesOf } from './draft';
 import { reduce, reduceSlot } from './edit-reducer';
+import { canSave, saveStatus, textOf } from './edit-view';
 import {
   EMPTY_SLOT,
   openDocument,
@@ -293,46 +294,65 @@ describe('save', () => {
   });
 
   it('leaves the findings alone when the draft changed during the save', () => {
-    const saved = run(
+    const note: DiagnosticView = {
+      message: 'Odd.',
+      path: 'stages[0].agent',
+      line: 2,
+      severity: 'warning',
+    };
+    const saving = run(
       opened(),
-      { type: 'set-agent', id: 's1', agent: 'nope' },
-      {
-        type: 'checked',
-        revision: 1,
-        diagnostics: [finding('stages[0].agent')],
-      },
+      { type: 'set-agent', id: 's1', agent: 'k-tpm' },
+      { type: 'checked', revision: 1, diagnostics: [note] },
       { type: 'save' },
+    );
+    expect(saving.save).toEqual({ phase: 'saving' });
+
+    const saved = run(
+      saving,
       { type: 'rename', id: 's2', name: 'qa' },
       {
         type: 'saved',
         text: 'x',
-        result: savedResult([
-          { name: 'draft', agent: 'nope' },
-          HELLO_VIEW.stages[1]!,
-        ]),
+        result: {
+          ...savedResult([
+            { name: 'draft', agent: 'k-tpm' },
+            HELLO_VIEW.stages[1]!,
+          ]),
+          diagnostics: [finding('stages[1].name', 'From the save.')],
+        },
       },
     );
 
-    expect(saved.check.revision).toBe(1);
+    expect(saved.save).toEqual({ phase: 'saved' });
+    expect(saved.saved.hash).toBe(SAVED_HASH);
+    expect(saved.check).toBe(saving.check);
+    expect(saved.check.diagnostics).toEqual([note]);
   });
 
-  it('keeps an edit made while the save was going', () => {
-    const saved = run(
-      dirty(),
-      { type: 'save' },
-      { type: 'rename', id: 's2', name: 'qa' },
-      {
-        type: 'saved',
-        text: 'sent',
-        result: savedResult([
-          { name: 'draft', agent: 'k-tpm' },
-          HELLO_VIEW.stages[1]!,
-        ]),
-      },
-    );
+  it('keeps an edit made while the save was going, unsaved and due a check', () => {
+    const saving = run(dirty(), { type: 'save' });
+    const edited = run(saving, { type: 'rename', id: 's2', name: 'qa' });
+    expect(edited.save).toEqual({ phase: 'saving' });
+
+    const saved = run(edited, {
+      type: 'saved',
+      text: 'sent',
+      result: savedResult([
+        { name: 'draft', agent: 'k-tpm' },
+        HELLO_VIEW.stages[1]!,
+      ]),
+    });
 
     expect(saved.draft.stages[1]?.name).toBe('qa');
     expect(saved.saved.view.stages[1]?.name).toBe('review');
+    expect(saveStatus(saved)).toEqual({
+      kind: 'warning',
+      text: 'Unsaved changes',
+    });
+    expect(saved.check.revision).toBeLessThan(saved.revision);
+    expect(canSave(saved)).toBe(true);
+    expect(textOf(saved)).toContain('name: qa');
   });
 
   it('forgets that it was saved once the draft changes again', () => {
@@ -554,6 +574,141 @@ describe('an answer that is meant for an earlier document or an earlier save', (
       message: 'No answer.',
       uncertain: true,
     });
+  });
+});
+
+describe('an edit made while a save is in flight', () => {
+  const sentStages = [{ name: 'draft', agent: 'k-tpm' }, HELLO_VIEW.stages[1]!];
+  const saving = () =>
+    run(
+      opened(),
+      { type: 'set-agent', id: 's1', agent: 'k-tpm' },
+      { type: 'save' },
+    );
+  const editedWhileSaving = () =>
+    run(saving(), { type: 'rename', id: 's2', name: 'qa' });
+
+  it('is kept, with the sentence shown, when the save fails', () => {
+    const failed = run(editedWhileSaving(), {
+      type: 'failed',
+      message: 'The server did not answer.',
+    });
+
+    expect(failed.save).toEqual({
+      phase: 'failed',
+      message: 'The server did not answer.',
+    });
+    expect(failed.draft.stages[1]?.name).toBe('qa');
+    expect(saveStatus(failed).text).toBe('Unsaved changes');
+    expect(textOf(failed)).toContain('name: qa');
+    expect(failed.saved.hash).toBe(HELLO_DOCUMENT.hash);
+    expect(canSave(failed)).toBe(true);
+  });
+
+  it('is kept, with the conflict standing, when the file changed', () => {
+    const conflict = run(editedWhileSaving(), { type: 'conflict' });
+
+    expect(conflict.save).toEqual({ phase: 'conflict' });
+    expect(conflict.draft.stages[1]?.name).toBe('qa');
+    expect(canSave(conflict)).toBe(false);
+  });
+
+  it('is kept as the text a reload replaces, so it can be taken away', () => {
+    const reloading = run(
+      editedWhileSaving(),
+      { type: 'conflict' },
+      { type: 'reload' },
+    );
+    const reloaded = run(reloading, {
+      type: 'reloaded',
+      document: NEW_DOCUMENT,
+    });
+
+    expect(reloaded.discarded).toContain('name: qa');
+    expect(reloaded.discarded).toContain('agent: k-tpm');
+    expect(reloaded.saved.hash).toBe(NEW_DOCUMENT.hash);
+  });
+
+  it('is not undone by the saved edit, with two edits made during one save', () => {
+    const twice = run(
+      saving(),
+      { type: 'rename', id: 's2', name: 'q' },
+      { type: 'rename', id: 's2', name: 'qa' },
+    );
+    expect(twice.revision).toBe(saving().revision + 2);
+
+    const saved = run(twice, {
+      type: 'saved',
+      text: 'sent',
+      result: savedResult(sentStages),
+    });
+
+    expect(saved.draft.stages[1]?.name).toBe('qa');
+    expect(saveStatus(saved).text).toBe('Unsaved changes');
+    expect(saved.check.revision).toBeLessThan(saved.revision);
+  });
+
+  it('keeps the findings of a check that answered for it before the save did', () => {
+    const answered = run(editedWhileSaving(), {
+      type: 'checked',
+      revision: editedWhileSaving().revision,
+      diagnostics: [finding('stages[1].name')],
+    });
+
+    const saved = run(answered, {
+      type: 'saved',
+      text: 'sent',
+      result: savedResult(sentStages),
+    });
+
+    expect(saved.check).toBe(answered.check);
+    expect(saved.check.revision).toBe(saved.revision);
+    expect(canSave(saved)).toBe(false);
+  });
+
+  it('takes the findings of the save when the edit put the draft back to what was sent', () => {
+    const back = run(
+      saving(),
+      { type: 'rename', id: 's2', name: 'qa' },
+      { type: 'rename', id: 's2', name: 'review' },
+    );
+
+    const saved = run(back, {
+      type: 'saved',
+      text: 'sent',
+      result: savedResult(sentStages),
+    });
+
+    expect(saveStatus(saved).text).toBe('Saved');
+    expect(saved.check.revision).toBe(saved.revision);
+  });
+
+  it('ignores a check that answers for an earlier revision than the latest edit', () => {
+    const twice = run(
+      saving(),
+      { type: 'rename', id: 's2', name: 'q' },
+      { type: 'rename', id: 's2', name: 'qa' },
+    );
+
+    const late = run(twice, {
+      type: 'checked',
+      revision: twice.revision - 1,
+      diagnostics: [finding('stages[1].name')],
+    });
+
+    expect(late.check).toBe(twice.check);
+  });
+
+  it('is not replaced by a save answer that comes after a reload began', () => {
+    const reloading = run(editedWhileSaving(), { type: 'reload' });
+
+    const late = reduce(reloading, {
+      type: 'saved',
+      text: 'sent',
+      result: savedResult(sentStages),
+    });
+
+    expect(late).toBe(reloading);
   });
 });
 

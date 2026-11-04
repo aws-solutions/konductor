@@ -462,6 +462,167 @@ describe('saving', () => {
   });
 });
 
+// Holds each save in flight until the test answers it, and records what was sent.
+function holdSaves(edits: FakeEdits) {
+  const held: {
+    text: string;
+    hash: string;
+    succeed: () => void;
+    fail: (error: Error) => void;
+  }[] = [];
+  edits.save.mockImplementation(
+    (text, hash) =>
+      new Promise((resolve, reject) => {
+        held.push({
+          text,
+          hash,
+          succeed: () =>
+            resolve({
+              hash: SAVED_HASH,
+              view: viewOfText(text),
+              diagnostics: [],
+            }),
+          fail: reject,
+        });
+      }),
+  );
+  return held;
+}
+
+const withName = (name: string) =>
+  HELLO_TEXT.replace('name: draft', `name: ${name}`);
+
+// Starts a save of "write" and leaves it in flight.
+async function saveInFlight() {
+  const edits = acceptingEdits();
+  const held = holdSaves(edits);
+  const opened = await openDesigner(edits);
+  type('write');
+  fireEvent.click(saveButton());
+  expect(status()).toBe('Saving');
+  return { ...opened, held };
+}
+
+describe('an edit made while a save is in flight', () => {
+  it('leaves the draft unsaved when the save returns, checks the newer text once, and saves it on the new hash', async () => {
+    const { edits, scheduler, held } = await saveInFlight();
+    type('write-it');
+    expect(status()).toBe('Saving');
+
+    await act(async () => held[0]!.succeed());
+
+    expect(status()).toBe('Unsaved changes');
+    expect(nameInput().value).toBe('write-it');
+    expect(edits.check).not.toHaveBeenCalled();
+    await checkNow(scheduler);
+    expect(edits.check).toHaveBeenCalledOnce();
+    expect(edits.check).toHaveBeenCalledWith(withName('write-it'));
+    expect(isOff(saveButton())).toBe(false);
+
+    fireEvent.click(saveButton());
+
+    expect(edits.save).toHaveBeenCalledTimes(2);
+    expect(held.map(({ text, hash }) => [text, hash])).toEqual([
+      [withName('write'), HELLO_HASH],
+      [withName('write-it'), SAVED_HASH],
+    ]);
+    await act(async () => held[1]!.succeed());
+    expect(status()).toBe('Saved');
+  });
+
+  it('checks only the latest text when two edits are made during one save', async () => {
+    const { edits, scheduler, held } = await saveInFlight();
+    type('write-i');
+    type('write-it');
+
+    await act(async () => held[0]!.succeed());
+    await checkNow(scheduler);
+
+    expect(status()).toBe('Unsaved changes');
+    expect(edits.check).toHaveBeenCalledOnce();
+    expect(edits.check).toHaveBeenCalledWith(withName('write-it'));
+  });
+
+  it('keeps the edit, and sends it on the same hash, when the save fails', async () => {
+    const { edits, held } = await saveInFlight();
+    type('write-it');
+
+    await act(async () =>
+      held[0]!.fail(new Error('The server did not answer.')),
+    );
+
+    expect(screen.getByText('The server did not answer.')).toBeTruthy();
+    expect(status()).toBe('Unsaved changes');
+    expect(nameInput().value).toBe('write-it');
+    fireEvent.click(saveButton());
+    expect(edits.save).toHaveBeenCalledTimes(2);
+    expect(held[1]?.text).toBe(withName('write-it'));
+    expect(held[1]?.hash).toBe(HELLO_HASH);
+    await act(async () => held[1]!.succeed());
+    await waitFor(() => expect(status()).toBe('Saved'));
+  });
+
+  it('shows the conflict, keeps the edit to copy, and does not save it over the file', async () => {
+    const { edits, held } = await saveInFlight();
+    type('write-it');
+
+    await act(async () => held[0]!.fail(new SaveConflict('The file changed.')));
+
+    const alert = screen.getByTestId('conflict');
+    expect(nameInput().value).toBe('write-it');
+    expect(isOff(saveButton())).toBe(true);
+    fireEvent.click(
+      within(alert).getByRole('button', { name: 'Copy my version' }),
+    );
+    const mine = (await screen.findByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement;
+    expect(mine.value).toBe(withName('write-it'));
+    edits.reload.mockResolvedValue({
+      ...HELLO_DOCUMENT,
+      hash: 'e'.repeat(64),
+      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+    });
+
+    fireEvent.click(
+      within(alert).getByRole('button', { name: 'Load the file again' }),
+    );
+
+    const note = await screen.findByTestId('discarded');
+    fireEvent.click(
+      within(note).getByRole('button', { name: 'Copy my version' }),
+    );
+    const kept = (await screen.findAllByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement[];
+    expect(kept.some((box) => box.value === withName('write-it'))).toBe(true);
+    expect(nameInput().value).toBe('only');
+    expect(edits.save).toHaveBeenCalledOnce();
+  });
+
+  it('builds on the file that the earlier write left when the conflict is that write', async () => {
+    const { edits, held } = await saveInFlight();
+    type('write-it');
+    edits.reload.mockImplementationOnce(async () => ({
+      ...HELLO_DOCUMENT,
+      text: held[0]!.text,
+      hash: SAVED_HASH,
+      view: viewOfText(held[0]!.text),
+    }));
+
+    await act(async () =>
+      held[0]!.fail(new SaveConflict('The file changed.', SAVED_HASH)),
+    );
+
+    expect(screen.queryByTestId('conflict')).toBeNull();
+    expect(status()).toBe('Unsaved changes');
+    expect(nameInput().value).toBe('write-it');
+    fireEvent.click(saveButton());
+    expect(held[1]?.text).toBe(withName('write-it'));
+    expect(held[1]?.hash).toBe(SAVED_HASH);
+  });
+});
+
 describe('checking while typing', () => {
   it('does not ask the server until the text has been still for the pause', async () => {
     const { edits, scheduler } = await openDesigner();
