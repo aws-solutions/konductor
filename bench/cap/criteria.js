@@ -9,9 +9,12 @@
 //   NON-DISCRIMINATING  every comparison gives the same value in every run (always pass, always fail) with at least
 //                       minRuns runs per arm, or its interval lies inside the no-effect margin of cap decide.
 //                       An always-the-same item with fewer runs is INSUFFICIENT-DATA instead, never flagged.
-//   SATURATED           every arm sits at or above the ceiling rate, or every arm at or below the floor (1 - ceiling).
-//   HIGH-VARIANCE       judges disagree on more than a share of the runs, or replicates of one arm and task spread more
-//                       than a pooled standard deviation. Each half is measured only when the data has it.
+//   SATURATED           every arm sits at or above the ceiling rate, or every arm at or below the floor (1 - ceiling),
+//                       with at least minRuns runs per arm; with fewer it is INSUFFICIENT-DATA instead.
+//   HIGH-VARIANCE       judges disagree (strict: any verdict difference, partial included) on more than a share of the
+//                       runs, or replicates of one arm and task spread more than a pooled standard deviation. Each half
+//                       is measured only when the data has it. The coarse rate (pass against not pass) is shown beside.
+// The margin default is the cap decide MARGIN, imported, so the two cannot drift apart.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -27,15 +30,44 @@ const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const round = (v, d = 3) => (typeof v === 'number' && Number.isFinite(v) ? Number(v.toFixed(d)) : v ?? null);
 const short = (s, n = 80) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 3)}...` : t; };
 
+const checkIdOf = (c) => (typeof c?.id === 'string' && c.id ? c.id : typeof c?.name === 'string' && c.name ? c.name : null);
+const checkLabel = (c) => short(`${c.type} ${c.path ?? c.cmd ?? c.pattern ?? ''}`);
+
+/**
+ * Check observations for one run. Checks are matched by `id` (or `name`) when every result record carries one. Without
+ * ids they are matched by position, and only when the run has as many check results as the reference list (the task's
+ * checks, or the first run seen for a task with no loaded definition) with the same type at each place. Anything else
+ * is an error for the run rather than a guess. Returns { observations, error }.
+ */
+function matchChecks(results, reference, base) {
+  const done = results.filter((c) => typeof c?.passed === 'boolean');
+  if (!done.length) return { observations: [], error: null };
+  const ids = done.map(checkIdOf);
+  if (ids.every(Boolean)) {
+    return { observations: done.map((c, i) => { const spec = (reference ?? []).find((r) => checkIdOf(r) === ids[i]) ?? c; return { ...base, kind: 'check', id: `check:${ids[i]}`, label: checkLabel(spec), value: c.passed ? 1 : 0, judgeValues: null }; }), error: null };
+  }
+  const where = `arm ${base.arm}, replicate ${base.rep}`;
+  if (results.length !== reference.length) return { observations: [], error: `${where}: ${results.length} check results against ${reference.length} checks, and the checks have no id, so they cannot be matched` };
+  const off = results.findIndex((c, i) => c?.type !== reference[i]?.type);
+  if (off >= 0) return { observations: [], error: `${where}: check ${off + 1} is ${results[off]?.type} in the result and ${reference[off]?.type} in the reference list, and the checks have no id, so they cannot be matched` };
+  return {
+    observations: results.map((c, i) => (typeof c?.passed === 'boolean' ? { ...base, kind: 'check', id: `check-${i + 1}`, label: checkLabel(reference[i]), value: c.passed ? 1 : 0, judgeValues: null } : null)).filter(Boolean),
+    error: null,
+  };
+}
+
 /**
  * Observations from one loaded run directory: one per item and run, after leaving out infra errors and model mismatches
- * as `cap decide` does. `rows` and `ctx` come from report/generate.js analyze(). A check is named by its position in the
- * task's check list. Returns { observations, judgesPerRun } where judgesPerRun counts runs by number of usable judges.
+ * as `cap decide` does. `rows` and `ctx` come from report/generate.js analyze(). Returns { observations, judgesPerRun,
+ * checkErrors } where judgesPerRun counts runs by number of usable judges and checkErrors lists runs whose checks could
+ * not be matched.
  */
 function collectObservations({ run, rows, ctx, tasks, src = run.dir, armMap = null }) {
   const outcome = new Map(rows.map((r) => [`${r.arm}\u0000${r.task}\u0000${r.rep}`, r.outcome]));
   const observations = [];
   const judgesPerRun = {};
+  const checkErrors = [];
+  const firstSeen = new Map();
   for (const e of run.runs) {
     if (e.result.status === 'budget_skipped') continue;
     const arm = armMap ? armMap[e.armId] : e.armId;
@@ -44,11 +76,13 @@ function collectObservations({ run, rows, ctx, tasks, src = run.dir, armMap = nu
     if (LEFT_OUT.includes(oc)) continue;
     const task = tasks.get(e.taskId);
     const base = { arm, task: e.taskId, rep: e.replicate, src };
-    (e.result.checks ?? []).forEach((c, i) => {
-      if (typeof c?.passed !== 'boolean') return;
-      const spec = task?.checks?.[i] ?? c;
-      observations.push({ ...base, kind: 'check', id: `check-${i + 1}`, label: short(`${spec.type} ${spec.path ?? spec.cmd ?? spec.pattern ?? ''}`), value: c.passed ? 1 : 0, judgeValues: null });
-    });
+    const results = Array.isArray(e.result.checks) ? e.result.checks : [];
+    if (results.length) {
+      if (!task && !firstSeen.has(e.taskId)) firstSeen.set(e.taskId, results);
+      const m = matchChecks(results, task?.checks ?? firstSeen.get(e.taskId), base);
+      observations.push(...m.observations);
+      if (m.error) checkErrors.push({ task: e.taskId, arm, rep: e.replicate, src, reason: m.error });
+    }
     const byCriterion = new Map();
     let usable = 0;
     for (const j of ctx.judges ?? []) {
@@ -68,7 +102,7 @@ function collectObservations({ run, rows, ctx, tasks, src = run.dir, armMap = nu
       observations.push({ ...base, kind: 'rubric', id, label: short(spec?.criterion ?? id), weight: spec?.weight ?? null, value: mean(vals), judgeValues: vals });
     }
   }
-  return { observations, judgesPerRun };
+  return { observations, judgesPerRun, checkErrors };
 }
 
 const itemKey = (o) => `${o.kind}\u0000${o.task}\u0000${o.id}`;
@@ -110,7 +144,7 @@ function statusOf(c, head, base, cfg) {
  * the A/A repeat, reported for context and never counted as a variant. With cfg.adjust each interval is widened for the
  * number of items compared on that arm pair (Bonferroni), which makes NON-DISCRIMINATING harder to reach, not easier.
  */
-function analyzeObservations(observations, { baseline, aa = null, config = {} } = {}) {
+function analyzeObservations(observations, { baseline, aa = null, config = {}, checkErrors = [] } = {}) {
   const cfg = { ...DEFAULTS, ...config };
   const groups = new Map();
   for (const o of observations) {
@@ -134,7 +168,11 @@ function analyzeObservations(observations, { baseline, aa = null, config = {} } 
     const aaCmp = aa && of(aa).length && of(baseline).length ? (() => { const c = compare(of(aa), of(baseline), cfg.adjust ? pairCount[aa] : 1); return { arm: aa, ...roundCmp(c), ...statusOf(c, of(aa), of(baseline), cfg) }; })() : null;
 
     const multi = g.filter((o) => Array.isArray(o.judgeValues) && o.judgeValues.length >= 2);
-    const judge = multi.length ? (() => { const d = multi.filter((o) => Math.max(...o.judgeValues) !== Math.min(...o.judgeValues)).length; return { runs: multi.length, disagree: d, rate: round(d / multi.length, 4) }; })() : null;
+    const judge = multi.length ? (() => {
+      const strict = multi.filter((o) => Math.max(...o.judgeValues) !== Math.min(...o.judgeValues)).length;
+      const coarse = multi.filter((o) => new Set(o.judgeValues.map((v) => v === 1)).size > 1).length;
+      return { runs: multi.length, disagree: strict, rate: round(strict / multi.length, 4), coarseDisagree: coarse, coarseRate: round(coarse / multi.length, 4) };
+    })() : null;
     const cellGroups = [...new Set(g.map((o) => `${o.arm}\u0000${o.src}`))].map((k) => g.filter((o) => `${o.arm}\u0000${o.src}` === k).map((o) => o.value));
     const w = withinCellSd(cellGroups);
     const replicate = w.cells ? { sd: round(w.sd, 4), cells: w.cells } : null;
@@ -142,16 +180,27 @@ function analyzeObservations(observations, { baseline, aa = null, config = {} } 
     const flags = [];
     const reasons = [];
     if (comparisons.length && comparisons.every((c) => c.status === 'NON-DISCRIMINATING')) { flags.push('NON-DISCRIMINATING'); reasons.push(...comparisons.map((c) => `${c.arm}: ${c.reason}`)); }
-    const rs = Object.values(rates).map((r) => r.rate);
-    if (rs.length >= 2 && rs.every((r) => r >= cfg.saturated)) { flags.push('SATURATED'); reasons.push(`every arm at or above ${cfg.saturated} (ceiling)`); }
-    else if (rs.length >= 2 && rs.every((r) => r <= 1 - cfg.saturated)) { flags.push('SATURATED'); reasons.push(`every arm at or below ${round(1 - cfg.saturated, 4)} (floor)`); }
+    const rs = Object.values(rates);
+    const side = rs.length < 2 ? null : rs.every((r) => r.rate >= cfg.saturated) ? `every arm at or above ${cfg.saturated} (ceiling)` : rs.every((r) => r.rate <= 1 - cfg.saturated) ? `every arm at or below ${round(1 - cfg.saturated, 4)} (floor)` : null;
+    const few = rs.filter((r) => r.n < cfg.minRuns).length;
+    const satShort = Boolean(side && few);
+    if (side && !few) { flags.push('SATURATED'); reasons.push(side); }
     const hv = [];
-    if (judge && judge.rate > cfg.judgeDisagree) hv.push(`judges disagreed on ${judge.disagree} of ${judge.runs} runs`);
+    if (judge && judge.rate > cfg.judgeDisagree) hv.push(`judges disagreed on ${judge.disagree} of ${judge.runs} runs (pass against not pass: ${judge.coarseDisagree})`);
     if (replicate && replicate.sd > cfg.replicateSd) hv.push(`replicate SD ${replicate.sd} over ${replicate.cells} cells`);
     if (hv.length) { flags.push('HIGH-VARIANCE'); reasons.push(...hv); }
-    const insufficient = !flags.includes('NON-DISCRIMINATING') && comparisons.some((c) => c.status === 'INSUFFICIENT-DATA');
-    if (insufficient) reasons.push(...comparisons.filter((c) => c.status === 'INSUFFICIENT-DATA').map((c) => `${c.arm}: ${c.reason}`));
+    const ndShort = !flags.includes('NON-DISCRIMINATING') && comparisons.some((c) => c.status === 'INSUFFICIENT-DATA');
+    if (ndShort) reasons.push(...comparisons.filter((c) => c.status === 'INSUFFICIENT-DATA').map((c) => `${c.arm}: ${c.reason}`));
+    if (satShort) reasons.push(`${side}, but ${few} arm${few === 1 ? ' has' : 's have'} fewer than ${cfg.minRuns} runs, so SATURATED is not called`);
+    const insufficient = ndShort || satShort;
     items.push({ kind: first.kind, task: first.task, id: first.id, label: first.label, weight: first.weight ?? null, rates, comparisons, aa: aaCmp, judge, replicate, flags, insufficient, reasons });
+  }
+  const errTasks = [...new Set(checkErrors.map((x) => x.task))];
+  for (const t of errTasks) {
+    const why = checkErrors.filter((x) => x.task === t).map((x) => x.reason);
+    const hit = items.filter((i) => i.kind === 'check' && i.task === t);
+    for (const i of hit) Object.assign(i, { flags: [], insufficient: false, error: why, reasons: [`not judged: ${why.length} run${why.length === 1 ? '' : 's'} had check results that could not be matched`] });
+    if (!hit.length) items.push({ kind: 'check', task: t, id: 'checks', label: 'check results that could not be matched', weight: null, rates: {}, comparisons: [], aa: null, judge: null, replicate: null, flags: [], insufficient: false, error: why, reasons: ['no check could be matched in any run'] });
   }
   items.sort((a, b) => b.flags.length - a.flags.length || a.task.localeCompare(b.task) || a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id, undefined, { numeric: true }));
   return { arms, baseline, aa, variants, items, config: cfg };
@@ -182,9 +231,9 @@ function analyzeDir({ dir, benchDir, extraTasks = [], baseline = null, aa = null
   const rawBase = armMap ? Object.keys(armMap).find((k) => armMap[k] === baseline) : baseline;
   const base = rawBase && present.includes(rawBase) ? rawBase : undefined;
   const a = analyze({ run, tasks, baseline: base });
-  const { observations, judgesPerRun } = collectObservations({ run, rows: a.rows, ctx: a.ctx, tasks, src: src ?? dir, armMap });
+  const { observations, judgesPerRun, checkErrors } = collectObservations({ run, rows: a.rows, ctx: a.ctx, tasks, src: src ?? dir, armMap });
   const baselineId = baseline ?? (armMap ? armMap[a.base] : a.base);
-  return { observations, judgesPerRun, baseline: baselineId, aa, config };
+  return { observations, judgesPerRun, checkErrors, baseline: baselineId, aa, config };
 }
 
 /** Every lift skill and finished wave of a study. Wave 1 of a screened skill reads only its own delete arm, shown as del. */
@@ -198,7 +247,7 @@ function analyzeStudy({ studyDir, config = {}, benchDir = null, extraTasks = nul
       const where = waveWhere(study, studyDir, rec, n);
       const armMap = where.screen ? { ctl: 'ctl', 'ctl-b': 'ctl-b', [`del-${rec.name}`]: 'del' } : null;
       const r = analyzeDir({ dir: where.dir, benchDir: benchDir ?? study.settings.benchDir, extraTasks: extraTasks ?? study.settings.extraTasks ?? [], baseline: 'ctl', aa: 'ctl-b', armMap, config });
-      groups.push({ skill: rec.name, wave: n, dir: path.relative(studyDir, where.dir), judges: judgeNote(r.judgesPerRun), ...analyzeObservations(r.observations, { baseline: 'ctl', aa: 'ctl-b', config }) });
+      groups.push({ skill: rec.name, wave: n, dir: path.relative(studyDir, where.dir), judges: judgeNote(r.judgesPerRun), ...analyzeObservations(r.observations, { baseline: 'ctl', aa: 'ctl-b', config, checkErrors: r.checkErrors }) });
     }
   }
   return groups;
@@ -207,15 +256,17 @@ function analyzeStudy({ studyDir, config = {}, benchDir = null, extraTasks = nul
 /** Run directories outside a study, pooled into one group. Items in two or more directories get a paired interval. */
 function analyzeRuns({ dirs, benchDir, extraTasks = [], baseline = null, aa = null, config = {} }) {
   const obs = [];
+  const errs = [];
   const jpr = {};
   let base = baseline;
   for (const dir of dirs) {
     const r = analyzeDir({ dir, benchDir, extraTasks, baseline, aa, config });
     base = base ?? r.baseline;
     obs.push(...r.observations);
+    errs.push(...r.checkErrors);
     for (const [k, v] of Object.entries(r.judgesPerRun)) jpr[k] = (jpr[k] ?? 0) + v;
   }
-  return [{ skill: null, wave: null, dir: dirs.join(', '), judges: judgeNote(jpr), ...analyzeObservations(obs, { baseline: base, aa, config }) }];
+  return [{ skill: null, wave: null, dir: dirs.join(', '), judges: judgeNote(jpr), ...analyzeObservations(obs, { baseline: base, aa, config, checkErrors: errs }) }];
 }
 
 // ---- report ----
@@ -225,7 +276,7 @@ const table = (head, rows) => [`| ${head.join(' | ')} |`, `|${head.map(() => '--
 
 function summarize(groups) {
   const items = groups.flatMap((g) => g.items);
-  return { items: items.length, flagged: items.filter((i) => i.flags.length).length, insufficient: items.filter((i) => i.insufficient).length, byFlag: Object.fromEntries(FLAGS.map((f) => [f, items.filter((i) => i.flags.includes(f)).length])) };
+  return { items: items.length, flagged: items.filter((i) => i.flags.length).length, insufficient: items.filter((i) => i.insufficient).length, errors: items.filter((i) => i.error).length, byFlag: Object.fromEntries(FLAGS.map((f) => [f, items.filter((i) => i.flags.includes(f)).length])) };
 }
 
 function buildCriteriaReport(groups, meta = {}) {
@@ -243,28 +294,29 @@ function renderCriteria(report) {
   L.push('## Thresholds', '', table(['threshold', 'value', 'meaning'], [
     ['margin', t.margin, 'the no-effect margin of cap decide: an interval inside plus or minus this is NON-DISCRIMINATING'],
     ['saturated', t.saturated, 'SATURATED when every arm is at or above this rate, or every arm at or below 1 minus it'],
-    ['judge-disagree', t.judgeDisagree, 'HIGH-VARIANCE when judges gave different verdicts on more than this share of runs'],
+    ['judge-disagree', t.judgeDisagree, 'HIGH-VARIANCE when judges gave different verdicts (strict: partial against pass counts) on more than this share of runs; the pass against not pass rate is shown beside it'],
     ['replicate-sd', t.replicateSd, 'HIGH-VARIANCE when the pooled SD of one arm and task across replicates is above this (0.5 is a coin flip)'],
-    ['min-runs', t.minRuns, 'runs per arm needed before an item that scored the same in every run is called NON-DISCRIMINATING; below it the item is INSUFFICIENT-DATA'],
+    ['min-runs', t.minRuns, 'runs per arm needed before an item is called NON-DISCRIMINATING for scoring the same in every run, or SATURATED; below it the item is INSUFFICIENT-DATA'],
     ['adjust', t.adjust ? 'on' : 'off', 'intervals widened for the number of items on each arm pair (Bonferroni)'],
   ]), '');
-  L.push('## Summary', '', table(['flag', 'items'], [...FLAGS.map((f) => [f, report.summary.byFlag[f]]), ['any flag', report.summary.flagged], ['INSUFFICIENT-DATA (not flagged)', report.summary.insufficient], ['all items', report.summary.items]]), '');
+  L.push('## Summary', '', table(['flag', 'items'], [...FLAGS.map((f) => [f, report.summary.byFlag[f]]), ['any flag', report.summary.flagged], ['INSUFFICIENT-DATA (not flagged)', report.summary.insufficient], ['checks not matched (error)', report.summary.errors], ['all items', report.summary.items]]), '');
   for (const g of report.groups) {
     L.push(`## ${g.skill ? `${g.skill}, wave ${g.wave}` : 'Run directories'} (${g.dir})`, '');
     L.push(`Baseline ${g.baseline}${g.aa ? `, A/A ${g.aa}` : ''}; variants ${g.variants.join(', ') || 'none'}. ${g.judges.note}.`, '');
-    const flagged = g.items.filter((i) => i.flags.length || i.insufficient);
+    const flagged = g.items.filter((i) => i.flags.length || i.insufficient || i.error);
     if (!flagged.length) { L.push(`No item flagged (${g.items.length} items).`, ''); continue; }
-    L.push(table(['task', 'item', 'rate by arm', 'variant minus baseline (interval)', 'A/A', 'judges disagree', 'replicate SD', 'flags', 'why'], flagged.map((i) => [
+    L.push(table(['task', 'item', 'rate by arm', 'variant minus baseline (interval)', 'A/A', 'judges disagree (strict; pass against not pass)', 'replicate SD', 'flags', 'why'], flagged.map((i) => [
       i.task, `${i.kind === 'rubric' ? `rubric ${i.id}` : i.id}: ${i.label}`, Object.entries(i.rates).map(([a, r]) => `${a} ${r.rate} (n ${r.n})`).join('; '),
-      i.comparisons.map(fmtCmp).join('; ') || '-', i.aa ? fmtCmp(i.aa) : '-', i.judge ? `${i.judge.disagree} of ${i.judge.runs}` : 'not measured',
-      i.replicate ? i.replicate.sd : 'not measured', i.flags.length ? i.flags.join(', ') : 'INSUFFICIENT-DATA', i.reasons.join('; '),
+      i.comparisons.map(fmtCmp).join('; ') || '-', i.aa ? fmtCmp(i.aa) : '-', i.judge ? `${i.judge.disagree} of ${i.judge.runs}; ${i.judge.coarseDisagree} of ${i.judge.runs}` : 'not measured',
+      i.replicate ? i.replicate.sd : 'not measured', i.flags.length ? i.flags.join(', ') : i.error ? 'ERROR' : 'INSUFFICIENT-DATA', [...i.reasons, ...(i.error ?? [])].join('; '),
     ])), '');
     L.push(`${g.items.length - flagged.length} of ${g.items.length} items have no flag and enough runs; criteria.json lists them all.`, '');
   }
   L.push('## Not shown by this report', '',
     '- A rubric criterion and a check belong to one task, so a comparison inside one run directory rests on that task\'s replicates; the interval is a bootstrap over them and treats runs as independent. Items found in two or more run directories get a paired interval by directory.',
     '- An item that does not separate these arms can still matter on another skill or task. NON-DISCRIMINATING says the item gave no information here, not that it is wrong.',
-    '- Judge disagreement counts any difference in verdict, partial included, after the evidence check that downgrades an unfound quote.',
+    '- Judge disagreement is counted after the evidence check that downgrades an unfound quote. The strict rate counts any difference in verdict, partial included, and drives HIGH-VARIANCE; the pass against not pass rate is shown beside it.',
+    '- Checks are matched by id when the result records carry one, else by position when the lists have the same length and types; a run whose checks cannot be matched is an error for that task, and its checks are not judged.',
     '- Timeouts and errors stay in; infra errors and model mismatches are left out, as in cap decide.', '');
   return L.join('\n');
 }

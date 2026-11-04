@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { analyzeObservations, judgeNote, buildCriteriaReport, renderCriteria, DEFAULTS } = require('../../cap/criteria.js');
+const { analyzeObservations, collectObservations, judgeNote, buildCriteriaReport, renderCriteria, DEFAULTS } = require('../../cap/criteria.js');
 const { MARGIN } = require('../../cap/decide.js');
 const { decideStudy } = require('../../cap/skillstudy.js');
 const { setupAndRun } = require('./cap-skillstudy-fake.js');
@@ -62,6 +62,75 @@ test('the run minimum is configurable and the report counts and lists INSUFFICIE
   const md = renderCriteria(rep);
   assert.match(md, /\| min-runs \| 5 \|/);
   assert.match(md, /\| INSUFFICIENT-DATA \| del: the same value in every run, but 3 and 4 runs/);
+});
+
+test('SATURATED needs the run minimum too: 4 runs per arm is INSUFFICIENT-DATA, 5 is SATURATED', () => {
+  const at = (n) => item(analyzeObservations([...obs('ctl', n, (i) => (i % 2 ? 1 : 0.95)), ...obs('del', n, () => 1)], { baseline: 'ctl', config: { saturated: 0.9 } }));
+  const four = at(4);
+  assert.ok(!four.flags.includes('SATURATED'));
+  assert.equal(four.insufficient, true);
+  assert.match(four.reasons.join(' '), /ceiling\), but 2 arms have fewer than 5 runs, so SATURATED is not called/);
+  const five = at(5);
+  assert.ok(five.flags.includes('SATURATED'));
+  assert.equal(five.insufficient, false);
+});
+
+test('judge disagreement has a strict rate that drives HIGH-VARIANCE and a coarse pass against not pass rate beside it', () => {
+  const rub = (arm, n, jv) => obs(arm, n, () => 0.25, { kind: 'rubric', id: 'c1', judgeValues: jv });
+  const partialFail = item(analyzeObservations([...rub('ctl', 6, [0.5, 0]), ...rub('del', 6, [0.5, 0])], { baseline: 'ctl', config: { replicateSd: 0.9 } }), 'c1');
+  assert.deepEqual([partialFail.judge.disagree, partialFail.judge.coarseDisagree, partialFail.judge.rate, partialFail.judge.coarseRate], [12, 0, 1, 0]);
+  assert.ok(partialFail.flags.includes('HIGH-VARIANCE'), 'partial against fail counts in the strict rate');
+  const partialPass = item(analyzeObservations([...rub('ctl', 6, [1, 0.5]), ...rub('del', 6, [1, 1])], { baseline: 'ctl', config: { replicateSd: 0.9 } }), 'c1');
+  assert.deepEqual([partialPass.judge.disagree, partialPass.judge.coarseDisagree], [6, 6]);
+  const md = renderCriteria(buildCriteriaReport([{ skill: 's', wave: 1, dir: 'w1', judges: judgeNote({ 2: 12 }), ...analyzeObservations([...rub('ctl', 6, [0.5, 0]), ...rub('del', 6, [0.5, 0])], { baseline: 'ctl', config: { replicateSd: 0.9 } }) }], { source: 't' }));
+  assert.match(md, /\| 12 of 12; 0 of 12 \|/);
+});
+
+// One run per entry: { arm, rep, checks }. Task t1 defines two checks unless `taskChecks` says otherwise.
+function checkRun(entries, { taskChecks = [{ type: 'file_exists', path: 'a' }, { type: 'contains', path: 'b', pattern: 'x' }], hasTask = true } = {}) {
+  const run = { dir: 'd1', runs: entries.map((e) => ({ armId: e.arm, taskId: 't1', replicate: e.rep, result: { status: 'success', checks: e.checks } })) };
+  const rows = entries.map((e) => ({ arm: e.arm, task: 't1', rep: e.rep, outcome: 'good' }));
+  const tasks = new Map(hasTask ? [['t1', { id: 't1', checks: taskChecks, rubric: [] }]] : []);
+  return collectObservations({ run, rows, ctx: { judges: [], rubricIdx: new Map() }, tasks });
+}
+
+test('checks are matched by id when every result carries one, whatever the order', () => {
+  const r = checkRun([
+    { arm: 'ctl', rep: 1, checks: [{ id: 'exists', type: 'file_exists', passed: true }, { id: 'mentions', type: 'contains', passed: false }] },
+    { arm: 'del', rep: 1, checks: [{ id: 'mentions', type: 'contains', passed: true }, { id: 'exists', type: 'file_exists', passed: true }, { id: 'extra', type: 'cmd', passed: true }] },
+  ]);
+  assert.deepEqual(r.checkErrors, []);
+  const of = (arm, id) => r.observations.find((o) => o.arm === arm && o.id === id)?.value;
+  assert.deepEqual([of('ctl', 'check:mentions'), of('del', 'check:mentions'), of('del', 'check:exists')], [0, 1, 1]);
+});
+
+test('without ids, checks are matched by position only when the lengths and types agree', () => {
+  const ok = checkRun([{ arm: 'ctl', rep: 1, checks: [{ type: 'file_exists', passed: true }, { type: 'contains', passed: false }] }]);
+  assert.deepEqual(ok.checkErrors, []);
+  assert.deepEqual(ok.observations.map((o) => [o.id, o.value, o.label]), [['check-1', 1, 'file_exists a'], ['check-2', 0, 'contains b']]);
+  const noTask = checkRun([{ arm: 'ctl', rep: 1, checks: [{ type: 'cmd', passed: true }] }, { arm: 'del', rep: 1, checks: [{ type: 'cmd', passed: false }] }], { hasTask: false });
+  assert.deepEqual(noTask.checkErrors, [], 'with no task definition the first run seen is the reference');
+  const swapped = checkRun([{ arm: 'ctl', rep: 1, checks: [{ type: 'contains', passed: true }, { type: 'file_exists', passed: true }] }]);
+  assert.match(swapped.checkErrors[0].reason, /check 1 is contains in the result and file_exists in the reference list/);
+});
+
+test('a check list of a different length with no ids is an error for that task, never a guess', () => {
+  const r = checkRun([
+    { arm: 'ctl', rep: 1, checks: [{ type: 'file_exists', passed: true }, { type: 'contains', passed: true }] },
+    { arm: 'del', rep: 2, checks: [{ type: 'file_exists', passed: true }] },
+  ]);
+  assert.equal(r.checkErrors.length, 1);
+  assert.match(r.checkErrors[0].reason, /arm del, replicate 2: 1 check results against 2 checks, and the checks have no id, so they cannot be matched/);
+  const a = analyzeObservations(r.observations, { baseline: 'ctl', checkErrors: r.checkErrors });
+  for (const it of a.items.filter((i) => i.kind === 'check')) {
+    assert.deepEqual(it.flags, []);
+    assert.equal(it.error.length, 1);
+  }
+  const rep = buildCriteriaReport([{ skill: 's', wave: 1, dir: 'w1', judges: judgeNote({}), ...a }], { source: 't' });
+  assert.equal(rep.summary.errors, 2);
+  assert.match(renderCriteria(rep), /\| ERROR \| not judged: 1 run had check results that could not be matched; arm del, replicate 2/);
+  const none = analyzeObservations([], { baseline: 'ctl', checkErrors: r.checkErrors });
+  assert.equal(none.items[0].id, 'checks', 'a task with no matched check still gets an error item');
 });
 
 test('an item that separates the arms carries no flag', () => {
@@ -172,7 +241,7 @@ test('on a finished study it reads per-judge criteria and checks, writes criteri
     const g = rep.groups.find((x) => x.wave === 1);
     assert.equal(g.judges.measured, true);
     const c1 = g.items.find((i) => i.kind === 'rubric' && i.id === 'c1');
-    assert.deepEqual(c1.judge, { runs: Object.values(c1.rates).reduce((n, a) => n + a.n, 0), disagree: 0, rate: 0 });
+    assert.deepEqual(c1.judge, { runs: Object.values(c1.rates).reduce((n, a) => n + a.n, 0), disagree: 0, rate: 0, coarseDisagree: 0, coarseRate: 0 });
     assert.ok(c1.flags.includes('NON-DISCRIMINATING') && c1.flags.includes('SATURATED'));
     const chk = g.items.find((i) => i.kind === 'check' && i.task === 'rev-one');
     assert.ok(chk.flags.includes('NON-DISCRIMINATING'));
