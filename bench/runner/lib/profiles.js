@@ -155,6 +155,7 @@ function writeCalibrationSample({ run, n, seed }) {
     'Do not show this file to the person labelling: it names the arm of each run. Give them the blinded sheet instead.', '',
     'Make the blinded sheet (it draws exactly these runs):', '', '```', command, '```', '',
     `Then fill in sheet.json and run \`calibrate score --labels ${path.join(run.dir, 'calibration', 'sheet.json')} --save ${path.join(run.dir, 'calibration', 'result.json')}\`. The report reads result.json.`, '',
+    `Or rate the same runs side by side in a browser: \`node ${BENCH_JS} cap review --run ${run.dir}\`, then \`cap review-import\` with the downloaded ratings writes result.json.`, '',
     '| # | arm | task | replicate |', '|---|---|---|---|',
     ...sample.items.map((i, k) => `| ${k + 1} | ${i.armId} | ${i.taskId} | ${i.replicate} |`), '',
   ];

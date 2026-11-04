@@ -43,8 +43,12 @@ const { optionalProfile, replicatesFor } = require('../runner/lib/profiles.js');
 const { generateScenarios, checkCount } = require('./scenarios.js');
 const { writeControls, controlPlan, evaluateControls } = require('./controls.js');
 const { cmdSkillPlan, cmdSkillStudy, cmdDecide } = require('./skillcli.js');
+const { writeReview, importRatings } = require('./review.js');
+const { DEFAULTS } = require('../judge/config.js');
+const { loadRedactions } = require('../judge/redact.js');
+const { formatCalibration } = require('../judge/calibrate.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide'];
+const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -572,6 +576,56 @@ function cmdControls(opts) {
   ].join('\n'));
 }
 
+// ---- review ----
+
+function posNum(opts, name, { int = false } = {}) {
+  if (opts[name] === undefined) return undefined;
+  const n = Number(opts[name]);
+  if (!Number.isFinite(n) || n <= 0 || (int && !Number.isInteger(n))) throw new Error(`--${name} must be a positive ${int ? 'integer' : 'number'}`);
+  return n;
+}
+
+function cmdReview(opts) {
+  const { benchDir, extraTasks } = common(opts);
+  const runDir = pathOpt(opts.run);
+  if (!runDir) throw new Error('--run DIR is required (a results directory, for example a study wave)');
+  let seed;
+  if (opts.seed !== undefined) {
+    seed = Number(opts.seed);
+    if (!Number.isInteger(seed)) throw new Error('--seed must be an integer');
+  }
+  const r = writeReview({
+    runDir, benchDir, extraTasks, n: posNum(opts, 'n', { int: true }), seed, sampleOnly: Boolean(opts['sample-only']),
+    limits: { maxFileChars: posNum(opts, 'max-file-chars', { int: true }) ?? DEFAULTS.limits.maxFileChars, maxBundleChars: posNum(opts, 'max-bundle-chars', { int: true }) ?? DEFAULTS.limits.maxBundleChars },
+    explicitLimits: { maxFileChars: opts['max-file-chars'] !== undefined, maxBundleChars: opts['max-bundle-chars'] !== undefined },
+    redactions: loadRedactions(opts['redact-file'] && opts['redact-file'] !== true ? opts['redact-file'] : null),
+    outDir: pathOpt(opts.out), force: Boolean(opts.force),
+  });
+  console.log([
+    `wrote ${r.pagePath} (${r.groups} task(s), ${r.outputs} output(s) to rate; n ${r.params.n}, seed ${r.params.seed} from ${r.params.from}; viewer ${r.viewerId})`,
+    `and ${r.keyPath}, which names the arm behind each letter: do not give it to the rater.`,
+    'Open the page in a browser (it loads nothing and needs no server), rate, choose Download ratings, then run:',
+    `  node bench/runner/bench.js cap review-import --ratings FILE --key ${r.keyPath}`,
+  ].join('\n'));
+}
+
+function cmdReviewImport(opts) {
+  const ratingsFile = pathOpt(opts.ratings);
+  if (!ratingsFile) throw new Error('--ratings FILE is required (the JSON file the review page downloaded)');
+  const t = DEFAULTS.thresholds;
+  const r = importRatings({
+    ratingsFile, keyFile: pathOpt(opts.key), outDir: pathOpt(opts.out), save: pathOpt(opts.save), force: Boolean(opts.force),
+    thresholds: { kappaMin: posNum(opts, 'kappa-min') ?? t.kappaMin, agreementMin: posNum(opts, 'agreement-min') ?? t.agreementMin, spearmanMin: posNum(opts, 'spearman-min') ?? t.spearmanMin },
+  });
+  if (opts.json) { console.log(JSON.stringify(r.res, null, 2)); return; }
+  const q = r.quotes;
+  console.log([
+    formatCalibration(r.res), '',
+    `Evidence quotes: ${q.checked ? `${q.found} of ${q.checked} found in the output${q.notFound.length ? `; not found: ${q.notFound.join(', ')}` : ''}` : 'none given'}`,
+    `wrote ${r.sheetPath} and ${r.sheetKeyPath} (calibrate score reads these) and ${r.savePath} (the report reads this)`,
+  ].join('\n'));
+}
+
 function cmdCap(opts) {
   const sub = opts._[0];
   if (!SUBCOMMANDS.includes(sub)) { console.error(`bench: cap takes ${SUBCOMMANDS.join(', ')}`); process.exitCode = 2; return; }
@@ -588,6 +642,8 @@ function cmdCap(opts) {
     if (sub === 'skill-plan') return cmdSkillPlan(opts);
     if (sub === 'skill-study') return cmdSkillStudy(opts);
     if (sub === 'decide') return cmdDecide(opts);
+    if (sub === 'review') return cmdReview(opts);
+    if (sub === 'review-import') return cmdReviewImport(opts);
     return cmdTrigger(opts);
   };
   const fail = (e) => {
