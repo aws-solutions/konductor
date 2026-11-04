@@ -3,8 +3,14 @@ import { describe, expect, it } from 'vitest';
 import type { DiagnosticView, SaveResult } from '../../api/types';
 import { HELLO_DOCUMENT, HELLO_VIEW } from '../../test-support/fixtures';
 import { stagesOf } from './draft';
-import { reduce } from './edit-reducer';
-import { openDocument, type EditEvent, type EditState } from './edit-state';
+import { reduce, reduceSlot } from './edit-reducer';
+import {
+  EMPTY_SLOT,
+  openDocument,
+  type EditEvent,
+  type EditSlot,
+  type EditState,
+} from './edit-state';
 
 function opened(): EditState {
   const state = openDocument(HELLO_DOCUMENT);
@@ -667,5 +673,117 @@ describe('reduce, when the session is lost', () => {
     const next = run(opened(), lost, { type: 'rename', id: 's1', name: 'x' });
 
     expect(next.save).toEqual({ phase: 'idle' });
+  });
+});
+
+describe('revisions across a document that cannot be edited', () => {
+  const NO_FILE = { ...HELLO_DOCUMENT, text: null, hash: null, view: null };
+  const open = (document = HELLO_DOCUMENT): EditEvent => ({
+    type: 'open',
+    document,
+  });
+
+  function runSlot(...events: EditEvent[]): EditSlot {
+    return events.reduce(reduceSlot, EMPTY_SLOT);
+  }
+
+  it('does not let a late check of the first document fit the next one', () => {
+    const first = runSlot(open());
+    const firstRevision = first.current!.revision;
+
+    const second = runSlot(open(), open(NO_FILE), open(NEW_DOCUMENT));
+    const late = reduceSlot(second, {
+      type: 'checked',
+      revision: firstRevision,
+      diagnostics: [finding('stages[0].name')],
+    });
+
+    expect(second.current!.revision).toBeGreaterThan(firstRevision);
+    expect(late).toBe(second);
+  });
+
+  it('keeps the count through a document with no file', () => {
+    const edited = runSlot(
+      open(),
+      { type: 'add' },
+      { type: 'add' },
+      open(NO_FILE),
+    );
+
+    expect(edited.current).toBeUndefined();
+    expect(edited.lastRevision).toBe(2);
+    expect(reduceSlot(edited, open()).current!.revision).toBe(3);
+  });
+
+  it('keeps the count when a reload finds a document with no file', () => {
+    const slot = runSlot(
+      open(),
+      { type: 'conflict' },
+      { type: 'reload' },
+      { type: 'reloaded', document: NO_FILE },
+      open(NEW_DOCUMENT),
+    );
+
+    expect(slot.current!.revision).toBeGreaterThan(0);
+  });
+
+  it('still applies a check of the current revision', () => {
+    const slot = runSlot(open(), open(NO_FILE), open(), {
+      type: 'rename',
+      id: 's1',
+      name: 'a',
+    });
+    const next = reduceSlot(slot, {
+      type: 'checked',
+      revision: slot.current!.revision,
+      diagnostics: [finding('stages[0].name')],
+    });
+
+    expect(next.current!.check.diagnostics).toHaveLength(1);
+  });
+
+  it('ignores events while there is nothing to edit', () => {
+    const slot = runSlot(open(NO_FILE));
+
+    expect(reduceSlot(slot, { type: 'add' })).toBe(slot);
+    expect(slot.lastRevision).toBe(-1);
+  });
+
+  const EDITS: Record<string, EditEvent[]> = {
+    open: [open()],
+    'open new': [open(NEW_DOCUMENT)],
+    'open without file': [open(NO_FILE)],
+    edit: [{ type: 'add' }],
+    reload: [
+      { type: 'conflict' },
+      { type: 'reload' },
+      { type: 'reloaded', document: NEW_DOCUMENT },
+    ],
+    'reload without file': [
+      { type: 'conflict' },
+      { type: 'reload' },
+      { type: 'reloaded', document: NO_FILE },
+    ],
+  };
+  const NAMES = Object.keys(EDITS);
+
+  it.each(
+    Array.from({ length: 6 ** 3 }, (_, n) =>
+      [0, 1, 2].map((digit) => NAMES[Math.floor(n / 6 ** digit) % 6]!),
+    ),
+  )('never gives a revision twice: %s, %s, %s', (...names) => {
+    const seen = new Set<number>();
+    let slot = EMPTY_SLOT;
+    for (const name of names) {
+      for (const event of EDITS[name]!) {
+        const previous = slot.current;
+        slot = reduceSlot(slot, event);
+        const revision = slot.current?.revision;
+        if (revision !== undefined && revision !== previous?.revision) {
+          expect(seen.has(revision)).toBe(false);
+          seen.add(revision);
+        }
+      }
+    }
   });
 });

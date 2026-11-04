@@ -31,6 +31,9 @@ describe('the page, under strict mode', () => {
     );
 
     expect(await screen.findByTestId('node-stage-draft')).toBeTruthy();
-    expect(api.createSession).toHaveBeenCalledExactlyOnceWith('code-1');
+    expect(api.createSession).toHaveBeenCalledExactlyOnceWith(
+      'code-1',
+      expect.any(AbortSignal),
+    );
   });
 });

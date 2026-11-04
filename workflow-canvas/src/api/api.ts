@@ -13,8 +13,11 @@ import type {
  * this port; `createHttpApi` is the adapter that talks to the server.
  */
 export interface WorkflowApi {
-  /** Trades the launch code for a session. */
-  createSession(code: string): Promise<Session>;
+  /**
+   * Trades the launch code for a session. The code works once, so the call
+   * has a far longer limit than the others; aborting the signal ends it.
+   */
+  createSession(code: string, signal?: AbortSignal): Promise<Session>;
   /** Loads the root workflow of the session. */
   getWorkflow(token: string): Promise<WorkflowDocument>;
   /**

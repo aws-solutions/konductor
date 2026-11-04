@@ -36,7 +36,7 @@ describe('loadWorkflow', () => {
 
     const result = await loadWorkflow(api, 'code-1', freshMemory());
 
-    expect(api.createSession).toHaveBeenCalledWith('code-1');
+    expect(api.createSession).toHaveBeenCalledWith('code-1', undefined);
     expect(api.getWorkflow).toHaveBeenCalledWith('token-1');
     expect(result).toEqual({
       ok: true,
@@ -520,7 +520,7 @@ describe('loadWorkflow with a launch code', () => {
 
     await loadWorkflow(api, 'code-1', memory);
 
-    expect(api.createSession).toHaveBeenCalledWith('code-1');
+    expect(api.createSession).toHaveBeenCalledWith('code-1', undefined);
     expect(api.getWorkflow).toHaveBeenCalledOnce();
     expect(api.getWorkflow).toHaveBeenCalledWith('token-1');
   });

@@ -5,7 +5,7 @@ import {
   lostSessionMessage,
   messageOf,
 } from '../api/message-of';
-import type { WorkflowDocument } from '../api/types';
+import type { Session, WorkflowDocument } from '../api/types';
 import {
   SaveConflict,
   SaveLost,
@@ -245,15 +245,39 @@ function keepEarly(
   else memory.remember(session);
 }
 
+// A trade that got no answer already says what to do about the launch code;
+// the advice for a server that stopped would contradict it.
+class LaunchTradeUnanswered extends Error {}
+
+async function tradeLaunchCode(
+  api: WorkflowApi,
+  launchCode: string,
+  signal?: AbortSignal,
+): Promise<Session> {
+  try {
+    return await api.createSession(launchCode, signal);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 0) {
+      throw new LaunchTradeUnanswered(error.message);
+    }
+    throw error;
+  }
+}
+
 async function openWithCode(
   api: WorkflowApi,
   launchCode: string,
   memory: SessionMemory,
   pasted: boolean,
+  signal?: AbortSignal,
 ): Promise<LoadResult> {
   const startKept = memory.recall();
   try {
-    const { token, harness, apiVersion } = await api.createSession(launchCode);
+    const { token, harness, apiVersion } = await tradeLaunchCode(
+      api,
+      launchCode,
+      signal,
+    );
     if (apiVersion !== SUPPORTED_API_VERSION) return failure(UNSUPPORTED_API);
     const session = { token, harness };
     keepEarly(memory, session, startKept, pasted && startKept !== undefined);
@@ -323,15 +347,17 @@ export async function loadWorkflow(
  * of the code replaces the kept one at once, as no workflow is on the page
  * yet, and a code that fails (as a spent one does) falls back to the sessions
  * kept before it. The error of the code is shown only if those fail too.
+ * Aborting `signal` ends the trade of the code.
  */
 export async function loadOnOpen(
   api: WorkflowApi,
   launchCode: string | undefined,
   memory: SessionMemory,
+  signal?: AbortSignal,
 ): Promise<LoadResult> {
   if (launchCode === undefined) return loadWorkflow(api, undefined, memory);
   const before = resumable(memory);
-  const result = await openWithCode(api, launchCode, memory, false);
+  const result = await openWithCode(api, launchCode, memory, false, signal);
   return result.ok ? result : resumeAny(api, before, memory, result.message);
 }
 
