@@ -219,6 +219,21 @@ not per individual commit.
   content, task id, matched snippet, other skill name or injected heading reaches the text, in a
   hand-built run and in a run through the store and the judge driver. Run `node --test
   bench/test/report.test.js`.
+- `bench/lib/checks.js`, a pure matcher that evaluates a task's word checks against a workspace
+  snapshot (a plain object from relative path to text), so a stored snapshot replays offline. The
+  kinds are `file_exists`, `contains`, `not_contains`, `fixture_unchanged` and `file_absent`.
+  Patterns are case-insensitive and multiline, at most 500 characters, must consume at least two
+  characters and hold at least two literal ones, and may not use a lookahead or lookbehind or a
+  shape that backtracks without bound. Every pattern run has a one-second limit and is charged to
+  a work budget (`BUDGET_LIMITS`: evaluation, validation, lint, task set) that fails closed: a
+  check the budget did not let run is reported as having no verdict (`isIndeterminate`), never as
+  a pass. `bench/lib/pattern-syntax.js` parses pattern sources and builds the short texts a pattern
+  accepts (`candidateMatches`); `bench/lib/negatives.js` requires a tolerant `contains` pattern to
+  declare strings it must reject; `bench/lib/text-fold.js` is the one text fold the rest share
+  (case, accents, look-alike letters and invisible characters ignored); `bench/lib/safe-path.js`
+  holds the workspace-relative path rules (the run store's name rules stay in `slug.js`). Run
+  `node --test bench/test/checks.test.js bench/test/negatives-cost.test.js
+  bench/test/pattern-syntax.test.js bench/test/safe-path.test.js bench/test/text-fold.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
