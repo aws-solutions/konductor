@@ -8,7 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const { sandbox, pilotEnv, SCRIPTS, out, read, until, opts } = require('./pipeline-helpers.js');
 
 const SCRIPT_NAMES = ['run-real-pilot.sh', 'run-after-capability.sh', 'run-judging.sh', 'monitor.sh'];
@@ -153,6 +153,52 @@ test('run-real-pilot: the default mode daemonizes, logs to the state dir and rem
     assert.ok(await until(() => /DONE: 2\/2/.test(read(log)) && !fs.existsSync(path.join(s.state, 'real-pilot.pid'))), read(log));
     assert.match(s.spawn('run-real-pilot.sh', ['--stop'], env).stdout, /not running/);
   } finally { s.done(); }
+});
+
+// The preflight lists processes matching BENCH_PROC_PATTERN. Its own pgrep, the command-substitution subshell around it
+// and a pgrep that another script is running at the same moment are not bench runs; a real process matching the pattern is.
+const marker = (tag) => `kd-fake-bench-${tag}-${process.pid}-${Date.now()}`;
+const stopChild = async (child) => {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const exited = new Promise((res) => child.once('exit', res));
+  child.kill();
+  await exited;
+};
+const dryRun = (s, pattern, { asMarker } = {}) => spawnSync('bash',
+  asMarker ? ['-c', 'exec -a "$1" bash "$2" --dry-run', 'x', asMarker, path.join(SCRIPTS, 'run-real-pilot.sh')] : [path.join(SCRIPTS, 'run-real-pilot.sh'), '--dry-run'],
+  { env: { ...s.base, ...pilotEnv(s), BENCH_PROC_PATTERN: pattern }, encoding: 'utf8', cwd: s.root, timeout: 60000 });
+
+test('run-real-pilot: the preflight does not count its own subshell as another bench run', opts, () => {
+  const s = sandbox();
+  try {
+    const m = marker('self');
+    const r = dryRun(s, m, { asMarker: m });
+    assert.doesNotMatch(out(r), /another bench run is active/);
+    assert.match(out(r), /preflight ok: {3}no other bench run active/);
+    assert.equal(r.status, 0, out(r));
+  } finally { s.done(); }
+});
+
+test('run-real-pilot: the preflight does not count a pgrep that another script is running as another bench run', opts, async () => {
+  const s = sandbox();
+  const m = marker('pgrep');
+  const other = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)', m], { argv0: 'pgrep', stdio: 'ignore' });
+  try {
+    const r = dryRun(s, m);
+    assert.doesNotMatch(out(r), /another bench run is active/);
+    assert.equal(r.status, 0, out(r));
+  } finally { await stopChild(other); s.done(); }
+});
+
+test('run-real-pilot: the preflight still refuses while a real process matches the bench pattern', opts, async () => {
+  const s = sandbox();
+  const m = marker('real');
+  const other = spawn('bash', ['-c', 'exec -a "$0" sleep 60', m], { stdio: 'ignore' });
+  try {
+    const r = dryRun(s, m);
+    assert.notEqual(r.status, 0);
+    assert.match(out(r), new RegExp(`preflight FAIL: another bench run is active: ${other.pid} ${m}`));
+  } finally { await stopChild(other); s.done(); }
 });
 
 test('run-real-pilot: SMOKE=1 runs the first real task, skips the probe without PROBE_BENCH, and never touches a study dir', opts, () => {

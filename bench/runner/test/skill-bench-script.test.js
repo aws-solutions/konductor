@@ -93,6 +93,16 @@ test('it refuses while any bench.js process matches the process pattern', () => 
   } finally { p.kill(); s.done(); }
 });
 
+test('the bench-process check does not count the script itself or its own subshell', () => {
+  const s = sandbox();
+  const m = `kd-fake-bench-self-${process.pid}-${Date.now()}`;
+  try {
+    const r = spawnSync('bash', ['-c', 'exec -a "$1" bash "$2" --preflight', 'x', m, SCRIPT], { env: { ...s.base, BENCH_PROC_PATTERN: m }, encoding: 'utf8', cwd: s.e.root });
+    assert.doesNotMatch(r.stdout + r.stderr, /another bench study is active/i);
+    assert.match(r.stdout + r.stderr, /no bench\.js process is running/);
+  } finally { s.done(); }
+});
+
 test('the credentials file is checked first: missing or empty fails a real launch, and a dry run only warns', () => {
   const s = sandbox();
   try {

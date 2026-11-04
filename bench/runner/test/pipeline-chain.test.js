@@ -8,7 +8,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { sandbox, makePatch, chain, out, read, until, opts } = require('./pipeline-helpers.js');
+const { spawnSync } = require('node:child_process');
+const { sandbox, makePatch, chain, SCRIPTS, out, read, until, opts } = require('./pipeline-helpers.js');
 
 const SCRIPT = 'run-after-capability.sh';
 
@@ -161,6 +162,19 @@ test('with patches, P2 applies them, runs the suite, and makes one commit per pa
     assert.match(st.P2_commit2, /feat\(bench\): add two$/);
     assert.equal(st.P3, 'skipped', 'no autonomy dirs in this study');
     assert.match(read(path.join(s.state, 'after-capability-summary.txt')), /commit 2: [0-9a-f]{8} feat\(bench\): add two/);
+  } finally { s.done(); }
+});
+
+test('P2 does not count the chain script or its own subshell as a running bench.js', { ...opts, timeout: 60000 }, () => {
+  const s = sandbox();
+  const m = `kd-fake-bench-self-${process.pid}-${Date.now()}`;
+  try {
+    const p1 = makePatch(s, 'p1', { 'bench/one.txt': 'one\n' });
+    const { env } = chain(s, { PATCHES: p1, AC_P3_DEST_PREFIX: 'autonomy-before', AC_BENCH_PROC_PATTERN: m });
+    const r = spawnSync('bash', ['-c', 'exec -a "$1" bash "$2" --foreground', 'x', m, path.join(SCRIPTS, SCRIPT)], { env: { ...s.base, ...env }, encoding: 'utf8', cwd: s.root, timeout: 50000 });
+    assert.doesNotMatch(out(r), /bench\.js process is (still )?running/);
+    assert.equal(r.status, 0, out(r));
+    assert.equal(s.git(['log', '-1', '--format=%s']).trim(), 'bench: apply p1.patch');
   } finally { s.done(); }
 });
 

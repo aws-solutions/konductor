@@ -110,6 +110,13 @@ ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 say() { printf '[%s] %s\n' "$(ts)" "$*"; }
 die() { say "FAILED: $*"; exit 1; }
 alive() { [ -n "${1:-}" ] && kill -0 "$1" 2>/dev/null; }
+# Command lines matching $BENCH_PROC_PATTERN, minus pgrep/grep and this shell with its ancestors: a $(...) subshell
+# carries the script's own command line, and another script's pgrep carries the pattern.
+bench_procs() {
+  local skip=$BASHPID p=$BASHPID
+  while p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' '); [ -n "$p" ] && [ "$p" -gt 1 ]; do skip="$skip|$p"; done
+  pgrep -af "$BENCH_PROC_PATTERN" 2>/dev/null | grep -Ev "^($skip) |^[0-9]+ (pgrep|grep) " || true
+}
 free_gb() { df -Pk "$1" | awk 'NR==2{printf "%d", $4/1048576}'; }
 
 daemon_pid() {
@@ -150,7 +157,7 @@ preflight() {
     pf FAIL "another bench study is active:$active. Wait for the capability study to finish (or remove a stale pid file if that process is unrelated)"
   else pf ok "no other study pid file is alive ($OTHER_PIDFILES)"; fi
   local procs
-  procs=$(pgrep -af "$BENCH_PROC_PATTERN" 2>/dev/null | grep -v " pgrep " | grep -v "^$$ " || true)
+  procs=$(bench_procs)
   [ -z "$procs" ] && pf ok "no bench.js process is running" || pf FAIL "another bench study is active (bench.js is running): $(echo "$procs" | head -3 | tr '\n' ';')"
   if [ "${SB_CHILD:-0}" != 1 ] && daemon_pid >/dev/null; then pf FAIL "run-skill-bench is already running (pid $(daemon_pid))"; else pf ok "no run-skill-bench daemon"; fi
   pgrep -af 'konductor[^ ]* (install|update)' 2>/dev/null | grep -v pgrep >/dev/null && pf FAIL "a konductor install or update is running" || pf ok "no konductor install or update running"

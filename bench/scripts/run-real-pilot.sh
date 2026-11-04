@@ -234,9 +234,14 @@ daemon_pid() {
   alive "$p" && tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null | grep -q 'run-real-pilot' && { echo "$p"; return 0; }
   return 1
 }
-other_bench_running() { # prints matching command lines; excludes this script's own descendants
-  pgrep -af "$BENCH_PROC_PATTERN" | grep -v "^$$ " || true
+# Command lines matching $BENCH_PROC_PATTERN, minus pgrep/grep and this shell with its ancestors: a $(...) subshell
+# carries the script's own command line, and another script's pgrep carries the pattern.
+bench_procs() {
+  local skip=$BASHPID p=$BASHPID
+  while p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' '); [ -n "$p" ] && [ "$p" -gt 1 ]; do skip="$skip|$p"; done
+  pgrep -af "$BENCH_PROC_PATTERN" 2>/dev/null | grep -Ev "^($skip) |^[0-9]+ (pgrep|grep) " || true
 }
+other_bench_running() { bench_procs; }
 sha_is() { [ -n "$1" ] && [ -n "$2" ] && { [[ $1 == "$2"* ]] || [[ $2 == "$1"* ]]; }; }
 has_arm() { [[ ",$ARMS," == *",$1,"* || ",$ARMS," == *",$1="* ]]; }
 orch_sha() { [ -n "$ORCH_DIR" ] && git -C "$ORCH_DIR" rev-parse --short=8 HEAD 2>/dev/null || true; }

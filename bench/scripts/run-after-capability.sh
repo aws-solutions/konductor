@@ -399,7 +399,13 @@ cap_dirs_kind() { # <study> <real|pilot|autonomy>: by directory name, not by pat
   done
 }
 join_csv() { local IFS=,; echo "$*"; }
-bench_procs() { pgrep -af "$BENCH_PROC_PATTERN" 2>/dev/null | grep -v " pgrep " | grep -v "^$$ " || true; }
+# Command lines matching $BENCH_PROC_PATTERN, minus pgrep/grep and this shell with its ancestors: a $(...) subshell
+# carries the script's own command line, and another script's pgrep carries the pattern.
+bench_procs() {
+  local skip=$BASHPID p=$BASHPID
+  while p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' '); [ -n "$p" ] && [ "$p" -gt 1 ]; do skip="$skip|$p"; done
+  pgrep -af "$BENCH_PROC_PATTERN" 2>/dev/null | grep -Ev "^($skip) |^[0-9]+ (pgrep|grep) " || true
+}
 
 # pilot_state: sets PS_ALIVE (0/1), PS_LAST (last non-empty log line)
 pilot_state() {
