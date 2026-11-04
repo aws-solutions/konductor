@@ -52,6 +52,19 @@ jobs:
             exit 1
           fi
 
+      - name: Set up Node.js for the bench tests
+        # package.json declares "node": ">=22". The bench library has no dependencies, so no
+        # install step follows.
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Run the bench tests (node --test on bench/test/)
+        # Runs bench/test/ only, not `npm test`: that script also runs tests/scripts/, which has
+        # failures unrelated to the bench library. Node 22 does not accept a directory argument to
+        # --test, so this passes the same glob `npm test` uses for bench/test/.
+        run: node --test "bench/test/**/*.test.js"
+
       - name: Install pytest and PyYAML for the Python test suites
         # pytest is not preinstalled on ubuntu-latest. `make kiro-power-check`
         # and `make test-py` below both run `python3 -m pytest`, and two of

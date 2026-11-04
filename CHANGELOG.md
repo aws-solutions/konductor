@@ -32,6 +32,8 @@ not per individual commit.
   OpenCode reports a repeated call id as `duplicate_tool_id`. Tests and fixtures are in
   `bench/test/`: five fixtures are sanitized real captures (their names carry the CLI version)
   and the rest are synthetic. Run `node --test "bench/test/**/*.test.js"`.
+- PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22, apart from the
+  `tests/scripts` suite that `npm test` also runs.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
 - The four phase-gated SOPs, such as `k-full-sdlc`, now carry an
