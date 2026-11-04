@@ -371,6 +371,13 @@ not per individual commit.
   such as a `telemetry:` opt-out. It now changes only the named key.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
+- The benchmark test "core, the driver and the replay plugin import no network, process or
+  provider module" (`bench/test/pipeline.test.js`) failed once the check layer was brought over,
+  because `bench/lib/checks.js` requires `node:vm` to put a time limit on each pattern run. The
+  test now grants one more built-in to two modules and no other: `node:vm` to `lib/checks.js` and
+  `node:os` to `lib/snapshot-loader.js`. The header of `bench/test/pattern-syntax.test.js` no
+  longer says the parser builds a keyword-stuffed workspace; it builds the short texts a pattern
+  accepts.
 
 ### Security
 

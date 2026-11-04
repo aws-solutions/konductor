@@ -358,6 +358,11 @@ test('a whole run leaves directories at 0700 and files at 0600', { skip: process
 test('core, the driver and the replay plugin import no network, process or provider module', () => {
   const root = path.join(__dirname, '..');
   const ALLOWED = new Set(['node:crypto', 'node:fs', 'node:path']);
+  // One more built-in, for two modules and no other. checks.js puts a time limit on every pattern
+  // run with node:vm, running one fixed script that tests the pattern; it reaches no network,
+  // process or file. snapshot-loader.js asks node:os for the host platform, to decide how paths
+  // compare.
+  const GRANTED = { 'lib/checks.js': ['node:vm'], 'lib/snapshot-loader.js': ['node:os'] };
   const sources = ['lib', 'run', 'plugins'].flatMap((dir) =>
     fs.readdirSync(path.join(root, dir)).filter((f) => f.endsWith('.js')).map((f) => path.join(root, dir, f)),
   );
@@ -366,7 +371,8 @@ test('core, the driver and the replay plugin import no network, process or provi
     const text = fs.readFileSync(file, 'utf8');
     const rel = path.relative(root, file);
     for (const [, module] of text.matchAll(/require\('([^']+)'\)/g)) {
-      assert.ok(module.startsWith('.') || ALLOWED.has(module), `${rel} requires ${module}`);
+      const granted = (GRANTED[rel.split(path.sep).join('/')] || []).includes(module);
+      assert.ok(module.startsWith('.') || ALLOWED.has(module) || granted, `${rel} requires ${module}`);
     }
     assert.doesNotMatch(text, /process\.env|\bfetch\(|XMLHttpRequest|WebSocket|child_process/, rel);
   }

@@ -5,7 +5,8 @@
  * Run: node --test bench/test/pattern-syntax.test.js
  *
  * The parser decides which patterns are rejected as matching arbitrary prose (C-3) and builds the
- * keyword-stuffed workspace (C-1), so it is tested against the real regular expression engine:
+ * short texts a pattern accepts (`candidateMatches`), so it is tested against the real regular
+ * expression engine:
  * the computed minimum length must never exceed the shortest text that engine really matches, and
  * every candidate text must be checked with the real expression before anyone relies on it.
  */
