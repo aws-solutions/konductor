@@ -2,6 +2,20 @@
 import type { StageSpec, WorkflowSpec } from '../graph';
 
 /**
+ * The node geometry that the limits below were estimated for. `canvas.css`
+ * sets the fonts, padding and line clamp, and the width is `NODE_WIDTH`;
+ * `test-support/clipping-geometry.test.ts` fails when any of them drifts from
+ * these values.
+ */
+export const ESTIMATED_FOR = {
+  nodeWidthPx: 280,
+  titleFontPx: 14,
+  subFontPx: 12,
+  paddingXPx: 14,
+  outcomeLines: 3,
+} as const;
+
+/**
  * How much text one line of a node holds, in `textWidth` units. The intent
  * node wraps its outcome onto three lines; a stage shows its name on one line
  * and its agent and harness on another.

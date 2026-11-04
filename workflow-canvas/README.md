@@ -23,8 +23,9 @@ folder.
   once a second. A read that fails with no answer, a server error, 408 or 429 is tried
   again, up to three in a row; any other failure ends the following. A start
   that finds a run already active follows that run. Every run call takes a
-  signal, and every call but the launch code trade ends on its own after 15
-  seconds, so a server that never answers cannot hold the tab. A failure counts only for the run it belongs to.
+  signal, and every call ends on its own, after 15
+  seconds, or 120 seconds for the launch code trade (see **The launch code
+  trade** below), so a server that never answers cannot hold the tab. A failure counts only for the run it belongs to.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -35,6 +36,13 @@ folder.
 A single `package.json` serves all of the above.
 
 ## Commands
+
+From the repo root, `make canvas` runs install, lint, typecheck, unit tests,
+build and end-to-end tests in order (`make help` lists the individual
+`canvas-*` targets). It skips two CI checks: the Node 26 leg and the
+committed-screenshots check (`npm run screenshots`, which is OS and font
+sensitive). The e2e server uses port 4173, so only one run fits on a host at a
+time.
 
 Run from this folder with Node 24.15 or later (`.nvmrc` selects 24):
 
@@ -287,8 +295,26 @@ The rest wraps the core, so the rules can be tested without a browser:
   The token lasts for the life of the tab, including copies made by Duplicate
   tab or `window.open`, and a browser may restore it with the tab. Script on the
   page can read it, so `index.html` carries a Content-Security-Policy that lets
-  the page run only its own files and allows no `<base>` or form target; a
-  server that sends the page should send the same policy as a header.
+  the page run only its own files and allows no `<base>` or form target. That
+  `<meta>` policy cannot set `frame-ancestors` and is only a fallback. A server
+  that sends the page must send the same policy as an HTTP header, with
+  `frame-ancestors 'none'` added (see **The page** in `api/openapi.yaml`). The
+  server's token lasts until it stops, with no idle timeout, so a kept token
+  does not change how long a session lives.
+- The launch code trade (`createSession`) is the one call with no short limit:
+  the code works once, so giving up after the server has taken it would leave
+  the page with no way in. It is bounded in two ways. After 5 seconds with no
+  answer, `launch/LaunchWait.tsx` shows "Still waiting for the server" above
+  the tabs, with **Stop waiting**, which aborts the trade of the first load
+  (`WorkflowSource.cancel`). After 120 seconds (twice the validity of the
+  code) the trade ends on its own. Stopping, the limit, and a dropped
+  connection all end in the same error state, which says that the server may
+  have used the code and to get a new launch code from the terminal that
+  printed the launch address. A reload does not retry the trade, since the
+  code is removed from the address. A late answer after the
+  notice appeared still opens the workflow. A pasted code is not cancellable:
+  the workflow or error already on the page stays, and the 120 seconds end the
+  trade.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas with its editing (next
   section).
@@ -463,7 +489,7 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   after three failures in a row. Only a missing answer, a 5xx, 408 or 429 is tried again:
   any 4xx or a reply the page cannot read shows the alert at once. A call that
   gets no answer in 15 seconds counts as a failure, except the one that trades
-  the launch code, which has no limit because the code works once. A start that
+  the launch code, which has a limit of 120 seconds because the code works once. A start that
   gets no answer, or is accepted in a reply the page cannot read, says that the
   run may not have started and that Run joins it if it did.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
@@ -508,8 +534,8 @@ The code follows the ports-and-adapters split of the graph:
 - The adapters are `createHttpApi` (`startRun`, `getRun`), which `loadWorkflow`
   ties to the session token, `timerScheduler`, and `sessionRunMemory`, which
   keeps the id of the latest run for `resumeRun`. The token is held only by
-  those run calls. `createHttpApi` ends a call after a timeout, except the launch code call,
-  which works once and so is never cut short, and
+  those run calls. `createHttpApi` ends a call after a timeout of 15 seconds, and the launch
+  code call after 120 seconds because it works once, and
   `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
   into the core's `RunAlreadyActive` so the core can follow that run.
 - `useExecution` keeps the state in `App`, and `Execution` draws it. The

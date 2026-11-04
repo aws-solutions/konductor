@@ -160,3 +160,33 @@ describe('sessionStorageMemory pending session', () => {
     );
   });
 });
+
+describe('sessionStorageMemory storage scope', () => {
+  it('never writes the session to localStorage', () => {
+    window.localStorage.clear();
+    const memory = sessionStorageMemory({
+      sessionStorage: window.sessionStorage,
+    });
+
+    memory.remember(RECORD);
+    memory.holdPending(OTHER);
+    memory.forget();
+    memory.dropPending();
+
+    expect(window.localStorage.length).toBe(0);
+  });
+
+  it('leaves nothing in the tab storage after forget and dropPending', () => {
+    window.sessionStorage.clear();
+    const memory = sessionStorageMemory({
+      sessionStorage: window.sessionStorage,
+    });
+    memory.remember(RECORD);
+    memory.holdPending(OTHER);
+
+    memory.forget();
+    memory.dropPending();
+
+    expect(window.sessionStorage.length).toBe(0);
+  });
+});

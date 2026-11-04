@@ -17,6 +17,7 @@ import {
 import {
   openDocument,
   type EditEvent,
+  type EditSlot,
   type EditState,
   type SaveState,
 } from './edit-state';
@@ -128,8 +129,12 @@ function withoutDiscarded(state: EditState): EditState {
   return { ...state, discarded: undefined };
 }
 
-function reloaded(state: EditState, document: WorkflowDocument): EditState {
-  const next = openDocument(document, state.revision + 1);
+function reloaded(
+  state: EditState,
+  document: WorkflowDocument,
+  revision: number,
+): EditState {
+  const next = openDocument(document, revision);
   // The reload replaces the draft; its text is kept so it can be recovered.
   const discarded = isDirty(state) ? textOf(state) : undefined;
   return next
@@ -166,18 +171,12 @@ function failure(message: string, uncertain: true | undefined): SaveState {
     : { phase: 'failed', message };
 }
 
-/**
- * The next state after an event, or `undefined` while there is nothing to
- * edit. An event that does not fit, such as a save with nothing to save or a
- * check for an older draft, changes nothing.
- */
-export function reduce(
+function step(
   state: EditState | undefined,
   event: EditEvent,
+  nextRevision: number,
 ): EditState | undefined {
-  if (event.type === 'open') {
-    return openDocument(event.document, state ? state.revision + 1 : 0);
-  }
+  if (event.type === 'open') return openDocument(event.document, nextRevision);
   if (!state) return undefined;
   switch (event.type) {
     case 'select':
@@ -215,11 +214,36 @@ export function reduce(
     case 'reload':
       return { ...withoutDiscarded(state), save: { phase: 'reloading' } };
     case 'reloaded':
-      return whileReloading(state, () => reloaded(state, event.document));
+      return whileReloading(state, () =>
+        reloaded(state, event.document, nextRevision),
+      );
     case 'reload-failed':
       return whileReloading(state, () => ({
         ...state,
         save: { phase: 'conflict', problem: event.message },
       }));
   }
+}
+
+/**
+ * The next state after an event, or `undefined` while there is nothing to
+ * edit. An event that does not fit, such as a save with nothing to save or a
+ * check for an older draft, changes nothing. It cannot remember revisions
+ * across an `undefined` state; the editor uses `reduceSlot`.
+ */
+export function reduce(
+  state: EditState | undefined,
+  event: EditEvent,
+): EditState | undefined {
+  return step(state, event, state ? state.revision + 1 : 0);
+}
+
+/** Like `reduce`, but no revision is reused after the state was `undefined`. */
+export function reduceSlot(slot: EditSlot, event: EditEvent): EditSlot {
+  const current = step(slot.current, event, slot.lastRevision + 1);
+  if (current === slot.current) return slot;
+  return {
+    current,
+    lastRevision: Math.max(slot.lastRevision, current?.revision ?? -1),
+  };
 }

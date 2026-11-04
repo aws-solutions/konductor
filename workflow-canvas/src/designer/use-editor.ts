@@ -12,7 +12,8 @@ import type { LoadedWorkflow } from '../workflow/load-workflow';
 import {
   checkAfterPause,
   canSave,
-  reduce,
+  EMPTY_SLOT,
+  reduceSlot,
   reloadWorkflow,
   saveDraft,
   textOf,
@@ -43,7 +44,8 @@ export function useEditor(
   workflow: LoadedWorkflow | undefined,
   scheduler: Scheduler,
 ): Editor | undefined {
-  const [state, dispatch] = useReducer(reduce, undefined);
+  const [slot, dispatch] = useReducer(reduceSlot, EMPTY_SLOT);
+  const state = slot.current;
   const [opened, setOpened] = useState<LoadedWorkflow>();
   const busy = useRef(false);
 

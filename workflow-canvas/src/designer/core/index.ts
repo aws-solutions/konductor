@@ -16,12 +16,14 @@ export {
   type Draft,
   type DraftStage,
 } from './draft';
-export { reduce } from './edit-reducer';
+export { reduce, reduceSlot } from './edit-reducer';
 export {
+  EMPTY_SLOT,
   isEditable,
   openDocument,
   type EditableDocument,
   type EditEvent,
+  type EditSlot,
   type EditState,
   type SaveState,
 } from './edit-state';

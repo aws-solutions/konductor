@@ -67,29 +67,18 @@ export function WorkflowCanvas({
     () => (onSelect ? markSelectable(graph.nodes, selectedId) : graph.nodes),
     [graph.nodes, onSelect, selectedId],
   );
-  // React Flow selects a node only when it is not selected yet, and Escape
-  // makes it drop focus. Both are taken here, before it sees them: Enter or
-  // Space always chooses the stage, and Escape leaves focus where it is. A
-  // canvas that cannot select keeps the default of both.
-  const onKeyDownCapture = useCallback(
+  // The nodes carry React Flow's `nokey` class (see markSelectable), so it
+  // leaves their keys alone: Escape no longer drops focus, and a key is not
+  // stopped on its way to the page. Enter or Space on a stage chooses it here,
+  // also when it is the selected one already.
+  const onKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       const node = event.target;
-      if (!(node instanceof HTMLElement)) return;
-      if (!node.classList.contains('react-flow__node')) return;
-      if (event.key === 'Escape') {
-        if (onSelect) event.stopPropagation();
-        return;
-      }
-      const choose = event.key === 'Enter' || event.key === ' ';
-      if (
-        choose &&
-        onSelect &&
-        node.classList.contains('react-flow__node-stage')
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        onSelect(node.dataset.id ?? '');
-      }
+      if (!onSelect || !(node instanceof HTMLElement)) return;
+      if (!node.classList.contains('react-flow__node-stage')) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      onSelect(node.dataset.id ?? '');
     },
     [onSelect],
   );
@@ -107,7 +96,7 @@ export function WorkflowCanvas({
       role="region"
       aria-label="Workflow graph"
       style={{ height: CANVAS_HEIGHT }}
-      onKeyDownCapture={onKeyDownCapture}
+      onKeyDown={onKeyDown}
     >
       <ReactFlow
         nodes={nodes}

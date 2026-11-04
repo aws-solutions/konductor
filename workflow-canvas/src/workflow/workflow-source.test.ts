@@ -41,7 +41,10 @@ describe('createWorkflowSource', () => {
     await source.current();
     await source.current();
 
-    expect(createSession).toHaveBeenCalledExactlyOnceWith('first');
+    expect(createSession).toHaveBeenCalledExactlyOnceWith(
+      'first',
+      expect.any(AbortSignal),
+    );
   });
 
   it('changes to the workflow of a new code once its session is open', async () => {
@@ -57,7 +60,7 @@ describe('createWorkflowSource', () => {
 
     await source.offer('second');
 
-    expect(createSession).toHaveBeenLastCalledWith('second');
+    expect(createSession).toHaveBeenLastCalledWith('second', undefined);
     expect(source.current()).not.toBe(before);
     expect(await source.current()).toMatchObject({ ok: true });
     expect(listener).toHaveBeenCalledOnce();
@@ -666,5 +669,44 @@ describe('createWorkflowSource session memory', () => {
     expect(source.notice()).toBeUndefined();
     expect(memory.recall()).toEqual(KEPT);
     expect(memory.recallPending()).toEqual(pending);
+  });
+});
+
+describe('createWorkflowSource cancel', () => {
+  it('aborts the trade of the first code and shows its error', async () => {
+    const createSession = vi.fn(
+      (_code: string, signal?: AbortSignal) =>
+        new Promise<never>((_resolve, reject) => {
+          signal?.addEventListener('abort', () =>
+            reject(new ApiError('You stopped waiting.', 0)),
+          );
+        }),
+    );
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
+
+    source.cancel();
+
+    expect(await source.current()).toEqual({
+      ok: false,
+      message: 'You stopped waiting.',
+    });
+  });
+
+  it('does nothing once the first load has settled', async () => {
+    const source = createWorkflowSource(
+      apiWith(vi.fn().mockResolvedValue(HELLO_SESSION)),
+      'first',
+      freshMemory(),
+    );
+    const first = await source.current();
+
+    source.cancel();
+
+    expect(first.ok).toBe(true);
+    expect(await source.current()).toBe(first);
   });
 });
