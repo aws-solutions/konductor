@@ -66,6 +66,7 @@ function validateScenarios(d, { capName, n = MIN_SCENARIOS }) {
   if (!d || typeof d !== 'object' || Array.isArray(d)) return fail('the reply must be a JSON object');
   if (!Array.isArray(d.scenarios)) return fail('scenarios must be an array');
   const name = wordRe(capName);
+  const variant = nameVariantRe(capName);
   const seen = new Set();
   for (const [i, x] of d.scenarios.entries()) {
     const at = `scenarios[${i}]`;
@@ -75,6 +76,7 @@ function validateScenarios(d, { capName, n = MIN_SCENARIOS }) {
     if (typeof x.prompt !== 'string' || x.prompt.trim().length < PROMPT_MIN || x.prompt.length > PROMPT_MAX) return fail(`${at}.prompt must be between ${PROMPT_MIN} and ${PROMPT_MAX} characters`);
     if (/\n/.test(x.prompt)) return fail(`${at}.prompt must be one paragraph`);
     if (name.test(x.prompt)) return fail(`${at}.prompt names the capability "${capName}"`);
+    if (variant.test(x.prompt)) return fail(`${at}.prompt names the capability "${capName}" (as "${x.prompt.match(variant)[0]}")`);
     if (BANNED.test(x.prompt)) return fail(`${at}.prompt names a konductor procedure or agent`);
     if (DASHES.test(JSON.stringify(x))) return fail(`${at} contains an em or en dash`);
     if (typeof x.fixtureIdea !== 'string' || x.fixtureIdea.trim().length < 10) return fail(`${at}.fixtureIdea must describe a small fixture`);
