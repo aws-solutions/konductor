@@ -1,0 +1,18 @@
+# Task list for run-real-pilot.sh: suite|task|timeoutSec|kind|estSecPerTaskDir
+# kind: real (needs the real-repo cache), lite, or auton (autonomy tier, scripted user).
+# Timeouts apply per run. The estimate only feeds the ETA before a task dir has finished.
+# The real tasks come from the real suite; the pilot tasks that are not in real come from the pilot suite.
+real|real-rich-3938-soft-wrap-style|1200|real|6900
+real|real-rich-3934-empty-live|1200|real|6900
+real|real-click-3728-help-name-order|900|real|6900
+real|real-click-3473-argument-help|1500|real|8000
+real|real-markdown-it-py-416-eof-index-error|1200|real|6900
+real|real-markdown-it-py-379-cli-stdin|900|real|6900
+real|real-commander-2577-option-terminator|1200|real|6900
+real|real-commander-2637-help-group-conflict|900|real|6000
+pilot|orch-input-validation|600|lite|3000
+pilot|review-inventory-security|600|lite|3000
+pilot|design-hold-service|600|lite|3000
+pilot|autonomy-gateway-throttle|900|auton|4500
+pilot|autonomy-merge-customers|900|auton|4500
+pilot|autonomy-format-bytes|600|auton|3000

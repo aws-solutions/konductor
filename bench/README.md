@@ -531,3 +531,6 @@ node bench/runner/bench.js contrast --run V/claude --base vanilla --out V/contra
 node bench/runner/bench.js report --run V/claude,V/gpt --verdict orchestrator-pass --out V/pass
 ```
 Free checks before spending: `run ... --prepare-only` builds and trial-installs every arm (v3 arms with `konductor install --harness kiro-v3 --no-telemetry`) and starts no agent.
+
+## Running a study unattended
+`bench/scripts/` holds the scripts for long studies: `run-real-pilot.sh` (capability study), `run-after-capability.sh` (judging, the skill bench and a summary, chained after it), `run-judging.sh`, `run-skill-bench.sh` and the read-only dashboard `monitor.sh`. Setup, commands, credentials, what each phase does and how to read the monitor are in [RUNBOOK.md](RUNBOOK.md).
