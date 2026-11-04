@@ -55,8 +55,13 @@ not per individual commit.
   reply, every file path and all file text go through `sanitizeAnswer`. A judge sees only
   `task.task` and `task.rubric` (`JUDGE_VISIBLE_FIELDS`); `assertAllowListed` throws on any other
   field. The per-call nonce is in the prompt and is returned separately, so a caller can keep it
-  out of the digest that finds a stored reply. Run
-  `node --test bench/test/judge-prompt.test.js`.
+  out of the digest that finds a stored reply. A blinding test plants a sentinel in every other
+  task field (`id`, `skill`, `kind`, `target_section`, `fixtures`, `checks` with patterns and
+  negatives, `reference`, an unlisted field) and in the arm records, renders the real prompt for
+  both scales, both orders and both pair kinds, and asserts none reaches it; it also checks that a
+  skill name planted in a file path or file text is removed, that one arm's files never appear in
+  the other arm's block, and that the two orders show the same file blocks swapped. Run
+  `node --test bench/test/judge-prompt.test.js bench/test/metadata-blinding.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
