@@ -55,7 +55,7 @@ function preflight(args) {
   const { env } = cc.envSetup({ arm: { vanilla: true }, ctx: { region }, home: flag(args, '--home'), tmpdir: flag(args, '--tmp') });
   let id;
   try {
-    id = execFileSync('aws', ['sts', 'get-caller-identity', '--region', region, '--query', 'Account', '--output', 'text'], { env, encoding: 'utf8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    id = execFileSync('aws', ['sts', 'get-caller-identity', '--region', region, '--query', 'Account', '--output', 'text'], { env: { ...env, AWS_CLI_SESSION_ID_DISABLED: 'true' }, encoding: 'utf8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   } catch (e) {
     const why = e.code === 'ENOENT' ? 'the aws CLI is not on PATH' : `aws sts get-caller-identity failed (exit ${e.status ?? 'none'})`;
     out(`FAIL credential preflight under claude's environment: ${why}`);

@@ -34,6 +34,8 @@ case "$1 $2" in
     case " $MODE " in *" telemetry "*) : > "$TMPDIR/mcs-telemetry-l1-1.log" ;; esac
     case " $MODE " in *" stray "*) : > "$TMPDIR/stray.txt" ;; esac
     case " $MODE " in *" cli-state "*) [ "$AWS_CLI_SESSION_ID_DISABLED" = true ] || mkdir -p "$HOME/.aws/cli/cache" ;; esac
+    case " $MODE " in *" cli-state-always "*) mkdir -p "$HOME/.aws/cli/cache" ;; esac
+    printf '%s' "$AWS_CLI_SESSION_ID_DISABLED" > "$(dirname "$0")/seen-session-disabled"
     case " $MODE " in *" credentials "*) mkdir -p "$HOME/.aws" && : > "$HOME/.aws/credentials" ;; esac
     echo "\${FAKE_AWS_ACCOUNT:-${ACCOUNT}}"
     ;;
@@ -117,6 +119,36 @@ test('a telemetry file host tooling writes into the inherited TMPDIR is not a le
     assert.equal(bad.status, 1, bad.stdout + bad.stderr);
     assert.match(bad.stdout, /FAIL {2}left in the run scratch directory: .*stray\.txt/);
     assert.doesNotMatch(bad.stdout, /left in the run scratch directory: .*mcs-telemetry/);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('an .aws directory the AWS CLI creates is not a credentials file, a real credentials file is', () => {
+  const s = setup();
+  const args = ['--profile', 'good', '--only', 'vanilla', '--isolate', 'none'];
+  try {
+    awsMode(s, 'cli-state-always');
+    const dirOnly = smoke(s, args);
+    assert.equal(dirOnly.status, 0, dirOnly.stdout + dirOnly.stderr);
+    assert.match(dirOnly.stdout, /PASS {2}no credentials file under the scratch directory/);
+    awsMode(s, 'credentials');
+    const real = smoke(s, args);
+    assert.equal(real.status, 1, real.stdout + real.stderr);
+    assert.match(real.stdout, /FAIL {2}a credentials file exists under the scratch directory/);
+    noSecrets(real);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('the preflight asks the AWS CLI not to create its session state under the scratch HOME', () => {
+  const s = setup();
+  try {
+    awsMode(s, 'cli-state');
+    const r = smoke(s, ['--profile', 'good', '--only', 'vanilla', '--isolate', 'none']);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.equal(fs.readFileSync(path.join(s.root, 'bin', 'seen-session-disabled'), 'utf8'), 'true');
   } finally {
     s.cleanup();
   }
