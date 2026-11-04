@@ -14,7 +14,9 @@ const path = require('node:path');
 const { MIN_DECISION_PAIRS } = require('../lib/decision-rule');
 const { isSlug } = require('../lib/slug');
 const { SPEC_DIR, checkTreatment, loadSpec, treatmentFor } = require('../lib/treatment-check');
-const { sharedWording } = require('./support/quoting');
+const { validateTaskSet, validateTask } = require('../lib/task-schema');
+const { lintTask } = require('../lib/task-lint');
+const { isSkillSpecific } = require('../lib/controls');
 
 const CONTROLS_DIR = path.join(__dirname, '..', 'controls');
 const read = (...parts) => fs.readFileSync(path.join(CONTROLS_DIR, ...parts), 'utf8');
@@ -140,17 +142,58 @@ for (const c of CONTROLS) {
     }
   });
 
-  test(`${c.dir}: no rubric item repeats the skill's wording`, () => {
-    const skill = skillText(c);
+  test(`${c.dir}: the real task-set validator accepts the set against the skill text`, () => {
+    // The set rules of task-schema.js: every field, unique ids, a target_section that is a heading of
+    // the skill, and no rubric item that repeats the skill's wording (RUBRIC_QUOTE_WORDS words).
+    const problems = validateTaskSet(tasksOf(c), { skillTexts: { [c.skill]: skillText(c) } });
+    assert.deepEqual(problems, []);
+  });
+
+  test(`${c.dir}: every task passes the task lint, with the skill_specific flag taken from the manifest`, () => {
     for (const task of tasksOf(c)) {
-      for (const item of task.rubric) {
-        const { run, chain } = sharedWording(item, skill);
-        // The task schema's limit is six words; this keeps well under it.
-        assert.ok(run < 5 && chain < 5, `${task.id}: shares ${run}/${chain} words with the skill: ${item}`);
-      }
+      const report = lintTask(task, { start: {} }, { skillText: skillText(c), skillSpecific: isSkillSpecific(c.skill) });
+      assert.deepEqual(report.failures, [], task.id);
+      assert.deepEqual(report.warnings, [], task.id);
     }
   });
 }
+
+test('the validator is live on the control sets: a copied phrase, a wrong heading and a missing skill text are each a problem', () => {
+  const [c] = CONTROLS;
+  const skills = { [c.skill]: skillText(c) };
+  const tasks = tasksOf(c);
+  assert.deepEqual(validateTaskSet(tasks, { skillTexts: skills }), []);
+
+  // Eight consecutive words of the skill, set as a rubric item.
+  const body = skillText(c).split('\n').find((line) => wordCount(line) >= 10 && !line.startsWith('#') && !line.startsWith('---'));
+  const copied = body.trim().split(/\s+/).slice(0, 8).join(' ');
+  const quoting = validateTaskSet([{ ...tasks[0], rubric: [...tasks[0].rubric, copied] }, ...tasks.slice(1)], { skillTexts: skills });
+  assert.ok(quoting.some((p) => /^tasks\[0\]: rubric\[\d+\]/.test(p)), JSON.stringify(quoting));
+
+  const wrongHeading = validateTaskSet([{ ...tasks[0], target_section: 'No Such Heading' }, ...tasks.slice(1)], { skillTexts: skills });
+  assert.ok(wrongHeading.some((p) => /^tasks\[0\]: target_section/.test(p)), JSON.stringify(wrongHeading));
+
+  // A skill text filed under another name cannot switch the rules off for this set.
+  const unresolved = validateTaskSet(tasks, { skillTexts: { 'another-skill': skillText(c) } });
+  assert.ok(unresolved.length >= tasks.length, 'one problem for each task whose skill has no text');
+  assert.deepEqual(validateTask(tasks[0], { skillText: skillText(c) }), []);
+});
+
+test('the lint exempts the skill_specific control only: a skill-only check fails the other two', () => {
+  const wording = 'two reviewers sign off before the label is applied';
+  const task = (c) => ({
+    ...tasksOf(c)[0],
+    fixtures: [],
+    checks: [{ type: 'contains', path: 'REPORT.md', pattern: wording }],
+  });
+  for (const c of CONTROLS) {
+    const text = `${skillText(c)}\nThe rule: ${wording}.\n`;
+    const report = lintTask(task(c), { start: {} }, { skillText: text, skillSpecific: isSkillSpecific(c.skill) });
+    const gates = report.failures.map((f) => f.condition);
+    if (c.dir === 'keep') assert.equal(gates.includes('skill_only_wording'), false, c.dir);
+    else assert.equal(gates.includes('skill_only_wording'), true, c.dir);
+  }
+});
 
 test('task ids are unique across all three control task sets', () => {
   const ids = CONTROLS.flatMap((c) => tasksOf(c).map((t) => t.id));

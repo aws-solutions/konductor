@@ -284,6 +284,11 @@ not per individual commit.
   not change the verdict rule: a pair with a `null` entry already leaves the gate the same way.
   The report prints "Word-check pairs left out: N, the two arms ran different numbers of checks"
   when N is above zero. Run `node --test bench/test/check-mismatch.test.js`.
+- The three control task sets in `bench/controls/tasks/` are now checked with the real
+  `validateTaskSet`, given each skill's text, and every control task goes through `lintTask`, with
+  the `skill_specific` flag read from the control manifest. All three sets pass as they are, so no
+  control task changed. The stand-in rubric-quoting measure in `bench/test/support/quoting.js` is
+  removed. Run `node --test bench/test/control-files.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
