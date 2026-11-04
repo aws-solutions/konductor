@@ -63,6 +63,8 @@ not per individual commit.
 
 ### Fixed
 
+- Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
+  (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
   and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
