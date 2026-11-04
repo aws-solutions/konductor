@@ -6,13 +6,26 @@
  * Run: node --test bench/test/trace-normalizer.test.js
  *      (or `npm test`, which runs every bench/test/*.test.js and tests/scripts/*.test.js)
  *
- * Every fixture under fixtures/traces/ is a synthetic behavior example: it is hand-written from
- * the event shapes described in the per-runtime doc comments of bench/lib/trace-normalizer.js.
- * It is not a capture of any runtime and does not show what a current release of Claude Code,
- * OpenCode or Kiro CLI emits, so a passing fixture test proves how the parser treats that shape,
- * not that the shape matches a real runtime. Every other trace is built inline from the helpers
- * below. No test makes a network or model call. Credential-shaped test values are assembled from
- * fragments so no real-looking token appears in this file.
+ * Fixtures under fixtures/traces/ come in two kinds, told apart by file name.
+ *  - Real captures carry the CLI name and version in the file name. Each is one short run of the
+ *    installed CLI in an empty scratch directory, with values sanitized (paths, ids, timestamps,
+ *    user and host names) and no event added. Large events that list the machine's own commands,
+ *    models or steering files keep their shape but have those lists emptied.
+ *      - claude-code-2.1.318-read.jsonl: Claude Code 2.1.318, `--output-format stream-json --verbose`.
+ *      - kiro-cli-3.0.0-read.jsonl, kiro-cli-3.0.0-skill-read.jsonl: kiro-cli 3.0.0,
+ *        `chat --output-format stream-json`; the second run reads a SKILL.md.
+ *      - OpenCode has NO real capture: opencode 2.0.27 had no authenticated provider here, so its
+ *        only run ended in a provider quota error before any tool call. OpenCode parsing is
+ *        unverified.
+ *  - Every other fixture (claude-code-*, opencode-*, kiro-* without a version) is a synthetic
+ *    behavior example, hand-written from the event shapes in the doc comments of
+ *    bench/lib/trace-normalizer.js. It shows how the parser treats that shape, not what a
+ *    release emits. The synthetic kiro-* fixtures use the flat shape, which no release is known to
+ *    emit.
+ * Only the real captures prove a format. Every other trace is built inline from the helpers
+ * below, and those inline Kiro ACP events are synthetic too. No test makes a network or model
+ * call. Credential-shaped test values are assembled from fragments so no real-looking token
+ * appears in this file.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -260,7 +273,7 @@ test('the CHANGELOG entry is found, and does not end at a following bullet or he
 
 test('fixtures, library, test source and CHANGELOG entry hold no private paths, identities, credentials or hosts', () => {
   const fixtureNames = fs.readdirSync(FIXTURES_DIR);
-  assert.ok(fixtureNames.length >= 12, 'every runtime has its four synthetic fixtures');
+  assert.ok(fixtureNames.length >= 15, 'twelve synthetic fixtures plus the three real captures');
   const sources = fixtureNames.map((name) => [`fixtures/traces/${name}`, loadFixture(name)]);
   sources.push(['bench/test/trace-normalizer.test.js', fs.readFileSync(__filename, 'utf8')]);
   sources.push(['bench/lib/trace-normalizer.js', fs.readFileSync(LIBRARY_PATH, 'utf8')]);
@@ -2171,4 +2184,478 @@ test('adding tool_call_id is additive: schema_version stays 1 and the other call
     truncated: false,
     subagent: false,
   });
+});
+
+// --- Real captures -----------------------------------------------------------------------------
+// These three fixtures are sanitized captures of the installed CLIs (see the header). The
+// assertions read key fields the way a consumer would, so a change in what a CLI emits, or a
+// parser regression, fails here and not only in a hand-written shape.
+
+const CLAUDE_REAL = 'claude-code-2.1.318-read.jsonl';
+const KIRO_REAL_READ = 'kiro-cli-3.0.0-read.jsonl';
+const KIRO_REAL_SKILL = 'kiro-cli-3.0.0-skill-read.jsonl';
+
+test('real capture, Claude Code 2.1.318: one Read call, its result, the answer, model, usage and completeness', () => {
+  const record = normalizeTrace('claude-code', loadFixture(CLAUDE_REAL));
+  assert.equal(record.tool_calls.length, 1);
+  const [call] = record.tool_calls;
+  assert.equal(call.tool_call_id, 'toolu_fixture_1');
+  assert.equal(call.raw_tool_name, 'Read');
+  assert.equal(call.tool_name, 'read');
+  assert.deepEqual(call.arguments, { file_path: '/work/notes.txt' });
+  assert.equal(call.status, 'completed');
+  assert.match(call.result, /alpha-7/);
+  assert.equal(record.model_id, 'claude-opus-5-5');
+  assert.deepEqual(record.available_tools, ['Read']);
+  assert.equal(record.response_text, 'alpha-7');
+  assert.equal(record.complete, true);
+  assert.deepEqual(record.usage, {
+    input_tokens: 4,
+    output_tokens: 115,
+    cache_read_tokens: 8090,
+    cache_write_tokens: 8252,
+  });
+  assert.ok(record.cost_usd > 0);
+  assert.deepEqual(record.session_ids, []);
+  assert.deepEqual(record.skill_loads, []);
+  assert.deepEqual(record.errors, []);
+  assert.equal(record.parse_errors, 0);
+  assert.deepEqual(record.unrecognized_events, {});
+});
+
+test('real capture, kiro-cli 3.0.0: one read call, its result, the answer, the session id and completeness', () => {
+  const record = normalizeTrace('kiro', loadFixture(KIRO_REAL_READ));
+  assert.equal(record.tool_calls.length, 1);
+  const [call] = record.tool_calls;
+  assert.equal(call.tool_call_id, 'toolu_fixture_1');
+  assert.equal(call.raw_tool_name, 'read');
+  assert.equal(call.tool_name, 'read');
+  assert.deepEqual(call.arguments, { path: '/work/notes.txt', offset: null, limit: null });
+  assert.equal(call.status, 'completed');
+  assert.match(call.result.message, /alpha-7/);
+  assert.equal(record.response_text, 'alpha-7');
+  assert.deepEqual(record.session_ids, ['sess_fixture_1']);
+  assert.equal(record.complete, true);
+  // kiro-cli 3.0.0 does not name the model that answered, and reports no tokens or cost.
+  assert.equal(record.model_id, null);
+  assert.equal(record.usage, null);
+  assert.equal(record.cost_usd, null);
+  assert.equal(record.available_tools, 'unknown');
+  assert.deepEqual(record.skill_loads, []);
+  assert.deepEqual(record.errors, []);
+  assert.equal(record.parse_errors, 0);
+  // Every event in the capture is either read or knowingly skipped.
+  assert.deepEqual(record.unrecognized_events, {});
+});
+
+test('real capture, kiro-cli 3.0.0: reading a SKILL.md is recorded as a skill load', () => {
+  const record = normalizeTrace('kiro', loadFixture(KIRO_REAL_SKILL));
+  assert.equal(record.tool_calls.length, 1);
+  assert.equal(record.tool_calls[0].status, 'completed');
+  assert.deepEqual(record.skill_loads, [
+    {
+      skill_name: 'demo-skill',
+      source: 'path-heuristic',
+      raw_path: '/work/skills/demo-skill/SKILL.md',
+      subagent: false,
+    },
+  ]);
+  assert.equal(record.response_text, 'PINEAPPLE');
+  assert.equal(record.complete, true);
+  assert.deepEqual(record.unrecognized_events, {});
+  assert.deepEqual(record.errors, []);
+});
+
+test('real capture, kiro-cli 3.0.0: a trace cut before runFinished is incomplete and answers from the streamed chunk', () => {
+  const cut = loadFixture(KIRO_REAL_READ)
+    .split('\n')
+    .filter((line) => line && !line.includes('"runFinished"'))
+    .join('\n');
+  const record = normalizeTrace('kiro', cut);
+  assert.equal(record.complete, false);
+  assert.equal(record.response_text, 'alpha-7');
+  assert.equal(record.tool_calls.length, 1);
+});
+
+test('real capture, kiro-cli 3.0.0: a skill read that was never completed is not a load', () => {
+  const lines = loadFixture(KIRO_REAL_SKILL)
+    .split('\n')
+    .filter((line) => line && !line.includes('"status":"completed"'));
+  const record = normalizeTrace('kiro', lines.join('\n'));
+  assert.equal(record.tool_calls[0].status, 'unknown');
+  assert.deepEqual(record.skill_loads, []);
+});
+
+test('the real captures hold no unrecognized events, and the Kiro captures keep their large lists emptied', () => {
+  for (const name of [KIRO_REAL_READ, KIRO_REAL_SKILL]) {
+    const events = loadFixture(name).trim().split('\n').map(JSON.parse);
+    const kinds = new Set(events.map((e) => e.data?.update?.sessionUpdate ?? e.type));
+    for (const kind of ['runStarted', 'tool_call', 'tool_call_update', 'agent_message_chunk', 'runFinished']) {
+      assert.ok(kinds.has(kind), `${name} has a ${kind} event`);
+    }
+    for (const e of events) {
+      const update = e.data?.update;
+      if (update?.sessionUpdate === 'available_commands_update') assert.deepEqual(update.availableCommands, []);
+      if (update?.sessionUpdate === 'config_option_update') assert.deepEqual(update.configOptions, []);
+    }
+  }
+});
+
+// --- Kiro ACP behavior (synthetic events in the real envelope) ---------------------------------
+
+const acp = (update, sessionId = 'sess_a') => ({ type: 'sessionUpdate', data: { sessionId, update } });
+const acpCall = (id, kind, rawInput, extra = {}) =>
+  acp({ sessionUpdate: 'tool_call', toolCallId: id, title: 'Title', kind, rawInput, ...extra });
+const acpUpdate = (id, status, extra = {}) =>
+  acp({ sessionUpdate: 'tool_call_update', toolCallId: id, status, ...extra });
+const acpText = (text) => acp({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } });
+const acpDone = (extra = {}) => ({
+  type: 'runFinished',
+  data: { sessionId: 'sess_a', status: 'success', stopReason: 'end_turn', ...extra },
+});
+
+test('kiro ACP: the tool name is _meta.kiro.toolName, then kind, then title', () => {
+  const trace = jsonl(
+    acpCall('a', 'read', {}, { _meta: { kiro: { toolName: 'fs_special' } } }),
+    acpCall('b', 'execute', {}),
+    acpCall('c', undefined, {}),
+    acpCall('d', undefined, {}, { title: undefined }),
+  );
+  const record = normalizeTrace('kiro', trace);
+  assert.deepEqual(
+    record.tool_calls.map((c) => c.raw_tool_name),
+    ['fs_special', 'execute', 'Title', 'unknown'],
+  );
+  assert.deepEqual(
+    record.errors.map((e) => e.type),
+    ['invalid_tool_name'],
+  );
+});
+
+test('kiro ACP: a failed update marks the call as error, keeps the output and adds tool_error', () => {
+  const record = normalizeTrace(
+    'kiro',
+    jsonl(
+      acpCall('a', 'read', { path: 'x' }),
+      acpUpdate('a', 'in_progress'),
+      acpUpdate('a', 'failed', { rawOutput: { message: 'no such file' } }),
+    ),
+  );
+  assert.equal(record.tool_calls[0].status, 'error');
+  assert.deepEqual(record.tool_calls[0].result, { message: 'no such file' });
+  assert.deepEqual(
+    record.errors.map((e) => e.type),
+    ['tool_error'],
+  );
+});
+
+test('kiro ACP: an in_progress update alone leaves the call unknown, and an update for an unknown id is ignored', () => {
+  const record = normalizeTrace('kiro', jsonl(acpCall('a', 'read', {}), acpUpdate('a', 'in_progress'), acpUpdate('zz', 'completed')));
+  assert.equal(record.tool_calls[0].status, 'unknown');
+  assert.deepEqual(record.errors, []);
+});
+
+test('kiro ACP: a duplicate toolCallId is kept as its own call and adds duplicate_tool_id', () => {
+  const record = normalizeTrace('kiro', jsonl(acpCall('a', 'read', {}), acpCall('a', 'read', {}), acpUpdate('a', 'completed')));
+  assert.equal(record.tool_calls.length, 2);
+  assert.deepEqual(
+    record.tool_calls.map((c) => c.status),
+    ['completed', 'unknown'],
+  );
+  assert.deepEqual(
+    record.errors.map((e) => e.type),
+    ['duplicate_tool_id'],
+  );
+});
+
+test('kiro ACP: skill loads read operations[].path, path, file_path and filePath, one load per skill file', () => {
+  const skill = (name) => `/w/skills/${name}/SKILL.md`;
+  const trace = jsonl(
+    acpCall('a', 'read', { operations: [{ path: skill('one') }, { path: '/w/src/a.md' }, { path: skill('two') }] }),
+    acpUpdate('a', 'completed'),
+    acpCall('b', 'read', { file_path: skill('three') }),
+    acpUpdate('b', 'completed'),
+    acpCall('c', 'read', { filePath: skill('four') }),
+    acpUpdate('c', 'completed'),
+    acpCall('d', 'read', { path: skill('five'), operations: [{ path: skill('six') }] }),
+    acpUpdate('d', 'completed'),
+  );
+  const record = normalizeTrace('kiro', trace);
+  assert.deepEqual(
+    record.skill_loads.map((l) => l.skill_name),
+    ['one', 'two', 'three', 'four', 'five', 'six'],
+  );
+});
+
+test('kiro ACP: a skill path read by a tool of another kind, or by an unfinished or failed read, is not a load', () => {
+  const path = '/w/skills/demo/SKILL.md';
+  const record = normalizeTrace(
+    'kiro',
+    jsonl(
+      acpCall('a', 'edit', { path }),
+      acpUpdate('a', 'completed'),
+      acpCall('b', 'read', { path }),
+      acpCall('c', 'read', { path }),
+      acpUpdate('c', 'failed'),
+      acpCall('d', 'read', { operations: 'not-an-array', path: '/w/notes.md' }),
+      acpUpdate('d', 'completed'),
+    ),
+  );
+  assert.deepEqual(record.skill_loads, []);
+});
+
+test('kiro ACP: runFinished sets complete and finalText wins over the streamed chunks', () => {
+  const record = normalizeTrace('kiro', jsonl(acpText('par'), acpText('tial'), acpDone({ finalText: 'full answer' })));
+  assert.equal(record.complete, true);
+  assert.equal(record.response_text, 'full answer');
+});
+
+test('kiro ACP: without finalText the chunks are the answer, and a truncated finalText yields to them', () => {
+  assert.equal(normalizeTrace('kiro', jsonl(acpText('par'), acpText('tial'), acpDone())).response_text, 'partial');
+  const truncated = jsonl(acpText('whole'), acpDone({ finalText: 'who', finalTextTruncated: true }));
+  assert.equal(normalizeTrace('kiro', truncated).response_text, 'whole');
+  const onlyTruncated = jsonl(acpDone({ finalText: 'who', finalTextTruncated: true }));
+  assert.equal(normalizeTrace('kiro', onlyTruncated).response_text, 'who');
+});
+
+test('kiro ACP: complete is false after ACP events with no runFinished, and null for an empty trace', () => {
+  assert.equal(normalizeTrace('kiro', jsonl(acpText('x'))).complete, false);
+  assert.equal(normalizeTrace('kiro', jsonl({ type: 'runStarted', data: {} })).complete, false);
+  assert.equal(normalizeTrace('kiro', '').complete, null);
+  assert.equal(normalizeTrace('kiro', jsonl(kiroCall('c', 'fsRead', {}))).complete, null);
+});
+
+test('kiro ACP: a runFinished status other than success adds result_error', () => {
+  const record = normalizeTrace('kiro', jsonl(acpDone({ status: 'cancelled' })));
+  assert.equal(record.complete, true);
+  assert.deepEqual(
+    record.errors.map((e) => e.type),
+    ['result_error'],
+  );
+  assert.match(record.errors[0].message, /cancelled/);
+});
+
+test('kiro ACP: session ids from updates and runFinished are collected once, and a second id adds multiple_sessions', () => {
+  const one = normalizeTrace('kiro', jsonl(acpText('a'), acpText('b'), acpDone()));
+  assert.deepEqual(one.session_ids, ['sess_a']);
+  assert.deepEqual(one.errors, []);
+  const two = normalizeTrace('kiro', jsonl(acpText('a'), { ...acpText('b'), data: { ...acpText('b').data, sessionId: 'sess_b' } }));
+  assert.deepEqual(two.session_ids, ['sess_a', 'sess_b']);
+  assert.deepEqual(
+    two.errors.map((e) => e.type),
+    ['multiple_sessions'],
+  );
+});
+
+test('kiro ACP: an envelope with no data.update is malformed, a non-text chunk adds no text, and a secret is redacted', () => {
+  const record = normalizeTrace(
+    'kiro',
+    jsonl(
+      { type: 'sessionUpdate' },
+      { type: 'sessionUpdate', data: { sessionId: 's', update: 'x' } },
+      acp({ sessionUpdate: 'agent_message_chunk', content: { type: 'image', data: 'zz' } }),
+      acpText(`key ${FAKE_ACCESS_KEY_ID}`),
+    ),
+  );
+  assert.deepEqual(
+    record.errors.map((e) => e.type),
+    ['malformed_event', 'malformed_event'],
+  );
+  assert.equal(record.response_text, 'key [REDACTED_AWS_KEY_ID]');
+});
+
+// --- Unrecognized events -----------------------------------------------------------------------
+
+test('unrecognized_events is an empty object on every runtime for an empty trace', () => {
+  for (const runtime of ['claude-code', 'opencode', 'kiro']) {
+    assert.deepEqual(normalizeTrace(runtime, '').unrecognized_events, {}, runtime);
+  }
+});
+
+test('claude-code counts unknown event types and system subtypes, and skips the ones it reads', () => {
+  const record = normalizeTrace(
+    'claude-code',
+    jsonl(
+      { type: 'system', subtype: 'init', tools: ['Read'] },
+      { type: 'system', subtype: 'api_retry' },
+      { type: 'system', subtype: 'api_retry' },
+      { type: 'system' },
+      { type: 'stream_event' },
+      { type: 'stream_event' },
+      { type: 'rate_limit_event' },
+      { subtype: 'no-type-field' },
+      { type: 7 },
+      claudeCall('c1', 'Read', {}),
+      claudeDone(),
+    ),
+  );
+  assert.deepEqual(record.unrecognized_events, {
+    'system/api_retry': 2,
+    system: 1,
+    stream_event: 2,
+    rate_limit_event: 1,
+    '[no type]': 2,
+  });
+});
+
+test('opencode skips step_start and counts every other unknown event type', () => {
+  const record = normalizeTrace(
+    'opencode',
+    jsonl(
+      { type: 'step_start', sessionID: 'ses_a', part: {} },
+      openCodeTool('read', 'completed', { callID: 'c1' }),
+      { type: 'reasoning', sessionID: 'ses_a', part: {} },
+      { type: 'reasoning', sessionID: 'ses_a', part: {} },
+      openCodeText('hi'),
+      openCodeFinish('f1'),
+    ),
+  );
+  assert.deepEqual(record.unrecognized_events, { reasoning: 2 });
+});
+
+test('kiro counts unknown top-level types and unknown sessionUpdate kinds, and skips the kinds it knows', () => {
+  const skipped = ['session_info_update', 'available_commands_update', 'config_option_update', 'agent_thought_chunk', 'plan'];
+  const record = normalizeTrace(
+    'kiro',
+    jsonl(
+      { type: 'runStarted', data: {} },
+      ...skipped.map((kind) => acp({ sessionUpdate: kind })),
+      acp({ sessionUpdate: 'brand_new_kind' }),
+      acp({ sessionUpdate: 'brand_new_kind' }),
+      acp({}),
+      { type: 'metadata', data: {} },
+      { type: 'agent_thought_chunk', content: 'flat thought' },
+      acpDone(),
+    ),
+  );
+  assert.deepEqual(record.unrecognized_events, { 'sessionUpdate/brand_new_kind': 2, sessionUpdate: 1, metadata: 1 });
+});
+
+test('unrecognized_events keys are redacted and capped, extra keys fall into [other], and __proto__ is only a key', () => {
+  const secretType = `x_${FAKE_ACCESS_KEY_ID}`;
+  const redacted = normalizeTrace('claude-code', jsonl({ type: secretType }, { type: 'a'.repeat(200) }));
+  assert.deepEqual(Object.keys(redacted.unrecognized_events).sort(), ['a'.repeat(64), 'x_[REDACTED_AWS_KEY_ID]']);
+
+  const many = Array.from({ length: 70 }, (_, i) => ({ type: `t${i}` }));
+  const capped = normalizeTrace('claude-code', jsonl(...many, { type: 't0' }, { type: 't69' }));
+  const keys = Object.keys(capped.unrecognized_events);
+  assert.equal(keys.length, 65);
+  assert.equal(capped.unrecognized_events.t0, 2);
+  assert.equal(capped.unrecognized_events['[other]'], 7);
+
+  const hostile = normalizeTrace('claude-code', '{"type":"__proto__"}\n{"type":"constructor"}');
+  assert.deepEqual(Object.keys(hostile.unrecognized_events).sort(), ['__proto__', 'constructor']);
+  assert.equal(Object.getPrototypeOf(hostile.unrecognized_events), Object.prototype);
+  assert.equal({}.polluted, undefined);
+});
+
+test('adding unrecognized_events is additive: schema_version stays 1 and the other fields keep their names', () => {
+  assert.equal(SCHEMA_VERSION, 1);
+  const record = normalizeTrace('claude-code', jsonl({ type: 'novel' }));
+  assert.deepEqual(Object.keys(record), [
+    'schema_version',
+    'runtime',
+    'model_id',
+    'session_ids',
+    'tool_calls',
+    'skill_loads',
+    'available_tools',
+    'response_text',
+    'usage',
+    'cost_usd',
+    'errors',
+    'parse_errors',
+    'unrecognized_events',
+    'complete',
+    'degraded',
+    'degraded_reason',
+  ]);
+  assert.deepEqual(record.errors, []);
+  assert.equal(record.parse_errors, 0);
+});
+
+// --- Array input that holds several events per element ----------------------------------------
+
+test('an array element holding several newline-delimited events is read event by event', () => {
+  const chunk = jsonl({ type: 'model', model: 'm-1' }, { type: 'agent_message_chunk', content: 'hi' });
+  const record = normalizeTrace('kiro', [chunk]);
+  assert.equal(record.parse_errors, 0);
+  assert.equal(record.model_id, 'm-1');
+  assert.equal(record.response_text, 'hi');
+});
+
+test('an array may mix multi-event strings, single-event strings and parsed events, and blank pieces are skipped', () => {
+  const record = normalizeTrace('kiro', [
+    `${JSON.stringify({ type: 'model', model: 'm-1' })}\n\n`,
+    '',
+    { type: 'agent_message_chunk', content: 'a' },
+    `\n${JSON.stringify({ type: 'agent_message_chunk', content: 'b' })}\r\n${JSON.stringify({ type: 'agent_message_chunk', content: 'c' })}`,
+  ]);
+  assert.equal(record.parse_errors, 0);
+  assert.equal(record.response_text, 'abc');
+  assert.equal(record.model_id, 'm-1');
+});
+
+test('a bad line inside a multi-event element counts one parse error and the other events survive', () => {
+  const chunk = [JSON.stringify({ type: 'model', model: 'm-1' }), '{not json', JSON.stringify({ type: 'agent_message_chunk', content: 'ok' })].join('\n');
+  const record = normalizeTrace('kiro', [chunk]);
+  assert.equal(record.parse_errors, 1);
+  assert.equal(record.model_id, 'm-1');
+  assert.equal(record.response_text, 'ok');
+});
+
+test('feeding a real capture as arbitrary multi-line chunks gives the same record as the whole string', () => {
+  for (const [runtime, name] of [
+    ['claude-code', CLAUDE_REAL],
+    ['kiro', KIRO_REAL_READ],
+    ['kiro', KIRO_REAL_SKILL],
+    ['claude-code', 'claude-code-happy-path.jsonl'],
+    ['opencode', 'opencode-happy-path.jsonl'],
+    ['kiro', 'kiro-happy-path.jsonl'],
+  ]) {
+    const text = loadFixture(name);
+    const lines = text.trim().split('\n');
+    const chunks = [];
+    for (let i = 0; i < lines.length; i += 3) chunks.push(`${lines.slice(i, i + 3).join('\n')}\n`);
+    assert.deepEqual(normalizeTrace(runtime, chunks), normalizeTrace(runtime, text), `${runtime} ${name}`);
+  }
+});
+
+// --- OpenCode duplicate call ids ---------------------------------------------------------------
+
+test('opencode: a repeated callID keeps both calls and adds duplicate_tool_id once per repeat', () => {
+  const record = normalizeTrace(
+    'opencode',
+    jsonl(
+      openCodeTool('read', 'completed', { callID: 'c1' }),
+      openCodeTool('read', 'completed', { callID: 'c1' }),
+      openCodeTool('read', 'completed', { callID: 'c2' }),
+      openCodeTool('read', 'completed', { callID: 'c1' }),
+    ),
+  );
+  assert.deepEqual(
+    record.tool_calls.map((c) => c.tool_call_id),
+    ['c1', 'c1', 'c2', 'c1'],
+  );
+  assert.deepEqual(
+    record.errors.map((e) => [e.type, e.line]),
+    [
+      ['duplicate_tool_id', 2],
+      ['duplicate_tool_id', 4],
+    ],
+  );
+  assert.ok(record.tool_calls.every((c) => c.status === 'completed'));
+});
+
+test('opencode: the part id is checked for repeats when there is no callID, and distinct or missing ids add nothing', () => {
+  const byPartId = normalizeTrace('opencode', jsonl(openCodeTool('read', 'completed', { id: 'p1' }), openCodeTool('read', 'completed', { id: 'p1' })));
+  assert.deepEqual(
+    byPartId.errors.map((e) => e.type),
+    ['duplicate_tool_id'],
+  );
+  const distinct = normalizeTrace('opencode', jsonl(openCodeTool('read', 'completed', { callID: 'c1' }), openCodeTool('read', 'completed', { callID: 'c2' })));
+  assert.deepEqual(distinct.errors, []);
+  const noIds = normalizeTrace('opencode', jsonl(openCodeTool('read', 'completed'), openCodeTool('read', 'completed')));
+  assert.equal(noIds.tool_calls.length, 2);
+  assert.deepEqual(noIds.errors, []);
 });

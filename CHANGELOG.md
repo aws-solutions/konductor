@@ -20,8 +20,15 @@ not per individual commit.
   their own function. The known limits of the built-in redactor are listed in the module header.
   `normalizeTrace`, `defaultRedact`, and `SCHEMA_VERSION` are its stable API. Each tool call
   carries `tool_call_id`, the id the runtime reported (`null` when it has none). The module header
-  maps the record fields to the nearest OpenTelemetry GenAI attributes. Tests and synthetic
-  fixtures are in `bench/test/`; run `node --test bench/test/trace-normalizer.test.js`.
+  maps the record fields to the nearest OpenTelemetry GenAI attributes. The record has an
+  additive `unrecognized_events` field (event type to count) so a CLI format change is visible
+  instead of reading as an idle run; `schema_version` stays 1. The Kiro parser reads the ACP event
+  stream that kiro-cli 3.0.0 emits (`sessionUpdate` and `runFinished`), and the Claude Code parser
+  is checked against a Claude Code 2.1.318 capture. The OpenCode parser is unverified: no tool-call
+  run could be captured. An array input element holding several newline-delimited events is split,
+  and OpenCode reports a repeated call id as `duplicate_tool_id`. Tests and fixtures are in
+  `bench/test/`: three fixtures are sanitized real captures (their names carry the CLI version) and
+  the rest are synthetic. Run `node --test "bench/test/**/*.test.js"`.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
 - The four phase-gated SOPs, such as `k-full-sdlc`, now carry an

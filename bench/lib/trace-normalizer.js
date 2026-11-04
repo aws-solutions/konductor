@@ -10,8 +10,12 @@
  * Stable API: `normalizeTrace`, `defaultRedact` and `SCHEMA_VERSION`. The other exports are
  * helpers and limits exposed for tests and may change without notice.
  *
- * Input: a string of newline-delimited JSON events, an array of such strings, or an array of
- * already-parsed event objects. Bad input never throws.
+ * Input: a string of newline-delimited JSON events, an array of strings that each hold one or
+ * more newline-delimited JSON events (for example stdout `data` chunks collected as they arrive),
+ * or an array of already-parsed event objects. An array may mix strings and parsed events. Every
+ * string element is split on newlines, so a chunk holding several events is read event by event.
+ * The `line` number in an `errors` entry counts the events and lines after that split, from 1.
+ * Bad input never throws.
  *  - A line that is not valid JSON, or an event (parsed from a line or passed in pre-parsed) that
  *    is null or not a plain object, is counted in `parse_errors` only. It adds no `errors` entry,
  *    in particular no `malformed_event`.
@@ -22,13 +26,27 @@
  *    to `errors`. A number or boolean name is converted to its string form and adds no entry.
  * Only an unknown runtime name throws, because that is a caller bug, not bad data.
  *
+ * Verification status. Which input formats have been checked against a real capture:
+ *  - Claude Code: verified against a captured `claude` 2.1.318 `--output-format stream-json
+ *    --verbose` run (fixtures/traces/claude-code-2.1.318-read.jsonl).
+ *  - Kiro CLI: the ACP envelope (`type: 'sessionUpdate'`, `data.update.sessionUpdate`) is verified
+ *    against captured `kiro-cli` 3.0.0 `chat --output-format stream-json` runs
+ *    (fixtures/traces/kiro-cli-3.0.0-*.jsonl). The older flat shape (`type: 'tool_call'` with
+ *    `tool_call_id`, `tool_name`, `arguments`, string `content`, and a `model` event) is NOT known to
+ *    be emitted by any release: it was written from an assumed format, and it is kept only so the
+ *    synthetic behavior fixtures keep working. Treat it as unverified.
+ *  - OpenCode: UNVERIFIED. No tool-call run could be captured (the installed 2.0.27 had no
+ *    authenticated provider), so the parser still reflects the documented event shapes only.
+ * A fixture is a real capture only when its file name carries the CLI name and version; the others
+ * under fixtures/traces/ are synthetic.
+ *
  * Record schema (schema_version 1; fields added later stay additive and do not bump it.
- * `tool_calls[].tool_call_id` was added this way):
+ * `tool_calls[].tool_call_id` and `unrecognized_events` were added this way):
  *   {
  *     schema_version: 1,
  *     runtime: 'claude-code' | 'opencode' | 'kiro',
  *     model_id: string | null,         // as the trace reports it, redacted and capped
- *     session_ids: string[],           // OpenCode: every session id seen. Empty for the others.
+ *     session_ids: string[],           // OpenCode and Kiro (ACP): every session id seen. Empty for Claude Code.
  *     tool_calls: [
  *       {
  *         tool_call_id: string | null, // the id the runtime reported for the call (see "Tool call ids")
@@ -58,19 +76,33 @@
  *       { type: string, message: string, line: number | null, raw: { event_type, line } },
  *     ],                               // raw never holds an event, only its type and line
  *     parse_errors: number,            // lines that were not a JSON object
+ *     unrecognized_events: { [event_type: string]: number },
+ *                                      // events the parser has no rule for, by type (see below)
  *     complete: boolean | null,        // see "Completeness" below
  *     degraded: boolean,
  *     degraded_reason: string | null,
  *   }
  *
+ * Unrecognized events. `unrecognized_events` maps an event type to how many events of that type the
+ * parser had no rule for, so a format change shows up in the record instead of reading as an idle
+ * run. An event the parser reads, and one it knowingly skips (Claude Code `system/init`, OpenCode
+ * `step_start`, Kiro status and bookkeeping updates and thought chunks), is not counted. The key is
+ * the event's `type`; Claude Code appends `/<subtype>` for a `system` event other than `init`
+ * (`system/api_retry`), and Kiro (ACP) uses `sessionUpdate/<name>` for an update kind it does not
+ * know. An event with no string type is counted under `[no type]`. Keys are redacted and capped at
+ * MAX_EVENT_TYPE characters; past MAX_UNRECOGNIZED_KEYS distinct keys the rest are counted under
+ * `[other]`. The field is empty for a trace the parser fully understands. It is not an error: a
+ * non-empty tally on a real capture means the CLI emits something new, or this parser misses it.
+ *
  * Tool call ids. `tool_calls[].tool_call_id` is the id the runtime's own trace gives the call,
  * kept as the raw string (a numeric id is stringified, so id 0 becomes "0"). It is `null` when
  * the trace has none. It is redacted and capped like every other stored string, and is not
- * hashed or renamed. The id is not guaranteed unique: a repeated id still adds `duplicate_tool_id`.
+ * hashed or renamed. The id is not guaranteed unique: a repeated id still adds `duplicate_tool_id`,
+ * and the repeated event is kept as its own call. This holds for all three runtimes.
  *  - Claude Code: the `tool_use` block's `id`, the same value a result carries as `tool_use_id`.
  *  - OpenCode: the tool part's `callID`, or the part's `id` when the trace has no usable `callID`.
- *  - Kiro: the `tool_call` event's `tool_call_id`, or its `id` when that is absent; a
- *    `tool_call_update` carries the same value.
+ *  - Kiro (ACP): the `tool_call` update's `toolCallId`; a `tool_call_update` carries the same value.
+ *  - Kiro (flat shape): the `tool_call` event's `tool_call_id`, or its `id` when that is absent.
  *
  * Skill loads. Only a load that provably happened is recorded.
  *  - Claude Code: a tool named exactly `Skill` whose paired tool_result is not an error. A call
@@ -80,13 +112,24 @@
  *    so it is redacted and capped at MAX_STORED_STRING characters like every other stored string.
  *  - Kiro: a completed call to a read tool (KIRO_READ_TOOL_NAMES, matched on the exact reported
  *    name, so `mcp__x__fs_read` does not count) whose path argument matches
- *    `skills/<name>/SKILL.md` (SKILL_PATH_PATTERN). Writes and failed reads are not loads.
+ *    `skills/<name>/SKILL.md` (SKILL_PATH_PATTERN). Writes and failed reads are not loads. The path
+ *    is read from `path`, `file_path` or `filePath` in the call's input (kiro-cli 3.0.0 sends
+ *    `rawInput.path`), and from the same keys of each entry in an `operations` array. The
+ *    `operations` form is not in any capture here; it is read because the review reported it, and is
+ *    unverified. One call that reads several skill files records one load per file.
  *  - OpenCode reports no skill-load signal, so `skill_loads` stays empty.
+ *
+ * Kiro (ACP) tool names. The call's name is `_meta.kiro.toolName` when the event has one (reported
+ * by the review, absent from the kiro-cli 3.0.0 captures here), else the ACP `kind` (`read` for the
+ * built-in read tool in 3.0.0), else the `title` (`Read File`). `kind` is a coarse category, so
+ * two different tools of one kind are indistinguishable by name.
  *
  * Completeness. `complete` says whether the trace reached its end:
  *  - Claude Code: true only when a top-level (non-subagent) `result` event was seen.
  *  - OpenCode: true when at least one `step_finish` event was seen.
- *  - Kiro: null, because its stream has no terminal event to check.
+ *  - Kiro (ACP): true when a `runFinished` event was seen, false when ACP events were seen but no
+ *    `runFinished` came. Null when the trace holds no ACP event, including the flat shape, which
+ *    has no terminal event to check.
  * A false value means the trace may be truncated, so its answer, usage and cost may be partial.
  *
  * Data handling. Everything the trace supplies as text passes through a redactor before it is
@@ -137,7 +180,8 @@
  *  - Kiro sets a status only from an explicit `completed`, from `failed` or `error`, or from an
  *    `error` field, which marks the call 'error' whatever status the update reports (including
  *    `completed` and a non-terminal one such as `in_progress`). An update with none of these,
- *    such as progress or content alone, leaves the status as it was.
+ *    such as progress or content alone (`in_progress` in kiro-cli 3.0.0), leaves the status as it
+ *    was. `failed` has not been seen in a capture; it follows the ACP status names.
  *
  * Numbers. Usage and cost are stored only as finite numbers >= 0. A value that is not, or an
  * OpenCode total that overflows to infinity when summed, becomes null and adds an
@@ -145,8 +189,13 @@
  *
  * Other record notes:
  *  - OpenCode `model_id` is null: its event stream does not name the model.
- *  - Kiro `model_id` comes only from the dedicated `model` event. A second, different value is
- *    kept out of the record and adds a `model_conflict` error.
+ *  - Kiro `model_id` is null for kiro-cli 3.0.0: its run events do not name the model that answered
+ *    (the model setting it reports is `auto`, which is not a model id, so it is not read). Only the
+ *    flat shape's dedicated `model` event sets it; a second, different value is kept out of the
+ *    record and adds a `model_conflict` error.
+ *  - Kiro (ACP) `response_text` is the `runFinished` event's `finalText` when it is present, else the
+ *    `agent_message_chunk` texts joined in order. When `finalTextTruncated` is true and chunks
+ *    exist, the chunks are kept. A `runFinished` status other than `success` adds a `result_error`.
  *  - Claude Code takes `model_id` from top-level events only, not from subagent events. A
  *    `result` event tagged with `parent_tool_use_id` is a subagent's: it does not set
  *    `complete`, `response_text`, `model_id`, `usage` or `cost_usd`. Assistant text blocks from
@@ -194,13 +243,35 @@ const MAX_EVENT_TYPE = 64;
 const MAX_AVAILABLE_TOOLS = 512;
 const REDACTION_FAILED = '[REDACTION_FAILED]';
 
+/** Most distinct keys kept in `unrecognized_events`; further types are counted under OTHER_EVENTS_KEY. */
+const MAX_UNRECOGNIZED_KEYS = 64;
+const OTHER_EVENTS_KEY = '[other]';
+const NO_TYPE_KEY = '[no type]';
+
 /**
- * Kiro tool names that read a file, matched exactly against the tool name as reported. The
- * fixtures use `fsRead`; `fs_read` is the snake_case spelling of the same name. A prefixed or
+ * Kiro tool names that read a file, matched exactly against the tool name as reported. `read` is
+ * what kiro-cli 3.0.0 reports (as the ACP `kind`) for its built-in read tool. `fsRead` and
+ * `fs_read` come from the flat synthetic shape and are not seen in any capture. A prefixed or
  * namespaced name such as `mcp__x__fs_read` or `plugin:s:fsRead` is a different tool and does
  * not match.
  */
-const KIRO_READ_TOOL_NAMES = new Set(['fsRead', 'fs_read']);
+const KIRO_READ_TOOL_NAMES = new Set(['read', 'fsRead', 'fs_read']);
+
+/**
+ * Kiro (ACP) `sessionUpdate` kinds the parser knowingly skips: thought and user echoes, plans,
+ * and status or bookkeeping updates. They carry nothing the record needs, so they are not counted
+ * as unrecognized. `session_info_update`, `available_commands_update` and `config_option_update`
+ * are in the kiro-cli 3.0.0 captures; the rest are ACP-defined kinds not seen in them.
+ */
+const KIRO_ACP_SKIPPED_UPDATES = new Set([
+  'session_info_update',
+  'available_commands_update',
+  'config_option_update',
+  'current_mode_update',
+  'agent_thought_chunk',
+  'user_message_chunk',
+  'plan',
+]);
 
 /**
  * Kiro has no skill-load event, so a load is a read of `.../skills/<name>/SKILL.md`. The match is
@@ -347,6 +418,7 @@ function baseRecord(runtime) {
     cost_usd: null,
     errors: [],
     parse_errors: 0,
+    unrecognized_events: {},
     complete: null,
     degraded: false,
     degraded_reason: null,
@@ -381,11 +453,44 @@ function createContext(runtime, options) {
   // Redact first, then cap, so a credential cut by the cap cannot slip past the redactor.
   const text = (value, max = MAX_STORED_STRING) => cap(redact(String(value)), max);
 
+  // Event type -> count, kept in a Map so a hostile type name such as "__proto__" is only a key.
+  const unrecognized = new Map();
+
   const ctx = {
     opts,
     record,
     redact,
     text,
+    /**
+     * Counts one event the parser has no rule for, under `key` (redacted and capped). Past
+     * MAX_UNRECOGNIZED_KEYS distinct keys, new ones are counted under OTHER_EVENTS_KEY.
+     */
+    noteUnrecognized(key) {
+      let name = typeof key === 'string' && key ? text(key, MAX_EVENT_TYPE) : NO_TYPE_KEY;
+      if (!unrecognized.has(name) && unrecognized.size >= MAX_UNRECOGNIZED_KEYS) name = OTHER_EVENTS_KEY;
+      unrecognized.set(name, (unrecognized.get(name) ?? 0) + 1);
+    },
+    /** Writes the tally into the record as a plain object. Called once, from finalize. */
+    flushUnrecognized() {
+      const out = {};
+      for (const [name, count] of unrecognized) {
+        Object.defineProperty(out, name, { value: count, enumerable: true, writable: true, configurable: true });
+      }
+      record.unrecognized_events = out;
+    },
+    /**
+     * Records a session id once. A second distinct id adds a `multiple_sessions` error. A missing
+     * or non-string id changes nothing.
+     */
+    noteSessionId(rawSessionId, line, eventType) {
+      if (typeof rawSessionId !== 'string' || !rawSessionId) return;
+      const sessionId = text(rawSessionId);
+      if (record.session_ids.includes(sessionId)) return;
+      record.session_ids.push(sessionId);
+      if (record.session_ids.length === 2) {
+        ctx.addError('multiple_sessions', 'trace contains more than one session id', line, eventType);
+      }
+    },
     /** Redacts the final answer. It is never capped, because consumers may need all of it. */
     redactResponse: (raw) => (raw === '' ? '' : redact(raw)),
     addError(type, message, line = null, eventType = null) {
@@ -575,9 +680,15 @@ function registerCallId(ctx, pending, rawId, index, line, eventType) {
  */
 function readEvents(rawTrace, ctx, handler) {
   let lines;
-  if (Array.isArray(rawTrace)) lines = rawTrace;
-  else if (rawTrace === undefined || rawTrace === null) lines = [];
-  else lines = String(rawTrace).split('\n');
+  if (Array.isArray(rawTrace)) {
+    // A string element may hold several newline-delimited events (a collected stdout chunk), so
+    // split it. A parsed event, or anything else, passes through as one item.
+    lines = rawTrace.flatMap((item) => (typeof item === 'string' ? item.split('\n') : [item]));
+  } else if (rawTrace === undefined || rawTrace === null) {
+    lines = [];
+  } else {
+    lines = String(rawTrace).split('\n');
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const item = lines[i];
@@ -627,6 +738,7 @@ function finalize(ctx) {
   const { degraded, reason } = assessDegraded(record.tool_calls, expected);
   record.degraded = degraded;
   record.degraded_reason = reason;
+  ctx.flushUnrecognized();
   return record;
 }
 
@@ -768,7 +880,16 @@ function normalizeClaudeCode(rawTrace, options = {}) {
         lineNo,
         'error',
       );
+      return;
     }
+
+    // Reached by any event type above that returned no rule for it, and by a `system` event other
+    // than `init` (`api_retry` appears in real traces).
+    ctx.noteUnrecognized(
+      event.type === 'system' && typeof event.subtype === 'string' && event.subtype
+        ? `system/${event.subtype}`
+        : event.type,
+    );
   });
 
   for (const [index, skillName] of skillCandidates) {
@@ -792,8 +913,10 @@ function normalizeClaudeCode(rawTrace, options = {}) {
  *  - `step_finish`: per-turn usage and cost, summed across turns. A repeated part id counts once.
  *  - `text`: assistant output; the last non-empty one is the final answer.
  *  - `error`: a runtime error.
- * Every other event type, `step_start` included, carries nothing the record needs. OpenCode emits
- * no terminal result event, so `complete` means "at least one step_finish was seen". `response_text`
+ * `step_start` carries nothing the record needs and is skipped silently; any other event type is
+ * counted in `unrecognized_events`. This shape is unverified against a real run (see "Verification
+ * status" in the module header). OpenCode emits no terminal result event, so `complete` means
+ * "at least one step_finish was seen". A repeated call id adds `duplicate_tool_id`. `response_text`
  * keeps the answer as reported (redacted), including any markdown fence; stripping it is
  * left to the consumer.
  * `available_tools` stays 'unknown' because OpenCode lists no tools at session start. More than
@@ -811,20 +934,18 @@ function normalizeOpenCode(rawTrace, options = {}) {
   const seenStepFinish = new Set();
   let sawStepFinish = false;
 
+  const pending = new Map(); // call id -> index into record.tool_calls, to detect a repeated id
+
   readEvents(rawTrace, ctx, (event, lineNo, state) => {
-    const rawSessionId =
+    ctx.noteSessionId(
       typeof event.sessionID === 'string' && event.sessionID
         ? event.sessionID
         : isObject(event.part) && typeof event.part.sessionID === 'string'
           ? event.part.sessionID
-          : null;
-    const sessionId = rawSessionId === null ? null : ctx.text(rawSessionId);
-    if (sessionId !== null && !record.session_ids.includes(sessionId)) {
-      record.session_ids.push(sessionId);
-      if (record.session_ids.length === 2) {
-        ctx.addError('multiple_sessions', 'trace contains more than one session id', lineNo, event.type);
-      }
-    }
+          : null,
+      lineNo,
+      event.type,
+    );
 
     if (event.type === 'tool_use') {
       if (!isObject(event.part)) {
@@ -833,16 +954,20 @@ function normalizeOpenCode(rawTrace, options = {}) {
       }
       const toolState = isObject(event.part.state) ? event.part.state : {};
       // `callID` is OpenCode's call id; `part.id` is the fallback for traces that carry only that.
+      const toolCallId = idKey(event.part.callID) ? event.part.callID : event.part.id;
       const call = ctx.newCall(event.part.tool, toolState.input, {
         line: lineNo,
         eventType: 'tool_use',
-        toolCallId: idKey(event.part.callID) ? event.part.callID : event.part.id,
+        toolCallId,
       });
       // OpenCode fuses call and result into one event, so `state.status` is the outcome. Any
       // status other than "completed" is an error so an in-flight call never reads as completed.
       call.status = toolState.status === 'completed' ? 'completed' : 'error';
       ctx.setResult(call, toolState.output);
       record.tool_calls.push(call);
+      // A repeated id keeps the event as its own call and adds `duplicate_tool_id`, as in the
+      // other runtimes. No result ever looks the call up by id, so the index is not used again.
+      registerCallId(ctx, pending, toolCallId, record.tool_calls.length - 1, lineNo, 'tool_use');
       if (call.status !== 'completed') {
         ctx.addError('tool_error', `opencode tool "${call.raw_tool_name}" did not complete`, lineNo, 'tool_use');
       }
@@ -895,7 +1020,11 @@ function normalizeOpenCode(rawTrace, options = {}) {
 
     if (event.type === 'error') {
       ctx.addError('runtime_error', firstMessage('opencode error event', event.error, event.message), lineNo, 'error');
+      return;
     }
+
+    // `step_start` is the one event type known to carry nothing the record needs.
+    if (event.type !== 'step_start') ctx.noteUnrecognized(event.type);
   });
 
   record.response_text = ctx.redactResponse(lastText);
@@ -919,54 +1048,82 @@ function normalizeOpenCode(rawTrace, options = {}) {
   return finalize(ctx);
 }
 
+/** Paths a Kiro read call names: the first of `path`, `file_path`, `filePath`, then each `operations[]` entry's. */
+function kiroReadPaths(args) {
+  const pick = (source) => [source.path, source.file_path, source.filePath].find((v) => typeof v === 'string');
+  const paths = [];
+  const top = pick(args);
+  if (top !== undefined) paths.push(top);
+  if (Array.isArray(args.operations)) {
+    for (const operation of args.operations) {
+      const found = isObject(operation) ? pick(operation) : undefined;
+      if (found !== undefined) paths.push(found);
+    }
+  }
+  return paths;
+}
+
 /**
- * Parses a Kiro CLI `--output-format stream-json` trace: `agent_message_chunk`, `tool_call`,
- * `tool_call_update` and `model` events (plus thought chunks, which are ignored). There is no
- * init event, so `available_tools` stays 'unknown', and no usage or cost, so both stay null.
+ * Parses a Kiro CLI `--output-format stream-json` trace. Two shapes are read; see "Verification
+ * status" in the module header for which one is real.
  *
- * A `tool_call_update` is matched to its `tool_call` by `tool_call_id` (or `id`; id 0 is valid).
- * Status `failed` and `error` both map to 'error' and add an error entry, and so does an `error`
- * field on any update, even one that reports `completed`; `completed` without an error maps to
- * 'completed'; an update with neither a terminal status nor an error leaves the status as it was. The first
- * terminal status is kept (see "Statuses" in the module comment). A duplicate call id is kept as its own
- * unpaired call and adds a `duplicate_tool_id` error; the first call keeps its pairing.
+ * ACP envelope (kiro-cli 3.0.0, verified against captures). Each line is `{ type, data }`:
+ *  - `runStarted`: skipped. It marks the trace as ACP, so `complete` becomes false until
+ *    `runFinished` arrives.
+ *  - `sessionUpdate`: `data.sessionId` goes to `session_ids`, and `data.update.sessionUpdate`
+ *    names the kind:
+ *      - `tool_call`: `toolCallId`, `rawInput` (the arguments) and the tool name (see "Kiro (ACP)
+ *        tool names" in the module header).
+ *      - `tool_call_update`: matched by `toolCallId`; `status` and `rawOutput` (the result).
+ *      - `agent_message_chunk`: `content.text` is appended to the answer.
+ *      - the kinds in KIRO_ACP_SKIPPED_UPDATES are skipped. Any other kind is counted in
+ *        `unrecognized_events` as `sessionUpdate/<name>`.
+ *  - `runFinished`: `complete` becomes true; `finalText` is the answer when present. A `status`
+ *    other than `success` adds a `result_error`.
+ * There is no init event, so `available_tools` stays 'unknown', and no token or cost data, so
+ * `usage` and `cost_usd` stay null.
+ *
+ * Flat shape (no known release; kept for the synthetic fixtures): `agent_message_chunk` with a
+ * string `content`, `tool_call`, `tool_call_update` and `model` events, plus thought chunks, which
+ * are ignored. A `tool_call_update` is matched to its `tool_call` by `tool_call_id` (or `id`; id 0
+ * is valid).
+ *
+ * Both shapes share the status rules. Status `failed` and `error` both map to 'error' and add an
+ * error entry, and so does an `error` field on any update, even one that reports `completed`;
+ * `completed` without an error maps to 'completed'; an update with neither a terminal status nor an
+ * error leaves the status as it was. The first terminal status is kept (see "Statuses" in the
+ * module comment). A duplicate call id is kept as its own unpaired call and adds a
+ * `duplicate_tool_id` error; the first call keeps its pairing.
  *
  * Skill loads are decided after the whole trace is read: a call whose tool name, as reported,
- * is exactly one of KIRO_READ_TOOL_NAMES and whose `path`, `file_path` or `filePath` argument
- * matches SKILL_PATH_PATTERN counts once its status is 'completed'.
+ * is exactly one of KIRO_READ_TOOL_NAMES and whose input names a path that matches
+ * SKILL_PATH_PATTERN counts once its status is 'completed' (see "Skill loads" in the module
+ * header for the input keys).
  */
 function normalizeKiro(rawTrace, options = {}) {
   const ctx = createContext('kiro', options);
   const { record } = ctx;
 
   const pending = new Map();
-  const skillCandidates = new Map(); // call index -> skill load, kept if the call completes
+  const skillCandidates = new Map(); // call index -> skill loads, kept if the call completes
   let responseText = ''; // raw until the end, so a secret split across chunks is still redacted
+  let finalText = null; // the `runFinished` answer, applied after the loop
+  let finalTextTruncated = false;
 
-  readEvents(rawTrace, ctx, (event, lineNo) => {
-    if (event.type === 'agent_message_chunk') {
-      if (typeof event.content === 'string') responseText += event.content;
-      return;
-    }
-
-    if (event.type === 'tool_call') {
-      const rawArgs = isObject(event.arguments) ? event.arguments : isObject(event.input) ? event.input : {};
-      const rawName = event.tool_name ?? event.name ?? event.tool;
-      const call = ctx.newCall(rawName, rawArgs, {
-        line: lineNo,
-        eventType: 'tool_call',
-        toolCallId: event.tool_call_id ?? event.id,
-      });
-      record.tool_calls.push(call);
-      const index = record.tool_calls.length - 1;
-      registerCallId(ctx, pending, event.tool_call_id ?? event.id, index, lineNo, 'tool_call');
-      // The read-tool match uses the name as reported, not the normalized one, so a namespaced
-      // tool that merely ends in "fs_read" is not mistaken for the built-in read tool.
-      if (typeof rawName === 'string' && KIRO_READ_TOOL_NAMES.has(rawName)) {
-        const path = [rawArgs.path, rawArgs.file_path, rawArgs.filePath].find((v) => typeof v === 'string');
+  /** Records a tool call from either shape. */
+  const addCall = (rawName, rawArgs, rawId, lineNo, eventType) => {
+    const call = ctx.newCall(rawName, rawArgs, { line: lineNo, eventType, toolCallId: rawId });
+    record.tool_calls.push(call);
+    const index = record.tool_calls.length - 1;
+    registerCallId(ctx, pending, rawId, index, lineNo, eventType);
+    // The read-tool match uses the name as reported, not the normalized one, so a namespaced
+    // tool that merely ends in "fs_read" is not mistaken for the built-in read tool.
+    if (typeof rawName === 'string' && KIRO_READ_TOOL_NAMES.has(rawName)) {
+      const loads = [];
+      for (const path of kiroReadPaths(rawArgs)) {
         const load = skillLoadFromPath(path);
         if (load) {
-          skillCandidates.set(index, {
+          loads.push({
             skill_name: ctx.text(load.skill_name),
             source: load.source,
             raw_path: ctx.text(load.raw_path),
@@ -974,36 +1131,125 @@ function normalizeKiro(rawTrace, options = {}) {
           });
         }
       }
+      if (loads.length > 0) skillCandidates.set(index, loads);
+    }
+  };
+
+  /** Applies a status/result update from either shape to the call it names. */
+  const updateCall = (rawId, { status, error, result }, lineNo, eventType) => {
+    const key = idKey(rawId);
+    const index = key === null ? undefined : pending.get(key);
+    if (index === undefined) return;
+    const call = record.tool_calls[index];
+    const reported = typeof status === 'string' && status ? status.toLowerCase() : null;
+    // An `error` field is a failure whatever status the update reports, so the recorded error
+    // and the call status always agree.
+    const failed = reported === 'failed' || reported === 'error' || Boolean(error);
+    // Only an explicit `completed` or a failure sets a status. An update with neither (progress,
+    // or content only) leaves it alone. Once a call is terminal, a later update changes nothing.
+    const terminal = failed ? 'error' : reported === 'completed' ? 'completed' : null;
+    const open =
+      terminal === null
+        ? call.status === 'unknown'
+        : ctx.settleStatus(call, terminal, `kiro tool call ${key}`, lineNo, eventType);
+    if (!open) return;
+    if (result !== undefined && result !== null) ctx.setResult(call, result);
+    if (failed) {
+      ctx.addError('tool_error', firstMessage(`kiro tool call ${key} reported an error`, error), lineNo, eventType);
+    }
+  };
+
+  /** Marks the trace as ACP: complete stays false until `runFinished`. */
+  const markAcp = () => {
+    if (record.complete === null) record.complete = false;
+  };
+
+  readEvents(rawTrace, ctx, (event, lineNo, state) => {
+    if (event.type === 'runStarted') {
+      markAcp();
+      return;
+    }
+
+    if (event.type === 'sessionUpdate') {
+      markAcp();
+      const data = event.data;
+      const update = isObject(data) ? data.update : undefined;
+      if (!isObject(update)) {
+        state.bad = true;
+        return;
+      }
+      ctx.noteSessionId(data.sessionId, lineNo, 'sessionUpdate');
+      const kind = update.sessionUpdate;
+
+      if (kind === 'tool_call') {
+        const meta = isObject(update._meta) && isObject(update._meta.kiro) ? update._meta.kiro : {};
+        const rawName = [meta.toolName, update.kind, update.title].find((v) => typeof v === 'string' && v);
+        addCall(rawName, isObject(update.rawInput) ? update.rawInput : {}, update.toolCallId, lineNo, 'tool_call');
+        return;
+      }
+
+      if (kind === 'tool_call_update') {
+        updateCall(
+          update.toolCallId,
+          { status: update.status, error: update.error, result: update.rawOutput },
+          lineNo,
+          'tool_call_update',
+        );
+        return;
+      }
+
+      if (kind === 'agent_message_chunk') {
+        const content = update.content;
+        if (isObject(content) && content.type === 'text' && typeof content.text === 'string') {
+          responseText += content.text;
+        }
+        return;
+      }
+
+      if (typeof kind === 'string' && KIRO_ACP_SKIPPED_UPDATES.has(kind)) return;
+      ctx.noteUnrecognized(typeof kind === 'string' && kind ? `sessionUpdate/${kind}` : 'sessionUpdate');
+      return;
+    }
+
+    if (event.type === 'runFinished') {
+      markAcp();
+      const data = event.data;
+      if (!isObject(data)) {
+        state.bad = true;
+        return;
+      }
+      ctx.noteSessionId(data.sessionId, lineNo, 'runFinished');
+      record.complete = true;
+      if (typeof data.finalText === 'string' && data.finalText) {
+        finalText = data.finalText;
+        finalTextTruncated = data.finalTextTruncated === true;
+      }
+      if (typeof data.status === 'string' && data.status && data.status !== 'success') {
+        ctx.addError('result_error', `kiro run finished with status ${data.status}`, lineNo, 'runFinished');
+      }
+      return;
+    }
+
+    if (event.type === 'agent_message_chunk') {
+      if (typeof event.content === 'string') responseText += event.content;
+      return;
+    }
+
+    if (event.type === 'agent_thought_chunk') return;
+
+    if (event.type === 'tool_call') {
+      const rawArgs = isObject(event.arguments) ? event.arguments : isObject(event.input) ? event.input : {};
+      addCall(event.tool_name ?? event.name ?? event.tool, rawArgs, event.tool_call_id ?? event.id, lineNo, 'tool_call');
       return;
     }
 
     if (event.type === 'tool_call_update') {
-      const key = idKey(event.tool_call_id ?? event.id);
-      const index = key === null ? undefined : pending.get(key);
-      if (index === undefined) return;
-      const call = record.tool_calls[index];
-      const reported = typeof event.status === 'string' && event.status ? event.status.toLowerCase() : null;
-      // An `error` field is a failure whatever status the update reports, so the recorded error
-      // and the call status always agree.
-      const failed = reported === 'failed' || reported === 'error' || Boolean(event.error);
-      // Only an explicit `completed` or a failure sets a status. An update with neither (progress,
-      // or content only) leaves it alone. Once a call is terminal, a later update changes nothing.
-      const terminal = failed ? 'error' : reported === 'completed' ? 'completed' : null;
-      const open =
-        terminal === null
-          ? call.status === 'unknown'
-          : ctx.settleStatus(call, terminal, `kiro tool call ${key}`, lineNo, 'tool_call_update');
-      if (!open) return;
-      if (event.result !== undefined && event.result !== null) ctx.setResult(call, event.result);
-      else if (event.output !== undefined && event.output !== null) ctx.setResult(call, event.output);
-      if (failed) {
-        ctx.addError(
-          'tool_error',
-          firstMessage(`kiro tool call ${key} reported an error`, event.error),
-          lineNo,
-          'tool_call_update',
-        );
-      }
+      updateCall(
+        event.tool_call_id ?? event.id,
+        { status: event.status, error: event.error, result: event.result ?? event.output },
+        lineNo,
+        'tool_call_update',
+      );
       return;
     }
 
@@ -1020,13 +1266,18 @@ function normalizeKiro(rawTrace, options = {}) {
 
     if (event.type === 'error') {
       ctx.addError('runtime_error', firstMessage('kiro error event', event.message, event.error), lineNo, 'error');
+      return;
     }
+
+    ctx.noteUnrecognized(event.type);
   });
 
-  for (const [index, load] of skillCandidates) {
-    if (record.tool_calls[index].status === 'completed') record.skill_loads.push(load);
+  for (const [index, loads] of skillCandidates) {
+    if (record.tool_calls[index].status === 'completed') record.skill_loads.push(...loads);
   }
 
+  // The runFinished answer is the final one. A truncated copy yields to the streamed chunks.
+  if (finalText !== null && (!finalTextTruncated || responseText === '')) responseText = finalText;
   record.response_text = ctx.redactResponse(responseText);
   return finalize(ctx);
 }
