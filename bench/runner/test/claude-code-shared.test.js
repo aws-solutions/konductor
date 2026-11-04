@@ -229,6 +229,25 @@ test('CLI: missing credentials stop the run before claude starts and the message
   }
 });
 
+test('CLI: a multi-turn (autonomy) task is refused before anything is paid for or prepared', async () => {
+  const s = cliRoot();
+  try {
+    const taskFile = path.join(s.bench, 'tasks', 't1.json');
+    const task = JSON.parse(fs.readFileSync(taskFile, 'utf8'));
+    fs.writeFileSync(taskFile, JSON.stringify({ ...task, autonomy: { clarifications: [], maxInterjections: 2, noQuestionNeeded: true } }));
+    for (const env of [CC_ENV, {}]) {
+      const r = await collect(cli(s, ['--arms', 'cc-vanilla', '--out', path.join(s.root, 'o')], env));
+      assert.notEqual(r.code, 0);
+      assert.match(r.err, /multi-turn \(autonomy\) tasks are not supported on the Claude Code harness yet: t1/);
+      assert.equal(fs.existsSync(path.join(s.probe, 'started.json')), false, 'claude was never started');
+      assert.deepEqual(fs.readdirSync(path.join(s.root, 'tmp')), [], 'no scratch directory was made');
+      assert.equal(fs.existsSync(path.join(s.root, 'o')), false, 'no output directory was made');
+    }
+  } finally {
+    fs.rmSync(s.root, { recursive: true, force: true });
+  }
+});
+
 test('CLI: a launcher is refused as the claude binary', async () => {
   const s = cliRoot();
   try {

@@ -171,6 +171,10 @@ async function cmdRun(opts) {
       if (opts[flag] !== undefined) throw new Error(`--${flag} does not apply to Claude Code arms (${{ effort: 'the effort level is not passed to claude, so a value would be recorded but not applied', 'stop-on': 'the early-stop watcher reads kiro-cli and opencode events only', 'max-tool-calls': 'the early-stop watcher reads kiro-cli and opencode events only', 'aws-creds-file': 'credentials come from the AWS_* variables in the environment that starts the bench', 'aws-profile': 'credentials come from the AWS_* variables in the environment that starts the bench' }[flag]})`);
     }
   }
+  if (isCc) {
+    const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
+    if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the Claude Code harness yet: ${multiTurn.join(', ')}; the resume flags have not been verified. Choose other tasks with --tasks`);
+  }
   const budgetCredits = opts[budgetFlag] ? Number(opts[budgetFlag]) : null;
   if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
   const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isUsd ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;
