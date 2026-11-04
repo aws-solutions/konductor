@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { defineConfig } from '@playwright/test';
 import {
+  API_TARGET,
   EDITING_PROJECT,
   sharedConfig,
   stableRendering,
@@ -15,13 +16,18 @@ export default defineConfig({
   projects: [
     { name: 'functional', testDir: 'e2e/tests', use: stableRendering },
     // These save to the stub, which keeps one workflow for all of them, so
-    // they run after the others, which only read it.
-    {
-      name: EDITING_PROJECT,
-      testDir: 'e2e/editing',
-      use: stableRendering,
-      fullyParallel: false,
-      dependencies: ['functional'],
-    },
+    // they run after the others, which only read it. They save over the
+    // workflow of a real server too, so they are listed only for the stub.
+    ...(API_TARGET.isStub
+      ? [
+          {
+            name: EDITING_PROJECT,
+            testDir: 'e2e/editing',
+            use: stableRendering,
+            fullyParallel: false,
+            dependencies: ['functional'],
+          },
+        ]
+      : []),
   ],
 });

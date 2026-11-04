@@ -187,6 +187,13 @@ launch code `e2e-launch-code-0123456789`, and run the tests within 60 seconds
 of it listening. The launch code works once, so restart the server before each run;
 a second run against the same server fails with a 401.
 
+The `editing` project (`e2e/editing`) saves over the root workflow, so it runs
+only against the stub. With `WC_API_TARGET` set it is left out of the project
+list, `--project=editing` fails with "not found", and the `functional` project
+runs alone, read-only. The fixture that puts the sample back between tests does
+nothing there, and `npm run screenshots` refuses to start. To run the write
+specs, unset `WC_API_TARGET`.
+
 The proxy sends the `Origin` of the target in place of the page's own, and
 forwards any other `Origin` unchanged. A real server must pass the same Origin
 check as the stub (refuse a POST or PUT from any other `Origin`), and the same
