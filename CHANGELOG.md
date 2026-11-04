@@ -178,6 +178,14 @@ not per individual commit.
   `trusted: false` without changing its verdict. Editing a treatment spec changes
   `decisionRuleSha256()` and a stored control result made under the old spec is rebuilt with no
   plugin call. Run `node --test bench/test/controls-pipeline.test.js`.
+- Word-check results on the stored pair. A pair record may carry `check_results`: one entry per
+  word check of the task, `true`, `false` or `null` (no verdict), run on that arm's final
+  workspace. A pair with no field has no word checks. The field is covered by the pair's input
+  digest, so editing it makes the pair and the skill result built from it stale; a pair without the
+  field keeps the digest it had before. The judge driver (`bench/run/judge.js`) passes each task's
+  two lists to `aggregateSkill`, so `c_with`, `c_without`, `w` and the word-check gate are filled
+  from stored data. Nothing here runs a check: the check evaluator comes in a later change and
+  fills `check_results` from the arm's final snapshot.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.

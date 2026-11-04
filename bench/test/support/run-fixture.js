@@ -23,8 +23,15 @@ function makeTasks(count) {
 
 const taskSetOf = (count, extra = {}) => ({ tasks: makeTasks(count), ...extra });
 
-/** Writes the with and without pair of every task into `store`. */
-function writePairs(store, tasks, { skill = SKILL, loaded = () => true, skip = () => false } = {}) {
+/**
+ * Writes the with and without pair of every task into `store`. `checks(task, arm, n)` may return
+ * the pair's `check_results` (n is the 1-based task index); undefined means the pair has none.
+ */
+function writePairs(
+  store,
+  tasks,
+  { skill = SKILL, loaded = () => true, skip = () => false, checks = () => undefined } = {},
+) {
   tasks.forEach((task, i) => {
     const n = i + 1;
     for (const arm of ['with', 'without']) {
@@ -40,6 +47,7 @@ function writePairs(store, tasks, { skill = SKILL, loaded = () => true, skip = (
           start: { ...START },
           final: { 'CHANGELOG.md': `# Changelog\n- ${token} entry\n` },
           loaded: arm === 'with' ? loaded(task) : false,
+          checkResults: checks(task, arm, n),
         }),
       );
     }

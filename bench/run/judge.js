@@ -69,6 +69,15 @@
  * direction. The check reads the stored reply and changed files, not what the judge was shown. A
  * skill with no spec is not checked, so every pair counts.
  *
+ * ## Word checks
+ *
+ * A stored pair may carry `check_results` (store.js): the word checks of the task, run on that
+ * arm's final workspace. When the result is built, each task's two lists go to `aggregateSkill`,
+ * which turns them into `c_with`, `c_without` and `w` and applies the word-check gate. The judge
+ * never sees them, and they do not enter the judge gap. They are part of the pair digest, so
+ * editing them makes the stored result stale and it is rebuilt from stored judgments with no call.
+ * Step 6 fills `check_results`; this driver only reads it.
+ *
  * ## The judge sees
  *
  * The prompt is built only by `judgePrompt` (judge-prompt.js). Of a task it gets the task object
@@ -285,6 +294,14 @@ function finish(run) {
   );
   const allPairs = taskSet.tasks.flatMap((task) => ARMS.map((arm) => pairsByTask.get(task.id)[arm]));
   const loaded = Object.fromEntries(taskSet.tasks.map((task) => [task.id, pairsByTask.get(task.id).with.loaded === true]));
+  // Word-check results come from the stored pairs, one list per arm. A pair with no `check_results`
+  // gives undefined, which the aggregation reads as "this arm has no word checks".
+  const wordChecks = Object.fromEntries(
+    taskSet.tasks.map((task) => {
+      const pairs = pairsByTask.get(task.id);
+      return [task.id, { with: pairs.with.check_results, without: pairs.without.check_results }];
+    }),
+  );
   const rule = decisionRuleSha256();
   // A control skill's pair counts only if its stored with-arm run took the control's direction. A
   // skill with no treatment spec gets a record for every task that says it needs no check. The
@@ -311,6 +328,7 @@ function finish(run) {
     refused,
     loaded,
     treatment,
+    wordChecks,
     cfg: { judges: settings.judges },
   });
   const record = {

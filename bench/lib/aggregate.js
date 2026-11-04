@@ -6,6 +6,11 @@
  * `gradedVerdict` to the judge gaps, then applies `wordCheckGate` using each pair's word-check
  * gap. Word checks never enter a pair's judge gap (`mean_delta`). It is pure: no I/O, no model
  * call.
+ *
+ * Where word-check results come from. The caller passes `wordChecks`, and the judge driver
+ * (run/judge.js) builds it from the `check_results` stored on each arm's pair (store.js). Step 6
+ * of the port plan fills `check_results` by running the task's checks on the arm's final
+ * snapshot; nothing in this file runs a check.
  */
 const { MIN_SEATS_PER_PAIR, DECISION_RULE_NAME, decisionRuleSha256 } = require('./decision-rule');
 const { gradedVerdict, wordCheckGate } = require('./verdict');

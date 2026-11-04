@@ -21,13 +21,22 @@
  * Record formats (field lists; every field is required, a record missing one is not current):
  *
  *   pair        provenance_version, skill, task_id, arm, answer, start, final, loaded,
- *               runner_fingerprint, inputs (pairInputs of provenance.js)
+ *               runner_fingerprint, inputs (pairInputs of provenance.js), and optionally
+ *               check_results (see below)
  *   judgment    provenance_version, skill, task_id, seat, family, plugin, judge_model, order,
  *               judge_scale, prompt_version, prompt_sha256, sanitizer_version,
  *               sanitizer_rules_sha256, nonce, inputs (judgmentInputs), status, attempts, raw_text,
  *               parsed, usage, cost, error
  *   result      provenance_version, skill, decision_rule, rule_sha256, scale, judges, inputs
  *               (resultInputs), result (aggregateSkill output)
+ *
+ * Word-check results. `check_results` on a pair is an array with one entry per word check of the
+ * task, in the task's order: `true` (the check passed on this arm's final workspace), `false`
+ * (it failed) or `null` (it gave no verdict). The field is absent when the task has no word checks,
+ * and an absent field is not the same as an empty array. It is covered by the pair's input digest,
+ * so editing it makes the pair, and any result built from it, stale. The store only keeps and
+ * compares it. Step 6 of the port plan fills it, by running the task's checks on the arm's final
+ * snapshot; until then a pair carries it only when a caller supplies it.
  *
  * Freshness is strict. A stored record is current only when it carries the digest of the inputs a
  * caller computes now, and every field of its format. Nothing is reused on a missing field, an
@@ -178,18 +187,39 @@ const RESULT_FIELDS = Object.freeze({
   result: isObject,
 });
 
-/** The first field of `rec` that is missing or of the wrong kind, as text; null when none is. */
-function shapeProblem(rec, fields) {
+/** The most word checks one task may carry in a pair record. */
+const MAX_CHECKS = 500;
+
+/** True for an array of word-check results: `true`, `false` or `null` for each check. */
+const isCheckResults = (v) =>
+  Array.isArray(v) && v.length <= MAX_CHECKS && v.every((r) => r === true || r === false || r === null);
+
+/**
+ * Fields a pair may carry. Absent is allowed and means something (no word checks); present must be
+ * well formed. `check_results`: one entry per check of the task, in the task's order.
+ */
+const PAIR_OPTIONAL_FIELDS = Object.freeze({
+  check_results: isCheckResults,
+});
+
+/**
+ * The first field of `rec` that is missing or of the wrong kind, as text; null when none is. A
+ * field in `optional` may be absent, and when present must be of the right kind.
+ */
+function shapeProblem(rec, fields, optional = {}) {
   if (!isObject(rec)) return 'record is not an object';
   for (const [name, ok] of Object.entries(fields)) {
     if (!Object.hasOwn(rec, name)) return `missing field ${name}`;
     if (!ok(rec[name])) return `field ${name} is malformed`;
   }
+  for (const [name, ok] of Object.entries(optional)) {
+    if (Object.hasOwn(rec, name) && !ok(rec[name])) return `field ${name} is malformed`;
+  }
   return null;
 }
 
-const assertShape = (rec, fields, what) => {
-  const problem = shapeProblem(rec, fields);
+const assertShape = (rec, fields, what, optional) => {
+  const problem = shapeProblem(rec, fields, optional);
   if (problem) throw new Error(`${what} record: ${problem}`);
   return rec;
 };
@@ -203,7 +233,7 @@ const assertShape = (rec, fields, what) => {
  * edited reply or snapshot, a changed `loaded` flag or a changed fingerprint all make it stale.
  */
 function pairCurrent(rec, expected) {
-  if (!expected || shapeProblem(rec, PAIR_FIELDS)) return false;
+  if (!expected || shapeProblem(rec, PAIR_FIELDS, PAIR_OPTIONAL_FIELDS)) return false;
   if (rec.provenance_version !== PROVENANCE_VERSION) return false;
   if (rec.skill !== expected.skill || rec.task_id !== expected.taskId || rec.arm !== expected.arm) {
     return false;
@@ -219,6 +249,7 @@ function pairCurrent(rec, expected) {
       start: rec.start,
       final: rec.final,
       loaded: rec.loaded,
+      checkResults: rec.check_results,
     });
   } catch (_) {
     return false;
@@ -355,7 +386,7 @@ function openStore(runDir) {
       readJson(paths.judgment(skill, taskId, seat, order)),
     readResult: (skill) => readJson(paths.result(skill)),
     writePair: (rec) => {
-      assertShape(rec, PAIR_FIELDS, 'pair');
+      assertShape(rec, PAIR_FIELDS, 'pair', PAIR_OPTIONAL_FIELDS);
       return write(paths.pair(rec.skill, rec.task_id, rec.arm), rec);
     },
     writeJudgment: (rec) => {
@@ -390,6 +421,7 @@ module.exports = {
   MAX_ATTEMPTS,
   JUDGMENT_STATUS,
   PAIR_FIELDS,
+  PAIR_OPTIONAL_FIELDS,
   JUDGMENT_FIELDS,
   RESULT_FIELDS,
   shapeProblem,

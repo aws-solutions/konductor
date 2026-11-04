@@ -30,6 +30,7 @@ function makePair({
   start = {},
   final = {},
   loaded = arm === 'with',
+  checkResults,
 } = {}) {
   return {
     provenance_version: PROVENANCE_VERSION,
@@ -41,6 +42,7 @@ function makePair({
     final,
     loaded,
     runner_fingerprint: fingerprint,
+    ...(checkResults === undefined ? {} : { check_results: checkResults }),
     inputs: pairInputs({
       taskId,
       arm,
@@ -50,6 +52,7 @@ function makePair({
       start,
       final,
       loaded,
+      checkResults,
     }),
   };
 }

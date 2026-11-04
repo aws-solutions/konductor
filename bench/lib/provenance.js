@@ -12,7 +12,8 @@
  * of the inputs a caller computes now (see store.js); nothing is reused on a missing field.
  *
  *  - `pairInputs`: one task run in one arm. Covers the task id and request, the arm, the
- *    `runner_fingerprint` and the stored outputs (reply, start and final workspace).
+ *    `runner_fingerprint`, the stored outputs (reply, start and final workspace) and, when the
+ *    pair has them, its word-check results.
  *  - `judgmentInputs`: one judge call. Covers the template, the sanitizer rules, the rendered
  *    prompt (the request, the checklist and both cleaned answers with their changed files), the
  *    order and the seat. It leaves out the per-call marker id, which is random and is stored next
@@ -117,11 +118,37 @@ function subjectInputs({ taskId, arm, request, runnerFingerprint }) {
 }
 
 /**
+ * Throws unless `results` is an array with one entry per word check: `true` (passed), `false`
+ * (failed) or `null` (no verdict). An empty array is allowed and means the task has no checks.
+ */
+function assertCheckResults(results) {
+  if (!Array.isArray(results) || !results.every((r) => r === true || r === false || r === null)) {
+    throw new TypeError('check_results must be an array of true, false or null, one per check');
+  }
+  return results;
+}
+
+/**
  * The inputs of a stored pair record: `subjectInputs` plus a digest of each stored output, and
  * `pair_input_sha256` over all of it. `loaded` is part of the digest because it decides whether
  * the pair counts.
+ *
+ * `checkResults` is optional. When given, its digest is part of the pair digest, so editing a
+ * word-check result makes the pair, and the skill result built from it, stale. When omitted the
+ * inputs carry no `check_results_sha256` field at all, so a pair without word checks keeps the
+ * digest it had before the field existed. An empty array is not the same as omitted.
  */
-function pairInputs({ taskId, arm, request, runnerFingerprint, answer, start, final, loaded }) {
+function pairInputs({
+  taskId,
+  arm,
+  request,
+  runnerFingerprint,
+  answer,
+  start,
+  final,
+  loaded,
+  checkResults,
+}) {
   if (typeof loaded !== 'boolean') throw new TypeError('loaded must be a boolean');
   const inputs = {
     ...subjectInputs({ taskId, arm, request, runnerFingerprint }),
@@ -129,6 +156,9 @@ function pairInputs({ taskId, arm, request, runnerFingerprint, answer, start, fi
     start_sha256: sha256(assertSnapshot(start, 'start')),
     final_sha256: sha256(assertSnapshot(final, 'final')),
     loaded,
+    ...(checkResults === undefined
+      ? {}
+      : { check_results_sha256: sha256(assertCheckResults(checkResults)) }),
   };
   return { ...inputs, pair_input_sha256: sha256(inputs) };
 }
