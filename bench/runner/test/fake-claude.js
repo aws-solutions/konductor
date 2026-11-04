@@ -32,7 +32,7 @@ for (const base of cfg.tmpBases || [process.env.TMPDIR]) {
 }
 fs.writeFileSync(path.join(cfg.dir, 'made-' + process.pid + '.json'), JSON.stringify(made));
 if (cfg.sleepSec) { setTimeout(() => {}, cfg.sleepSec * 1000); return; }
-fs.writeFileSync(path.join(process.cwd(), 'hello.txt'), 'hello\\n');
+fs.writeFileSync(path.join(process.cwd(), 'hello.txt'), cfg.helloText || 'hello\\n');
 if (cfg.leak) console.log(JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: process.env.AWS_SECRET_ACCESS_KEY + ' ' + process.env.AWS_SESSION_TOKEN }] }, parent_tool_use_id: null }));
 process.stdout.write(fs.readFileSync(cfg.streamFile, 'utf8'));
 process.exit(cfg.exitCode || 0);
