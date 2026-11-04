@@ -95,7 +95,8 @@ function openLedger({ dir, budget = null, budgetUnit = 'credits', create = true,
       if (s === 'ok') return null;
       const pct = s === 'hard' ? '100%' : '90%';
       if (inUsd) return `usd guard: this command has spent $${t.sessionUsd.toFixed(4)}, ${pct} of the $${budgetValue} guard`;
-      return `credit guard: this command has spent ${fmt(t.session)} credits, ${pct} of the ${budgetValue}-credit guard`;
+      const unknown = t.unknown ? `; ${t.unknown} call(s) had unknown credits, so the real spend may be higher` : '';
+      return `credit guard: this command has spent ${fmt(t.session)} credits, ${pct} of the ${budgetValue}-credit guard${unknown}`;
     },
     line() {
       const cap = budgetValue === null || inUsd ? 'no cap' : `guard ${budgetValue}`;

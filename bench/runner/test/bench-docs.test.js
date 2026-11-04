@@ -67,7 +67,7 @@ test('the README documents the orchestrator study: gates, arm config, metrics, p
   const doc = read('README.md');
   for (const re of [
     /## Orchestrator study/, /isolation-gate\.json/, /exit code 4/, /--arm-config/, /orchestration\.mode=coordinator/, /empty\.md/, /CLAUDE_CONFIG_DIR/,
-    /--verdict orchestrator-pass/, /reworks after a pass/i, /profiles\/phase-documents\.json/, /profiles\/orch-metrics\.json/, /--phases/, /sample standard deviation/,
+    /--verdict orchestrator-pass/, /reworks after a pass/i, /profiles\/phase-documents\.json/, /profiles\/orch-metrics\.json/, /--phases/, /pooled within-cell standard deviation/,
     /gpt-5\.6-sol/, /qwen3-coder-next/, /--changed-skills/, /Claude Code cell/,
   ]) assert.match(doc, re);
 });

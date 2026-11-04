@@ -21,14 +21,19 @@ const MODES = ['rubric', 'pairwise', 'graded'];
 
 // The judge must not be a Claude model or share the subject model's family.
 function modelFamily(id) {
-  // Bedrock ids carry a routing prefix and a vendor: global.anthropic.claude-sonnet-5-5 is a claude model.
-  const bare = String(id).toLowerCase().replace(/^(?:global|us|eu|au|jp|apac)\./, '').replace(/^anthropic\./, '');
+  // A provider path (anthropic/claude-x, openrouter/anthropic/claude-x) and a Bedrock routing prefix and vendor
+  // (global.anthropic.claude-sonnet-5-5) come before the model name.
+  const name = String(id).toLowerCase().split('/').pop();
+  const bare = name.replace(/^(?:global|us|eu|au|jp|apac)\./, '').replace(/^anthropic\./, '');
   return bare.split(/[-_.\d]/)[0];
 }
 
+// A Claude model by name anywhere in the id, whatever the prefix or family string came out as.
+const namesClaude = (id) => /(^|[^a-z])(claude|anthropic)(?![a-z])/.test(String(id).toLowerCase());
+
 function checkJudgeModel(judge, subjectModel) {
   const fam = modelFamily(judge);
-  if (fam === 'claude' || fam === 'anthropic') throw new Error(`judge "${judge}" is a Claude model; pick another provider`);
+  if (fam === 'claude' || fam === 'anthropic' || namesClaude(judge)) throw new Error(`judge "${judge}" is a Claude model; pick another provider`);
   if (judge === 'auto') throw new Error('judge must be pinned, not "auto"');
   if (subjectModel && modelFamily(subjectModel) === fam) {
     throw new Error(`judge "${judge}" is in the same family as the subject model "${subjectModel}"`);

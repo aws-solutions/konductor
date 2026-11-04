@@ -167,12 +167,12 @@ test('without a baseline file the lint findings are warnings and the audit passe
   } finally { s.done(); }
 });
 
-test('update-baseline writes every current finding once, and the next audit passes with them waived', () => {
+test('update-baseline --force writes every current finding once, and the next audit passes with them waived', () => {
   const s = auditSetup(withLintFindings);
   try {
     const first = s.audit();
     assert.equal(fs.existsSync(s.baselineFile), false, 'the audit itself never writes the baseline');
-    const upd = baselineUpdate({ report: first.report, benchDir: s.bench });
+    const upd = baselineUpdate({ report: first.report, benchDir: s.bench, force: true });
     assert.equal(upd.written, true);
     const file = JSON.parse(fs.readFileSync(s.baselineFile, 'utf8'));
     assert.equal(file.schemaVersion, 1);
@@ -187,7 +187,7 @@ test('update-baseline writes every current finding once, and the next audit pass
 test('a finding that is not in the baseline fails the audit', () => {
   const s = auditSetup(withLintFindings);
   try {
-    baselineUpdate({ report: s.audit().report, benchDir: s.bench });
+    baselineUpdate({ report: s.audit().report, benchDir: s.bench, force: true });
     skill(s.repo, 'newly-bad', { name: 'wrong' });
     git(s.repo, 'add', '.');
     git(s.repo, 'commit', '-q', '-m', 'two');
@@ -204,7 +204,7 @@ test('a finding that is not in the baseline fails the audit', () => {
 test('a waiver that no longer matches a finding fails the audit until it is removed', () => {
   const s = auditSetup(withLintFindings);
   try {
-    baselineUpdate({ report: s.audit().report, benchDir: s.bench });
+    baselineUpdate({ report: s.audit().report, benchDir: s.bench, force: true });
     const file = JSON.parse(fs.readFileSync(s.baselineFile, 'utf8'));
     file.waived['lint-link-broken|skill:good-one|references/gone.md'] = { rule: 'lint-link-broken', id: 'skill:good-one' };
     fs.writeFileSync(s.baselineFile, JSON.stringify(file));
@@ -220,7 +220,7 @@ test('a waiver that no longer matches a finding fails the audit until it is remo
 test('update-baseline only shrinks an existing baseline: it drops stale waivers and refuses to add new ones without --force', () => {
   const s = auditSetup(withLintFindings);
   try {
-    baselineUpdate({ report: s.audit().report, benchDir: s.bench });
+    baselineUpdate({ report: s.audit().report, benchDir: s.bench, force: true });
     const file = JSON.parse(fs.readFileSync(s.baselineFile, 'utf8'));
     file.waived['lint-link-broken|skill:good-one|references/gone.md'] = { rule: 'lint-link-broken', id: 'skill:good-one' };
     fs.writeFileSync(s.baselineFile, JSON.stringify(file));
@@ -258,7 +258,7 @@ test('cap audit --update-baseline writes the file and says so; without the flag 
     const plain = spawnSync(process.execPath, [BENCH_JS, ...args], { encoding: 'utf8', env });
     assert.equal(plain.status, 0, plain.stderr);
     assert.equal(fs.existsSync(s.baselineFile), false);
-    const upd = spawnSync(process.execPath, [BENCH_JS, ...args, '--update-baseline'], { encoding: 'utf8', env });
+    const upd = spawnSync(process.execPath, [BENCH_JS, ...args, '--update-baseline', '--force'], { encoding: 'utf8', env });
     assert.equal(upd.status, 0, upd.stderr);
     assert.match(upd.stdout, /baseline: wrote .*audit-baseline\.json \(2 waived/);
     assert.equal(fs.existsSync(s.baselineFile), true);

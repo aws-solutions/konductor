@@ -8,7 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { fixtureRun, mk, SHA } = require('./verdict-fixtures.js');
+const { fixtureRun, mk, SHA, TASKS6 } = require('./verdict-fixtures.js');
 const { writeJudgments } = require('./helpers.js');
 const V = require('../../report/verdict.js');
 
@@ -29,8 +29,9 @@ const ARMS = (over = {}) => ({
 // ---- the pure decision ----
 
 const base = () => ({
-  cells: 2, nHead: 10, nBase: 10, minReps: 5, rating: 'indicative', ratingBy: [],
+  cells: 6, pairedCells: 6, nHead: 30, nBase: 30, minReps: 5, rating: 'indicative', ratingBy: [],
   noise: { available: true, pts: 5 }, quality: { delta: 20, ciLow: 12, ciHigh: 28 }, reliability: { delta: 0, ciLow: -5, ciHigh: 5 },
+  nonScored: { head: { n: 0, total: 30 }, base: { n: 0, total: 30 } }, components: { ok: true }, cost: { ratio: 1.2 },
 });
 
 test('decide: a clear gain outside the noise with enough runs is KEEP; a clear loss is DISCARD', () => {
@@ -64,6 +65,7 @@ test('decide: no A/A noise floor, under 3 replicates in a cell, no shared cells 
   assert.match(V.decide({ ...base(), minReps: 2 }).reason, /fewer than 3 replicates in a cell/);
   assert.match(V.decide({ ...base(), cells: 0 }).reason, /no run of the baseline on the same tasks/);
   assert.match(V.decide({ ...base(), quality: { delta: 12, ciLow: -3, ciHigh: 27 } }).reason, /interval .* includes 0/);
+  assert.match(V.decide({ ...base(), pairedCells: 4 }).reason, /fewer than 5 paired task cells \(4\)/);
 });
 
 test('decide: a quality gain with clearly lower reliability is not a KEEP', () => {
@@ -74,15 +76,15 @@ test('decide: a quality gain with clearly lower reliability is not a KEEP', () =
 
 test('decide: no parameter combination that breaks a hard rule can give KEEP or DISCARD', () => {
   const grids = {
-    nHead: [0, 2, 3, 40], nBase: [0, 2, 3, 40], rating: ['anecdotal', 'indicative', 'supported'], minReps: [1, 2, 5],
+    nHead: [0, 2, 3, 40], nBase: [0, 2, 3, 40], rating: ['anecdotal', 'indicative', 'supported'], minReps: [1, 2, 5], pairedCells: [3, 4, 5, 8],
     noise: [{ available: false, pts: null }, { available: true, pts: 5 }, { available: true, pts: 60 }],
     quality: [{ delta: 30, ciLow: 20, ciHigh: 40 }, { delta: -30, ciLow: -40, ciHigh: -20 }, { delta: 3, ciLow: 1, ciHigh: 5 }, { delta: 30, ciLow: -2, ciHigh: 60 }],
   };
   let decided = 0;
-  for (const nHead of grids.nHead) for (const nBase of grids.nBase) for (const rating of grids.rating) for (const minReps of grids.minReps) for (const noise of grids.noise) for (const quality of grids.quality) {
-    const d = V.decide({ ...base(), nHead, nBase, rating, minReps, noise, quality });
-    const broken = nHead < 3 || nBase < 3 || rating === 'anecdotal' || minReps < 3 || !noise.available || Math.abs(quality.delta) <= noise.pts;
-    if (broken) assert.equal(d.verdict, NEE, JSON.stringify({ nHead, nBase, rating, minReps, noise, quality }));
+  for (const nHead of grids.nHead) for (const nBase of grids.nBase) for (const rating of grids.rating) for (const minReps of grids.minReps) for (const pairedCells of grids.pairedCells) for (const noise of grids.noise) for (const quality of grids.quality) {
+    const d = V.decide({ ...base(), nHead, nBase, rating, minReps, pairedCells, noise, quality });
+    const broken = nHead < 3 || nBase < 3 || rating === 'anecdotal' || minReps < 3 || pairedCells < 5 || !noise.available || Math.abs(quality.delta) <= noise.pts;
+    if (broken) assert.equal(d.verdict, NEE, JSON.stringify({ nHead, nBase, rating, pairedCells, minReps, noise, quality }));
     else decided += d.verdict === NEE ? 0 : 1;
   }
   assert.ok(decided > 0, 'the grid also contains cases that are allowed to be decided');
@@ -106,21 +108,22 @@ test('refLabel names an arm by its exact ref: id@sha7 for a commit, id@dir:hash 
 
 // ---- from run directories ----
 
-test('KEEP: a gain well outside the A/A noise, 10 runs a side, five replicates a task', () => {
+test('KEEP: a gain well outside the A/A noise, 30 runs a side, six tasks, five replicates a task', () => {
   const root = mk();
   try {
-    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS() });
+    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS(), tasks: TASKS6 });
     const v = V.buildVerdict({ dirs: [dir], benchDir });
     const a = verdictFor(v, 'a@aaaaaaa');
     assert.equal(a.verdict, KEEP, a.reason);
-    assert.equal(a.quality.n, 10);
-    assert.equal(a.quality.baseN, 10);
+    assert.equal(a.quality.n, 30);
+    assert.equal(a.quality.baseN, 30);
+    assert.equal(a.quality.k, 6);
     assert.ok(Math.abs(a.quality.delta - 5 * (100 / 14)) < 0.01, String(a.quality.delta));
     assert.equal(a.noise.available, true);
     assert.ok(a.noise.pts >= 5);
     assert.equal(a.minReps, 5);
     assert.match(a.sentence, /^Keep\. a@aaaaaaa scored 35\.7 points higher than vanilla/);
-    const ci = a.sentence.match(/95% interval of the difference (-?[\d.]+) to (-?[\d.]+)/);
+    const ci = a.sentence.match(/paired 95% interval of the difference (-?[\d.]+) to (-?[\d.]+)/);
     assert.ok(ci, a.sentence);
     assert.ok(Number(ci[1]) <= a.quality.delta + 0.05 && a.quality.delta - 0.05 <= Number(ci[2]), 'the interval in the sentence is the interval of the difference');
     assert.equal(v.baselineLabel, 'vanilla');
@@ -131,7 +134,7 @@ test('KEEP: a gain well outside the A/A noise, 10 runs a side, five replicates a
 test('DISCARD: the arm is clearly worse than vanilla', () => {
   const root = mk();
   try {
-    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS({ vanilla: { hidden: [9] }, a: { sha: 'a', hidden: [3] }, 'a-b': { sha: 'a', hidden: [3] } }) });
+    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS({ vanilla: { hidden: [9] }, a: { sha: 'a', hidden: [3] }, 'a-b': { sha: 'a', hidden: [3] } }), tasks: TASKS6 });
     const a = verdictFor(V.buildVerdict({ dirs: [dir], benchDir }), 'a@aaaaaaa');
     assert.equal(a.verdict, DISCARD, a.reason);
     assert.match(a.sentence, /^Discard\./);

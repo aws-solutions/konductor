@@ -3,7 +3,8 @@
 
 // The shrink-only ratchet for audit lint findings: bench/capabilities/audit-baseline.json lists the findings that exist
 // today and are tolerated. A finding not in the file fails the audit, and so does a listed finding that no longer
-// occurs, so the file can only get shorter. `cap audit --update-baseline` is the only thing that writes it.
+// occurs, so the file can only get shorter. `cap audit --update-baseline` is the only thing that writes it; creating the
+// file, like growing it, needs --force.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -46,8 +47,8 @@ function applyBaseline(findings, baseline) {
 }
 
 /**
- * Writes the baseline from a report. With no file it records every current ratchet finding. With a file it only
- * removes waivers that no longer match; adding any needs `force`. Returns { written, added, removed, count, file }.
+ * Writes the baseline from a report. With a file it only removes waivers that no longer match; adding any, which includes
+ * creating the file from nothing, needs `force`. Returns { written, added, removed, count, file }.
  */
 function baselineUpdate({ report, benchDir, force = false, now = new Date() }) {
   const current = new Map();
@@ -57,7 +58,8 @@ function baselineUpdate({ report, benchDir, force = false, now = new Date() }) {
   const old = existing ? Object.keys(existing.waived) : [];
   const added = [...current.keys()].filter((k) => !old.includes(k)).sort();
   const removed = old.filter((k) => !current.has(k)).sort();
-  if (existing && added.length && !force) return { written: false, added, removed, count: old.length, file };
+  // With no file every current finding would be waived at once, which is the same as switching the gate off, so it needs --force too.
+  if (added.length && !force) return { written: false, added, removed, count: old.length, file };
   const keep = existing && !force ? old.filter((k) => current.has(k)) : [...current.keys()];
   const waived = Object.fromEntries(keep.sort().map((k) => [k, current.get(k) ?? existing.waived[k]]));
   const doc = {

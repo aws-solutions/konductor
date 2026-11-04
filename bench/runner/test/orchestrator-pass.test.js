@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { fixtureRun, mk } = require('./verdict-fixtures.js');
+const { fixtureRun, mk, TASKS6 } = require('./verdict-fixtures.js');
 const op = require('../../report/orchpass.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
@@ -19,7 +19,8 @@ const Q = (h) => ((0.5 * (h / 10) + 0.2) / 0.7) * 100;
 // ---- the decision, from plain numbers ----
 
 const ok = () => ({
-  nHead: 10, nBase: 10, qualityDelta: 5, baseSd: 4, qualityDrift: 1, costRunRatio: 1.5, costSuccessRatio: 1.5, costDrift: 0.02, hasAA: true, target: null,
+  nHead: 30, nBase: 30, cells: 6, qualityDelta: 8, qualityCiLow: 1, qualityCiHigh: 15, withinSd: 4, baseSd: 4, qualityDrift: 1, costRunRatio: 1.5, costSuccessRatio: 1.5, costDrift: 0.02, hasAA: true, target: null,
+  nonScored: { head: { n: 0, total: 30 }, base: { n: 0, total: 30 } }, components: { ok: true }, costBound: null,
 });
 
 test('a cell within both limits and clear of drift passes', () => {
@@ -38,22 +39,43 @@ test('cost: exactly 2.0x passes, anything above fails, and the cost per successf
   assert.match(r.reasons.join(' '), /costs 3\.00x/);
 });
 
-test('quality: a drop of exactly one run spread passes, anything beyond fails, a gain always passes', () => {
-  assert.equal(op.decideCell({ ...ok(), qualityDelta: -4, baseSd: 4, qualityDrift: 1 }).call, op.PASS);
-  assert.equal(op.decideCell({ ...ok(), qualityDelta: -4.0001, baseSd: 4, qualityDrift: 1 }).call, op.FAIL);
-  assert.equal(op.decideCell({ ...ok(), qualityDelta: 30, baseSd: 0, qualityDrift: 1 }).call, op.PASS);
-  assert.equal(op.decideCell({ ...ok(), qualityDelta: -0.0001, baseSd: 0, qualityDrift: 0 }).call, op.FAIL, 'a zero spread allows no drop at all');
+test('quality: the tolerance is the within-task spread of vanilla, never below 5 points', () => {
+  assert.equal(op.QUALITY_FLOOR_PTS, 5);
+  const at = (delta, ciLow, withinSd) => op.decideCell({ ...ok(), qualityDelta: delta, qualityCiLow: ciLow, qualityCiHigh: delta + 10, withinSd, qualityDrift: null });
+  assert.equal(at(-3, -5, 4).call, op.PASS, 'a spread of 4 is lifted to the 5-point floor, and the interval bottom sits on it');
+  assert.equal(at(-3, -5.01, 4).call, op.NEE, 'the interval reaches below the tolerance');
+  assert.equal(at(-7, -8, 8).call, op.PASS, 'a wider spread of 8 sets the tolerance');
+  assert.equal(at(-8.01, -12, 8).call, op.FAIL, 'the point estimate is below the tolerance');
+  assert.equal(at(30, 20, 0).call, op.PASS, 'a gain passes, the floor applies to a zero spread');
+  assert.equal(at(-0.0001, -6, 0).call, op.NEE, 'a zero spread no longer allows a free pass: the interval must clear the floor');
 });
 
-test('drift as large as the effect makes the criterion uncertain and the cell NOT ENOUGH EVIDENCE', () => {
-  const q = op.decideCell({ ...ok(), qualityDelta: 3, qualityDrift: 3 });
+test('quality: a drop of 29 points does not pass on a pooled spread of 30, because the spread is within a task', () => {
+  const r = op.decideCell({ ...ok(), qualityDelta: -29, qualityCiLow: -41, qualityCiHigh: -17, withinSd: 11, baseSd: 30, qualityDrift: 1 });
+  assert.equal(r.call, op.FAIL);
+  assert.match(r.reasons.join(' '), /quality is below vanilla by 29\.0 points, more than the tolerance of 11\.0 points/);
+});
+
+test('quality: a point estimate inside the tolerance with an interval that reaches below it is NOT ENOUGH EVIDENCE, not a pass', () => {
+  const r = op.decideCell({ ...ok(), qualityDelta: 2, qualityCiLow: -20, qualityCiHigh: 24, withinSd: 8, qualityDrift: 1 });
+  assert.equal(r.call, op.NEE);
+  assert.equal(r.quality.status, 'uncertain');
+  assert.equal(r.rawPass, false);
+  assert.match(r.reasons.join(' '), /interval of the quality difference \[-20\.0, 24\.0\] reaches below the tolerance of -8\.0 points/);
+});
+
+test('drift as large as the effect makes the criterion uncertain and the cell NOT ENOUGH EVIDENCE; the drift is at least the 5-point floor', () => {
+  const q = op.decideCell({ ...ok(), qualityDelta: 6, qualityCiLow: 2, qualityCiHigh: 10, qualityDrift: 6 });
   assert.equal(q.call, op.NEE);
   assert.equal(q.quality.status, 'uncertain');
-  assert.match(q.reasons.join(' '), /A\/A drift of 3\.0 points is not smaller than the quality difference of 3\.0/);
+  assert.match(q.reasons.join(' '), /A\/A drift of 6\.0 points is not smaller than the quality difference of 6\.0/);
+  const floor = op.decideCell({ ...ok(), qualityDelta: 4.9, qualityCiLow: 1, qualityCiHigh: 9, qualityDrift: 0.1 });
+  assert.equal(floor.call, op.NEE, 'a measured drift of 0.1 is read as the 5-point floor');
+  assert.match(floor.reasons.join(' '), /A\/A drift of 5\.0 points/);
   const c = op.decideCell({ ...ok(), costRunRatio: 1.09, costSuccessRatio: 1.09, costDrift: 0.1 });
   assert.equal(c.call, op.NEE);
   assert.equal(c.cost.status, 'uncertain');
-  assert.equal(op.decideCell({ ...ok(), qualityDelta: 3, qualityDrift: 2.99 }).call, op.PASS);
+  assert.equal(op.decideCell({ ...ok(), qualityDelta: 5.1, qualityCiLow: 1, qualityCiHigh: 9, qualityDrift: 2 }).call, op.PASS);
 });
 
 test('cost drift is compared with the effect at the boundary', () => {
@@ -61,16 +83,44 @@ test('cost drift is compared with the effect at the boundary', () => {
   assert.equal(op.decideCell({ ...ok(), costRunRatio: 1.5, costSuccessRatio: 1.5, costDrift: 0.49 }).cost.status, 'pass');
 });
 
-test('a clear failure stands even when the other criterion is uncertain; global gaps always give NOT ENOUGH EVIDENCE', () => {
-  assert.equal(op.decideCell({ ...ok(), costRunRatio: 3, costSuccessRatio: 3, qualityDelta: 1, qualityDrift: 5 }).call, op.FAIL);
-  for (const patch of [{ hasAA: false, qualityDrift: null, costDrift: null }, { nHead: 2 }, { nBase: 2 }, { baseSd: null }, { target: { blocks: true, reason: 'skill x never loaded' } }]) {
+test('a clear failure stands unless the evidence is short; global gaps always give NOT ENOUGH EVIDENCE', () => {
+  assert.equal(op.decideCell({ ...ok(), costRunRatio: 3, costSuccessRatio: 3, qualityDelta: 1, qualityCiLow: -8, qualityDrift: 5 }).call, op.FAIL);
+  for (const patch of [{ hasAA: false, qualityDrift: null, costDrift: null }, { nHead: 2 }, { nBase: 2 }, { withinSd: null }, { cells: 4 }, { target: { blocks: true, reason: 'skill x never loaded' } }]) {
     const r = op.decideCell({ ...ok(), costRunRatio: 3, costSuccessRatio: 3, ...patch });
     assert.equal(r.call, op.NEE, JSON.stringify(patch));
     assert.equal(r.rawPass, false, 'the thresholds are still reported');
   }
   assert.match(op.decideCell({ ...ok(), hasAA: false, qualityDrift: null, costDrift: null }).reasons.join(' '), /no A\/A repeat in this cell/);
   assert.match(op.decideCell({ ...ok(), nHead: 2 }).reasons.join(' '), /fewer than 3 scored runs/);
+  assert.match(op.decideCell({ ...ok(), cells: 4 }).reasons.join(' '), /fewer than 5 paired task cells \(4\)/);
+  assert.match(op.decideCell({ ...ok(), withinSd: null }).reasons.join(' '), /within-task spread is unknown/);
   assert.match(op.decideCell({ ...ok(), target: { blocks: true, reason: 'skill x never loaded' } }).reasons.join(' '), /skill x never loaded/);
+});
+
+test('an arm that lost half its runs to infra errors cannot pass on the other half', () => {
+  const r = op.decideCell({ ...ok(), nonScored: { head: { n: 15, total: 30 }, base: { n: 0, total: 30 } } });
+  assert.equal(r.call, op.NEE);
+  assert.match(r.reasons.join(' '), /15 of 30 runs of the arm have no score .* over the 20% limit/);
+  assert.equal(op.decideCell({ ...ok(), nonScored: { head: { n: 6, total: 30 }, base: { n: 0, total: 30 } } }).call, op.PASS, 'exactly a fifth is allowed');
+  const base = op.decideCell({ ...ok(), nonScored: { head: { n: 0, total: 30 }, base: { n: 7, total: 30 } } });
+  assert.equal(base.call, op.NEE);
+  assert.match(base.reasons.join(' '), /7 of 30 runs of vanilla/);
+});
+
+test('arms scored on different components cannot pass', () => {
+  const r = op.decideCell({ ...ok(), components: { ok: false, reason: 'the arm and vanilla were scored on different components in 1 cell(s) (t1: ...)' } });
+  assert.equal(r.call, op.NEE);
+  assert.match(r.reasons.join(' '), /different components/);
+});
+
+test('unmetered runs: a cost that passes on the metered runs but fails on the bound is NOT ENOUGH EVIDENCE, and one that fails on the metered runs still fails', () => {
+  const bound = { censoredRuns: 4, runRatio: 2.4, successRatio: 2.6 };
+  const r = op.decideCell({ ...ok(), costRunRatio: 1.5, costSuccessRatio: 1.6, costBound: bound });
+  assert.equal(r.call, op.NEE);
+  assert.equal(r.cost.status, 'uncertain');
+  assert.match(r.reasons.join(' '), /4 run\(s\) of the arm have no metered cost and are counted at the largest metered cost of their task; on that bound it costs 2\.60x/);
+  assert.equal(op.decideCell({ ...ok(), costRunRatio: 2.5, costSuccessRatio: 2.5, costBound: { censoredRuns: 4, runRatio: 3, successRatio: 3 } }).call, op.FAIL);
+  assert.equal(op.decideCell({ ...ok(), costBound: { censoredRuns: 4, runRatio: 1.7, successRatio: 1.8 } }).call, op.PASS);
 });
 
 test('sampleSd is the n-1 standard deviation and null below two values', () => {
@@ -85,7 +135,7 @@ test('sampleSd is the n-1 standard deviation and null below two values', () => {
 const CELL = { model: 'claude-sonnet-5.5', agentEngine: 'v3', harness: 'kiro-cli' };
 const VAN = [7, 8, 9, 8, 8];
 
-function cellDir(root, name, { model = CELL.model, vanilla = {}, orch = {}, aa = {}, extraArms = {}, noAA = false, reps = 5 }) {
+function cellDir(root, name, { model = CELL.model, vanilla = {}, orch = {}, aa = {}, extraArms = {}, noAA = false, reps = 5, tasks = TASKS6 }) {
   const meta = { model, agentEngine: 'v3', harness: 'kiro-cli' };
   const arms = {
     vanilla: { hidden: VAN, credits: 5, extra: meta, ...vanilla },
@@ -93,7 +143,7 @@ function cellDir(root, name, { model = CELL.model, vanilla = {}, orch = {}, aa =
     ...(noAA ? {} : { 'orch-b': { sha: 'a', hidden: [9], credits: 8, extra: meta, ...aa } }),
     ...extraArms,
   };
-  return fixtureRun(root, name, { arms, reps, config: { model, agentEngine: 'v3', harness: 'kiro-cli' } });
+  return fixtureRun(root, name, { arms, reps, tasks, config: { model, agentEngine: 'v3', harness: 'kiro-cli' } });
 }
 
 const run = (dirs, o = {}) => op.buildOrchestratorPass({ dirs: [].concat(dirs).map((d) => d.dir), benchDir: [].concat(dirs)[0].benchDir, baseline: 'vanilla', ...o });
@@ -110,7 +160,9 @@ test('a cell that is cheaper than 2x, no worse in quality and clear of drift pas
     assert.equal(a.cost.ratioPerRun, 1.6);
     assert.equal(a.cost.ratioPerSuccess, 1.6);
     assert.ok(a.quality.delta > 5 && a.quality.delta < 9);
-    assert.ok(a.quality.baseSd > 4 && a.quality.baseSd < 6);
+    assert.ok(a.quality.withinSd > 4 && a.quality.withinSd < 6, String(a.quality.withinSd));
+    assert.equal(a.quality.tolerance, Math.max(a.quality.withinSd, op.QUALITY_FLOOR_PTS));
+    assert.equal(a.quality.k, 6);
     assert.equal(armOf(v, 0, 'orch-b').call, null);
     assert.equal(armOf(v, 0, 'orch-b').aaRepeatOf, a.label);
     assert.equal(v.rule.costMax, 2);
@@ -127,17 +179,17 @@ test('a test arm over 2x the cost of vanilla fails the cell', () => {
   } finally { rm(root); }
 });
 
-test('a quality drop larger than the spread of one vanilla run fails; a drop inside it passes', () => {
+test('a quality drop larger than the within-task spread of vanilla fails; a drop inside it does not fail', () => {
   const root = mk();
   try {
     const bad = run(cellDir(root, 'c3', { orch: { hidden: [4] }, aa: { hidden: [4] } }));
     assert.equal(armOf(bad, 0, 'orch').call, op.FAIL);
-    assert.match(armOf(bad, 0, 'orch').reasons.join(' '), /below vanilla by .* more than the spread of one vanilla run/);
-    // vanilla mean is 8; an arm at 7 is 7.14 points down with a vanilla spread of 4.76 -> fail; at 7.4 (cycle 7,7,8,7,8) it is 4.3 down -> inside
+    assert.match(armOf(bad, 0, 'orch').reasons.join(' '), /below vanilla by .* more than the tolerance of/);
+    // vanilla mean is 8; an arm cycling 7,7,8,7,8 is about 4.3 points down, inside the 5.05-point tolerance, and its interval reaches below it
     const inside = run(cellDir(root, 'c4', { orch: { hidden: [7, 7, 8, 7, 8] }, aa: { hidden: [7, 7, 8, 7, 8] } }));
     const a = armOf(inside, 0, 'orch');
-    assert.ok(a.quality.delta < 0 && -a.quality.delta < a.quality.baseSd, `${a.quality.delta} vs sd ${a.quality.baseSd}`);
-    assert.equal(a.quality.status, 'pass');
+    assert.ok(a.quality.delta < 0 && -a.quality.delta < a.quality.tolerance, `${a.quality.delta} vs tolerance ${a.quality.tolerance}`);
+    assert.notEqual(a.quality.status, 'fail');
   } finally { rm(root); }
 });
 
@@ -165,7 +217,7 @@ test('no A/A repeat in the cell is NOT ENOUGH EVIDENCE', () => {
 test('fewer than 3 runs per side is NOT ENOUGH EVIDENCE', () => {
   const root = mk();
   try {
-    const a = armOf(run(cellDir(root, 'c7', { reps: 1 })), 0, 'orch');
+    const a = armOf(run(cellDir(root, 'c7', { reps: 1, tasks: ['t1', 't2'] })), 0, 'orch');
     assert.equal(a.call, op.NEE);
     assert.match(a.reasons.join(' '), /fewer than 3 scored runs/);
   } finally { rm(root); }
@@ -190,7 +242,73 @@ test('failed runs are not dropped: a timed-out run of the test arm counts as qua
     const a = armOf(v, 0, 'orch');
     assert.equal(a.failures.timeout, 1);
     assert.equal(a.failedAsZero, 1);
-    assert.ok(a.quality.n === 10, 'the zero-scored run is in the quality count');
+    assert.equal(a.quality.n, 30, 'the zero-scored run is in the quality count');
+  } finally { rm(root); }
+});
+
+// ---- the review's cases, as runs ----
+
+test('tasks of different difficulty do not widen the tolerance: a 14-point drop passed the pooled spread and fails the within-task one', () => {
+  const root = mk();
+  try {
+    const meta = { model: CELL.model, agentEngine: 'v3', harness: 'kiro-cli' };
+    const hard = [3, 4, 3, 3, 4];
+    const easy = [9, 9, 10, 9, 9];
+    const lower = (xs, n) => xs.map((h) => h - n);
+    const byTask = (f) => Object.fromEntries(TASKS6.map((t, i) => [t, f(i % 2 ? hard : easy)]));
+    const arms = {
+      vanilla: { hiddenByTask: byTask((x) => x), credits: 5, extra: meta },
+      orch: { sha: 'a', hiddenByTask: byTask((x) => lower(x, 2)), credits: 6, extra: meta },
+      'orch-b': { sha: 'a', hiddenByTask: byTask((x) => lower(x, 2)), credits: 6, extra: meta },
+    };
+    const d = fixtureRun(root, 'diff', { arms, tasks: TASKS6, config: { model: CELL.model, agentEngine: 'v3', harness: 'kiro-cli' } });
+    const a = armOf(run(d), 0, 'orch');
+    assert.ok(a.quality.baseSd > 15, `the pooled spread is ${a.quality.baseSd}`);
+    assert.ok(-a.quality.delta < a.quality.baseSd, 'the old rule would have passed this drop');
+    assert.ok(a.quality.withinSd < 6, String(a.quality.withinSd));
+    assert.equal(a.call, op.FAIL, a.reasons.join('; '));
+  } finally { rm(root); }
+});
+
+test('an arm with most of its runs lost to stream-parse infra errors is NOT ENOUGH EVIDENCE, not a pass on the survivors', () => {
+  const root = mk();
+  try {
+    const lost = { extraFn: (task, rep) => (rep <= 3 ? { infraError: 'stream parse failed' } : {}) };
+    const a = armOf(run(cellDir(root, 'infra', { orch: lost })), 0, 'orch');
+    assert.equal(a.call, op.NEE);
+    assert.match(a.reasons.join(' '), /18 of 30 runs of the arm have no score/);
+    assert.equal(a.nonScored.head.infraError, 18);
+    assert.equal(a.failures.infraError, 18);
+  } finally { rm(root); }
+});
+
+test('runs with no metered cost are counted at the task maximum when that decides the cost call', () => {
+  const root = mk();
+  try {
+    const open = { credits: 11, extraFn: (task, rep) => (rep === 1 ? { credits: null, creditsCensored: true, creditsLowerBound: 0.5 } : {}) };
+    const a = armOf(run(cellDir(root, 'open', { orch: open, aa: { credits: 11 } })), 0, 'orch');
+    assert.ok(a.cost.ratioPerRun < 2, `metered runs only: ${a.cost.ratioPerRun}`);
+    assert.equal(a.cost.bound.censoredRuns, 6);
+    assert.equal(a.cost.bound.runRatio, 2.2);
+    assert.equal(a.call, op.NEE);
+    assert.match(a.reasons.join(' '), /6 run\(s\) of the arm have no metered cost/);
+  } finally { rm(root); }
+});
+
+test('arms scored on different components in one task are NOT ENOUGH EVIDENCE', () => {
+  const root = mk();
+  try {
+    const d = cellDir(root, 'comp', {});
+    const dir = path.join(d.dir, 'orch', 't2');
+    for (const rep of fs.readdirSync(dir)) {
+      const f = path.join(dir, rep, 'result.json');
+      const r = JSON.parse(fs.readFileSync(f, 'utf8'));
+      r.hiddenTests = undefined;
+      fs.writeFileSync(f, JSON.stringify(r));
+    }
+    const a = armOf(run(d), 0, 'orch');
+    assert.equal(a.call, op.NEE);
+    assert.match(a.reasons.join(' '), /different components in 1 cell\(s\) \(t2:/);
   } finally { rm(root); }
 });
 
@@ -209,7 +327,7 @@ test('a change that lives only in a skill that never loaded makes the cell NOT E
     const loaded = run(cellDir(root, 'c10', { orch: skillMeta(['alpha']), aa: skillMeta(['alpha']) }));
     const b = armOf(loaded, 0, 'orch');
     assert.equal(b.call, op.PASS, b.reasons.join('; '));
-    assert.deepEqual(b.target.loaded, { alpha: 10 });
+    assert.deepEqual(b.target.loaded, { alpha: 30 });
   } finally { rm(root); }
 });
 
@@ -309,7 +427,7 @@ test('the same cell in two run directories is pooled by exact ref', () => {
   try {
     const v = run([cellDir(root, 'p1', {}), cellDir(root, 'p2', {})]);
     assert.equal(v.cells.length, 1);
-    assert.equal(armOf(v, 0, 'orch').quality.n, 20);
+    assert.equal(armOf(v, 0, 'orch').quality.n, 60);
   } finally { rm(root); }
 });
 
@@ -347,7 +465,7 @@ test('report --verdict orchestrator-pass writes the page and prints one line per
     assert.match(r.stdout, /orch@aaaaaaa\s+PASS/);
     const md = fs.readFileSync(path.join(out, 'orchestrator-pass.md'), 'utf8');
     assert.match(md, /at most 2\.0x/);
-    assert.match(md, /sample standard deviation/);
+    assert.match(md, /pooled within-cell standard deviation/);
     const json = JSON.parse(fs.readFileSync(path.join(out, 'orchestrator-pass.json'), 'utf8'));
     assert.equal(json.cells[0].arms.find((a) => a.armId === 'orch').call, 'PASS');
     assert.ok(fs.existsSync(path.join(out, 'orchestrator-pass.html')));

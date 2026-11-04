@@ -42,7 +42,8 @@ function makeKiroCaller({ authDb, timeoutMs, scratchRoot = os.tmpdir(), kiroBin 
       const exec = await spawnWithTimeout(w.file, w.args, { cwd, env, timeoutMs, stdoutPath: outPath, stderrPath: errPath });
       keepRaw(rawDir, model, prompt, outPath, errPath);
       const agg = aggregateStream(parseStream(fs.readFileSync(outPath, 'utf8')).events);
-      const base = { credits: agg.credits, latencyMs: exec.wallClockMs };
+      // No metering event at all means the spend is unknown, not zero.
+      const base = { credits: agg.meteringEntries ? agg.credits : null, latencyMs: exec.wallClockMs };
       if (exec.timedOut) return { ...base, text: '', error: `timed out after ${timeoutMs} ms` };
       if (exec.exitCode !== 0 || agg.runFinishedStatus !== 'success' || !agg.finalText) {
         const tail = fs.readFileSync(errPath, 'utf8').trim().slice(-200);

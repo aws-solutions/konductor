@@ -7,11 +7,12 @@
 const path = require('node:path');
 const { tmp, makeBench, makeRun, addTask, write } = require('./helpers.js');
 
+const TASKS6 = ['t1', 't2', 't3', 't4', 't5', 't6'];
 const SHA = { a: 'a'.repeat(40), b: 'b'.repeat(40), c: 'c'.repeat(40), d: 'd'.repeat(40), e: 'e'.repeat(40) };
 const POINT = 100 / 14;
 
 /**
- * arms: { id: { sha?, hidden: [passed per run, cycled], credits?, wall?, status?, outcomeEvery?: { n, status } } }.
+ * arms: { id: { sha?, hidden: [passed per run, cycled] or hiddenByTask: { task: passed or [passed per replicate] }, credits?, wall?, status?, outcomeEvery?: { n, status } } }.
  * reps replicates per task, tasks task ids. Returns the run directory.
  */
 function fixtureRun(root, name, { arms, reps = 5, tasks = ['t1', 't2'], armOrder = Object.keys(arms), config = {}, bench = null }) {
@@ -22,7 +23,9 @@ function fixtureRun(root, name, { arms, reps = 5, tasks = ['t1', 't2'], armOrder
     let k = 0;
     for (const task of tasks) {
       for (let rep = 1; rep <= reps; rep++) {
-        const hidden = a.hidden[k++ % a.hidden.length];
+        const byTask = a.hiddenByTask?.[task];
+        const hidden = a.hiddenByTask ? (Array.isArray(byTask) ? byTask[(rep - 1) % byTask.length] : byTask) : a.hidden[k % a.hidden.length];
+        k++;
         const failed = a.fail && a.fail(k, task, rep);
         specs.push({
           arm, task, rep,
@@ -40,4 +43,4 @@ function fixtureRun(root, name, { arms, reps = 5, tasks = ['t1', 't2'], armOrder
 
 const mk = () => tmp();
 
-module.exports = { fixtureRun, mk, SHA, POINT, write };
+module.exports = { fixtureRun, mk, SHA, POINT, TASKS6, write };

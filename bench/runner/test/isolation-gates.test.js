@@ -68,7 +68,7 @@ test('the gate passes when nothing changes and names the file when a write lands
     const r = planted.end();
     assert.equal(r.ok, false);
     assert.equal(r.changed.length, 1);
-    assert.equal(r.changed[0].dir, path.join(home, '.konductor/installs'));
+    assert.equal(r.changed[0].dir, path.join(fs.realpathSync(home), '.konductor/installs'));
     assert.deepEqual(r.changed[0].added, ['probe.json']);
     assert.match(gates.describeChange(r), /\.konductor\/installs/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

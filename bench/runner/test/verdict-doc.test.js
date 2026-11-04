@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { fixtureRun, mk } = require('./verdict-fixtures.js');
+const { fixtureRun, mk, TASKS6 } = require('./verdict-fixtures.js');
 const { LEDGER_FILE } = require('../lib/credit-ledger.js');
 const V = require('../../report/verdict.js');
 const { buildVerdictDocument } = require('../../report/verdictdoc.js');
@@ -26,7 +26,7 @@ const ARMS = () => ({
 });
 
 function page(root) {
-  const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS() });
+  const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS(), tasks: TASKS6 });
   fs.writeFileSync(path.join(dir, LEDGER_FILE), `${JSON.stringify({ kind: 'run', credits: 40 })}\n${JSON.stringify({ kind: 'judge', credits: 5 })}\n`);
   const v = V.buildVerdict({ dirs: [dir], benchDir });
   return { dir, benchDir, v, doc: buildVerdictDocument(v) };
@@ -66,7 +66,7 @@ test('the evidence table shows sample sizes, the A/A noise, the diligence rating
   try {
     const md = toMarkdown(page(root).doc.blocks);
     assert.match(md, /## How much evidence/);
-    assert.match(md, /\| v1@aaaaaaa \| 10 \/ 10 \| 2 \| 5 \| .*5\.0 points \| indicative \|/);
+    assert.match(md, /\| v1@aaaaaaa \| 30 \/ 30 \| 6 \| 5 \| 0 \/ 0 \| .*5\.0 points \| indicative \|/);
     assert.match(md, /## Failed runs/);
     assert.match(md, /No run is dropped/);
   } finally { cleanup(root); }
@@ -109,7 +109,7 @@ test('the html has the verdict colours, an inline chart and no script or externa
 test('a DISCARD gets the fail colour', () => {
   const root = mk();
   try {
-    const { dir, benchDir } = fixtureRun(root, 'r2', { arms: { vanilla: { hidden: [9] }, bad: { sha: 'c', hidden: [3] }, 'bad-b': { sha: 'c', hidden: [3] } } });
+    const { dir, benchDir } = fixtureRun(root, 'r2', { arms: { vanilla: { hidden: [9] }, bad: { sha: 'c', hidden: [3] }, 'bad-b': { sha: 'c', hidden: [3] } }, tasks: TASKS6 });
     const doc = buildVerdictDocument(V.buildVerdict({ dirs: [dir], benchDir }));
     assert.match(toHtml(doc.blocks), /<span class="st fail">DISCARD<\/span>/);
   } finally { cleanup(root); }
@@ -126,7 +126,7 @@ function cli(root, args) {
 test('report --verdict platform writes verdict.md, .html, .json and the chart, prints the verdicts, and writes no normal report', () => {
   const root = mk();
   try {
-    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS() });
+    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS(), tasks: TASKS6 });
     const out = path.join(root, 'out');
     const r = cli(root, ['report', '--verdict', 'platform', '--run', dir, '--bench-dir', benchDir, '--out', out]);
     assert.equal(r.status, 0, r.stderr);
@@ -143,7 +143,7 @@ test('report --verdict platform writes verdict.md, .html, .json and the chart, p
 test('report --verdict platform with one run directory and no --out writes into that directory; --format md skips the html', () => {
   const root = mk();
   try {
-    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS() });
+    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS(), tasks: TASKS6 });
     const r = cli(root, ['report', '--verdict', 'platform', '--run', dir, '--bench-dir', benchDir, '--format', 'md']);
     assert.equal(r.status, 0, r.stderr);
     assert.ok(fs.existsSync(path.join(dir, 'verdict.md')));
@@ -154,15 +154,15 @@ test('report --verdict platform with one run directory and no --out writes into 
 test('report --verdict platform takes several run directories and needs --out for them; an unknown verdict kind is refused', () => {
   const root = mk();
   try {
-    const one = fixtureRun(root, 'lite', { arms: ARMS() });
-    const two = fixtureRun(root, 'real', { bench: one.benchDir, arms: ARMS() });
+    const one = fixtureRun(root, 'lite', { arms: ARMS(), tasks: TASKS6 });
+    const two = fixtureRun(root, 'real', { bench: one.benchDir, arms: ARMS(), tasks: TASKS6 });
     const dirs = `${one.dir},${two.dir}`;
     const noOut = cli(root, ['report', '--verdict', 'platform', '--run', dirs, '--bench-dir', one.benchDir]);
     assert.equal(noOut.status, 1);
     assert.match(noOut.stderr, /pass --out/);
     const ok = cli(root, ['report', '--verdict', 'platform', '--run', dirs, '--bench-dir', one.benchDir, '--out', path.join(root, 'o')]);
     assert.equal(ok.status, 0, ok.stderr);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'o', 'verdict.json'), 'utf8')).arms.find((a) => a.label === 'v1@aaaaaaa').runs, 20);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'o', 'verdict.json'), 'utf8')).arms.find((a) => a.label === 'v1@aaaaaaa').runs, 60);
     const bad = cli(root, ['report', '--verdict', 'global', '--run', one.dir, '--bench-dir', one.benchDir]);
     assert.equal(bad.status, 1);
     assert.match(bad.stderr, /--verdict takes platform/);
@@ -172,7 +172,7 @@ test('report --verdict platform takes several run directories and needs --out fo
 test('report --verdict platform --profile detailed adds the profile check per run directory', () => {
   const root = mk();
   try {
-    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS() });
+    const { dir, benchDir } = fixtureRun(root, 'r1', { arms: ARMS(), tasks: TASKS6 });
     const out = path.join(root, 'o');
     const r = cli(root, ['report', '--verdict', 'platform', '--run', dir, '--bench-dir', benchDir, '--out', out, '--profile', 'detailed', '--format', 'md']);
     assert.equal(r.status, 0, r.stderr);

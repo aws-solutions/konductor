@@ -38,6 +38,21 @@ function realTarget(p) {
   return path.join(realOrResolve(cur), ...rest);
 }
 
+// A write target has to stay inside the exported tree. A base ref can carry symlinks (skills/x -> /elsewhere), and writing through
+// one would change files outside the variant, so any symlink on the way to the target is refused.
+function assertInside(tree, target) {
+  const root = fs.realpathSync(tree);
+  let cur = path.resolve(target);
+  const rest = [];
+  while (!fs.existsSync(cur) && !isLink(cur) && path.dirname(cur) !== cur) { rest.unshift(path.basename(cur)); cur = path.dirname(cur); }
+  const real = path.join(fs.realpathSync(cur), ...rest);
+  if (!inside(real, root)) throw new Error(`${path.relative(tree, target)} resolves outside the variant tree (${real}); a symlink in the base ref is not followed`);
+  for (let p = path.resolve(target); p.length >= root.length && inside(p, path.resolve(tree)); p = path.dirname(p)) {
+    if (isLink(p)) throw new Error(`${path.relative(tree, p)} is a symlink in the base ref; a variant does not write through symlinks`);
+  }
+}
+const isLink = (p) => { try { return fs.lstatSync(p).isSymbolicLink(); } catch { return false; } };
+
 // Checks before creating anything, so a refused path leaves no directory behind.
 function checkScratch(scratch, repo, flag = '--scratch') {
   const real = realTarget(scratch);
@@ -152,6 +167,7 @@ function opReplace(tree, arg) {
   if (!fs.existsSync(src)) throw new Error(`replacement file not found: ${src}`);
   const bytes = fs.readFileSync(src);
   checkCandidate(kind, name, bytes.toString('utf8'));
+  assertInside(tree, dest);
   const before = readSha(dest);
   fs.writeFileSync(dest, bytes);
   return { op: 'replace', id, beforeSha256: before, afterSha256: sha256(bytes) };
@@ -203,6 +219,7 @@ function opOverlay(tree, arg) {
   const files = overlayFiles(dir);
   checkCandidate(kind, name, fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8'));
   const root = path.join(tree, 'skills', name);
+  for (const f of files) assertInside(tree, path.join(root, f));
   for (const f of files) {
     if (f !== 'SKILL.md' && fs.existsSync(path.join(root, f))) throw new Error(`${id} already has ${f} at the base ref; an overlay adds reference files and does not overwrite them`);
   }
@@ -226,6 +243,7 @@ function opAdd(tree, arg, agents) {
   checkCandidate(kind, name, bytes.toString('utf8'));
   const known = new Set(loadAgentSpecs(tree).map((s) => s.name));
   for (const a of agents) if (!known.has(a)) throw new Error(`agent "${a}" is not an agent spec at the base ref`);
+  assertInside(tree, dest);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, bytes);
   for (const a of agents) addToList(tree, kind, name, a);
@@ -288,7 +306,7 @@ function variantPaths({ repo, base = 'v1.2.0', drop = [], replace = [], add = []
   const { ref, sha } = resolveRefOnly(repo, base);
   const { armName, variantId } = namesFor({ drop, replace, add, overlay, preset });
   const key = variantKey({ sha, drop, replace, add, overlay, toAgent, preset, agentEngine });
-  const root = path.join(realOrResolve(scratch), 'variants', `${variantId}-${key.slice(0, 12)}`);
+  const root = path.join(realTarget(scratch), 'variants', `${variantId}-${key.slice(0, 12)}`);
   const dir = path.join(root, 'tree');
   return { ref, sha, armName, variantId, root, dir, armSpec: `${armName}=dir:${dir}` };
 }

@@ -143,19 +143,30 @@ function kindOf(call, spec) {
   return matches(spec.review, head) ? 'review' : 'other';
 }
 
-const VERDICT_RE = /\bverdict\b\W{0,6}([A-Za-z][A-Za-z _-]{1,24})/i;
+const VERDICT_RE = /\bverdict\b\W{0,6}([A-Za-z][A-Za-z _-]{1,24})/gi;
 
-/** 'fail', 'pass' or 'unknown'. An explicit verdict word wins; text that reads as both otherwise is a fail; no text is unknown. */
+/**
+ * 'fail', 'pass' or 'unknown'. Every explicit "Verdict: WORD" counts. A verdict that names both a pass and a fail word ("PASS or FAIL")
+ * or is followed by | or / is a template, not a verdict, and is skipped. Real verdicts that disagree read as a fail. With no real
+ * verdict, text that reads as both is a fail; no text is unknown.
+ */
 function verdictOf(call, spec) {
   const text = call.output;
   if (!text) return 'unknown';
-  const said = VERDICT_RE.exec(text);
-  if (said) {
-    const word = said[1].trim().toLowerCase().replace(/[\s-]+/g, '_');
-    const is = (list) => list.some((w) => word === w || word.startsWith(`${w}_`));
-    if (is(spec.verdictWords.fail)) return 'fail';
-    if (is(spec.verdictWords.pass)) return 'pass';
+  const listed = (word, list) => list.some((w) => word === w || word.startsWith(`${w}_`));
+  const said = new Set();
+  for (const m of text.matchAll(VERDICT_RE)) {
+    const word = m[1].trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const tokens = word.split('_');
+    const hasPass = tokens.some((t) => listed(t, spec.verdictWords.pass));
+    const hasFail = tokens.some((t) => listed(t, spec.verdictWords.fail));
+    if (hasPass && hasFail) continue;
+    if (/^\s*[|/]/.test(text.slice(m.index + m[0].length))) continue;
+    if (listed(word, spec.verdictWords.fail)) said.add('fail');
+    else if (listed(word, spec.verdictWords.pass)) said.add('pass');
   }
+  if (said.has('fail')) return 'fail';
+  if (said.has('pass')) return 'pass';
   if (matches(spec.fail, text)) return 'fail';
   return matches(spec.pass, text) ? 'pass' : 'unknown';
 }

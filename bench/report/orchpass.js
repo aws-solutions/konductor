@@ -3,19 +3,24 @@
 
 // The orchestrator pass rule, per (harness, model) cell. A test arm passes against vanilla when
 //   cost:    it costs at most 2.0x vanilla, per executed run and per successful run (both ratios must be at most 2.0), and
-//   quality: its mean quality is not below vanilla's by more than the spread of one vanilla run, which is the sample
-//            standard deviation (n-1) of vanilla's per-run quality scores. A gain always meets it. A spread of 0 allows no drop.
-// The A/A sentinel guards both: when the drift between an arm and its own repeat is not smaller than the effect measured, that
-// criterion is uncertain and the cell is NOT ENOUGH EVIDENCE. Gaps in the evidence (under 3 scored runs a side, no A/A repeat,
-// a vanilla spread that cannot be computed, a skill-only change whose skill never loaded) give NOT ENOUGH EVIDENCE too.
-// Failed and timed-out runs stay in: a run with nothing to score counts as quality 0 and its cost counts.
+//   quality: the 95% interval of its quality minus vanilla's does not reach below minus the tolerance. The difference is paired by
+//            cell (task and run directory) and the interval is a t interval on the per-cell differences. The tolerance is the
+//            pooled within-cell standard deviation of vanilla's scores (how much one vanilla run varies on one task), at least
+//            5 points. A point estimate below the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE.
+// The A/A sentinel guards both: when the drift between an arm and its own repeat (at least 5 quality points) is not smaller than the
+// effect measured, that criterion is uncertain and the cell is NOT ENOUGH EVIDENCE. Gaps in the evidence give NOT ENOUGH EVIDENCE too:
+// under 3 scored runs a side, under 5 paired cells, no A/A repeat, no within-task spread, more than a fifth of the runs on a side
+// without a score, arms scored on different components, a skill-only change whose skill never loaded.
+// Failed and timed-out runs stay in: a run with nothing to score counts as quality 0 and its cost counts. A run with no metered cost
+// is counted at the largest metered cost of its task when that decides the cost call.
 
 const path = require('node:path');
 const { loadRun } = require('./load.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { analyze, outPaths, writeOutputs, formatOf } = require('./generate.js');
 const { computeScores, loadScoring, MIN_N } = require('./scores.js');
-const { normalize, qualityList, aaGroups, refLabel } = require('./verdict.js');
+const { normalize, qualityList, aaGroups, refLabel, pairCells, nonScoredOf, componentCheck, MAX_NONSCORED_SHARE, NOISE_FLOOR_PTS } = require('./verdict.js');
+const { pairedCellCI, withinCellSd, MIN_CELLS } = require('./stats.js');
 const { enrichOrch, summarize } = require('./orch.js');
 const { modelFamily } = require('../judge/config.js');
 
@@ -23,6 +28,8 @@ const PASS = 'PASS';
 const FAIL = 'FAIL';
 const NEE = 'NOT ENOUGH EVIDENCE';
 const COST_MAX = 2.0;
+// The least tolerance for a quality drop, and the least A/A drift: the same 5 points the platform verdict uses as its noise floor.
+const QUALITY_FLOOR_PTS = NOISE_FLOOR_PTS;
 const FAILURE_OUTCOMES = ['checksFailed', 'timeout', 'error', 'infraError', 'modelMismatch'];
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -39,19 +46,28 @@ function sampleSd(xs) {
 
 /**
  * The call for one arm in one cell, from plain numbers.
- * c: { nHead, nBase, qualityDelta, baseSd, qualityDrift, costRunRatio, costSuccessRatio, costDrift, hasAA, target }
- * costSuccessRatio may be Infinity (the arm had no clean pass) or null (not computable); drift fields are null without an A/A repeat;
- * target is { blocks, reason } for a skill-only change, else null.
+ * c: { nHead, nBase, cells, qualityDelta, qualityCiLow, qualityCiHigh, withinSd, qualityDrift, costRunRatio, costSuccessRatio, costBound,
+ *      costDrift, hasAA, target, nonScored, components }
+ * qualityDelta and its interval are the paired-by-cell difference; withinSd is vanilla's pooled within-cell spread. costSuccessRatio may be
+ * Infinity (the arm had no clean pass) or null (not computable); drift fields are null without an A/A repeat; target is { blocks, reason }
+ * for a skill-only change, else null. costBound is { censoredRuns, runRatio, successRatio } with unmetered runs of the arm counted at the
+ * largest metered cost of their task, or null when every run was metered. nonScored is { head: { n, total }, base: { n, total } }.
+ * components is { ok, reason }.
  */
 function decideCell(c) {
   const evidence = [];
   if (c.nHead < MIN_N || c.nBase < MIN_N) evidence.push(`fewer than ${MIN_N} scored runs on a side (${c.nHead} for the arm, ${c.nBase} for vanilla)`);
+  if ((c.cells ?? 0) < MIN_CELLS) evidence.push(`fewer than ${MIN_CELLS} paired task cells (${c.cells ?? 0}), too few for an interval that holds its 95% level`);
   if (!c.hasAA) evidence.push('there is no A/A repeat in this cell, so drift cannot be told from an effect');
-  if (!fin(c.baseSd)) evidence.push('vanilla has fewer than 2 scored runs, so its run-to-run spread is unknown');
-  if (!fin(c.qualityDelta)) evidence.push('quality could not be computed for both sides');
+  if (!fin(c.withinSd)) evidence.push('vanilla has no task with two scored runs, so its within-task spread is unknown');
+  if (!fin(c.qualityDelta) || !fin(c.qualityCiLow)) evidence.push('quality could not be computed for both sides, with an interval');
   const ratios = [c.costRunRatio, c.costSuccessRatio].filter((r) => r === Infinity || fin(r));
   if (!ratios.length) evidence.push('the cost ratio could not be computed (vanilla has no cost or no clean pass)');
   if (c.target?.blocks) evidence.push(c.target.reason);
+  for (const [who, side] of [['the arm', c.nonScored?.head], ['vanilla', c.nonScored?.base]]) {
+    if (side && side.total && side.n / side.total > MAX_NONSCORED_SHARE) evidence.push(`${side.n} of ${side.total} runs of ${who} have no score (infra errors, model mismatches or nothing to score), over the ${Math.round(MAX_NONSCORED_SHARE * 100)}% limit`);
+  }
+  if (c.components && c.components.ok === false) evidence.push(c.components.reason);
 
   const reasons = [];
   const worst = ratios.length ? Math.max(...ratios) : null;
@@ -59,21 +75,29 @@ function decideCell(c) {
   if (worst !== null) {
     const passes = worst <= COST_MAX;
     const effect = worst === Infinity ? Infinity : Math.abs(worst - 1);
-    const uncertain = fin(c.costDrift) && !(effect > c.costDrift);
-    cost = { status: uncertain ? 'uncertain' : passes ? 'pass' : 'fail', worst, passes };
+    const drifting = fin(c.costDrift) && !(effect > c.costDrift);
+    const bound = c.costBound && c.costBound.censoredRuns > 0 ? Math.max(...[c.costBound.runRatio, c.costBound.successRatio].filter((r) => r === Infinity || fin(r)), worst) : worst;
+    const boundFails = passes && bound > COST_MAX;
+    cost = { status: drifting || boundFails ? 'uncertain' : passes ? 'pass' : 'fail', worst, passes: passes && !boundFails, bound };
     if (!passes) {
       const which = c.costRunRatio === worst ? 'per run' : 'per successful run';
       reasons.push(worst === Infinity ? 'the arm had no clean pass, so its cost per successful run is unbounded' : `it costs ${f2(worst)}x vanilla ${which}, over the ${f1(COST_MAX)}x limit`);
     }
-    if (uncertain) reasons.push(`the A/A cost drift of ${Math.round(c.costDrift * 100)}% is not smaller than the cost difference of ${Math.round(effect * 100)}%`);
+    if (boundFails) reasons.push(`${c.costBound.censoredRuns} run(s) of the arm have no metered cost and are counted at the largest metered cost of their task; on that bound it costs ${bound === Infinity ? 'an unbounded multiple of' : `${f2(bound)}x`} vanilla, over the ${f1(COST_MAX)}x limit`);
+    if (drifting) reasons.push(`the A/A cost drift of ${Math.round(c.costDrift * 100)}% is not smaller than the cost difference of ${Math.round(effect * 100)}%`);
   }
   let quality = { status: 'unknown' };
-  if (fin(c.qualityDelta) && fin(c.baseSd)) {
-    const passes = c.qualityDelta >= -c.baseSd;
-    const uncertain = fin(c.qualityDrift) && !(Math.abs(c.qualityDelta) > c.qualityDrift);
-    quality = { status: uncertain ? 'uncertain' : passes ? 'pass' : 'fail', passes };
-    if (!passes) reasons.push(`quality is below vanilla by ${f1(-c.qualityDelta)} points, more than the spread of one vanilla run (${f1(c.baseSd)} points)`);
-    if (uncertain) reasons.push(`the A/A drift of ${f1(c.qualityDrift)} points is not smaller than the quality difference of ${f1(Math.abs(c.qualityDelta))} points`);
+  if (fin(c.qualityDelta) && fin(c.qualityCiLow) && fin(c.withinSd)) {
+    const tolerance = Math.max(c.withinSd, QUALITY_FLOOR_PTS);
+    const drift = fin(c.qualityDrift) ? Math.max(c.qualityDrift, QUALITY_FLOOR_PTS) : null;
+    const dropped = c.qualityDelta < -tolerance;
+    const clears = c.qualityCiLow >= -tolerance;
+    const drifting = fin(drift) && !(Math.abs(c.qualityDelta) > drift);
+    const reaches = !dropped && !clears;
+    quality = { status: drifting || reaches ? 'uncertain' : clears ? 'pass' : 'fail', passes: clears, tolerance, drift };
+    if (dropped) reasons.push(`quality is below vanilla by ${f1(-c.qualityDelta)} points, more than the tolerance of ${f1(tolerance)} points (vanilla's spread within a task, at least ${f1(QUALITY_FLOOR_PTS)})`);
+    if (reaches) reasons.push(`the 95% interval of the quality difference [${f1(c.qualityCiLow)}, ${f1(c.qualityCiHigh)}] reaches below the tolerance of -${f1(tolerance)} points`);
+    if (drifting) reasons.push(`the A/A drift of ${f1(drift)} points is not smaller than the quality difference of ${f1(Math.abs(c.qualityDelta))} points`);
   }
 
   const costFails = cost.status === 'fail' || (cost.status === 'uncertain' && cost.passes === false);
@@ -87,7 +111,7 @@ function decideCell(c) {
   else if (cost.status === 'fail' || quality.status === 'fail') call = FAIL;
   else if (cost.status === 'uncertain' || quality.status === 'uncertain') call = NEE;
   else call = PASS;
-  return { call, reasons: call === NEE ? [...evidence, ...reasons] : call === FAIL ? reasons.filter((r) => !/A\/A/.test(r)) : [], evidence, cost, quality, rawPass };
+  return { call, reasons: call === NEE ? [...evidence, ...reasons] : call === FAIL ? reasons.filter((r) => !/A\/A|no metered cost|reaches below/.test(r)) : [], evidence, cost, quality, rawPass };
 }
 
 // ---- cells ----
@@ -138,6 +162,26 @@ function costStats(headRows, baseRows, weights, unit) {
   };
 }
 
+// A run is unmetered when it ended before its last metering event or reported no credits at all. Its charged cost is then a lower bound
+// (or 0). The bound used when that decides a call: each unmetered run of the arm is charged the largest metered cost among the arm's runs
+// of the same task, else of the arm. Vanilla keeps its charged figure, which only makes the arm's ratio look worse than the bound.
+const unmetered = (r) => r.censored === true || !fin(r.creditsObserved);
+
+function boundedCost(headRows, baseRows, weights, unit) {
+  const open = headRows.filter(unmetered);
+  if (!open.length) return null;
+  const metered = headRows.filter((r) => !unmetered(r) && fin(r.credits));
+  const top = (rs) => (rs.length ? Math.max(...rs.map((r) => r.credits)) : null);
+  const overall = top(metered);
+  const adjusted = headRows.map((r) => {
+    if (!unmetered(r)) return r;
+    const t = top(metered.filter((m) => m.task === r.task)) ?? overall;
+    return fin(t) ? { ...r, credits: Math.max(r.credits ?? 0, t) } : r;
+  });
+  const bound = costStats(adjusted, baseRows, weights, unit);
+  return { censoredRuns: open.length, runRatio: bound.ratioPerRun, successRatio: bound.ratioPerSuccess };
+}
+
 function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkillsOverride, phases }) {
   const all = inputs.flatMap((i) => i.rows);
   const baseRows = all.filter((r) => r.armId === baseline);
@@ -180,19 +224,29 @@ function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkil
     const base = baseRows.filter((r) => common.has(`${r.src}|${r.task}`));
     const hq = qualityList(head, weights);
     const bq = qualityList(base, weights);
-    const delta = hq.length && bq.length ? mean(hq) - mean(bq) : null;
+    const pcells = pairCells(head, base, weights);
+    const paired = pairedCellCI(pcells.map((x) => ({ head: x.head, base: x.base })));
+    const within = withinCellSd(pcells.map((x) => x.base));
+    const nonScored = { head: nonScoredOf(head, weights), base: nonScoredOf(base, weights) };
+    const components = componentCheck(pcells);
+    const unpaired = hq.length && bq.length ? mean(hq) - mean(bq) : null;
     const cost = common.size ? costStats(head, base, weights, unit) : costStats([], [], weights, unit);
+    const costBound = common.size ? boundedCost(head, base, weights, unit) : null;
     const target = out.aaRepeatOf ? null : targetOf(label, armId, headAll, changedSkillsOverride);
     const decision = out.aaRepeatOf ? null : decideCell({
-      nHead: hq.length, nBase: bq.length, qualityDelta: delta, baseSd: sampleSd(bq), qualityDrift: aa.qualityDrift, costRunRatio: cost.ratioPerRun, costSuccessRatio: cost.ratioPerSuccess,
-      costDrift: aa.costDrift, hasAA, target,
+      nHead: hq.length, nBase: bq.length, cells: paired.k, qualityDelta: paired.delta, qualityCiLow: paired.ciLow, qualityCiHigh: paired.ciHigh, withinSd: within.sd, baseSd: sampleSd(bq),
+      qualityDrift: aa.qualityDrift, costRunRatio: cost.ratioPerRun, costSuccessRatio: cost.ratioPerSuccess, costBound, costDrift: aa.costDrift, hasAA, target, nonScored, components,
     });
     const failures = Object.fromEntries(['good', ...FAILURE_OUTCOMES].map((k) => [k, head.filter((r) => r.outcome === k).length]));
     const entries = head.map((r) => ({ armId, result: r.result, orchSource: r.orchSource }));
     return {
       ...out, call: decision?.call ?? null, reasons: decision?.reasons ?? [], rawPass: decision?.rawPass ?? null,
-      cost: { ...cost, status: decision?.cost.status ?? null }, quality: { n: hq.length, baseN: bq.length, value: mean(hq), baseValue: mean(bq), delta, baseSd: sampleSd(bq), status: decision?.quality.status ?? null },
-      target, notes: [target?.note].filter(Boolean), failures, failedAsZero: head.filter((r) => r.zeroFilled).length, runs: head.length, baseRuns: base.length,
+      cost: { ...cost, bound: costBound, status: decision?.cost.status ?? null },
+      quality: {
+        n: hq.length, baseN: bq.length, value: mean(hq), baseValue: mean(bq), delta: paired.delta, deltaCiLow: paired.ciLow, deltaCiHigh: paired.ciHigh, k: paired.k, droppedCells: paired.droppedCells, method: paired.method, p: paired.p,
+        unpairedDelta: unpaired, withinSd: within.sd, withinCells: within.cells, tolerance: fin(within.sd) ? Math.max(within.sd, QUALITY_FLOOR_PTS) : null, baseSd: sampleSd(bq), status: decision?.quality.status ?? null,
+      },
+      nonScored, components, target, notes: [target?.note].filter(Boolean), failures, failedAsZero: head.filter((r) => r.zeroFilled).length, runs: head.length, baseRuns: base.length,
       orch: summarize({ runs: entries }, { phases })[0] ?? null,
     };
   });
@@ -248,16 +302,19 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
     if (!ref) notes.push(`${c.model} has no Claude cell on the same harness to compare ratios with. Add a Claude run directory, or read its ratios to vanilla on their own.`);
   }
   for (const s of skippedDirs) notes.push(`${s.dir} was left out: ${s.reason}.`);
-  if (cells.some((c) => c.arms.some((a) => a.failedAsZero))) notes.push('A run that failed or timed out with nothing to score counts as quality 0, and its cost counts. No run is dropped; infra errors and model mismatches are left out of quality and listed.');
+  if (cells.some((c) => c.arms.some((a) => a.failedAsZero))) notes.push('A run that failed or timed out with nothing to score counts as quality 0, and its cost counts. Infra errors and model mismatches are left out of quality and listed, and a side with more than a fifth of its runs in that state gets no call.');
   const rule = {
     costMax: COST_MAX,
-    cost: 'Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean credits per executed run and as credits per successful run. Both must be at most 2.0.',
-    quality: "The arm's mean quality minus vanilla's must be at least minus the sample standard deviation (n-1) of vanilla's per-run quality scores on those cells. A gain always meets it; a spread of 0 allows no drop.",
-    drift: 'Drift = the largest gap between an arm and its A/A repeat (quality points, and the cost ratio of the repeat to the arm). A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.',
-    evidence: `NOT ENOUGH EVIDENCE also when a side has fewer than ${MIN_N} scored runs, the cell has no A/A repeat, vanilla has fewer than 2 scored runs, or a change that lives only in skills never loaded one.`,
+    qualityFloorPts: QUALITY_FLOOR_PTS,
+    minCells: MIN_CELLS,
+    maxNonScoredShare: MAX_NONSCORED_SHARE,
+    cost: 'Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean credits per executed run and as credits per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.',
+    quality: "Quality is paired by cell (one task in one run directory): each cell contributes the arm's mean score minus vanilla's, and the 95% interval is a t interval on those differences. The tolerance is the pooled within-cell standard deviation of vanilla's scores, at least 5 points. The arm passes when the lower end of the interval is at least minus the tolerance. A difference below minus the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE. A gain passes.",
+    drift: 'Drift = the largest gap between an arm and its A/A repeat (quality points, at least 5, and the cost ratio of the repeat to the arm). A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.',
+    evidence: `NOT ENOUGH EVIDENCE also when a side has fewer than ${MIN_N} scored runs, the cell has fewer than ${MIN_CELLS} paired task cells, no A/A repeat, no task where vanilla has two scored runs, more than a fifth of the runs on a side have no score (infra error, model mismatch, nothing to score), the arm and vanilla were scored on different components in any cell, or a change that lives only in skills never loaded one.`,
     gpt: 'A GPT cell is judged on its own ratios to vanilla; the Claude cell on the same harness is shown beside it, ratio against ratio, never raw credits.',
   };
   return { schemaVersion: 1, kind: 'orchestrator-pass', baseline, rule, cells, skippedDirs, notes, unit: unit === 'USD' ? 'USD' : 'credits', weights, phases };
 }
 
-module.exports = { buildOrchestratorPass, decideCell, sampleSd, cellKeyOf, targetOf, PASS, FAIL, NEE, COST_MAX };
+module.exports = { buildOrchestratorPass, decideCell, sampleSd, cellKeyOf, targetOf, boundedCost, PASS, FAIL, NEE, COST_MAX, QUALITY_FLOOR_PTS };

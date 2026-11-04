@@ -16,7 +16,7 @@ const pct = (v) => (fin(v) ? `${(v * 100).toFixed(0)}%` : 'n/a');
 
 function sentence(a) {
   if (a.aaRepeatOf) return `A/A repeat of ${a.aaRepeatOf}. It measures drift and gets no call.`;
-  if (a.call === 'PASS') return `Passes. It costs ${x(a.cost.ratioPerRun)} vanilla per run and ${x(a.cost.ratioPerSuccess)} per successful run (limit 2.0x), and its quality is ${signed(a.quality.delta)} points against vanilla (one vanilla run varies by ${f(a.quality.baseSd)}).`;
+  if (a.call === 'PASS') return `Passes. It costs ${x(a.cost.ratioPerRun)} vanilla per run and ${x(a.cost.ratioPerSuccess)} per successful run (limit 2.0x), and its quality is ${signed(a.quality.delta)} points against vanilla (paired 95% interval ${f(a.quality.deltaCiLow)} to ${f(a.quality.deltaCiHigh)} over ${a.quality.k} task cells; tolerance ${f(a.quality.tolerance)}, vanilla's spread within a task).`;
   if (a.call === 'FAIL') return `Fails. ${a.reasons.map(cap).join('. ')}.`;
   return `${NEE}. ${a.reasons.map(cap).join('. ')}.${a.rawPass === true ? ' On the raw thresholds alone it would pass.' : a.rawPass === false ? ' On the raw thresholds alone it would fail.' : ''}`;
 }
@@ -24,7 +24,7 @@ function sentence(a) {
 function buildOrchestratorPassDocument(v) {
   const blocks = [];
   blocks.push(D.h(1, 'Orchestrator pass rule'));
-  blocks.push(D.p(`Baseline: ${v.baseline}. ${v.cells.length} cell(s), keyed by harness and model. A test arm passes in a cell when it costs at most 2.0x vanilla and its quality is within one vanilla run of vanilla. Cost is in ${v.unit}.`));
+  blocks.push(D.p(`Baseline: ${v.baseline}. ${v.cells.length} cell(s), keyed by harness and model. A test arm passes in a cell when it costs at most 2.0x vanilla and the 95% interval of its quality difference, paired by task, stays within vanilla's spread on a single task. Cost is in ${v.unit}.`));
 
   blocks.push(D.h(2, 'Calls'));
   const rows = [];
@@ -39,11 +39,11 @@ function buildOrchestratorPassDocument(v) {
     blocks.push(D.p(aaText));
     const tested = c.arms.filter((a) => !a.aaRepeatOf);
     blocks.push(D.table(
-      ['arm', 'cost per run (arm vs vanilla)', 'cost ratio per run', 'cost ratio per successful run [95% CI]', 'quality (arm, vanilla)', 'difference', 'vanilla spread of one run', 'runs (arm / vanilla)', 'thresholds met'],
+      ['arm', 'cost per run (arm vs vanilla)', 'cost ratio per run', 'cost ratio per successful run [95% CI]', 'quality (arm, vanilla)', 'paired difference [95% CI]', 'tolerance (vanilla spread within a task)', 'task cells', 'runs (arm / vanilla)', 'runs without a score (arm / vanilla)', 'thresholds met'],
       tested.map((a) => [
         a.label, `${f(a.cost.perRunMean, 2)} vs ${f(a.cost.basePerRunMean, 2)}`, x(a.cost.ratioPerRun),
         `${x(a.cost.ratioPerSuccess)}${fin(a.cost.ciLow) && fin(a.cost.ciHigh) ? ` [${a.cost.ciLow.toFixed(2)}, ${a.cost.ciHigh.toFixed(2)}]` : ''}`,
-        `${f(a.quality.value)}, ${f(a.quality.baseValue)}`, signed(a.quality.delta), f(a.quality.baseSd), `${a.quality.n} / ${a.quality.baseN}`, a.rawPass === null ? 'n/a' : a.rawPass ? 'yes' : 'no',
+        `${f(a.quality.value)}, ${f(a.quality.baseValue)}`, `${signed(a.quality.delta)} [${f(a.quality.deltaCiLow)}, ${f(a.quality.deltaCiHigh)}]`, f(a.quality.tolerance), a.quality.k, `${a.quality.n} / ${a.quality.baseN}`, `${a.nonScored.head.n} / ${a.nonScored.base.n}`, a.rawPass === null ? 'n/a' : a.rawPass ? 'yes' : 'no',
       ]),
     ));
     if (c.ratioComparison) {
@@ -77,7 +77,7 @@ function buildOrchestratorPassDocument(v) {
   }
 
   blocks.push(D.h(2, 'Definitions'));
-  blocks.push(D.list([v.rule.cost, v.rule.quality, v.rule.drift, v.rule.evidence, v.rule.gpt, 'A failed or timed-out run counts as quality 0 when it has nothing to score, and its cost counts. No run is dropped.']));
+  blocks.push(D.list([v.rule.cost, v.rule.quality, v.rule.drift, v.rule.evidence, v.rule.gpt, 'A failed or timed-out run counts as quality 0 when it has nothing to score, and its cost counts. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side. The unpaired mean difference is not used for any call.']));
   blocks.push(D.note(`${NEE} is not a finding that the arm is fine or not fine. It means this study cannot say. The thresholds are stated in full above so the same numbers can be re-read against a different rule.`));
   return { blocks, charts: new Map(), title: 'Orchestrator pass rule' };
 }

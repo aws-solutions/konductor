@@ -281,7 +281,7 @@ function cmdVerdict(opts) {
     profile: optionalProfile(opts.profile), testArms: list(opts['test-arms']), changedSkills: list(opts['changed-skills']), phases: phasesOf(opts),
   });
   if (opts.verdict === 'orchestrator-pass') {
-    console.log(`Orchestrator pass rule against ${baseline} (cost at most 2.0x, quality within one vanilla run):`);
+    console.log(`Orchestrator pass rule against ${baseline} (cost at most 2.0x, paired quality interval within vanilla's spread on one task):`);
     for (const c of res.v.cells) {
       console.log(`  ${c.key}`);
       const w = Math.max(...c.arms.map((a) => a.label.length));

@@ -142,7 +142,7 @@ test('a SOP run is a hit when it loaded the SOP or the final text pointed at it'
 test('results that never ran or that lack a trigger query are left out of the rows and counted', () => {
   const rows = trig.liveRows([result(), result({ status: 'budget_skipped', capInvocation: null }), { status: 'success', triggerQuery: null }, result({ infraError: 'setup failed', capInvocation: null })], CAP);
   assert.equal(rows.rows.length, 1);
-  assert.deepEqual(rows.dropped, { notRun: 1, noQuery: 1, infra: 1 });
+  assert.deepEqual(rows.dropped, { notRun: 1, noQuery: 1, infra: 1, failed: 0 });
 });
 
 test('first decisions are tallied so find_skills first, get_skill first and delegating first can be told apart', () => {

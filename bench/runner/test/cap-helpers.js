@@ -97,6 +97,7 @@ const writeEntry = (bench, e) => {
   return file;
 };
 
-const scratch = () => fs.mkdtempSync(path.join(os.tmpdir(), 'captest-'));
+// The real path: on macOS os.tmpdir() is under the /var -> /private/var symlink, and the CLI prints real paths.
+const scratch = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'captest-')));
 
 module.exports = { makeCapRepo, makeCapBench, entry, writeEntry, writeFiles, scratch, git, spec, ALPHA_DESC };

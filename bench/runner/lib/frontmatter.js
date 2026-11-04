@@ -4,7 +4,8 @@
 // Reads the YAML frontmatter of a SKILL.md for the fields the bench needs (name, description, tags).
 // Only top-level `key: value` lines are understood, plus folded (>) and literal (|) block scalars.
 
-const frontmatter = (text) => /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? '';
+// A BOM and CRLF line ends are read as plain LF, so a Windows-edited file keeps its name and description.
+const frontmatter = (text) => /^---\n([\s\S]*?)\n---/.exec(String(text).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n'))?.[1] ?? '';
 
 const BLOCK = /^([>|])([+-]?)\s*$/;
 

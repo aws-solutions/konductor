@@ -72,7 +72,7 @@ test('a fabricated quote and reordered segments are downgraded one level; raw an
   } finally { rm(root); }
 });
 
-test('a fail verdict and a "(nothing in the output)" quote are never downgraded', async () => {
+test('a fail verdict is never downgraded, and a pass or partial that cites "(nothing in the output)" drops a level', async () => {
   const { root, common } = fixture();
   try {
     const caller = stub(({ prompt }) => rubricReply(prompt, {
@@ -82,7 +82,13 @@ test('a fail verdict and a "(nothing in the output)" quote are never downgraded'
     const j = await runJudging({ ...common, caller });
     const [c1, c2] = j.rubric[0].criteria;
     assert.deepEqual([c1.verdictScored, c1.evidenceDowngraded], ['fail', undefined]);
-    assert.deepEqual([c2.verdictScored, c2.evidenceFound, c2.evidenceDowngraded], ['pass', null, undefined]);
+    assert.deepEqual([c2.verdictRaw, c2.verdictScored, c2.evidenceFound, c2.evidenceDowngraded], ['pass', 'partial', false, true]);
+    const again = fixture();
+    try {
+      const none = stub(({ prompt }) => rubricReply(prompt, { c1: { verdict: 'partial', evidence: '(Nothing in the output) supports it' }, c2: { verdict: 'fail', evidence: '(nothing in the output)' } }));
+      const k = await runJudging({ ...again.common, caller: none });
+      assert.deepEqual(k.rubric[0].criteria.map((c) => c.verdictScored), ['fail', 'fail']);
+    } finally { rm(again.root); }
   } finally { rm(root); }
 });
 

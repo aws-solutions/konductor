@@ -27,12 +27,13 @@ function noiseCell(n) {
 const FAILED = ['checksFailed', 'timeout', 'error', 'infraError', 'modelMismatch'];
 
 const RULES = [
-  'KEEP needs a quality gain over the baseline that is larger than the A/A noise and whose 95% interval is above 0, at least 3 runs on each side, at least 3 replicates in every cell, no anecdotal diligence rating and no clearly lower reliability.',
-  'DISCARD needs the same evidence for a quality loss.',
-  'NOT ENOUGH EVIDENCE is the answer in every other case. It is forced when there are fewer than 3 runs on a side, when the difference is inside the A/A noise, or when the diligence rating is anecdotal. It is also the answer when no A/A noise was measured, when a cell has fewer than 3 replicates, or when the interval of the difference includes 0.',
+  'KEEP needs a quality gain over the baseline that is larger than the A/A noise and whose paired 95% interval is above 0, at least 3 runs on each side, at least 5 paired task cells, at least 3 replicates in every cell, no anecdotal diligence rating, no clearly lower reliability, and a cost of at most 2.0x the baseline per successful run.',
+  'DISCARD needs the same evidence for a quality loss. Its cost is not weighed: a loss is a loss at any price.',
+  'The interval is paired by cell. A cell is one task in one run directory; each cell contributes the mean of the arm\'s scores minus the mean of the baseline\'s, and the 95% interval is a t interval on those differences. Runs of the same task are not independent, so an interval over pooled runs is shown only as a descriptive column. In a simulation with no true effect the paired interval excluded 0 in 4.1% to 6.5% of trials from 5 cells up, where the pooled one excluded it in 20% of trials at 3 runs a side.',
+  'NOT ENOUGH EVIDENCE is the answer in every other case. It is forced when there are fewer than 3 runs on a side or fewer than 5 paired task cells, when the difference is inside the A/A noise, or when the diligence rating is anecdotal. It is also the answer when no A/A noise was measured, when a cell has fewer than 3 replicates, when the interval of the difference includes 0, when more than a fifth of the runs on a side have no score, when the arm and the baseline were scored on different components in any cell, or when a gain costs more than 2.0x.',
   `The A/A noise is the gap in mean quality between an arm and its repeat at the same commit, with a floor of ${f(5)} points.`,
   'Efficiency is a ratio, never a 0 to 100 number: cost is credits per successful run, arm over baseline, and latency is mean wall clock over clean passes, arm over baseline. A ratio above 1 means the arm costs more.',
-  'A failed or timed-out run counts as quality 0 when it has nothing to score, and counts against reliability. No run is dropped.',
+  'A failed or timed-out run counts as quality 0 when it has nothing to score, and counts against reliability. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side.',
 ];
 
 function buildVerdictDocument(v) {
@@ -52,9 +53,9 @@ function buildVerdictDocument(v) {
 
   blocks.push(D.h(2, `Numbers against ${v.baselineLabel}`));
   blocks.push(D.table(
-    ['arm', `Quality /100 (arm, ${v.baselineLabel})`, 'Difference in points [95% CI]', 'Reliability /100 (arm, baseline)', 'Autonomy /100 (arm, baseline)', `Cost ratio (${v.arms[0]?.cost.unit ?? unit} per successful run)`, 'Latency ratio (mean wall clock)'],
+    ['arm', `Quality /100 (arm, ${v.baselineLabel})`, 'Difference in points [paired 95% CI]', 'Unpaired difference (descriptive, not used)', 'Reliability /100 (arm, baseline)', 'Autonomy /100 (arm, baseline)', `Cost ratio (${v.arms[0]?.cost.unit ?? unit} per successful run)`, 'Latency ratio (mean wall clock)'],
     heads.map((a) => [
-      a.label, `${f(a.quality.value)}, ${f(a.quality.baseValue)}`, `${signed(a.quality.delta)}${ci(a.quality.deltaCiLow, a.quality.deltaCiHigh)}`,
+      a.label, `${f(a.quality.value)}, ${f(a.quality.baseValue)}`, `${signed(a.quality.delta)}${ci(a.quality.deltaCiLow, a.quality.deltaCiHigh)}`, `${signed(a.quality.unpaired.delta)}${ci(a.quality.unpaired.ciLow, a.quality.unpaired.ciHigh)}`,
       `${f(a.reliability.value, 0)}, ${f(a.reliability.baseValue, 0)}`, a.autonomy ? `${f(a.autonomy.value, 0)}, ${f(a.autonomy.baseValue, 0)}` : 'n/a', ratio(a.cost), ratio(a.latency),
     ]),
   ));
@@ -68,9 +69,9 @@ function buildVerdictDocument(v) {
 
   blocks.push(D.h(2, 'How much evidence'));
   blocks.push(D.table(
-    ['arm', 'runs (arm / baseline)', 'cells (task x directory)', 'replicates in the smallest cell', 'A/A noise', 'diligence rating', 'graded judge (arm, baseline; order disagreements)'],
+    ['arm', 'runs (arm / baseline)', 'cells (task x directory)', 'replicates in the smallest cell', 'runs without a score (arm, baseline)', 'A/A noise', 'diligence rating', 'graded judge (arm, baseline; order disagreements)'],
     heads.map((a) => [
-      a.label, `${a.quality.n} / ${a.quality.baseN}`, a.cells, a.minReps, noiseCell(a.noise), a.diligence.rating,
+      a.label, `${a.quality.n} / ${a.quality.baseN}`, a.cells, a.minReps, `${a.nonScored.head.n} / ${a.nonScored.base.n}`, noiseCell(a.noise), a.diligence.rating,
       a.graded ? `${f(a.graded.armGrade, 2)}, ${f(a.graded.baseGrade, 2)}; ${a.graded.orderDisagreements} of ${a.graded.n}` : 'not run',
     ]),
   ));

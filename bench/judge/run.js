@@ -40,7 +40,7 @@ async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = MAX_PR
     if (Buffer.byteLength(p) > maxPromptBytes) return { error: 'prompt too large for one argument; lower the bundle limits', calls, parseFailures };
     const r = await caller({ model, prompt: p });
     calls.push({
-      credits: r.credits ?? 0, latencyMs: r.latencyMs ?? null, cached: Boolean(r.cached), ...(r.cached ? { originalCredits: r.originalCredits ?? null } : {}),
+      credits: r.credits === undefined ? 0 : r.credits, latencyMs: r.latencyMs ?? null, cached: Boolean(r.cached), ...(r.cached ? { originalCredits: r.originalCredits ?? null } : {}),
       ...(r.usd !== undefined ? { usd: r.usd, ...(r.cached ? { originalUsd: r.originalUsd ?? null } : {}), tokens: r.tokens ?? null, ...(r.retries ? { retries: r.retries } : {}) } : {}),
       ok: !r.error,
     });
@@ -142,7 +142,7 @@ async function runJudging(o) {
         out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check: validatePairReply });
       }
     }
-    const live = out.calls.filter((c) => !c.cached).reduce((s, c) => s + c.credits, 0);
+    const live = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.credits ?? 0), 0);
     spent += live;
     spentByJudge[u.judge] = (spentByJudge[u.judge] || 0) + live;
     const liveUsd = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.usd || 0), 0);
@@ -171,7 +171,8 @@ async function runJudging(o) {
       const task = tasks.get(u.run.taskId);
       const found = makeQuoteMatcher(bundle.text);
       const criteria = out.error ? [] : out.value.criteria.map((c) => {
-        const evidenceFound = /^\(nothing in the output\)/i.test(c.evidence) ? null : found(c.evidence);
+        // "(nothing in the output)" cites no evidence, so a pass or partial that rests on it drops a level like an unfound quote.
+        const evidenceFound = /^\(nothing in the output\)/i.test(c.evidence) ? false : found(c.evidence);
         const downgraded = evidenceFound === false && c.verdict !== 'fail';
         const verdictScored = downgraded ? DOWNGRADE[c.verdict] : c.verdict;
         return { id: c.id, verdict: verdictScored, verdictRaw: c.verdict, verdictScored, evidence: c.evidence, evidenceFound, ...(downgraded ? { evidenceDowngraded: true } : {}) };

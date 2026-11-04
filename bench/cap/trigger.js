@@ -80,13 +80,18 @@ function liveRow(result, cap) {
 }
 
 function liveRows(results, cap) {
-  const dropped = { notRun: 0, noQuery: 0, infra: 0 };
+  const dropped = { notRun: 0, noQuery: 0, infra: 0, failed: 0 };
   const rows = [];
   for (const r of results) {
     if (r.status === 'budget_skipped') { dropped.notRun++; continue; }
     if (!r.triggerQuery) { dropped.noQuery++; continue; }
     if (r.infraError || !r.capInvocation) { dropped.infra++; continue; }
-    rows.push(liveRow(r, cap));
+    const row = liveRow(r, cap);
+    // A run that errored, timed out or ran on the wrong model without reaching the capability says nothing about whether it would fire.
+    // A run stopped early on purpose (earlyStopped) ends with status error after its first decision, and that decision is the result.
+    const failed = (r.status !== 'success' && !row.earlyStopped) || (r.flags ?? []).includes('modelMismatch');
+    if (failed && !row.hit) { dropped.failed++; continue; }
+    rows.push(row);
   }
   return { rows, dropped };
 }

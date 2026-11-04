@@ -85,7 +85,11 @@ function ratioBootstrap(headItems, baseItems, stat, { confidence = 0.95, nResamp
   return out;
 }
 
-/** Difference of means, head - base, with a percentile bootstrap interval (independent resampling). Null fields when a side is empty. */
+/**
+ * Difference of means, head - base, with a percentile bootstrap interval (independent resampling). Null fields when a side is empty.
+ * Descriptive only: it treats every run as independent, so it ignores that both arms ran the same tasks. It rejects 0 about 20% of the
+ * time at 3 runs a side when there is no effect. Verdicts use pairedCellCI.
+ */
 function diffCI(headVals, baseVals, { confidence = 0.95, nResamples = 2000, seed = 42 } = {}) {
   if (!headVals.length || !baseVals.length) return { delta: null, ciLow: null, ciHigh: null, nHead: headVals.length, nBase: baseVals.length };
   const delta = mean(headVals) - mean(baseVals);
@@ -100,4 +104,86 @@ function diffCI(headVals, baseVals, { confidence = 0.95, nResamples = 2000, seed
   return out;
 }
 
-module.exports = { median, medianCI, meanCI, ratioCI, ratioBootstrap, diffCI, wilson, mean };
+// Two-sided 95% critical values of Student's t by degrees of freedom. A df between table entries uses the next lower entry,
+// which is the wider interval.
+const T975 = [[1, 12.706], [2, 4.303], [3, 3.182], [4, 2.776], [5, 2.571], [6, 2.447], [7, 2.365], [8, 2.306], [9, 2.262], [10, 2.228], [11, 2.201], [12, 2.179], [13, 2.16], [14, 2.145], [15, 2.131], [16, 2.12], [17, 2.11], [18, 2.101], [19, 2.093], [20, 2.086], [21, 2.08], [22, 2.074], [23, 2.069], [24, 2.064], [25, 2.06], [26, 2.056], [27, 2.052], [28, 2.048], [29, 2.045], [30, 2.042], [40, 2.021], [60, 2.0], [120, 1.98]];
+
+function tQuantile975(df) {
+  let out = T975[0][1];
+  for (const [d, q] of T975) if (d <= df) out = q;
+  return out;
+}
+
+// The fewest cells (task by run directory) a paired comparison may rest on. With 5 to 12 cells of 5 replicates, a task effect SD of 20 and
+// a run SD of 12 (also a pass/fail mixture, also with a task-by-arm interaction), the t interval below excluded 0 in 4.1% to 6.5% of
+// null trials (bench/scripts/sim-interval-size.js). The sign-flip p is reported beside it; it cannot go below 0.05 under 6 cells, so it
+// does not decide.
+const MIN_CELLS = 5;
+const EXACT_FLIP_MAX = 16;
+
+function signFlipP(diffs, seed = 42) {
+  const k = diffs.length;
+  const obs = Math.abs(diffs.reduce((a, b) => a + b, 0));
+  const eps = 1e-9 * Math.max(1, obs);
+  if (k <= EXACT_FLIP_MAX) {
+    let ge = 0;
+    const total = 2 ** k;
+    for (let s = 0; s < total; s++) {
+      let t = 0;
+      for (let i = 0; i < k; i++) t += (s >> i) & 1 ? diffs[i] : -diffs[i];
+      if (Math.abs(t) >= obs - eps) ge++;
+    }
+    return { p: ge / total, exact: true };
+  }
+  const rng = mulberry32(seed);
+  const n = 20000;
+  let ge = 1;
+  for (let j = 0; j < n; j++) {
+    let t = 0;
+    for (let i = 0; i < k; i++) t += rng() < 0.5 ? diffs[i] : -diffs[i];
+    if (Math.abs(t) >= obs - eps) ge++;
+  }
+  return { p: ge / (n + 1), exact: false };
+}
+
+/**
+ * Head minus base, paired by cell. cells: [{ head: number[], base: number[] }], one per task (and run directory) both arms ran.
+ * The unit is the cell: each cell contributes the difference of its two means, the mean of those differences is the estimate, and the
+ * interval is a t interval on the cells (df = k - 1). Replicates inside a cell and a task-by-arm interaction are carried by the spread
+ * of the cell differences, which an interval over pooled runs does not see. A cell with an empty side is dropped and counted.
+ */
+function pairedCellCI(cells) {
+  const usable = cells.filter((c) => c.head.length && c.base.length);
+  const droppedCells = cells.length - usable.length;
+  const diffs = usable.map((c) => mean(c.head) - mean(c.base));
+  const k = diffs.length;
+  const out = { k, droppedCells, df: Math.max(0, k - 1), delta: k ? mean(diffs) : null, se: null, ciLow: null, ciHigh: null, p: null, pExact: null, method: 'paired by cell, t interval' };
+  if (k < 2) return out;
+  const m = out.delta;
+  const sd = Math.sqrt(diffs.reduce((s, d) => s + (d - m) ** 2, 0) / (k - 1));
+  out.se = sd / Math.sqrt(k);
+  const h = tQuantile975(k - 1) * out.se;
+  out.ciLow = m - h;
+  out.ciHigh = m + h;
+  const flip = signFlipP(diffs);
+  out.p = flip.p;
+  out.pExact = flip.exact;
+  return out;
+}
+
+/** Pooled within-cell standard deviation: sqrt(sum of (n-1) * variance / sum of (n-1)) over cells with two or more values. */
+function withinCellSd(groups) {
+  let ss = 0;
+  let df = 0;
+  let cells = 0;
+  for (const g of groups) {
+    if (g.length < 2) continue;
+    const m = mean(g);
+    ss += g.reduce((s, x) => s + (x - m) ** 2, 0);
+    df += g.length - 1;
+    cells++;
+  }
+  return { sd: df ? Math.sqrt(ss / df) : null, df, cells };
+}
+
+module.exports = { median, medianCI, meanCI, ratioCI, ratioBootstrap, diffCI, pairedCellCI, withinCellSd, tQuantile975, signFlipP, MIN_CELLS, wilson, mean };
