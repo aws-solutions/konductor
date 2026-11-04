@@ -150,6 +150,11 @@ test('resolveClaude has no default location: it needs a binary or a tools direct
   }
 });
 
+test('versionWarning is silent for the validated version and names both versions otherwise', () => {
+  assert.equal(cc.versionWarning(cc.VALIDATED_VERSION), null);
+  assert.match(cc.versionWarning('2.1.318.1638'), /claude 2\.1\.318\.1638 differs from 2\.1\.316\.1544/);
+});
+
 test('binaryContains finds a flag across a chunk boundary', () => {
   const root = tmp();
   try {

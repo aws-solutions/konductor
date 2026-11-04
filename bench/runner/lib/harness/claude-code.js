@@ -26,6 +26,8 @@ const REGION = 'us-east-1';
 const PERMISSION_MODE = 'acceptEdits';
 const ALLOWED_TOOLS = ['Bash', 'Edit', 'Write', 'Read'];
 const DEFAULT_RUN_BUDGET_USD = 5;
+// The Claude Code version the stream parser and the harness flags were checked against.
+const VALIDATED_VERSION = '2.1.316.1544';
 const EXPECTED_AGENTS = 11;
 // Claude Code starts these even with an empty config directory, so a vanilla arm is not empty.
 const BUILTIN_AGENTS = ['claude', 'Explore', 'general-purpose', 'Plan', 'statusline-setup'];
@@ -102,6 +104,9 @@ function resolveClaude({ binOverride = process.env.BENCH_CLAUDE_BIN || null, too
   version = version ?? path.basename(path.dirname(bin)).match(/^\d+(\.\d+)+$/)?.[0] ?? 'unknown';
   return { bin, version, sha256: sandbox.sha256File(bin), supportsHookEvents: binaryContains(bin, '--include-hook-events') };
 }
+
+/** A warning line when `version` is not the one the harness was validated against, else null. */
+const versionWarning = (version) => (version === VALIDATED_VERSION ? null : `claude ${version} differs from ${VALIDATED_VERSION}, the version this harness was validated against; stream fields or flags may differ`);
 
 // ---- Model and credentials ----
 
@@ -307,7 +312,7 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
   const streamText = fs.readFileSync(path.join(outDir, 'stream.jsonl'), 'utf8');
   const { events, badLines } = parseStream(streamText);
   const canonical = config.canonicalModel ?? canonicalModel(config.model);
-  const a = parse.aggregateEvents(events, { expectedModel: canonical, rates: ctx.claudeRates ?? null });
+  const a = parse.aggregateEvents(events, { expectedModel: canonical });
   const stderr = readIfPresent(path.join(outDir, 'stderr.txt'));
   const flags = acc.meta.flags;
   acc.skills = skills.captureSkills({ runtime: 'claude-code', events, arm, ctx });
@@ -374,7 +379,7 @@ function finalize(outDir) {
 function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
   const konductor = envSetup({ arm: { vanilla: false }, ctx: { region }, home: '<run-home>', baseEnv: Object.fromEntries(CREDENTIAL_VARS.map((k) => [k, '<set>'])) });
   return {
-    binaryPath: ctx.claude.bin, version: ctx.claude.version, binarySha256: ctx.claude.sha256, supportsHookEvents: ctx.claude.supportsHookEvents,
+    binaryName: path.basename(ctx.claude.bin), version: ctx.claude.version, binarySha256: ctx.claude.sha256, supportsHookEvents: ctx.claude.supportsHookEvents,
     provider: PROVIDER, modelId: config.model, canonicalModel: config.canonicalModel, region,
     permissionMode: PERMISSION_MODE, allowedTools: ALLOWED_TOOLS, maxBudgetUsdPerRun: runBudgetUsd ?? DEFAULT_RUN_BUDGET_USD,
     flags: ['-p', '--output-format stream-json', '--verbose', '--model', '--max-budget-usd', '--permission-mode', '--allowedTools', '--agent (konductor arms)', ...(ctx.claude.supportsHookEvents ? ['--include-hook-events (konductor arms)'] : [])],
@@ -396,5 +401,5 @@ module.exports = {
   id, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
-  resolveClaude, MIN_BINARY_BYTES, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
+  resolveClaude, MIN_BINARY_BYTES, VALIDATED_VERSION, versionWarning, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
 };

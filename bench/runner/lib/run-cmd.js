@@ -276,6 +276,8 @@ async function cmdRun(opts) {
       ctx.claude = cc.resolveClaude({ binOverride: flagValue('claude-bin') ?? undefined, toolsDir: flagValue('claude-tools-dir') ?? undefined });
       Object.assign(ctx, { region: ccRegion, runBudgetUsd });
       log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, credentials from the environment (${cc.credentialNames().join(', ')})`);
+      const versionNote = cc.versionWarning(ctx.claude.version);
+      if (versionNote) log(`warning: ${versionNote}`);
       const shadow = cc.PROFILE_VARS.filter((k) => process.env[k]);
       if (shadow.length) log(`note: ${shadow.join(', ')} ${shadow.length === 1 ? 'is' : 'are'} set here and is not passed to claude (the SDK would skip the exported keys)`);
     }
@@ -371,7 +373,7 @@ async function cmdRun(opts) {
       for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
     }
     const envFor = (konductor) => (isCc
-      ? cc.envSetup({ arm: { vanilla: !konductor }, ctx, home: '<run-home>', baseEnv: { ...process.env, ...Object.fromEntries(cc.CREDENTIAL_VARS.map((k) => [k, '<set>'])) } })
+      ? cc.envSetup({ arm: { vanilla: !konductor }, ctx, home: '<run-home>', tmpdir: '<run>/tmp', baseEnv: { ...process.env, ...Object.fromEntries(cc.CREDENTIAL_VARS.map((k) => [k, '<set>'])) } })
       : isOc
       ? oc.envSetup({ arm: { vanilla: !konductor }, config, ctx, home: '<run-home>' })
       : buildChildEnv(process.env, { home: '<run-home>', agentEngine: config.agentEngine, keep: envKeep, konductor }));

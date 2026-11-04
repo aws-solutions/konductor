@@ -142,8 +142,8 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
 - Cost and tokens: `costUsd` is `total_cost_usd` of the last `result` line, tokens are the sums of `modelUsage`
   (`costBasis: list`). A session that resumes after a background task prints a second `result` line; totals are cumulative, so
   the last is used and durations are summed. A run killed before its `result` line (timeout, SIGTERM, exit 143) has
-  `costCensored: true`, `tokens` as a lower bound from the assistant messages seen, and `costUsd` null unless per-million rates
-  are supplied in `ctx.claudeRates`; the budget ledger then charges the arm median or the censored floor.
+  `costCensored: true`, `tokens` as a lower bound from the assistant messages seen, and `costUsd` null; the budget ledger then
+  charges the arm median or the censored floor.
 - Orchestration metrics: spawn count is `subagent_stats.spawned` (failed spawns included), depth comes from the
   `parent_tool_use_id` chain and `subagent_stats.max_depth`; review rounds and reworks read the `Agent` tool input and the
   sub-agent's notification summary. Skill loads are `Skill` tool calls and reads of a `SKILL.md`, in all sessions.

@@ -205,7 +205,12 @@ test('CLI: a Claude Code run writes names-only run-config and env, a USD summary
     assert.deepEqual(cfg.claudeCode.credentials.notPassedWhenSet, ['AWS_PROFILE']);
     assert.ok(cfg.claudeCode.envVarNames.includes('CLAUDE_CONFIG_DIR'));
     assert.equal(cfg.claudeCode.effort.applied, false);
-    assert.equal(fs.existsSync(path.join(out, 'env.json')), true);
+    const envFile = JSON.parse(fs.readFileSync(path.join(out, 'env.json'), 'utf8'));
+    assert.equal(envFile.vanillaArm.set.TMPDIR, '<run>/tmp', 'env.json shows the run temp directory, which is not under HOME');
+    assert.equal(cfg.claudeCode.binaryName, 'claude');
+    assert.equal('binaryPath' in cfg.claudeCode, false, 'the home path of the binary is not recorded');
+    assert.equal(JSON.stringify(cfg.claudeCode).includes(s.root), false, 'no path of the invoking machine in the Claude Code record');
+    assert.match(r.err, /warning: claude 9\.9\.9 differs from 2\.1\.316\.1544, the version this harness was validated against/);
     const summary = JSON.parse(fs.readFileSync(path.join(out, 'summary.json'), 'utf8'));
     assert.ok(summary.totalCostUsd > 0);
     assert.equal('totalCredits' in summary, false);
