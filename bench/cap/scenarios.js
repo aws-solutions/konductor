@@ -246,6 +246,17 @@ Reply with JSON only, in this shape:
 ${JSON.stringify(shape, null, 1)}`;
 }
 
+/**
+ * The skill name in any spelling a writer might use: the parts of a multi-part name joined by a hyphen, an underscore, a
+ * dot, spaces or nothing, in any case (backend-review, backend_review, Backend Review, BackendReview). A one-part name is
+ * matched as a whole word only, as wordRe does.
+ */
+function nameVariantRe(name) {
+  const parts = String(name).split(/[-_.\s]+/).filter(Boolean).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  if (parts.length < 2) return wordRe(name);
+  return new RegExp(`(?<![A-Za-z0-9])${parts.join('[-_.\\s]*')}(?![A-Za-z0-9])`, 'i');
+}
+
 const openingOf = (text) => text.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').trim().split(/\s+/).slice(0, 3).join(' ');
 
 /** Strict check of a trigger-mode reply; { ok: true, draft } or { ok: false, error } naming the first problem. */
@@ -254,6 +265,7 @@ function validateTriggerScenarios(d, { capName, capText, neighbourIds = [], n = 
   if (!d || typeof d !== 'object' || Array.isArray(d)) return fail('the reply must be a JSON object');
   if (!Array.isArray(d.scenarios)) return fail('scenarios must be an array');
   const name = wordRe(capName);
+  const variant = nameVariantRe(capName);
   const skillText = String(capText ?? '').toLowerCase();
   const seen = new Set();
   const openings = new Map();
@@ -263,6 +275,7 @@ function validateTriggerScenarios(d, { capName, capText, neighbourIds = [], n = 
     if (!TRIGGER_EXPECTS.includes(x.expect)) return fail(`${at}.expect must be trigger or near-miss`);
     if (typeof x.title !== 'string' || !x.title.trim()) return fail(`${at}.title must be a non-empty string`);
     if (typeof x.prompt !== 'string' || x.prompt.trim().length < PROMPT_MIN || x.prompt.length > PROMPT_MAX) return fail(`${at}.prompt must be between ${PROMPT_MIN} and ${PROMPT_MAX} characters`);
+    if (variant.test(x.prompt)) return fail(`${at}.prompt: it names the capability "${capName}" (as "${x.prompt.match(variant)[0]}")`);
     const bad = queryContentProblem(x.prompt, { capName, name });
     if (bad) return fail(`${at}.prompt: ${bad.replace(/^the text/, 'it')}`);
     if (DASHES.test(JSON.stringify(x))) return fail(`${at} contains an em or en dash`);
@@ -368,5 +381,5 @@ async function generateTriggerScenarios({ capId, scan, caller, model, n = TRIGGE
 
 module.exports = {
   generateScenarios, buildScenarioPrompt, validateScenarios, checkCount, renderMd, MIN_SCENARIOS, MAX_SCENARIOS, TOOL,
-  generateTriggerScenarios, buildTriggerPrompt, validateTriggerScenarios, checkTriggerCount, parseSeed, renderTriggerMd, TRIGGER_MIN, TRIGGER_MAX, TRIGGER_TOOL,
+  generateTriggerScenarios, buildTriggerPrompt, validateTriggerScenarios, checkTriggerCount, parseSeed, renderTriggerMd, nameVariantRe, TRIGGER_MIN, TRIGGER_MAX, TRIGGER_TOOL,
 };

@@ -216,3 +216,19 @@ test('cap scenarios --mode trigger with a command model writes the review files'
     assert.match(r.stdout, /skill-alpha\.trigger\.json and skill-alpha\.trigger\.md \(10 should-trigger and 10 near-miss tasks/);
   } finally { s.done(); }
 });
+
+test('a prompt that names the skill in another spelling is refused (hyphen, underscore, space, case, joined)', () => {
+  const capText = 'Validate every input. Escape output.';
+  const v = (prompt) => {
+    const d = reply();
+    d.scenarios[0].prompt = prompt;
+    return S.validateTriggerScenarios(d, { capName: 'backend-review', capText, neighbourIds: ['skill:delta', 'skill:beta'], n: 10 });
+  };
+  for (const spelled of ['backend_review', 'Backend Review', 'BACKEND-REVIEW', 'BackendReview', 'backend.review']) {
+    const r = v(`please run ${spelled} over src/routes/signup.js and list every unvalidated field you find in notes.md`);
+    assert.equal(r.ok, false, spelled);
+    assert.match(r.error, new RegExp(`scenarios\\[0\\]\\.prompt: it names the capability "backend-review" \\(as "${spelled.replace('.', '\\.')}"\\)`));
+  }
+  assert.equal(v('please do a backend code review of src/routes/signup.js and list every unvalidated field in notes.md').ok, true, 'the words apart in other order are fine');
+  assert.equal(S.nameVariantRe('alpha').test('alphabet soup'), false, 'a one-part name matches whole words only');
+});
