@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { request, type IncomingHttpHeaders } from 'node:http';
+import {
+  request,
+  type Agent,
+  type ClientRequest,
+  type IncomingHttpHeaders,
+} from 'node:http';
+import type { Socket } from 'node:net';
 
 export interface Reply {
   status: number;
@@ -23,9 +29,12 @@ export interface CallOptions {
 export class StubClient {
   token: string | undefined;
   private readonly port: number;
+  private readonly agent: Agent | undefined;
 
-  constructor(port: number) {
+  /** `agent` lets a test see the client's sockets; the default is Node's. */
+  constructor(port: number, agent?: Agent) {
     this.port = port;
+    this.agent = agent;
   }
 
   get(path: string, options?: CallOptions): Promise<Reply> {
@@ -62,12 +71,14 @@ export class StubClient {
           port: this.port,
           method,
           path,
+          agent: this.agent,
           headers: Object.fromEntries(defined),
         },
         (res) => {
           const chunks: Buffer[] = [];
           res.on('data', (chunk: Buffer) => chunks.push(chunk));
           res.on('end', () => {
+            markReplied(req);
             const text = Buffer.concat(chunks).toString('utf8');
             const body = text === '' ? undefined : JSON.parse(text);
             resolve({
@@ -79,6 +90,7 @@ export class StubClient {
         },
       );
       req.on('error', reject);
+      guardLateSocketErrors(req);
       req.end(payload);
     });
   }
@@ -91,4 +103,51 @@ export class StubClient {
       authorization: this.token ? `Bearer ${this.token}` : undefined,
     };
   }
+}
+
+const LATE_WRITE_ERRORS = new Set(['EPIPE', 'ECONNRESET']);
+
+/** Whether the reply on a socket's current request is complete. */
+interface ReplyState {
+  complete: boolean;
+}
+
+const replyStates = new WeakMap<Socket, ReplyState>();
+
+/**
+ * Builds the listener that ignores a failed write to a stub that has already
+ * answered in full, which is how an early answer and close shows up. Any other
+ * error is rethrown. Before the reply is complete Node reports the error to the
+ * request itself, so the listener leaves it alone.
+ */
+export function lateWriteErrorListener(
+  state: ReplyState,
+): (error: NodeJS.ErrnoException) => void {
+  return (error) => {
+    if (!state.complete) return;
+    if (!LATE_WRITE_ERRORS.has(error.code ?? '')) throw error;
+  };
+}
+
+/**
+ * Node removes its socket error handler once a reply is complete, even while
+ * the body is still being sent, so a late EPIPE or ECONNRESET would crash the
+ * process. Each socket keeps a listener for its whole life; a failure before the
+ * reply still rejects the call.
+ */
+function guardLateSocketErrors(req: ClientRequest): void {
+  req.once('socket', (socket) => {
+    let state = replyStates.get(socket);
+    if (!state) {
+      state = { complete: false };
+      replyStates.set(socket, state);
+      socket.on('error', lateWriteErrorListener(state));
+    }
+    state.complete = false;
+  });
+}
+
+function markReplied(req: ClientRequest): void {
+  const state = req.socket && replyStates.get(req.socket);
+  if (state) state.complete = true;
 }

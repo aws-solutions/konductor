@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, describe, expect, it, vi } from 'vitest';
+// Loaded here so its cold start is not charged to the first timed test below.
+// It reads none of the variables these tests stub, and the module cache
+// survives `vi.resetModules()`.
+import '@playwright/test';
 import { originOf } from './address.ts';
 import { apiTarget } from './target.ts';
 import { webServersFor } from './web-servers.ts';
