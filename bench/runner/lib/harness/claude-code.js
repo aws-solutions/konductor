@@ -131,10 +131,12 @@ function envSetup({ arm, ctx, home, tmpdir, baseEnv = process.env }) {
   const env = {};
   for (const k of ALLOW) if (baseEnv[k] !== undefined) env[k] = baseEnv[k];
   const region = ctx?.region ?? REGION;
+  const runTmp = tmpdir || path.join(home, 'tmp');
   const set = {
     HOME: home,
     CLAUDE_CONFIG_DIR: path.join(home, '.claude'),
-    TMPDIR: tmpdir || path.join(home, 'tmp'),
+    TMPDIR: runTmp,
+    CLAUDE_CODE_TMPDIR: runTmp,
     TERM: 'dumb',
     CLAUDE_CODE_USE_BEDROCK: '1',
     AWS_REGION: region,
@@ -272,8 +274,8 @@ const slugOf = (cwd) => {
 };
 
 /**
- * Claude Code writes task output under <tmp>/claude-<uid>/<cwd slug>/..., outside HOME. The run's TMPDIR is given to the
- * process, and this removes what it made there or in the default temp directory. The cwd slug is unique to the run, so
+ * Claude Code writes task output under <tmp>/claude-<uid>/<cwd slug>/..., outside HOME. The run's temp directory is given to
+ * the process as TMPDIR and CLAUDE_CODE_TMPDIR, and this removes what it made there or in the default temp directory. The cwd slug is unique to the run, so
  * parallel runs never touch each other's files.
  */
 function cleanupRun({ cwd, tmpdir, tmpBases = [os.tmpdir()], uid = process.getuid ? process.getuid() : null }) {
@@ -390,7 +392,7 @@ function runConfigRecord({ ctx, config, region, runBudgetUsd, arms = [] }) {
     builtins: { agents: BUILTIN_AGENTS, note: 'Claude Code starts built-in agents and skills even with an empty config directory, so the vanilla arm is not empty' },
     expectedInstalledAgents: EXPECTED_AGENTS,
     sourceCommits: Object.fromEntries(arms.filter((a) => !a.vanilla).map((a) => [a.id, a.commitSha ?? a.contentHash ?? null])),
-    cleanup: 'TMPDIR is set to <run>/tmp; whether claude honors it for /tmp/claude-<uid> is unverified, so the run removes <tmp>/claude-<uid>/<cwd slug> in both places',
+    cleanup: 'TMPDIR and CLAUDE_CODE_TMPDIR are set to <run>/tmp; whether claude honors either for /tmp/claude-<uid> is unverified, so the run removes <tmp>/claude-<uid>/<cwd slug> in both places',
     costBasis: 'list-price USD from result.total_cost_usd and modelUsage; a run killed before its result line is censored',
   };
 }

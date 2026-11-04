@@ -123,7 +123,8 @@ function verify(args) {
   if (honored.length) {
     const inRun = honored.some((h) => h.inRunTmpdir > 0);
     const inDefault = honored.some((h) => h.inDefaultTmp > 0);
-    out(`INFO  claude's task directory was found ${inRun ? 'under the run TMPDIR (TMPDIR is honored)' : ''}${inRun && inDefault ? ' and ' : ''}${inDefault ? 'under the default temp directory (TMPDIR is not honored for it)' : ''}${!inRun && !inDefault ? 'nowhere (no task directory was made)' : ''}`);
+    if (!inRun && !inDefault) out('INFO  no task directory was made (expected for runs that only use Read/Write and a foreground sub-agent)');
+    else out(`INFO  claude's task directory was found ${inRun ? 'under the run TMPDIR (TMPDIR or CLAUDE_CODE_TMPDIR is honored)' : ''}${inRun && inDefault ? ' and ' : ''}${inDefault ? 'under the default temp directory (neither variable is honored for it)' : ''}`);
   }
   process.exit(failed ? 1 : 0);
 }

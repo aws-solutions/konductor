@@ -302,6 +302,18 @@ test('the export error shown to the user is one line, capped, with key ids and t
   }
 });
 
+test('a run that makes no task directory says so calmly and still passes', () => {
+  const s = setup('vanilla-success', { tmpBases: [] });
+  try {
+    const r = smoke(s, GOOD);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /INFO {2}no task directory was made \(expected for runs that only use Read\/Write and a foreground sub-agent\)/);
+    assert.doesNotMatch(r.stdout, /nowhere/);
+  } finally {
+    s.cleanup();
+  }
+});
+
 test('credentials already exported in the shell are used and no profile is needed', () => {
   const s = setup();
   try {

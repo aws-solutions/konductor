@@ -204,9 +204,11 @@ test('CLI: a Claude Code run writes names-only run-config and env, a USD summary
     assert.deepEqual(cfg.claudeCode.credentials.variableNames, ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']);
     assert.deepEqual(cfg.claudeCode.credentials.notPassedWhenSet, ['AWS_PROFILE']);
     assert.ok(cfg.claudeCode.envVarNames.includes('CLAUDE_CONFIG_DIR'));
+    assert.ok(cfg.claudeCode.envVarNames.includes('CLAUDE_CODE_TMPDIR'), 'the variable name is recorded, not a path');
     assert.equal(cfg.claudeCode.effort.applied, false);
     const envFile = JSON.parse(fs.readFileSync(path.join(out, 'env.json'), 'utf8'));
     assert.equal(envFile.vanillaArm.set.TMPDIR, '<run>/tmp', 'env.json shows the run temp directory, which is not under HOME');
+    assert.equal(envFile.vanillaArm.set.CLAUDE_CODE_TMPDIR, '<run>/tmp');
     assert.equal(cfg.claudeCode.binaryName, 'claude');
     assert.equal('binaryPath' in cfg.claudeCode, false, 'the home path of the binary is not recorded');
     assert.equal(JSON.stringify(cfg.claudeCode).includes(s.root), false, 'no path of the invoking machine in the Claude Code record');

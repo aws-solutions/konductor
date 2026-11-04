@@ -192,6 +192,7 @@ test('env: export-mode credentials only, no profile variables, telemetry off, sc
   assert.equal(env.HOME, '/h');
   assert.equal(env.CLAUDE_CONFIG_DIR, '/h/.claude');
   assert.equal(env.TMPDIR, '/t');
+  assert.equal(env.CLAUDE_CODE_TMPDIR, '/t', 'claude\'s task directory root is the run\'s own temp directory');
   assert.equal(env.CLAUDE_CODE_USE_BEDROCK, '1');
   assert.equal(env.AWS_REGION, 'us-east-1');
   assert.equal(env.AWS_DEFAULT_REGION, 'us-east-1');
@@ -331,6 +332,7 @@ test('vanilla run: result fields, command, environment, rules, cleanup and no cr
     for (const k of ['AWS_PROFILE', 'AWS_CONFIG_FILE', 'AWS_SHARED_CREDENTIALS_FILE', 'GITHUB_TOKEN']) assert.equal(st.envKeys.includes(k), false, k);
     for (const k of ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'CLAUDE_CODE_USE_BEDROCK']) assert.ok(st.envKeys.includes(k), k);
     assert.match(st.env.TMPDIR, /scratch\/r-[^/]+\/tmp$/);
+    assert.equal(st.env.CLAUDE_CODE_TMPDIR, st.env.TMPDIR);
 
     assert.deepEqual(fs.readdirSync(s.scratchDir), [], 'run root removed');
     assert.deepEqual(fs.readdirSync(s.tmpBase), [], 'the claude-<uid> task directory the fake made is removed');
