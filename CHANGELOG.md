@@ -398,6 +398,10 @@ not per individual commit.
   `node:os` to `lib/snapshot-loader.js`. The header of `bench/test/pattern-syntax.test.js` no
   longer says the parser builds a keyword-stuffed workspace; it builds the short texts a pattern
   accepts.
+- `bench/test/aggregate.test.js` expected a word-check share for a task where one arm had a list
+  of results and the other had none. Under the equal-length rule that pair is left out of the
+  word-check gap and marked `check_mismatch`, so the test now expects `null` shares and the mark,
+  and checks that a task with equal lists carries no mark.
 
 ### Security
 

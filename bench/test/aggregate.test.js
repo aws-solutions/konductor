@@ -239,7 +239,11 @@ test('aggregateSkill: a pair carries c_with, c_without and w, null where checks 
   const by = Object.fromEntries(res.pairs.map((p) => [p.task_id, p]));
   assert.deepEqual([by.both.c_with, by.both.c_without, by.both.w], [0.75, 0.25, 0.5]);
   assert.deepEqual([by.none.c_with, by.none.c_without, by.none.w], [null, null, null]);
-  assert.deepEqual([by['only-with'].c_with, by['only-with'].c_without, by['only-with'].w], [0.5, null, null]);
+  // One arm with results and the other with none are lists of different lengths: the equal-length
+  // rule leaves the pair out of the word-check gap and marks it (check-mismatch.test.js).
+  assert.deepEqual([by['only-with'].c_with, by['only-with'].c_without, by['only-with'].w], [null, null, null]);
+  assert.deepEqual(by['only-with'].check_mismatch, { with: 2, without: 0 });
+  assert.equal(Object.hasOwn(by.both, 'check_mismatch'), false);
   assert.deepEqual([by.unknown.c_with, by.unknown.c_without, by.unknown.w], [null, 0.5, null]);
   assert.deepEqual([by.unlisted.c_with, by.unlisted.c_without, by.unlisted.w], [null, null, null]);
 });
