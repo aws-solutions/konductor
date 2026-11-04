@@ -310,23 +310,31 @@ when the detailed profile wrote one, and for each drawn task and replicate shows
 runs alone). The outputs are the judge bundles, with the same redaction and then credential scrubbing. Each task's outputs carry the
 letters A, B and so on in a seeded random order. Which arm is behind each letter is kept in `review-key.json`, which goes to its own
 directory, `DIR/calibration/review-key/` by default (`--key-out DIR`; a key directory that is the page directory or inside it is refused),
-so the page directory holds only `review.html` and can be handed to the rater whole. The key records the run directory relative to
-itself and no absolute path, and the page's viewer id does not depend on where the run is. The rater marks each criterion pass, partial or fail (an evidence quote and notes are optional), the
+so the page directory holds only `review.html` and can be handed to the rater whole. If the page directory already holds a key, a
+sheet, a `raters/` directory or any file with "key" in its name from an earlier review, `cap review` refuses and writes nothing, even
+with `--force`: move or delete it first. The key records the run directory relative to itself and no absolute path, and the page's
+viewer id does not depend on where the run is. For each output it also records a hash of the run's `result.json` and `stream.jsonl`.
+The rater marks each criterion pass, partial or fail (an evidence quote and notes are optional), the
 browser keeps the ratings in local storage, and Download ratings saves them as a JSON file. Load ratings resumes from such a file.
 
 `cap review-import --ratings FILE --key DIR/calibration/review-key/review-key.json` checks the file against the key (same page, known items
 and criteria, verdicts pass, partial, fail or null) and joins each letter back to its arm, task and replicate. `--key` is always
 required; a key is never looked for next to the page or the ratings. The run is found from the key's own location, so a run moved
-together with its key still imports; for a run moved without its key, pass `--run DIR` (an import refuses a directory that lacks the
-key's runs, by name). Ratings are kept per rater in `raters/ID/` beside the key; the id is `--rater ID`, else the Rater name typed on the page. A file that rates no criterion, or has no
+together with its key still imports; for a run moved without its key, pass `--run DIR`. An import refuses a directory that lacks the
+key's runs, or whose `result.json` or `stream.jsonl` for any rated output differs from what the page was made from (a re-run in the
+same layout), and names the first such output. A key from an older or unknown version is refused with the advice to regenerate the page
+with `cap review --run DIR`; ratings made on the old page will not import. Ratings are kept per rater in `raters/ID/` beside the key; the id is `--rater ID`, else the Rater name typed on the page. A file that rates no criterion, or has no
 rater id, is refused. Importing a rater that is already on file is refused unless `--force`, so a second import never replaces the first.
 
 With several raters on file, each is scored alone (`raters/ID/result.json`), and all of them are pooled for the combined result: the
-`sheet.json` and `key.json` beside the key list every output once per rater, so each rater's labels count as their own criterion pairs
+`sheet.json` and `key.json` beside the key (the key names the run relative to itself) list every output once per rater, so each rater's labels count as their own criterion pairs
 against each judge in the same kappa, agreement and Spearman code `calibrate score` uses. The command prints that table, says how many
 evidence quotes were found in the output (the judges' quote rule), and saves the pooled result, with each rater's figures under `byRater`,
 to `DIR/calibration/result.json`, where `report` and the detailed profile look for it. A `result.json` that this page did not write is
-kept unless `--force` or `--save FILE`. A refused import writes nothing. A new rater id needs no `--force`; only replacing a rater
+kept unless `--force` or `--save FILE`. A refused import writes nothing, and an import that fails partway leaves the
+rater off file: it scores in a staging directory beside the key (removed on exit, on SIGINT, SIGTERM or SIGHUP, and by the next import
+if a killed process left one), then writes the backup, the per-rater and pooled files and the result, and the rater's own
+`ratings.json` last. Rater, criterion and item ids are plain ids, so names such as `__proto__` work. A new rater id needs no `--force`; only replacing a rater
 already on file does. Before each import rewrites the pooled result, the one it replaces is copied to `result.prev.json` beside it
 (one level: an older `result.prev.json` is replaced).
 

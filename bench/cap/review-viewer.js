@@ -15,14 +15,14 @@ const VERDICTS = ['pass', 'partial', 'fail'];
 const RATINGS_KIND = 'bench-review-ratings';
 const RATINGS_SCHEMA = 1;
 
-/** A blank rating for every output of every group. */
+/** A blank rating for every output of every group. Keyed objects have no prototype, so any id is an ordinary key. */
 function emptyState(data) {
-  const items = {};
+  const items = Object.create(null);
   for (const g of data.groups) {
     for (const o of g.outputs) {
-      const labels = {};
+      const labels = Object.create(null);
       for (const c of g.task.rubric) labels[c.id] = null;
-      items[o.itemId] = { labels, evidence: {}, notes: '' };
+      items[o.itemId] = { labels, evidence: Object.create(null), notes: '' };
     }
   }
   return { rater: '', items };
@@ -58,9 +58,11 @@ function ratingsPayload(data, state, exportedAt) {
   for (const g of data.groups) {
     for (const o of g.outputs) {
       const cur = state.items[o.itemId];
-      const evidence = {};
+      const labels = Object.create(null);
+      for (const [cid, v] of Object.entries(cur.labels)) labels[cid] = v;
+      const evidence = Object.create(null);
       for (const [cid, q] of Object.entries(cur.evidence)) if (q && q.trim()) evidence[cid] = q;
-      items.push({ itemId: o.itemId, labels: { ...cur.labels }, evidence, notes: cur.notes });
+      items.push({ itemId: o.itemId, labels, evidence, notes: cur.notes });
     }
   }
   return { schemaVersion: 1, kind: 'bench-review-ratings', viewerId: data.viewerId, rater: state.rater, exportedAt, items };

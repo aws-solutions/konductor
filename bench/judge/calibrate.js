@@ -105,14 +105,18 @@ function stats(critPairs, scorePairs, thresholds) {
 
 function scoreLabels({ labelsFile, keyFile, thresholds }) {
   const sheet = readJson(labelsFile);
-  const key = readJson(keyFile || path.join(path.dirname(labelsFile), 'key.json'));
-  const run = loadRun(key.runDir);
+  const keyPath = keyFile || path.join(path.dirname(labelsFile), 'key.json');
+  const key = readJson(keyPath);
+  // A relative runDir is relative to the key file, so a key kept inside the run still works after the run moves.
+  const run = loadRun(path.resolve(path.dirname(keyPath), key.runDir));
   const records = (run.judgments?.rubric || []).filter((r) => !r.judgeError);
   const judges = run.judgments?.judges || [];
   const recOf = (judge, k) => records.find((r) => r.judge === judge && r.armId === k.armId && r.taskId === k.taskId && r.replicate === k.replicate);
 
   const out = { thresholds, itemsTotal: sheet.items.length, itemsLabeled: 0, judges: {}, judgeVsJudge: {} };
-  const humanOf = (it) => it.rubric.map((r) => ({ id: r.id, verdict: it.labels[r.id] })).filter((c) => VERDICTS.includes(c.verdict));
+  // Own keys only: a criterion or item id such as "constructor" must not read an inherited property.
+  const ownGet = (o, k) => (o && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined);
+  const humanOf = (it) => it.rubric.map((r) => ({ id: r.id, verdict: ownGet(it.labels, r.id) })).filter((c) => VERDICTS.includes(c.verdict));
   const labeledItems = sheet.items.filter((it) => humanOf(it).length === it.rubric.length);
   out.itemsLabeled = labeledItems.length;
 
@@ -120,7 +124,8 @@ function scoreLabels({ labelsFile, keyFile, thresholds }) {
     const crit = [];
     const score = [];
     for (const it of sheet.items) {
-      const rec = recOf(judge, key.items[it.itemId]);
+      const k = ownGet(key.items, it.itemId);
+      const rec = k && recOf(judge, k);
       if (!rec) continue;
       const human = humanOf(it);
       const jv = new Map(rec.criteria.map((c) => [c.id, c.verdict]));

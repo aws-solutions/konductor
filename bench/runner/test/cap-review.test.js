@@ -12,7 +12,7 @@ const { tmp, makeBench, makeRun, writeJudgments } = require('./helpers.js');
 const { DEFAULTS } = require('../../judge/config.js');
 const { compileRedactions, DEFAULT_REDACTIONS } = require('../../judge/redact.js');
 const { writeReview, importRatings, validateRatings, sampleParams, raterIdOf } = require('../../cap/review.js');
-const { formatRaterKappas, raterKappas } = require('../../judge/calibrate.js');
+const { formatRaterKappas, raterKappas, scoreLabels } = require('../../judge/calibrate.js');
 const { readCalibration } = require('../../report/generate.js');
 const viewer = require('../../cap/review-viewer.js');
 
@@ -338,7 +338,9 @@ test('the viewer id does not depend on where the run is, and ratings import afte
     assert.equal(out.runDir, moved);
     assert.equal(out.savePath, path.join(moved, 'calibration', 'result.json'));
     assert.equal(out.res.judges.good.kappa, 1);
-    assert.equal(readJson(out.sheetKeyPath).runDir, moved);
+    // The pooled key records the run relative to itself, and calibrate score still finds it there.
+    assert.equal(readJson(out.sheetKeyPath).runDir, path.join('..', '..'));
+    assert.equal(scoreLabels({ labelsFile: out.sheetPath, thresholds: DEFAULTS.thresholds }).judges.good.kappa, 1);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
@@ -385,6 +387,174 @@ test('an import that fails while scoring writes nothing, and the retry then impo
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
+test('a re-run in the same layout is refused by item; an unchanged copy of the run imports', () => {
+  const f = fixture();
+  try {
+    judgePanel(f.runDir, { only: ['good'] });
+    const keys = path.join(f.root, 'keys');
+    const r = writeReview(opts(f, { n: 6, seed: 2, keyOutDir: keys }));
+    const ratingsFile = path.join(f.root, 'ratings.json');
+    fs.writeFileSync(ratingsFile, JSON.stringify(rate(r)));
+    const key = readJson(r.keyPath);
+    assert.ok(key.groups.every((g) => g.items.every((i) => /^[0-9a-f]{64}$/.test(i.runHash))));
+    // An unchanged copy elsewhere imports.
+    const copy = path.join(f.root, 'copy');
+    fs.cpSync(f.runDir, copy, { recursive: true });
+    assert.equal(importRatings({ ratingsFile, keyFile: r.keyPath, run: copy, thresholds: DEFAULTS.thresholds }).res.judges.good.kappa, 1);
+    // A re-run with the same layout and the same result.json but a different stream is refused, naming the item.
+    const rerun = path.join(f.root, 'rerun');
+    fs.cpSync(f.runDir, rerun, { recursive: true });
+    const it = key.groups[1].items[0];
+    const stream = path.join(rerun, it.armId, it.taskId, String(it.replicate), 'stream.jsonl');
+    fs.appendFileSync(stream, `${JSON.stringify({ type: 'runFinished', data: { status: 'success', finalText: 'another answer' } })}\n`);
+    const before = snapshot(keys);
+    assert.throws(() => importRatings({ ratingsFile, keyFile: r.keyPath, run: rerun, force: true, thresholds: DEFAULTS.thresholds }),
+      new RegExp(`different output for item ${it.itemId} \\(${it.armId.replace(/\./g, '\\.')}/${it.taskId}/${it.replicate}\\)`));
+    assert.deepEqual(snapshot(keys), before);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('a page directory holding a key or ratings from an earlier review is refused, and nothing is written', () => {
+  const f = fixture();
+  try {
+    const page = path.join(f.runDir, 'calibration', 'review');
+    for (const name of ['review-key.json', 'key.json', 'sheet.json', 'raters', 'old-key.json']) {
+      fs.rmSync(page, { recursive: true, force: true });
+      fs.mkdirSync(page, { recursive: true });
+      if (name === 'raters') fs.mkdirSync(path.join(page, name)); else fs.writeFileSync(path.join(page, name), '{}');
+      assert.throws(() => writeReview(opts(f, { n: 2 })), new RegExp(`holds ${name.replace('.', '\\.')} from an earlier review.*must not be handed to a rater`));
+      assert.deepEqual(fs.readdirSync(page), [name], 'no page was written beside it');
+      assert.ok(!fs.existsSync(path.join(f.runDir, 'calibration', 'review-key')));
+      assert.throws(() => writeReview(opts(f, { n: 2, force: true })), /from an earlier review/);
+    }
+    // A ratings file the rater saved there is not key-like.
+    fs.rmSync(page, { recursive: true, force: true });
+    fs.mkdirSync(page, { recursive: true });
+    fs.writeFileSync(path.join(page, 'ratings-abc.json'), '{}');
+    writeReview(opts(f, { n: 2 }));
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('an old, missing or unknown key version says to regenerate the page and that old ratings will not import', () => {
+  const f = fixture();
+  try {
+    const r = writeReview(opts(f, { n: 2, seed: 1 }));
+    const ratingsFile = path.join(f.root, 'ratings.json');
+    fs.writeFileSync(ratingsFile, JSON.stringify(rate(r)));
+    const good = readJson(r.keyPath);
+    for (const [v, shown] of [[1, '1'], [undefined, 'missing'], [3, '3']]) {
+      const k = { ...good, schemaVersion: v };
+      if (v === undefined) delete k.schemaVersion;
+      const file = path.join(f.root, `key-${shown}.json`);
+      fs.writeFileSync(file, JSON.stringify(k));
+      assert.throws(() => importRatings({ ratingsFile, keyFile: file, thresholds: DEFAULTS.thresholds }),
+        new RegExp(`schemaVersion ${shown}; this version reads 2\\)\\. Regenerate it with \`cap review --run DIR\`; ratings made on the old page will not import`));
+    }
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('ids such as __proto__, constructor and toString work as rater and criterion ids', () => {
+  const root = tmp();
+  try {
+    const bench = makeBench(path.join(root, 'bench'));
+    const ids = ['__proto__', 'constructor', 'toString'];
+    const t = JSON.parse(fs.readFileSync(path.join(bench, 'tasks', 't1.json'), 'utf8'));
+    t.rubric = ids.map((id) => ({ id, criterion: `criterion ${id}`, weight: 1 }));
+    fs.writeFileSync(path.join(bench, 'tasks', 't1.json'), JSON.stringify(t));
+    const specs = [];
+    for (const arm of ['vanilla', 'v1.2.0']) for (let rep = 1; rep <= 3; rep++) specs.push({ arm, rep, files: { 'a.txt': `${MARK[arm]}-${rep}\n` } });
+    const runDir = makeRun(path.join(root, 'run'), bench, specs);
+    const truth = (rep) => (rep % 2 ? 'pass' : 'fail');
+    // Built from entries, so "__proto__" is an own key here too.
+    const crit = (rep) => Object.fromEntries(ids.map((id, i) => [id, i === 0 ? truth(rep) : 'pass']));
+    const rubric = [];
+    for (const arm of ['vanilla', 'v1.2.0']) for (let rep = 1; rep <= 3; rep++) rubric.push({ judge: 'good', arm, rep, criteria: crit(rep), score: 1 });
+    writeJudgments(runDir, { judges: ['good'], rubric });
+    const r = writeReview({ runDir, benchDir: bench, n: 6, seed: 2, limits: DEFAULTS.limits, redactions: compileRedactions(DEFAULT_REDACTIONS), env: {} });
+    const key = readJson(r.keyPath);
+    const data = dataOf(fs.readFileSync(r.pagePath, 'utf8'));
+    const rep = new Map(key.groups.flatMap((g) => g.items.map((i) => [i.itemId, i.replicate])));
+    const ratingsFor = (name) => {
+      const st = viewer.emptyState(data);
+      st.rater = name;
+      for (const id of Object.keys(st.items)) for (const [i, cid] of ids.entries()) st.items[id].labels[cid] = i === 0 ? truth(rep.get(id)) : 'pass';
+      return JSON.parse(JSON.stringify(viewer.ratingsPayload(data, st, null)));
+    };
+    const a = ratingsFor('__proto__');
+    assert.deepEqual(Object.keys(a.items[0].labels), ids, 'the page exports every criterion, __proto__ included');
+    // The page loads its own export back.
+    const back = viewer.emptyState(data);
+    viewer.mergeRatings(data, back, a);
+    assert.deepEqual(Object.keys(back.items[a.items[0].itemId].labels).filter((k) => back.items[a.items[0].itemId].labels[k] !== null), ids);
+    for (const name of ['__proto__', 'constructor', 'toString']) {
+      const file = path.join(root, `${name}.json`);
+      fs.writeFileSync(file, JSON.stringify(ratingsFor(name)));
+      importRatings({ ratingsFile: file, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    }
+    const res = readJson(path.join(runDir, 'calibration', 'result.json'));
+    assert.deepEqual(res.source.raters, ['__proto__', 'constructor', 'tostring']);
+    assert.deepEqual(Object.keys(res.byRater).sort(), ['__proto__', 'constructor', 'tostring']);
+    assert.deepEqual(res.raterKappa.raters.map((x) => [x.rater, x.kappa]), [['__proto__', 1], ['constructor', 1], ['tostring', 1]]);
+    assert.equal(res.itemsLabeled, 18);
+    assert.equal(res.judges.good.nCriteria, 54);
+    const sheet = readJson(path.join(r.keyDir, 'sheet.json'));
+    assert.ok(sheet.items.every((it) => Object.keys(it.labels).length === 3));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a signal during an import removes its staging directory, and a stale one is cleared by the next import', () => {
+  const f = fixture();
+  try {
+    judgePanel(f.runDir, { only: ['good'] });
+    const r = writeReview(opts(f, { n: 6, seed: 2 }));
+    const ratingsFile = path.join(f.root, 'ratings.json');
+    fs.writeFileSync(ratingsFile, JSON.stringify(rate(r)));
+    const script = `
+      const { importRatings } = require(${JSON.stringify(path.join(__dirname, '..', '..', 'cap', 'review.js'))});
+      const { DEFAULTS } = require(${JSON.stringify(path.join(__dirname, '..', '..', 'judge', 'config.js'))});
+      importRatings({ ratingsFile: ${JSON.stringify(ratingsFile)}, keyFile: ${JSON.stringify(r.keyPath)}, thresholds: DEFAULTS.thresholds,
+        onStaged: (dir) => { process.stdout.write(dir + '\\n'); process.emit(process.argv[1]); } });
+      process.stdout.write('not interrupted\\n');`;
+    for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+      const c = spawnSync(process.execPath, ['-e', script, sig], { encoding: 'utf8' });
+      assert.equal(c.status, { SIGINT: 130, SIGTERM: 143, SIGHUP: 129 }[sig], c.stderr);
+      const stage = c.stdout.split('\n')[0];
+      assert.match(path.basename(stage), /^\.import-/);
+      assert.ok(!fs.existsSync(stage), `${sig}: the staging directory is gone`);
+      assert.deepEqual(fs.readdirSync(r.keyDir), ['review-key.json'], `${sig}: nothing else was written`);
+    }
+    // A staging directory left by a killed process (SIGKILL cannot be caught) is removed by the next import.
+    fs.mkdirSync(path.join(r.keyDir, '.import-stale'));
+    fs.writeFileSync(path.join(r.keyDir, '.import-stale', 'key.json'), '{}');
+    importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    assert.deepEqual(fs.readdirSync(r.keyDir).filter((n) => n.startsWith('.import-')), []);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('a late failure writing the backup leaves the new rater off file, so the retry imports', () => {
+  const f = fixture();
+  try {
+    judgePanel(f.runDir, { only: ['good'] });
+    const r = writeReview(opts(f, { n: 6, seed: 2 }));
+    const a = path.join(f.root, 'a.json');
+    fs.writeFileSync(a, JSON.stringify(rate(r)));
+    importRatings({ ratingsFile: a, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    const result = path.join(f.runDir, 'calibration', 'result.json');
+    const firstResult = fs.readFileSync(result, 'utf8');
+    // result.prev.json as a directory makes the backup copy fail after scoring.
+    fs.mkdirSync(path.join(f.runDir, 'calibration', 'result.prev.json'));
+    const b = path.join(f.root, 'b.json');
+    fs.writeFileSync(b, JSON.stringify({ ...rate(r), rater: 'second' }));
+    assert.throws(() => importRatings({ ratingsFile: b, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }));
+    assert.ok(!fs.existsSync(path.join(r.keyDir, 'raters', 'second')), 'no file for the new rater');
+    assert.equal(fs.readFileSync(result, 'utf8'), firstResult, 'the pooled result is unchanged');
+    fs.rmdirSync(path.join(f.runDir, 'calibration', 'result.prev.json'));
+    const out = importRatings({ ratingsFile: b, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    assert.deepEqual(out.raters, ['second', 'tester']);
+    assert.equal(fs.readFileSync(out.backupPath, 'utf8'), firstResult);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
 test('validation names each problem and nothing is written for a bad file', () => {
   const f = fixture();
   try {
@@ -421,7 +591,7 @@ test('the page helpers: blank state, progress, merge refuses another page and ig
   s.items['g001-A'].evidence = { c1: 'q', c2: '  ' };
   assert.deepEqual(viewer.progress(data, s), { done: 1, total: 2 });
   const out = viewer.ratingsPayload(data, s, 'now');
-  assert.deepEqual(out.items[0], { itemId: 'g001-A', labels: { c1: 'pass', c2: 'partial' }, evidence: { c1: 'q' }, notes: '' });
+  assert.deepEqual(JSON.parse(JSON.stringify(out.items[0])), { itemId: 'g001-A', labels: { c1: 'pass', c2: 'partial' }, evidence: { c1: 'q' }, notes: '' });
   const t = viewer.emptyState(data);
   const m = viewer.mergeRatings(data, t, { ...out, items: [...out.items, { itemId: 'g009-A', labels: {} }] });
   assert.deepEqual(m, { applied: 2, skipped: 1 });
@@ -432,7 +602,7 @@ test('the page helpers: blank state, progress, merge refuses another page and ig
   const u = viewer.emptyState(data);
   const odd = { kind: 'bench-review-ratings', viewerId: 'v1', items: [{ itemId: '__proto__', labels: { c1: 'pass' } }, { itemId: 'toString' }, { itemId: 'g001-A', labels: { toString: 'pass', constructor: 'fail', c1: 'fail' } }] };
   assert.deepEqual(viewer.mergeRatings(data, u, odd), { applied: 1, skipped: 2 });
-  assert.deepEqual(u.items['g001-A'].labels, { c1: 'fail', c2: null });
+  assert.deepEqual({ ...u.items['g001-A'].labels }, { c1: 'fail', c2: null });
   assert.equal(({}).c1, undefined);
 });
 
