@@ -384,7 +384,27 @@ pub(crate) fn load_config_with_home(
     project_root: &Path,
     home_dir: Option<&Path>,
 ) -> Result<Config, ConfigError> {
+    load_layers(project_root, home_dir).map(|(config, _)| config)
+}
+
+/// Same as `load_config`, plus the file that set
+/// `fail_on_severity_at_or_above`: the project file, else the user file,
+/// or `None` when only the preset sets it. It comes from the same read as
+/// the config, so the two can never disagree.
+pub(crate) fn load_config_with_threshold_source(
+    project_root: &Path,
+) -> Result<(Config, Option<PathBuf>), ConfigError> {
+    load_layers(project_root, dirs_home_dir().as_deref())
+}
+
+/// The preset, user and project tiers merged in that order, and the last
+/// tier file that set `fail_on_severity_at_or_above`.
+fn load_layers(
+    project_root: &Path,
+    home_dir: Option<&Path>,
+) -> Result<(Config, Option<PathBuf>), ConfigError> {
     let preset = load_preset_defaults()?;
+    let mut threshold_source = None;
     super::trace::trace("trace", "config: loaded preset defaults layer");
 
     let merged = match home_dir {
@@ -392,6 +412,9 @@ pub(crate) fn load_config_with_home(
             let user_config_path = home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
             if user_config_path.is_file() {
                 let raw_user = load_raw_config(&user_config_path)?;
+                if raw_user.fail_on_severity_at_or_above.is_some() {
+                    threshold_source = Some(user_config_path.clone());
+                }
                 super::trace::trace(
                     "trace",
                     &format!(
@@ -410,6 +433,9 @@ pub(crate) fn load_config_with_home(
     let project_config_path = project_root.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
     let merged = if project_config_path.is_file() {
         let raw_project = load_raw_config(&project_config_path)?;
+        if raw_project.fail_on_severity_at_or_above.is_some() {
+            threshold_source = Some(project_config_path.clone());
+        }
         super::trace::trace(
             "trace",
             &format!(
@@ -422,7 +448,7 @@ pub(crate) fn load_config_with_home(
         merged
     };
 
-    validate(&merged)
+    Ok((validate(&merged)?, threshold_source))
 }
 
 /// Resolves the current user's home directory for locating
@@ -1320,6 +1346,40 @@ mod tests {
         set_config_value(&root, "version", "1").expect("setting the broken field must repair it");
         assert_eq!(read_mapping(&config_path)["version"].as_u64(), Some(1));
         fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn threshold_source_is_the_last_tier_that_sets_it() {
+        let home = scratch_dir("threshold-source-home");
+        let (root, project_path) = project_with_config("threshold-source", "tier: minor\n");
+        let user_dir = home.join(KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&user_dir).unwrap();
+        let user_path = user_dir.join(CONFIG_FILE_NAME);
+
+        let (_, source) = load_layers(&root, Some(&home)).unwrap();
+        assert_eq!(source, None, "only the preset sets it");
+
+        fs::write(&user_path, "fail_on_severity_at_or_above: HIGH\n").unwrap();
+        let (config, source) = load_layers(&root, Some(&home)).unwrap();
+        assert_eq!(source.as_deref(), Some(user_path.as_path()));
+        assert_eq!(config.fail_on_severity_at_or_above, "HIGH");
+
+        fs::write(&project_path, "fail_on_severity_at_or_above: MEDIUM\n").unwrap();
+        let (config, source) = load_layers(&root, Some(&home)).unwrap();
+        assert_eq!(source.as_deref(), Some(project_path.as_path()));
+        assert_eq!(config.fail_on_severity_at_or_above, "MEDIUM");
+
+        fs::write(&project_path, "fail_on_severity_at_or_above: null\n").unwrap();
+        let (config, source) = load_layers(&root, Some(&home)).unwrap();
+        assert_eq!(
+            source.as_deref(),
+            Some(user_path.as_path()),
+            "a null value sets nothing"
+        );
+        assert_eq!(config.fail_on_severity_at_or_above, "HIGH");
+
+        fs::remove_dir_all(&root).ok();
+        fs::remove_dir_all(&home).ok();
     }
 
     fn file_mode(path: &Path) -> u32 {

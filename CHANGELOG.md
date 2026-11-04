@@ -91,6 +91,7 @@ not per individual commit.
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `konductor config set` keeps an existing `config.yml`'s permission bits and refuses a symlinked
   `.konductor/` or `config.yml` instead of writing through it.
+- `verify-run`'s `CONFIG_SOURCE` line now comes from the same config read as the threshold.
 - Orchestrators run `git` reads as `git --no-pager -c core.fsmonitor=` with `--no-ext-diff
   --no-textconv --submodule=short` (and `--no-show-signature` on `log` and `show`), so repository
   config cannot make a read-only `git` command run a program.
