@@ -411,6 +411,114 @@ def test_stored_cap_raised_above_the_invocation_parameter_is_exit_65_cap_raised(
     assert "CAP_RAISED" in combined(result)
 
 
+def spent_under_cap(layout, stored):
+    session = session_for(layout.output_dir, "in_progress", "IN_PROGRESS")
+    session["run"]["data"]["max_fix_cycles"] = stored
+    for feature in session["features"].values():
+        feature["counters"]["fix_cycles_used"] = stored
+    return session
+
+
+@needs_pinned_cap
+@pytest.mark.parametrize("value", [2, 3])
+def test_stored_cap_equal_to_the_pin_passes_with_cycles_spent_under_it(layout, value):
+    session = spent_under_cap(layout, value)
+    result = step_11(layout, session, "--allow-running", "--max-fix-cycles", str(value))
+    assert result.returncode == 0, combined(result)
+
+
+@needs_pinned_cap
+def test_stored_cap_3_with_default_pin_2_is_exit_65_cap_raised(layout):
+    session = spent_under_cap(layout, 3)
+    result = step_11(layout, session, "--allow-running", "--max-fix-cycles", "2")
+    assert result.returncode == 65, combined(result)
+    assert "CAP_RAISED" in combined(result)
+
+
+def resume_rule():
+    return next(l for l in SOP_TEXT.splitlines() if l.lstrip().startswith("- **Reconciliation on resume (max_fix_cycles)"))
+
+
+def rule_sentences(*tokens):
+    return sentence_with(resume_rule(), *tokens)
+
+
+def test_resume_rule_makes_the_stored_value_the_source_of_truth():
+    assert rule_sentences("stored", "source of truth", "only seeds")
+
+
+def test_resume_rule_continues_when_the_values_match():
+    assert rule_sentences("equals the parameter", "continue")
+
+
+def test_resume_rule_stops_on_a_differing_value_until_the_engineer_decides():
+    assert rule_sentences("differs from the parameter", "MUST NOT continue", "engineer decides")
+    assert "BLOCKED: max_fix_cycles mismatch (stored <stored>, parameter <param>)" in resume_rule()
+    assert "do not stop" not in resume_rule()
+
+
+def test_resume_rule_counts_an_omitted_parameter_as_the_default_supplied():
+    assert rule_sentences("default `2` counts as supplied")
+
+
+def test_resume_rule_writes_the_parameter_when_no_value_is_stored():
+    assert rule_sentences("no `max_fix_cycles` key", "write", "`run.data.max_fix_cycles`")
+
+
+def test_resume_rule_records_an_unattended_mismatch_and_ends_blocked():
+    sentence = rule_sentences("`reply_channel_available` is `false`", "`final-summary` BLOCKED")
+    assert sentence and "without calling Finalize Run with `satisfied=true`" in sentence[0]
+    assert "max_fix_cycles mismatch on resume: stored <stored> in <session file>, invocation parameter <param>" in resume_rule()
+
+
+def test_resume_rule_lets_only_an_explicit_engineer_reply_change_the_cap_and_records_it():
+    assert rule_sentences("Change the cap to the parameter", "explicit engineer reply", "never the parameter alone")
+    assert "`<stored>-><param> approved by <engineer> at <UTC timestamp>`" in resume_rule()
+    assert rule_sentences("Keep the stored value", "write nothing")
+    assert "max_fix_cycles_change_log" in step_section(11)
+
+
+@needs_pinned_cap
+def test_session_without_a_stored_cap_takes_the_pin(layout):
+    session = session_for(layout.output_dir, "in_progress", "IN_PROGRESS")
+    del session["run"]["data"]["max_fix_cycles"]
+    for feature in session["features"].values():
+        feature["counters"]["fix_cycles_used"] = 3
+    result = step_11(layout, session, "--allow-running", "--max-fix-cycles", "3")
+    assert result.returncode == 0, combined(result)
+
+
+@needs_pinned_cap
+def test_engineer_approved_raise_is_consistent_with_the_pin_taken_after_it(layout):
+    session = spent_under_cap(layout, 5)
+    session["run"]["data"]["max_fix_cycles_change_log"] = "2->5 approved by engineer at 2025-01-01T00:00:00Z"
+    result = step_11(layout, session, "--allow-running", "--max-fix-cycles", "5")
+    assert result.returncode == 0, combined(result)
+
+
+@needs_pinned_cap
+def test_engineer_approved_lowering_below_spent_cycles_is_exit_3(layout):
+    session = spent_under_cap(layout, 3)
+    session["run"]["data"]["max_fix_cycles"] = 1
+    result = step_11(layout, session, "--allow-running", "--max-fix-cycles", "1")
+    assert result.returncode == 3, combined(result)
+
+
+@needs_pinned_cap
+def test_cap_edited_after_reconciliation_is_cap_raised(layout):
+    session = spent_under_cap(layout, 3)
+    session["run"]["data"]["max_fix_cycles"] = 5
+    result = step_11(layout, session, "--allow-running", "--max-fix-cycles", "3")
+    assert result.returncode == 65, combined(result)
+    assert "CAP_RAISED" in combined(result)
+
+
+def test_step_11_pin_is_the_reconciled_stored_cap():
+    section = step_section(11)
+    assert "after this invocation's reconciliation" in section
+    assert "stored value still wins" not in section
+
+
 def test_step_11_passes_the_invocation_parameter_as_the_pinned_cap():
     section = step_section(11)
     assert "--max-fix-cycles <max_fix_cycles>" in section

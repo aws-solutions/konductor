@@ -42,6 +42,22 @@ CODE_REVIEW = "code-review"
 CAP_READING_PHASES = ("implementation", "code-review", "testing", "documentation")
 CAP_KEY = "run.data.max_fix_cycles"
 CAP_RESUME_LABEL = "Reconciliation on resume (max_fix_cycles)"
+RESUME_STOP_PARTS = (
+    "MUST NOT continue",
+    "BLOCKED",
+    "final-summary",
+    "reply_channel_available",
+    "default `2` counts as supplied",
+    "max_fix_cycles_change_log",
+    "approved by",
+    "has no `max_fix_cycles` key",
+    "equals the parameter",
+    "differs from the parameter",
+    "Keep the stored value",
+    "Change the cap",
+)
+RESUME_CONTINUE_PHRASES = ("do not stop", "continue with the stored value")
+PIN_SOURCE_PART = "after this invocation's reconciliation"
 DISAGREEMENT_ITEM = "verify-run disagrees with the Quality Gate"
 PINNED_CAP_FLAG = re.compile(r"--max-fix-cycles <max_fix_cycles>")
 PHASE_ORDER_KEY = "PHASE_ORDER"
@@ -204,8 +220,44 @@ def check_max_fix_cycles(name, text, sections):
     for phase in CAP_READING_PHASES:
         if phase in sections and CAP_KEY not in sections[phase]:
             errors.append(f"max-fix-cycles-unread (k-full-sdlc only): '{name}' Step for '{phase}' does not read the cap from `{CAP_KEY}`")
-    if CAP_RESUME_LABEL not in text:
+    rule = resume_rule(text)
+    if rule is None:
         errors.append(f"max-fix-cycles-resume (k-full-sdlc only): '{name}' lacks the '{CAP_RESUME_LABEL}' rule")
+    else:
+        errors += check_resume_rule_stops(name, rule)
+    final_section = list(sections.values())[-1] if sections else ""
+    if final_section:
+        errors += check_pinned_cap_source(name, final_section)
+    return errors
+
+
+def resume_rule(text):
+    """The bullet that starts with the max_fix_cycles reconciliation label."""
+    match = re.search(rf"^\s*- \*\*{re.escape(CAP_RESUME_LABEL)}\.\*\*(.*)$", text, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def check_resume_rule_stops(name, rule):
+    """A stored cap that differs from the parameter is a hard stop, never a silent adoption."""
+    errors = []
+    missing = [part for part in RESUME_STOP_PARTS if part not in rule]
+    if missing:
+        errors.append(
+            f"max-fix-cycles-resume-stop (k-full-sdlc only): '{name}' resume rule must be a hard stop on a mismatch; missing {', '.join(f'`{m}`' for m in missing)}"
+        )
+    for phrase in RESUME_CONTINUE_PHRASES:
+        if phrase in rule:
+            errors.append(f"max-fix-cycles-resume-stop (k-full-sdlc only): '{name}' resume rule must not let the run continue on a mismatch ('{phrase}')")
+    return errors
+
+
+def check_pinned_cap_source(name, section):
+    """The Step 11 pin is the value both stored and passed, not the invocation parameter alone."""
+    errors = []
+    if PIN_SOURCE_PART not in section:
+        errors.append(f"max-fix-cycles-pin-source (k-full-sdlc only): '{name}' final Step must define `<max_fix_cycles>` as the cap stored in `{CAP_KEY}` after this invocation's reconciliation")
+    if "stored value still wins" in section:
+        errors.append(f"max-fix-cycles-pin-source (k-full-sdlc only): '{name}' final Step must not say the stored value still wins on resume")
     return errors
 
 

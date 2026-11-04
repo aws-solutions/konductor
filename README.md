@@ -308,7 +308,7 @@ doesn't work, and `/prompts` lists what's available.
 | `skip_phases`         | no       | none              | Comma-separated: `elicitation`, `codebase-analysis`, `requirements`, `design`, `design-review`, `feature-splitting`, `specs`, `implementation`, `code-review`, `testing`, `documentation` |
 | `output_dir`          | no       | `.konductor/`     | |
 | `elicitation_depth`   | no       | `standard`        | `quick`, `standard` or `deep` |
-| `max_fix_cycles`      | no       | `2`               | |
+| `max_fix_cycles`      | no       | `2`               | Stored when the session starts; on resume a different value asks you to keep the stored one or approve the change |
 | `deployed_url`        | no       | none              | Used only by the UI/functional test phase |
 | `credentials_file`    | no       | none              | Same phase |
 | `feature_isolation`   | no       | `branch`          | `branch` or `worktree` |
