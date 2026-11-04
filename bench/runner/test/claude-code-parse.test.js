@@ -305,5 +305,5 @@ test('canonicalModelOf handles government-cloud prefixes and versioned ids', () 
   assert.equal(cc.canonicalModelOf('eu.anthropic.claude-sonnet-5-5-v1:0'), 'claude-sonnet-5-5');
   assert.equal(cc.canonicalModelOf('anthropic.claude-sonnet-5-5-20260101-v2:0'), 'claude-sonnet-5-5-20260101');
   assert.equal(cc.canonicalModelOf('claude-sonnet-5-5'), 'claude-sonnet-5-5');
-  assert.equal(cc.canonicalModelOf('arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-sonnet-5-5'), 'arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-sonnet-5-5', 'an ARN is left as given');
+  assert.equal(cc.canonicalModelOf('arn:aws:bedrock:us-east-1::inference-profile/us.anthropic.claude-sonnet-5-5'), 'arn:aws:bedrock:us-east-1::inference-profile/us.anthropic.claude-sonnet-5-5', 'an ARN is left as given');
 });
