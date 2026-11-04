@@ -266,7 +266,7 @@ test('reaches each node with the Tab key and names it', async ({ canvas }) => {
 
     await expect(node).toBeFocused();
     await expect(node).toHaveAccessibleName(name);
-    await expect(node).toHaveAccessibleDescription(/^Read-only workflow graph/);
+    await expect(node).toHaveAccessibleDescription(/^Workflow graph node\./);
     await expect(node.locator('.wf-focus-ring')).toBeVisible();
   }
 });

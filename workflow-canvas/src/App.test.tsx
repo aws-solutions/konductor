@@ -1,9 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MODE_STORAGE_KEY } from './theme/mode';
 import { App } from './App';
-import { HELLO_DOCUMENT, failed, loaded } from './test-support/fixtures';
+import { FakeScheduler } from './test-support/fake-scheduler';
+import {
+  HELLO_DOCUMENT,
+  failed,
+  helloRun,
+  loaded,
+} from './test-support/fixtures';
+import { createSwapRisk } from './launch/swap-guard';
 import type { LoadResult } from './workflow/load-workflow';
 
 const settled = (result: LoadResult) => Promise.resolve(result);
@@ -152,5 +165,50 @@ describe('App', () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
     expect(window.localStorage.getItem(MODE_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('App and the risk of opening another workflow', () => {
+  it('has nothing at risk before anything is changed or run', async () => {
+    const swapRisk = createSwapRisk();
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} swapRisk={swapRisk} />);
+    await screen.findByTestId('node-end');
+
+    expect(swapRisk.get()).toEqual({ draft: false, run: false });
+  });
+
+  it('reports unsaved changes in the Designer', async () => {
+    const swapRisk = createSwapRisk();
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} swapRisk={swapRisk} />);
+    await screen.findByTestId('node-end');
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'name' }), {
+      target: { value: 'write' },
+    });
+
+    expect(swapRisk.get()).toEqual({ draft: true, run: false });
+  });
+
+  it('reports a run that is being followed', async () => {
+    const swapRisk = createSwapRisk();
+    const runs = {
+      start: vi.fn().mockResolvedValue(helloRun(0).runId),
+      get: vi.fn().mockResolvedValue(helloRun(0)),
+    };
+    render(
+      <App
+        load={settled(loaded(HELLO_DOCUMENT, runs))}
+        scheduler={new FakeScheduler()}
+        swapRisk={swapRisk}
+      />,
+    );
+    await screen.findByTestId('node-end');
+    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Run' }));
+
+    await waitFor(() =>
+      expect(swapRisk.get()).toEqual({ draft: false, run: true }),
+    );
   });
 });

@@ -10,6 +10,7 @@ import { LaunchNotice } from './launch/LaunchNotice';
 import { LaunchWait } from './launch/LaunchWait';
 import { takeLaunchCode, watchLaunchCode } from './launch/launch-code';
 import { sessionStorageMemory } from './launch/session-memory';
+import { createSwapRisk, guardOffers } from './launch/swap-guard';
 import { installTheme } from './theme/install';
 import { useWorkflowSource } from './workflow/use-workflow-source';
 import { createWorkflowSource } from './workflow/workflow-source';
@@ -24,7 +25,15 @@ const source = createWorkflowSource(
   takeLaunchCode(window),
   sessionStorageMemory(window),
 );
-watchLaunchCode(window, (code) => void source.offer(code));
+const swapRisk = createSwapRisk();
+watchLaunchCode(
+  window,
+  guardOffers(
+    swapRisk,
+    (question) => window.confirm(question),
+    (code) => void source.offer(code),
+  ),
+);
 
 const runMemory = sessionRunMemory(window);
 
@@ -40,6 +49,7 @@ function Root() {
         </>
       }
       runMemory={runMemory}
+      swapRisk={swapRisk}
     />
   );
 }

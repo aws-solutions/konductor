@@ -9,6 +9,7 @@ import {
   type EndGraphNode,
   type IntentGraphNode,
   type StageGraphNode,
+  type StageSpec,
   type Unplaced,
   type UnplacedNode,
   type WorkflowSpec,
@@ -19,9 +20,12 @@ export const INTENT_ID = 'intent';
 /** The id of the node that draws the end. */
 export const END_ID = 'end';
 
-/** The id of the node that draws the stage called `name`. */
-export function stageNodeId(name: string): string {
-  return `stage-${name}`;
+/**
+ * The id of the node that draws a stage, from its `id`, or from its name if
+ * it has no id.
+ */
+export function stageNodeId(key: string): string {
+  return `stage-${key}`;
 }
 
 function intentNode(spec: WorkflowSpec): Unplaced<IntentGraphNode> {
@@ -34,13 +38,31 @@ function intentNode(spec: WorkflowSpec): Unplaced<IntentGraphNode> {
   };
 }
 
-function stageNode(
-  stage: WorkflowSpec['stages'][number],
+// Two stages with one name read alike, so each says its place in the list.
+function stageLabel(
+  stage: StageSpec,
   harness: string,
+  place: { at: number; of: number } | undefined,
+): string {
+  const where = place ? ` (${place.at} of ${place.of})` : '';
+  return `Stage ${stage.name}${where}, agent ${stage.agent}, harness ${harness}`;
+}
+
+// The place of the stage, only when another stage has its name.
+function placeOf(stages: readonly StageSpec[], index: number) {
+  const name = stages[index]?.name;
+  const shared = stages.filter((stage) => stage.name === name).length > 1;
+  return shared ? { at: index + 1, of: stages.length } : undefined;
+}
+
+function stageNode(
+  stage: StageSpec,
+  harness: string,
+  place: { at: number; of: number } | undefined,
 ): Unplaced<StageGraphNode> {
   return {
-    id: stageNodeId(stage.name),
-    ariaLabel: `Stage ${stage.name}, agent ${stage.agent}, harness ${harness}`,
+    id: stageNodeId(stage.id ?? stage.name),
+    ariaLabel: stageLabel(stage, harness, place),
     type: 'stage',
     height: NODE_HEIGHT.stage,
     data: { name: stage.name, agent: stage.agent, harness },
@@ -91,7 +113,9 @@ function chain(nodes: readonly GraphNode[]): GraphEdge[] {
 export function buildGraph(spec: WorkflowSpec, harness: string): CanvasGraph {
   const nodes = stackDown<UnplacedNode>([
     intentNode(spec),
-    ...spec.stages.map((stage) => stageNode(stage, harness)),
+    ...spec.stages.map((stage, index) =>
+      stageNode(stage, harness, placeOf(spec.stages, index)),
+    ),
     endNode(),
   ]);
   return { nodes, edges: chain(nodes) };

@@ -12,5 +12,6 @@ export type {
   NodeState,
   NodeStatus,
   StageGraphNode,
+  StageSpec,
   WorkflowSpec,
 } from './model';

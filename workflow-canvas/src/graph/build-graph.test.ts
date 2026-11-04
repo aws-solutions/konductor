@@ -152,4 +152,66 @@ describe('buildGraph', () => {
   it('gives a stage the same id every time', () => {
     expect(stageNodeId('draft')).toBe('stage-draft');
   });
+
+  it('names a node from the id of its stage when the stage has one', () => {
+    const graph = buildGraph(
+      {
+        ...HELLO,
+        stages: [
+          { id: 's1', name: 'draft', agent: 'k-developer' },
+          { id: 's2', name: 'review', agent: 'k-quality-assurance' },
+        ],
+      },
+      'kiro-cli',
+    );
+
+    expect(graph.nodes.map((node) => node.id)).toEqual([
+      'intent',
+      'stage-s1',
+      'stage-s2',
+      'end',
+    ]);
+    expect(graph.nodes[1]).toMatchObject({ data: { name: 'draft' } });
+  });
+
+  it('keeps the nodes and edges apart when two stages share a name', () => {
+    const graph = buildGraph(
+      {
+        ...HELLO,
+        stages: [
+          { id: 's1', name: 'same', agent: 'k-developer' },
+          { id: 's2', name: 'same', agent: 'k-developer' },
+        ],
+      },
+      'kiro-cli',
+    );
+
+    const ids = graph.nodes.map((node) => node.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const edgeIds = graph.edges.map((edge) => edge.id);
+    expect(new Set(edgeIds).size).toBe(edgeIds.length);
+  });
+});
+
+describe('buildGraph, for stages that share a name', () => {
+  const stages = [
+    { id: 's1', name: 'review', agent: 'k-developer' },
+    { id: 's2', name: 'review', agent: 'k-developer' },
+    { id: 's3', name: 'ship', agent: 'k-developer' },
+  ];
+
+  it('names each of them with its place in the list', () => {
+    const graph = buildGraph(
+      { name: 'wf', intent: { outcome: 'x' }, stages },
+      'kiro-cli',
+    );
+
+    expect(graph.nodes.map((node) => node.ariaLabel)).toEqual([
+      'Intent: x',
+      'Stage review (1 of 3), agent k-developer, harness kiro-cli',
+      'Stage review (2 of 3), agent k-developer, harness kiro-cli',
+      'Stage ship, agent k-developer, harness kiro-cli',
+      'End',
+    ]);
+  });
 });

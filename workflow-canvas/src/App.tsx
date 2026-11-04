@@ -3,18 +3,22 @@ import AppLayout from '@cloudscape-design/components/app-layout';
 import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
 import Tabs from '@cloudscape-design/components/tabs';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Breadcrumbs } from './chrome/Breadcrumbs';
 import './chrome/chrome.css';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { Designer } from './designer/Designer';
+import { isDirty } from './designer/core';
+import { useEditor } from './designer/use-editor';
+import { useLeaveGuard } from './designer/use-leave-guard';
 import { useSettled } from './designer/use-settled';
-import type { RunMemory, Scheduler } from './execution/core';
+import { isInFlight, type RunMemory, type Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
 import { RunAnnouncements } from './execution/RunAnnouncements';
 import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
 import { useGoal } from './execution/use-goal';
+import type { SwapRisk } from './launch/swap-guard';
 import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
 import { openWorkflowName, type LoadResult } from './workflow/load-workflow';
@@ -30,6 +34,7 @@ export function App({
   notice,
   scheduler = timerScheduler,
   runMemory,
+  swapRisk,
 }: {
   load: Promise<LoadResult>;
   /** Shown above the tabs, such as the refusal of a pasted launch address. */
@@ -37,6 +42,8 @@ export function App({
   scheduler?: Scheduler;
   /** Keeps the latest run across a reload; a page without it starts afresh. */
   runMemory?: RunMemory;
+  /** Told what another workflow would take from the page. */
+  swapRisk?: SwapRisk;
 }) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
@@ -49,6 +56,17 @@ export function App({
   );
   const [goal, setGoal] = useGoal(result);
   const [mode, toggleMode] = useThemeMode();
+  // The Designer edits a draft; the run and the Execution tab use the file
+  // as it is saved.
+  const editor = useEditor(result?.ok ? result.workflow : undefined);
+  const unsaved = editor ? isDirty(editor.state) : false;
+  // The draft lives in the page, so leaving the page loses the changes.
+  useLeaveGuard(unsaved, window);
+  const running = isInFlight(execution.state);
+  useEffect(
+    () => swapRisk?.set({ draft: unsaved, run: running }),
+    [swapRisk, unsaved, running],
+  );
   return (
     <>
       <TopBar mode={mode} onToggle={toggleMode} />
@@ -77,7 +95,7 @@ export function App({
                   {
                     id: 'designer',
                     label: 'Designer',
-                    content: <Designer result={result} />,
+                    content: <Designer result={result} editor={editor} />,
                   },
                   {
                     id: 'execution',
@@ -88,6 +106,7 @@ export function App({
                         execution={execution}
                         goal={goal}
                         onGoalChange={setGoal}
+                        unsaved={unsaved}
                       />
                     ),
                   },
