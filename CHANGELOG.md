@@ -28,6 +28,15 @@ not per individual commit.
   `SANITIZER_VERSION` and `RULES_HASH` identify the rules that produced a judgment. Leak canary
   tests plant a name, alias, namespace, harness path and loading sentence and assert none reaches
   the grader input. Run `node --test bench/test/sanitize.test.js`.
+- `bench/lib/judge-scale.js`, the judge reply scales. `overall` reads a winner and a 1-5 score per
+  answer; `items` reads one MET, PARTIAL or MISSING label per checklist item and derives the
+  winner and a 1-5 score from the share met, so both land on one yardstick. `parse` returns one
+  shape for every scale and marks a reply unusable (`winner` null, with a `problem`) when the
+  winner is not A, B or TIE, a score is not an integer from 1 to 5, a winner contradicts the
+  scores (`winnerScoreConflict`), or a label is missing. `unblind(order, a, b)` in
+  `bench/lib/verdict.js` maps the two scores a judge gave to answers A and B onto the with and
+  without arm and returns their gap, with minus without; an unknown presentation order throws.
+  Run `node --test bench/test/judge-scale.test.js bench/test/verdict.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.

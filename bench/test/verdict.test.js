@@ -1,14 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Verdict unit tests: gradedVerdict (the judge-gap rule `paired-t/v1`) and wordCheckGate (the
- * word-check veto). Pure functions only: no model call, no file access.
+ * Verdict unit tests: gradedVerdict (the judge-gap rule `paired-t/v1`), wordCheckGate (the
+ * word-check veto) and unblind (judge scores to with and without). Pure functions only: no model
+ * call, no file access.
  * Run: node --test bench/test/verdict.test.js
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const rule = require('../lib/decision-rule');
-const { gradedVerdict, wordCheckGate, isUsablePair, REVIEW } = require('../lib/verdict');
+const {
+  gradedVerdict,
+  wordCheckGate,
+  unblind,
+  isUsablePair,
+  REVIEW,
+  ORDERS,
+} = require('../lib/verdict');
 
 const G = (mean, extra = {}) => ({ counted: true, loaded: true, scored: true, mean_delta: mean, ...extra });
 const gp = (values, extra) => values.map((v) => G(v, extra));
@@ -440,4 +448,57 @@ test('property: the gate never outputs keep or prune unless the judge verdict al
   }
   // The generator must reach every branch, or the property proves nothing.
   for (const [what, count] of Object.entries(seen)) assert.ok(count > 0, `${what} was never reached`);
+});
+
+// ---- unblind ---------------------------------------------------------------------------------
+
+test('unblind: with-first makes A the with arm, without-first makes B the with arm', () => {
+  assert.deepEqual(unblind('with-first', 5, 2), { with: 5, without: 2, delta: 3 });
+  assert.deepEqual(unblind('without-first', 5, 2), { with: 2, without: 5, delta: -3 });
+  assert.deepEqual(unblind('with-first', 2, 5), { with: 2, without: 5, delta: -3 });
+  assert.deepEqual(unblind('without-first', 2, 5), { with: 5, without: 2, delta: 3 });
+  assert.equal(unblind('with-first', 4, 4).delta, 0);
+  assert.equal(unblind('without-first', 4, 4).delta, 0);
+});
+
+test('unblind: swapping the order and the scores together gives the same gap', () => {
+  for (const [a, b] of [
+    [5, 1],
+    [1, 5],
+    [3, 3],
+    [2.5, 4],
+  ]) {
+    assert.equal(unblind('with-first', a, b).delta, unblind('without-first', b, a).delta);
+  }
+});
+
+test('unblind: a positive delta favours the skill whichever order the judge saw', () => {
+  // The judge preferred the with arm in both calls: it scored it 5 and the other answer 2.
+  assert.equal(unblind('with-first', 5, 2).delta, 3);
+  assert.equal(unblind('without-first', 2, 5).delta, 3);
+});
+
+test('unblind: an unknown or missing order throws, whatever the scores', () => {
+  for (const order of [undefined, null, '', 'with', 'WITH-FIRST', 'sideways', 1, {}]) {
+    assert.throws(() => unblind(order, 3, 2), /unknown presentation order/, String(order));
+    assert.throws(() => unblind(order, null, null), /unknown presentation order/, String(order));
+  }
+  assert.deepEqual([...ORDERS], ['with-first', 'without-first']);
+});
+
+test('unblind: scores that are not both finite numbers give nulls, not a guess', () => {
+  const none = { with: null, without: null, delta: null };
+  for (const [a, b] of [
+    [null, null],
+    [3, null],
+    [null, 3],
+    [undefined, 2],
+    ['3', 2],
+    [3, '2'],
+    [NaN, 2],
+    [2, Infinity],
+    [true, 2],
+  ]) {
+    for (const order of ORDERS) assert.deepEqual(unblind(order, a, b), none, `${a} ${b}`);
+  }
 });

@@ -5,7 +5,8 @@
  * `gradedVerdict` turns pair records into `keep`, `prune` or `needs human review` from judge score
  * gaps alone. `wordCheckGate` can then turn a `keep` or `prune` into review when the cheap
  * word checks disagree with the judge. It never creates a `keep` or a `prune`, and word checks never
- * enter the judge gap. Both functions are pure: no I/O, no model call.
+ * enter the judge gap. `unblind` maps the two scores a judge gave to the answers it saw as A and
+ * B onto the with and without arm. All three functions are pure: no I/O, no model call.
  *
  * Pair record fields read here (aggregate.js builds them):
  *  - `loaded`: the skill took part in the with-arm run. Anything but `true` is a load failure.
@@ -215,4 +216,31 @@ function wordCheckGate(verdict, pairs) {
   });
 }
 
-module.exports = { REVIEW, isUsablePair, gradedVerdict, wordCheckGate };
+/** The two presentation orders: which arm the judge saw as answer A. */
+const ORDERS = Object.freeze(['with-first', 'without-first']);
+
+/**
+ * Un-blinds the scores of one judge call. `a` and `b` are the scores the judge gave to the
+ * answers it saw as A and B. With `with-first`, A was the with arm; with `without-first`, A was
+ * the without arm. Returns `{ with, without, delta }`, where `delta` is the with score minus the
+ * without score, so a positive delta always favours the skill.
+ *
+ * An order other than the two presentation orders throws: guessing one would flip the sign of
+ * every gap from that call. Scores that are not both finite numbers (a refused reply carries
+ * null) give `{ with: null, without: null, delta: null }` and the caller decides what that means.
+ */
+function unblind(order, a, b) {
+  if (!ORDERS.includes(order)) {
+    throw new Error(
+      `unknown presentation order ${JSON.stringify(String(order))}; use ${ORDERS.join(' or ')}`,
+    );
+  }
+  if (!Number.isFinite(a) || !Number.isFinite(b)) {
+    return { with: null, without: null, delta: null };
+  }
+  const withScore = order === 'with-first' ? a : b;
+  const withoutScore = order === 'with-first' ? b : a;
+  return { with: withScore, without: withoutScore, delta: withScore - withoutScore };
+}
+
+module.exports = { REVIEW, ORDERS, isUsablePair, gradedVerdict, wordCheckGate, unblind };
