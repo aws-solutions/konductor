@@ -46,6 +46,17 @@ not per individual commit.
   change only and are marked `omitted`. An unknown option or a limit that is not a positive
   integer throws, and so does an absolute path or one containing `..` in either snapshot. The
   module does not scan content for secrets. Run `node --test bench/test/workspace-changes.test.js`.
+- `bench/lib/judge-prompt.js` and the templates in `bench/judging/` (one per judge scale, with a
+  README). `judgePrompt(task, a, b, options)` returns `{ prompt, nonce }`. Each arm is its reply
+  plus the files its run changed (`workspaceChanges`, same limits for both arms), shown as a
+  header per file (path and change) and the final text in a code fence longer than any run of
+  backticks inside it; a deleted file shows its path and `deleted`, and an arm with no changes
+  says so. Both templates tell the judge to grade the work in the files as well as the reply. The
+  reply, every file path and all file text go through `sanitizeAnswer`. A judge sees only
+  `task.task` and `task.rubric` (`JUDGE_VISIBLE_FIELDS`); `assertAllowListed` throws on any other
+  field. The per-call nonce is in the prompt and is returned separately, so a caller can keep it
+  out of the digest that finds a stored reply. Run
+  `node --test bench/test/judge-prompt.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
