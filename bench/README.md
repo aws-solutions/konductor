@@ -443,7 +443,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - Forced load: `run --arm-prefix name=FILE` puts the file's text in front of the task prompt of one arm (recorded as sha256 and size); use
   "load skill X before you start" against the same arm without it to separate discovery from effect. `cap forced-prefix --cap skill:NAME --harness kiro-cli|opencode --out DIR`
   writes that instruction for each harness (kiro-cli: the `get_skill` tool of the skills server; opencode: the `skill` tool). Only the first turn of the entry agent sees it; a subagent does not.
-  Give it to the forced arm and its A/A repeat in a run of their own: the A/A pairing goes by ref and arm config, not by prefix, so an unforced arm of the same ref in the same run would be read as a repeat. `--arm-agent name=AGENT` starts an arm in
+  Give it to the forced arm and its A/A repeat in a run of their own. An arm's A/A identity is its ref, its arm config and the sha256 of its prefix, so a prefixed arm never pairs with the same ref without one; an arm without a prefix keeps the identity it had. An arm whose runs disagree on the prefix, or carry one without a hash, is never paired. `--arm-agent name=AGENT` starts an arm in
   another agent. `--stop-on first-capability|first-load|end_turn` and `--max-tool-calls N` stop a run early and mark it `earlyStopped`.
 - Audit lint and baseline: `cap audit` also checks names, third-person descriptions, SKILL.md length, links, orphan and too-deep reference
   files, frontmatter keys, redundant When to Use sections and copied blocks. `capabilities/audit-baseline.json` lists tolerated findings by id: a new
@@ -496,7 +496,7 @@ A profile changes what is collected, not how it is scored (`profiles/scoring.jso
 | | quick | detailed |
 | --- | --- | --- |
 | replicates per cell | 1 to 3 (default 2); more is refused | at least 5 (default 5); fewer is refused |
-| A/A arm | none | added by `run`: the first konductor arm repeated at its exact commit (`v1.2.0-b` for `v1.2.0`); skipped when the arm list already has a same-ref pair |
+| A/A arm | none | added by `run`: the first konductor arm repeated at its exact commit (`v1.2.0-b` for `v1.2.0`); skipped when the arm list already has a pair with the same ref, arm config and prompt prefix |
 | skill studies | no controls | known-answer keep and prune controls (`cap controls`), at least 8 scenarios per skill (`cap scenarios`); `cap plan` warns when it has fewer tasks |
 | judging | rubric, pairwise | rubric, pairwise and graded, each pair in both answer orders |
 | human calibration | none | `calibration-sample.json` and `.md` written to the results directory (the draw `calibrate export --n 25 --seed 1` makes) |

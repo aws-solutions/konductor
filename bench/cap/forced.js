@@ -15,7 +15,7 @@ const { compareArms, variantStatus } = require('./decide.js');
 const HARNESSES = ['kiro-cli', 'opencode'];
 const MODES = ['low-load', 'always'];
 // The forced arm, its A/A repeat (same ref, same prefix) and the skill deleted, all in one run of their own. The forced
-// arms never share a run with the unforced control: A/A detection pairs arms by ref and config, not by prompt prefix.
+// arms run apart from the unforced control so that wave 1 keeps its own A/A pair and comparison count.
 const FORCED_ARMS = ['frc', 'frc-b', 'del'];
 const FORCED_WAVE = '1f';
 const ARM_LABEL = 'forced-load';

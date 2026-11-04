@@ -564,7 +564,7 @@ function cmdForcedPrefix(opts) {
   console.log([
     `wrote ${file} (sha256 ${prefixHash(text)})`,
     `Use it on a forced arm and on its A/A repeat, in a run of their own: --arms ${arm}=REF,${arm}-b=REF,... --arm-prefix ${arm}=${file},${arm}-b=${file}`,
-    'Read the result apart from the organic arms. The A/A pairing ignores the prefix, so an unforced arm of the same ref in the same run would be taken for a repeat.',
+    'Read the result apart from the organic arms. The prefix hash is part of an arm\'s A/A identity, so only arms with the same prefix pair as repeats.',
   ].join('\n'));
 }
 
