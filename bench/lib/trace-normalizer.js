@@ -28,18 +28,21 @@
  *
  * Verification status. Which input formats have been checked against a real capture:
  *  - Claude Code: verified against a captured `claude` 2.1.318 `--output-format stream-json
- *    --verbose` run (fixtures/traces/claude-code-2.1.318-read.jsonl).
+ *    --verbose` run (fixtures/traces/claude-code-2.1.318-read.jsonl). The capture covers
+ *    `system/init`, one `Read` call and its result, and `result`. It does not cover the `Skill`
+ *    tool, subagent events, tool errors or MCP tools.
  *  - Kiro CLI: the ACP envelope (`type: 'sessionUpdate'`, `data.update.sessionUpdate`) is verified
  *    against captured `kiro-cli` 3.0.0 `chat --output-format stream-json` runs
- *    (fixtures/traces/kiro-cli-3.0.0-*.jsonl). The older flat shape (`type: 'tool_call'` with
+ *    (fixtures/traces/kiro-cli-3.0.0-*.jsonl). The captures contain no failed tool status, no MCP
+ *    tool call and no `_meta.kiro.toolName`. The older flat shape (`type: 'tool_call'` with
  *    `tool_call_id`, `tool_name`, `arguments`, string `content`, and a `model` event) is NOT known to
  *    be emitted by any release: it was written from an assumed format, and it is kept only so the
  *    synthetic behavior fixtures keep working. Treat it as unverified.
  *  - OpenCode: verified against captured `opencode` 2.0.27 `run --format json` runs: one with a
  *    completed `read` call (fixtures/traces/opencode-2.0.27-read.jsonl) and one in which the model
  *    reads a `skills/<name>/SKILL.md` and then a second file
- *    (fixtures/traces/opencode-2.0.27-skill-read.jsonl). They cover `step_start`, `tool_use` (status `completed`), `step_finish`
- *    and `text`, and the skill-load path. They do not cover a failed or unfinished tool state, the
+ *    (fixtures/traces/opencode-2.0.27-skill-read.jsonl). They cover `step_start`, `tool_use`
+ *    (status `completed`), `step_finish` and `text`, and the skill-load path. They do not cover a failed or unfinished tool state, the
  *    `error` event, or a `callID` field, so those paths still rest on the documented shapes only.
  * A fixture is a real capture only when its file name carries the CLI name and version; the others
  * under fixtures/traces/ are synthetic.
@@ -208,7 +211,8 @@
  *    `result` event tagged with `parent_tool_use_id` is a subagent's: it does not set
  *    `complete`, `response_text`, `model_id`, `usage` or `cost_usd`. Assistant text blocks from
  *    events tagged with `parent_tool_use_id` are not added to `response_text` either.
- *  - Kiro `usage` and `cost_usd` are always null: its stream carries neither.
+ *  - Kiro `usage` and `cost_usd` are always null: its stream carries no token counts or USD cost
+ *    (it reports credits, which are not read).
  *  - `options.expectedCallCount` is a non-negative integer used for the degraded check. Any
  *    other value is ignored and adds an `invalid_option` error.
  *
@@ -1267,7 +1271,13 @@ function normalizeKiro(rawTrace, options = {}) {
 
     if (event.type === 'tool_call') {
       const rawArgs = isObject(event.arguments) ? event.arguments : isObject(event.input) ? event.input : {};
-      addCall(event.tool_name ?? event.name ?? event.tool, rawArgs, event.tool_call_id ?? event.id, lineNo, 'tool_call');
+      addCall(
+        event.tool_name ?? event.name ?? event.tool,
+        rawArgs,
+        event.tool_call_id ?? event.id,
+        lineNo,
+        'tool_call',
+      );
       return;
     }
 

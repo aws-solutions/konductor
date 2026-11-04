@@ -15,9 +15,8 @@
  *      - kiro-cli-3.0.0-read.jsonl, kiro-cli-3.0.0-skill-read.jsonl: kiro-cli 3.0.0,
  *        `chat --output-format stream-json`; the second run reads a SKILL.md.
  *      - opencode-2.0.27-read.jsonl: opencode 2.0.27, `run --format json`, one completed `read`
- *        call. It is an earlier run, not a fresh one: the installed opencode here has no
- *        authenticated provider. It was sanitized like the others (ids, timestamps, the planted
- *        marker); no event was added.
+ *        call. It was captured in an earlier run than the skill-read capture. It was sanitized like
+ *        the others (ids, timestamps, the planted marker); no event was added.
  *      - opencode-2.0.27-skill-read.jsonl: opencode 2.0.27, `run --format json`, a fresh run
  *        in which the model reads a `skills/sample-notes/SKILL.md`, reads a second file, then
  *        answers. The skill and notes are synthetic. Sanitized like the others (ids, absolute
