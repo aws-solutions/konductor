@@ -92,6 +92,8 @@ not per individual commit.
 - Orchestrators run `git` reads as `git --no-pager -c core.fsmonitor=` with `--no-ext-diff
   --no-textconv --submodule=short` (and `--no-show-signature` on `log` and `show`), so repository
   config cannot make a read-only `git` command run a program.
+- The orchestrator routing rules list memory and skill capture as direct work, matching what
+  Memory & Skill Reflexes ask for.
 
 ## [1.2.0] - 2026-10-26
 
