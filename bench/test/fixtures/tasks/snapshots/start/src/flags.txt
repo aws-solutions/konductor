@@ -1,0 +1,2 @@
+--dry-run   print the planned changes and write nothing
+--verbose   print every step

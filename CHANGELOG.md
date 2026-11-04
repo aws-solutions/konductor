@@ -245,6 +245,19 @@ not per individual commit.
   one agent configuration and skill set so they differ by exactly the target skill, and records
   the load mode. Run `node --test bench/test/task-schema.test.js bench/test/snapshot-loader.test.js
   bench/test/arms.test.js`.
+- `bench/lib/task-lint.js`, a pure `lintTask(task, { start, reference? }, { skillText })` that
+  checks the quality of a benchmark task before it is run. It returns `{ ok, failures, warnings,
+  results }` and never throws. Gates (any one makes `ok` false): `task_invalid`, `snapshot_invalid`,
+  `skill_text_missing`, `fixtures_mismatch` (the declared fixtures differ from the start snapshot),
+  `start_passes` (a stay-out task whose untouched start fails a check), `reference_passes` (only
+  when a reference snapshot is given) and `work_budget_exhausted`. Warnings: `start_fails`,
+  `unearned_checks`, `duplicate_checks`, `trespass_fails`, `no_reference`, `literal_in_request`
+  and `stay_out_task`. The lint makes no claim that a workspace which did not do the task cannot
+  pass: the verdict is the with-minus-without gap, so a check both arms can pass cancels out of it.
+  `bench/lib/hidden-fields.js` exports `HIDDEN_FROM_SUBJECT` (`checks`, `rubric`, `reference`), the
+  fields a runner must never show the subject. The work budget for one lint is 3000 pattern runs
+  in 8 seconds (`BUDGET_LIMITS.lint`). Run `node --test bench/test/task-lint.test.js
+  bench/test/task-lint-table.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.

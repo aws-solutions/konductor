@@ -1,0 +1,24 @@
+{
+  "id": "release-notes-coverage-rollback",
+  "skill": "release-notes",
+  "kind": "coverage",
+  "task": "A release went out with a defect. Write a short note in CHANGELOG.md that tells readers the change was reverted.",
+  "rubric": [
+    "The note says the change was reverted, in plain words.",
+    "The note names the change that was reverted.",
+    "The note does not claim the defect is fixed."
+  ],
+  "target_section": "Reverting a release",
+  "fixtures": ["CHANGELOG.md"],
+  "checks": [
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "roll(s|ed)? back (the )?(change|deploy(ment)?)",
+      "negatives": [
+        "we never roll forward the change",
+        "back the change up before the deploy"
+      ]
+    }
+  ]
+}

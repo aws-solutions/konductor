@@ -1,0 +1,34 @@
+{
+  "id": "release-notes-core-dry-run",
+  "skill": "release-notes",
+  "kind": "core",
+  "task": "The tool has a new --dry-run flag, and its draft entry sits in drafts/dry-run.md. Finish the entry in CHANGELOG.md under Unreleased and delete the draft. Say what the flag does and how to run without it. Do not change anything under src.",
+  "rubric": [
+    "The entry says in plain words what the flag does.",
+    "The entry tells the reader how to run without the flag.",
+    "The draft file is gone once its content is in the changelog.",
+    "The existing notes and the flag list are left as they were."
+  ],
+  "target_section": "Recording a change",
+  "fixtures": ["NOTES.md", "drafts/dry-run.md", "src/flags.txt"],
+  "checks": [
+    { "type": "file_exists", "path": "CHANGELOG.md" },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "^#{1,3} \\[?Unreleased\\]?\\s*$",
+      "negatives": [
+        "Finish the entry in CHANGELOG.md under Unreleased and delete the draft.",
+        "## Released notes for the next version"
+      ]
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "(leave|omit|drop|skip) (it|the flag|--dry-run)",
+      "negatives": ["Do not leave the draft in place.", "Skip the release notes review."]
+    },
+    { "type": "fixture_unchanged", "path": "src" },
+    { "type": "file_absent", "path": "drafts/dry-run.md" }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "release-notes-core-pasteable",
+  "skill": "release-notes",
+  "kind": "core",
+  "task": "The tool has a new --dry-run flag. Add an entry for it to CHANGELOG.md under Unreleased.",
+  "rubric": [
+    "The entry says in plain words what the flag does.",
+    "The entry tells the reader how to run without the flag.",
+    "The existing notes and the flag list are left as they were."
+  ],
+  "target_section": "Recording a change",
+  "fixtures": ["NOTES.md", "drafts/dry-run.md", "src/flags.txt"],
+  "checks": [
+    { "type": "contains", "path": "CHANGELOG.md", "pattern": "--dry-run" },
+    { "type": "contains", "path": "CHANGELOG.md", "pattern": "off by default" }
+  ]
+}
