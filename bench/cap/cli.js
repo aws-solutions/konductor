@@ -42,9 +42,9 @@ const { loadTasks } = require('../runner/lib/tasks.js');
 const { optionalProfile, replicatesFor } = require('../runner/lib/profiles.js');
 const { generateScenarios, checkCount } = require('./scenarios.js');
 const { writeControls, controlPlan, evaluateControls } = require('./controls.js');
-const { cmdSkillPlan, cmdSkillStudy, cmdDecide } = require('./skillcli.js');
+const { cmdSkillPlan, cmdSkillStudy, cmdDecide, cmdCriteria } = require('./skillcli.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide'];
+const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'criteria'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -588,6 +588,7 @@ function cmdCap(opts) {
     if (sub === 'skill-plan') return cmdSkillPlan(opts);
     if (sub === 'skill-study') return cmdSkillStudy(opts);
     if (sub === 'decide') return cmdDecide(opts);
+    if (sub === 'criteria') return cmdCriteria(opts);
     return cmdTrigger(opts);
   };
   const fail = (e) => {

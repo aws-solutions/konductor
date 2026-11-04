@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// `bench.js cap skill-plan | skill-study | decide`. skill-plan and decide are free. skill-study spends credits only
+// `bench.js cap skill-plan | skill-study | decide | criteria`. skill-plan, decide and criteria are free. skill-study spends credits only
 // when it runs (not with --init, --status or --dry-run) and calls bench.js run and judge as child processes.
 
 const fs = require('node:fs');
@@ -11,6 +11,7 @@ const { optionalProfile } = require('../runner/lib/profiles.js');
 const { planSkillStudy, renderPlan, LARGE_DEFAULT, DUPLICATE_PAIRS_DEFAULT, TIERS } = require('./skillplan.js');
 const { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec } = require('./skillstudy.js');
 const { expandGlob } = require('./usage.js');
+const { analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCriteria } = require('./criteria.js');
 
 const list = (v) => (v === undefined || v === true || v === '' ? [] : String(v).split(',').filter(Boolean));
 const val = (v) => (v === undefined || v === true ? undefined : String(v));
@@ -137,4 +138,36 @@ function cmdDecide(opts) {
   console.log(`wrote ${path.join(r.outDir, 'decisions.md')}, decisions.json, evidence.json and patches/ (nothing was applied)`);
 }
 
-module.exports = { cmdSkillPlan, cmdSkillStudy, cmdDecide };
+function share(v, name) {
+  const n = num(v, name);
+  if (n !== undefined && n > 1) throw new Error(`--${name} takes a number from 0 to 1`);
+  return n;
+}
+
+function cmdCriteria(opts) {
+  const studyArg = val(opts.study);
+  const dirs = runDirsOf(opts);
+  if (!studyArg && !dirs.length) throw new Error('--study DIR or --runs DIR[,DIR] is required');
+  if (studyArg && dirs.length) throw new Error('give --study or --runs, not both');
+  const config = withoutUndefined({ margin: share(opts.margin, 'margin'), saturated: share(opts.saturated, 'saturated'), judgeDisagree: share(opts['judge-disagree'], 'judge-disagree'), replicateSd: share(opts['replicate-sd'], 'replicate-sd'), adjust: opts['no-adjust'] ? false : undefined });
+  const extra = list(opts['extra-tasks']).map((d) => path.resolve(d));
+  let groups;
+  let outDir = pathOpt(opts.out);
+  let source;
+  if (studyArg) {
+    const studyDir = path.resolve(studyArg);
+    groups = analyzeStudy({ studyDir, config, benchDir: pathOpt(opts['bench-dir']), extraTasks: extra.length ? extra : null });
+    outDir = outDir ?? path.join(studyDir, 'criteria');
+    source = `study ${studyDir}`;
+  } else {
+    groups = analyzeRuns({ dirs, benchDir: pathOpt(opts['bench-dir']) ?? BENCH_DIR, extraTasks: extra, baseline: val(opts.baseline) ?? null, aa: val(opts.aa) ?? null, config });
+    source = `runs ${dirs.join(', ')}`;
+  }
+  const report = buildCriteriaReport(groups, { source, config });
+  const written = outDir ? writeCriteria(outDir, report) : [];
+  if (opts.json) console.log(JSON.stringify(report, null, 2));
+  else if (!outDir) console.log(renderCriteria(report));
+  else console.log(`${report.summary.flagged} of ${report.summary.items} items flagged (${Object.entries(report.summary.byFlag).map(([k, n]) => `${k} ${n}`).join(', ')}); wrote ${written.join(', ')} (advisory; no call was changed)`);
+}
+
+module.exports = { cmdSkillPlan, cmdSkillStudy, cmdDecide, cmdCriteria };
