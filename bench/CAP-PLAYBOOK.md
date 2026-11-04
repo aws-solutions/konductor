@@ -62,7 +62,7 @@ will show zero loads for it. FIX is a prompt to check, and the report lowers its
 4. Lift run: `cap plan --mode lift --profile detailed` (pass `--tasks id,id` when the registry links no lift task), with a base arm and an A/A copy of it, on tasks with headroom. Judge before you read lift.
    The detailed profile asks for at least 5 replicates and at least 8 scenarios (`cap scenarios`, then review and turn the good ones into tasks), and prints the controls step.
    Run the controls first (`cap controls --out DIR`, run what it prints, `cap controls --check`). If the check exits 1, do not read any skill verdict from the study.
-   Calibrate the judges against a person before trusting a judged lift: `cap review --run DIR` writes a static page that shows the calibration sample's outputs side by side under blind letters, and `cap review-import --ratings FILE --key DIR/calibration/review/review-key.json` reads the downloaded ratings back and prints kappa (README, section "Calibration").
+   Calibrate the judges against a person before trusting a judged lift: `cap review --run DIR` writes a static page that shows the calibration sample's outputs side by side under blind letters, and `cap review-import --ratings FILE --key DIR/calibration/review-key/review-key.json` reads the downloaded ratings back and prints kappa (README, section "Calibration").
 5. Write the result into the evidence file, rerun `prune-report`, then decide.
 
 ## Reading the results

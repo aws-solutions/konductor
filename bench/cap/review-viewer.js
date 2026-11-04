@@ -35,14 +35,16 @@ function mergeRatings(data, state, loaded) {
   let applied = 0;
   let skipped = 0;
   if (typeof loaded.rater === 'string') state.rater = loaded.rater;
+  // Own keys only, so an id such as "__proto__" or "toString" in a loaded file never reaches an inherited property.
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   for (const it of Array.isArray(loaded.items) ? loaded.items : []) {
-    const cur = state.items[it && it.itemId];
+    const cur = it && typeof it.itemId === 'string' && own(state.items, it.itemId) ? state.items[it.itemId] : null;
     if (!cur) { skipped++; continue; }
     for (const [cid, v] of Object.entries(it.labels || {})) {
-      if (cid in cur.labels && (v === null || ['pass', 'partial', 'fail'].includes(v))) cur.labels[cid] = v;
+      if (own(cur.labels, cid) && (v === null || ['pass', 'partial', 'fail'].includes(v))) cur.labels[cid] = v;
     }
     for (const [cid, q] of Object.entries(it.evidence || {})) {
-      if (cid in cur.labels && typeof q === 'string') cur.evidence[cid] = q;
+      if (own(cur.labels, cid) && typeof q === 'string') cur.evidence[cid] = q;
     }
     if (typeof it.notes === 'string') cur.notes = it.notes;
     applied++;

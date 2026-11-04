@@ -6,7 +6,11 @@
 // then scores them. No model call, no network, no credits.
 //
 // Blinding: each task's outputs get the letters A, B, ... in a seeded random order per task. Which letter is which arm
-// is kept only in review-key.json beside the page; the page and the ratings file name no arm, task id or replicate.
+// is kept only in review-key.json, which goes to its own directory (review-key/ next to review/ by default) so the page
+// directory can be handed over whole. The page and the ratings file name no arm, task id or replicate.
+//
+// Nothing records the run's absolute path: the key holds the run directory relative to itself, so a run moved together
+// with its key still imports, and `--run DIR` on import points at a run moved without it.
 
 const fs = require('node:fs');
 const crypto = require('node:crypto');
@@ -77,10 +81,11 @@ function groupSample(runs, picked, { sampleOnly = false } = {}) {
 }
 
 /**
- * Writes review.html (the page a rater opens) and review-key.json (letter to arm, kept away from the rater) into outDir.
+ * Writes review.html (the page a rater opens) into outDir and review-key.json (letter to arm, kept away from the rater)
+ * into keyOutDir, which must not be outDir or inside it. Defaults: <run>/calibration/review and <run>/calibration/review-key.
  * Bundles are built exactly as for the judges: the same arm-name redaction, then credential scrubbing.
  */
-function writeReview({ runDir, benchDir, extraTasks = [], n, seed, sampleOnly = false, limits, explicitLimits = {}, redactions, outDir, force = false, env = process.env }) {
+function writeReview({ runDir, benchDir, extraTasks = [], n, seed, sampleOnly = false, limits, explicitLimits = {}, redactions, outDir, keyOutDir, force = false, env = process.env }) {
   const run = loadRun(runDir);
   const tasks = loadTasks(benchDir, { extraDirs: extraTasks });
   const params = sampleParams(run.dir, { n, seed });
@@ -112,20 +117,24 @@ function writeReview({ runDir, benchDir, extraTasks = [], n, seed, sampleOnly = 
   });
 
   const mapping = keyGroups.map((g) => [g.groupId, g.items.map((i) => [i.itemId, i.armId, i.taskId, i.replicate, sha16(i.bundle)])]);
-  const viewerId = sha16(JSON.stringify({ runDir: run.dir, seed: params.seed, n: params.n, sampleOnly, mapping }));
+  const viewerId = sha16(JSON.stringify({ seed: params.seed, n: params.n, sampleOnly, mapping }));
   const dir = path.resolve(outDir || path.join(run.dir, 'calibration', 'review'));
-  const keyPath = path.join(dir, KEY_FILE);
+  const keyDir = path.resolve(keyOutDir || path.join(path.dirname(dir), 'review-key'));
+  const rel = path.relative(dir, keyDir);
+  if (!rel || (!rel.startsWith('..') && !path.isAbsolute(rel))) throw new ReviewError(`the key directory ${keyDir} is the page directory or inside it; pass a --key-out outside ${dir}`);
+  const keyPath = path.join(keyDir, KEY_FILE);
   if (!force && fs.existsSync(keyPath)) {
     let old = null;
     try { old = readJson(keyPath).viewerId; } catch { /* unreadable key: treat as different */ }
-    if (old !== viewerId) throw new ReviewError(`${keyPath} is for viewer ${old ?? '(unreadable)'}, not ${viewerId}; ratings made on the old page would no longer import. Pass --force to replace it, or --out DIR`);
+    if (old !== viewerId) throw new ReviewError(`${keyPath} is for viewer ${old ?? '(unreadable)'}, not ${viewerId}; ratings made on the old page would no longer import. Pass --force to replace it, or --key-out DIR`);
   }
   fs.mkdirSync(dir, { recursive: true });
-  const key = { schemaVersion: 1, viewerId, runDir: run.dir, n: params.n, seed: params.seed, sampleOnly, groups: keyGroups };
+  fs.mkdirSync(keyDir, { recursive: true });
+  const key = { schemaVersion: 2, viewerId, run: path.relative(keyDir, run.dir) || '.', n: params.n, seed: params.seed, sampleOnly, groups: keyGroups };
   fs.writeFileSync(keyPath, `${JSON.stringify(key, null, 2)}\n`);
   const pagePath = path.join(dir, PAGE_FILE);
   fs.writeFileSync(pagePath, renderViewer({ viewerId, groups }));
-  return { dir, pagePath, keyPath, viewerId, groups: groups.length, outputs: keyGroups.reduce((s, g) => s + g.items.length, 0), params };
+  return { dir, keyDir, pagePath, keyPath, viewerId, groups: groups.length, outputs: keyGroups.reduce((s, g) => s + g.items.length, 0), params };
 }
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -210,6 +219,20 @@ function quoteCheck(key, ratings) {
 const writeJson = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); };
 
 /**
+ * The run a key belongs to: --run when given, else the key's recorded path relative to the key's own directory.
+ * Checked against the key: every run it lists must be there, so a wrong or stale directory is refused by name.
+ */
+function resolveRun(key, keyFile, runOpt) {
+  const runDir = runOpt ? path.resolve(runOpt) : key.run !== undefined ? path.resolve(path.dirname(keyFile), key.run) : null;
+  if (!runDir) throw new ReviewError(`${keyFile} records no run directory; pass --run DIR`);
+  const missing = key.groups.flatMap((g) => g.items).filter((i) => !fs.existsSync(path.join(runDir, i.armId, i.taskId, String(i.replicate), 'result.json')));
+  if (missing.length) {
+    throw new ReviewError(`${runDir} is not the run this key was made from (${missing.length} of its runs are missing there, first ${missing[0].armId}/${missing[0].taskId}/${missing[0].replicate}); ${runOpt ? 'check --run' : 'the run moved without its key: pass --run DIR'}`);
+  }
+  return runDir;
+}
+
+/**
  * Validates one rater's ratings, keeps them under raters/<rater>/ next to the key, and rescores every rater on file.
  *
  * Each rater gets ratings.json (the file as given), sheet.json and result.json (that rater alone against the judges).
@@ -218,15 +241,18 @@ const writeJson = (file, value) => { fs.mkdirSync(path.dirname(file), { recursiv
  * combined result goes to <run>/calibration/result.json, which the report reads, with each rater's own figures under
  * `byRater` and each rater's kappa under `raterKappa`. The pooled result it replaces is copied to result.prev.json first.
  *
- * Nothing is written when the file is invalid, rates nothing, would replace a rater already on file, or when the result
- * path holds a result that this page did not write. --force (`force`) allows the last two.
+ * Nothing is written when the file is invalid, rates nothing, would replace a rater already on file, when the result
+ * path holds a result that this page did not write, when the run cannot be found, or when scoring fails. --force
+ * (`force`) allows the second and third.
  */
-function importRatings({ ratingsFile, keyFile, rater: raterOpt, outDir, save, force = false, thresholds }) {
+function importRatings({ ratingsFile, keyFile, run: runOpt, rater: raterOpt, outDir, save, force = false, thresholds }) {
   let ratings;
   try { ratings = JSON.parse(fs.readFileSync(ratingsFile, 'utf8')); } catch (e) { throw new ReviewError(`cannot read ${ratingsFile}: ${e.code || e.message}`); }
-  const kFile = keyFile || path.join(path.dirname(ratingsFile), KEY_FILE);
+  if (!keyFile) throw new ReviewError('--key FILE is required: the review-key.json that cap review wrote to its own directory (review-key/ by default). It is never looked for next to the page or the ratings');
+  const kFile = path.resolve(keyFile);
   let key;
-  try { key = readJson(kFile); } catch (e) { throw new ReviewError(`cannot read the review key ${kFile}: ${e.code || e.message} (pass --key, the review-key.json written beside review.html)`); }
+  try { key = readJson(kFile); } catch (e) { throw new ReviewError(`cannot read the review key ${kFile}: ${e.code || e.message}`); }
+  if (key.schemaVersion !== 2 || !Array.isArray(key.groups)) throw new ReviewError(`${kFile} is not a review key this version reads (schemaVersion ${JSON.stringify(key.schemaVersion)}); run cap review again`);
   const errs = validateRatings(ratings, key);
   if (errs.length) throw new ReviewError(`ratings not imported:\n  ${errs.join('\n  ')}`);
   if (!ratings.items.some((it) => labeledCount(it) > 0)) throw new ReviewError(`ratings not imported: ${ratingsFile} rates no criterion of any output; nothing was written`);
@@ -239,7 +265,8 @@ function importRatings({ ratingsFile, keyFile, rater: raterOpt, outDir, save, fo
   if (!force && fs.existsSync(raterFile)) {
     throw new ReviewError(`${raterFile} already holds ratings from rater "${raterId}"; pass --force to replace them, or --rater ID for a different rater. Nothing was written`);
   }
-  const savePath = path.resolve(save || path.join(key.runDir, 'calibration', 'result.json'));
+  const runDir = resolveRun(key, kFile, runOpt);
+  const savePath = path.resolve(save || path.join(runDir, 'calibration', 'result.json'));
   if (!force && fs.existsSync(savePath)) {
     let prev = null;
     try { prev = readJson(savePath).source; } catch { /* unreadable: keep it */ }
@@ -257,36 +284,51 @@ function importRatings({ ratingsFile, keyFile, rater: raterOpt, outDir, save, fo
     if (bad.length) throw new ReviewError(`rater "${id}" on file in ${ratersRoot} does not fit this page (${bad[0]}); move that directory aside before importing. Nothing was written`);
   }
 
-  writeJson(raterFile, { ...ratings, raterId });
-  const sheetKey = { runDir: key.runDir, seed: key.seed, source: { kind: 'review', viewerId: key.viewerId }, items: {} };
+  // Every rater on file plus this one, scored in a staging directory first; the files are put in place only after all
+  // scoring succeeded, so a failed import leaves nothing behind and can simply be retried.
+  const ratingsOf = new Map(others.map((id) => [id, readJson(path.join(ratersRoot, id, 'ratings.json'))]));
+  ratingsOf.set(raterId, { ...ratings, raterId });
+  const raterIds = [...ratingsOf.keys()].sort();
+  // calibrate score's key format wants the run's path; it is written fresh on every import, so it follows a moved run.
+  const sheetKey = { runDir, seed: key.seed, source: { kind: 'review', viewerId: key.viewerId }, items: {} };
   for (const g of key.groups) for (const k of g.items) sheetKey.items[k.itemId] = { armId: k.armId, taskId: k.taskId, replicate: k.replicate };
-  const sheetKeyPath = path.join(dir, 'key.json');
-  writeJson(sheetKeyPath, sheetKey);
 
-  // Every rater on file, this one included, scored alone and then pooled.
-  const raterIds = fs.readdirSync(ratersRoot).filter((d) => fs.existsSync(path.join(ratersRoot, d, 'ratings.json'))).sort();
-  const pooled = [];
-  const byRater = {};
+  fs.mkdirSync(dir, { recursive: true });
+  const stage = fs.mkdtempSync(path.join(dir, '.import-'));
+  const files = [];
+  let res;
   let quotes = null;
-  for (const id of raterIds) {
-    const r = readJson(path.join(ratersRoot, id, 'ratings.json'));
-    const items = sheetItems(key, r, id);
-    pooled.push(...items);
-    const sheetPath = path.join(ratersRoot, id, 'sheet.json');
-    writeJson(sheetPath, { schemaVersion: 1, items });
-    const q = quoteCheck(key, r);
-    if (id === raterId) quotes = q;
-    const res = scoreLabels({ labelsFile: sheetPath, keyFile: sheetKeyPath, thresholds });
-    res.source = { kind: 'review', viewerId: key.viewerId, rater: id, quotes: q };
-    writeJson(path.join(ratersRoot, id, 'result.json'), res);
-    byRater[id] = { itemsLabeled: res.itemsLabeled, judges: res.judges };
+  try {
+    const stagedKey = path.join(stage, 'key.json');
+    writeJson(stagedKey, sheetKey);
+    const pooled = [];
+    const byRater = {};
+    for (const id of raterIds) {
+      const r = ratingsOf.get(id);
+      const items = sheetItems(key, r, id);
+      pooled.push(...items);
+      const stagedSheet = path.join(stage, `sheet-${id}.json`);
+      writeJson(stagedSheet, { schemaVersion: 1, items });
+      const q = quoteCheck(key, r);
+      if (id === raterId) quotes = q;
+      const one = scoreLabels({ labelsFile: stagedSheet, keyFile: stagedKey, thresholds });
+      one.source = { kind: 'review', viewerId: key.viewerId, rater: id, quotes: q };
+      byRater[id] = { itemsLabeled: one.itemsLabeled, judges: one.judges };
+      files.push([path.join(ratersRoot, id, 'sheet.json'), { schemaVersion: 1, items }], [path.join(ratersRoot, id, 'result.json'), one]);
+    }
+    const stagedPooled = path.join(stage, 'sheet.json');
+    writeJson(stagedPooled, { schemaVersion: 1, items: pooled });
+    res = scoreLabels({ labelsFile: stagedPooled, keyFile: stagedKey, thresholds });
+    res.source = { kind: 'review', viewerId: key.viewerId, pooled: true, raters: raterIds };
+    res.byRater = byRater;
+    res.raterKappa = { kappaMin: thresholds.kappaMin, raters: raterKappas(byRater, thresholds.kappaMin) };
+    files.push([path.join(dir, 'sheet.json'), { schemaVersion: 1, items: pooled }], [path.join(dir, 'key.json'), sheetKey]);
+  } finally {
+    fs.rmSync(stage, { recursive: true, force: true });
   }
-  const sheetPath = path.join(dir, 'sheet.json');
-  writeJson(sheetPath, { schemaVersion: 1, items: pooled });
-  const res = scoreLabels({ labelsFile: sheetPath, keyFile: sheetKeyPath, thresholds });
-  res.source = { kind: 'review', viewerId: key.viewerId, pooled: true, raters: raterIds };
-  res.byRater = byRater;
-  res.raterKappa = { kappaMin: thresholds.kappaMin, raters: raterKappas(byRater, thresholds.kappaMin) };
+
+  writeJson(raterFile, ratingsOf.get(raterId));
+  for (const [file, value] of files) writeJson(file, value);
   // One level of backup: the pooled result this import replaces is kept as result.prev.json (any older .prev is replaced).
   let backupPath = null;
   if (fs.existsSync(savePath)) {
@@ -294,7 +336,10 @@ function importRatings({ ratingsFile, keyFile, rater: raterOpt, outDir, save, fo
     fs.copyFileSync(savePath, backupPath);
   }
   writeJson(savePath, res);
-  return { res, raterId, raters: raterIds, raterFile, sheetPath, sheetKeyPath, savePath, backupPath, quotes, rated: ratings.items.filter((it) => labeledCount(it) > 0).length };
+  return {
+    res, runDir, raterId, raters: raterIds, raterFile, sheetPath: path.join(dir, 'sheet.json'), sheetKeyPath: path.join(dir, 'key.json'),
+    savePath, backupPath, quotes, rated: ratings.items.filter((it) => labeledCount(it) > 0).length,
+  };
 }
 
 module.exports = { writeReview, importRatings, validateRatings, raterIdOf, groupSample, sampleParams, ReviewError, KEY_FILE, PAGE_FILE };

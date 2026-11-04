@@ -599,11 +599,11 @@ function cmdReview(opts) {
     limits: { maxFileChars: posNum(opts, 'max-file-chars', { int: true }) ?? DEFAULTS.limits.maxFileChars, maxBundleChars: posNum(opts, 'max-bundle-chars', { int: true }) ?? DEFAULTS.limits.maxBundleChars },
     explicitLimits: { maxFileChars: opts['max-file-chars'] !== undefined, maxBundleChars: opts['max-bundle-chars'] !== undefined },
     redactions: loadRedactions(opts['redact-file'] && opts['redact-file'] !== true ? opts['redact-file'] : null),
-    outDir: pathOpt(opts.out), force: Boolean(opts.force),
+    outDir: pathOpt(opts.out), keyOutDir: pathOpt(opts['key-out']), force: Boolean(opts.force),
   });
   console.log([
     `wrote ${r.pagePath} (${r.groups} task(s), ${r.outputs} output(s) to rate; n ${r.params.n}, seed ${r.params.seed} from ${r.params.from}; viewer ${r.viewerId})`,
-    `and ${r.keyPath}, which names the arm behind each letter: do not give it to the rater.`,
+    `and ${r.keyPath}, in its own directory because it names the arm behind each letter: give the rater ${r.dir} only.`,
     'Open the page in a browser (it loads nothing and needs no server), rate, choose Download ratings, then run:',
     `  node bench/runner/bench.js cap review-import --ratings FILE --key ${r.keyPath}`,
   ].join('\n'));
@@ -612,9 +612,10 @@ function cmdReview(opts) {
 function cmdReviewImport(opts) {
   const ratingsFile = pathOpt(opts.ratings);
   if (!ratingsFile) throw new Error('--ratings FILE is required (the JSON file the review page downloaded)');
+  if (!pathOpt(opts.key)) throw new Error('--key FILE is required: the review-key.json that cap review wrote to its own directory (review-key/ by default); it is never looked for next to the page');
   const t = DEFAULTS.thresholds;
   const r = importRatings({
-    ratingsFile, keyFile: pathOpt(opts.key), rater: opts.rater && opts.rater !== true ? String(opts.rater) : undefined, outDir: pathOpt(opts.out), save: pathOpt(opts.save), force: Boolean(opts.force),
+    ratingsFile, keyFile: pathOpt(opts.key), run: pathOpt(opts.run), rater: opts.rater && opts.rater !== true ? String(opts.rater) : undefined, outDir: pathOpt(opts.out), save: pathOpt(opts.save), force: Boolean(opts.force),
     thresholds: { kappaMin: posNum(opts, 'kappa-min') ?? t.kappaMin, agreementMin: posNum(opts, 'agreement-min') ?? t.agreementMin, spearmanMin: posNum(opts, 'spearman-min') ?? t.spearmanMin },
   });
   if (opts.json) { console.log(JSON.stringify(r.res, null, 2)); return; }

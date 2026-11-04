@@ -47,6 +47,12 @@ test('the page is static, blinded, redacted and scrubbed, and the key maps each 
     const html = fs.readFileSync(r.pagePath, 'utf8');
     const key = readJson(r.keyPath);
     assert.equal(r.dir, path.join(f.runDir, 'calibration', 'review'));
+    assert.equal(r.keyPath, path.join(f.runDir, 'calibration', 'review-key', 'review-key.json'));
+    // The page directory can be handed over whole: it holds the page and nothing that names an arm.
+    assert.deepEqual(fs.readdirSync(r.dir), ['review.html']);
+    // The key names no absolute path; it finds the run relative to itself.
+    assert.equal(key.run, path.join('..', '..'));
+    assert.ok(!JSON.stringify(key).includes(f.root));
     // Nothing loads from elsewhere and nothing can connect.
     assert.doesNotMatch(html, /https?:\/\/|\bsrc=|<link\b|<iframe|\bfetch\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon/);
     // The attribute is HTML-escaped; a browser reads &apos; as a quote.
@@ -85,15 +91,15 @@ test('the page is static, blinded, redacted and scrubbed, and the key maps each 
 test('the draw is deterministic for a seed, letters vary by task, and --sample-only shows the drawn runs only', () => {
   const f = fixture();
   try {
-    const a = writeReview(opts(f, { n: 6, seed: 5, outDir: path.join(f.root, 'a') }));
-    const b = writeReview(opts(f, { n: 6, seed: 5, outDir: path.join(f.root, 'b') }));
+    const a = writeReview(opts(f, { n: 6, seed: 5, outDir: path.join(f.root, 'a', 'page'), keyOutDir: path.join(f.root, 'a', 'key') }));
+    const b = writeReview(opts(f, { n: 6, seed: 5, outDir: path.join(f.root, 'b', 'page'), keyOutDir: path.join(f.root, 'b', 'key') }));
     assert.equal(a.viewerId, b.viewerId);
     assert.equal(fs.readFileSync(a.pagePath, 'utf8'), fs.readFileSync(b.pagePath, 'utf8'));
     const key = readJson(a.keyPath);
     assert.equal(key.groups.length, 3);
     const firsts = new Set(key.groups.map((g) => g.items[0].armId));
     assert.equal(firsts.size, 2, 'with this seed, A is not always the same arm');
-    const s = writeReview(opts(f, { n: 2, seed: 5, sampleOnly: true, outDir: path.join(f.root, 's') }));
+    const s = writeReview(opts(f, { n: 2, seed: 5, sampleOnly: true, outDir: path.join(f.root, 's', 'page'), keyOutDir: path.join(f.root, 's', 'key') }));
     assert.equal(s.outputs, 2);
     assert.notEqual(s.viewerId, a.viewerId);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
@@ -153,7 +159,7 @@ test('import joins ratings to runs through the key, writes the calibrate files a
     const out = importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
     assert.equal(out.savePath, path.join(f.runDir, 'calibration', 'result.json'));
     assert.equal(out.raterId, 'tester');
-    assert.equal(out.raterFile, path.join(r.dir, 'raters', 'tester', 'ratings.json'));
+    assert.equal(out.raterFile, path.join(r.keyDir, 'raters', 'tester', 'ratings.json'));
     assert.equal(out.res.itemsLabeled, 6);
     assert.equal(out.res.judges.good.status, 'PASS');
     assert.equal(out.res.judges.good.kappa, 1);
@@ -169,7 +175,7 @@ test('import joins ratings to runs through the key, writes the calibrate files a
     const saved = readJson(out.savePath);
     assert.deepEqual(saved.source.raters, ['tester']);
     assert.equal(saved.byRater.tester.judges.good.kappa, 1);
-    assert.equal(readJson(path.join(r.dir, 'raters', 'tester', 'result.json')).judges.good.kappa, 1);
+    assert.equal(readJson(path.join(r.keyDir, 'raters', 'tester', 'result.json')).judges.good.kappa, 1);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
@@ -248,7 +254,7 @@ test('two raters coexist: each is kept and scored alone, and the combined result
     fs.writeFileSync(b, JSON.stringify(other));
     const out = importRatings({ ratingsFile: b, keyFile: r.keyPath, rater: 'second', thresholds: DEFAULTS.thresholds });
     assert.deepEqual(out.raters, ['second', 'tester']);
-    assert.ok(fs.existsSync(path.join(r.dir, 'raters', 'tester', 'ratings.json')), 'the first rater is still on file');
+    assert.ok(fs.existsSync(path.join(r.keyDir, 'raters', 'tester', 'ratings.json')), 'the first rater is still on file');
     assert.equal(out.res.byRater.tester.judges.good.kappa, 1);
     assert.ok(out.res.byRater.second.judges.good.kappa < 0.6);
     assert.equal(out.res.judges.good.nCriteria, 24, 'pooled: each rater adds its own criterion pairs');
@@ -294,6 +300,91 @@ test('each import keeps the pooled result it replaces as result.prev.json', () =
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
+test('the key is never next to the page: a key directory inside the page directory is refused, and import needs --key', () => {
+  const f = fixture();
+  try {
+    const page = path.join(f.root, 'handover');
+    assert.throws(() => writeReview(opts(f, { n: 2, outDir: page, keyOutDir: page })), /is the page directory or inside it/);
+    assert.throws(() => writeReview(opts(f, { n: 2, outDir: page, keyOutDir: path.join(page, 'k') })), /is the page directory or inside it/);
+    const r = writeReview(opts(f, { n: 2, outDir: page }));
+    assert.equal(r.keyDir, path.join(f.root, 'review-key'));
+    assert.deepEqual(fs.readdirSync(page), ['review.html']);
+    const ratingsFile = path.join(page, 'ratings.json');
+    fs.writeFileSync(ratingsFile, JSON.stringify(rate(r)));
+    // A key copied beside the page and the ratings is still not picked up.
+    fs.copyFileSync(r.keyPath, path.join(page, 'review-key.json'));
+    assert.throws(() => importRatings({ ratingsFile, thresholds: DEFAULTS.thresholds }), /--key FILE is required: .*never looked for next to the page/);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('the viewer id does not depend on where the run is, and ratings import after the run moves', () => {
+  const f = fixture();
+  try {
+    judgePanel(f.runDir, { only: ['good'] });
+    const r = writeReview(opts(f, { n: 6, seed: 2 }));
+    const ratings = rate(r);
+    // A copy of the run elsewhere makes the same page.
+    const copy = path.join(f.root, 'copy');
+    fs.cpSync(f.runDir, copy, { recursive: true });
+    fs.rmSync(path.join(copy, 'calibration'), { recursive: true, force: true });
+    assert.equal(writeReview(opts(f, { runDir: copy, n: 6, seed: 2 })).viewerId, r.viewerId);
+    // Moved together with its key (the default layout keeps the key inside the run).
+    const moved = path.join(f.root, 'moved', 'run');
+    fs.mkdirSync(path.dirname(moved));
+    fs.renameSync(f.runDir, moved);
+    const ratingsFile = path.join(f.root, 'ratings.json');
+    fs.writeFileSync(ratingsFile, JSON.stringify(ratings));
+    const out = importRatings({ ratingsFile, keyFile: path.join(moved, 'calibration', 'review-key', 'review-key.json'), thresholds: DEFAULTS.thresholds });
+    assert.equal(out.runDir, moved);
+    assert.equal(out.savePath, path.join(moved, 'calibration', 'result.json'));
+    assert.equal(out.res.judges.good.kappa, 1);
+    assert.equal(readJson(out.sheetKeyPath).runDir, moved);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('a run moved without its key is refused by name, and --run points the import at it', () => {
+  const f = fixture();
+  try {
+    judgePanel(f.runDir, { only: ['good'] });
+    const keys = path.join(f.root, 'keys');
+    const r = writeReview(opts(f, { n: 6, seed: 2, keyOutDir: keys }));
+    const ratingsFile = path.join(f.root, 'ratings.json');
+    fs.writeFileSync(ratingsFile, JSON.stringify(rate(r)));
+    const moved = path.join(f.root, 'elsewhere');
+    fs.renameSync(f.runDir, moved);
+    assert.throws(() => importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }), /is not the run this key was made from .*pass --run DIR/);
+    assert.ok(!fs.existsSync(path.join(keys, 'raters')), 'nothing written for the refused import');
+    assert.throws(() => importRatings({ ratingsFile, keyFile: r.keyPath, run: f.bench, thresholds: DEFAULTS.thresholds }), /check --run/);
+    const out = importRatings({ ratingsFile, keyFile: r.keyPath, run: moved, thresholds: DEFAULTS.thresholds });
+    assert.equal(out.savePath, path.join(moved, 'calibration', 'result.json'));
+    assert.equal(out.res.judges.good.kappa, 1);
+    // From the command line too.
+    const env = { PATH: process.env.PATH, HOME: f.root, TMPDIR: process.env.TMPDIR };
+    const again = spawnSync(process.execPath, [BENCH_JS, 'cap', 'review-import', '--ratings', ratingsFile, '--key', r.keyPath, '--run', moved, '--force'], { env, encoding: 'utf8' });
+    assert.equal(again.status, 0, again.stderr);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('an import that fails while scoring writes nothing, and the retry then imports', () => {
+  const f = fixture();
+  try {
+    judgePanel(f.runDir, { only: ['good'] });
+    const good = fs.readFileSync(path.join(f.runDir, 'judgments.json'), 'utf8');
+    const r = writeReview(opts(f, { n: 6, seed: 2 }));
+    const ratingsFile = path.join(f.root, 'ratings.json');
+    fs.writeFileSync(ratingsFile, JSON.stringify(rate(r)));
+    fs.writeFileSync(path.join(f.runDir, 'judgments.json'), '{ not json');
+    const before = snapshot(f.runDir);
+    assert.throws(() => importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }));
+    assert.deepEqual(snapshot(f.runDir), before, 'no rater file, sheet, key or staging directory is left');
+    assert.deepEqual(fs.readdirSync(r.keyDir), ['review-key.json']);
+    fs.writeFileSync(path.join(f.runDir, 'judgments.json'), good);
+    const out = importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    assert.equal(out.res.judges.good.kappa, 1);
+    assert.deepEqual(fs.readdirSync(r.keyDir).sort(), ['key.json', 'raters', 'review-key.json', 'sheet.json']);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
 test('validation names each problem and nothing is written for a bad file', () => {
   const f = fixture();
   try {
@@ -316,7 +407,7 @@ test('validation names each problem and nothing is written for a bad file', () =
     const ratingsFile = path.join(f.root, 'bad.json');
     fs.writeFileSync(ratingsFile, JSON.stringify({ ...good, viewerId: 'nope' }));
     assert.throws(() => importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }), /not imported/);
-    assert.ok(!fs.existsSync(path.join(r.dir, 'sheet.json')));
+    assert.ok(!fs.existsSync(path.join(r.keyDir, 'sheet.json')));
     assert.ok(!fs.existsSync(path.join(f.runDir, 'calibration', 'result.json')));
     assert.ok(itemId);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
@@ -337,6 +428,12 @@ test('the page helpers: blank state, progress, merge refuses another page and ig
   assert.equal(t.items['g001-A'].labels.c1, 'pass');
   assert.throws(() => viewer.mergeRatings(data, t, { ...out, viewerId: 'v2' }), /viewer v2/);
   assert.throws(() => viewer.mergeRatings(data, t, {}), /not a ratings file/);
+  // Only own keys: inherited names in a loaded file are skipped, not written through.
+  const u = viewer.emptyState(data);
+  const odd = { kind: 'bench-review-ratings', viewerId: 'v1', items: [{ itemId: '__proto__', labels: { c1: 'pass' } }, { itemId: 'toString' }, { itemId: 'g001-A', labels: { toString: 'pass', constructor: 'fail', c1: 'fail' } }] };
+  assert.deepEqual(viewer.mergeRatings(data, u, odd), { applied: 1, skipped: 2 });
+  assert.deepEqual(u.items['g001-A'].labels, { c1: 'fail', c2: null });
+  assert.equal(({}).c1, undefined);
 });
 
 test('the page script wires up and exports the ratings with a stub DOM, and makes no network call', () => {
@@ -397,10 +494,10 @@ test('cap review and cap review-import from the command line', () => {
     const a = cli(['cap', 'review', '--run', f.runDir, '--bench-dir', f.bench, '--n', '6', '--seed', '2']);
     assert.equal(a.status, 0, a.stderr);
     assert.match(a.stdout, /3 task\(s\), 6 output\(s\)/);
-    assert.match(a.stdout, /do not give it to the rater/);
-    const keyPath = path.join(f.runDir, 'calibration', 'review', 'review-key.json');
+    assert.match(a.stdout, /in its own directory because it names the arm behind each letter: give the rater \S+review only/);
+    const keyPath = path.join(f.runDir, 'calibration', 'review-key', 'review-key.json');
     const ratingsFile = path.join(f.root, 'ratings.json');
-    fs.writeFileSync(ratingsFile, JSON.stringify(rate({ keyPath, pagePath: path.join(path.dirname(keyPath), 'review.html') })));
+    fs.writeFileSync(ratingsFile, JSON.stringify(rate({ keyPath, pagePath: path.join(f.runDir, 'calibration', 'review', 'review.html') })));
     const b = cli(['cap', 'review-import', '--ratings', ratingsFile, '--key', keyPath]);
     assert.equal(b.status, 0, b.stderr);
     assert.match(b.stdout, /good\s+PASS/);
@@ -410,6 +507,9 @@ test('cap review and cap review-import from the command line', () => {
     const again = cli(['cap', 'review-import', '--ratings', ratingsFile, '--key', keyPath]);
     assert.equal(again.status, 2);
     assert.match(again.stderr, /pass --force/);
+    const nokey = cli(['cap', 'review-import', '--ratings', ratingsFile]);
+    assert.equal(nokey.status, 2);
+    assert.match(nokey.stderr, /--key FILE is required: .*never looked for next to the page/);
     const bad = cli(['cap', 'review-import', '--ratings', path.join(f.root, 'missing.json'), '--key', keyPath]);
     assert.equal(bad.status, 2);
     assert.match(bad.stderr, /cannot read/);

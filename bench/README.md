@@ -308,13 +308,17 @@ with the data, style and script inline: it loads nothing, opens no port and need
 script and style, and no connections). It draws the runs `calibrate export` would draw, with n and seed taken from `calibration-sample.json`
 when the detailed profile wrote one, and for each drawn task and replicate shows every arm's run of it (`--sample-only` shows the drawn
 runs alone). The outputs are the judge bundles, with the same redaction and then credential scrubbing. Each task's outputs carry the
-letters A, B and so on in a seeded random order; which arm is behind each letter is kept in `review-key.json` next to the page, so give the
-rater the page and not the key. The rater marks each criterion pass, partial or fail (an evidence quote and notes are optional), the
+letters A, B and so on in a seeded random order. Which arm is behind each letter is kept in `review-key.json`, which goes to its own
+directory, `DIR/calibration/review-key/` by default (`--key-out DIR`; a key directory that is the page directory or inside it is refused),
+so the page directory holds only `review.html` and can be handed to the rater whole. The key records the run directory relative to
+itself and no absolute path, and the page's viewer id does not depend on where the run is. The rater marks each criterion pass, partial or fail (an evidence quote and notes are optional), the
 browser keeps the ratings in local storage, and Download ratings saves them as a JSON file. Load ratings resumes from such a file.
 
-`cap review-import --ratings FILE --key DIR/calibration/review/review-key.json` checks the file against the key (same page, known items
-and criteria, verdicts pass, partial, fail or null) and joins each letter back to its arm, task and replicate. Ratings are kept per rater
-in `raters/ID/` beside the key; the id is `--rater ID`, else the Rater name typed on the page. A file that rates no criterion, or has no
+`cap review-import --ratings FILE --key DIR/calibration/review-key/review-key.json` checks the file against the key (same page, known items
+and criteria, verdicts pass, partial, fail or null) and joins each letter back to its arm, task and replicate. `--key` is always
+required; a key is never looked for next to the page or the ratings. The run is found from the key's own location, so a run moved
+together with its key still imports; for a run moved without its key, pass `--run DIR` (an import refuses a directory that lacks the
+key's runs, by name). Ratings are kept per rater in `raters/ID/` beside the key; the id is `--rater ID`, else the Rater name typed on the page. A file that rates no criterion, or has no
 rater id, is refused. Importing a rater that is already on file is refused unless `--force`, so a second import never replaces the first.
 
 With several raters on file, each is scored alone (`raters/ID/result.json`), and all of them are pooled for the combined result: the
@@ -333,7 +337,7 @@ row lists them after the pooled kappa with the lowest in bold. A rater under the
 
 ```
 node bench/runner/bench.js cap review --run V/claude
-node bench/runner/bench.js cap review-import --ratings ~/Downloads/ratings-VIEWER.json --key V/claude/calibration/review/review-key.json --rater alice
+node bench/runner/bench.js cap review-import --ratings ~/Downloads/ratings-VIEWER.json --key V/claude/calibration/review-key/review-key.json --rater alice
 ```
 
 ## Benchmark a PR or work in progress
