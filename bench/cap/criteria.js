@@ -14,6 +14,8 @@
 //   HIGH-VARIANCE       judges disagree (strict: any verdict difference, partial included) on more than a share of the
 //                       runs, or replicates of one arm and task spread more than a pooled standard deviation. Each half
 //                       is measured only when the data has it. The coarse rate (pass against not pass) is shown beside.
+//                       Needs minRuns runs per arm (and minRuns runs with two or more judges for the judge half);
+//                       below that it is INSUFFICIENT-DATA instead.
 // The margin default is the cap decide MARGIN, imported, so the two cannot drift apart.
 
 const crypto = require('node:crypto');
@@ -62,24 +64,28 @@ function contentIds(list) {
  * one; the content id; position, only when the run has as many check results as the reference list (the task's checks,
  * or the first run seen for a task with no loaded definition) with the same type at each place. Anything else is an
  * error for the run rather than a guess. When content ids fail because result records lack fields the reference sets,
- * `note` names those fields. Returns { observations, error, note }.
+ * `note` names those fields. An explicit id used twice in one result list is an error. A missing reference list leaves
+ * explicit ids as the only way to match. Returns { observations, error, note }.
  */
 function matchChecks(results, reference, base) {
   const done = results.filter((c) => typeof c?.passed === 'boolean');
   if (!done.length) return { observations: [], error: null, note: null };
+  const where = `arm ${base.arm}, replicate ${base.rep}`;
   const obsOf = (c, id, spec) => ({ ...base, kind: 'check', id, label: checkLabel(spec ?? c), value: c.passed ? 1 : 0, judgeValues: null });
   const ids = done.map(checkIdOf);
   if (ids.every(Boolean)) {
+    const dup = ids.find((id, i) => ids.indexOf(id) !== i);
+    if (dup !== undefined) return { observations: [], error: `${where}: the check id or name "${dup}" appears more than once in the result list, so the checks cannot be matched`, note: null };
     return { observations: done.map((c, i) => obsOf(c, `check:${ids[i]}`, (reference ?? []).find((r) => checkIdOf(r) === ids[i]))), error: null, note: null };
   }
+  if (!Array.isArray(reference)) return { observations: [], error: `${where}: no reference check list to match against, and the check results have no id`, note: null };
   const refIds = contentIds(reference);
   const resIds = contentIds(results);
   if (resIds.every((id) => refIds.includes(id))) {
     return { observations: results.map((c, i) => (typeof c?.passed === 'boolean' ? obsOf(c, resIds[i], reference[refIds.indexOf(resIds[i])]) : null)).filter(Boolean), error: null, note: null };
   }
-  const missing = [...new Set(reference.flatMap((r, i) => (results[i] && results[i].type === r.type ? CONTENT_FIELDS.filter((k) => r[k] !== undefined && results[i][k] === undefined) : [])))].sort();
+  const missing = [...new Set(reference.flatMap((r, i) => (results[i] && r && results[i].type === r.type ? CONTENT_FIELDS.filter((k) => r[k] !== undefined && results[i][k] === undefined) : [])))].sort();
   const why = missing.length ? `result check records lack ${missing.join(', ')}, which the task's checks set, so content ids cannot be computed the same way` : 'the check contents differ from the reference list (the checks may have changed since the run)';
-  const where = `arm ${base.arm}, replicate ${base.rep}`;
   if (results.length !== reference.length) return { observations: [], error: `${where}: ${results.length} check results against ${reference.length} checks; ${why}, and position cannot be used`, note: null };
   const off = results.findIndex((c, i) => c?.type !== reference[i]?.type);
   if (off >= 0) return { observations: [], error: `${where}: check ${off + 1} is ${results[off]?.type} in the result and ${reference[off]?.type} in the reference list; ${why}, and position cannot be used`, note: null };
@@ -113,8 +119,9 @@ function collectObservations({ run, rows, ctx, tasks, src = run.dir, armMap = nu
     const base = { arm, task: e.taskId, rep: e.replicate, src };
     const results = Array.isArray(e.result.checks) ? e.result.checks : [];
     if (results.length) {
-      if (!task && !firstSeen.has(e.taskId)) firstSeen.set(e.taskId, results);
-      const m = matchChecks(results, task?.checks ?? firstSeen.get(e.taskId), base);
+      const defined = Array.isArray(task?.checks) ? task.checks : null;
+      if (!defined && !firstSeen.has(e.taskId)) firstSeen.set(e.taskId, results);
+      const m = matchChecks(results, defined ?? firstSeen.get(e.taskId), base);
       observations.push(...m.observations);
       if (m.error) checkErrors.push({ task: e.taskId, arm, rep: e.replicate, src, reason: m.error });
       if (m.note) checkNotes.set(`${e.taskId}\u0000${m.note}`, { task: e.taskId, note: m.note, runs: (checkNotes.get(`${e.taskId}\u0000${m.note}`)?.runs ?? 0) + 1 });
@@ -222,13 +229,24 @@ function analyzeObservations(observations, { baseline, aa = null, config = {}, c
     const satShort = Boolean(side && few);
     if (side && !few) { flags.push('SATURATED'); reasons.push(side); }
     const hv = [];
-    if (judge && judge.rate > cfg.judgeDisagree) hv.push(`judges disagreed on ${judge.disagree} of ${judge.runs} runs (pass against not pass: ${judge.coarseDisagree})`);
-    if (replicate && replicate.sd > cfg.replicateSd) hv.push(`replicate SD ${replicate.sd} over ${replicate.cells} cells`);
+    const hvShort = [];
+    const fewNote = few ? `${few} arm${few === 1 ? ' has' : 's have'} fewer than ${cfg.minRuns} runs` : null;
+    if (judge && judge.rate > cfg.judgeDisagree) {
+      const text = `judges disagreed on ${judge.disagree} of ${judge.runs} runs (pass against not pass: ${judge.coarseDisagree})`;
+      if (few || judge.runs < cfg.minRuns) hvShort.push(`${text}, but ${fewNote ?? `only ${judge.runs} runs have two or more judges, under ${cfg.minRuns}`}, so HIGH-VARIANCE is not called`);
+      else hv.push(text);
+    }
+    if (replicate && replicate.sd > cfg.replicateSd) {
+      const text = `replicate SD ${replicate.sd} over ${replicate.cells} cells`;
+      if (few) hvShort.push(`${text}, but ${fewNote}, so HIGH-VARIANCE is not called`);
+      else hv.push(text);
+    }
     if (hv.length) { flags.push('HIGH-VARIANCE'); reasons.push(...hv); }
     const ndShort = !flags.includes('NON-DISCRIMINATING') && comparisons.some((c) => c.status === 'INSUFFICIENT-DATA');
     if (ndShort) reasons.push(...comparisons.filter((c) => c.status === 'INSUFFICIENT-DATA').map((c) => `${c.arm}: ${c.reason}`));
     if (satShort) reasons.push(`${side}, but ${few} arm${few === 1 ? ' has' : 's have'} fewer than ${cfg.minRuns} runs, so SATURATED is not called`);
-    const insufficient = ndShort || satShort;
+    if (!hv.length) reasons.push(...hvShort);
+    const insufficient = ndShort || satShort || (!hv.length && hvShort.length > 0);
     items.push({ kind: first.kind, task: first.task, id: first.id, label: first.label, weight: first.weight ?? null, rates, comparisons, aa: aaCmp, judge, replicate, flags, insufficient, reasons });
   }
   const errTasks = [...new Set(checkErrors.map((x) => x.task))];
@@ -334,7 +352,7 @@ function renderCriteria(report) {
     ['saturated', t.saturated, 'SATURATED when every arm is at or above this rate, or every arm at or below 1 minus it'],
     ['judge-disagree', t.judgeDisagree, 'HIGH-VARIANCE when judges gave different verdicts (strict: partial against pass counts) on more than this share of runs; the pass against not pass rate is shown beside it'],
     ['replicate-sd', t.replicateSd, 'HIGH-VARIANCE when the pooled SD of one arm and task across replicates is above this (0.5 is a coin flip)'],
-    ['min-runs', t.minRuns, 'runs per arm needed before an item is called NON-DISCRIMINATING for scoring the same in every run, or SATURATED; below it the item is INSUFFICIENT-DATA'],
+    ['min-runs', t.minRuns, 'runs per arm needed before an item is called NON-DISCRIMINATING for scoring the same in every run, SATURATED or HIGH-VARIANCE; below it the item is INSUFFICIENT-DATA'],
     ['adjust', t.adjust ? 'on' : 'off', 'intervals widened for the number of items on each arm pair (Bonferroni)'],
   ]), '');
   L.push('## Summary', '', table(['flag', 'items'], [...FLAGS.map((f) => [f, report.summary.byFlag[f]]), ['any flag', report.summary.flagged], ['INSUFFICIENT-DATA (not flagged)', report.summary.insufficient], ['checks not matched (error)', report.summary.errors], ['all items', report.summary.items]]), '');
@@ -368,4 +386,4 @@ function writeCriteria(outDir, report) {
   return [path.join(outDir, 'criteria.md'), path.join(outDir, 'criteria.json')];
 }
 
-module.exports = { DEFAULTS, FLAGS, CONTENT_FIELDS, contentIds, collectObservations, analyzeObservations, judgeNote, analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCriteria };
+module.exports = { DEFAULTS, FLAGS, CONTENT_FIELDS, contentIds, matchChecks, collectObservations, analyzeObservations, judgeNote, analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCriteria };

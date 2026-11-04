@@ -9,12 +9,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { analyzeObservations, collectObservations, contentIds, CONTENT_FIELDS, judgeNote, buildCriteriaReport, renderCriteria, DEFAULTS } = require('../../cap/criteria.js');
+const { analyzeObservations, collectObservations, contentIds, matchChecks, CONTENT_FIELDS, judgeNote, buildCriteriaReport, renderCriteria, DEFAULTS } = require('../../cap/criteria.js');
 const { MARGIN } = require('../../cap/decide.js');
 const { decideStudy } = require('../../cap/skillstudy.js');
 const { setupAndRun } = require('./cap-skillstudy-fake.js');
 const { env } = require('./cap-study-helpers.js');
 const { checkArgs } = require('../lib/cli-flags.js');
+const { mkScratch } = require('./scratch.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 
@@ -172,6 +173,71 @@ test('a check list that matches by neither content nor position is an error for 
   assert.match(renderCriteria(rep), /\| ERROR \| not judged: 1 run had check results that could not be matched; arm del, replicate 2/);
   const none = analyzeObservations([], { baseline: 'ctl', checkErrors: r.checkErrors });
   assert.equal(none.items[0].id, 'checks', 'a task with no matched check still gets an error item');
+});
+
+test('HIGH-VARIANCE from judge disagreement needs the run minimum: 1 and 4 runs per arm are INSUFFICIENT-DATA, 5 is flagged', () => {
+  const at = (n) => item(analyzeObservations([...obs('ctl', n, () => 0.5, { kind: 'rubric', id: 'c1', judgeValues: [1, 0] }), ...obs('del', n, () => 0.5, { kind: 'rubric', id: 'c1', judgeValues: [0, 1] })], { baseline: 'ctl' }), 'c1');
+  for (const n of [1, 4]) {
+    const it = at(n);
+    assert.ok(!it.flags.includes('HIGH-VARIANCE'), `${n} runs per arm`);
+    assert.equal(it.insufficient, true);
+    assert.match(it.reasons.join(' '), new RegExp(`judges disagreed on ${2 * n} of ${2 * n} runs .*but 2 arms have fewer than 5 runs, so HIGH-VARIANCE is not called`));
+  }
+  assert.ok(at(5).flags.includes('HIGH-VARIANCE'));
+});
+
+test('HIGH-VARIANCE from replicate spread needs the run minimum: 4 runs per arm is INSUFFICIENT-DATA, 5 is flagged', () => {
+  const at = (n) => item(analyzeObservations([...obs('ctl', n, (i) => i % 2), ...obs('del', n, (i) => (i + 1) % 2)], { baseline: 'ctl' }));
+  const four = at(4);
+  assert.ok(!four.flags.includes('HIGH-VARIANCE'));
+  assert.equal(four.insufficient, true);
+  assert.match(four.reasons.join(' '), /replicate SD [\d.]+ over 2 cells, but 2 arms have fewer than 5 runs, so HIGH-VARIANCE is not called/);
+  const five = at(5);
+  assert.ok(five.flags.includes('HIGH-VARIANCE'));
+  assert.equal(five.insufficient, false);
+});
+
+test('every cap criteria threshold flag is checked for type and range, and a bad one exits 2 before anything is read', () => {
+  const home = mkScratch('captest-');
+  const study = path.join(home, 'no-such-study');
+  const cases = [
+    ['margin', '0', /--margin takes a number above 0 and at most 1 \(got "0"\)/], ['margin', 'abc', /--margin takes a number above 0/],
+    ['saturated', '0.3', /--saturated takes a number above 0\.5 and at most 1 \(got "0\.3"\)/], ['saturated', '1.2', /--saturated takes/], ['saturated', 'high', /--saturated takes/],
+    ['judge-disagree', '1.5', /--judge-disagree takes a share from 0 to 1/], ['judge-disagree', 'x', /--judge-disagree takes/],
+    ['replicate-sd', '1.5', /--replicate-sd takes a standard deviation from 0 to 1/], ['replicate-sd', 'wide', /--replicate-sd takes/],
+    ['min-runs', '0', /--min-runs takes a whole number of 1 or more/], ['min-runs', '2.5', /--min-runs takes a whole number/], ['min-runs', 'five', /--min-runs takes a whole number/],
+  ];
+  for (const [flag, value, re] of cases) {
+    const r = spawnSync(process.execPath, [BENCH_JS, 'cap', 'criteria', '--study', study, `--${flag}`, value], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: home, TMPDIR: process.env.TMPDIR } });
+    assert.equal(r.status, 2, `--${flag} ${value}: ${r.stderr}`);
+    assert.match(r.stderr, re, `--${flag} ${value}`);
+    assert.doesNotMatch(r.stderr, /no study at/, 'the flag is checked before the study is read');
+  }
+  assert.equal(fs.existsSync(study), false, 'nothing was written');
+  fs.rmSync(home, { recursive: true, force: true });
+});
+
+test('a missing reference check list is no reference: explicit ids still match, otherwise it is an error, never a throw', () => {
+  const base = { arm: 'ctl', task: 't1', rep: 1, src: 'd1' };
+  const bare = matchChecks([rec(FX, true)], undefined, base);
+  assert.match(bare.error, /arm ctl, replicate 1: no reference check list to match against, and the check results have no id/);
+  assert.deepEqual(matchChecks([rec(FX, true, { id: 'a' })], undefined, base).observations.map((o) => o.id), ['check:a']);
+  const r = checkRun([{ arm: 'ctl', rep: 1, checks: [rec(FX, true)] }, { arm: 'del', rep: 1, checks: [rec(FX, false)] }], { taskChecks: null });
+  assert.deepEqual(r.checkErrors, [], 'a task with no check list uses the first run seen, as documented');
+  assert.equal(r.observations.length, 2);
+});
+
+test('an explicit check id or name used twice in one result list is an error naming it; content duplicates keep their numbers', () => {
+  const r = checkRun([
+    { arm: 'ctl', rep: 1, checks: [rec(FX, true, { id: 'same' }), rec(CT, true, { id: 'same' })] },
+    { arm: 'del', rep: 1, checks: [rec(FX, true, { name: 'n1' }), rec(CT, true, { name: 'n1' })] },
+  ]);
+  assert.equal(r.checkErrors.length, 2);
+  assert.match(r.checkErrors[0].reason, /the check id or name "same" appears more than once in the result list/);
+  assert.match(r.checkErrors[1].reason, /"n1" appears more than once/);
+  const a = analyzeObservations(r.observations, { baseline: 'ctl', checkErrors: r.checkErrors });
+  assert.equal(a.items[0].error.length, 2);
+  assert.match(contentIds([FX, FX])[1], /#2$/);
 });
 
 test('an item that separates the arms carries no flag', () => {
