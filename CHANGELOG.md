@@ -152,6 +152,18 @@ not per individual commit.
   some and still decide. No `SKILL.md` names its role or its verdict; `README.md` there is the only
   place that does, and defines identical arms for the subject runner. Run `node --test
   bench/test/control-files.test.js`.
+- `bench/lib/controls.js`, the control manifest and the run gate. The manifest lists each control
+  with its skill, kind and expected verdict (`keep`, `prune`, and `needs human review` for null),
+  whether its wording is the point (`skill_specific`, true for keep, which the later wording lint
+  skips) and whether its arms are identical. `evaluateControls(results)` returns `PASS` or `FAIL`
+  with a reason for each control: a control passes when its final verdict, after the word-check
+  gate, equals the expected one, and a control with no result fails. The null control also fails a
+  review that measured nothing (a load failure, an invalid pair or too few pairs), so a broken run
+  cannot pass behind the expected verdict. `runStatus` is `PASS` only when every control passes, so
+  a missing control fails the run. `runSummary(results)` returns the status, the control results
+  and every real skill's result with `trusted` and `trust_reasons`; when the run fails, each real
+  skill carries `trusted: false` and the failing controls' reasons, and its computed verdict is
+  left as it is. Run `node --test bench/test/controls.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
