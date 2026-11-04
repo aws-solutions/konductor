@@ -2265,6 +2265,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &[],
             &BTreeMap::new(),
         )
         .unwrap();
