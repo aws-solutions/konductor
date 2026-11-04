@@ -12,22 +12,25 @@ import {
 
 /**
  * A stand-in for `net.connect` that opens no connection. Each socket it makes
- * says nothing but the timeout the probe asked for, as a dropped packet would;
+ * says nothing but the timeout the probe sets, as a dropped packet would;
  * the first `answerAfter` sockets stay silent and later ones connect.
  */
 function fakeConnect(answerAfter = Infinity) {
   const sockets: Array<EventEmitter & { destroyed: boolean }> = [];
-  const open: Connect = ({ timeout }) => {
+  const open: Connect = () => {
+    const event = sockets.length >= answerAfter ? 'connect' : 'timeout';
     const socket = Object.assign(new EventEmitter(), {
       destroyed: false,
       destroy() {
         this.destroyed = true;
         return this;
       },
+      setTimeout(timeout: number) {
+        setTimeout(() => socket.emit(event), timeout);
+        return this;
+      },
     });
     sockets.push(socket);
-    const event = sockets.length > answerAfter ? 'connect' : 'timeout';
-    setTimeout(() => socket.emit(event), timeout);
     return socket as unknown as ReturnType<Connect>;
   };
   return { open, sockets };
@@ -72,18 +75,55 @@ describe('probePort', () => {
     expect(sockets[0]?.destroyed).toBe(true);
   });
 
-  // Whether the timeout or the connection is handled first after a stall is
-  // not fixed, so several stall lengths are tried; without the one-turn delay
-  // about half of them report silence.
-  it('still sees a connection when the event loop stalls past the timeout', async () => {
-    const port = await listen('0.0.0.0');
-    const answers: Probe[] = [];
-    for (const stall of [150, 200, 250, 300, 350, 400]) {
-      const probe = probePort(LOOPBACK, port, 100);
-      stallFor(stall);
-      answers.push(await probe);
-    }
-    expect(answers).toEqual(Array(6).fill('connected'));
+  // Each stall hits a different point: before the connect tick, after one
+  // tick, and after one immediate. A stall must never read as silence.
+  const stallPoints: Array<[string, (stall: () => void) => void]> = [
+    ['before the connect tick', (stall) => stall()],
+    ['after one tick', (stall) => process.nextTick(stall)],
+    ['after one immediate', (stall) => setImmediate(stall)],
+  ];
+
+  it.each(stallPoints)(
+    'still sees a connection when the event loop stalls %s past the timeout',
+    async (_, schedule) => {
+      const port = await listen('0.0.0.0');
+      const answers: Probe[] = [];
+      for (const stall of [150, 200, 250, 300, 350, 400]) {
+        const probe = probePort(LOOPBACK, port, 100);
+        schedule(() => stallFor(stall));
+        answers.push(await probe);
+      }
+      expect(answers).toEqual(Array(6).fill('connected'));
+    },
+  );
+
+  it('is silent for an address that drops packets, after the timeout', async () => {
+    const started = performance.now();
+    const { open } = fakeConnect();
+
+    expect(await probePort('192.0.2.1', 9, 50, open)).toBe('silent');
+    expect(performance.now() - started).toBeGreaterThanOrEqual(45);
+  });
+
+  it('arms the timeout only after the connect tick', async () => {
+    const calls: string[] = [];
+    const open: Connect = () => {
+      const socket = Object.assign(new EventEmitter(), {
+        destroy: () => socket,
+        setTimeout: () => {
+          calls.push('timeout armed');
+          return socket;
+        },
+      });
+      calls.push('connect sent');
+      setImmediate(() => socket.emit('connect'));
+      return socket as unknown as ReturnType<Connect>;
+    };
+
+    const probe = probePort('192.0.2.1', 9, 20, open);
+    expect(calls).toEqual(['connect sent']);
+    expect(await probe).toBe('connected');
+    expect(calls).toEqual(['connect sent', 'timeout armed']);
   });
 
   it('probes again while the answer is silence, up to the attempts given', async () => {

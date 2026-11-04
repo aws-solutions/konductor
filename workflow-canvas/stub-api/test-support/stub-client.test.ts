@@ -36,6 +36,8 @@ describe('the stub client', () => {
   const closed = (socket: Socket) =>
     new Promise<void>((resolve) => socket.once('close', () => resolve()));
 
+  // macOS discards an unread reply when the peer's reset arrives, so the
+  // client may only see the failed write there. Linux delivers the reply first.
   it('survives a server that answers and hangs up while the body is still being sent', async () => {
     let hungUp: Promise<void> = Promise.resolve();
     const client = await serve((socket) => {
@@ -43,11 +45,22 @@ describe('the stub client', () => {
       socket.end(REPLY, () => socket.destroy());
     });
 
-    const reply = await client.post('/x', undefined, { rawBody: BIG_BODY });
+    const outcome = await client
+      .post('/x', undefined, { rawBody: BIG_BODY })
+      .then(
+        (reply) => reply,
+        (error: unknown) => error,
+      );
     await hungUp;
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(reply.status).toBe(400);
+    if (process.platform === 'darwin' && outcome instanceof Error) {
+      expect(outcome).toMatchObject({
+        code: expect.stringMatching(/ECONNRESET|EPIPE/),
+      });
+    } else {
+      expect(outcome).toMatchObject({ status: 400 });
+    }
   });
 
   it.each([

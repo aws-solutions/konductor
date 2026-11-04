@@ -14,13 +14,13 @@ export type Probe = 'connected' | 'refused' | 'silent';
 export type Connect = (options: {
   host: string;
   port: number;
-  timeout: number;
-}) => Pick<Socket, 'once' | 'destroy'>;
+}) => Pick<Socket, 'once' | 'destroy' | 'setTimeout'>;
 
 /**
- * Tries a TCP connection to `host:port`. A timeout is judged one loop turn
- * late, so an event loop that stalled past `timeoutMs` still delivers a
- * connection that was already made instead of reporting silence.
+ * Tries a TCP connection to `host:port`. The timeout is armed only after the
+ * connect has been sent, and judged one loop turn late, so an event loop that
+ * stalled past `timeoutMs` still delivers a connection that was already made
+ * instead of reporting silence.
  */
 export function probePort(
   host: string,
@@ -29,7 +29,10 @@ export function probePort(
   open: Connect = connect,
 ): Promise<Probe> {
   return new Promise((resolve) => {
-    const socket = open({ host, port, timeout: timeoutMs });
+    const socket = open({ host, port });
+    // For an IP host the connect goes out on the next tick; a timer started
+    // before it would count a stall ahead of the connect as silence.
+    process.nextTick(() => socket.setTimeout(timeoutMs));
     const settle = (result: Probe) => {
       socket.destroy();
       resolve(result);
