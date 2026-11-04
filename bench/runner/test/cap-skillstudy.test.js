@@ -244,3 +244,46 @@ test('a dry run names the shared screen and builds nothing', async () => {
     assert.equal(fs.existsSync(path.join(s.studyDir, 'screens')), false);
   } finally { s.e.done(); }
 });
+
+// ---- dry run says what a resume would do, and writes nothing ----
+
+const listing = (dir) => {
+  const out = [];
+  const walk = (d) => { for (const n of fs.readdirSync(d).sort()) { const f = path.join(d, n); const st = fs.statSync(f); out.push(`${path.relative(dir, f)}:${st.isDirectory() ? 'd' : `${st.size}:${st.mtimeMs}`}`); if (st.isDirectory()) walk(f); } };
+  walk(dir);
+  return out;
+};
+
+test('a dry run after a finished and judged screen says the run and the judge are skipped, and writes nothing', async () => {
+  const s = setup({ skills: ['sectioned', 'helped'], planOpts: { screen: true } });
+  try {
+    await runStudy({ studyDir: s.studyDir, exec: fakeExec().exec, log: () => {} });
+    const before = listing(s.studyDir);
+    const lines = [];
+    const { exec, calls } = fakeExec();
+    await runStudy({ studyDir: s.studyDir, exec, log: (m) => lines.push(m), dryRun: true });
+    const text = lines.join('\n');
+    assert.match(text, /controls: already checked \(passed\)/);
+    assert.match(text, /screen-konductor: finished and judged: the run and the judge are skipped/);
+    assert.equal(calls.length, 0);
+    assert.deepEqual(listing(s.studyDir), before, 'no file was created, changed or moved');
+  } finally { s.e.done(); }
+});
+
+test('a dry run names a finished screen that is not judged, an unfinished one and a screen not started', async () => {
+  const s = setup({ skills: ['sectioned', 'helped'], planOpts: { screen: true } });
+  try {
+    await runStudy({ studyDir: s.studyDir, exec: fakeExec().exec, log: () => {} });
+    const dir = path.join(s.studyDir, 'screens', 'screen-konductor');
+    const say = async () => { const lines = []; await runStudy({ studyDir: s.studyDir, exec: fakeExec().exec, log: (m) => lines.push(m), dryRun: true }); return lines.join('\n'); };
+    fs.renameSync(path.join(dir, 'judgments.json'), path.join(s.e.root, 'judgments.aside'));
+    assert.match(await say(), /screen-konductor: finished, not judged: the run is skipped and the judge would run/);
+    const summary = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf8'));
+    fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify({ ...summary, results: summary.results.slice(1) }));
+    assert.match(await say(), /screen-konductor: runs \d+\/\d+: the directory would be moved to incomplete\/ and the run repeated/);
+    fs.rmSync(path.join(dir, 'summary.json'));
+    assert.match(await say(), /screen-konductor: no-summary: the directory would be moved to incomplete\//);
+    fs.rmSync(dir, { recursive: true, force: true });
+    assert.match(await say(), /screen-konductor: not started: the run would start/);
+  } finally { s.e.done(); }
+});

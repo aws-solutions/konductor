@@ -272,7 +272,10 @@ async function controlsStep({ study, studyDir, step, log, dryRun, result }) {
   const p = paths(studyDir);
   const check = () => readJson(path.join(p.controlRun, 'controls-check.json'));
   const done = check();
-  if (done) return { trusted: done.trusted === true, ran: false };
+  if (done) {
+    if (dryRun) log(`controls: already checked (${done.trusted === true ? 'passed' : 'FAILED'}); the controls are not rerun`);
+    return { trusted: done.trusted === true, ran: false };
+  }
   const reps = study.settings.controlReps ?? 5;
   const armConfig = study.plan.armConfig;
   log(`controls: 4 arms x 2 tasks x ${reps} replicates (known-answer keep and decoy skills) must pass before any skill verdict is trusted`);
@@ -295,6 +298,15 @@ async function controlsStep({ study, studyDir, step, log, dryRun, result }) {
   return { trusted: c ? c.trusted === true : false, ran: true };
 }
 
+/** What a real run would do with a wave directory, read-only: skip a finished and judged wave, judge a finished one, or start over. */
+function dryState(dir, want, judged) {
+  if (!fs.existsSync(dir)) return 'not started: the run would start';
+  const st = waveComplete(dir, want);
+  if (!st.complete) return `${st.state}: the directory would be moved to incomplete/ and the run repeated`;
+  if (!judged) return 'finished: the run is skipped';
+  return fs.existsSync(path.join(dir, 'judgments.json')) ? 'finished and judged: the run and the judge are skipped' : 'finished, not judged: the run is skipped and the judge would run';
+}
+
 async function screenStep({ study, studyDir, sc, step, log, dryRun, result }) {
   const p = paths(studyDir);
   const dir = p.screen(sc.id);
@@ -302,7 +314,11 @@ async function screenStep({ study, studyDir, sc, step, log, dryRun, result }) {
   const judged = tasksNeedJudge(study, sc.tasks);
   const suite = suiteOf(study, sc.tasks);
   log(`${sc.id}: arms ${sc.arms.join(', ')}`);
-  if (dryRun) { log(`  ${sc.id}: run --suite ${suite} --tasks ${sc.tasks.join(',')} --replicates ${reps} --out ${dir}${judged ? ' (then judge on the opencode backend)' : ''}`); return; }
+  if (dryRun) {
+    log(`  ${sc.id}: run --suite ${suite} --tasks ${sc.tasks.join(',')} --replicates ${reps} --out ${dir}${judged ? ' (then judge on the opencode backend)' : ''}`);
+    log(`  ${sc.id}: ${dryState(dir, { arms: sc.arms.length, reps, tasks: sc.tasks.length }, judged)}`);
+    return;
+  }
   const mark = path.join(p.root, 'screens', `${sc.id}.done`);
   const state = fs.existsSync(dir) ? waveComplete(dir, { arms: sc.arms.length, reps, tasks: sc.tasks.length }) : { complete: false };
   if (!state.complete) {
@@ -341,7 +357,11 @@ async function skillSteps({ study, studyDir, rec, step, log, dryRun, result, con
     const dir = p.wave(rec.name, n);
     const doneMark = path.join(p.skill(rec.name), `w${n}.done`);
     log(`${rec.name} wave ${n}: arms ${armIds.join(', ')}`);
-    if (dryRun) { log(`  ${rec.name} wave ${n}: run --suite ${suite} --tasks ${chosen.join(',')} --replicates ${reps} --out ${dir}${judged ? ' (then judge on the opencode backend)' : ''}`); return true; }
+    if (dryRun) {
+      log(`  ${rec.name} wave ${n}: run --suite ${suite} --tasks ${chosen.join(',')} --replicates ${reps} --out ${dir}${judged ? ' (then judge on the opencode backend)' : ''}`);
+      log(`  ${rec.name} wave ${n}: ${dryState(dir, { arms: armIds.length, reps, tasks: chosen.length }, judged)}`);
+      return true;
+    }
     const state = fs.existsSync(dir) ? waveComplete(dir, { arms: armIds.length, reps, tasks: chosen.length }) : { complete: false };
     if (!state.complete) {
       moveAside(studyDir, dir, `${rec.name}-w${n}`);
