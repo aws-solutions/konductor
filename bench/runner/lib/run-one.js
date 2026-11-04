@@ -337,7 +337,11 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
 
   if (runRoot) {
     if (home) harness.removeCredentials(home);
-    if (harness.cleanupRun) harness.cleanupRun({ cwd: path.join(runRoot, 'work'), tmpdir: path.join(runRoot, 'tmp'), tmpBases: ctx.claudeTmpBases });
+    if (harness.cleanupRun) {
+      const tmpdir = path.join(runRoot, 'tmp');
+      const removed = harness.cleanupRun({ cwd: path.join(runRoot, 'work'), tmpdir, tmpBases: ctx.claudeTmpBases });
+      if (result.claudeCode) result.claudeCode = { ...result.claudeCode, tmpCleanup: harness.describeCleanup(removed, tmpdir) };
+    }
     fs.rmSync(runRoot, { recursive: true, force: true });
   }
   const scrubbed = scrubDeep(result, secretLiterals(process.env, harness.secrets ? harness.secrets(ctx) : []));

@@ -295,6 +295,7 @@ test('vanilla run: result fields, command, environment, rules, cleanup and no cr
 
     assert.deepEqual(fs.readdirSync(s.scratchDir), [], 'run root removed');
     assert.deepEqual(fs.readdirSync(s.tmpBase), [], 'the claude-<uid> task directory the fake made is removed');
+    assert.deepEqual(r.claudeCode.tmpCleanup, { removed: 1, inRunTmpdir: 0, inDefaultTmp: 1 });
     const hits = scanTree(s.root, { literals: [SECRET, TOKEN, KEY_ID] }).filter((h) => !h.file.includes('/probe/') && !h.file.includes('/tools/'));
     assert.deepEqual(hits, [], 'no credential value in any file the run left');
     assert.equal(fs.readFileSync(path.join(s.outDir, 'command.txt'), 'utf8').includes(SECRET), false);
@@ -440,6 +441,7 @@ test('if claude honors TMPDIR (simulated, not verified against the real binary) 
     assert.equal(made.length, 1);
     assert.match(made[0], /scratch\/r-[^/]+\/tmp\/claude-\d+\//);
     assert.equal(fs.existsSync(made[0]), false);
+    assert.deepEqual(r.claudeCode.tmpCleanup, { removed: 1, inRunTmpdir: 1, inDefaultTmp: 0 });
     assert.deepEqual(fs.readdirSync(s.scratchDir), []);
     assert.deepEqual(fs.readdirSync(s.tmpBase), []);
   } finally {

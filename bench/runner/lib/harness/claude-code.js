@@ -212,7 +212,7 @@ function checkInstalledAgents(home, { canonical, entryAgent = 'konductor', expec
 }
 
 function installKonductor(home, prepared, ctx) {
-  const run = ctx.claudeInstall ?? ((h, p) => sandbox.runKonductor(p.bin, ['install', '--harness', 'claude', '--from', p.exportDir, '--no-telemetry'], { home: h }));
+  const run = ctx.claudeInstall ?? ((h, p) => sandbox.runKonductor(p.bin, ['install', '--harness', 'claude', '--from', p.exportDir, '--no-telemetry'], { home: h }).stdout);
   return run(home, prepared);
 }
 
@@ -263,11 +263,11 @@ const slugOf = (cwd) => {
  * process, and this removes what it made there or in the default temp directory. The cwd slug is unique to the run, so
  * parallel runs never touch each other's files.
  */
-function cleanupRun({ cwd, tmpdir, tmpBases = [tmpdir, os.tmpdir()], uid = process.getuid ? process.getuid() : null }) {
+function cleanupRun({ cwd, tmpdir, tmpBases = [os.tmpdir()], uid = process.getuid ? process.getuid() : null }) {
   if (uid === null) return [];
   const slug = slugOf(cwd);
   const removed = [];
-  for (const base of new Set(tmpBases.filter(Boolean))) {
+  for (const base of new Set([tmpdir, ...tmpBases].filter(Boolean))) {
     const root = path.join(base, `claude-${uid}`);
     const dir = path.join(root, slug);
     if (!fs.existsSync(dir)) continue;
@@ -276,6 +276,12 @@ function cleanupRun({ cwd, tmpdir, tmpBases = [tmpdir, os.tmpdir()], uid = proce
     try { if (!fs.readdirSync(root).length) fs.rmdirSync(root); } catch { /* another run uses it */ }
   }
   return removed;
+}
+
+/** Where cleanupRun found claude's task directory: in the run's own TMPDIR (claude honors it) or in the default temp dir. */
+function describeCleanup(removed, tmpdir) {
+  const inRun = removed.filter((d) => d.startsWith(`${tmpdir}${path.sep}`)).length;
+  return { removed: removed.length, inRunTmpdir: inRun, inDefaultTmp: removed.length - inRun };
 }
 
 // ---- Results ----
@@ -378,6 +384,6 @@ const keepPaths = (ctx) => [ctx.claude?.bin].filter(Boolean);
 module.exports = {
   id, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
-  parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, runConfigRecord,
+  parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
   resolveClaude, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
 };
