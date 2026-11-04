@@ -269,6 +269,13 @@ not per individual commit.
   run driver reads that flag from the control manifest, so a task cannot exempt itself. A
   paraphrase of the skill is not found. A pattern with several branches fails when any branch is
   skill-only. Run `node --test bench/test/task-lint-skill-wording.test.js`.
+- `checkResultsFor(task, start, final)` in `bench/lib/checks.js`, the function that fills the
+  `check_results` of a stored pair. It runs the task's checks on the arm's final snapshot, with the
+  start snapshot as the pristine side of `fixture_unchanged`, and returns one entry per check in
+  the task's order: `true`, `false`, or `null` when the check gave no verdict (a timeout, an
+  exhausted work budget, a check past the ceiling, a missing final snapshot, or a
+  `fixture_unchanged` check with no start snapshot). A task with no checks gives `[]`. It is pure
+  and never throws. Run `node --test bench/test/check-results.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.

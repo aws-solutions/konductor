@@ -9,8 +9,9 @@
  * a snapshot is the job of snapshot-loader.js. Nothing here throws on bad input; a malformed
  * check or snapshot yields a failed result with a reason.
  *
- * Stable API: `validateCheck`, `evalCheck`, `evalChecks`. The remaining exports are helpers and
- * limits exposed for tests and for sibling modules.
+ * Stable API: `validateCheck`, `evalCheck`, `evalChecks`, `checkResultsFor`. The remaining exports
+ * are helpers and limits exposed for tests and for sibling modules. `checkResultsFor` is what a
+ * pair writer calls to fill `check_results` (store.js) for one arm.
  *
  * Check kinds. Each check is a plain object with a `type` and the fields listed here, and no
  * others:
@@ -756,6 +757,35 @@ function evalChecks(snapshot, checks, options) {
   return results;
 }
 
+/**
+ * The word-check results of one arm, in the form a pair record stores (`check_results` in
+ * store.js): runs the checks of `task` on the arm's final snapshot `final`, with `start` as the
+ * pristine side of `fixture_unchanged`, and returns one entry per check, in the task's order:
+ * `true` (passed), `false` (failed) or `null` (no verdict: the check timed out, ran out of the work
+ * budget, could not be evaluated, or the snapshot it needs was not supplied). A task with no checks
+ * gives `[]`. Pure and deterministic given the snapshots; it reads no file and never throws.
+ *
+ * Both arms of a task are run with the same `start`, so their lists have the same length, which the
+ * aggregation requires before it compares them.
+ */
+function checkResultsFor(task, start, final) {
+  try {
+    const checks = isObject(task) && Array.isArray(task.checks) ? task.checks : [];
+    if (!isObject(final)) return checks.map(() => null);
+    const results = evalChecks(final, checks, { pristine: start });
+    return checks.map((check, index) => {
+      const result = results[index];
+      // A list that evalChecks could not finish reading leaves its tail without a result.
+      if (result === undefined || isIndeterminate(result)) return null;
+      if (isObject(check) && check.type === 'fixture_unchanged' && !isObject(start)) return null;
+      return result.passed === true;
+    });
+  } catch {
+    // A task built from a proxy can throw while its checks are read; no result is a result of none.
+    return [];
+  }
+}
+
 module.exports = {
   CHECK_KINDS,
   PATTERN_FLAGS,
@@ -780,4 +810,5 @@ module.exports = {
   validateCheck,
   evalCheck,
   evalChecks,
+  checkResultsFor,
 };
