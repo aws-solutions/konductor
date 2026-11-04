@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "note": "Findings tolerated today. A finding not listed fails `cap audit`; a listed finding that no longer occurs also fails until it is removed. Edit with `cap audit --update-baseline`.",
   "base": {
-    "ref": "v1.2.0",
-    "commitSha": "4430696d98aafa46f1c992c5fb0ca3479259ccd9"
+    "ref": "origin/main",
+    "commitSha": "be9a15dd5e813b0a1fe36f07ff2c044831d21392"
   },
-  "updatedAt": "2026-10-30T18:05:09.284Z",
+  "updatedAt": "2026-11-04T21:08:28.921Z",
   "waived": {
     "description-block-scalar|skill:find-aws-skills": {
       "rule": "description-block-scalar",
@@ -54,10 +54,6 @@
     "description-no-cue|skill:historical-issues-registry": {
       "rule": "description-no-cue",
       "id": "skill:historical-issues-registry"
-    },
-    "description-no-cue|skill:progress-tracking": {
-      "rule": "description-no-cue",
-      "id": "skill:progress-tracking"
     },
     "description-no-cue|skill:socratic-elicitation": {
       "rule": "description-no-cue",
