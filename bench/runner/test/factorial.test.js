@@ -190,12 +190,27 @@ test('an unjudged cell, a wrong harness, a wrong arm and different models are re
   assert.throws(() => build(bench, { ...d, ccVanilla: [] }), /cell ccVanilla.*no run directory given/);
 });
 
-test('the two konductor cells must come from the same commit, and an unrecorded commit is noted', () => {
+test('the two konductor cells must come from one recorded commit each', () => {
   const root = tmp();
   const bench = benchWith(root);
   assert.throws(() => build(bench, four(root, bench, { ck: { sha: '1234567890abcdef000000000000000000000000' } })), /built from different commits/);
-  const res = build(bench, four(root, bench, { ck: { sha: null } }));
-  assert.match(res.notes.join('\n'), /source commit of a konductor cell is not recorded/);
+  assert.throws(() => build(bench, four(root, bench, { ck: { sha: null } })), /cell ccKonductor.*no source commit is recorded/);
+  const d = four(root, bench);
+  const second = cell(root, bench, 'kk-b', { kind: 'kiro', arm: 'konductor', rubric: () => 0.5, sha: '1234567890abcdef000000000000000000000000' });
+  const merged = { ...d, kiroKonductor: [d.kiroKonductor[0], second] };
+  assert.throws(() => build(bench, merged), /cell kiroKonductor.*built from more than one commit/);
+});
+
+test('a run judged by only part of the panel is refused', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const d = four(root, bench);
+  const file = path.join(d.ccVanilla[0], 'judgments.json');
+  const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const dropped = j.rubric.findIndex((x) => x.taskId === 't2' && x.judge === 'glm-5');
+  j.rubric.splice(dropped, 1);
+  fs.writeFileSync(file, JSON.stringify(j));
+  assert.throws(() => build(bench, d), /cell ccVanilla.*1 run\(s\) were scored by only part of the panel of 3 judges \(t2 rep 1\)/);
 });
 
 test('a cell with two arms is refused', () => {

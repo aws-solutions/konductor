@@ -22,7 +22,7 @@ real cost of each cell, and prove the pipeline end to end (run, judge, combine).
 - **Konductor source.** Both konductor arms are built from one commit (`--konductor-ref`, default `bf07556f9f73`, the main
   commit that carries the dashed model pins Claude Code needs). The pilot branch differs from that commit only under
   `bench/`, which the install does not use. The combiner compares the recorded commit of the two konductor cells and refuses a
-  mismatch.
+  mismatch, a konductor cell with no recorded commit, and a cell built from more than one commit.
 - **Tasks.** Five lite tasks: `simple-fix-failing-test`, `simple-explain-file`, `orch-input-validation`,
   `review-inventory-security`, `design-hold-service`. `design-hold-service` hit the 600 s limit in many earlier Kiro konductor
   runs. It stays in; a timeout is scored on what the run produced, marked in the table, and shown again with timeouts
@@ -30,7 +30,7 @@ real cost of each cell, and prove the pipeline end to end (run, judge, combine).
 - **Judging.** One panel for all four cells (`gpt-5.6-luna`, `deepseek-3.2`, `glm-5` through opencode on Bedrock), rubric mode
   only, no cross-cell pairwise comparison. Each cell is judged on its own against the task rubric, so the scores are absolute
   and comparable across cells. The combiner refuses cells judged by different panels, backends, Bedrock model ids or rubric
-  revisions.
+  revisions, and any run scored by only part of the panel.
 
 ## Units
 

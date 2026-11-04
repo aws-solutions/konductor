@@ -84,6 +84,12 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile }) {
     };
   });
   if (!rows.length) throw new Error(`${where}: no executed runs`);
+  const partial = rows.filter((row) => {
+    if (row.excluded) return false;
+    const seen = new Set(rubric.filter((x) => x.armId === armId && x.taskId === row.task && x.replicate === row.rep && fin(x.score)).map((x) => x.judge));
+    return seen.size > 0 && seen.size < panel.judges.length;
+  });
+  if (partial.length) throw new Error(`${where}: ${partial.length} run(s) were scored by only part of the panel of ${panel.judges.length} judges (${partial.slice(0, 3).map((row) => `${row.task} rep ${row.rep}`).join(', ')}${partial.length > 3 ? ', ...' : ''}). Finish judging that cell first`);
 
   const model = canonicalModel(run.config.canonicalModel ?? rows.find((r) => r.model)?.model ?? run.config.model);
   const shas = uniq(executed.map((e) => e.result.commitSha).filter(Boolean));
@@ -118,10 +124,12 @@ function checkComparable(cells) {
   }
   const kon = cells.filter((c) => c.spec.role === 'konductor');
   const [s1, s2] = kon.map((c) => c.shas);
-  const notes = [];
-  if (s1.length === 1 && s2.length === 1 && s1[0] !== s2[0]) throw new Error(`the two konductor cells were built from different commits (${s1[0].slice(0, 12)} and ${s2[0].slice(0, 12)}); both harnesses must use the same source tree`);
-  if (!s1.length || !s2.length || s1.length > 1 || s2.length > 1) notes.push('The source commit of a konductor cell is not recorded or not unique, so "same source tree in both harnesses" was not verified from the results.');
-  return { tasks: all, notes };
+  for (const c of kon) {
+    if (!c.shas.length) throw new Error(`cell ${c.spec.id} (${labelOf(c.spec)}): no source commit is recorded in its results, so "same source tree in both harnesses" cannot be checked`);
+    if (c.shas.length > 1) throw new Error(`cell ${c.spec.id} (${labelOf(c.spec)}): its runs were built from more than one commit (${c.shas.map((x) => x.slice(0, 12)).join(', ')}); a cell holds one source tree`);
+  }
+  if (s1[0] !== s2[0]) throw new Error(`the two konductor cells were built from different commits (${s1[0].slice(0, 12)} and ${s2[0].slice(0, 12)}); both harnesses must use the same source tree`);
+  return { tasks: all, notes: [] };
 }
 
 function summarizeCell(c, tasks) {

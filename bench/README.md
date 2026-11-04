@@ -362,7 +362,7 @@ bash bench/scripts/pilot-2x2.sh --cells report --out /var/tmp/pilot-2x2
   is printed, put on a command line or written under `OUT`. Kiro runs get no AWS keys.
 - Table: `bench.js report-2x2 --kiro-vanilla DIR --kiro-konductor DIR --cc-vanilla DIR --cc-konductor DIR [--out DIR] [--json]`
   (each flag takes one or more comma-separated judged run directories). It refuses cells with different tasks, judge panel,
-  rubric revision, model, konductor commit or cost unit. It prints quality per task and cell, the five contrasts, the
+  rubric revision, model, konductor commit (a mismatch, a missing commit, or more than one in a cell), a run judged by only part of the panel, or cost unit. It prints quality per task and cell, the five contrasts, the
   konductor over vanilla cost ratio inside each harness, success, timeouts, delegation and model identity. Intervals appear
   only with 5 or more tasks of 2 or more replicates per cell (`--reps 2` or more).
 - Paste back: `OUT/report/factorial-2x2.md`, the spend table the script prints at the end, and the `NOT DONE` list if there is one.
