@@ -1,4 +1,142 @@
-# bench: Konductor benchmark
+# bench
+
+**Measure what Konductor, and each skill in it, adds to an AI coding agent.**
+
+bench runs the same tasks with and without a change, scores the output with a panel of judge models,
+and reports cost, quality and run-to-run noise. It is plain Node, with no install step beyond the tools below.
+
+Two kinds of question, two sets of commands:
+
+| You want to know | Use | Needs credits? |
+| --- | --- | --- |
+| Is the whole platform better than the bare agent? | `run`, `judge`, `report --verdict platform` | yes |
+| Is this one skill loaded, needed, or padded? | the `cap` commands (below) | some are free |
+
+Jump to: [Try it without credits](#try-it-without-credits) |
+[Evaluate one skill](#evaluate-one-skill-step-by-step) |
+[Read the answer](#read-the-answer) |
+[What it cannot tell you yet](#what-it-cannot-tell-you-yet) |
+[Reference](#reference)
+
+## Pick your question
+
+| Question | Command | Harness | Cost |
+| --- | --- | --- | --- |
+| Can any agent reach this skill? Is its description well formed? | `cap audit` | kiro-cli, opencode | free |
+| Which tasks would test this skill? | `cap scenarios` (add `--mode trigger` for load tests) | kiro-cli login (one model call per skill) | under 1 credit per call; one retry if the draft fails its checks; `--dry-run` is free |
+| Does the agent load the skill for the right requests, and skip it for near misses? | `cap trigger --mode proxy` or `--mode live` | kiro-cli, opencode | proxy about 0.09 credits per call; live runs a real agent per query and needs `--budget-credits` (kiro-cli) or `--budget-usd` (opencode) |
+| Which skills across my finished runs were never loaded? | `cap prune-report` | kiro-cli, opencode | free |
+| Is this skill needed? Which sections can go? | `cap skill-plan`, `cap skill-study`, `cap decide` | kiro-cli | hundreds of credits per skill |
+| Does the skill help once it is loaded? | `cap skill-study --forced-load` | kiro-cli | adds one wave |
+| Which rubric items and checks tell the arms apart? | `cap criteria` | any finished run | free |
+| Is the whole platform worth keeping? | `run`, `judge`, `report --verdict platform` | kiro-cli, opencode, Claude Code | credits or USD |
+
+Not covered: per-skill studies on opencode or Claude Code.
+
+## What you need
+
+| To do this | You need |
+| --- | --- |
+| Read help, audit, plan, draft prompts | Node 22+, `git`, a checkout with the ref you want to inspect |
+| Draft scenarios or run a proxy trigger test | the above, plus `kiro-cli` logged in (or `--model-cmd`) |
+| Run anything that starts an agent | `kiro-cli` on PATH and logged in, `tar`, `cargo` (offline cache or `--cargo-online`), `unshare` and `setpriv` (Linux) |
+| Judge with the opencode backend, run opencode or Claude Code arms | an AWS credentials file or exported `AWS_*` variables for Amazon Bedrock; costs are in USD |
+
+## Try it without credits
+
+These commands call no model and spend nothing (see `--help`):
+
+```bash
+node bench/runner/bench.js --help                                   # every command and flag
+node bench/runner/bench.js cap list --base main                     # agents, skills and SOPs, who reaches them, linked tasks, gaps
+node bench/runner/bench.js cap audit --base main --out /tmp/audit   # description lint, size, near duplicates, reachability
+node bench/runner/bench.js cap scenarios --cap skill:backend-review --dry-run --out /tmp/scn   # writes the prompt to /tmp/scn/scenarios/, no model call
+node --test "bench/runner/test/*.test.js"                           # unit tests
+```
+
+`--base REF` reads local refs only; the runner never fetches. `main` means `origin/main`, and `HEAD` is not accepted (use a branch, tag or remote-tracking name).
+`cap audit` writes `cap-audit.md` and `cap-audit.json` and exits 1 on any error finding, for example `ratchet-stale` when a waiver in `bench/capabilities/audit-baseline.json` no longer applies. Exit 1 is a finding, not a crash.
+
+## Evaluate one skill, step by step
+
+Each step says what it costs and whether a person has to act. Replace `backend-review` and `$BASE` (a ref, for example `main`) with your own.
+`$OPS` and `$STUDY` are output directories you choose, and `$RUNS` holds finished run directories (see step 5).
+
+| # | Step | Command | You do |
+| --- | --- | --- | --- |
+| 1 | Check it statically | `cap audit --base $BASE --cap skill:backend-review` | read the findings |
+| 2 | Draft load tests: requests that should load the skill, and near misses that should not | `cap scenarios --cap skill:backend-review --mode trigger --n 10 --out $OPS` | **review and edit the draft**; it is marked unreviewed |
+| 3 | Draft lift tasks | `cap scenarios --cap skill:backend-review --n 8 --out $OPS` | **turn approved drafts into task files** (fixture, hidden tests or checks, rubric); see `README-tasks.md` |
+| 4 | Is it picked up? | `cap trigger --cap skill:backend-review --mode proxy --queries $OPS/scenarios/skill-backend-review.trigger.json --base $BASE` | read recall first; to check a sample against real runs, add `--crosscheck 0.3 --budget-credits N --run-credit-limit M`; `--mode live --budget-credits N` runs every query for real |
+| 5 | Plan the study | `cap skill-plan --base $BASE --only backend-review --profile detailed --runs $RUNS --forced-load low-load --out $OPS/plan` | read the estimate; `$RUNS` is one or more finished run directories |
+| 6 | Run it | `cap skill-study --study $STUDY --init` with the same flags as step 5, then `--study $STUDY --dry-run`, then `--study $STUDY --waves 1`, then `--study $STUDY` | supply credentials (`--aws-creds-file`) and a budget |
+| 7 | Get the call | `cap decide --study $STUDY` | read `decisions/decisions.md` |
+| 8 | Check the tests themselves | `cap criteria --study $STUDY` | drop or reword items it flags |
+
+`cap skill-study` runs the agents on kiro-cli and judges on the opencode backend, so it needs both a kiro login and AWS credentials.
+Without `--runs`, `cap skill-plan` still works, but credit figures read n/a and `--forced-load low-load` counts no skill because no load rate is known (`--forced-load always` counts every selected skill).
+`--init` uses the plan flags, and its base defaults to `v1.2.0`, so pass `--base` and `--only` there too. `--init` and `--dry-run` spend nothing.
+The full flag list is in `node bench/runner/bench.js --help`; the reasoning behind each step is in [CAP-PLAYBOOK.md](CAP-PLAYBOOK.md).
+
+### What the study runs
+
+| Wave | Arms | Question |
+| --- | --- | --- |
+| 1 | control (skill present), the same control again (A/A), skill deleted. Known-answer controls run first and must pass. | Is the skill needed? The A/A pair sets the noise band. |
+| 1f | skill forced to load, the same again (A/A), skill deleted (optional; `low-load` picks skills that load under 30% of the time, `always` picks all) | Does it help once loaded? Never changes a call. `--waves 1` skips it. |
+| 2 | one section removed per arm (only if wave 1 shows a loss) | Which sections can be removed? |
+| 3 | the same sections moved into `references/` | Which can be moved instead? |
+
+### Where the output lands
+
+Everything is under `$STUDY`: `study.json`, `skills/<skill>/` with `w1`, `w2` and `w3`, `controls/`, `logs/`, and `decisions/` with
+`decisions.md`, `decisions.json`, `evidence.json` and `patches/<skill>.patch`. A patch is a suggestion; nothing is applied for you.
+A finished wave is skipped on a rerun, so a stopped study resumes where it was.
+
+## Read the answer
+
+`cap decide` gives one call per skill.
+
+| Call | Meaning |
+| --- | --- |
+| DELETE | Removing the skill lost no more than the 0.10 margin (the interval rules out a larger loss), or improved quality outside the A/A spread. |
+| PRUNE | The skill is needed, but some sections can be removed or moved. Line ranges and a patch are included. |
+| KEEP | Removing it lost quality, and no section could be cut, or the section waves have not run. |
+| NEEDS DATA | The study could not decide. The reason is printed. |
+
+A DELETE or PRUNE call needs: passed known-answer controls, an A/A arm, at least 15 runs per side, a skill that loaded in at least 30% of control runs,
+and medium or high confidence (30 or more runs per side for high). A "no effect" DELETE also needs an A/A spread under the 0.10 margin. These thresholds are this project's own choices.
+Anything weaker is NEEDS DATA, which means "this study cannot say", not "no effect". The reason is printed.
+The most common reasons: the skill loaded in under 30% of control runs, wave 1 had not finished, or tasks timed out.
+
+## What it cannot tell you yet
+
+- A skill the agent never loads cannot show lift. Write tasks that need the skill, or use the forced-load wave.
+- `cap trigger` measures how the agent picks skills when the skill text is visible. A proxy hit is not proof; live runs are the check.
+- `cap skill-study` and the forced-load wave run on kiro-cli only. `cap trigger` supports kiro-cli and opencode. Claude Code arms go through `run` only; no `cap` command runs them.
+- A "no effect" call needs the A/A spread to be under 0.10, so a noisy pair gives NEEDS DATA even with 15 runs per side.
+- Judge agreement with a person is a check you run: `cap review` writes the page, `cap review-import` scores the ratings (see [Calibration](#calibration)).
+
+## Reference
+
+The sections below are the full reference. [CAP-PLAYBOOK.md](CAP-PLAYBOOK.md) is the how-to for skill studies,
+[README-tasks.md](README-tasks.md) describes the task format, and [RUNBOOK.md](RUNBOOK.md) covers unattended studies.
+
+| Topic | Section |
+| --- | --- |
+| Prerequisites and `run` flags | [Prerequisites](#prerequisites), [Quick start](#quick-start) |
+| Suites and arms | [Suites and arms](#suites-and-arms) |
+| Other harnesses | [opencode harness](#opencode-harness), [Claude Code harness](#claude-code-harness) |
+| Isolation and safety | [Isolation, environment, safety](#isolation-environment-safety) |
+| Judging and calibration | [Judging](#judging), [Calibration](#calibration) |
+| Per-capability commands | [Capability benchmarking (cap)](#capability-benchmarking-cap) |
+| Reading reports | [How to read results](#how-to-read-results), [Reports, scores and the diligence scorecard](#reports-scores-and-the-diligence-scorecard) |
+| Platform verdict, profiles, credits | [Profiles, credit ledger and platform verdict](#profiles-credit-ledger-and-platform-verdict) |
+| Orchestrator study | [Orchestrator study](#orchestrator-study-cells-gates-metrics-and-the-pass-rule) |
+
+---
+
+## Platform benchmark
 Runs the same tasks against kiro-cli with and without Konductor, scores the outputs with a cross-provider
 judge panel, and reports cost, quality and regressions. Node only. Task format: `bench/README-tasks.md`.
 ## Prerequisites
@@ -668,7 +806,7 @@ This is how to compare a test branch against vanilla and against main, across mo
 Cells. A cell is one (harness, model) pair. Run each cell into its own directory (one cell per directory) with the same arms, tasks, seed and profile, then give every directory to one report:
 - Kiro v3 with Claude Sonnet 5.5: `--agent-engine v3 --model claude-sonnet-5.5`.
 - Kiro v3 with GPT: `--agent-engine v3 --model gpt-5.6-sol`. The runner passes the model to `kiro-cli` and fails a run whose session ran on another model (`modelMismatch`). `judge` drops any judge from the subject's own family from a default or suite panel and takes the next one from deepseek-3.2, glm-5, qwen3-coder-next, minimax-m2.5, so a GPT subject is judged by deepseek-3.2, glm-5 and qwen3-coder-next. Judges named with `--judges` are never rewritten.
-- Claude Code cell: not built. `bench/runner` has no Claude Code harness yet, so no run of `claude` is possible. The scope, the auth routes, how cost and tokens can be read and an effort estimate are in the gap note kept with the study notes; it needs one recorded real stream before a fake can be trusted.
+- Claude Code cell: `cc-vanilla`, `cc-main` and `cc-name=<git ref>` arms run through `claude -p` on Amazon Bedrock and cost USD, not credits. See "Claude Code harness". Run each cell into its own directory like the Kiro cells.
 
 Arms. `--arms vanilla,orch-all=dir:PATH,main,orch-coord=dir:PATH` with `--arm-config orch-coord=orchestration.mode=coordinator`. `--arm-config name=key.path=value[;key.path=value]` writes those keys into that arm's scratch `~/.konductor/config.yml` after the install, so the arm starts its session with them. `orchestration.mode` takes `auto` or `coordinator`; a misspelled orchestration key is refused, because the CLI would otherwise fall back to `auto` without saying so. Vanilla refuses the flag, `run-config.json` and `result.json` record it, and two arms at one ref with different configs are two arms: only an arm with the same ref and the same config counts as an A/A repeat. With `--profile detailed` the first konductor arm in the list is repeated automatically (put the arm under test first), which gives the A/A sentinel.
 
