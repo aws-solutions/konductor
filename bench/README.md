@@ -303,6 +303,27 @@ then `calibrate score` prints judge-vs-human and judge-vs-judge agreement, Cohen
 with PASS or WARN (defaults 0.6, 0.7, 0.6; `--kappa-min`, `--agreement-min`, `--spearman-min`). Under
 about 30 criterion pairs is indicative only.
 
+`cap review --run DIR` is the same check with the outputs side by side. It writes `DIR/calibration/review/review.html`, one static file
+with the data, style and script inline: it loads nothing, opens no port and needs no server (a Content-Security-Policy allows only its own
+script and style, and no connections). It draws the runs `calibrate export` would draw, with n and seed taken from `calibration-sample.json`
+when the detailed profile wrote one, and for each drawn task and replicate shows every arm's run of it (`--sample-only` shows the drawn
+runs alone). The outputs are the judge bundles, with the same redaction and then credential scrubbing. Each task's outputs carry the
+letters A, B and so on in a seeded random order; which arm is behind each letter is kept in `review-key.json` next to the page, so give the
+rater the page and not the key. The rater marks each criterion pass, partial or fail (an evidence quote and notes are optional), the
+browser keeps the ratings in local storage, and Download ratings saves them as a JSON file. Load ratings resumes from such a file.
+
+`cap review-import --ratings FILE --key DIR/calibration/review/review-key.json` checks the file against the key (same page, known items
+and criteria, verdicts pass, partial, fail or null), joins each letter back to its arm, task and replicate, and writes `sheet.json` and
+`key.json` beside the key in the format `calibrate score` reads. It then prints the same judge-vs-human and judge-vs-judge table, says how
+many evidence quotes were found in the output (the judges' quote rule), and saves the result to `DIR/calibration/result.json`, where
+`report` and the detailed profile look for it. A `result.json` that came from anything other than this page is kept unless `--force` or
+`--save FILE`.
+
+```
+node bench/runner/bench.js cap review --run V/claude
+node bench/runner/bench.js cap review-import --ratings ~/Downloads/ratings-VIEWER.json --key V/claude/calibration/review/review-key.json
+```
+
 ## Benchmark a PR or work in progress
 Any commit or working tree can be an arm: `--arms vanilla,v1.2.0,pr-95=<ref>,wip=dir:<path>`. A name is
 `[a-z0-9][a-z0-9._-]{0,40}`; `vanilla`, `main` and `vX.Y.Z` are reserved. A bare ref (`feat/x`) is refused.
