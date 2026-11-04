@@ -1,12 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
-import { ApiError, type WorkflowApi } from '../api/api';
+import { ApiError, canRetryStatus, type WorkflowApi } from '../api/api';
 import type { WorkflowDocument } from '../api/types';
+import {
+  RunAlreadyActive,
+  RunReadRefused,
+  RunStartUnsure,
+  type RunPort,
+} from '../execution/core';
 import type { SessionMemory, SessionRecord } from '../launch/session-memory';
 
-/** A workflow loaded from the server, with the harness that runs its stages. */
+/**
+ * A workflow loaded from the server, with the harness that runs its stages
+ * and the calls that run it. The calls hold the session token, so no other
+ * part of the page does.
+ */
 export interface LoadedWorkflow {
   harness: string;
   document: WorkflowDocument;
+  runs: RunPort;
 }
 
 /**
@@ -41,6 +52,32 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : 'The workflow did not load.';
 }
 
+// The API names the active run in its 409; the core is told as its own error.
+function activeRunOf(error: unknown): RunAlreadyActive | undefined {
+  return error instanceof ApiError &&
+    error.code === 'already_running' &&
+    error.runId !== undefined
+    ? new RunAlreadyActive(error.message, error.runId)
+    : undefined;
+}
+
+// Only a missing answer or a server error can be gone on the next try; any
+// 4xx and a reply the page cannot read will not change.
+function readRefusedOf(error: unknown): RunReadRefused | undefined {
+  return error instanceof ApiError && !canRetryStatus(error.status)
+    ? new RunReadRefused(error.message)
+    : undefined;
+}
+
+// No answer, or an accepted run in a reply the page cannot read: the run may
+// have started.
+function startUnsureOf(error: unknown): RunStartUnsure | undefined {
+  return error instanceof ApiError &&
+    (error.status === 0 || error.status === 202)
+    ? new RunStartUnsure(error.message)
+    : undefined;
+}
+
 function failure(message: string): LoadResult {
   return { ok: false, message };
 }
@@ -51,12 +88,14 @@ function forgetIfStill(memory: SessionMemory, session: SessionRecord): void {
   if (memory.recallPending()?.token === session.token) memory.dropPending();
 }
 
+type SessionGuard = <T>(call: Promise<T>) => Promise<T>;
+
 // A 401 on a call that carries the token means the server no longer knows the
 // session: the token is dropped and the call fails with one message.
 function guardSession(
   memory: SessionMemory,
   session: SessionRecord,
-): <T>(call: Promise<T>) => Promise<T> {
+): SessionGuard {
   return async (call) => {
     try {
       return await call;
@@ -65,6 +104,29 @@ function guardSession(
       forgetIfStill(memory, session);
       throw new ApiError(SESSION_UNKNOWN, 401);
     }
+  };
+}
+
+function runPortFor(
+  api: WorkflowApi,
+  token: string,
+  guard: SessionGuard,
+): RunPort {
+  return {
+    start: async (goal, signal) => {
+      try {
+        return await guard(api.startRun(token, goal, signal));
+      } catch (error) {
+        throw activeRunOf(error) ?? startUnsureOf(error) ?? error;
+      }
+    },
+    get: async (runId, signal) => {
+      try {
+        return await guard(api.getRun(token, runId, signal));
+      } catch (error) {
+        throw readRefusedOf(error) ?? error;
+      }
+    },
   };
 }
 
@@ -77,7 +139,11 @@ async function loadWith(
   const document = await guard(api.getWorkflow(session.token));
   return {
     ok: true,
-    workflow: { harness: session.harness, document },
+    workflow: {
+      harness: session.harness,
+      document,
+      runs: runPortFor(api, session.token, guard),
+    },
     remember: () => memory.remember(session),
   };
 }
