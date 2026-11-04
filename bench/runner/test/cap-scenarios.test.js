@@ -207,3 +207,23 @@ test('cap scenarios refuses fewer than 8, an output directory inside the reposit
     assert.match(none.stderr, /--cap is required/);
   } finally { s.done(); }
 });
+
+test('lift-mode scenarios refuse the skill name in another spelling, as trigger mode and cap draft do', () => {
+  for (const spelled of ['backend_review', 'Backend Review', 'BackendReview']) {
+    const bad = goodReply();
+    bad.scenarios[0].prompt = `Please run ${spelled} over the order service and write up what you find in notes.md for the team.`;
+    assert.match(S.validateScenarios(bad, { capName: 'backend-review', n: 8 }).error, new RegExp(`scenarios\\[0\\]\\.prompt names the capability "backend-review" \\(as "${spelled}"\\)`));
+  }
+  const fine = goodReply();
+  fine.scenarios[0].prompt = 'Please do a backend code review of the order service and write up what you find in notes.md.';
+  assert.equal(S.validateScenarios(fine, { capName: 'backend-review', n: 8 }).ok, true);
+});
+
+test('lift mode does not take prose with the name parts across a sentence end for the skill name', () => {
+  const prose = goodReply();
+  prose.scenarios[0].prompt = 'Look at the backend. Review the order service and write up what you find in notes.md for the team.';
+  assert.equal(S.validateScenarios(prose, { capName: 'backend-review', n: 8 }).ok, true);
+  const spelled = goodReply();
+  spelled.scenarios[0].prompt = 'Please run backend.review over the order service and write up what you find in notes.md for the team.';
+  assert.match(S.validateScenarios(spelled, { capName: 'backend-review', n: 8 }).error, /names the capability "backend-review" \(as "backend\.review"\)/);
+});

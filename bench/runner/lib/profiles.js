@@ -67,10 +67,14 @@ function replicatesFor(profile, requested) {
   return n;
 }
 
-// Same ref and same konductor config: a different --arm-config is a different condition, not a repeat.
+// Same ref, same konductor config and same prompt prefix: a different --arm-config or --arm-prefix is a different
+// condition, not a repeat. An arm with neither keeps the bare ref as its identity.
 const identityOf = (a) => {
   const ref = a.commitSha || a.contentHash || null;
-  return ref && a.armConfig ? `${ref}|${JSON.stringify(a.armConfig)}` : ref;
+  if (!ref) return null;
+  const cfg = a.armConfig ? `|${JSON.stringify(a.armConfig)}` : '';
+  const pre = a.prefixInfo ? `|prefix:${a.prefixInfo.sha256}` : '';
+  return `${ref}${cfg}${pre}`;
 };
 const unprefixed = (id) => id.replace(/^oc-/, '');
 

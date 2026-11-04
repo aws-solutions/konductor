@@ -17,6 +17,10 @@ const { loadTasks } = require('../runner/lib/tasks.js');
 const { scoringOf } = require('./captasks.js');
 const { loadProfile } = require('../runner/lib/profiles.js');
 const { ablationFor } = require('./ablate.js');
+const { LOAD_MIN } = require('./decide.js');
+
+// The forced-load wave: frc, its A/A repeat frc-b and del (see forced.js).
+const FORCED_ARM_COUNT = 3;
 
 const TOOL_VERSION = 'cap-skill-plan/1';
 const TIERS = ['loaded', 'large', 'duplicates', 'triage'];
@@ -144,7 +148,7 @@ function planSkillStudy({
   repo, base = 'v1.2.0', benchDir, runDirs = [], extraTasks = [], tiers = ['all'], skills = null, profile = null, tasksPerSkill, reps, maxSections = 3,
   largeNames = LARGE_DEFAULT, largeTop = 12, duplicatePairs = DUPLICATE_PAIRS_DEFAULT, model = 'claude-sonnet-5.5', agentEngine = 'v3',
   armConfig = null, creditsPerRun = null, secPerRun = null, judgeUsdPerRun = JUDGE_USD_PER_RUN, wave2Share = WAVE2_SHARE, wave3Share = WAVE3_SHARE,
-  allowRegex = false, budgetCredits = null, minSectionBytes, screen = false, screenTasks = 5, now = new Date(),
+  allowRegex = false, budgetCredits = null, minSectionBytes, screen = false, screenTasks = 5, forcedLoad = null, now = new Date(),
 }) {
   for (const t of tiers) if (t !== 'all' && !TIERS.includes(t)) throw new Error(`--tier takes ${TIERS.join(', ')} or all (got "${t}")`);
   const prof = profile ?? loadProfile('detailed');
@@ -216,6 +220,7 @@ function planSkillStudy({
       rec.steps = [
         `node bench/runner/bench.js cap audit --cap ${cap.id} --base ${base}`,
         `node bench/runner/bench.js cap trigger --cap ${cap.id} --mode proxy --base ${base}   (needs queries: cap draft first; about 0.8 credits to draft, about 0.09 per proxy call)`,
+        `node bench/runner/bench.js cap scenarios --cap ${cap.id} --mode trigger --base ${base} --dry-run   (tasks that should load it and near misses that should not; review them, then drop --dry-run for one model call)`,
       ];
       continue;
     }
@@ -230,8 +235,9 @@ function planSkillStudy({
     if (shortfall) rec.warnings.push(`${shortfall} more scenario${shortfall === 1 ? '' : 's'} needed (profile ${prof.name} wants ${target} per skill): draft them with cap scenarios, review, add them as tasks`);
     if (pk.skippedRegexOnly.length) rec.warnings.push(`left out regex-only tasks: ${pk.skippedRegexOnly.join(', ')}`);
     if (pk.skippedReal.length) rec.warnings.push(`left out real-repo tasks (they need a repo cache the study does not pass): ${pk.skippedReal.join(', ')}`);
-    if (!rec.exposure.runsLoaded) rec.warnings.push('never loaded in the supplied runs: if the study tasks do not make the agent load it, the result is NEEDS DATA, not a delete');
+    if (!rec.exposure.runsLoaded) rec.warnings.push('never loaded in the supplied runs: if the study tasks do not make the agent load it, the result is NEEDS DATA, not a delete; draft tasks that should load it with cap scenarios --mode trigger, and add --forced-load low-load to the study to see what it does once loaded (reported apart, never a call)');
     const judged = (pk.chosen.filter((id) => scoringOf(tasks.get(id)) !== 'hidden').length + shortfall) / Math.max(1, target);
+    rec.judgedShare = judged;
 
     const text = texts.get(cap.name) ?? '';
     const ablation = t.tier === 'duplicates' ? { candidates: [], variants: [] } : ablationFor({ name: cap.name, text, max: maxSections, minBytes: minSectionBytes });
@@ -280,6 +286,9 @@ function planSkillStudy({
     inBudget: budgetCredits === null ? null : addCosts(fitted.filter((s) => s.inBudget).map((s) => s.cost.expected)),
   };
 
+  const forced = forcedLoad ? forcedEstimate({ skills: fitted, mode: forcedLoad, target, repsN, scale }) : null;
+  if (forced) totals.withForced = addCosts([totals.expected, forced.cost]);
+
   const assumptions = [
     credits ? (creditsPerRun ? `credits per run given: low ${credits.low}, mid ${credits.mid}, high ${credits.high}` : `credits per run observed in ${obs.n} finished runs (model ${model}${armConfig ? ', coordinator mode where present' : ''}): low ${credits.low.toFixed(2)} (p25), mid ${credits.mid.toFixed(2)} (mean), high ${credits.high.toFixed(2)} (p90); ${obs.censored} timed-out run(s) had no credits and are left out, so the figures lean low`)
       : 'no observed runs and no --credits-per-run: credits are not estimated',
@@ -293,7 +302,27 @@ function planSkillStudy({
     schemaVersion: 1, toolVersion: TOOL_VERSION, createdAt: now.toISOString(), base: report.base, engine: agentEngine, model, armConfig,
     profile: { name: prof.name, reps: repsN, tasksPerSkill: target, maxSections, minSectionBytes: minSectionBytes ?? null }, assumptions,
     observed: { n: obs.n, censored: obs.censored, credits: obs.credits, secMid: obs.secMid, runDirs: report.inputs.runDirs.map((d) => d.dir) },
-    tiers: tierSummary, screens, skills: fitted, totals, budgetCredits,
+    tiers: tierSummary, screens, skills: fitted, totals, budgetCredits, forced,
+  };
+}
+
+/**
+ * The forced-load wave as its own line: 3 arms x tasks x reps x qualifying skills. With low-load a skill qualifies when its
+ * load rate in the runs on file is known and under the floor; the study decides again from its own wave 1 control runs,
+ * and a skill with no known rate is not run there either, so it is listed apart and not counted.
+ */
+function forcedEstimate({ skills, mode, target, repsN, scale }) {
+  const lift = skills.filter((s) => s.lift);
+  const known = (s) => s.exposure.exposed > 0 && typeof s.exposure.rate === 'number';
+  const qualifying = mode === 'always' ? lift : lift.filter((s) => known(s) && s.exposure.rate < LOAD_MIN);
+  const unknown = mode === 'always' ? [] : lift.filter((s) => !known(s)).map((s) => s.name);
+  const perSkill = FORCED_ARM_COUNT * target * repsN;
+  const parts = qualifying.map((s) => scale(perSkill, s.judgedShare ?? 1));
+  const cost = addCosts(parts.length ? parts.map((p) => ({ runs: p.runs, credits: p.credits, judgeUsd: p.judgeUsd, wallHours: p.wallHours })) : [zeroCost()]);
+  return {
+    mode, arms: FORCED_ARM_COUNT, tasksPerSkill: target, reps: repsN, qualifying: qualifying.map((s) => s.name), unknown,
+    formula: `${FORCED_ARM_COUNT} arms x ${target} tasks x ${repsN} reps x ${qualifying.length} qualifying skill${qualifying.length === 1 ? '' : 's'} = ${perSkill * qualifying.length} runs`,
+    cost,
   };
 }
 
@@ -336,8 +365,14 @@ function renderPlan(plan) {
   if (warn.length) { L.push('Warnings:', ''); for (const s of warn) L.push(`- ${s.name}: ${s.warnings.join('; ')}`); L.push(''); }
   const triage = plan.skills.filter((s) => !s.lift);
   L.push('## Triage (free checks only)', '', `${triage.length} skills: ${triage.map((s) => s.name).join(', ') || 'none'}.`, '');
+  if (plan.forced) {
+    const f = plan.forced;
+    L.push('## Forced-load wave (its own line, an estimate)', '');
+    L.push(`--forced-load ${f.mode}: ${f.formula}; ${range(f.cost.credits)} credits, judge USD ${num(f.cost.judgeUsd, 1)}, ${num(f.cost.wallHours, 1)} hours. Not in the totals above; with it the expected total is ${plan.totals.withForced.runs} runs, ${range(plan.totals.withForced.credits)} credits.`);
+    L.push(`Qualifying: ${f.qualifying.join(', ') || 'none'}.${f.mode === 'low-load' ? ` Counted from the load rate in the runs on file (under ${Math.round(LOAD_MIN * 100)}%); the study decides again from its own wave 1 control runs.` : ''}${f.unknown.length ? ` No known load rate, so not counted and not run under low-load: ${f.unknown.join(', ')}.` : ''}`, '');
+  }
   L.push('## Assumptions', '', ...plan.assumptions.map((a) => `- ${a}`), '');
   return L.join('\n');
 }
 
-module.exports = { planSkillStudy, renderPlan, pickTasks, observedCosts, assignTiers, fitBudget, TIERS, LARGE_DEFAULT, DUPLICATE_PAIRS_DEFAULT, WAVE2_SHARE, WAVE3_SHARE, JUDGE_USD_PER_RUN, TOOL_VERSION };
+module.exports = { planSkillStudy, renderPlan, forcedEstimate, pickTasks, observedCosts, assignTiers, fitBudget, TIERS, LARGE_DEFAULT, DUPLICATE_PAIRS_DEFAULT, WAVE2_SHARE, WAVE3_SHARE, JUDGE_USD_PER_RUN, TOOL_VERSION };

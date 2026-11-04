@@ -75,6 +75,18 @@ Reply with JSON only, in this shape:
 ${JSON.stringify(shape, null, 1)}`;
 }
 
+/**
+ * The skill name written as one term in any common spelling: the parts of a multi-part name joined by nothing or by one
+ * hyphen, underscore, dot or space, in any case (backend-review, backend_review, Backend Review, BackendReview,
+ * backend.review). One joiner at most, so "the backend. Review the" (a sentence end) and a line break do not match.
+ * A one-part name is matched as a whole word only, as wordRe does.
+ */
+function nameVariantRe(name) {
+  const parts = String(name).split(/[-_.\s]+/).filter(Boolean).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  if (parts.length < 2) return wordRe(name);
+  return new RegExp(`(?<![A-Za-z0-9])${parts.join('[-_. ]?')}(?![A-Za-z0-9])`, 'i');
+}
+
 const wordRe = (name) => new RegExp(`(?<![\\w-])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, 'i');
 
 /**
@@ -85,6 +97,8 @@ const wordRe = (name) => new RegExp(`(?<![\\w-])${name.replace(/[.*+?^${}()|[\]\
 function queryContentProblem(text, { capName, name = wordRe(capName) }) {
   if (/\n/.test(text)) return 'the text must be one paragraph';
   if (name.test(text)) return `the text names the capability "${capName}"`;
+  const variant = nameVariantRe(capName);
+  if (variant.test(text)) return `the text names the capability "${capName}" (as "${text.match(variant)[0]}")`;
   if (BANNED.test(text)) return 'the text names a konductor procedure or agent';
   if (DASHES.test(text)) return 'the text contains an em or en dash';
   const hit = findMarker(text);
@@ -124,7 +138,7 @@ function validateDraft(d, { capName, capKind, neighbourIds, n = 24 }) {
   if (!Array.isArray(d.taskIdeas) || d.taskIdeas.length !== 2) return fail('exactly 2 taskIdeas are required');
   for (const [i, t] of d.taskIdeas.entries()) {
     if (!t || typeof t.title !== 'string' || typeof t.prompt !== 'string' || typeof t.fixtureIdea !== 'string' || !Array.isArray(t.checkIdeas) || !t.checkIdeas.every((c) => typeof c === 'string')) return fail(`taskIdeas[${i}] needs title, prompt, fixtureIdea and a checkIdeas array of strings`);
-    if (name.test(t.prompt)) return fail(`taskIdeas[${i}].prompt names the capability "${capName}"`);
+    if (name.test(t.prompt) || nameVariantRe(capName).test(t.prompt)) return fail(`taskIdeas[${i}].prompt names the capability "${capName}"`);
   }
   if (capKind === 'sop') {
     if (!Array.isArray(d.outputSections) || !d.outputSections.length || !d.outputSections.every((s) => typeof s === 'string' && s.trim())) return fail('outputSections must list the output sections the SOP declares (at least 1)');
@@ -239,5 +253,5 @@ function importQueries(items, { capId, source, n = 24, now = new Date() }) {
 }
 
 module.exports = {
-  neighboursFor, buildDraftPrompt, validateDraft, draftCapability, importQueries, renderDraftMd, writeDraft, draftFileName, retrySuffix, split, TOOL, BANNED, DASHES, wordRe, capabilityText,
+  neighboursFor, buildDraftPrompt, validateDraft, draftCapability, importQueries, renderDraftMd, writeDraft, draftFileName, retrySuffix, split, TOOL, BANNED, DASHES, wordRe, nameVariantRe, capabilityText, queryContentProblem,
 };

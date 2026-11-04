@@ -18,6 +18,7 @@ const { analyze } = require('./generate.js');
 const { computeScores, qualityOfRun, loadScoring, MIN_N } = require('./scores.js');
 const { diffCI, pairedCellCI, MIN_CELLS } = require('./stats.js');
 const { THRESHOLDS } = require('./diligence.js');
+const { prefixIdentity } = require('./aa-identity.js');
 const { gradedSummary } = require('./graded.js');
 const { readLedger } = require('../runner/lib/credit-ledger.js');
 const { profileCheck } = require('../runner/lib/profiles.js');
@@ -201,13 +202,18 @@ function armOrder(input) {
   return [...cfg, ...present.filter((a) => !cfg.includes(a)).sort()];
 }
 
-/** Arms of one directory that share a commit or tree and a config: the first is the primary, the others its A/A repeats. */
+/**
+ * Arms of one directory that share a commit or tree, a config and a prompt prefix: the first is the primary, the others
+ * its A/A repeats. A forced-load arm (the base ref with a prefix) is therefore never a repeat of the unprefixed control.
+ */
 function aaGroups(input, baselineId) {
   const byIdentity = new Map();
   for (const armId of armOrder(input)) {
     if (armId === baselineId) continue;
-    const sample = input.rows.find((r) => r.armId === armId);
-    const id = sample && (sample.commitSha || sample.contentHash) ? `${sample.commitSha}|${sample.contentHash}|${JSON.stringify(sample.armConfig ?? null)}` : null;
+    const rows = input.rows.filter((r) => r.armId === armId);
+    const sample = rows[0];
+    const prefix = prefixIdentity(rows);
+    const id = sample && (sample.commitSha || sample.contentHash) && prefix !== null ? `${sample.commitSha}|${sample.contentHash}|${JSON.stringify(sample.armConfig ?? null)}${prefix}` : null;
     if (id) byIdentity.set(id, [...(byIdentity.get(id) || []), armId]);
   }
   return [...byIdentity.values()].filter((g) => g.length > 1);
@@ -373,4 +379,4 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
   return { schemaVersion: 1, baseline, baselineLabel, comparisons, unit: unit === 'USD' ? 'USD' : 'credits', arms, dirs: dirInfo, skippedDirs, notes, weights, noiseFloorPts: NOISE_FLOOR_PTS };
 }
 
-module.exports = { buildVerdict, decide, unisolatedReason, aaNoiseFromCells, levelText, refLabel, sentenceFor, normalize, qualityList, aaGroups, armOrder, perCellMin, pairCells, nonScoredOf, componentCheck, cellKey, KEEP, DISCARD, NEE, NOISE_FLOOR_PTS, MAX_NONSCORED_SHARE, COST_MAX };
+module.exports = { buildVerdict, decide, unisolatedReason, aaNoiseFromCells, levelText, refLabel, sentenceFor, normalize, qualityList, aaGroups, prefixIdentity, armOrder, perCellMin, pairCells, nonScoredOf, componentCheck, cellKey, KEEP, DISCARD, NEE, NOISE_FLOOR_PTS, MAX_NONSCORED_SHARE, COST_MAX };

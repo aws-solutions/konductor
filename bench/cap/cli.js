@@ -40,7 +40,8 @@ const { expandGlob } = require('./usage.js');
 const { analyze } = require('../report/generate.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { optionalProfile, replicatesFor } = require('../runner/lib/profiles.js');
-const { generateScenarios, checkCount } = require('./scenarios.js');
+const { generateScenarios, checkCount, generateTriggerScenarios, checkTriggerCount, parseSeed } = require('./scenarios.js');
+const { forcedPrefix, prefixHash, HARNESSES } = require('./forced.js');
 const { writeControls, controlPlan, evaluateControls } = require('./controls.js');
 const { cmdSkillPlan, cmdSkillStudy, cmdDecide, cmdCriteria } = require('./skillcli.js');
 const { writeReview, importRatings } = require('./review.js');
@@ -48,7 +49,7 @@ const { DEFAULTS } = require('../judge/config.js');
 const { loadRedactions } = require('../judge/redact.js');
 const { formatCalibration, formatRaterKappas } = require('../judge/calibrate.js');
 
-const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria'];
+const SUBCOMMANDS = ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'review', 'review-import', 'criteria', 'forced-prefix'];
 const DEFAULT_BASE = 'v1.2.0';
 
 class Refusal extends Error {}
@@ -498,7 +499,17 @@ async function cmdScenarios(opts) {
   const { repo, base } = common(opts);
   const ids = list(opts.cap);
   if (!ids.length) throw new Error('--cap is required (for example skill:backend-review, comma separated)');
-  const n = checkCount(opts.n);
+  const mode = opts.mode === undefined ? 'lift' : String(opts.mode);
+  if (!['lift', 'trigger'].includes(mode)) throw new Error('--mode takes lift (tasks where the skill should help, the default) or trigger (tasks that should load it and near misses that should not)');
+  const trigger = mode === 'trigger';
+  const n = trigger ? checkTriggerCount(opts.n) : checkCount(opts.n);
+  const seedFile = opts['seed-queries'] && opts['seed-queries'] !== true ? path.resolve(String(opts['seed-queries'])) : null;
+  if (opts['seed-queries'] !== undefined && !seedFile) throw new Error('--seed-queries takes a file');
+  if (seedFile && !trigger) throw new Error('--seed-queries applies to --mode trigger only');
+  if (seedFile && ids.length > 1) throw new Error('--seed-queries holds the queries of one skill; pass one --cap with it');
+  let seedData = null;
+  if (seedFile) { try { seedData = JSON.parse(fs.readFileSync(seedFile, 'utf8')); } catch (e) { throw new Error(`cannot read the seed file ${seedFile}: ${e.code || e.message}`); } }
+  const seeds = seedData ? parseSeed(seedData, { capId: ids[0] }) : [];
   const dryRun = Boolean(opts['dry-run']);
   const model = opts.model && opts.model !== true ? opts.model : DEFAULT_MODEL;
   const outDir = outDirOf(opts, repo);
@@ -517,18 +528,48 @@ async function cmdScenarios(opts) {
     const made = dryRun ? { caller: async () => { throw new Error('a dry run never calls a model'); }, cleanup: () => {} } : makeCapCaller(opts, { rawDir: path.join(outDir, 'model-raw'), log });
     try {
       for (const id of ids) {
-        const r = await generateScenarios({ capId: id, scan, caller: made.caller, model, n, outDir, dryRun });
+        const r = trigger
+          ? await generateTriggerScenarios({ capId: id, scan, caller: made.caller, model, n, outDir, seeds, seedFile, dryRun })
+          : await generateScenarios({ capId: id, scan, caller: made.caller, model, n, outDir, dryRun });
         credits += r.credits;
         calls += r.calls;
         if (r.dryRun) console.log(`${id}: wrote the prompt to ${r.file}`);
+        else if (r.ok && trigger) console.log(`${id}: wrote ${r.file} and ${path.basename(r.mdFile)} (${r.draft.scenarios.filter((x) => x.expect === 'trigger').length} should-trigger and ${r.draft.scenarios.filter((x) => x.expect === 'near-miss').length} near-miss tasks, attempts ${r.calls}, ${r.credits.toFixed(3)} credits)`);
         else if (r.ok) console.log(`${id}: wrote ${r.file} and ${path.basename(r.mdFile)} (${r.draft.scenarios.length} scenarios, attempts ${r.calls}, ${r.credits.toFixed(3)} credits)`);
         else { failed++; console.log(`${id}: FAILED ${r.error} (attempts ${r.calls}, ${r.credits.toFixed(3)} credits); nothing written`); }
       }
     } finally { made.cleanup(); }
   } finally { b.cleanup(); }
-  if (dryRun) console.log(`dry run: no model call was made and no credits were spent; ${ids.length} call(s) would be made for ${n} scenarios per skill. Prompts are in ${path.join(outDir, 'scenarios')}`);
+  if (dryRun) console.log(`dry run: no model call was made and no credits were spent; ${ids.length} call(s) would be made for ${trigger ? `${n} should-trigger and ${n} near-miss tasks` : `${n} scenarios`} per skill. Prompts are in ${path.join(outDir, 'scenarios')}`);
   else console.log(`model ${model}; ${calls} call(s), ${credits.toFixed(3)} credits in total; review files are in ${path.join(outDir, 'scenarios')}; nothing was written into the repository`);
   process.exitCode = failed ? 1 : 0;
+}
+
+// ---- forced-prefix ----
+
+/** Writes the forced-load instruction for one skill and harness, for a hand-built `run --arm-prefix`. Free. */
+function cmdForcedPrefix(opts) {
+  const { repo, base } = common(opts);
+  const ids = list(opts.cap);
+  if (ids.length !== 1) throw new Error('--cap takes one skill (for example skill:backend-review)');
+  const capId = ids[0];
+  if (!capId.startsWith('skill:')) throw new Error(`${capId} is not a skill: only a skill can be forced to load`);
+  const harness = opts.harness === undefined ? 'kiro-cli' : String(opts.harness);
+  if (!HARNESSES.includes(harness)) throw new Error(`--harness takes ${HARNESSES.join(' or ')}`);
+  const b = resolveBase(base, repo);
+  try { if (!scanRepo(b.dir).has(capId)) throw new Error(`unknown capability ${capId} at ${b.label}`); } finally { b.cleanup(); }
+  const name = capId.slice('skill:'.length);
+  const text = `${forcedPrefix({ name, harness })}\n`;
+  const outDir = outDirOf(opts, repo);
+  fs.mkdirSync(outDir, { recursive: true });
+  const file = path.join(outDir, `forced-prefix-${name}-${harness}.txt`);
+  fs.writeFileSync(file, text);
+  const arm = harness === 'opencode' ? 'oc-frc' : 'frc';
+  console.log([
+    `wrote ${file} (sha256 ${prefixHash(text)})`,
+    `Use it on a forced arm and on its A/A repeat, in a run of their own: --arms ${arm}=REF,${arm}-b=REF,... --arm-prefix ${arm}=${file},${arm}-b=${file}`,
+    'Read the result apart from the organic arms. The prefix hash is part of an arm\'s A/A identity, so only arms with the same prefix pair as repeats.',
+  ].join('\n'));
 }
 
 // ---- controls ----
@@ -649,6 +690,7 @@ function cmdCap(opts) {
     if (sub === 'review') return cmdReview(opts);
     if (sub === 'review-import') return cmdReviewImport(opts);
     if (sub === 'criteria') return cmdCriteria(opts);
+    if (sub === 'forced-prefix') return cmdForcedPrefix(opts);
     return cmdTrigger(opts);
   };
   const fail = (e) => {
