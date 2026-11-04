@@ -72,9 +72,10 @@
 #                     powers/konductor/skills/konductor-setup/scripts, so no
 #                     override is needed here). No commits, no push.
 
-.PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check notice-check \
+.PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check version-check notice-check \
         test test-rust test-schema-dump test-py test-skills-sh clean help \
-        guide guide-check guide-sync guide-html guide-record kiro-power-check
+        guide guide-check guide-sync guide-html guide-record kiro-power-check \
+        sop-orchestration-check
 
 all: build
 
@@ -96,8 +97,10 @@ help:
 	@echo "  make test-rust          Run Rust unit tests, cli/mcp/shared (no internet required)"
 	@echo "  make test-schema-dump   Smoke-check __dump_schema (cli only)"
 	@echo "  make test-py            Run the pytest suite under tests/"
+	@echo "  make version-check      Check crates, lockfiles and CHANGELOG.md match VERSION"
 	@echo "  make notice-check       Fail if NOTICE.txt is out of date with the shipped crates"
 	@echo "  make test-skills-sh     Run every tests/skills/*/*.sh regression test"
+	@echo "  make sop-orchestration-check  Check the gated SOP list against agent-sops/"
 	@echo "  make clean              Remove build artifacts in cli/, mcp/, and shared/"
 	@echo ""
 	@echo "  Konductor Kiro Power (powers/konductor/, imported by users directly from main)"
@@ -238,6 +241,11 @@ test-rust:
 test-schema-dump:
 	$(MAKE) -C cli test-schema-dump
 
+# ── version-check ─────────────────────────────────────────────────────────────
+
+version-check:
+	python3 scripts/check-version-consistency.py
+
 # ── notice-check ──────────────────────────────────────────────────────────────
 # Regenerates NOTICE.txt and fails if that changed it. Fix with
 # `npm run generate-notice` and commit the result.
@@ -335,6 +343,11 @@ kiro-power-check:
 	else \
 		echo "=== [kiro-power-check] All checks passed ==="; \
 	fi
+
+# ── sop-orchestration-check ───────────────────────────────────────────────────
+# Needs python3 and PyYAML.
+sop-orchestration-check:
+	python3 scripts/check-sop-orchestration.py .
 
 # ── user guide ────────────────────────────────────────────────────────────────
 # The guide is authored, not compiled, so these keep the FACTS in step with the

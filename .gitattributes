@@ -1,0 +1,2 @@
+# The install manifest contract fixture is compared byte for byte.
+mcp/lib/skill-lookup-core/testdata/*.json text eol=lf
