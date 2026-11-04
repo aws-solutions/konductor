@@ -95,6 +95,7 @@ not per individual commit.
 - The orchestrator routing rules list memory and skill capture as direct work, matching what
   Memory & Skill Reflexes ask for.
 - The routing rules' example search that skips `.env` files keeps `.env.example` in its results.
+- `persistent-memory` allows removing an untagged entry when the user asks, as the agent prompts do.
 
 ## [1.2.0] - 2026-10-26
 
