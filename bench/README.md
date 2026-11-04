@@ -120,12 +120,12 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
 - The binary: `--claude-bin PATH` (`BENCH_CLAUDE_BIN`), or the newest `<version>/claude` under `--claude-tools-dir DIR`
   (`BENCH_CLAUDE_TOOLS_DIR`). There is no default location. A launcher script is refused (the resolved file must be named
   `claude` and be at least 50 MB): a launcher can override the model, region and credentials, so a vanilla arm through it is
-  not vanilla. Version, path and sha256 go to run-config.
+  not vanilla. Version, file name and sha256 go to run-config; a version other than the validated one logs a warning.
 - Command: `claude -p PROMPT --output-format stream-json --verbose --model us.anthropic.claude-sonnet-5-5 --max-budget-usd N
   --permission-mode acceptEdits [--agent konductor] [--include-hook-events] --allowedTools Bash Edit Write Read`, stdin from
   `/dev/null`. `--max-budget-usd` is `--run-budget-usd` (default 5). `--effort`, `--stop-on`, `--max-tool-calls`,
   `--run-credit-limit`, `--aws-creds-file` and `--agent-engine` are refused for these arms; the effort level is not passed to
-  claude, so results say `effort: default`. Multi-turn (autonomy) tasks are not supported yet.
+  claude, so results say `effort: default`. Multi-turn (autonomy) tasks are not supported yet and are refused when the run starts.
 - Credentials come from the environment of the shell that starts the bench: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and
   `AWS_SESSION_TOKEN`, for example from `aws configure export-credentials --format env`. They go to claude through its
   process environment only; no file is written. `AWS_PROFILE`, `AWS_DEFAULT_PROFILE`, `AWS_CONFIG_FILE` and
@@ -148,7 +148,7 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   `parent_tool_use_id` chain and `subagent_stats.max_depth`; review rounds and reworks read the `Agent` tool input and the
   sub-agent's notification summary. Skill loads are `Skill` tool calls and reads of a `SKILL.md`, in all sessions.
   `result.json` gains `claudeCode` (models seen, `modelUsage` keys, cost basis, hook events, permission denials, spawn counts,
-  where the task directory landed). A denied tool call exits 0; it shows as the `permissionDenied` flag and a count.
+  where the task directory landed). A denied tool call exits 0; it shows as the `permissionDenied` flag and a count. A result line with no `total_cost_usd` or `modelUsage` sets `costMissing` (the cost is null, not 0), and unparseable stream lines set `streamTruncated`.
 - Cleanup: `TMPDIR` is the run's own directory. Claude Code writes task output to `<tmp>/claude-<uid>/<cwd slug>/`; each run
   removes that directory under its TMPDIR and under the default temp directory (the slug is unique to the run, so parallel runs
   never touch each other). `claudeCode.tmpCleanup` records which one held it.
