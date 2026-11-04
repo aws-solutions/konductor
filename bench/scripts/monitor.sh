@@ -667,7 +667,8 @@ render() {
   else emit "$(clip "         WAITING FOR CREDENTIALS: no${exp_txt:-  (credentials expiry: unknown)}")"; fi
   emit "$(clip "         FAILED lines: $FAILED_LINES")"
   emit "$(clip "         timeouts/errors in $([ "$CUR" -gt 0 ] && echo "P$CUR" || echo "current phase"): $TE_TEXT")"
-  emit "$(clip "         disk: $DISK_PATH ${DISK_FREE:-?} GB free (${DISK_USED:-?} used)${RES_FS:+ | results $RES_FS} | last log output $([ "$IDLE_S" -ge 0 ] && echo "$(fmt_dur "$IDLE_S") ago" || echo "none yet")")"
+  emit "$(clip "         disk: $DISK_PATH ${DISK_FREE:-?} GB free (${DISK_USED:-?} used)${RES_FS:+ | results $RES_FS}")"
+  emit "         last log output $([ "$IDLE_S" -ge 0 ] && echo "$(fmt_dur "$IDLE_S") ago" || echo "none yet")"
   if [ "$OTHER_N" -gt 0 ]; then
     emit "$(clip "         other bench processes (not the chain): $OTHER_N, first: pid $(printf '%s\n' "$OTHER" | head -n 1 | awk -F'\t' '{ print $1 ": " $3 }')")"
   else emit "         other bench processes (not the chain): none"; fi

@@ -252,7 +252,9 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
 - Runs with `infraError` or no kept workspace are not judged; they are listed in `notJudged`.
 - Replies must be strict JSON; one retry, then `judgeError` is recorded. Results are cached by hash of
   (judge, prompt) in `<out>/judge/cache`. `spentCredits` and `spentByJudge` add up over invocations;
-  a cached call costs 0 and keeps its original latency with `cached: true`.
+  a cached call costs 0 and keeps its original latency with `cached: true`. Only a reply that passes the same check
+  (valid JSON, right shape) is cached. A stored reply that fails it is not replayed: the judge is asked again and the old file is
+  kept as `<key>.rejected.json`.
 - `--mode graded` asks the judge to grade both responses of a pair 1 to 5, once with the baseline in position A and once with it in B. A record keeps the mean grades, the
   difference, and `orderDisagreement` (one order favored the arm, the other the baseline). The report lists the disagreement rate; above 25% it says the judges follow position.
   Graded grades are shown beside the quality score and never feed it, so `scoring.json` still decides quality.
