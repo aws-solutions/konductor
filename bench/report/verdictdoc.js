@@ -21,7 +21,7 @@ function verdictCell(a) {
 }
 
 function noiseCell(n) {
-  return n.available ? `A/A spread ${f(n.spread)}, noise band +/-${f(n.pts)} points` : 'none measured';
+  return n.available ? `${Math.max(...n.pairs.map((p) => p.cells || 0))} paired A/A cells, gap of the overall means ${f(n.spread)}, noise band +/-${f(n.pts)} points` : 'none measured';
 }
 
 const FAILED = ['checksFailed', 'timeout', 'error', 'infraError', 'modelMismatch'];
@@ -29,9 +29,9 @@ const FAILED = ['checksFailed', 'timeout', 'error', 'infraError', 'modelMismatch
 const RULES = [
   'KEEP needs a quality gain over the baseline that is larger than the A/A noise and whose paired 95% interval is above 0, at least 3 runs on each side, at least 5 paired task cells, at least 3 replicates in every cell, no anecdotal diligence rating, no clearly lower reliability, and a cost of at most 2.0x the baseline per successful run.',
   'DISCARD needs the same evidence for a quality loss. Its cost is not weighed: a loss is a loss at any price.',
-  'The interval is paired by cell. A cell is one task in one run directory; each cell contributes the mean of the arm\'s scores minus the mean of the baseline\'s, and the 95% interval is a t interval on those differences. Runs of the same task are not independent, so an interval over pooled runs is shown only as a descriptive column. In a simulation with no true effect the paired interval excluded 0 in 4.1% to 6.5% of trials from 5 cells up, where the pooled one excluded it in 20% of trials at 3 runs a side.',
+  'When several arms are compared with the baseline, each quality interval is widened to the Bonferroni level 1 - 0.05/m for m arms (an A/A repeat is not an arm), and the page notes the level. The interval is paired by cell. A cell is one task in one run directory; each cell contributes the mean of the arm\'s scores minus the mean of the baseline\'s, and the 95% interval is a t interval on those differences. Runs of the same task are not independent, so an interval over pooled runs is shown only as a descriptive column. In a simulation with no true effect the paired interval excluded 0 in 4.1% to 6.5% of trials from 5 cells up, where the pooled one excluded it in 20% of trials at 3 runs a side.',
   'NOT ENOUGH EVIDENCE is the answer in every other case. It is forced when there are fewer than 3 runs on a side or fewer than 5 paired task cells, when the difference is inside the A/A noise, or when the diligence rating is anecdotal. It is also the answer when no A/A noise was measured, when a cell has fewer than 3 replicates, when the interval of the difference includes 0, when more than a fifth of the runs on a side have no score, when the arm and the baseline were scored on different components in any cell, or when a gain costs more than 2.0x.',
-  `The A/A noise is the gap in mean quality between an arm and its repeat at the same commit, with a floor of ${f(5)} points.`,
+  `The A/A noise is pooled over every paired task cell of an arm and its repeat at the same commit: each cell gives the arm's mean quality minus the repeat's, and the noise is the larger end of the 95% interval of those differences, with a floor of ${f(5)} points. Two paired cells are the least that give it; with fewer there is no noise floor.`,
   'Efficiency is a ratio, never a 0 to 100 number: cost is credits per successful run, arm over baseline, and latency is mean wall clock over clean passes, arm over baseline. A ratio above 1 means the arm costs more.',
   'A failed or timed-out run counts as quality 0 when it has nothing to score, and counts against reliability. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side.',
 ];

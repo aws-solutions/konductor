@@ -192,27 +192,75 @@ test('drafting refuses an output directory inside the repository and an unknown 
 
 // ---- import ----
 
+const imp = (i, should, extra = {}) => ({ query: `Realistic request number ${i} about some everyday engineering work`, should_trigger: should, ...extra });
+const goodImport = (load = 6, none = 6) => [...Array.from({ length: load }, (_, i) => imp(i, true)), ...Array.from({ length: none }, (_, i) => imp(100 + i, false))];
+const runImport = (v, opts = {}) => importQueries(v, { capId: 'skill:alpha', source: 'f', ...opts });
+const internalHost = `https://wiki.${['amaz', 'on'].join('')}.com/page`;
+
 test('import reads skill-creator style [{query, should_trigger}] into the draft format', () => {
-  const d = importQueries([
-    { query: 'Check my service for injection problems before release', should_trigger: true },
-    { query: 'Write a poem about the sea', should_trigger: false },
-  ], { capId: 'skill:alpha', source: 'queries.json' });
+  const d = importQueries(goodImport(), { capId: 'skill:alpha', source: 'queries.json' });
   assert.equal(d.capId, 'skill:alpha');
   assert.equal(d.status, 'draft-unreviewed');
-  assert.deepEqual(d.queries.map((x) => [x.id, x.expect]), [['i01', 'load'], ['i02', 'none']]);
+  assert.deepEqual(d.queries.slice(0, 2).map((x) => [x.id, x.expect]), [['i01', 'load'], ['i02', 'load']]);
+  assert.equal(d.queries.filter((x) => x.expect === 'none').length, 6);
   assert.ok(d.queries.every((x) => x.rationale.startsWith('imported')));
   assert.equal(d.generatedBy.import, 'queries.json');
   assert.deepEqual(d.taskIdeas, []);
+  assert.ok(d.queries.every((x) => x.split === undefined), 'no splits are assigned');
 });
 
 test('import refuses malformed input with the position of the problem', () => {
-  const run = (v) => importQueries(v, { capId: 'skill:alpha', source: 'f' });
+  const run = (v) => runImport(v);
   assert.throws(() => run({ not: 'an array' }), /must be a JSON array/);
   assert.throws(() => run([{ query: 'ok query text here', should_trigger: 'yes' }]), /item 1: should_trigger must be true or false/);
   assert.throws(() => run([{ should_trigger: true }]), /item 1: query must be a non-empty string/);
   assert.throws(() => run([{ query: 'same query text here', should_trigger: true }, { query: 'Same query text here', should_trigger: false }]), /item 2: duplicate query text/);
   assert.throws(() => run([]), /no queries/);
-  assert.equal(renderDraftMd(run([{ query: 'a query that is long enough', should_trigger: true }])).includes('imported'), true);
+  assert.equal(renderDraftMd(runImport(goodImport())).includes('imported'), true);
+});
+
+// cap import applies the checks cap draft applies to a model's reply.
+test('import needs at least 6 queries of each polarity and no more than n + 4 in all', () => {
+  assert.throws(() => runImport(goodImport(5, 6)), /too few queries: 5 expect:load and 6 expect:none, need at least 6 of each/);
+  assert.throws(() => runImport(goodImport(6, 5)), /too few queries: 6 expect:load and 5 expect:none/);
+  assert.doesNotThrow(() => runImport(goodImport(14, 14)));
+  assert.throws(() => runImport(goodImport(15, 14)), /too many queries \(29\), at most 28/);
+  assert.doesNotThrow(() => runImport(goodImport(20, 20), { n: 36 }));
+});
+
+test('import refuses a split on any item: splits are assigned after review', () => {
+  for (const key of ['split', 'splits']) {
+    const items = goodImport();
+    items[3] = { ...items[3], [key]: 'heldout' };
+    assert.throws(() => runImport(items), new RegExp(`item 4: ${key} is assigned by a person after review, not on import`));
+  }
+});
+
+test('import refuses leakage: a query that names the capability or a konductor procedure or agent', () => {
+  const swap = (text) => { const items = goodImport(); items[2] = { query: text, should_trigger: true }; return items; };
+  assert.throws(() => runImport(swap('Please run the alpha workflow on my repository today')), /item 3: the text names the capability "alpha"/);
+  assert.throws(() => runImport(swap('Ask the k-researcher to look into the failing build')), /item 3: the text names a konductor procedure or agent/);
+  assert.throws(() => runImport(swap('Follow the SOP for this release candidate please')), /item 3: the text names a konductor procedure or agent/);
+  assert.doesNotThrow(() => runImport(swap('Please run the alphabet song generator on my repository')));
+});
+
+test('import refuses text that cap draft would refuse: dashes, line breaks, length', () => {
+  const swap = (text) => { const items = goodImport(); items[0] = { query: text, should_trigger: true }; return items; };
+  assert.throws(() => runImport(swap('Check the service \u2014 then ship it to the staging cluster')), /item 1: the text contains an em or en dash/);
+  assert.throws(() => runImport(swap('Check the service\nthen ship it to the staging cluster')), /item 1: the text must be one paragraph/);
+  assert.throws(() => runImport(swap('too short')), /item 1: the text must be between 12 and 400 characters/);
+  assert.throws(() => runImport(swap('x'.repeat(401))), /item 1: the text must be between 12 and 400 characters/);
+});
+
+test('import and draft both refuse public-hygiene markers in a query', () => {
+  const items = goodImport();
+  items[1] = { query: `Can you read ${internalHost} and summarize it`, should_trigger: true };
+  assert.throws(() => runImport(items), /item 2: the text has an internal host \(public-repo hygiene\)/);
+  const d = goodDraft();
+  d.queries[1].text = `Can you read ${internalHost} and summarize it`;
+  const r = validateDraft(d, { capName: 'alpha', capKind: 'skill', neighbourIds: ['skill:delta'] });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /queries\[1\]: the text has an internal host \(public-repo hygiene\)/);
 });
 
 // ---- the command ----
@@ -223,7 +271,7 @@ test('cap draft and cap import write into --out only, refuse a repo path, and le
     const bench = makeCapBench(s.root);
     const registryBefore = fs.readdirSync(path.join(bench, 'capabilities'));
     const qfile = path.join(s.root, 'q.json');
-    fs.writeFileSync(qfile, JSON.stringify([{ query: 'Check my service for injection problems', should_trigger: true }, { query: 'Write a poem about the sea', should_trigger: false }]));
+    fs.writeFileSync(qfile, JSON.stringify(goodImport()));
     const out = path.join(s.root, 'out');
     const env = { PATH: process.env.PATH, HOME: path.join(s.root, 'h') };
     fs.mkdirSync(env.HOME);
@@ -234,6 +282,12 @@ test('cap draft and cap import write into --out only, refuse a repo path, and le
     const inRepo = spawnSync(process.execPath, [BENCH_JS, 'cap', 'import', '--from', qfile, '--cap', 'skill:alpha', '--out', path.join(s.repo, 'x'), '--repo-root', s.repo, '--bench-dir', bench], { encoding: 'utf8', env });
     assert.equal(inRepo.status, 2);
     assert.match(inRepo.stderr, /inside the repository/);
+    const thin = path.join(s.root, 'thin.json');
+    fs.writeFileSync(thin, JSON.stringify([{ query: 'Check my service for injection problems', should_trigger: true }, { query: 'Write a poem about the sea', should_trigger: false }]));
+    const few = spawnSync(process.execPath, [BENCH_JS, 'cap', 'import', '--from', thin, '--cap', 'skill:alpha', '--out', path.join(s.root, 'out2'), '--repo-root', s.repo, '--bench-dir', bench], { encoding: 'utf8', env });
+    assert.notEqual(few.status, 0);
+    assert.match(few.stderr, /too few queries/);
+    assert.equal(fs.existsSync(path.join(s.root, 'out2', 'drafts')), false, 'a refused import writes nothing');
     const noCap = spawnSync(process.execPath, [BENCH_JS, 'cap', 'draft', '--out', out, '--repo-root', s.repo, '--bench-dir', bench], { encoding: 'utf8', env });
     assert.equal(noCap.status, 2);
     assert.match(noCap.stderr, /--cap is required/);

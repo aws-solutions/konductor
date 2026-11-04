@@ -5,6 +5,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { scrubString } = require('./scrub.js');
 
 const PATTERNS = [
   { name: 'access key id', re: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/ },
@@ -42,14 +43,19 @@ function scanTree(dir, { literals = [] } = {}) {
   return hits;
 }
 
-/** Replaces each literal with <redacted> in every file under dir. Returns the number of files rewritten. */
-function scrubTree(dir, literals) {
+/**
+ * Replaces each literal with <redacted> in every file under dir; with `shapes`, credential-shaped text too (see scrub.js).
+ * Returns the number of files rewritten.
+ */
+function scrubTree(dir, literals, { shapes = false } = {}) {
   const live = literals.filter(Boolean);
   let n = 0;
   for (const file of files(dir)) {
     const text = readText(file);
-    if (text === null || !live.some((l) => text.includes(l))) continue;
-    fs.writeFileSync(file, live.reduce((t, l) => t.split(l).join('<redacted>'), text), 'latin1');
+    if (text === null) continue;
+    const next = shapes ? scrubString(text, live) : live.reduce((t, l) => t.split(l).join('<redacted>'), text);
+    if (next === text) continue;
+    fs.writeFileSync(file, next, 'latin1');
     n++;
   }
   return n;

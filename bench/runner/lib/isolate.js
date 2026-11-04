@@ -339,6 +339,15 @@ function probeSandboxExec(home = os.homedir(), makeIso = makeIsolation) {
 }
 
 const ISOLATE_MODES = ['auto', 'unshare', SANDBOX_BIN, 'none'];
+// Only an OS-enforced mode makes runs comparable. 'none', 'auto' (not a resolved mode) and anything unrecorded do not.
+const COMPARABLE_MODES = ['unshare', SANDBOX_BIN];
+const isComparableMode = (mode) => COMPARABLE_MODES.includes(mode);
+
+/** Whether a stored result may be counted in a verdict. A recorded `comparable` can only tighten what the mode says. */
+function resultComparable(r) {
+  if (!r || !isComparableMode(r.isolation)) return false;
+  return r.comparable !== false;
+}
 const PROBES = { unshare: probeUnshare, [SANDBOX_BIN]: probeSandboxExec };
 const LABELS = { unshare: 'mount namespace', [SANDBOX_BIN]: 'sandbox-exec' };
 const autoMode = (platform = process.platform) => (platform === 'darwin' ? SANDBOX_BIN : 'unshare');
@@ -366,5 +375,5 @@ function workingMode(home) {
 
 module.exports = {
   makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, userLocalTrees, runtimeSockets, findAnswerKeys,
-  UNSHARE_FLAGS, HIDE_IN_HOME, HIDE_CREDENTIALS_IN_HOME, describeHide, ISOLATE_MODES,
+  UNSHARE_FLAGS, HIDE_IN_HOME, HIDE_CREDENTIALS_IN_HOME, describeHide, ISOLATE_MODES, COMPARABLE_MODES, isComparableMode, resultComparable,
 };

@@ -19,7 +19,7 @@ const { loadRun } = require('./load.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { analyze, outPaths, writeOutputs, formatOf } = require('./generate.js');
 const { computeScores, loadScoring, MIN_N } = require('./scores.js');
-const { normalize, qualityList, aaGroups, refLabel, pairCells, nonScoredOf, componentCheck, MAX_NONSCORED_SHARE, NOISE_FLOOR_PTS } = require('./verdict.js');
+const { normalize, unisolatedReason, aaNoiseFromCells, levelText, qualityList, aaGroups, refLabel, pairCells, nonScoredOf, componentCheck, MAX_NONSCORED_SHARE, NOISE_FLOOR_PTS } = require('./verdict.js');
 const { pairedCellCI, withinCellSd, MIN_CELLS } = require('./stats.js');
 const { enrichOrch, summarize } = require('./orch.js');
 const { modelFamily } = require('../judge/config.js');
@@ -56,9 +56,10 @@ function sampleSd(xs) {
  */
 function decideCell(c) {
   const evidence = [];
+  if (c.unisolated && (c.unisolated.head || c.unisolated.base)) evidence.push(unisolatedReason(c.unisolated, 'vanilla'));
   if (c.nHead < MIN_N || c.nBase < MIN_N) evidence.push(`fewer than ${MIN_N} scored runs on a side (${c.nHead} for the arm, ${c.nBase} for vanilla)`);
   if ((c.cells ?? 0) < MIN_CELLS) evidence.push(`fewer than ${MIN_CELLS} paired task cells (${c.cells ?? 0}), too few for an interval that holds its 95% level`);
-  if (!c.hasAA) evidence.push('there is no A/A repeat in this cell, so drift cannot be told from an effect');
+  if (!c.hasAA) evidence.push('there is no A/A repeat in this cell with two or more paired task cells, so drift cannot be told from an effect');
   if (!fin(c.withinSd)) evidence.push('vanilla has no task with two scored runs, so its within-task spread is unknown');
   if (!fin(c.qualityDelta) || !fin(c.qualityCiLow)) evidence.push('quality could not be computed for both sides, with an interval');
   const ratios = [c.costRunRatio, c.costSuccessRatio].filter((r) => r === Infinity || fin(r));
@@ -96,7 +97,7 @@ function decideCell(c) {
     const reaches = !dropped && !clears;
     quality = { status: drifting || reaches ? 'uncertain' : clears ? 'pass' : 'fail', passes: clears, tolerance, drift };
     if (dropped) reasons.push(`quality is below vanilla by ${f1(-c.qualityDelta)} points, more than the tolerance of ${f1(tolerance)} points (vanilla's spread within a task, at least ${f1(QUALITY_FLOOR_PTS)})`);
-    if (reaches) reasons.push(`the 95% interval of the quality difference [${f1(c.qualityCiLow)}, ${f1(c.qualityCiHigh)}] reaches below the tolerance of -${f1(tolerance)} points`);
+    if (reaches) reasons.push(`the ${levelText(c.qualityLevel ?? 0.95)} interval of the quality difference [${f1(c.qualityCiLow)}, ${f1(c.qualityCiHigh)}] reaches below the tolerance of -${f1(tolerance)} points`);
     if (drifting) reasons.push(`the A/A drift of ${f1(drift)} points is not smaller than the quality difference of ${f1(Math.abs(c.qualityDelta))} points`);
   }
 
@@ -182,7 +183,7 @@ function boundedCost(headRows, baseRows, weights, unit) {
   return { censoredRuns: open.length, runRatio: bound.ratioPerRun, successRatio: bound.ratioPerSuccess };
 }
 
-function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkillsOverride, phases }) {
+function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkillsOverride, phases, comparisons = 1 }) {
   const all = inputs.flatMap((i) => i.rows);
   const baseRows = all.filter((r) => r.armId === baseline);
   const baselineLabel = [...new Set(baseRows.map((r) => r.label))].join(' + ');
@@ -193,23 +194,27 @@ function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkil
     for (const g of aaGroups(input, baseline)) {
       const [primary, ...repeats] = g;
       const pl = refLabel({ armId: primary, ...input.rows.find((r) => r.armId === primary) });
-      const slot = pairs.get(pl) || { primary: pl, a: [], b: [], costA: [], costB: [] };
-      const mine = input.rows.filter((r) => r.armId === primary);
+      const slot = pairs.get(pl) || { primary: pl, a: [], b: [], cells: [], costA: [], costB: [] };
+      const mine = input.rows.filter((r) => r.armId === primary && r.comparable);
       slot.a.push(...qualityList(mine, weights));
+      slot.cells.push(...pairCells(mine, input.rows.filter((r) => repeats.includes(r.armId) && r.comparable), weights));
       slot.costA.push(...mine.map((r) => r.credits).filter(fin));
       for (const rep of repeats) {
-        const rr = input.rows.filter((r) => r.armId === rep);
+        const repAll = input.rows.filter((r) => r.armId === rep);
+        const rr = repAll.filter((r) => r.comparable);
         slot.b.push(...qualityList(rr, weights));
         slot.costB.push(...rr.map((r) => r.credits).filter(fin));
-        repeatOf.set(refLabel({ armId: rep, ...rr[0] }), pl);
+        repeatOf.set(refLabel({ armId: rep, ...repAll[0] }), pl);
       }
       pairs.set(pl, slot);
     }
   }
-  const qDrifts = [...pairs.values()].filter((p) => p.a.length && p.b.length).map((p) => Math.abs(mean(p.a) - mean(p.b)));
+  // Drift in quality points is pooled over every paired cell of each A/A group (see aaNoiseFromCells).
+  const noiseOf = new Map([...pairs.values()].map((p) => [p, aaNoiseFromCells(p.cells)]));
+  const qDrifts = [...noiseOf].filter(([, n]) => n.available).map(([, n]) => n.pts);
   const cDrifts = [...pairs.values()].filter((p) => p.costA.length && p.costB.length && mean(p.costA) > 0).map((p) => Math.abs(mean(p.costB) / mean(p.costA) - 1));
   const hasAA = qDrifts.length > 0;
-  const aa = { available: hasAA, qualityDrift: hasAA ? Math.max(...qDrifts) : null, costDrift: cDrifts.length ? Math.max(...cDrifts) : null, pairs: [...pairs.values()].map((p) => ({ arm: p.primary, runsA: p.a.length, runsB: p.b.length, qualityA: mean(p.a), qualityB: mean(p.b), costA: mean(p.costA), costB: mean(p.costB) })) };
+  const aa = { available: hasAA, qualityDrift: hasAA ? Math.max(...qDrifts) : null, costDrift: cDrifts.length ? Math.max(...cDrifts) : null, pairs: [...pairs.values()].map((p) => ({ arm: p.primary, runsA: p.a.length, runsB: p.b.length, qualityA: mean(p.a), qualityB: mean(p.b), cells: noiseOf.get(p).k, meanDiff: noiseOf.get(p).meanDiff, pts: noiseOf.get(p).pts, costA: mean(p.costA), costB: mean(p.costB) })) };
 
   const labels = [...new Set(all.filter((r) => r.armId !== baseline).map((r) => r.label))];
   const arms = labels.map((label) => {
@@ -225,7 +230,7 @@ function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkil
     const hq = qualityList(head, weights);
     const bq = qualityList(base, weights);
     const pcells = pairCells(head, base, weights);
-    const paired = pairedCellCI(pcells.map((x) => ({ head: x.head, base: x.base })));
+    const paired = pairedCellCI(pcells.map((x) => ({ head: x.head, base: x.base })), { comparisons });
     const within = withinCellSd(pcells.map((x) => x.base));
     const nonScored = { head: nonScoredOf(head, weights), base: nonScoredOf(base, weights) };
     const components = componentCheck(pcells);
@@ -234,7 +239,8 @@ function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkil
     const costBound = common.size ? boundedCost(head, base, weights, unit) : null;
     const target = out.aaRepeatOf ? null : targetOf(label, armId, headAll, changedSkillsOverride);
     const decision = out.aaRepeatOf ? null : decideCell({
-      nHead: hq.length, nBase: bq.length, cells: paired.k, qualityDelta: paired.delta, qualityCiLow: paired.ciLow, qualityCiHigh: paired.ciHigh, withinSd: within.sd, baseSd: sampleSd(bq),
+      nHead: hq.length, nBase: bq.length, cells: paired.k, qualityDelta: paired.delta, qualityCiLow: paired.ciLow, qualityCiHigh: paired.ciHigh, qualityLevel: paired.level, withinSd: within.sd, baseSd: sampleSd(bq),
+      unisolated: { head: head.filter((r) => !r.comparable).length, base: base.filter((r) => !r.comparable).length, headTotal: head.length, baseTotal: base.length },
       qualityDrift: aa.qualityDrift, costRunRatio: cost.ratioPerRun, costSuccessRatio: cost.ratioPerSuccess, costBound, costDrift: aa.costDrift, hasAA, target, nonScored, components,
     });
     const failures = Object.fromEntries(['good', ...FAILURE_OUTCOMES].map((k) => [k, head.filter((r) => r.outcome === k).length]));
@@ -243,7 +249,7 @@ function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkil
       ...out, call: decision?.call ?? null, reasons: decision?.reasons ?? [], rawPass: decision?.rawPass ?? null,
       cost: { ...cost, bound: costBound, status: decision?.cost.status ?? null },
       quality: {
-        n: hq.length, baseN: bq.length, value: mean(hq), baseValue: mean(bq), delta: paired.delta, deltaCiLow: paired.ciLow, deltaCiHigh: paired.ciHigh, k: paired.k, droppedCells: paired.droppedCells, method: paired.method, p: paired.p,
+        n: hq.length, baseN: bq.length, value: mean(hq), baseValue: mean(bq), delta: paired.delta, deltaCiLow: paired.ciLow, deltaCiHigh: paired.ciHigh, k: paired.k, droppedCells: paired.droppedCells, method: paired.method, level: paired.level, comparisons: paired.comparisons, p: paired.p, pAdjusted: paired.pAdjusted,
         unpairedDelta: unpaired, withinSd: within.sd, withinCells: within.cells, tolerance: fin(within.sd) ? Math.max(within.sd, QUALITY_FLOOR_PTS) : null, baseSd: sampleSd(bq), status: decision?.quality.status ?? null,
       },
       nonScored, components, target, notes: [target?.note].filter(Boolean), failures, failedAsZero: head.filter((r) => r.zeroFilled).length, runs: head.length, baseRuns: base.length,
@@ -281,10 +287,15 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
     byCell.set(cell.key, slot);
   }
   if (!byCell.size) throw new Error(`no run directory has the baseline arm "${baseline}"`);
-  const cells = [...byCell.values()].map((c) => ({
+  // Every test arm in every cell is one comparison with vanilla; an A/A repeat is not. With m comparisons each quality interval
+  // is widened to level 1 - 0.05/m (Bonferroni), so the cells are built once to count the arms and again at that level.
+  const buildAll = (comparisons) => [...byCell.values()].map((c) => ({
     harness: c.harness, engine: c.engine, harnessLabel: c.harnessLabel, model: c.model, family: modelFamily(c.model),
-    ...buildCell({ key: c.key, inputs: c.inputs, baseline, weights, unit, testArms, changedSkillsOverride: changedSkills, phases }),
+    ...buildCell({ key: c.key, inputs: c.inputs, baseline, weights, unit, testArms, changedSkillsOverride: changedSkills, phases, comparisons }),
   }));
+  let cells = buildAll(1);
+  const comparisons = Math.max(1, cells.reduce((n, c) => n + c.arms.filter((a) => !a.aaRepeatOf).length, 0));
+  if (comparisons > 1) cells = buildAll(comparisons);
 
   const notes = [];
   for (const c of cells.filter((x) => isGpt(x.model))) {
@@ -302,6 +313,7 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
     if (!ref) notes.push(`${c.model} has no Claude cell on the same harness to compare ratios with. Add a Claude run directory, or read its ratios to vanilla on their own.`);
   }
   for (const s of skippedDirs) notes.push(`${s.dir} was left out: ${s.reason}.`);
+  if (comparisons > 1) notes.push(`${comparisons} test arms are compared with vanilla in this report, so each quality interval is widened to the Bonferroni level of ${levelText(1 - 0.05 / comparisons)} (0.05 divided by ${comparisons}).`);
   if (cells.some((c) => c.arms.some((a) => a.failedAsZero))) notes.push('A run that failed or timed out with nothing to score counts as quality 0, and its cost counts. Infra errors and model mismatches are left out of quality and listed, and a side with more than a fifth of its runs in that state gets no call.');
   const rule = {
     costMax: COST_MAX,
@@ -309,12 +321,12 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
     minCells: MIN_CELLS,
     maxNonScoredShare: MAX_NONSCORED_SHARE,
     cost: 'Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean credits per executed run and as credits per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.',
-    quality: "Quality is paired by cell (one task in one run directory): each cell contributes the arm's mean score minus vanilla's, and the 95% interval is a t interval on those differences. The tolerance is the pooled within-cell standard deviation of vanilla's scores, at least 5 points. The arm passes when the lower end of the interval is at least minus the tolerance. A difference below minus the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE. A gain passes.",
-    drift: 'Drift = the largest gap between an arm and its A/A repeat (quality points, at least 5, and the cost ratio of the repeat to the arm). A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.',
+    quality: "Quality is paired by cell (one task in one run directory): each cell contributes the arm's mean score minus vanilla's, and the interval is a t interval on those differences, at 95% for one test arm and at the Bonferroni level 1 - 0.05/m when m test arms are compared in the report. The tolerance is the pooled within-cell standard deviation of vanilla's scores, at least 5 points. The arm passes when the lower end of the interval is at least minus the tolerance. A difference below minus the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE. A gain passes.",
+    drift: 'Drift = the quality drift pooled over every paired task cell of an arm and its A/A repeat (the larger end of the 95% interval of the per-cell differences, at least 5 points) and the largest cost ratio gap of the repeat to the arm. A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.',
     evidence: `NOT ENOUGH EVIDENCE also when a side has fewer than ${MIN_N} scored runs, the cell has fewer than ${MIN_CELLS} paired task cells, no A/A repeat, no task where vanilla has two scored runs, more than a fifth of the runs on a side have no score (infra error, model mismatch, nothing to score), the arm and vanilla were scored on different components in any cell, or a change that lives only in skills never loaded one.`,
     gpt: 'A GPT cell is judged on its own ratios to vanilla; the Claude cell on the same harness is shown beside it, ratio against ratio, never raw credits.',
   };
-  return { schemaVersion: 1, kind: 'orchestrator-pass', baseline, rule, cells, skippedDirs, notes, unit: unit === 'USD' ? 'USD' : 'credits', weights, phases };
+  return { schemaVersion: 1, kind: 'orchestrator-pass', baseline, comparisons, rule, cells, skippedDirs, notes, unit: unit === 'USD' ? 'USD' : 'credits', weights, phases };
 }
 
 module.exports = { buildOrchestratorPass, decideCell, sampleSd, cellKeyOf, targetOf, boundedCost, PASS, FAIL, NEE, COST_MAX, QUALITY_FLOOR_PTS };

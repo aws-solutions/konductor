@@ -8,7 +8,7 @@
   "checks": [
     {
       "type": "cmd",
-      "cmd": "! grep -rqw cnt src test README.md",
+      "cmd": "test -f README.md && test -d src && test -d test && { grep -rqw cnt src test README.md; [ $? -eq 1 ]; }",
       "expectExit": 0
     },
     {

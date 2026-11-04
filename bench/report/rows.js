@@ -5,6 +5,7 @@
 // these rows, so the three agree on what a run's hidden fraction, checks and rubric are.
 
 const { outcomeOf } = require('./aggregate.js');
+const { resultComparable } = require('../runner/lib/isolate.js');
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 const fraction = (h) => (h && h.total > 0 ? h.passed / h.total : null);
@@ -41,7 +42,7 @@ function buildRows(run, tasks, ctx) {
       completedWithoutHelp: typeof r.completedWithoutHelp === 'boolean' ? r.completedWithoutHelp : null, noQuestionTask: noQuestionTasks.has(e.taskId),
       askedUser: typeof r.askedUser === 'boolean' ? r.askedUser : null,
       startedAt: r.runStartedAt ? Date.parse(r.runStartedAt) : null, flags: r.flags || [], contamination: r.contamination || null,
-      isolation: r.isolation ?? null, modelNormalized: r.modelNormalized ?? null, sessionModel: r.sessionModel ?? null, model: r.model ?? null,
+      isolation: r.isolation ?? null, comparable: resultComparable(r), modelNormalized: r.modelNormalized ?? null, sessionModel: r.sessionModel ?? null, model: r.model ?? null,
       commitSha: r.commitSha ?? null, contentHash: r.contentHash ?? null, dirty: r.dirty ?? null, armConfig: r.armConfig ?? null,
       tripwire: (r.flags || []).includes('homeTripwire') || (r.flags || []).includes('homeTripwireTruncated'),
     });

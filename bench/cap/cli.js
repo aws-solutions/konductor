@@ -306,7 +306,7 @@ function cmdImport(opts) {
   if (!from) throw new Error('--from FILE is required (a JSON array of { query, should_trigger })');
   let items;
   try { items = JSON.parse(fs.readFileSync(from, 'utf8')); } catch (e) { throw new Error(`cannot read ${from}: ${e.code || e.message}`); }
-  const draft = importQueries(items, { capId, source: path.basename(from) });
+  const draft = importQueries(items, { capId, source: path.basename(from), n: intIn(opts.n, 'n', 12, 60, 24) });
   const outDir = outDirOf(opts, repo);
   const w = writeDraft(outDir, capId, draft);
   console.log(`${capId}: imported ${draft.queries.length} queries (${draft.queries.filter((q) => q.expect === 'load').length} load, ${draft.queries.filter((q) => q.expect === 'none').length} none) into ${w.file}; review it before use, nothing was written into the repository`);

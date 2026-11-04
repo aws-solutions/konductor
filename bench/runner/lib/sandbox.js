@@ -6,7 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const { spawnSync, execFileSync } = require('node:child_process');
-const { buildCheckEnv } = require('./env.js');
+const { buildCheckEnv, buildBuildEnv } = require('./env.js');
 const { ANSWER_KEY } = require('./check-matcher.js');
 const armSource = require('./arm-source.js');
 const { kiroInstallHarness } = require('./harness/runtime.js');
@@ -51,6 +51,21 @@ function exportArm(arm, ctx, dir) {
 // What each build step reads from the export; a ref without these predates the layout the runner builds from.
 const KIRO_REQUIRED = ['cli/konductor-rs/Cargo.toml', 'mcp/Cargo.toml'];
 
+// cargo on an arbitrary ref: allowlisted environment, scratch HOME removed afterwards. Residual risk: build.rs still runs as the
+// invoking user and can read files that user can read (the real CARGO_HOME holds registry credentials when any are configured).
+// Containing that needs the namespace or sandbox the agent runs in, which the build does not use.
+function cargoBuild(args, { targetDir, ctx }) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
+  try {
+    fs.mkdirSync(path.join(home, 'tmp'));
+    const { env, refused } = buildBuildEnv(process.env, { home, cargoTarget: targetDir, online: Boolean(ctx.cargoOnline) });
+    if (refused.length) throw new Error(`BENCH_BUILD_ENV_KEEP names look like credentials and are refused: ${refused.join(', ')}`);
+    return run('cargo', args, { env });
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+}
+
 // Builds skill-lookup-mcp from the arm's own export so each arm ships the server of its own release.
 function buildMcp(exportDir, ctx) {
   const manifest = path.join(exportDir, 'mcp/Cargo.toml');
@@ -58,7 +73,7 @@ function buildMcp(exportDir, ctx) {
   const args = ['build', '--release', '--workspace', '--manifest-path', manifest];
   if (!ctx.cargoOnline) args.push('--offline');
   try {
-    run('cargo', args, { env: { ...process.env, CARGO_TARGET_DIR: `${ctx.cargoTarget}-mcp` } });
+    cargoBuild(args, { targetDir: `${ctx.cargoTarget}-mcp`, ctx });
   } catch (e) {
     const hint = ctx.cargoOnline ? '' : ' (offline build; pre-fetch the crates or pass --cargo-online)';
     throw new Error(`skill-lookup-mcp build failed${hint}: ${e.message}`);
@@ -77,7 +92,7 @@ function buildCli(exportDir, bin, ctx) {
   if (!fs.existsSync(manifest)) throw new Error('this ref has no cli/konductor-rs/Cargo.toml (it predates the layout the benchmark builds from)');
   const cargoArgs = ['build', '--release', '--manifest-path', manifest];
   if (!ctx.cargoOnline) cargoArgs.push('--offline');
-  run('cargo', cargoArgs, { env: { ...process.env, CARGO_TARGET_DIR: ctx.cargoTarget } });
+  cargoBuild(cargoArgs, { targetDir: ctx.cargoTarget, ctx });
   fs.copyFileSync(path.join(ctx.cargoTarget, 'release/konductor'), bin);
   fs.chmodSync(bin, 0o755);
 }

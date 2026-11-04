@@ -1,0 +1,11 @@
+{
+  "global": { "node": "24", "python3": "3.12" },
+  "tasks": {
+    "real-click-3473-argument-help": { "pytest": "8.4" },
+    "real-click-3728-help-name-order": { "pytest": "8.4" },
+    "real-markdown-it-py-379-cli-stdin": { "pytest": "8.4" },
+    "real-markdown-it-py-416-eof-index-error": { "pytest": "8.4" },
+    "real-rich-3934-empty-live": { "pytest": "8.4" },
+    "real-rich-3938-soft-wrap-style": { "pytest": "8.4" }
+  }
+}

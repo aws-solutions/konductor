@@ -30,6 +30,11 @@
       "type": "contains",
       "path": "README.md",
       "pattern": "^## Functions"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\"),u=require(\"util\");const n=(x)=>x.replace(/\\s+/g,\"\").replace(/\"/g,\"\\x27\");const md=fs.readFileSync(\"README.md\",\"utf8\");const m=md.match(/^## Usage[^\\n]*\\n([\\s\\S]*?)(?=^## |(?![\\s\\S]))/m);if(!m)process.exit(1);const sec=n(m[1]),lib=require(\"./src\");let bad=0;for(const fn of [\"slugify\",\"truncate\",\"parseLine\"]){for(const c of m[1].matchAll(new RegExp(\"\\\\b\"+fn+\"\\\\(([^\\\\n]*?)\\\\)(?=\\\\s*[;,)]|\\\\s*$|\\\\s*//)\",\"gm\"))){let out;try{out=lib[fn](...new Function(\"return [\"+c[1]+\"]\")());}catch(e){continue;}const forms=[u.inspect(out),JSON.stringify(out),typeof out===\"string\"?out:String(out)];if(!forms.some((f)=>sec.includes(n(f))))bad++;}}process.exit(bad?1:0)'",
+      "expectExit": 0
     }
   ],
   "rubric": [

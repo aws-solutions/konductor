@@ -62,7 +62,7 @@ test('the gate passes when nothing changes and names the file when a write lands
     write(path.join(home, '.konductor/installs/one.json'), '{}');
     const gate = gates.createInstallsGate({ homes: [home] });
     const quiet = gate.begin();
-    assert.deepEqual(quiet.end(), { ok: true, changed: [] });
+    assert.deepEqual(quiet.end(), { ok: true, changed: [], unreadable: [] });
     const planted = gate.begin();
     write(path.join(home, '.konductor/installs/probe.json'), '{"leak":true}');
     const r = planted.end();
@@ -197,4 +197,120 @@ test('runAll with no leak writes an ok gate record', async () => {
     assert.equal(out.installsGate.ok, true);
     assert.equal(JSON.parse(fs.readFileSync(path.join(s.outDir, gates.GATE_FILE), 'utf8')).ok, true);
   } finally { s.cleanup(); }
+});
+
+// Fail closed: a gate that cannot read the installs directory must not report "nothing changed".
+const readable = (p) => { try { fs.readdirSync(p); return true; } catch { return false; } };
+
+test('an installs path that is a dangling symlink is a gate failure, not an empty tree', () => {
+  const root = tmp();
+  try {
+    const home = path.join(root, 'home');
+    fs.mkdirSync(path.join(home, '.konductor'), { recursive: true });
+    fs.symlinkSync(path.join(root, 'nowhere'), path.join(home, '.konductor/installs'));
+    const h = gates.hashDir(path.join(home, '.konductor/installs'));
+    assert.equal(h.state, 'unreadable');
+    const r = gates.createInstallsGate({ homes: [home] }).begin().end();
+    assert.equal(r.ok, false, 'identical before and after hashes must still fail');
+    assert.equal(r.unreadable.length, 1);
+    assert.match(gates.describeChange(r), /could not be read/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('an installs path that is a regular file is hashed as itself, so a change to it fails the gate', () => {
+  const root = tmp();
+  try {
+    const home = path.join(root, 'home');
+    const file = path.join(home, '.konductor/installs');
+    write(file, '{"a":1}');
+    const h = gates.hashDir(file);
+    assert.equal(h.state, 'present');
+    assert.equal(h.files, 1);
+    const gate = gates.createInstallsGate({ homes: [home] });
+    assert.deepEqual(gate.begin().end(), { ok: true, changed: [], unreadable: [] });
+    const w = gate.begin();
+    write(file, '{"a":2}');
+    const r = w.end();
+    assert.equal(r.ok, false, 'the old gate read this file as an empty directory and never saw the change');
+    assert.deepEqual(r.changed[0].modified, ['.']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a directory with no permission to list is a gate failure', () => {
+  const root = tmp();
+  const dir = path.join(root, 'home/.konductor/installs');
+  try {
+    write(path.join(dir, 'a.json'), '{}');
+    fs.chmodSync(dir, 0o000);
+    if (readable(dir)) return; // running with privileges that ignore modes
+    const r = gates.createInstallsGate({ homes: [path.join(root, 'home')] }).begin().end();
+    assert.equal(r.ok, false);
+    assert.equal(r.unreadable.length, 1);
+    assert.equal(gates.hashDir(dir).state, 'unreadable');
+  } finally { try { fs.chmodSync(dir, 0o755); } catch { /* gone */ } fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a file that cannot be hashed is a gate failure even when the rest is unchanged', () => {
+  const root = tmp();
+  const file = path.join(root, 'home/.konductor/installs/secret.json');
+  try {
+    write(file, '{}');
+    write(path.join(root, 'home/.konductor/installs/ok.json'), '{}');
+    fs.chmodSync(file, 0o000);
+    if (readable(file) || (() => { try { fs.readFileSync(file); return true; } catch { return false; } })()) return;
+    const h = gates.hashDir(path.dirname(file));
+    assert.deepEqual(h.errors.map((e) => e.path), ['secret.json']);
+    const r = gates.createInstallsGate({ homes: [path.join(root, 'home')] }).begin().end();
+    assert.equal(r.ok, false);
+    assert.equal(r.unreadable.length, 1);
+  } finally { try { fs.chmodSync(file, 0o644); } catch { /* gone */ } fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('an unreadable installs dir that becomes readable (or the reverse) mid-window still fails', () => {
+  const root = tmp();
+  const dir = path.join(root, 'home/.konductor/installs');
+  try {
+    write(path.join(dir, 'a.json'), '{}');
+    const gate = gates.createInstallsGate({ homes: [path.join(root, 'home')] });
+    fs.chmodSync(dir, 0o000);
+    if (readable(dir)) return;
+    const w = gate.begin();
+    fs.chmodSync(dir, 0o755);
+    assert.equal(w.end().ok, false, 'unreadable at begin');
+  } finally { try { fs.chmodSync(dir, 0o755); } catch { /* gone */ } fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+// BENCH_GATE_HOMES is a test seam. Without the marker it is ignored, so a stray variable cannot point the gate away
+// from the real installs.
+function withEnv(env, fn) {
+  const prev = {};
+  for (const k of Object.keys(env)) { prev[k] = process.env[k]; if (env[k] === undefined) delete process.env[k]; else process.env[k] = env[k]; }
+  const warn = process.stderr.write;
+  const seen = [];
+  process.stderr.write = (c, ...rest) => { seen.push(String(c)); return true; };
+  try { return fn(seen); } finally {
+    process.stderr.write = warn;
+    for (const k of Object.keys(env)) { if (prev[k] === undefined) delete process.env[k]; else process.env[k] = prev[k]; }
+  }
+}
+
+test('BENCH_GATE_HOMES is ignored with a warning unless BENCH_TEST_MODE=1', () => {
+  const root = tmp();
+  try {
+    const decoy = path.join(root, 'decoy');
+    fs.mkdirSync(decoy);
+    withEnv({ BENCH_GATE_HOMES: decoy, BENCH_TEST_MODE: undefined }, (seen) => {
+      const gate = gates.createInstallsGate();
+      assert.ok(!gate.dirs.some((d) => d.startsWith(fs.realpathSync(decoy))), 'the decoy home is not watched');
+      assert.ok(gate.dirs.length >= 1, 'the real homes are watched');
+      assert.match(seen.join(''), /BENCH_GATE_HOMES.*ignored/);
+    });
+    withEnv({ BENCH_GATE_HOMES: decoy, BENCH_TEST_MODE: '0' }, () => {
+      assert.ok(!gates.createInstallsGate().dirs.some((d) => d.startsWith(fs.realpathSync(decoy))), 'only the value 1 enables it');
+    });
+    withEnv({ BENCH_GATE_HOMES: decoy, BENCH_TEST_MODE: '1' }, (seen) => {
+      assert.deepEqual(gates.createInstallsGate().dirs, [path.join(fs.realpathSync(decoy), '.konductor/installs')]);
+      assert.equal(seen.join(''), '', 'no warning when the marker is set');
+    });
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

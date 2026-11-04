@@ -15,6 +15,7 @@ const { translateAll } = require('./opencode-translate.js');
 const { aggregateEvents, queryRollup, totalTokens, zeroTokens } = require('./opencode-parse.js');
 const { installCredentials, removeCredentials, readProfile } = require('./opencode-creds.js');
 const { scrubTree } = require('../hygiene.js');
+const { secretLiterals } = require('../scrub.js');
 const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 
@@ -226,9 +227,13 @@ function collectArtifacts(home, outDir) {
 }
 
 // A model can print files in its HOME, so exact secret values are scrubbed from every output.
+function secrets(ctx) {
+  try { return readProfile(ctx.awsCredsFile, ctx.awsProfile).secrets; } catch { return []; }
+}
+
 function finalize(outDir, ctx) {
   try {
-    return scrubTree(outDir, readProfile(ctx.awsCredsFile, ctx.awsProfile).secrets);
+    return scrubTree(outDir, secretLiterals(process.env, secrets(ctx)), { shapes: true });
   } catch { return 0; }
 }
 
@@ -275,6 +280,6 @@ const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
 module.exports = {
   id, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE, BUILTIN_AGENTS,
-  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize,
+  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize, secrets,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens,
 };

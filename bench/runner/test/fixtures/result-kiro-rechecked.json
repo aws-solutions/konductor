@@ -1,0 +1,211 @@
+{
+  "armId": "vanilla",
+  "armLabel": "vanilla",
+  "ref": null,
+  "commitSha": null,
+  "harness": "kiro-cli",
+  "model": "claude-sonnet-5.5",
+  "effort": "high",
+  "taskId": "simple-explain-file",
+  "replicate": 1,
+  "status": "success",
+  "exitCode": 0,
+  "runFinishedStatus": "success",
+  "stopReason": "end_turn",
+  "wallClockMs": 30847,
+  "turnDurationMs": 28503,
+  "credits": 0.857,
+  "creditsCensored": false,
+  "creditsLowerBound": null,
+  "creditsCharged": 0.857,
+  "creditsSessionTotal": 0.857,
+  "modelCalls": {
+    "meteringEntries": 7,
+    "totalRequestCount": 7
+  },
+  "toolCalls": 6,
+  "workToolCalls": 6,
+  "toolNames": {
+    "glob": 1,
+    "read": 1,
+    "shell": 1,
+    "write": 3
+  },
+  "subagentCalls": 0,
+  "contextUsagePercentage": 1.787,
+  "transcriptBytes": 27118,
+  "transcriptPartial": false,
+  "estTokens": {
+    "value": 6779,
+    "isEstimate": true
+  },
+  "finalText": "text",
+  "finalTextTruncated": false,
+  "askedUser": false,
+  "skillsMcpOk": null,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "explanation.md",
+      "passed": true,
+      "detail": "present"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "parseLine",
+      "passed": true,
+      "detail": "matched"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "parseCsv",
+      "passed": true,
+      "detail": "matched"
+    },
+    {
+      "type": "cmd",
+      "cmd": "text",
+      "passed": true,
+      "detail": "exit 0, expected 0"
+    },
+    {
+      "type": "cmd",
+      "cmd": "text",
+      "passed": true,
+      "detail": "exit 0, expected 0"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "text",
+      "passed": true,
+      "detail": "matched"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "text",
+      "passed": true,
+      "detail": "matched"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "text",
+      "passed": true,
+      "detail": "matched"
+    },
+    {
+      "type": "not_contains",
+      "path": "explanation.md",
+      "pattern": "text",
+      "passed": true,
+      "detail": "no match"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "passed": true,
+      "detail": "identical"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test",
+      "passed": true,
+      "detail": "identical"
+    }
+  ],
+  "kiroCliVersion": "kiro-cli 2.35.1",
+  "modelListSnapshotPath": "text",
+  "sessionModel": "claude-sonnet-5.5",
+  "sessionId": "text",
+  "agent": null,
+  "agentEngine": "v2",
+  "modelNormalized": false,
+  "rewrittenAgents": [],
+  "mcpSha256": null,
+  "isolation": "unshare",
+  "homeTripwireHits": [
+    "text"
+  ],
+  "inFlightAtStart": 0,
+  "flags": [],
+  "infraError": null,
+  "error": null,
+  "checksOriginal": [
+    {
+      "type": "file_exists",
+      "path": "explanation.md",
+      "passed": true,
+      "detail": "present"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "parseLine",
+      "passed": true,
+      "detail": "matched"
+    },
+    {
+      "type": "contains",
+      "path": "explanation.md",
+      "pattern": "parseCsv",
+      "passed": true,
+      "detail": "matched"
+    },
+    {
+      "type": "cmd",
+      "cmd": "text",
+      "passed": true,
+      "detail": "exit 0, expected 0"
+    },
+    {
+      "type": "cmd",
+      "cmd": "text",
+      "passed": true,
+      "detail": "exit 0, expected 0"
+    },
+    {
+      "type": "cmd",
+      "cmd": "text",
+      "passed": true,
+      "detail": "exit 0, expected 0"
+    },
+    {
+      "type": "cmd",
+      "cmd": "text",
+      "passed": true,
+      "detail": "exit 0, expected 0"
+    },
+    {
+      "type": "cmd",
+      "cmd": "text",
+      "passed": true,
+      "detail": "exit 0, expected 0"
+    },
+    {
+      "type": "not_contains",
+      "path": "explanation.md",
+      "pattern": "text",
+      "passed": true,
+      "detail": "no match"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src",
+      "passed": true,
+      "detail": "identical"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test",
+      "passed": true,
+      "detail": "identical"
+    }
+  ],
+  "checksRevision": "fb2d774357d1",
+  "checksRecheckedAt": "2026-10-29T03:40:51.205Z",
+  "checksAllPassed": true
+}

@@ -58,7 +58,7 @@ test('run --profile detailed plans 5 replicates and adds an A/A arm at the exact
   try {
     const bench = makeBench(path.join(root, 'bench'));
     const { repo, sha } = gitRepo(root);
-    const r = cli(root, ['run', '--suite', 'lite', '--arms', 'vanilla,x=main', '--tasks', 't1', '--bench-dir', bench, '--repo-root', repo, '--profile', 'detailed', '--out', path.join(root, 'out'), '--isolate', 'none']);
+    const r = cli(root, ['run', '--suite', 'lite', '--arms', 'vanilla,x=main', '--tasks', 't1', '--bench-dir', bench, '--repo-root', repo, '--profile', 'detailed', '--out', path.join(root, 'out'), '--isolate', 'none', '--allow-unisolated']);
     assert.match(r.stderr, new RegExp(`A/A arm x-b repeats x at ${sha.slice(0, 7)}`));
     assert.match(r.stderr, /15 planned run\(s\)/, 'one task, three arms (vanilla, x, x-b), five replicates');
     assert.match(r.stderr, /no credit cap is set/);
@@ -71,7 +71,7 @@ test('run --profile quick adds no A/A arm and plans its default replicates', () 
   try {
     const bench = makeBench(path.join(root, 'bench'));
     const { repo } = gitRepo(root);
-    const r = cli(root, ['run', '--suite', 'lite', '--arms', 'vanilla,x=main', '--tasks', 't1', '--bench-dir', bench, '--repo-root', repo, '--profile', 'quick', '--out', path.join(root, 'out'), '--isolate', 'none']);
+    const r = cli(root, ['run', '--suite', 'lite', '--arms', 'vanilla,x=main', '--tasks', 't1', '--bench-dir', bench, '--repo-root', repo, '--profile', 'quick', '--out', path.join(root, 'out'), '--isolate', 'none', '--allow-unisolated']);
     assert.doesNotMatch(r.stderr, /A\/A arm/);
     assert.match(r.stderr, /4 planned run\(s\)/, 'one task, two arms, two replicates');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
@@ -82,7 +82,7 @@ test('run without a profile keeps the suite defaults and adds no arm', () => {
   try {
     const bench = makeBench(path.join(root, 'bench'));
     const { repo } = gitRepo(root);
-    const r = cli(root, ['run', '--suite', 'lite', '--arms', 'vanilla,x=main', '--tasks', 't1', '--bench-dir', bench, '--repo-root', repo, '--out', path.join(root, 'out'), '--isolate', 'none']);
+    const r = cli(root, ['run', '--suite', 'lite', '--arms', 'vanilla,x=main', '--tasks', 't1', '--bench-dir', bench, '--repo-root', repo, '--out', path.join(root, 'out'), '--isolate', 'none', '--allow-unisolated']);
     assert.doesNotMatch(r.stderr, /A\/A arm/);
     assert.match(r.stderr, /2 planned run\(s\)/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

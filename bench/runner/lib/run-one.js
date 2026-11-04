@@ -19,6 +19,7 @@ const { newConversation } = require('./autonomy.js');
 const { makeCreditMeter } = require('./credit-watch.js');
 const { makeStopWatcher } = require('./stop-watch.js');
 const { describeChange } = require('./isolation-gates.js');
+const { secretLiterals, scrubDeep } = require('./scrub.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
@@ -338,6 +339,9 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
     if (home) harness.removeCredentials(home);
     fs.rmSync(runRoot, { recursive: true, force: true });
   }
+  const scrubbed = scrubDeep(result, secretLiterals(process.env, harness.secrets ? harness.secrets(ctx) : []));
+  result = scrubbed.value;
+  if (scrubbed.count) result.flags = [...new Set([...(result.flags || []), 'credsRedacted'])];
   const leak = installsWindow ? installsWindow.end() : null;
   if (leak && !leak.ok) failOnLeak(result, leak);
   const problems = validateResult(result);

@@ -31,7 +31,7 @@ test('run --suite autonomy asks, answers, resumes and records the conversation; 
     fs.mkdirSync(tmpdir);
     const out = path.join(root, 'out');
     const env = { PATH: `${path.join(root, 'bin')}${path.delimiter}${process.env.PATH}`, HOME: home, TMPDIR: tmpdir };
-    const run = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'autonomy', '--arms', 'vanilla', '--tasks', 't1', '--replicates', '1', '--isolate', 'none', '--bench-dir', bench, '--out', out, '--cache', path.join(root, 'cache')], { env, encoding: 'utf8' });
+    const run = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'autonomy', '--arms', 'vanilla', '--tasks', 't1', '--replicates', '1', '--isolate', 'none', '--allow-unisolated', '--bench-dir', bench, '--out', out, '--cache', path.join(root, 'cache')], { env, encoding: 'utf8' });
     assert.equal(run.status, 0, run.stderr);
     const result = JSON.parse(fs.readFileSync(path.join(out, 'vanilla/t1/1/result.json'), 'utf8'));
     assert.equal(result.status, 'success', result.error);

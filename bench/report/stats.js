@@ -114,6 +114,69 @@ function tQuantile975(df) {
   return out;
 }
 
+// Student's t quantile for any probability, by inverting the CDF (regularized incomplete beta, continued fraction) with bisection.
+function logGamma(x) {
+  const c = [76.18009173, -86.50532033, 24.01409824, -1.231739572, 1.208651e-3, -5.395239e-6];
+  let y = x;
+  let tmp = x + 5.5;
+  tmp -= (x + 0.5) * Math.log(tmp);
+  let ser = 1.00000000019;
+  for (const ci of c) ser += ci / ++y;
+  return -tmp + Math.log(Math.sqrt(2 * Math.PI) * ser / x);
+}
+
+function betaCf(a, b, x) {
+  const TINY = 1e-300;
+  let c = 1;
+  let d = 1 - ((a + b) * x) / (a + 1);
+  if (Math.abs(d) < TINY) d = TINY;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= 300; m++) {
+    const m2 = 2 * m;
+    let aa = (m * (b - m) * x) / ((a + m2 - 1) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY;
+    c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY;
+    d = 1 / d;
+    h *= d * c;
+    aa = (-(a + m) * (a + b + m) * x) / ((a + m2) * (a + m2 + 1));
+    d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY;
+    c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < 1e-14) break;
+  }
+  return h;
+}
+
+function incompleteBeta(a, b, x) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const bt = Math.exp(logGamma(a + b) - logGamma(a) - logGamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2) ? (bt * betaCf(a, b, x)) / a : 1 - (bt * betaCf(b, a, 1 - x)) / b;
+}
+
+function tCdf(x, df) {
+  const tail = 0.5 * incompleteBeta(df / 2, 0.5, df / (df + x * x));
+  return x > 0 ? 1 - tail : tail;
+}
+
+/** The t value whose CDF is p, for p in (0, 1) and df >= 1. */
+function tQuantile(p, df) {
+  if (!(p > 0 && p < 1) || !(df >= 1)) return NaN;
+  if (p === 0.5) return 0;
+  if (p < 0.5) return -tQuantile(1 - p, df);
+  let lo = 0;
+  let hi = 1;
+  while (tCdf(hi, df) < p) hi *= 2;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    if (tCdf(mid, df) < p) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
 // The fewest cells (task by run directory) a paired comparison may rest on. With 5 to 12 cells of 5 replicates, a task effect SD of 20 and
 // a run SD of 12 (also a pass/fail mixture, also with a task-by-arm interaction), the t interval below excluded 0 in 4.1% to 6.5% of
 // null trials (bench/scripts/sim-interval-size.js). The sign-flip p is reported beside it; it cannot go below 0.05 under 6 cells, so it
@@ -152,22 +215,30 @@ function signFlipP(diffs, seed = 42) {
  * interval is a t interval on the cells (df = k - 1). Replicates inside a cell and a task-by-arm interaction are carried by the spread
  * of the cell differences, which an interval over pooled runs does not see. A cell with an empty side is dropped and counted.
  */
-function pairedCellCI(cells) {
+/**
+ * Paired-by-cell t interval. `comparisons` is the number of comparisons made together (arms against one baseline); the
+ * interval is widened to level 1 - 0.05/comparisons (Bonferroni) and p is multiplied by it. One comparison is the plain 95%.
+ */
+function pairedCellCI(cells, { comparisons = 1 } = {}) {
+  const nComp = Math.max(1, Math.floor(comparisons));
+  const level = nComp === 1 ? 0.95 : 1 - 0.05 / nComp;
   const usable = cells.filter((c) => c.head.length && c.base.length);
   const droppedCells = cells.length - usable.length;
   const diffs = usable.map((c) => mean(c.head) - mean(c.base));
   const k = diffs.length;
-  const out = { k, droppedCells, df: Math.max(0, k - 1), delta: k ? mean(diffs) : null, se: null, ciLow: null, ciHigh: null, p: null, pExact: null, method: 'paired by cell, t interval' };
+  const out = { k, droppedCells, df: Math.max(0, k - 1), delta: k ? mean(diffs) : null, se: null, ciLow: null, ciHigh: null, p: null, pExact: null, method: 'paired by cell, t interval', level, comparisons: nComp, pAdjusted: null };
   if (k < 2) return out;
   const m = out.delta;
   const sd = Math.sqrt(diffs.reduce((s, d) => s + (d - m) ** 2, 0) / (k - 1));
   out.se = sd / Math.sqrt(k);
-  const h = tQuantile975(k - 1) * out.se;
+  const crit = nComp === 1 ? tQuantile975(k - 1) : Math.max(tQuantile975(k - 1), tQuantile(1 - (1 - level) / 2, k - 1));
+  const h = crit * out.se;
   out.ciLow = m - h;
   out.ciHigh = m + h;
   const flip = signFlipP(diffs);
   out.p = flip.p;
   out.pExact = flip.exact;
+  out.pAdjusted = Math.min(1, flip.p * nComp);
   return out;
 }
 
@@ -186,4 +257,4 @@ function withinCellSd(groups) {
   return { sd: df ? Math.sqrt(ss / df) : null, df, cells };
 }
 
-module.exports = { median, medianCI, meanCI, ratioCI, ratioBootstrap, diffCI, pairedCellCI, withinCellSd, tQuantile975, signFlipP, MIN_CELLS, wilson, mean };
+module.exports = { median, medianCI, meanCI, ratioCI, ratioBootstrap, diffCI, pairedCellCI, withinCellSd, tQuantile975, tQuantile, signFlipP, MIN_CELLS, wilson, mean };

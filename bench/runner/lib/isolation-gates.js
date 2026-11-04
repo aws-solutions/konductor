@@ -17,32 +17,51 @@ const EMPTY_RULES_NAME = 'empty.md';
 const sha = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
 // One line per entry (relative path, kind, content hash), sorted, so a rename, an added 0-byte file and a content
-// change all move the hash. A symlink is hashed by its target string and never followed.
-function entries(dir, rel = '', out = []) {
+// change all move the hash. A symlink is hashed by its target string and never followed. An entry that cannot be
+// listed, inspected or read goes into `errors` instead of being skipped: a gate that cannot see a file has not
+// shown that the file is unchanged.
+function entries(dir, rel = '', out = [], errors = []) {
   let names;
-  try { names = fs.readdirSync(path.join(dir, rel)).sort(); } catch { return out; }
+  try { names = fs.readdirSync(path.join(dir, rel)).sort(); } catch (e) { errors.push({ path: rel || '.', code: e.code || 'ERR' }); return out; }
   for (const name of names) {
     const r = rel ? `${rel}/${name}` : name;
     const abs = path.join(dir, r);
-    let st;
-    try { st = fs.lstatSync(abs); } catch { continue; }
-    if (st.isSymbolicLink()) out.push({ path: r, line: `${r}\0link\0${sha(fs.readlinkSync(abs))}` });
-    else if (st.isDirectory()) { out.push({ path: r, line: `${r}\0dir` }); entries(dir, r, out); }
-    else if (st.isFile()) out.push({ path: r, line: `${r}\0file\0${sha(fs.readFileSync(abs))}`, file: true });
-    else out.push({ path: r, line: `${r}\0other` });
+    try {
+      const st = fs.lstatSync(abs);
+      if (st.isSymbolicLink()) out.push({ path: r, line: `${r}\0link\0${sha(fs.readlinkSync(abs))}` });
+      else if (st.isDirectory()) { out.push({ path: r, line: `${r}\0dir` }); entries(dir, r, out, errors); }
+      else if (st.isFile()) out.push({ path: r, line: `${r}\0file\0${sha(fs.readFileSync(abs))}`, file: true });
+      else out.push({ path: r, line: `${r}\0other` });
+    } catch (e) { errors.push({ path: r, code: e.code || 'ERR' }); }
   }
   return out;
 }
 
-/** { state: 'absent'|'present', hash, files, index } for a directory. `index` maps each path to its line. */
+/**
+ * { state: 'absent'|'present'|'unreadable', hash, files, index, errors } for a path. `index` maps each entry to its line.
+ * Only a missing path is 'absent'. A regular file is hashed as itself (some hosts keep a file here, not a directory).
+ * A path that exists but cannot be read, or is neither a file nor a directory, is 'unreadable'.
+ */
 function hashDir(dir) {
-  if (!fs.existsSync(dir)) return { state: 'absent', hash: 'absent', files: 0 };
-  const list = entries(dir);
+  const bad = (code) => ({ state: 'unreadable', hash: `unreadable:${code}`, files: 0, errors: [{ path: '.', code }] });
+  try { fs.lstatSync(dir); } catch (e) { return e.code === 'ENOENT' ? { state: 'absent', hash: 'absent', files: 0 } : bad(e.code || 'ERR'); }
+  let st;
+  try { st = fs.statSync(dir); } catch (e) { return bad(e.code || 'ERR'); }
+  if (st.isFile()) {
+    try {
+      const line = `.\0file\0${sha(fs.readFileSync(dir))}`;
+      return { state: 'present', hash: sha(line), files: 1, index: { '.': line }, errors: [] };
+    } catch (e) { return bad(e.code || 'ERR'); }
+  }
+  if (!st.isDirectory()) return bad('ENOTSUP');
+  const errors = [];
+  const list = entries(dir, '', [], errors);
   return {
-    state: 'present',
-    hash: sha(list.map((e) => e.line).join('\n')),
+    state: errors.length ? 'unreadable' : 'present',
+    hash: errors.length ? `unreadable:${sha(errors.map((e) => `${e.path}:${e.code}`).join('\n'))}` : sha(list.map((e) => e.line).join('\n')),
     files: list.filter((e) => e.file).length,
     index: Object.fromEntries(list.map((e) => [e.path, e.line])),
+    errors,
   };
 }
 
@@ -69,16 +88,23 @@ function installsDirs(homes = realHomes()) {
   return [...seen];
 }
 
-// BENCH_GATE_HOMES (comma separated) replaces the real homes the gate watches. It exists so a test can plant a write
-// without touching the account's own ~/.konductor; leave it unset for a study.
+// BENCH_GATE_HOMES (comma separated) replaces the real homes the gate watches. It is a test seam: honored only when
+// BENCH_TEST_MODE=1, so a stray variable in a study shell cannot point the gate away from the real installs.
+let warnedGateHomes = false;
 function homesFromEnv() {
   const v = process.env.BENCH_GATE_HOMES;
-  return v ? v.split(',').filter(Boolean) : undefined;
+  if (!v) return undefined;
+  if (process.env.BENCH_TEST_MODE !== '1') {
+    if (!warnedGateHomes) { process.stderr.write('warning: BENCH_GATE_HOMES is ignored unless BENCH_TEST_MODE=1; the gate watches the real homes\n'); warnedGateHomes = true; }
+    return undefined;
+  }
+  return v.split(',').filter(Boolean);
 }
 
 /**
  * A gate over the real installs directories. `begin()` hashes them; `end()` hashes again and returns
- * { ok, changed: [{ dir, before, after, added, removed, modified }] }.
+ * { ok, changed: [{ dir, before, after, added, removed, modified }], unreadable: [{ dir, errors }] }.
+ * The gate fails when a hash differs or when either hash could not be taken.
  */
 function createInstallsGate({ homes } = {}) {
   const dirs = installsDirs(homes ?? homesFromEnv());
@@ -89,12 +115,15 @@ function createInstallsGate({ homes } = {}) {
       return {
         end() {
           const changed = [];
+          const unreadable = [];
           dirs.forEach((dir, i) => {
             const after = hashDir(dir);
+            const errors = [...(before[i].errors || []).map((e) => ({ ...e, when: 'before' })), ...(after.errors || []).map((e) => ({ ...e, when: 'after' }))];
+            if (errors.length) unreadable.push({ dir, errors });
             if (after.hash === before[i].hash) return;
             changed.push({ dir, before: strip(before[i]), after: strip(after), ...diffIndex(before[i], after) });
           });
-          return { ok: changed.length === 0, changed };
+          return { ok: changed.length === 0 && unreadable.length === 0, changed, unreadable };
         },
       };
     },
@@ -104,12 +133,16 @@ function createInstallsGate({ homes } = {}) {
 /** One line for a log or an error message. */
 function describeChange(result) {
   if (result.ok) return 'the real ~/.konductor/installs did not change';
+  const unread = (result.unreadable || []).map((u) => `${u.dir} could not be read (${u.errors.slice(0, 3).map((e) => `${e.path}: ${e.code}`).join(', ')})`);
+  if (!result.changed.length || result.changed.every((c) => c.before.state === 'unreadable' || c.after.state === 'unreadable')) {
+    return `the real ~/.konductor/installs gate failed closed: ${unread.join(' | ')}`;
+  }
   const parts = result.changed.map((c) => {
     const bits = [['added', c.added], ['removed', c.removed], ['modified', c.modified]].filter(([, l]) => l.length).map(([k, l]) => `${k} ${l.slice(0, 5).join(', ')}${l.length > 5 ? ` and ${l.length - 5} more` : ''}`);
     const state = c.before.state !== c.after.state ? `${c.before.state} -> ${c.after.state}` : '';
     return `${c.dir}: ${[...bits, state].filter(Boolean).join('; ') || 'changed'}`;
   });
-  return `the real ~/.konductor/installs changed (${parts.join(' | ')})`;
+  return `the real ~/.konductor/installs changed (${[...parts, ...unread].join(' | ')})`;
 }
 
 /**

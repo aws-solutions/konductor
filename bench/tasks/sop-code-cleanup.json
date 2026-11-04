@@ -52,7 +52,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "node --test",
+      "cmd": "find . -path ./node_modules -prune -o -name '*.js' -path '*test*' -print | grep -q . && node --test",
       "expectExit": 0
     },
     {

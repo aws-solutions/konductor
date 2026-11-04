@@ -7,6 +7,9 @@ const { aggregateHidden, aggregateRegression, aggregateGroup } = require('./chec
 const { autonomyFields } = require('./autonomy.js');
 const { provenanceOf } = require('./runconfig.js');
 const { kiroInstallHarness } = require('./harness/runtime.js');
+const { isComparableMode } = require('./isolate.js');
+
+const isolationOf = (mode) => (typeof mode === 'string' && mode && mode !== 'auto' ? mode : 'none');
 
 function classifyStatus({ timedOut, exitCode, runFinishedStatus }) {
   if (timedOut) return 'timeout';
@@ -148,7 +151,8 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     modelNormalized: meta.modelNormalized ?? false,
     rewrittenAgents: meta.rewrittenAgents ?? [],
     mcpSha256: meta.mcpSha256 ?? null,
-    isolation: meta.isolation ?? null,
+    isolation: isolationOf(meta.isolation),
+    comparable: isComparableMode(meta.isolation),
     homeTripwireHits: meta.homeTripwireHits ?? null,
     inFlightAtStart: meta.inFlightAtStart ?? null,
     flags: [...new Set(flags)],

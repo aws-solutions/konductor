@@ -203,7 +203,7 @@ test('run --suite pilot executes tasks of different classes in one run; only the
     fs.mkdirSync(tmpdir);
     const out = path.join(root, 'out');
     const env = { PATH: `${path.join(root, 'bin')}${path.delimiter}${process.env.PATH}`, HOME: home, TMPDIR: tmpdir };
-    const run = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'pilot', '--isolate', 'none', '--bench-dir', bench, '--out', out, '--cache', path.join(root, 'cache')], { env, encoding: 'utf8' });
+    const run = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'pilot', '--isolate', 'none', '--allow-unisolated', '--bench-dir', bench, '--out', out, '--cache', path.join(root, 'cache')], { env, encoding: 'utf8' });
     assert.equal(run.status, 0, run.stderr);
     const r1 = JSON.parse(fs.readFileSync(path.join(out, 'vanilla/t1/1/result.json'), 'utf8'));
     const r2 = JSON.parse(fs.readFileSync(path.join(out, 'vanilla/t2/1/result.json'), 'utf8'));

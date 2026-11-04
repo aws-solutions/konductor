@@ -39,7 +39,7 @@ for (const signal of ['SIGTERM', 'SIGHUP']) test(`${signal} to the runner kills 
   const out = path.join(root, 'out');
   const env = { PATH: `${path.join(root, 'bin')}${path.delimiter}${process.env.PATH}`, HOME: home, TMPDIR: tmpdir };
   const runner = spawn(process.execPath, [
-    BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--tasks', 't1', '--isolate', 'none',
+    BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--tasks', 't1', '--isolate', 'none', '--allow-unisolated',
     '--bench-dir', bench, '--out', out, '--cache', path.join(root, 'cache'),
   ], { env, stdio: ['ignore', 'ignore', 'pipe'] });
   let stderr = '';

@@ -41,7 +41,7 @@ function mkResult(o = {}) {
     modelCalls: { meteringEntries: 2, totalRequestCount: 2 }, toolCalls: 3, subagentCalls: 0,
     contextUsagePercentage: 1, transcriptBytes: 100, estTokens: { value: 100, isEstimate: true },
     checks: [{ type: 'file_exists', path: 'a.txt', passed: true }],
-    kiroCliVersion: 'kiro-cli 2.35.1', modelListSnapshotPath: null, ...o,
+    kiroCliVersion: 'kiro-cli 2.35.1', modelListSnapshotPath: null, isolation: 'unshare', comparable: true, ...o,
   };
 }
 

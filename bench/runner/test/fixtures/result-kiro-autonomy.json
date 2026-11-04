@@ -1,0 +1,333 @@
+{
+  "armId": "vanilla",
+  "armLabel": "vanilla",
+  "ref": null,
+  "commitSha": null,
+  "source": null,
+  "refResolved": null,
+  "dirty": null,
+  "contentHash": null,
+  "baseSha": null,
+  "mergeBase": null,
+  "commitsAhead": null,
+  "filesChanged": null,
+  "changedSkills": null,
+  "harness": "kiro-cli",
+  "installHarness": "none",
+  "harnessVersion": "kiro-cli 2.37.1",
+  "model": "claude-sonnet-5.5",
+  "effort": "high",
+  "taskId": "autonomy-format-bytes",
+  "replicate": 5,
+  "status": "success",
+  "exitCode": 0,
+  "runFinishedStatus": "success",
+  "stopReason": "end_turn",
+  "runStartedAt": "2026-11-02T16:28:25.508Z",
+  "wallClockMs": 31484,
+  "turnDurationMs": 26875,
+  "credits": 1.254,
+  "creditsCensored": false,
+  "creditsLowerBound": null,
+  "creditsCharged": 1.254,
+  "creditsSessionTotal": null,
+  "modelCalls": {
+    "meteringEntries": 1,
+    "totalRequestCount": null
+  },
+  "tokens": null,
+  "costUsd": null,
+  "costCensored": null,
+  "costUsdCharged": null,
+  "sessionsRolledUp": null,
+  "region": null,
+  "toolCalls": 15,
+  "workToolCalls": 15,
+  "toolNames": {
+    "read_file": 9,
+    "fs_write": 3,
+    "str_replace": 2,
+    "execute_bash": 1
+  },
+  "subagentCalls": 0,
+  "orch": {
+    "spawns": 0,
+    "spawnCalls": 0,
+    "maxSpawnDepth": 0,
+    "childSessions": 0,
+    "reviewRounds": 0,
+    "reviewVerdicts": [],
+    "fixSpawns": 0,
+    "reworksAfterPass": 0,
+    "phaseDocs": {
+      "phases": {
+        "codebase-analysis": {
+          "name": "Codebase analysis",
+          "present": 0,
+          "total": 1,
+          "missing": [
+            "text"
+          ],
+          "complete": false
+        },
+        "requirements": {
+          "name": "Requirements",
+          "present": 0,
+          "total": 4,
+          "missing": [
+            "text",
+            "text",
+            "text",
+            "text"
+          ],
+          "complete": false
+        },
+        "design": {
+          "name": "Design",
+          "present": 0,
+          "total": 1,
+          "missing": [
+            "text"
+          ],
+          "complete": false
+        },
+        "design-review": {
+          "name": "text",
+          "present": 0,
+          "total": 1,
+          "missing": [
+            "text"
+          ],
+          "complete": false
+        },
+        "feature-split": {
+          "name": "Feature splitting",
+          "present": 0,
+          "total": 1,
+          "missing": [
+            "text"
+          ],
+          "complete": false
+        },
+        "specs": {
+          "name": "Specs",
+          "present": 0,
+          "total": 3,
+          "missing": [
+            "text",
+            "text",
+            "text"
+          ],
+          "complete": false
+        },
+        "code-review": {
+          "name": "Code review",
+          "present": 0,
+          "total": 2,
+          "missing": [
+            "text",
+            "text"
+          ],
+          "complete": false
+        },
+        "testing": {
+          "name": "Testing",
+          "present": 0,
+          "total": 3,
+          "missing": [
+            "text",
+            "text",
+            "text"
+          ],
+          "complete": false
+        },
+        "summary": {
+          "name": "Final summary",
+          "present": 0,
+          "total": 2,
+          "missing": [
+            "sdlc-checklist.md",
+            "sdlc-summary.md"
+          ],
+          "complete": false
+        },
+        "documentation": {
+          "name": "Documentation",
+          "present": 1,
+          "total": 2,
+          "missing": [
+            "developer-guide.md"
+          ],
+          "complete": false
+        }
+      },
+      "presentCount": 1,
+      "totalCount": 20,
+      "complete": false,
+      "missing": [
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "text",
+        "summary: sdlc-summary.md",
+        "text"
+      ]
+    }
+  },
+  "contextUsagePercentage": null,
+  "transcriptBytes": 160295,
+  "transcriptPartial": true,
+  "estTokens": {
+    "value": 40043,
+    "isEstimate": true
+  },
+  "finalText": "text",
+  "finalTextTruncated": false,
+  "askedUser": false,
+  "skillsMcpOk": null,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "text",
+      "min": 8,
+      "group": "intended",
+      "passed": true,
+      "detail": "text",
+      "tests": {
+        "passed": 8,
+        "total": 8,
+        "unparsed": false
+      }
+    },
+    {
+      "type": "tests",
+      "cmd": "text",
+      "min": 4,
+      "group": "invariant",
+      "passed": true,
+      "detail": "text",
+      "tests": {
+        "passed": 4,
+        "total": 4,
+        "unparsed": false
+      }
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "passed": true,
+      "detail": "exit 0, expected 0"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test",
+      "allowAdditions": true,
+      "passed": true,
+      "detail": "identical"
+    },
+    {
+      "type": "cmd",
+      "cmd": "text",
+      "passed": true,
+      "detail": "exit 0, expected 0"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "formatBytes",
+      "passed": true,
+      "detail": "matched"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "formatBytes",
+      "passed": true,
+      "detail": "matched"
+    }
+  ],
+  "hiddenTests": {
+    "passed": 12,
+    "total": 12,
+    "unparsed": false
+  },
+  "regressionTests": null,
+  "contamination": null,
+  "kiroCliVersion": "kiro-cli 2.37.1",
+  "modelListSnapshotPath": "text",
+  "sessionModel": null,
+  "sessionId": "text",
+  "agent": null,
+  "agentEngine": "v3",
+  "modelNormalized": false,
+  "rewrittenAgents": [],
+  "mcpSha256": null,
+  "isolation": "unshare",
+  "homeTripwireHits": [],
+  "inFlightAtStart": 0,
+  "flags": [
+    "transcriptPartial"
+  ],
+  "infraError": null,
+  "error": null,
+  "skillsLoaded": [],
+  "skillQueries": [],
+  "sopsLoaded": [],
+  "skillBytesLoaded": 0,
+  "skillCallsFailed": 0,
+  "findSkillsCalls": 0,
+  "findSkillsEmpty": 0,
+  "startupResourceCount": null,
+  "targetLoaded": null,
+  "targetAttempted": null,
+  "targetReachable": null,
+  "sopNameSource": "convention",
+  "skillsScope": "all-sessions",
+  "capInvocation": {
+    "delegatedTo": [],
+    "findSkillsBytes": 0,
+    "requested": [],
+    "firstDecision": {
+      "kind": "none",
+      "name": null
+    },
+    "identified": []
+  },
+  "triggerQuery": null,
+  "variant": null,
+  "armPrefix": null,
+  "armConfig": null,
+  "turns": 1,
+  "interjections": 0,
+  "questions": [],
+  "questionsAsked": 0,
+  "unmatchedQuestions": 0,
+  "askedFirstTurn": false,
+  "interjectionCapHit": false,
+  "autonomous": true,
+  "intendedTests": {
+    "passed": 8,
+    "total": 8,
+    "unparsed": false
+  },
+  "invariantTests": {
+    "passed": 4,
+    "total": 4,
+    "unparsed": false
+  },
+  "completedWithoutHelp": true,
+  "assumptionsStated": true
+}

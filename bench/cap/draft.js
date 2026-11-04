@@ -10,6 +10,7 @@ const { judgeOnce } = require('../judge/run.js');
 const { retrySuffix } = require('../judge/prompts.js');
 const { descTokens, jaccard } = require('./text.js');
 const { split } = require('./reach.js');
+const { findMarker } = require('./public.js');
 
 const TOOL = 'cap-draft/1';
 const TEXT_MAX = 12000;
@@ -76,6 +77,21 @@ ${JSON.stringify(shape, null, 1)}`;
 
 const wordRe = (name) => new RegExp(`(?<![\\w-])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, 'i');
 
+/**
+ * The content checks on the text of one query, shared by `cap draft` (a model's reply) and `cap import` (a person's file):
+ * one paragraph, no capability name, no konductor procedure or agent name, no dash, no public-repo marker. Returns a message
+ * starting with "the text" or null. The first problem found is the one reported.
+ */
+function queryContentProblem(text, { capName, name = wordRe(capName) }) {
+  if (/\n/.test(text)) return 'the text must be one paragraph';
+  if (name.test(text)) return `the text names the capability "${capName}"`;
+  if (BANNED.test(text)) return 'the text names a konductor procedure or agent';
+  if (DASHES.test(text)) return 'the text contains an em or en dash';
+  const hit = findMarker(text);
+  if (hit) return `the text has an ${hit.marker} (public-repo hygiene)`;
+  return null;
+}
+
 /** Strict check of a model's reply; returns { ok: true, draft } or { ok: false, error } naming the first problem. */
 function validateDraft(d, { capName, capKind, neighbourIds, n = 24 }) {
   const fail = (error) => ({ ok: false, error });
@@ -93,10 +109,8 @@ function validateDraft(d, { capName, capKind, neighbourIds, n = 24 }) {
       if (x.expect !== 'none') return fail(`${at}: nearMissOf only applies to expect:none queries`);
       if (!neighbourIds.includes(x.nearMissOf)) return fail(`${at}: nearMissOf "${x.nearMissOf}" is not one of the neighbours (${neighbourIds.join(', ') || 'none'})`);
     }
-    if (/\n/.test(x.text)) return fail(`${at}.text must be one paragraph`);
-    if (name.test(x.text)) return fail(`${at}: the text names the capability "${capName}"`);
-    if (BANNED.test(x.text)) return fail(`${at}: the text names a konductor procedure or agent`);
-    if (DASHES.test(x.text)) return fail(`${at}: the text contains an em or en dash`);
+    const bad = queryContentProblem(x.text, { capName, name });
+    if (bad) return fail(`${at}: ${bad}`);
     const key = x.text.trim().toLowerCase().replace(/\s+/g, ' ');
     if (seen.has(key)) return fail(`${at}: duplicate query text`);
     seen.add(key);
@@ -190,20 +204,34 @@ async function draftCapability({ capId, scan, caller, model, n = 24, outDir, now
   return { ok: true, draft, credits, attempts: out.calls.length, ...writeDraft(outDir, capId, draft) };
 }
 
-/** Skill-creator style [{ query, should_trigger }] into the draft format (should_trigger true -> expect load, false -> none). */
-function importQueries(items, { capId, source, now = new Date() }) {
+/**
+ * Skill-creator style [{ query, should_trigger }] into the draft format (should_trigger true -> expect load, false -> none).
+ * The same checks as `cap draft` apply: query text rules, at least 6 queries of each polarity, at most n + 4 in all. Splits are
+ * not accepted: a person assigns them after review. Near-miss labels cannot be carried by this format, so that rule is not applied.
+ */
+function importQueries(items, { capId, source, n = 24, now = new Date() }) {
   if (!Array.isArray(items)) throw new Error('the file must be a JSON array of { query, should_trigger }');
   if (!items.length) throw new Error('no queries in the file');
+  const capName = capId.slice(capId.indexOf(':') + 1);
+  const name = wordRe(capName);
   const seen = new Set();
   const queries = items.map((x, i) => {
     const at = `item ${i + 1}`;
     if (!x || typeof x.query !== 'string' || !x.query.trim()) throw new Error(`${at}: query must be a non-empty string`);
     if (typeof x.should_trigger !== 'boolean') throw new Error(`${at}: should_trigger must be true or false`);
+    for (const key of ['split', 'splits']) if (key in x) throw new Error(`${at}: ${key} is assigned by a person after review, not on import`);
+    if (x.query.trim().length < QUERY_MIN || x.query.length > QUERY_MAX) throw new Error(`${at}: the text must be between ${QUERY_MIN} and ${QUERY_MAX} characters`);
+    const bad = queryContentProblem(x.query, { capName, name });
+    if (bad) throw new Error(`${at}: ${bad}`);
     const key = x.query.trim().toLowerCase().replace(/\s+/g, ' ');
     if (seen.has(key)) throw new Error(`${at}: duplicate query text`);
     seen.add(key);
     return { id: `i${pad2(i)}`, text: x.query.trim(), expect: x.should_trigger ? 'load' : 'none', rationale: `imported: should_trigger ${x.should_trigger}` };
   });
+  const load = queries.filter((x) => x.expect === 'load').length;
+  const none = queries.length - load;
+  if (load < MIN_PER_POLARITY || none < MIN_PER_POLARITY) throw new Error(`too few queries: ${load} expect:load and ${none} expect:none, need at least ${MIN_PER_POLARITY} of each`);
+  if (queries.length > n + 4) throw new Error(`too many queries (${queries.length}), at most ${n + 4}`);
   return {
     schemaVersion: 1, capId, kind: capId.slice(0, capId.indexOf(':')), status: 'draft-unreviewed',
     generatedBy: { tool: TOOL, import: source, at: now.toISOString() }, neighbours: [], queries, taskIdeas: [],

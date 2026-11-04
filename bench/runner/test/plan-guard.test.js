@@ -35,7 +35,7 @@ test('run no longer aborts on a large plan without a budget; it tracks credits a
     const bench = makeBench(path.join(root, 'bench'));
     const home = path.join(root, 'home');
     fs.mkdirSync(home);
-    const r = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--tasks', 't1', '--replicates', '11', '--bench-dir', bench, '--out', path.join(root, 'out'), '--isolate', 'none'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: home, TMPDIR: root } });
+    const r = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--tasks', 't1', '--replicates', '11', '--bench-dir', bench, '--out', path.join(root, 'out'), '--isolate', 'none', '--allow-unisolated'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: home, TMPDIR: root } });
     assert.doesNotMatch(r.stderr, /more than 10: pass --budget-credits/);
     assert.match(r.stderr, /11 runs are planned and no credit cap is set/);
     assert.match(r.stderr, /kiro-cli auth database not found/);
@@ -48,7 +48,7 @@ test('--isolate auto aborts when OS isolation cannot be set up; --isolate none g
   try {
     const bench = makeBench(path.join(root, 'bench'));
     const env = { PATH: '/nonexistent', HOME: root, TMPDIR: os.tmpdir() };
-    const args = (iso) => [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--tasks', 't1', '--bench-dir', bench, '--out', path.join(root, 'out'), '--isolate', iso];
+    const args = (iso) => [BENCH_JS, 'run', '--suite', 'lite', '--arms', 'vanilla', '--tasks', 't1', '--bench-dir', bench, '--out', path.join(root, 'out'), '--isolate', iso, ...(iso === 'none' ? ['--allow-unisolated'] : [])];
     const auto = spawnSync(process.execPath, args('auto'), { encoding: 'utf8', env });
     assert.equal(auto.status, 1);
     assert.match(auto.stderr, /isolation is unavailable.*--isolate none/);

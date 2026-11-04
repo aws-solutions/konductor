@@ -16,6 +16,8 @@ const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 const { writeArmConfig } = require('../arm-config.js');
 const { orchMetricsOfRunDir } = require('../orch-metrics.js');
+const { scrubTree } = require('../hygiene.js');
+const { secretLiterals } = require('../scrub.js');
 
 const id = 'kiro-cli';
 
@@ -161,6 +163,11 @@ function removeCredentials(home) {
 
 const keepPaths = (ctx) => [ctx.kiroBin].filter(Boolean);
 
+// A model can print a credential it found in its environment or in a file. Same scrub as the opencode harness.
+function finalize(outDir) {
+  try { return scrubTree(outDir, secretLiterals(process.env), { shapes: true }); } catch { return 0; }
+}
+
 // What the runner needs to know after one turn: how it ended and what the agent said last.
 function turnSummary(streamText) {
   const a = aggregateStream(parseStream(streamText).events);
@@ -201,5 +208,5 @@ function collectArtifacts(home, outDir) {
 
 module.exports = {
   id, prepareArm: sandbox.prepareArm, requiredPaths: sandbox.KIRO_REQUIRED, trialInstall, installInto, buildCommand, env, removeCredentials, keepPaths,
-  parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions,
+  parseResult, aggregateRunDir, turnSummary, collectArtifacts, orchMetrics, kiroArgs, readTranscripts, copySessions, finalize,
 };

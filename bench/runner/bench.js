@@ -26,7 +26,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
-       [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
+       [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        [--extra-tasks DIR,DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
@@ -130,7 +130,7 @@ const USAGE = `Usage:
        (one tool-less model call per capability, in a scratch HOME and an empty directory: candidate trigger queries (about half should load,
        half should not, at least half of those near misses of a similar capability), task ideas and, for a SOP, its declared output sections.
        Writes DIR/drafts/<id>.json and .md for human review; assigns no splits; never writes into the repository. Costs credits)
-  node bench/runner/bench.js cap import --from FILE --cap ID [--out DIR] [--repo-root DIR] [--bench-dir DIR]
+  node bench/runner/bench.js cap import --from FILE --cap ID [--n 24] [--out DIR] [--repo-root DIR] [--bench-dir DIR]
        (reads a skill-creator style JSON array of { query, should_trigger } into the same draft format; should_trigger true is expect load, false is none)
   node bench/runner/bench.js cap scenarios --cap ID,ID [--n 8] [--model M] [--model-cmd CMD] [--out DIR] [--base REF] [--dry-run]
        [--isolate auto|unshare|sandbox-exec|none] [--kiro-bin PATH] [--auth-db FILE] [--hide DIR,DIR] [--repo-root DIR] [--bench-dir DIR]

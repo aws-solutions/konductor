@@ -18,7 +18,7 @@ const real = require('./real.js');
 const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
 const { buildChildEnv, describeEnv } = require('./env.js');
-const { resolveIsolation, describeHide, ISOLATE_MODES } = require('./isolate.js');
+const { resolveIsolation, describeHide, ISOLATE_MODES, isComparableMode } = require('./isolate.js');
 const { DEFAULT_EXCLUDES, REPO_EXCLUDES } = require('./tripwire.js');
 const procs = require('./procs.js');
 const sandbox = require('./sandbox.js');
@@ -26,6 +26,7 @@ const rc = require('./runconfig.js');
 const { optionalProfile, replicatesFor, aaArmFor, writeCalibrationSample } = require('./profiles.js');
 const { loadRun } = require('../../report/load.js');
 const { createInstallsGate, describeChange } = require('./isolation-gates.js');
+const toolchain = require('./toolchain.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -77,6 +78,7 @@ function summarize(runConfig, state, extra) {
   return {
     ...runConfig,
     finishedAt: new Date().toISOString(),
+    comparable: runConfig.comparable ?? false,
     ...(usd ? { totalCostUsd: state.spent, totalCostUsdCharged: state.charged } : { totalCredits: state.spent, totalCreditsCharged: state.charged }),
     counts: state.results.reduce((c, r) => ({ ...c, [r.status]: (c[r.status] || 0) + 1 }), {}),
     results: state.results,
@@ -179,6 +181,9 @@ async function cmdRun(opts) {
   const seed = opts.seed === undefined ? Date.now() % 2147483647 : intOpt(opts.seed, 'seed', 0);
   const isolate = opts.isolate || 'auto';
   if (!ISOLATE_MODES.includes(isolate)) throw new Error(`--isolate must be one of ${ISOLATE_MODES.join(', ')}`);
+  if (isolate === 'none' && !opts['allow-unisolated']) {
+    throw new Error('--isolate none runs the agent with no containment, and its results are recorded as not comparable and are never counted by a verdict. Pass --allow-unisolated as well to run anyway.');
+  }
   const envKeep = list(opts['env-keep']);
 
   const log = (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`);
@@ -191,6 +196,7 @@ async function cmdRun(opts) {
   if (opts['no-default-hide']) { process.env.BENCH_NO_DEFAULT_HIDE = '1'; log('--no-default-hide: the credential paths added to the default hide set stay readable'); }
   const isolation = resolveIsolation(isolate);
   log(`isolation: ${isolation.mode} (${isolation.reason})`);
+  if (!isComparableMode(isolation.mode)) log('warning: no OS isolation. These runs are recorded as not comparable and no verdict will count them.');
   if (parallel > 1) log(`warning: --parallel ${parallel} shares one account; wall-clock comparisons need --parallel 1`);
 
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
@@ -266,6 +272,10 @@ async function cmdRun(opts) {
       ctx.envInfo = { kiroCliVersion: sandbox.kiroCliVersion(), modelListSnapshotPath: modelListPath };
     }
 
+    const interpreters = toolchain.interpreterVersions();
+    const toolchainCheck = toolchain.checkPins(toolchain.loadPins(benchDir), interpreters, tasks.map((t) => t.id));
+    for (const m of toolchainCheck.mismatches) log(`warning: toolchain: ${toolchain.describeMismatch(m)}. Results may differ from the validated ones.`);
+
     const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main');
     runConfig = {
       suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, [isOc ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
@@ -276,7 +286,7 @@ async function cmdRun(opts) {
       order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
       timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
       ...config, ...ctx.envInfo,
-      isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
+      isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, comparable: isComparableMode(isolation.mode), tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
       arms: rc.armRecords(arms, prepared, errors),
       originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
       modelNormalized: arms.some((a) => !a.vanilla),
@@ -308,6 +318,8 @@ async function cmdRun(opts) {
         },
       } : {}),
       tools: rc.toolVersions(),
+      interpreters,
+      toolchainCheck,
       startedAt: new Date().toISOString(),
     };
     fs.writeFileSync(path.join(outDir, 'run-config.json'), JSON.stringify(runConfig, null, 2) + '\n');
@@ -321,6 +333,7 @@ async function cmdRun(opts) {
     fs.writeFileSync(path.join(outDir, 'env.json'), JSON.stringify({
       konductorArm: describeEnv(process.env, envFor(true)),
       vanillaArm: describeEnv(process.env, envFor(false)),
+      interpreters,
     }, null, 2) + '\n');
 
     log(`out=${outDir}`);

@@ -36,6 +36,8 @@ const MAX_NONSCORED_SHARE = 0.2;
 const COST_MAX = 2.0;
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
+/** 0.95 -> "95%", 0.98333 -> "98.3%". */
+const levelText = (level) => `${Number((level * 100).toFixed(1))}%`;
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const f1 = (v) => v.toFixed(1);
 
@@ -47,6 +49,25 @@ function refLabel({ armId, commitSha, contentHash }) {
 }
 
 /**
+ * The A/A noise in quality points, pooled over every paired cell of one A/A group. cells: [{ head: scores of the arm,
+ * base: scores of its repeat }] as pairCells returns them. Each cell contributes the arm's mean minus the repeat's mean;
+ * the noise is the larger end of the 95% t interval of those differences, so it holds both a steady shift (the mean) and
+ * the cell-to-cell spread. Two cells are the least that give a spread. For balanced cells it is never below the gap
+ * between the two overall means, which was the figure used before.
+ */
+function aaNoiseFromCells(cells) {
+  const ci = pairedCellCI(cells.map((c) => ({ head: c.head, base: c.base })));
+  if (ci.k < 2 || !fin(ci.ciLow) || !fin(ci.ciHigh)) return { available: false, k: ci.k, meanDiff: ci.delta, sd: null, pts: null };
+  return { available: true, k: ci.k, meanDiff: ci.delta, sd: ci.se * Math.sqrt(ci.k), pts: Math.max(Math.abs(ci.ciLow), Math.abs(ci.ciHigh)) };
+}
+
+/** Runs made without OS isolation, or with no isolation recorded, are never counted. */
+function unisolatedReason(u, baseName) {
+  const parts = [[u.head, u.headTotal, 'the arm'], [u.base, u.baseTotal, baseName]].filter(([n]) => n).map(([n, t, who]) => `${n} of ${t} runs of ${who}`);
+  return `${parts.join(' and ')} were not isolated (--isolate none, or no isolation mode recorded), so they are not comparable and no call is made`;
+}
+
+/**
  * The call, from plain numbers. Every reason that applies is listed. quality and reliability carry the head-minus-base
  * difference in points with its 95% interval; noise.pts is the A/A noise in quality points (null when none was measured).
  */
@@ -54,6 +75,7 @@ function decide(c) {
   const reasons = [];
   const pct = (v) => `${Math.round(v * 100)}%`;
   if (!c.cells) reasons.push('there is no run of the baseline on the same tasks');
+  if (c.unisolated && (c.unisolated.head || c.unisolated.base)) reasons.push(unisolatedReason(c.unisolated, 'vanilla'));
   if (c.nHead < MIN_N || c.nBase < MIN_N) reasons.push(`fewer than ${MIN_N} runs on a side (${c.nHead} for the arm, ${c.nBase} for the baseline)`);
   if (c.cells && c.minReps < MIN_N) reasons.push(`fewer than ${MIN_N} replicates in a cell (the smallest has ${c.minReps})`);
   const k = c.pairedCells ?? 0;
@@ -72,7 +94,7 @@ function decide(c) {
   if (!fin(q.delta)) reasons.push('quality could not be computed for both sides');
   else if (insideNoise) reasons.push(`the quality difference of ${f1(q.delta)} points is inside the A/A noise of ${f1(c.noise.pts)} points`);
   else if (!fin(q.ciLow) || !fin(q.ciHigh)) reasons.push('the paired interval of the quality difference could not be computed');
-  else if (c.noise.available && q.ciLow <= 0 && q.ciHigh >= 0) reasons.push(`the paired 95% interval of the quality difference [${f1(q.ciLow)}, ${f1(q.ciHigh)}] includes 0`);
+  else if (c.noise.available && q.ciLow <= 0 && q.ciHigh >= 0) reasons.push(`the paired ${levelText(q.level ?? 0.95)} interval of the quality difference [${f1(q.ciLow)}, ${f1(q.ciHigh)}] includes 0`);
   if (reasons.length) return { verdict: NEE, reason: reasons.join('; '), reasons };
   const r = c.reliability;
   if (q.delta > 0 && fin(r.delta) && fin(r.ciHigh) && r.ciHigh < 0) {
@@ -91,8 +113,8 @@ function decide(c) {
     }
   }
   return q.delta > 0
-    ? { verdict: KEEP, reason: `quality is up ${f1(q.delta)} points, outside the A/A noise of ${f1(c.noise.pts)} points, with the paired 95% interval above 0`, reasons: [] }
-    : { verdict: DISCARD, reason: `quality is down ${f1(-q.delta)} points, outside the A/A noise of ${f1(c.noise.pts)} points, with the paired 95% interval below 0`, reasons: [] };
+    ? { verdict: KEEP, reason: `quality is up ${f1(q.delta)} points, outside the A/A noise of ${f1(c.noise.pts)} points, with the paired ${levelText(q.level ?? 0.95)} interval above 0`, reasons: [] }
+    : { verdict: DISCARD, reason: `quality is down ${f1(-q.delta)} points, outside the A/A noise of ${f1(c.noise.pts)} points, with the paired ${levelText(q.level ?? 0.95)} interval below 0`, reasons: [] };
 }
 
 const lowest = (ratings) => ratings.reduce((a, b) => (RATING_RANK[b] < RATING_RANK[a] ? b : a), 'supported');
@@ -206,7 +228,7 @@ function sentenceFor(a, baseLabel) {
   const dir = a.quality.delta > 0 ? 'higher' : 'lower';
   const cost = a.cost.ratio === null ? '' : ` It cost ${a.cost.ratio.toFixed(2)}x the credits per successful run (95% interval ${a.cost.ciLow.toFixed(2)} to ${a.cost.ciHigh.toFixed(2)}, limit ${COST_MAX.toFixed(1)}x).`;
   const verb = a.verdict === KEEP ? 'Keep' : 'Discard';
-  return `${verb}. ${a.label} scored ${f1(Math.abs(a.quality.delta))} points ${dir} than ${baseLabel} (paired 95% interval of the difference ${f1(a.quality.deltaCiLow)} to ${f1(a.quality.deltaCiHigh)} over ${a.quality.k} task cells), outside the A/A noise of ${f1(a.noise.pts)} points, over ${a.quality.n} runs against ${a.quality.baseN} at ${a.minReps} or more replicates per cell.${cost}`;
+  return `${verb}. ${a.label} scored ${f1(Math.abs(a.quality.delta))} points ${dir} than ${baseLabel} (paired ${levelText(a.quality.level ?? 0.95)} interval of the difference ${f1(a.quality.deltaCiLow)} to ${f1(a.quality.deltaCiHigh)} over ${a.quality.k} task cells), outside the A/A noise of ${f1(a.noise.pts)} points, over ${a.quality.n} runs against ${a.quality.baseN} at ${a.minReps} or more replicates per cell.${cost}`;
 }
 
 /**
@@ -243,10 +265,13 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
     for (const g of aaGroups(input, baseline)) {
       const [primary, ...repeats] = g;
       const pl = refLabel({ armId: primary, ...input.rows.find((r) => r.armId === primary) });
-      const slot = pairs.get(pl) || { primary: pl, a: [], b: [], dirs: new Set(), repeats: new Set() };
-      slot.a.push(...qualityList(input.rows.filter((r) => r.armId === primary), weights));
+      const slot = pairs.get(pl) || { primary: pl, a: [], b: [], cells: [], dirs: new Set(), repeats: new Set() };
+      const primaryRows = input.rows.filter((r) => r.armId === primary && r.comparable);
+      const repeatRows = input.rows.filter((r) => repeats.includes(r.armId) && r.comparable);
+      slot.a.push(...qualityList(primaryRows, weights));
+      slot.b.push(...qualityList(repeatRows, weights));
+      slot.cells.push(...pairCells(primaryRows, repeatRows, weights));
       for (const rep of repeats) {
-        slot.b.push(...qualityList(input.rows.filter((r) => r.armId === rep), weights));
         const rl = refLabel({ armId: rep, ...input.rows.find((r) => r.armId === rep) });
         slot.repeats.add(rl);
         repeatOf.set(rl, pl);
@@ -256,6 +281,9 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
     }
   }
 
+  // Every arm that is not an A/A repeat is one comparison with the baseline. The quality interval of each is widened to level
+  // 1 - 0.05/comparisons (Bonferroni). The reliability interval stays at 95%: widening it would weaken the check that blocks a KEEP.
+  const comparisons = Math.max(1, labels.filter((l) => !repeatOf.has(l)).length);
   const arms = labels.map((label) => {
     const headAll = all.filter((r) => r.label === label);
     const headDirs = [...new Set(headAll.map((r) => r.src))];
@@ -273,7 +301,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
     const hq = qualityList(headC, weights);
     const bq = qualityList(base, weights);
     const pcells = pairCells(headC, base, weights);
-    const dq = pairedCellCI(pcells.map((c) => ({ head: c.head, base: c.base })));
+    const dq = pairedCellCI(pcells.map((c) => ({ head: c.head, base: c.base })), { comparisons });
     const unpaired = diffCI(hq, bq);
     const components = componentCheck(pcells);
     const nonScored = { head: nonScoredOf(headC, weights), base: nonScoredOf(base, weights) };
@@ -287,10 +315,17 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
     const minReps = nCells ? Math.min(lowRows, perCellMin(base)) : 0;
 
     const groups = [...pairs.values()].filter((p) => [...p.dirs].some((s) => headDirs.includes(s)));
-    const spreads = groups.map((p) => (p.a.length && p.b.length ? Math.abs(mean(p.a) - mean(p.b)) : null)).filter(fin);
-    const noise = spreads.length
-      ? { available: true, spread: Math.max(...spreads), pts: Math.max(Math.max(...spreads), NOISE_FLOOR_PTS), pairs: groups.map((p) => ({ arm: p.primary, repeats: [...p.repeats], runsA: p.a.length, runsB: p.b.length, spread: p.a.length && p.b.length ? Math.abs(mean(p.a) - mean(p.b)) : null })) }
-      : { available: false, spread: null, pts: null, pairs: [] };
+    const gap = (p) => (p.a.length && p.b.length ? Math.abs(mean(p.a) - mean(p.b)) : null);
+    const pooled = groups.map((p) => ({ p, n: aaNoiseFromCells(p.cells) }));
+    const usable = pooled.filter(({ n }) => n.available);
+    // spread is the largest gap between two overall means, kept as a description; the call uses the pooled figure.
+    const noise = usable.length
+      ? {
+        available: true, method: 'pooled over paired A/A cells', spread: Math.max(0, ...groups.map(gap).filter(fin)),
+        pts: Math.max(NOISE_FLOOR_PTS, ...usable.map(({ n }) => n.pts)),
+        pairs: pooled.map(({ p, n }) => ({ arm: p.primary, repeats: [...p.repeats], runsA: p.a.length, runsB: p.b.length, spread: gap(p), cells: n.k, meanDiff: n.meanDiff, sd: n.sd, pts: n.pts })),
+      }
+      : { available: false, method: 'pooled over paired A/A cells', spread: null, pts: null, pairs: [] };
 
     const ratingBy = headDirs.map((s) => ({ dir: inputs[s].dir, rating: inputs[s].a.card.rating, blockers: inputs[s].a.card.blockers.map((x) => `${x.label} (${x.status})`), failed: inputs[s].a.card.blockers.filter((x) => x.status === 'FAIL').map((x) => `${x.label} (${x.status})`) }));
     const rating = lowest(ratingBy.map((r) => r.rating));
@@ -298,15 +333,16 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
     const baseFailures = Object.fromEntries(['good', ...FAILURE_OUTCOMES].map((k) => [k, base.filter((r) => r.outcome === k).length]));
 
     const decision = decide({
+      unisolated: { head: headC.filter((r) => !r.comparable).length, base: base.filter((r) => !r.comparable).length, headTotal: headC.length, baseTotal: base.length },
       cells: nCells, pairedCells: dq.k, nHead: h?.quality.n ?? 0, nBase: b?.quality.n ?? 0, minReps, rating, ratingBy, noise, nonScored, components,
-      quality: { delta: dq.delta, ciLow: dq.ciLow, ciHigh: dq.ciHigh, p: dq.p, pExact: dq.pExact }, reliability: { delta: dr.delta, ciLow: dr.ciLow, ciHigh: dr.ciHigh },
+      quality: { delta: dq.delta, ciLow: dq.ciLow, ciHigh: dq.ciHigh, p: dq.p, pExact: dq.pExact, level: dq.level }, reliability: { delta: dr.delta, ciLow: dr.ciLow, ciHigh: dr.ciHigh },
       cost: { ratio: cost?.ratio ?? null },
     });
     const graded = combineGraded(headDirs.map((s) => gradedSummary(inputs[s].run.judgments, { isStale: inputs[s].a.ctx.isStale }).arms[out.armId]));
     Object.assign(out, {
       runs: headC.length, baseRuns: base.length, cells: nCells, minReps, failures, baseFailures, failedAsZero: headC.filter((r) => r.zeroFilled).length, baseFailedAsZero: base.filter((r) => r.zeroFilled).length,
       budgetSkipped: headDirs.reduce((s, x) => s + inputs[x].a.facts.budget.skipped, 0),
-      quality: { value: h?.quality.value ?? null, ciLow: h?.quality.ciLow ?? null, ciHigh: h?.quality.ciHigh ?? null, n: h?.quality.n ?? 0, baseValue: b?.quality.value ?? null, baseN: b?.quality.n ?? 0, delta: dq.delta, deltaCiLow: dq.ciLow, deltaCiHigh: dq.ciHigh, k: dq.k, droppedCells: dq.droppedCells, method: dq.method, p: dq.p, pExact: dq.pExact, unpaired: { delta: unpaired.delta, ciLow: unpaired.ciLow, ciHigh: unpaired.ciHigh, note: 'descriptive only: treats every run as independent' }, excluded: h?.quality.excluded ?? null },
+      quality: { value: h?.quality.value ?? null, ciLow: h?.quality.ciLow ?? null, ciHigh: h?.quality.ciHigh ?? null, n: h?.quality.n ?? 0, baseValue: b?.quality.value ?? null, baseN: b?.quality.n ?? 0, delta: dq.delta, deltaCiLow: dq.ciLow, deltaCiHigh: dq.ciHigh, k: dq.k, droppedCells: dq.droppedCells, method: dq.method, level: dq.level, comparisons: dq.comparisons, p: dq.p, pAdjusted: dq.pAdjusted, pExact: dq.pExact, unpaired: { delta: unpaired.delta, ciLow: unpaired.ciLow, ciHigh: unpaired.ciHigh, note: 'descriptive only: treats every run as independent' }, excluded: h?.quality.excluded ?? null },
       reliability: { value: h?.reliability.value ?? null, baseValue: b?.reliability.value ?? null, delta: dr.delta, ciLow: dr.ciLow, ciHigh: dr.ciHigh, n: h?.reliability.n ?? 0 },
       autonomy: h?.autonomy ? { value: h.autonomy.value, baseValue: b?.autonomy?.value ?? null, n: h.autonomy.n, baseN: b?.autonomy?.n ?? 0, interjectionsPerTask: h.autonomy.interjectionsPerTask } : null,
       cost: { ratio: cost?.ratio ?? null, ciLow: cost?.ciLow ?? null, ciHigh: cost?.ciHigh ?? null, perSuccess: cost?.value ?? null, basePerSuccess: cost?.baseValue ?? null, n: cost?.n ?? 0, unit: unit === 'USD' ? 'USD' : 'credits' },
@@ -323,6 +359,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
   for (const a of arms) byId.set(a.armId, [...(byId.get(a.armId) || []), a.label]);
   for (const [id, ls] of byId) if (ls.length > 1) notes.push(`${id} appears at ${ls.length} commits: ${ls.join(', ')}. They are separate arms and are never merged.`);
   for (const s of skippedDirs) notes.push(`${s.dir} was left out: ${s.reason}.`);
+  if (comparisons > 1) notes.push(`${comparisons} arms are compared with the baseline, so each quality interval is widened to the Bonferroni level of ${levelText(1 - 0.05 / comparisons)} (0.05 divided by ${comparisons}) to keep the chance of any false call near 5%. An arm that cleared 95% alone can need more cells here.`);
   if (arms.some((a) => a.failedAsZero)) notes.push('A run that failed or timed out with nothing to score counts as quality 0. Infra errors and model mismatches are left out of quality and listed, and a side with more than a fifth of its runs in that state gets no call.');
 
   const dirInfo = inputs.map((i) => {
@@ -333,7 +370,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
       judges: i.a.facts.judging.judges, profileName: i.run.config.profile?.name ?? null,
     };
   });
-  return { schemaVersion: 1, baseline, baselineLabel, unit: unit === 'USD' ? 'USD' : 'credits', arms, dirs: dirInfo, skippedDirs, notes, weights, noiseFloorPts: NOISE_FLOOR_PTS };
+  return { schemaVersion: 1, baseline, baselineLabel, comparisons, unit: unit === 'USD' ? 'USD' : 'credits', arms, dirs: dirInfo, skippedDirs, notes, weights, noiseFloorPts: NOISE_FLOOR_PTS };
 }
 
-module.exports = { buildVerdict, decide, refLabel, sentenceFor, normalize, qualityList, aaGroups, armOrder, perCellMin, pairCells, nonScoredOf, componentCheck, cellKey, KEEP, DISCARD, NEE, NOISE_FLOOR_PTS, MAX_NONSCORED_SHARE, COST_MAX };
+module.exports = { buildVerdict, decide, unisolatedReason, aaNoiseFromCells, levelText, refLabel, sentenceFor, normalize, qualityList, aaGroups, armOrder, perCellMin, pairCells, nonScoredOf, componentCheck, cellKey, KEEP, DISCARD, NEE, NOISE_FLOOR_PTS, MAX_NONSCORED_SHARE, COST_MAX };

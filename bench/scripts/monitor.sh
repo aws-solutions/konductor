@@ -146,9 +146,9 @@ last_run_event() {
 }
 LR3_STATE=none; LR3_ARM=""; LR3_TASK=""; LR3_REP=""; LR3_AT=0
 LR5_STATE=none; LR5_ARM=""; LR5_TASK=""; LR5_REP=""; LR5_AT=0
-# run_status_counts <file> -> "total success timeout other" from the "done ... #n: status" lines
+# run_status_counts <file>... -> "total success timeout other" from the "done ... #n: status" lines
 run_status_counts() {
-  grep -aE '^\[bench [0-9:]+\] done .* #[0-9]+: ' "$1" 2>/dev/null | awk '
+  grep -ahE '^\[bench [0-9:]+\] done .* #[0-9]+: ' "$@" 2>/dev/null | awk '
     { n = split($0, a, /#[0-9]+: /); split(a[n], b, /[,; ]/); s = b[1]; t++; if (s == "success") ok++; else if (s == "timeout") to++; else ot++ }
     END { printf "%d %d %d %d", t, ok, to, ot }'
 }
@@ -264,8 +264,19 @@ gather_p4() {
 # ---------------------------------------------------------------- gather: P5 skill bench
 SBV=""; SBS=""; SB_CONTROLS=""; SB_WD=0; SB_WT=0; SB_RUNS=""; SB_CREDITS=""; SB_NOWSKILL=""; SB_DECIDE=""; SB_DEC_N=""
 SB_LT=0; SB_LOK=0; SB_LTO=0; SB_LOT=0; SB_CTX=""
+SB_ONLY=""; SB_SK_TOTAL=0; SB_SK_DONE=0; SB_LOGS_SRC=""; SB_NEWEST=""
+# newest_file <file>...: the most recently modified of the files that exist
+newest_file() { local f best="" bt=0 t; for f in "$@"; do [ -f "$f" ] || continue; t=$(mtime "$f"); if [ "$t" -ge "$bt" ]; then bt=$t; best=$f; fi; done; printf '%s' "$best"; }
+# The skills the running study was started with (--only), read from its process, else from the chain state.
+sb_only() {
+  local a
+  a=$(ps -eo args= 2>/dev/null | awk -v study="${SBV:-}" '/bench[.]js cap skill-study / && / --only / && (study == "" || index($0, study)) { for (i = 1; i <= NF; i++) if ($i == "--only") { print $(i + 1); exit } }')
+  [ -n "$a" ] || a=${ST[P5_skills]:-}
+  SB_ONLY=$a
+}
 gather_p5() {
-  local re line
+  local re line l name marks f
+  local -a sblogs=()
   SBV=$(cat "$SB_STUDYFILE" 2>/dev/null || true); [ -d "$SBV" ] || SBV=${ST[P5_study]:-}
   SBS=""; SB_CONTROLS=""; SB_WD=0; SB_WT=0; SB_RUNS=""; SB_CREDITS=""; SB_NOWSKILL=""; SB_DECIDE=""; SB_DEC_N=""
   if [ -f "$SB_SCRIPT" ] && [ -s "$SB_STUDYFILE" ] && [ -d "$STATE_DIR" ]; then
@@ -281,9 +292,26 @@ gather_p5() {
     SB_DEC_N=$(jq -r '. as $j | ["DELETE","PRUNE","KEEP","NEEDS DATA"] | map(. as $k | $k + "=" + ([$j.decisions[]? | select(.decision == $k)] | length | tostring)) | join(" ")' "$SBV/decisions/decisions.json" 2>/dev/null || true)
   fi
   [ -n "$SBV" ] && [ -f "$SBV/decisions/decisions.md" ] && SB_DECIDE=$SBV/decisions/decisions.md
-  read -r SB_LT SB_LOK SB_LTO SB_LOT <<<"$(run_status_counts "$SB_LOG")"
+  # Run lines live in the study's own logs (one per bench.js call); the chain log only has them in an old layout.
+  if [ -n "$SBV" ]; then for f in "$SBV"/logs/*-run.log; do [ -f "$f" ] && sblogs+=("$f"); done; fi
+  if [ "${#sblogs[@]}" -gt 0 ]; then SB_LOGS_SRC="study logs"; else sblogs=("$SB_LOG"); SB_LOGS_SRC="chain log"; fi
+  read -r SB_LT SB_LOK SB_LTO SB_LOT <<<"$(run_status_counts "${sblogs[@]}")"
   SB_LT=$(int "$SB_LT"); SB_LOK=$(int "$SB_LOK"); SB_LTO=$(int "$SB_LTO"); SB_LOT=$(int "$SB_LOT")
-  last_run_event "$SB_LOG" LR5
+  SB_NEWEST=$(newest_file "${sblogs[@]}")
+  last_run_event "${SB_NEWEST:-$SB_LOG}" LR5
+  # Progress in skills when the study was started with --only: waves are counted over the whole plan, so they overstate the work.
+  sb_only
+  SB_SK_TOTAL=0; SB_SK_DONE=0
+  if [ -n "$SB_ONLY" ]; then
+    local -a want=()
+    IFS=, read -r -a want <<<"$SB_ONLY"
+    SB_SK_TOTAL=${#want[@]}
+    for name in "${want[@]}"; do
+      l=$(grep -aE "^ +${name//./\\.} \(" <<<"$SBS" | head -n 1)
+      marks=${l#*): }
+      if [ -n "$l" ] && [[ $marks != *running* ]] && [[ $marks != *todo* ]]; then SB_SK_DONE=$((SB_SK_DONE + 1)); fi
+    done
+  fi
   SB_CTX=$(tail -n 300 "$SB_LOG" 2>/dev/null | grep -aE 'wave [0-9]|screen|controls' | tail -n 1 | san)
 }
 
@@ -335,7 +363,7 @@ phase_result() { # n -> one-line result
        esac ;;
     5) case $s in
          done) r="${SB_DEC_N:-decisions: see ${SB_DECIDE:-decisions.md}}" ;;
-         running) r="waves ${SB_WD}/${SB_WT}, controls: ${SB_CONTROLS:-not run yet}" ;;
+         running) r="$([ "$SB_SK_TOTAL" -gt 0 ] && echo "skills ${SB_SK_DONE}/${SB_SK_TOTAL}, ")waves ${SB_WD}/${SB_WT}, controls: ${SB_CONTROLS:-not run yet}" ;;
        esac ;;
     6) case $s in done) r="summary written: $(basename "$SUMMARY")" ;; running) r="writing the summary" ;; esac ;;
   esac
@@ -385,9 +413,21 @@ gather() {
     n=$(grep -anE 'credentials are valid again|gave up waiting for credentials' "$LOG" 2>/dev/null | tail -n 1 | cut -d: -f1)
     if [ "$WAIT_CRED" = no ] && [ "${last%%:*}" -gt "${n:-0}" ] && [ "$CH_ALIVE" = yes ]; then WAIT_CRED=yes; fi
   fi
-  line=$(grep -a 'expected to expire about' "$LOG" 2>/dev/null | tail -n 1)
-  CRED_EXPIRE=$(rx "$line" 'expire about ([0-9T:Z-]+)'); CRED_LEFT=""
-  if [ -n "$CRED_EXPIRE" ]; then CRED_LEFT=$(($(iso_epoch "$CRED_EXPIRE") - NOW)); fi
+  # The expiry is a hint the chain was launched with. It is trusted only while it can still be true: logged after the latest
+  # launch, not followed by a re-vend, and either still in the future or not yet used by a credentials wait. Otherwise unknown.
+  CRED_EXPIRE=""; CRED_LEFT=""
+  local hint_n start_n valid_n
+  hint_n=$(grep -an 'expected to expire about' "$LOG" 2>/dev/null | tail -n 1 | cut -d: -f1)
+  start_n=$(grep -an 'run-after-capability started, pid' "$LOG" 2>/dev/null | tail -n 1 | cut -d: -f1)
+  valid_n=$(grep -an 'credentials are valid again' "$LOG" 2>/dev/null | tail -n 1 | cut -d: -f1)
+  if [ -n "$hint_n" ] && [ "$hint_n" -gt "${start_n:-0}" ] && [ "$hint_n" -gt "${valid_n:-0}" ]; then
+    line=$(grep -a 'expected to expire about' "$LOG" 2>/dev/null | tail -n 1)
+    CRED_EXPIRE=$(rx "$line" 'expire about ([0-9T:Z-]+)')
+    if [ -n "$CRED_EXPIRE" ]; then
+      CRED_LEFT=$(($(iso_epoch "$CRED_EXPIRE") - NOW))
+      if [ "$CRED_LEFT" -le 0 ] && [ "$WAIT_CRED" = no ]; then CRED_EXPIRE=""; CRED_LEFT=""; fi
+    fi
+  fi
 
   # isolation
   ISO="none"
@@ -418,7 +458,7 @@ gather() {
     3) ACTIVE_LOG=$RERUN_LOG ;;
     4) [ -n "$P4_CUR" ] && [ -f "$STATE_DIR/judge-capability-$P4_CUR.log" ] && ACTIVE_LOG=$STATE_DIR/judge-capability-$P4_CUR.log
        [ -n "$ACTIVE_LOG" ] || ACTIVE_LOG=$(find "$STATE_DIR" -maxdepth 1 -name 'judge-capability-*.log' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-); [ -n "$ACTIVE_LOG" ] || ACTIVE_LOG=$LOG ;;
-    5) ACTIVE_LOG=$SB_LOG ;;
+    5) ACTIVE_LOG=$(newest_file "$SB_LOG" ${SBV:+"$SBV"/logs/*.log}); [ -n "$ACTIVE_LOG" ] || ACTIVE_LOG=$SB_LOG ;;
     *) ACTIVE_LOG=$LOG ;;
   esac
   [ -f "$ACTIVE_LOG" ] || ACTIVE_LOG=$LOG
@@ -507,6 +547,7 @@ gather_doing() {
       DETAIL+=("last chain line: $(rx "$P4_LASTLINE" "$re")") ;;
     5)
       PG_DONE=$SB_WD; PG_TOTAL=$SB_WT; PG_UNIT=waves
+      if [ "$SB_SK_TOTAL" -gt 0 ]; then PG_DONE=$SB_SK_DONE; PG_TOTAL=$SB_SK_TOTAL; PG_UNIT=skills; fi
       case $LR5_STATE in
         running) n="run ${LR5_ARM:-?} / ${LR5_TASK:-?} #${LR5_REP:-?} for $(fmt_dur $((NOW - LR5_AT)))" ;;
         between) n="last run ${LR5_ARM:-?} / ${LR5_TASK:-?} #${LR5_REP:-?} finished $(fmt_dur $((NOW - LR5_AT))) ago" ;;
@@ -514,9 +555,10 @@ gather_doing() {
       esac
       if [ "$WAIT_CRED" = yes ]; then DOING="paused: waiting for fresh credentials for the skill bench"
       else DOING="skill bench stage 1: ${SB_NOWSKILL:-controls first}; $n"; fi
-      if [ "$SB_WD" -ge 1 ] && [ "$PH_ELAPSED" -gt 0 ] && [ "$SB_WD" -lt "$SB_WT" ]; then ETA_S=$((PH_ELAPSED * (SB_WT - SB_WD) / SB_WD)); fi
+      if [ "$PG_DONE" -ge 1 ] && [ "$PH_ELAPSED" -gt 0 ] && [ "$PG_DONE" -lt "$PG_TOTAL" ]; then ETA_S=$((PH_ELAPSED * (PG_TOTAL - PG_DONE) / PG_DONE)); fi
       DETAIL+=("controls: ${SB_CONTROLS:-not run yet} | waves ${SB_WD}/${SB_WT} | runs logged ${SB_RUNS:-0} | credits ${SB_CREDITS:-0}")
-      DETAIL+=("log run results: ${SB_LOK} success, ${SB_LTO} timeout, ${SB_LOT} other (of ${SB_LT})")
+      [ "$SB_SK_TOTAL" -gt 0 ] && DETAIL+=("skills in --only: ${SB_SK_TOTAL} (${SB_ONLY//,/, }); waves ${SB_WD}/${SB_WT} are counted over the whole plan")
+      DETAIL+=("log run results: ${SB_LOK} success, ${SB_LTO} timeout, ${SB_LOT} other (of ${SB_LT}, from the ${SB_LOGS_SRC})")
       [ -n "$SB_CTX" ] && DETAIL+=("latest wave line: $SB_CTX")
       if [ -n "$SB_DEC_N" ]; then DETAIL+=("decisions: $SB_DEC_N (${SB_DECIDE:-no decisions.md yet})")
       elif [ -n "$SB_DECIDE" ]; then DETAIL+=("decisions.md is present: $SB_DECIDE")
@@ -622,7 +664,7 @@ render() {
   row HEALTH "ISOLATION FAILURE: $ISO"
   if [ "$WAIT_CRED" = yes ]; then
     emit "$(clip "         WAITING FOR CREDENTIALS: YES (re-vend the credentials to the path shown)  $WAIT_LINE")"
-  else emit "$(clip "         WAITING FOR CREDENTIALS: no$exp_txt")"; fi
+  else emit "$(clip "         WAITING FOR CREDENTIALS: no${exp_txt:-  (credentials expiry: unknown)}")"; fi
   emit "$(clip "         FAILED lines: $FAILED_LINES")"
   emit "$(clip "         timeouts/errors in $([ "$CUR" -gt 0 ] && echo "P$CUR" || echo "current phase"): $TE_TEXT")"
   emit "$(clip "         disk: $DISK_PATH ${DISK_FREE:-?} GB free (${DISK_USED:-?} used)${RES_FS:+ | results $RES_FS} | last log output $([ "$IDLE_S" -ge 0 ] && echo "$(fmt_dur "$IDLE_S") ago" || echo "none yet")")"
@@ -696,11 +738,13 @@ json_out() {
   jn p3_qruns "$P3_QRUNS"; jn p3_qsum "$P3_QSUM"; jn p3_t2 "$P3_T2"; jn p3_timeouts "$P3_TO"; jn p3_other "$P3_BAD"; jn p3_credits "$P3_CRED"; ja p3_arms "$P3_ARMS"
   jn p4_total "$P4_TOTAL"; jn p4_judged "$P4_JN"; jn p4_calls "$P4_CALLS_ALL"; jn p4_usd "$P4_USD"; jn p4_pf "$P4_PF"; jn p4_err "$P4_ERR"; ja p4_current "$P4_CUR"; ja p4_perdir "$P4_PERDIR"
   ja p5_controls "$SB_CONTROLS"; jn p5_wd "$SB_WD"; jn p5_wt "$SB_WT"; jn p5_runs "$SB_RUNS"; jn p5_credits "$SB_CREDITS"; ja p5_decisions "$SB_DEC_N"; ja p5_decisions_md "$SB_DECIDE"
+  p5_only=$(printf '%s\n' "$SB_ONLY" | jq -R 'split(",") | map(select(length > 0))')
+  jn p5_sk_total "$SB_SK_TOTAL"; jn p5_sk_done "$SB_SK_DONE"; jn p5_lt "$SB_LT"; jn p5_lto "$SB_LTO"; ja p5_src "$SB_LOGS_SRC"
   ja iso "$ISO"; ja wait_cred "$WAIT_CRED"; ja wait_line "$WAIT_LINE"; ja cred_expire "$CRED_EXPIRE"; jn cred_left "$CRED_LEFT"
   ja failed_lines "$FAILED_LINES"; ja te_text "$TE_TEXT"; jn te_count "$TE_COUNT"; jn disk_free "$DISK_FREE"; ja disk_used "$DISK_USED"; ja res_fs "$RES_FS"
   jn idle_s "$IDLE_S"; ja stall "$STALL"; ja active_log "$ACTIVE_LOG"
   ja verdict "$VERDICT"; ja why "$WHY"; ja todo "$TODO"
-  jq -n "${J[@]}" --argjson phases "$phases" --argjson detail "$d" --argjson logtail "$logtail" --argjson others "$others" --argjson all "$all_json" '
+  jq -n "${J[@]}"  --argjson p5_only "$p5_only" --argjson phases "$phases" --argjson detail "$d" --argjson logtail "$logtail" --argjson others "$others" --argjson all "$all_json" '
     { time_utc: $now_iso, epoch: $now,
       chain: { alive: ($ch_alive == "yes"), pid: (if $ch_pid == "" then null else ($ch_pid | tonumber) end), uptime_s: $ch_up, final: $final, started: $started },
       current: { phase_number: $cur, phase: $cur_name, elapsed_s: $ph_elapsed, doing: $doing,
@@ -713,9 +757,11 @@ json_out() {
       p4: { task_dirs: $p4_total, judged_dirs: $p4_judged, judge_calls: $p4_calls, judge_usd: $p4_usd, parse_failures: $p4_pf,
             judge_errors: $p4_err, current_dir: $p4_current, calls_per_dir: $p4_perdir },
       p5: { controls: $p5_controls, waves_done: $p5_wd, waves_total: $p5_wt, runs_logged: $p5_runs, credits: $p5_credits,
+            only: $p5_only, skills_total: $p5_sk_total, skills_done: $p5_sk_done, runs_in_logs: $p5_lt, timeouts_in_logs: $p5_lto, logs_source: $p5_src,
             decisions: $p5_decisions, decisions_md: $p5_decisions_md },
       health: { isolation_failure: $iso, waiting_for_credentials: ($wait_cred == "yes"), credential_log_line: $wait_line,
-                credentials_expire_hint: $cred_expire, credentials_seconds_left: $cred_left, failed_lines: $failed_lines,
+                credentials_expire_hint: (if $cred_expire == "" then null else $cred_expire end),
+                credentials_expiry: (if $cred_expire == "" then "unknown" else "hint" end), credentials_seconds_left: $cred_left, failed_lines: $failed_lines,
                 timeouts_errors: { count: $te_count, text: $te_text }, disk_tmp_free_gb: $disk_free, disk_tmp_used: $disk_used,
                 results_fs: $res_fs, seconds_since_log_output: $idle_s, stalled: ($stall == "yes"), other_bench_processes: $others },
       log: { file: $active_log, last5: $logtail },

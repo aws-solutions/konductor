@@ -10,6 +10,8 @@
 //   1. untouched fixture: at least one check must fail (the task cannot pass
 //      by doing nothing), and no cmd check may be broken (exit 127, SyntaxError).
 //   2. fixture plus tasks/solutions/<id>/ overlay: every check must pass.
+//   3. negative controls (tasks/controls.js): no check may pass on an empty workspace; a file the solution provides
+//      whose deletion leaves every check green is reported as a warning.
 // Document tasks (classes sop, review, design) must also have a keyword-only
 // stub in tasks/stubs/<id>/ that fails at least one substance check (a
 // min_matches or cmd check), and the stub run is laid over the reference solution.
@@ -42,6 +44,8 @@ const reallib = require('../real/lib.js');
 const autonomyRules = require('./validate-autonomy.js');
 const { loadRegistry, validateRegistry } = require('../cap/registry.js');
 const { scanRepo, loadAgentSpecs } = require('../cap/scan.js');
+const controls = require('./controls.js');
+const toolchain = require('../runner/lib/toolchain.js');
 
 const BENCH = path.resolve(__dirname, '..');
 const TASKS_DIR = path.join(BENCH, 'tasks');
@@ -545,6 +549,13 @@ function main() {
   }
   R = DEFAULT_ROOTS;
 
+  if (!onlyExtra) {
+    try {
+      const pins = toolchain.loadPins(BENCH);
+      for (const id of Object.keys(pins?.tasks || {})) if (!tasks.some((t) => t.id === id)) err('tasks/toolchain/pins.json', `pins a task that does not exist: ${id}`);
+    } catch (e) { err('tasks/toolchain/pins.json', e.message); }
+  }
+
   let guards = 0;
   let negativeCases = 0;
   const stubReport = [];
@@ -578,6 +589,13 @@ function main() {
       if (!r.pass) err(where, `checks[${i}] (${c.type}${c.path ? ' ' + c.path : ''}) fails on the reference solution: ${r.detail}`);
     });
     fs.rmSync(solved, { recursive: true, force: true });
+    for (const i of controls.passingOnEmpty(t, (d, c) => evalCheck(d, c, fixtureDir(t.fixture), hiddenDir).pass)) {
+      const c = t.checks[i];
+      err(where, `checks[${i}] (${c.type}${c.path ? ' ' + c.path : ''}) passes on an empty workspace, so it proves nothing; make it need the work`);
+    }
+    for (const rel of controls.deletionGaps(t, overlay, () => copyFixture(t.fixture, overlay), (d, c) => evalCheck(d, c, fixtureDir(t.fixture), hiddenDir).pass)) {
+      warn(where, `every check still passes with ${rel} deleted`);
+    }
     if (t.class === 'hard') hardReport.push(validateHard(t, overlay, hiddenDir));
     if (t.class === 'autonomy') autonomyReport.push(validateAutonomyEvidence(t, overlay, hiddenDir));
 

@@ -807,6 +807,7 @@ p5_skillbench() {
   [ -n "$SB_RESULTS" ] || { fail_phase "no writable results filesystem found"; return 1; }
   mkdir -p "$SB_RESULTS" || { fail_phase "cannot create $SB_RESULTS"; return 1; }
   st_set P5_results "$SB_RESULTS"
+  st_set P5_skills "$SB_SKILLS"
   EXPOSURE=$(exposure_runs)
   SB_ENV=(env -u SB_CHILD CREDS="$CREDS" OC="$OC" RESULTS="$SB_RESULTS" EXPOSURE_RUNS="$EXPOSURE" TASKS_PER_SKILL="$SB_TASKS"
     STATE_DIR="$SB_STATE_DIR" REPO="$REPO" CLI_JS="$CLI_JS" BENCH_DIR="$REPO/bench" SCRATCH_PARENT="$SCRATCH_PARENT")

@@ -115,6 +115,7 @@ test('SB_SKILLS is passed to the skill bench as --only through run-skill-bench -
     const r = s.spawn(SCRIPT, ['--foreground'], env);
     assert.equal(r.status, 0, out(r));
     assert.ok(s.callLines().some((c) => c.includes('--only alpha,beta')), s.callLines().join('\n'));
+    assert.match(s.read(path.join(s.state, 'after-capability.state')), /^P5_skills=alpha,beta$/m, 'the selection is kept in the chain state for the monitor');
   } finally { s.done(); }
 });
 
