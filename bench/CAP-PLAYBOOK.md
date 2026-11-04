@@ -14,6 +14,8 @@ evaluate a skill, and whether a skill should be pruned. Everything marked free s
 | `cap trigger --mode live` | Does a real agent load it, or delegate first? Stops at the first load. Spend is not metered. | unobserved, cap it |
 | `cap plan --mode lift`, then `run`, `judge`, `contrast` | Does having the skill change cost, speed or quality? Needs an A/A arm to read the result. | tens of credits |
 | `cap scenarios --cap ID --dry-run` | Which 8 or more tasks would test this skill? The dry run writes the prompt only. | free (the live call is one model call per skill) |
+| `cap scenarios --cap ID --mode trigger --dry-run` | Which tasks should make the agent load this skill on its own, and which near misses should not? 8 to 10 of each. | free (the live call is one model call per skill) |
+| `cap forced-prefix --cap ID --harness H` | The fixed first instruction for a forced-load arm. | free |
 | `cap controls --out DIR`, then `--check RUN` | Does this study find a lift that was planted and none for a decoy? | free to write and check; the run is a few credits per run |
 | `report --verdict platform` | Is the platform worth keeping against vanilla? One page, one call per arm. | free |
 | `cap skill-plan --base REF --runs DIR` | Which skills get a lift study, on which tasks, with how many runs and at what estimated cost? | free |
@@ -117,7 +119,7 @@ ran against two copies of v1.2.0 (the A/A pair) on one design task, three replic
 - Behavior: when the skill loaded, all five delegation prompts carried the eight labelled sections; in the six runs without a load, none did (5 to 7 of 8 present).
 - Loading was a coin flip: 3 of 6 base-arm runs loaded it. Across all 31 offered runs on file it loaded in 9, about 29%.
 - Read together: the report gives it NEEDS DATA, one run short of the 30% line, even with the behavior change recorded. That is the honest reading.
-  The next step is a forced-load arm (a fixed first instruction to load it) against the dropped variant, on a task that needs a multi-agent handoff.
+  The next step is a forced-load arm (a fixed first instruction to load it) against the dropped variant, on a task that needs a multi-agent handoff. `cap skill-study --forced-load low-load` runs it as wave 1f.
 
 ## Credit guide (observed, a guide and not a forecast)
 
@@ -149,10 +151,15 @@ The platform report says whether konductor beats vanilla. This study asks the ot
 
 1. `cap skill-plan --base REF --runs 'DIR' --out PLAN` (free). Read the tier table first. A lift study needs the skill to load, so skills that never loaded in the runs on file stay in the triage tier (the free audit and, where queries exist, a trigger check). Why not all of them: a with-versus-without run of a skill nobody loads measures nothing, and one skill study at the detailed profile is hundreds of credits.
 2. Draft and add scenarios where the plan reports a shortfall (`cap scenarios`), review them by hand, add them as tasks. The plan lists the tasks it found: registry links, tasks that name the skill, tasks where it loaded.
+   For a skill that rarely loads, draft `cap scenarios --mode trigger` too: tasks that should load it and near misses that should not. Check them with `cap trigger --queries FILE` before adding the good ones as tasks.
+   Add `--forced-load low-load` to the study so that a skill under the 30% load floor also gets wave 1f, the skill forced to load against the skill deleted.
 3. `bench/scripts/run-skill-bench.sh --dry-run`, then the real run. The script refuses while any other bench study is active and checks the credentials file path first. Controls run before any skill; if they fail, stop and fix the pipeline. To run it unattended after a capability study and watch it, see `bench/RUNBOOK.md` (`run-after-capability.sh`, `monitor.sh`).
 4. `cap decide --study DIR` (the study runs it at the end). Read `decisions.md`; open the patch only for DELETE and PRUNE calls.
 
 How a call is made, in order: controls passed; an A/A arm; scores on a 0 to 1 scale; at least 15 runs per side; the skill loaded in at least 30% of control runs. Then the delete arm against the control: removing it improved quality outside the A/A spread (DELETE as a harm call); removing it stayed inside the 0.10 margin with an interval that excludes a larger loss and an A/A spread under the margin (DELETE as no effect); removing it lost quality outside the spread (the skill is needed, so test its sections). For a needed skill, a section whose removal is within the margin is removed; one whose removal lost quality but whose move to `references/` is within the margin is moved; the rest is kept. Several cuts cap the confidence at medium because they were tested one at a time: run the combined cut as one arm before merging. Anything weaker is NEEDS DATA with the reason.
+
+The forced-load wave answers a different question from the calls: does the skill help once it is loaded? Its section in `decisions.md` is labelled as never used for a call, and it adds no evidence row.
+A skill that helps when forced but rarely loads on its own is a discovery problem (FIX), not proof it should stay as is. How forcing differs from organic loading: the first turn of the entry agent carries an instruction naming the skill, so discovery is skipped and the prompt is a sentence longer. The delete arm gets no instruction, and subagents never see it.
 
 What it cannot show: a section moved to references may never be opened (the move arm counts the runs that opened the file; zero means the move behaved like a removal); the quality score covers the study tasks only; kiro-cli loads skills by name through the skills server, so a changed description or index entry changes whether the skill loads at all, which this study holds fixed. Small effects need more runs than a pilot has: the earlier delegation-protocol lift run was unmeasurable at n=3 for this reason.
 

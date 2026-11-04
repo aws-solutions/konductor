@@ -29,8 +29,9 @@ function setup({ tiers = ['loaded'], skills = ['sectioned'], e = env(), planOpts
   return { e, plan, studyDir, settings, creds };
 }
 
-// quality: pass probability by arm id (tenths); trusted: what the controls check says.
-function fakeExec({ quality = {}, trusted = true, calls = [] } = {}) {
+// quality: pass probability by arm id (tenths); trusted: what the controls check says; unloaded: arm ids whose runs never
+// load the skill; summary: fields merged into each summary.json (for example a failed isolation gate).
+function fakeExec({ quality = {}, trusted = true, calls = [], unloaded = [], summary = {} } = {}) {
   const flag = (argv, name) => { const i = argv.indexOf(`--${name}`); return i < 0 ? null : argv[i + 1]; };
   const exec = async ({ argv }) => {
     calls.push(argv);
@@ -55,12 +56,13 @@ function fakeExec({ quality = {}, trusted = true, calls = [] } = {}) {
           const p = quality[arm] ?? 0.8;
           const i = ti * reps + rep - 1;
           const passed = Math.max(0, Math.min(10, Math.round(10 * (p + (i % 2 ? 0.1 : -0.1)))));
-          rows.push({ arm, task, rep, loads: screened.length ? screened.filter((k) => arm !== `del-${k}`) : skill && arm !== 'del' ? [skill] : [], credits: 4, hiddenTests: { passed, total: 10 } });
+          const loads = unloaded.includes(arm) ? [] : screened.length ? screened.filter((k) => arm !== `del-${k}`) : skill && arm !== 'del' ? [skill] : [];
+          rows.push({ arm, task, rep, loads, credits: 4, hiddenTests: { passed, total: 10 } });
         }
       });
     }
     makeRunDir(out, { arms, runs: rows });
-    write(path.join(out, 'summary.json'), JSON.stringify({ interrupted: null, isolationGate: { ok: true }, armIds, replicates: reps, taskIds: tasks, results: rows.map(() => ({ status: 'success' })) }));
+    write(path.join(out, 'summary.json'), JSON.stringify({ interrupted: null, isolationGate: { ok: true }, armIds, replicates: reps, taskIds: tasks, results: rows.map(() => ({ status: 'success' })), ...summary }));
     write(path.join(out, 'credit-ledger.jsonl'), `${rows.map(() => JSON.stringify({ kind: 'run', credits: 4, charged: 4 })).join('\n')}\n`);
     return { code: 0 };
   };

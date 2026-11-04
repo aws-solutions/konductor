@@ -34,7 +34,7 @@ const FLAGS = {
   ],
   'cap draft': ['cap', 'n', 'model', 'model-cmd', 'base', 'out', 'isolate', 'kiro-bin', 'auth-db', 'hide', 'repo-root', 'bench-dir'],
   'cap import': ['from', 'cap', 'n', 'out', 'repo-root', 'bench-dir'],
-  'cap scenarios': ['cap', 'n', 'model', 'model-cmd', 'base', 'out', 'isolate', 'kiro-bin', 'auth-db', 'hide', 'repo-root', 'bench-dir', 'dry-run'],
+  'cap scenarios': ['cap', 'n', 'mode', 'seed-queries', 'model', 'model-cmd', 'base', 'out', 'isolate', 'kiro-bin', 'auth-db', 'hide', 'repo-root', 'bench-dir', 'dry-run'],
   'cap controls': ['out', 'base', 'reps', 'scratch', 'agent-engine', 'repo-root', 'bench-dir', 'check', 'base-arm', 'aa', 'keep', 'prune', 'extra-tasks', 'json'],
   'cap trigger': [
     'cap', 'mode', 'split', 'reps', 'crosscheck', 'crosscheck-run', 'harness', 'base', 'queries', 'out', 'model', 'model-cmd', 'from-run', 'from-arm', 'acting-agent',
@@ -45,9 +45,10 @@ const FLAGS = {
   'cap skill-plan': ['base', 'runs', 'runs-glob', 'tier', 'only', 'tasks-per-skill', 'reps', 'max-sections', 'min-section-bytes', 'large', 'large-top', 'duplicates', 'agent-engine', 'model', 'arm-config', 'credits-per-run', 'sec-per-run', 'judge-usd-per-run', 'budget-credits', 'profile', 'repo-root', 'bench-dir', 'extra-tasks', 'allow-regex', 'screen', 'screen-tasks', 'out', 'json'],
   'cap skill-study': [
     'base', 'runs', 'runs-glob', 'tier', 'only', 'tasks-per-skill', 'reps', 'max-sections', 'min-section-bytes', 'large', 'large-top', 'duplicates', 'agent-engine', 'model', 'arm-config', 'credits-per-run', 'sec-per-run', 'judge-usd-per-run', 'budget-credits', 'profile', 'repo-root', 'bench-dir', 'extra-tasks', 'allow-regex', 'screen', 'screen-tasks', 'study', 'init', 'status', 'dry-run', 'seed', 'scratch', 'control-reps', 'judge-backend', 'aws-creds-file', 'aws-profile', 'aws-region', 'budget-usd',
-    'wave-budget-credits', 'auth-db', 'cache', 'cargo-target', 'kiro-bin', 'opencode-bin',
+    'wave-budget-credits', 'auth-db', 'cache', 'cargo-target', 'kiro-bin', 'opencode-bin', 'forced-load',
   ],
   'cap decide': ['study', 'out', 'json', 'repo-root', 'bench-dir', 'extra-tasks', 'no-patches'],
+  'cap forced-prefix': ['cap', 'harness', 'base', 'out', 'repo-root', 'bench-dir'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
     'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',
@@ -55,7 +56,7 @@ const FLAGS = {
 };
 
 // Commands whose first word selects the sub-command and therefore the flag table.
-const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide'] };
+const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'variant', 'plan', 'draft', 'import', 'trigger', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide', 'forced-prefix'] };
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([

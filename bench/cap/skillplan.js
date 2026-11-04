@@ -216,6 +216,7 @@ function planSkillStudy({
       rec.steps = [
         `node bench/runner/bench.js cap audit --cap ${cap.id} --base ${base}`,
         `node bench/runner/bench.js cap trigger --cap ${cap.id} --mode proxy --base ${base}   (needs queries: cap draft first; about 0.8 credits to draft, about 0.09 per proxy call)`,
+        `node bench/runner/bench.js cap scenarios --cap ${cap.id} --mode trigger --base ${base} --dry-run   (tasks that should load it and near misses that should not; review them, then drop --dry-run for one model call)`,
       ];
       continue;
     }
@@ -230,7 +231,7 @@ function planSkillStudy({
     if (shortfall) rec.warnings.push(`${shortfall} more scenario${shortfall === 1 ? '' : 's'} needed (profile ${prof.name} wants ${target} per skill): draft them with cap scenarios, review, add them as tasks`);
     if (pk.skippedRegexOnly.length) rec.warnings.push(`left out regex-only tasks: ${pk.skippedRegexOnly.join(', ')}`);
     if (pk.skippedReal.length) rec.warnings.push(`left out real-repo tasks (they need a repo cache the study does not pass): ${pk.skippedReal.join(', ')}`);
-    if (!rec.exposure.runsLoaded) rec.warnings.push('never loaded in the supplied runs: if the study tasks do not make the agent load it, the result is NEEDS DATA, not a delete');
+    if (!rec.exposure.runsLoaded) rec.warnings.push('never loaded in the supplied runs: if the study tasks do not make the agent load it, the result is NEEDS DATA, not a delete; draft tasks that should load it with cap scenarios --mode trigger, and add --forced-load low-load to the study to see what it does once loaded (reported apart, never a call)');
     const judged = (pk.chosen.filter((id) => scoringOf(tasks.get(id)) !== 'hidden').length + shortfall) / Math.max(1, target);
 
     const text = texts.get(cap.name) ?? '';
