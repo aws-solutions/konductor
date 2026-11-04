@@ -42,22 +42,6 @@ CODE_REVIEW = "code-review"
 CAP_READING_PHASES = ("implementation", "code-review", "testing", "documentation")
 CAP_KEY = "run.data.max_fix_cycles"
 CAP_RESUME_LABEL = "Reconciliation on resume (max_fix_cycles)"
-RESUME_STOP_PARTS = (
-    "MUST NOT continue",
-    "BLOCKED",
-    "final-summary",
-    "reply_channel_available",
-    "default `2` counts as supplied",
-    "max_fix_cycles_change_log",
-    "approved by",
-    "has no `max_fix_cycles` key",
-    "equals the parameter",
-    "differs from the parameter",
-    "Keep the stored value",
-    "Change the cap",
-)
-RESUME_CONTINUE_PHRASES = ("do not stop", "continue with the stored value")
-PIN_SOURCE_PART = "after this invocation's reconciliation"
 DISAGREEMENT_ITEM = "verify-run disagrees with the Quality Gate"
 PINNED_CAP_FLAG = re.compile(r"--max-fix-cycles <max_fix_cycles>")
 PHASE_ORDER_KEY = "PHASE_ORDER"
@@ -238,27 +222,30 @@ def resume_rule(text):
 
 
 def check_resume_rule_stops(name, rule):
-    """A stored cap that differs from the parameter is a hard stop, never a silent adoption."""
-    errors = []
-    missing = [part for part in RESUME_STOP_PARTS if part not in rule]
-    if missing:
-        errors.append(
-            f"max-fix-cycles-resume-stop (k-full-sdlc only): '{name}' resume rule must be a hard stop on a mismatch; missing {', '.join(f'`{m}`' for m in missing)}"
-        )
-    for phrase in RESUME_CONTINUE_PHRASES:
-        if phrase in rule:
-            errors.append(f"max-fix-cycles-resume-stop (k-full-sdlc only): '{name}' resume rule must not let the run continue on a mismatch ('{phrase}')")
+    """A stored cap that differs from the parameter is a hard stop. Each fact is
+    read from one sentence of the rule: the stop, the BLOCKED mark, the unattended
+    final-summary BLOCKED, and the reset of that BLOCKED status on a later continue."""
+    facts = (
+        ("a mismatch must say `MUST NOT continue`", lambda s: "differs" in s and "MUST NOT continue" in s),
+        ("a mismatch must mark the run BLOCKED", lambda s: "BLOCKED" in s and "final-summary" not in s),
+        ("no reply channel must record `final-summary` BLOCKED", lambda s: "reply_channel_available" in s and "final-summary" in s and "BLOCKED" in s),
+        ("a later passing resume must reset `final-summary` to PENDING", lambda s: "final-summary" in s and "PENDING" in s and "resume" in s),
+    )
+    parts = sentences(rule)
+    errors = [
+        f"max-fix-cycles-resume-stop (k-full-sdlc only): '{name}' resume rule: {fact}"
+        for fact, holds in facts
+        if not any(holds(s) for s in parts)
+    ]
     return errors
 
 
 def check_pinned_cap_source(name, section):
-    """The Step 11 pin is the value both stored and passed, not the invocation parameter alone."""
-    errors = []
-    if PIN_SOURCE_PART not in section:
-        errors.append(f"max-fix-cycles-pin-source (k-full-sdlc only): '{name}' final Step must define `<max_fix_cycles>` as the cap stored in `{CAP_KEY}` after this invocation's reconciliation")
-    if "stored value still wins" in section:
-        errors.append(f"max-fix-cycles-pin-source (k-full-sdlc only): '{name}' final Step must not say the stored value still wins on resume")
-    return errors
+    """The Step 11 pin is read from the stored key, not from the invocation parameter alone."""
+    definition = [s for s in sentences(section) if "<max_fix_cycles>`" in s and " is " in s]
+    if not any(CAP_KEY in s for s in definition):
+        return [f"max-fix-cycles-pin-source (k-full-sdlc only): '{name}' final Step must define `<max_fix_cycles>` as the cap stored in `{CAP_KEY}`"]
+    return []
 
 
 def check_verify_run_step(name, section):

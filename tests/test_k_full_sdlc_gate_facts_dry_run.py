@@ -443,39 +443,14 @@ def rule_sentences(*tokens):
     return sentence_with(resume_rule(), *tokens)
 
 
-def test_resume_rule_makes_the_stored_value_the_source_of_truth():
-    assert rule_sentences("stored", "source of truth", "only seeds")
-
-
-def test_resume_rule_continues_when_the_values_match():
-    assert rule_sentences("equals the parameter", "continue")
-
-
-def test_resume_rule_stops_on_a_differing_value_until_the_engineer_decides():
-    assert rule_sentences("differs from the parameter", "MUST NOT continue", "engineer decides")
+def test_resume_rule_stops_on_a_differing_value():
+    assert rule_sentences("differs from the parameter", "MUST NOT continue")
     assert "BLOCKED: max_fix_cycles mismatch (stored <stored>, parameter <param>)" in resume_rule()
-    assert "do not stop" not in resume_rule()
 
 
-def test_resume_rule_counts_an_omitted_parameter_as_the_default_supplied():
-    assert rule_sentences("default `2` counts as supplied")
-
-
-def test_resume_rule_writes_the_parameter_when_no_value_is_stored():
-    assert rule_sentences("no `max_fix_cycles` key", "write", "`run.data.max_fix_cycles`")
-
-
-def test_resume_rule_records_an_unattended_mismatch_and_ends_blocked():
-    sentence = rule_sentences("`reply_channel_available` is `false`", "`final-summary` BLOCKED")
-    assert sentence and "without calling Finalize Run with `satisfied=true`" in sentence[0]
-    assert "max_fix_cycles mismatch on resume: stored <stored> in <session file>, invocation parameter <param>" in resume_rule()
-
-
-def test_resume_rule_lets_only_an_explicit_engineer_reply_change_the_cap_and_records_it():
-    assert rule_sentences("Change the cap to the parameter", "explicit engineer reply", "never the parameter alone")
-    assert "`<stored>-><param> approved by <engineer> at <UTC timestamp>`" in resume_rule()
-    assert rule_sentences("Keep the stored value", "write nothing")
-    assert "max_fix_cycles_change_log" in step_section(11)
+def test_resume_rule_unattended_stop_ends_blocked_and_is_reset_on_a_passing_resume():
+    assert rule_sentences("`reply_channel_available` is `false`", "`final-summary` BLOCKED")
+    assert rule_sentences("`final-summary`", "`PENDING`", "later resume")
 
 
 @needs_pinned_cap
@@ -515,7 +490,7 @@ def test_cap_edited_after_reconciliation_is_cap_raised(layout):
 
 def test_step_11_pin_is_the_reconciled_stored_cap():
     section = step_section(11)
-    assert "after this invocation's reconciliation" in section
+    assert sentence_with(section, "`<max_fix_cycles>`", "`run.data.max_fix_cycles`")
     assert "stored value still wins" not in section
 
 

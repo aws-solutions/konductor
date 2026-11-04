@@ -58,7 +58,7 @@ def test_valid_fixture_passes_silently(case):
         ("gate-verdict-missing", "gate-approval-result (k-full-sdlc only): 'k-full-sdlc' Step for 'code-review' does not name gate_code-review_verdict"),
         ("max-fix-cycles-unread", "max-fix-cycles-unread (k-full-sdlc only): 'k-full-sdlc' Step for 'implementation' does not read the cap from `run.data.max_fix_cycles`"),
         ("max-fix-cycles-resume-missing", "max-fix-cycles-resume (k-full-sdlc only): 'k-full-sdlc' lacks the 'Reconciliation on resume (max_fix_cycles)' rule"),
-        ("max-fix-cycles-resume-continues", "max-fix-cycles-resume-stop (k-full-sdlc only): 'k-full-sdlc' resume rule must"),
+        ("max-fix-cycles-resume-continues", "max-fix-cycles-resume-stop (k-full-sdlc only): 'k-full-sdlc' resume rule: a mismatch must say `MUST NOT continue`"),
         ("max-fix-cycles-pin-source", "max-fix-cycles-pin-source (k-full-sdlc only): 'k-full-sdlc' final Step must"),
         ("verify-run-disagreement-missing", "verify-run-disagreement (k-full-sdlc only): 'k-full-sdlc' final Step does not force `satisfied=false`"),
         ("verify-run-gate-check-heading", "verify-run-step (k-full-sdlc only): 'k-full-sdlc' final Step's Expected Output does not name the `Gate check` section"),
