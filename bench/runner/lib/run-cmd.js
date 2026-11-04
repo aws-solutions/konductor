@@ -157,7 +157,7 @@ async function cmdRun(opts) {
   const variants = arms.map(attachVariant).filter(Boolean);
   const runtimes = [...new Set(arms.map((a) => harnessFor(a).id))];
   const agentEngine = engineOpt(opts, runtimes);
-  if (!runtimes.includes('claude-code')) for (const flag of ['claude-bin', 'run-budget-usd']) if (opts[flag] !== undefined) throw new Error(`--${flag} applies to Claude Code (cc-) arms only`);
+  if (!runtimes.includes('claude-code')) for (const flag of ['claude-bin', 'claude-tools-dir', 'run-budget-usd']) if (opts[flag] !== undefined) throw new Error(`--${flag} applies to Claude Code (cc-) arms only`);
   if (prepareOnly) return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
   if (runtimes.length > 1) throw new Error(`arms from different harnesses cannot share one run (${arms.map((a) => `${a.id}: ${harnessFor(a).id}`).join(', ')}); run them separately with different --out`);
   const isOc = runtimes[0] === 'opencode';
@@ -268,7 +268,8 @@ async function cmdRun(opts) {
       log(`opencode ${ctx.opencode.version} (${ctx.opencode.bin}), sha256 ${ctx.opencode.sha256.slice(0, 12)}, model ${oc.PROVIDER}/${config.model}, variant ${config.effort}, region ${oc.REGION}`);
     }
     if (isCc) {
-      ctx.claude = cc.resolveClaude({ binOverride: opts['claude-bin'] && opts['claude-bin'] !== true ? opts['claude-bin'] : null });
+      const flagValue = (name) => (opts[name] && opts[name] !== true ? opts[name] : null);
+      ctx.claude = cc.resolveClaude({ binOverride: flagValue('claude-bin') ?? undefined, toolsDir: flagValue('claude-tools-dir') ?? undefined });
       Object.assign(ctx, { region: ccRegion, runBudgetUsd });
       log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, credentials from the environment (${cc.credentialNames().join(', ')})`);
       const shadow = cc.PROFILE_VARS.filter((k) => process.env[k]);

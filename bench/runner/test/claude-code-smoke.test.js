@@ -144,7 +144,7 @@ test('a failing run fails the smoke with the reason, and the script still cleans
   }
 });
 
-test('preflight refuses the wrong account, a missing credential source and the toolbox wrapper before claude starts', () => {
+test('preflight refuses the wrong account, a missing credential source and a launcher before claude starts', () => {
   const s = setup();
   try {
     const wrong = smoke(s, ['--profile', 'good', '--only', 'vanilla', '--account', '999999999999'], { FAKE_AWS_ACCOUNT: ACCOUNT });
@@ -156,16 +156,21 @@ test('preflight refuses the wrong account, a missing credential source and the t
     const bad = smoke(s, ['--profile', 'nope', '--only', 'vanilla']);
     assert.equal(bad.status, 2);
     assert.match(bad.stderr, /aws configure export-credentials failed for profile nope/);
-    const wrapper = path.join(s.root, '.toolbox', 'bin', 'claude');
-    fs.mkdirSync(path.dirname(wrapper), { recursive: true });
-    fs.copyFileSync(s.bin, wrapper);
-    fs.chmodSync(wrapper, 0o755);
-    const w = spawnSync('bash', [SCRIPT, '--claude-bin', wrapper, '--profile', 'good', '--dry-run'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, SMOKE_SCRATCH_ROOT: s.scratchRoot } });
+    const launcher = path.join(s.root, 'launcher', 'claude');
+    fs.mkdirSync(path.dirname(launcher), { recursive: true });
+    fs.writeFileSync(launcher, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    const w = spawnSync('bash', [SCRIPT, '--claude-bin', launcher, '--profile', 'good', '--dry-run'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, SMOKE_SCRATCH_ROOT: s.scratchRoot } });
     assert.equal(w.status, 2);
-    assert.match(w.stdout + w.stderr, /toolbox wrapper/);
+    assert.match(w.stdout + w.stderr, /this is a launcher, not the claude binary/);
+    const noSource = spawnSync('bash', [SCRIPT, '--profile', 'good', '--dry-run'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, SMOKE_SCRATCH_ROOT: s.scratchRoot } });
+    assert.equal(noSource.status, 2);
+    assert.match(noSource.stdout + noSource.stderr, /pass --claude-bin PATH or --claude-tools-dir DIR/);
+    const viaDir = spawnSync('bash', [SCRIPT, '--claude-tools-dir', path.join(s.root, 'tools'), '--profile', 'good', '--dry-run'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, SMOKE_SCRATCH_ROOT: s.scratchRoot } });
+    assert.equal(viaDir.status, 0, viaDir.stderr);
+    assert.match(viaDir.stdout, /claude 9\.9\.9 at /);
     assert.equal(started(s), false, 'claude was never started');
     assert.equal(fs.readdirSync(s.scratchRoot).length, 0);
-    for (const r of [wrong, none, bad]) noSecrets(r);
+    for (const r of [wrong, none, bad, w, noSource, viaDir]) noSecrets(r);
   } finally {
     s.cleanup();
   }

@@ -3,9 +3,12 @@
 
 // Builds a stand-in `claude` (a node script) at <toolsDir>/<version>/claude. It replays a recorded stream-json file and
 // records how it was started. Behavior comes from fake-claude.config.json next to it. It never contacts anything.
+// <version>/claude is a shell stub that execs the node script next to it, followed by a sparse tail that brings the file to
+// the size the harness expects of the real binary (the shell never reads that far).
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { MIN_BINARY_BYTES } = require('../lib/harness/claude-code.js');
 
 const SCRIPT = `#!/usr/bin/env node
 // the real binary carries the --include-hook-events flag text; the fake does too so the harness detects it
@@ -38,11 +41,15 @@ process.stdout.write(fs.readFileSync(cfg.streamFile, 'utf8'));
 process.exit(cfg.exitCode || 0);
 `;
 
+const stub = () => `#!/bin/sh\nexec '${process.execPath}' "$(dirname "$0")/fake-claude.js" "$@"\n# the real binary carries the --include-hook-events flag text; the stub does too so the harness detects it\n`;
+
 function makeFakeClaude(toolsDir, config, version = '9.9.9') {
   const dir = path.join(toolsDir, version);
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, 'claude');
-  fs.writeFileSync(file, SCRIPT, { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'fake-claude.js'), SCRIPT);
+  fs.writeFileSync(file, stub(), { mode: 0o755 });
+  fs.truncateSync(file, MIN_BINARY_BYTES + 1);
   fs.writeFileSync(path.join(dir, 'fake-claude.config.json'), JSON.stringify(config));
   return file;
 }

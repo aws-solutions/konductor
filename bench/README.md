@@ -109,7 +109,7 @@ list-price cost the stream reports, `credits` null. One harness per run; `compar
 ```bash
 # credentials: export them in the shell that starts the bench (names below), then
 node bench/runner/bench.js run --suite lite --arms cc-vanilla,cc-main --out $OUT \
-  --budget-usd 5 [--run-budget-usd 1] [--aws-region us-east-1] [--claude-bin PATH] [--repo-root DIR]
+  --budget-usd 5 [--run-budget-usd 1] [--aws-region us-east-1] (--claude-bin PATH | --claude-tools-dir DIR) [--repo-root DIR]
 bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first run; see "Smoke test" below
 ```
 - Arms: `cc-vanilla` (empty config dir, no `--agent`), `cc-main`, `cc-name=<git ref>` (same grammar as `oc-`). A konductor arm is
@@ -117,9 +117,10 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   HOME (the install writes absolute paths, so it is repeated per run). It starts in `--agent konductor`. The ref must carry the
   dashed model pin (`model: claude-sonnet-5-5`) on every agent: a dotted pin is not a Bedrock id and sub-agent spawns fail, so
   the install is refused with that reason, as is any install that does not give exactly 11 agents.
-- The binary: the newest `~/.toolbox/tools/claude-code/<version>/claude`, or `--claude-bin` (`BENCH_CLAUDE_BIN`). The toolbox
-  wrapper (`~/.toolbox/bin/claude`) is refused: it ignores `AWS_PROFILE`, installs plugins and writes a settings file that
-  overrides the model and region, so a vanilla arm through it is not vanilla. Version, path and sha256 go to run-config.
+- The binary: `--claude-bin PATH` (`BENCH_CLAUDE_BIN`), or the newest `<version>/claude` under `--claude-tools-dir DIR`
+  (`BENCH_CLAUDE_TOOLS_DIR`). There is no default location. A launcher script is refused (the resolved file must be named
+  `claude` and be at least 50 MB): a launcher can override the model, region and credentials, so a vanilla arm through it is
+  not vanilla. Version, path and sha256 go to run-config.
 - Command: `claude -p PROMPT --output-format stream-json --verbose --model us.anthropic.claude-sonnet-5-5 --max-budget-usd N
   --permission-mode acceptEdits [--agent konductor] [--include-hook-events] --allowedTools Bash Edit Write Read`, stdin from
   `/dev/null`. `--max-budget-usd` is `--run-budget-usd` (default 5). `--effort`, `--stop-on`, `--max-tool-calls`,

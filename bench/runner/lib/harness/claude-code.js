@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The Claude Code harness: `claude -p` on Amazon Bedrock, run from the real binary in the toolbox tools directory (never
-// the toolbox wrapper, which ignores AWS_PROFILE, installs plugins and overrides the model). Konductor arms install the
-// ref's `claude` harness content into the run's scratch HOME. Cost is the list-price USD the stream reports.
+// The Claude Code harness: `claude -p` on Amazon Bedrock, run from the real binary (never a launcher script, which can
+// override the model, region and credentials). Konductor arms install the ref's `claude` harness content into the run's
+// scratch HOME. Cost is the list-price USD the stream reports.
 
 const fs = require('node:fs');
 const os = require('node:os');
@@ -33,7 +33,8 @@ const CREDENTIAL_VARS = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESS
 // With any of these set the AWS SDK ignores the exported keys and looks the profile up in the scratch HOME.
 const PROFILE_VARS = ['AWS_PROFILE', 'AWS_DEFAULT_PROFILE', 'AWS_CONFIG_FILE', 'AWS_SHARED_CREDENTIALS_FILE'];
 const THROTTLE = /throttl|too many requests|rate.?limit|\b429\b/i;
-const WRAPPER_DIR = `${path.sep}.toolbox${path.sep}bin${path.sep}`;
+// The real binary is a few hundred MB; a launcher script is a few KB.
+const MIN_BINARY_BYTES = 50 * 1024 * 1024;
 
 // ---- Binary ----
 
@@ -45,11 +46,16 @@ function compareVersions(a, b) {
   return 0;
 }
 
-const isWrapper = (bin) => {
+/** Why `bin` is not the claude binary, or null when it looks like it: the resolved file is named `claude` and is large. */
+function launcherProblem(bin, minBytes) {
   let real = bin;
   try { real = fs.realpathSync(bin); } catch { /* judged by the given path */ }
-  return [bin, real].some((p) => p.includes(WRAPPER_DIR));
-};
+  if (path.basename(real) !== 'claude') return `its file name is ${path.basename(real)}, not claude`;
+  let size = 0;
+  try { size = fs.statSync(real).size; } catch { /* reported as too small */ }
+  if (size < minBytes) return `it is ${size} bytes, far smaller than the real binary`;
+  return null;
+}
 
 const executable = (file) => { try { fs.accessSync(file, fs.constants.X_OK); return fs.statSync(file).isFile(); } catch { return false; } };
 
@@ -72,13 +78,14 @@ function binaryContains(file, needle) {
 }
 
 /**
- * The claude binary a run uses: `binOverride` (or BENCH_CLAUDE_BIN), else the newest version under
- * ~/.toolbox/tools/claude-code (or BENCH_CLAUDE_TOOLS_DIR). The toolbox wrapper is refused.
+ * The claude binary a run uses: `binOverride` (or BENCH_CLAUDE_BIN), else the newest `<version>/claude` under `toolsDir`
+ * (or BENCH_CLAUDE_TOOLS_DIR). There is no default location. A launcher script is refused.
  */
-function resolveClaude({ binOverride = process.env.BENCH_CLAUDE_BIN || null, toolsDir = process.env.BENCH_CLAUDE_TOOLS_DIR || path.join(os.homedir(), '.toolbox', 'tools', 'claude-code') } = {}) {
+function resolveClaude({ binOverride = process.env.BENCH_CLAUDE_BIN || null, toolsDir = process.env.BENCH_CLAUDE_TOOLS_DIR || null, minBytes = MIN_BINARY_BYTES } = {}) {
   let bin = binOverride ? path.resolve(binOverride) : null;
   let version = null;
   if (!bin) {
+    if (!toolsDir) throw new Error('no claude binary given; pass --claude-bin PATH or --claude-tools-dir DIR (BENCH_CLAUDE_BIN, BENCH_CLAUDE_TOOLS_DIR)');
     let versions = [];
     try {
       versions = fs.readdirSync(toolsDir, { withFileTypes: true })
@@ -89,8 +96,9 @@ function resolveClaude({ binOverride = process.env.BENCH_CLAUDE_BIN || null, too
     version = versions.sort(compareVersions).at(-1);
     bin = path.join(toolsDir, version, 'claude');
   }
-  if (isWrapper(bin)) throw new Error(`${bin} is the toolbox wrapper, which ignores AWS_PROFILE, installs plugins and overrides the model; use the real binary under ${toolsDir}`);
   if (!executable(bin)) throw new Error(`claude binary is not executable: ${bin}`);
+  const problem = launcherProblem(bin, minBytes);
+  if (problem) throw new Error(`${bin}: this is a launcher, not the claude binary; it can override the model, region and credentials (${problem}). Pass the real binary with --claude-bin PATH or --claude-tools-dir DIR`);
   version = version ?? path.basename(path.dirname(bin)).match(/^\d+(\.\d+)+$/)?.[0] ?? 'unknown';
   return { bin, version, sha256: sandbox.sha256File(bin), supportsHookEvents: binaryContains(bin, '--include-hook-events') };
 }
@@ -385,5 +393,5 @@ module.exports = {
   id, PROVIDER, DEFAULT_MODEL, REGION, PERMISSION_MODE, ALLOWED_TOOLS, DEFAULT_RUN_BUDGET_USD, EXPECTED_AGENTS, BUILTIN_AGENTS, CREDENTIAL_VARS, PROFILE_VARS,
   prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths,
   parseResult, turnSummary, collectArtifacts, orchMetrics, finalize, secrets, cleanupRun, describeCleanup, runConfigRecord,
-  resolveClaude, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
+  resolveClaude, MIN_BINARY_BYTES, binaryContains, compareVersions, canonicalModel, checkCredentials, credentialNames, checkInstalledAgents, agentPins, slugOf,
 };

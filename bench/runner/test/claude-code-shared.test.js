@@ -109,7 +109,7 @@ test('one run directory holds one harness: a Claude Code result next to a kiro-c
 });
 
 test('the run flags for Claude Code are in the flag table', () => {
-  for (const f of ['claude-bin', 'run-budget-usd', 'aws-region']) assert.ok(FLAGS.run.includes(f), f);
+  for (const f of ['claude-bin', 'claude-tools-dir', 'run-budget-usd', 'aws-region']) assert.ok(FLAGS.run.includes(f), f);
 });
 
 function cliRoot(cfg = {}) {
@@ -209,16 +209,37 @@ test('CLI: missing credentials stop the run before claude starts and the message
   }
 });
 
-test('CLI: the toolbox wrapper is refused as the claude binary', async () => {
+test('CLI: a launcher is refused as the claude binary', async () => {
   const s = cliRoot();
   try {
-    const wrapper = path.join(s.root, '.toolbox', 'bin', 'claude');
-    fs.mkdirSync(path.dirname(wrapper), { recursive: true });
-    fs.copyFileSync(s.bin, wrapper);
-    fs.chmodSync(wrapper, 0o755);
-    const r = await collect(cli({ ...s, bin: wrapper }, ['--arms', 'cc-vanilla', '--out', path.join(s.root, 'o')]));
+    const launcher = path.join(s.root, 'launcher', 'claude');
+    fs.mkdirSync(path.dirname(launcher), { recursive: true });
+    fs.writeFileSync(launcher, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    const r = await collect(cli({ ...s, bin: launcher }, ['--arms', 'cc-vanilla', '--out', path.join(s.root, 'o')]));
     assert.notEqual(r.code, 0);
-    assert.match(r.err, /toolbox wrapper/);
+    assert.match(r.err, /this is a launcher, not the claude binary/);
+    assert.equal(fs.existsSync(path.join(s.probe, 'started.json')), false);
+  } finally {
+    fs.rmSync(s.root, { recursive: true, force: true });
+  }
+});
+
+test('CLI: --claude-tools-dir picks the newest binary there, and with no binary source the run stops', async () => {
+  const s = cliRoot();
+  try {
+    const viaDir = (extra) => spawn(process.execPath, [
+      BENCH_JS, 'run', '--suite', 'lite', '--tasks', 't1', '--isolate', 'none', '--allow-unisolated', '--bench-dir', s.bench, '--cache', path.join(s.root, 'cache'),
+      '--repo-root', s.root, '--arms', 'cc-vanilla', '--out', path.join(s.root, 'o'), ...extra,
+    ], { env: { PATH: process.env.PATH, HOME: path.join(s.root, 'home'), TMPDIR: path.join(s.root, 'tmp'), ...CC_ENV }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const none = await collect(viaDir([]));
+    assert.notEqual(none.code, 0);
+    assert.match(none.err, /pass --claude-bin PATH or --claude-tools-dir DIR/);
+    assert.equal(fs.existsSync(path.join(s.probe, 'started.json')), false);
+    const ok = await collect(viaDir(['--claude-tools-dir', path.join(s.root, 'tools')]));
+    assert.equal(ok.code, 0, ok.err.slice(-600));
+    assert.match(ok.err, /claude 9\.9\.9 \(/);
+    const kiro = await collect(spawn(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--tasks', 't1', '--bench-dir', s.bench, '--arms', 'vanilla', '--claude-tools-dir', path.join(s.root, 'tools'), '--repo-root', s.root, '--prepare-only'], { env: { PATH: process.env.PATH, HOME: path.join(s.root, 'home') }, stdio: ['ignore', 'pipe', 'pipe'] }));
+    assert.match(kiro.err, /--claude-tools-dir applies to Claude Code \(cc-\) arms only/);
   } finally {
     fs.rmSync(s.root, { recursive: true, force: true });
   }

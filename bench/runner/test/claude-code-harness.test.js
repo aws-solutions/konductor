@@ -98,20 +98,54 @@ test('resolveClaude picks the newest version by number and records it', () => {
   }
 });
 
-test('resolveClaude refuses the toolbox wrapper, also through a symlink', () => {
+test('resolveClaude refuses a launcher by file name or size, also through a symlink', () => {
   const root = tmp();
   try {
     const real = makeFakeClaude(path.join(root, 'tools'), { dir: root });
-    const wrapper = path.join(root, '.toolbox', 'bin', 'claude');
-    fs.mkdirSync(path.dirname(wrapper), { recursive: true });
-    fs.copyFileSync(real, wrapper);
-    fs.chmodSync(wrapper, 0o755);
-    assert.throws(() => cc.resolveClaude({ binOverride: wrapper }), /toolbox wrapper/);
-    const link = path.join(root, 'claude-link');
-    fs.symlinkSync(wrapper, link);
-    assert.throws(() => cc.resolveClaude({ binOverride: link }), /toolbox wrapper/);
+    const small = path.join(root, 'launcher', 'claude');
+    write(small, '#!/bin/sh\nexec true\n');
+    fs.chmodSync(small, 0o755);
+    assert.throws(() => cc.resolveClaude({ binOverride: small }), /this is a launcher, not the claude binary; it can override the model, region and credentials/);
+    const renamed = path.join(root, 'launcher', 'run-claude');
+    write(renamed, '#!/bin/sh\nexit 0\n');
+    fs.chmodSync(renamed, 0o755);
+    fs.truncateSync(renamed, cc.MIN_BINARY_BYTES + 1);
+    assert.throws(() => cc.resolveClaude({ binOverride: renamed }), /its file name is run-claude, not claude/, 'a large file with another name is not claude');
+    assert.throws(() => cc.resolveClaude({ binOverride: small }), /it is \d+ bytes, far smaller/);
+    const alias = path.join(root, 'alias', 'claude-link');
+    fs.mkdirSync(path.dirname(alias), { recursive: true });
+    fs.symlinkSync(real, alias);
+    assert.equal(cc.resolveClaude({ binOverride: alias }).bin, alias, 'a symlink to the real file is judged by its target');
+    const named = path.join(root, 'launcher2', 'claude');
+    fs.mkdirSync(path.dirname(named), { recursive: true });
+    fs.symlinkSync(small, named);
+    assert.throws(() => cc.resolveClaude({ binOverride: named }), /this is a launcher/, 'a symlink is judged by its target');
+    const viaOther = path.join(root, 'launcher3', 'claude');
+    fs.mkdirSync(path.dirname(viaOther), { recursive: true });
+    fs.symlinkSync(renamed, viaOther);
+    assert.throws(() => cc.resolveClaude({ binOverride: viaOther }), /this is a launcher/, 'a symlink named claude to a file with another name is refused');
     assert.equal(cc.resolveClaude({ binOverride: real }).bin, real);
+    assert.equal(cc.resolveClaude({ binOverride: small, minBytes: 1 }).bin, small, 'the size floor can be lowered by the caller');
   } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('resolveClaude has no default location: it needs a binary or a tools directory', () => {
+  const env = { BENCH_CLAUDE_BIN: process.env.BENCH_CLAUDE_BIN, BENCH_CLAUDE_TOOLS_DIR: process.env.BENCH_CLAUDE_TOOLS_DIR };
+  delete process.env.BENCH_CLAUDE_BIN;
+  delete process.env.BENCH_CLAUDE_TOOLS_DIR;
+  const root = tmp();
+  try {
+    assert.throws(() => cc.resolveClaude(), /pass --claude-bin PATH or --claude-tools-dir DIR/);
+    const bin = makeFakeClaude(path.join(root, 'tools'), { dir: root });
+    process.env.BENCH_CLAUDE_TOOLS_DIR = path.join(root, 'tools');
+    assert.equal(cc.resolveClaude().bin, bin, 'BENCH_CLAUDE_TOOLS_DIR is read');
+    delete process.env.BENCH_CLAUDE_TOOLS_DIR;
+    process.env.BENCH_CLAUDE_BIN = bin;
+    assert.equal(cc.resolveClaude().bin, bin, 'BENCH_CLAUDE_BIN is read');
+  } finally {
+    for (const [k, v] of Object.entries(env)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

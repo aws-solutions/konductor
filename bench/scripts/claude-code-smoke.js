@@ -18,7 +18,7 @@ const flag = (args, name) => { const i = args.indexOf(name); return i >= 0 ? arg
 const out = (line) => process.stdout.write(`${line}\n`);
 
 function resolve(args) {
-  const r = cc.resolveClaude({ binOverride: flag(args, '--claude-bin') ?? null });
+  const r = cc.resolveClaude({ binOverride: flag(args, '--claude-bin') ?? undefined, toolsDir: flag(args, '--claude-tools-dir') ?? undefined });
   out(`${r.bin}\t${r.version}\t${r.supportsHookEvents ? 'hooks' : 'nohooks'}\t${r.sha256.slice(0, 12)}`);
 }
 

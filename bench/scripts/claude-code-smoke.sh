@@ -8,7 +8,8 @@
 #   bash bench/scripts/claude-code-smoke.sh --profile NAME
 #
 # What it does:
-#   1. Finds the real claude binary (newest ~/.toolbox/tools/claude-code/<version>/claude; the toolbox wrapper is refused).
+#   1. Finds the real claude binary: --claude-bin, or the newest <version>/claude under --claude-tools-dir (BENCH_CLAUDE_BIN,
+#      BENCH_CLAUDE_TOOLS_DIR). A launcher script is refused.
 #   2. Takes AWS credentials from the environment, or exports them from --profile with
 #      `aws configure export-credentials`. They are handed to the bench through its environment only, never a file
 #      or a command line.
@@ -28,7 +29,8 @@
 #   --arm SPEC          konductor arm for the second run, default cc-smoke=<commit of the checkout this script is in>
 #                       (the commit must carry the dashed model pin on every agent file)
 #   --only WHICH        vanilla | konductor | both (default both)
-#   --claude-bin PATH   use this claude binary instead of the newest one under ~/.toolbox/tools/claude-code
+#   --claude-bin PATH   the claude binary to use
+#   --claude-tools-dir DIR  use the newest <version>/claude under DIR (one of the two is required)
 #   --cache DIR         arm build cache (default: inside the scratch directory, so a build is repeated each time)
 #   --cargo-target DIR  cargo target directory for the arm build (default: inside the scratch directory)
 #   --isolate MODE      passed to bench.js (auto, unshare, sandbox-exec, none; none also passes --allow-unisolated)
@@ -56,6 +58,7 @@ ACCOUNT=""
 ARM_SPEC=""
 ONLY=both
 CLAUDE_BIN_OPT=""
+CLAUDE_TOOLS_DIR_OPT=""
 CACHE_DIR=""
 CARGO_TARGET=""
 ISOLATE=""
@@ -87,6 +90,7 @@ while [ $# -gt 0 ]; do
     --arm) ARM_SPEC="${2:?--arm needs a spec}"; shift 2 ;;
     --only) ONLY="${2:?--only needs vanilla, konductor or both}"; shift 2 ;;
     --claude-bin) CLAUDE_BIN_OPT="${2:?--claude-bin needs a path}"; shift 2 ;;
+    --claude-tools-dir) CLAUDE_TOOLS_DIR_OPT="${2:?--claude-tools-dir needs a directory}"; shift 2 ;;
     --cache) CACHE_DIR="${2:?--cache needs a directory}"; shift 2 ;;
     --cargo-target) CARGO_TARGET="${2:?--cargo-target needs a directory}"; shift 2 ;;
     --isolate) ISOLATE="${2:?--isolate needs a mode}"; shift 2 ;;
@@ -206,7 +210,7 @@ run_bench() { # run_bench TASK ARMS OUTDIR
 }
 
 # ---------------------------------------------------------------- main
-resolve_line="$(node "$HELPER" resolve ${CLAUDE_BIN_OPT:+--claude-bin "$CLAUDE_BIN_OPT"})" || { printf '%s\n' "$resolve_line" >&2; die "cannot use a claude binary: ${resolve_line#FAIL resolve: }"; }
+resolve_line="$(node "$HELPER" resolve ${CLAUDE_BIN_OPT:+--claude-bin "$CLAUDE_BIN_OPT"} ${CLAUDE_TOOLS_DIR_OPT:+--claude-tools-dir "$CLAUDE_TOOLS_DIR_OPT"})" || { printf '%s\n' "$resolve_line" >&2; die "cannot use a claude binary: ${resolve_line#FAIL resolve: }"; }
 IFS=$'\t' read -r CLAUDE_BIN CLAUDE_VERSION CLAUDE_HOOKS CLAUDE_SHA <<<"$resolve_line"
 if [ -z "$ARM_SPEC" ]; then
   git -C "$REPO" rev-parse --verify HEAD >/dev/null 2>&1 || die "no git commit in $REPO; pass --arm SPEC"
