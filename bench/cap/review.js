@@ -87,8 +87,12 @@ function seenHash(runDir, { files = [], deleted = [] } = {}) {
   }));
 }
 
-// Files an earlier review left in a page directory that name arms or hold ratings; such a directory is never handed over.
-const KEY_LIKE = (name) => name !== PAGE_FILE && (/key/i.test(name) || name === 'raters' || name === 'sheet.json' || name.startsWith('.import-'));
+// What cap review and cap review-import write that names arms or holds ratings, by exact name: the key, the pooled
+// sheet and key, the raters/ directory, staging directories, and writeJson's temporary files for those. A page directory
+// holding any of them is never handed over. Anything else there, such as a downloaded ratings-*.json, is the rater's.
+const KEY_ARTIFACTS = new Set([KEY_FILE, 'key.json', 'sheet.json', 'raters']);
+const KEY_ARTIFACT_RE = /^(?:\.import-.+|(?:review-key|key|sheet)\.json\.tmp-\d+)$/;
+const KEY_LIKE = (name) => KEY_ARTIFACTS.has(name) || KEY_ARTIFACT_RE.test(name);
 const OLD_KEY = 'Regenerate it with `cap review --run DIR`; ratings made on the old page will not import';
 
 /**

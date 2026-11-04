@@ -310,9 +310,10 @@ when the detailed profile wrote one, and for each drawn task and replicate shows
 runs alone). The outputs are the judge bundles, with the same redaction and then credential scrubbing. Each task's outputs carry the
 letters A, B and so on in a seeded random order. Which arm is behind each letter is kept in `review-key.json`, which goes to its own
 directory, `DIR/calibration/review-key/` by default (`--key-out DIR`; a key directory that is the page directory or inside it is refused),
-so the page directory holds only `review.html` and can be handed to the rater whole. If the page directory already holds a key, a
-sheet, a `raters/` directory or any file with "key" in its name from an earlier review, `cap review` refuses and writes nothing, even
-with `--force`: move or delete it first. The key records the run directory relative to itself and no absolute path, and the page's
+so the page directory holds only `review.html` and can be handed to the rater whole. If the page directory already holds what a review
+or an import writes (`review-key.json`, `key.json`, `sheet.json`, a `raters/` directory, an `.import-*` staging directory, or a
+temporary `*.json.tmp-PID` of one of those files), `cap review` refuses and writes nothing, even with `--force`: move or delete it first.
+Other files there, such as a downloaded `ratings-*.json`, are left alone. The key records the run directory relative to itself and no absolute path, and the page's
 viewer id does not depend on where the run is. For each output it also records a hash of what the rater saw: the `stream.jsonl`
 bytes, the shown checks (`checksOriginal` when a recheck kept them, else `checks`), the questions and turns, and the raw bytes of the
 workspace files the bundle was built from. A `recheck` does not change it.

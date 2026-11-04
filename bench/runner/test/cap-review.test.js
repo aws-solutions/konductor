@@ -437,20 +437,24 @@ test('a page directory holding a key or ratings from an earlier review is refuse
   const f = fixture();
   try {
     const page = path.join(f.runDir, 'calibration', 'review');
-    for (const name of ['review-key.json', 'key.json', 'sheet.json', 'raters', 'old-key.json']) {
+    for (const name of ['review-key.json', 'key.json', 'sheet.json', 'raters', '.import-abc123', 'sheet.json.tmp-4242', 'review-key.json.tmp-7']) {
       fs.rmSync(page, { recursive: true, force: true });
       fs.mkdirSync(page, { recursive: true });
-      if (name === 'raters') fs.mkdirSync(path.join(page, name)); else fs.writeFileSync(path.join(page, name), '{}');
+      if (name === 'raters' || name.startsWith('.import-')) fs.mkdirSync(path.join(page, name)); else fs.writeFileSync(path.join(page, name), '{}');
       assert.throws(() => writeReview(opts(f, { n: 2 })), new RegExp(`holds ${name.replace('.', '\\.')} from an earlier review.*must not be handed to a rater`));
       assert.deepEqual(fs.readdirSync(page), [name], 'no page was written beside it');
       assert.ok(!fs.existsSync(path.join(f.runDir, 'calibration', 'review-key')));
       assert.throws(() => writeReview(opts(f, { n: 2, force: true })), /from an earlier review/);
     }
-    // A ratings file the rater saved there is not key-like.
-    fs.rmSync(page, { recursive: true, force: true });
-    fs.mkdirSync(page, { recursive: true });
-    fs.writeFileSync(path.join(page, 'ratings-abc.json'), '{}');
-    writeReview(opts(f, { n: 2 }));
+    // The rater's own files are not key artifacts, even with "key" in the name.
+    for (const name of ['ratings-abc.json', 'ratings-monkey.json', 'monkey-notes.txt', 'keyboard.txt']) {
+      fs.rmSync(page, { recursive: true, force: true });
+      fs.rmSync(path.join(f.runDir, 'calibration', 'review-key'), { recursive: true, force: true });
+      fs.mkdirSync(page, { recursive: true });
+      fs.writeFileSync(path.join(page, name), '{}');
+      writeReview(opts(f, { n: 2 }));
+      assert.deepEqual(fs.readdirSync(page).sort(), [name, 'review.html'].sort(), name);
+    }
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
