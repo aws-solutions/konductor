@@ -232,3 +232,27 @@ test('a prompt that names the skill in another spelling is refused (hyphen, unde
   assert.equal(v('please do a backend code review of src/routes/signup.js and list every unvalidated field in notes.md').ok, true, 'the words apart in other order are fine');
   assert.equal(S.nameVariantRe('alpha').test('alphabet soup'), false, 'a one-part name matches whole words only');
 });
+
+test('a shared term must be a whole word in the prompt and in the skill text', () => {
+  const s = setup();
+  try {
+    const sub = reply();
+    sub.scenarios[10].sharedTerms = ['put'];
+    assert.match(check(s, sub).error, /scenarios\[10\]: shared term "put" must appear/, '"put" is inside "input", not a word');
+    const multi = reply();
+    multi.scenarios[10].prompt = 'Near miss: the input   handling of the reporting job in jobs/report.js needs a new column for the finance team, with a rollback.';
+    multi.scenarios[10].sharedTerms = ['input handling'];
+    assert.equal(check(s, multi).ok, true, 'a two-word term matches across spaces');
+  } finally { s.done(); }
+});
+
+test('cap draft and cap import refuse a query that names the capability in another spelling', () => {
+  const D = require('../../cap/draft.js');
+  for (const text of ['please use backend_review on the signup handler', 'can you run Backend Review over my api', 'BackendReview the orders module please']) {
+    assert.match(D.queryContentProblem(text, { capName: 'backend-review' }), /names the capability "backend-review" \(as /, text);
+  }
+  assert.equal(D.queryContentProblem('please do a backend code review of the orders api', { capName: 'backend-review' }), null);
+  const items = [...Array.from({ length: 6 }, (_, i) => ({ query: `harden the signup handler number ${i} against bad input`, should_trigger: true })), ...Array.from({ length: 6 }, (_, i) => ({ query: `write a schema migration number ${i} for users`, should_trigger: false }))];
+  items[0].query = 'run backend_review on the signup handler and the login handler';
+  assert.throws(() => D.importQueries(items, { capId: 'skill:backend-review', source: 'x.json' }), /item 1: the text names the capability "backend-review" \(as "backend_review"\)/);
+});

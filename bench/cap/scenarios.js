@@ -12,7 +12,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { judgeOnce } = require('../judge/run.js');
-const { BANNED, DASHES, wordRe, capabilityText, draftFileName, neighboursFor, queryContentProblem } = require('./draft.js');
+const { BANNED, DASHES, wordRe, capabilityText, draftFileName, neighboursFor, queryContentProblem, nameVariantRe } = require('./draft.js');
 
 const TOOL = 'cap-scenarios/1';
 const MIN_SCENARIOS = 8;
@@ -239,23 +239,15 @@ Rules for the "trigger" tasks:
 - No more than ${SAME_OPENING_MAX} prompts may start with the same three words.
 Rules for the "near-miss" tasks:
 - Each shares words or concepts with this skill but actually needs something different: an adjacent domain, ambiguous wording where a naive keyword match would load the skill, or a case where the skill's topic comes up but another approach is right. Do not write obviously unrelated tasks; they test nothing.
-- List in sharedTerms the words it shares with the skill text above (each must appear in both the prompt and the skill text).
+- List in sharedTerms the words it shares with the skill text above (each must appear as a whole word in both the prompt and the skill text).
 - At least half belong to one of the similar capabilities above: set nearMissOf to that capability's id.
 
 Reply with JSON only, in this shape:
 ${JSON.stringify(shape, null, 1)}`;
 }
 
-/**
- * The skill name in any spelling a writer might use: the parts of a multi-part name joined by a hyphen, an underscore, a
- * dot, spaces or nothing, in any case (backend-review, backend_review, Backend Review, BackendReview). A one-part name is
- * matched as a whole word only, as wordRe does.
- */
-function nameVariantRe(name) {
-  const parts = String(name).split(/[-_.\s]+/).filter(Boolean).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  if (parts.length < 2) return wordRe(name);
-  return new RegExp(`(?<![A-Za-z0-9])${parts.join('[-_.\\s]*')}(?![A-Za-z0-9])`, 'i');
-}
+// A shared term must appear as a whole word (or words): "put" does not match inside "input".
+const wholeWord = (term) => new RegExp(`(?<![A-Za-z0-9])${term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')}(?![A-Za-z0-9])`, 'i');
 
 const openingOf = (text) => text.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').trim().split(/\s+/).slice(0, 3).join(' ');
 
@@ -290,8 +282,7 @@ function validateTriggerScenarios(d, { capName, capText, neighbourIds = [], n = 
     } else {
       if (x.nearMissOf !== undefined && !neighbourIds.includes(x.nearMissOf)) return fail(`${at}: nearMissOf "${x.nearMissOf}" is not one of the neighbours (${neighbourIds.join(', ') || 'none'})`);
       if (!Array.isArray(x.sharedTerms) || !x.sharedTerms.length || !x.sharedTerms.every((t) => typeof t === 'string' && t.trim())) return fail(`${at}.sharedTerms must list the words it shares with the skill`);
-      const prompt = x.prompt.toLowerCase();
-      const missing = x.sharedTerms.find((t) => !prompt.includes(t.trim().toLowerCase()) || !skillText.includes(t.trim().toLowerCase()));
+      const missing = x.sharedTerms.find((t) => !wholeWord(t).test(x.prompt) || !wholeWord(t).test(skillText));
       if (missing) return fail(`${at}: shared term "${missing}" must appear in both the prompt and the skill text`);
     }
     const key = x.prompt.trim().toLowerCase().replace(/\s+/g, ' ');
