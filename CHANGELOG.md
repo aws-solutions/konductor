@@ -62,6 +62,16 @@ not per individual commit.
   skill name planted in a file path or file text is removed, that one arm's files never appear in
   the other arm's block, and that the two orders show the same file blocks swapped. Run
   `node --test bench/test/judge-prompt.test.js bench/test/metadata-blinding.test.js`.
+- `bench/lib/provenance.js` now builds the input digests of the three stored benchmark records,
+  next to `sha256` and `stable`. `pairInputs` covers a task run in one arm (task id, request, arm,
+  the stored reply and workspaces, `loaded`); `judgmentInputs` covers one judge call (template
+  version and sha, sanitizer version and rules hash, scale, order, seat and the rendered prompt,
+  which holds the request, the checklist and both cleaned answers with their changed files); and
+  `resultInputs` covers a skill result (decision rule digest, task set, pairs and judgments). The
+  judgment digest leaves out the per-call marker id, which is random, so a stored reply can be
+  found again. A pair carries a `runner_fingerprint`, an opaque string the runner plugin supplies
+  to say what produced the run. `PROVENANCE_VERSION` is 1. Run
+  `node --test bench/test/provenance.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
