@@ -30,10 +30,10 @@ export const REQUEST_TIMEOUT_MS = 15_000;
 export const LAUNCH_CODE_TIMEOUT_MS = 120_000;
 
 const LAUNCH_UNANSWERED =
-  'The server did not answer the launch code, and may have used it. Open the launch address again. If the server refuses it, get a new launch address from the server.';
+  'The server did not answer the launch code, and may have used it. Get a new launch code from the terminal that printed the launch address.';
 
 const LAUNCH_CANCELLED =
-  'You stopped waiting for the server, which may have used the launch code. Open the launch address again. If the server refuses it, get a new launch address from the server.';
+  'You stopped waiting for the server, which may have used the launch code. Get a new launch code from the terminal that printed the launch address.';
 
 // A body that is not JSON is `undefined`. Any other failure to read it, such
 // as a connection that dropped or a timeout, is thrown.

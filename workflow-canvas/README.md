@@ -293,9 +293,9 @@ The rest wraps the core, so the rules can be tested without a browser:
   (`WorkflowSource.cancel`). After 120 seconds (twice the validity of the
   code) the trade ends on its own. Stopping, the limit, and a dropped
   connection all end in the same error state, which says that the server may
-  have used the code: open the launch address again, and if the server refuses
-  it, get a new launch address from the server. A reload does not retry the
-  trade, since the code is removed from the address. A late answer after the
+  have used the code and to get a new launch code from the terminal that
+  printed the launch address. A reload does not retry the trade, since the
+  code is removed from the address. A late answer after the
   notice appeared still opens the workflow. A pasted code is not cancellable:
   the workflow or error already on the page stays, and the 120 seconds end the
   trade.
