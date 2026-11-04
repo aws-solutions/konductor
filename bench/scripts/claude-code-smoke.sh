@@ -258,7 +258,7 @@ echo
 echo "== leftovers =="
 NEW_TMP="$(own_claude_tmp)"
 if [ -z "$NEW_TMP" ]; then verdict PASS "nothing left for this run in $CLAUDE_TMP_BASE/claude-$UID_NUM"; else verdict FAIL "left for this run in $CLAUDE_TMP_BASE/claude-$UID_NUM (removed on exit): $(printf '%s' "$NEW_TMP" | head -3 | tr '\n' ' ')"; fi
-LEFT="$(find "$SCRATCH/tmp" -mindepth 1 -maxdepth 2 2>/dev/null | head -5 | tr '\n' ' ')"
+LEFT="$(find "$SCRATCH/tmp" -mindepth 1 -maxdepth 2 ! -name 'mcs-telemetry-*' 2>/dev/null | head -5 | tr '\n' ' ')"
 if [ -z "$LEFT" ]; then verdict PASS "nothing left in the run scratch directory"; else verdict FAIL "left in the run scratch directory: $LEFT"; fi
 if find "$SCRATCH/home" "$SCRATCH/tmp" \( -name '.aws' -o -name 'credentials' \) 2>/dev/null | grep -q .; then verdict FAIL "a credentials file exists under the scratch directory"; else verdict PASS "no credentials file under the scratch directory"; fi
 

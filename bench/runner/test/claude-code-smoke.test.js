@@ -30,6 +30,11 @@ case "$1 $2" in
     ;;
   "sts get-caller-identity")
     [ -n "$AWS_ACCESS_KEY_ID" ] && [ -z "$AWS_PROFILE" ] || exit 255
+    MODE="$(cat "$(dirname "$0")/fake-aws.mode" 2>/dev/null)"
+    case " $MODE " in *" telemetry "*) : > "$TMPDIR/mcs-telemetry-l1-1.log" ;; esac
+    case " $MODE " in *" stray "*) : > "$TMPDIR/stray.txt" ;; esac
+    case " $MODE " in *" cli-state "*) [ "$AWS_CLI_SESSION_ID_DISABLED" = true ] || mkdir -p "$HOME/.aws/cli/cache" ;; esac
+    case " $MODE " in *" credentials "*) mkdir -p "$HOME/.aws" && : > "$HOME/.aws/credentials" ;; esac
     echo "\${FAKE_AWS_ACCOUNT:-${ACCOUNT}}"
     ;;
   *) exit 2 ;;
@@ -60,6 +65,7 @@ function smoke(s, args, env = {}) {
     },
   });
 }
+const awsMode = (s, mode) => fs.writeFileSync(path.join(s.root, 'bin', 'fake-aws.mode'), mode);
 const started = (s) => fs.existsSync(path.join(s.probe, 'started.json'));
 const noSecrets = (r) => { for (const v of [SECRET, TOKEN, KEY_ID]) { assert.equal(r.stdout.includes(v), false); assert.equal(r.stderr.includes(v), false); } };
 
@@ -94,6 +100,23 @@ test('vanilla smoke end to end: credentials exported from a profile, every crite
     assert.equal(fs.readdirSync(s.scratchRoot).length, 0, 'the scratch directory is removed');
     assert.deepEqual(fs.readdirSync(s.claudeTmp), []);
     noSecrets(r);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('a telemetry file host tooling writes into the inherited TMPDIR is not a leftover, any other file is', () => {
+  const s = setup();
+  try {
+    awsMode(s, 'telemetry');
+    const ok = smoke(s, ['--profile', 'good', '--only', 'vanilla', '--isolate', 'none']);
+    assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+    assert.match(ok.stdout, /PASS {2}nothing left in the run scratch directory/);
+    awsMode(s, 'telemetry stray');
+    const bad = smoke(s, ['--profile', 'good', '--only', 'vanilla', '--isolate', 'none']);
+    assert.equal(bad.status, 1, bad.stdout + bad.stderr);
+    assert.match(bad.stdout, /FAIL {2}left in the run scratch directory: .*stray\.txt/);
+    assert.doesNotMatch(bad.stdout, /left in the run scratch directory: .*mcs-telemetry/);
   } finally {
     s.cleanup();
   }
