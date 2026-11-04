@@ -27,11 +27,43 @@ describe('WorkflowCanvas, on the Escape key', () => {
     expect(heard).toHaveBeenCalledWith('Escape');
   });
 
-  it('keeps the key from React Flow in a canvas that can select', () => {
+  it('lets the key go on to the page in a canvas that can select', () => {
     const { heard, node } = drawn({ selectedId: undefined, onSelect: vi.fn() });
 
     fireEvent.keyDown(node, { key: 'Escape' });
 
-    expect(heard).not.toHaveBeenCalled();
+    expect(heard).toHaveBeenCalledWith('Escape');
+  });
+
+  it('lets an open dialog hear the key while a node has focus', () => {
+    const closed = vi.fn();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closed();
+    };
+    document.addEventListener('keydown', onKey);
+    const { node } = drawn({ selectedId: 'stage-draft', onSelect: vi.fn() });
+
+    fireEvent.keyDown(node, { key: 'Escape' });
+    document.removeEventListener('keydown', onKey);
+
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps React Flow from handling the key on a node', () => {
+    const { node } = drawn({ selectedId: undefined, onSelect: vi.fn() });
+
+    expect(node.classList.contains('nokey')).toBe(true);
+  });
+});
+
+describe('WorkflowCanvas, on Enter and Space', () => {
+  it('chooses the stage and lets the key go on', () => {
+    const onSelect = vi.fn();
+    const { heard, node } = drawn({ selectedId: undefined, onSelect });
+
+    fireEvent.keyDown(node, { key: 'Enter' });
+
+    expect(onSelect).toHaveBeenCalledWith(node.dataset.id);
+    expect(heard).toHaveBeenCalledWith('Enter');
   });
 });

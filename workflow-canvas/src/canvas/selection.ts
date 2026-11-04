@@ -3,7 +3,8 @@ import type { GraphNode } from '../graph';
 
 /**
  * The nodes with the selection drawn on them. Only a stage can be selected,
- * and the selected one says so in its name for a screen reader.
+ * and the selected one says so in its name for a screen reader. The `nokey`
+ * class makes React Flow skip its own key handling on the node.
  */
 export function markSelectable(
   nodes: readonly GraphNode[],
@@ -15,6 +16,7 @@ export function markSelectable(
       ...node,
       selected,
       selectable: node.type === 'stage',
+      className: 'nokey',
       ariaLabel: selected ? `${node.ariaLabel}, selected` : node.ariaLabel,
     };
   });
