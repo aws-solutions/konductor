@@ -95,10 +95,11 @@
  *
  * Unrecognized events. `unrecognized_events` maps an event type to how many events of that type the
  * parser had no rule for, so a format change shows up in the record instead of reading as an idle
- * run. An event the parser reads, and one it knowingly skips (Claude Code `system/init`, OpenCode
- * `step_start`, Kiro status and bookkeeping updates and thought chunks), is not counted. The key is
- * the event's `type`; Claude Code appends `/<subtype>` for a `system` event other than `init`
- * (`system/api_retry`), and Kiro (ACP) uses `sessionUpdate/<name>` for an update kind it does not
+ * run. An event the parser reads, and one it knowingly skips (Claude Code `system/init` and the
+ * `system` subtypes `thinking_tokens`, `permission_denied`, `informational`, `api_retry` and
+ * `model_refusal_no_fallback`, OpenCode `step_start`, Kiro status and bookkeeping updates and
+ * thought chunks), is not counted. The key is the event's `type`; Claude Code appends
+ * `/<subtype>` for any other `system` event (`system/<subtype>`), and Kiro (ACP) uses `sessionUpdate/<name>` for an update kind it does not
  * know. An event with no string type is counted under `[no type]`. Keys are redacted and capped at
  * MAX_EVENT_TYPE characters; past MAX_UNRECOGNIZED_KEYS distinct keys the rest are counted under
  * `[other]`. The field is empty for a trace the parser fully understands. It is not an error: a
@@ -307,6 +308,21 @@ const KIRO_ACP_SKIPPED_UPDATES = new Set([
   'agent_thought_chunk',
   'user_message_chunk',
   'plan',
+]);
+
+/**
+ * Claude Code `system` subtypes (other than `init`, which is read) the parser knowingly skips.
+ * They report thinking-token counts, a refused permission, notices and API retries, and carry
+ * nothing the record needs, so they are not counted as unrecognized. All five appear in real
+ * Claude Code traces; `permission_denied` accompanies a blocked tool call, whose outcome the
+ * paired `tool_result` already reports.
+ */
+const CLAUDE_SKIPPED_SYSTEM_SUBTYPES = new Set([
+  'thinking_tokens',
+  'permission_denied',
+  'informational',
+  'api_retry',
+  'model_refusal_no_fallback',
 ]);
 
 /**
@@ -922,8 +938,16 @@ function normalizeClaudeCode(rawTrace, options = {}) {
       return;
     }
 
-    // Reached by any event type above that returned no rule for it, and by a `system` event other
-    // than `init` (`api_retry` appears in real traces).
+    if (
+      event.type === 'system' &&
+      typeof event.subtype === 'string' &&
+      CLAUDE_SKIPPED_SYSTEM_SUBTYPES.has(event.subtype)
+    ) {
+      return;
+    }
+
+    // Reached by any event type above that returned no rule for it, and by a `system` event whose
+    // subtype is neither `init` nor one of CLAUDE_SKIPPED_SYSTEM_SUBTYPES.
     ctx.noteUnrecognized(
       event.type === 'system' && typeof event.subtype === 'string' && event.subtype
         ? `system/${event.subtype}`

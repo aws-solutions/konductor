@@ -2809,8 +2809,8 @@ test('claude-code counts unknown event types and system subtypes, and skips the 
     'claude-code',
     jsonl(
       { type: 'system', subtype: 'init', tools: ['Read'] },
-      { type: 'system', subtype: 'api_retry' },
-      { type: 'system', subtype: 'api_retry' },
+      { type: 'system', subtype: 'future_subtype' },
+      { type: 'system', subtype: 'future_subtype' },
       { type: 'system' },
       { type: 'stream_event' },
       { type: 'stream_event' },
@@ -2822,12 +2822,53 @@ test('claude-code counts unknown event types and system subtypes, and skips the 
     ),
   );
   assert.deepEqual(record.unrecognized_events, {
-    'system/api_retry': 2,
+    'system/future_subtype': 2,
     system: 1,
     stream_event: 2,
     rate_limit_event: 1,
     '[no type]': 2,
   });
+});
+
+for (const subtype of [
+  'thinking_tokens',
+  'permission_denied',
+  'informational',
+  'api_retry',
+  'model_refusal_no_fallback',
+]) {
+  test(`claude-code skips system/${subtype} without counting it as unrecognized`, () => {
+    const record = normalizeTrace(
+      'claude-code',
+      jsonl(
+        { type: 'system', subtype: 'init', tools: ['Read'] },
+        { type: 'system', subtype },
+        { type: 'system', subtype },
+        claudeCall('c1', 'Read', {}),
+        claudeResult('c1', 'ok'),
+        claudeDone(),
+      ),
+    );
+    assert.deepEqual(record.unrecognized_events, {});
+    assert.equal(record.tool_calls.length, 1);
+    assert.equal(record.tool_calls[0].status, 'completed');
+    assert.equal(record.complete, true);
+    assert.deepEqual(record.errors, []);
+  });
+}
+
+test('claude-code still counts a system subtype that is not on the skip list, next to skipped ones', () => {
+  const record = normalizeTrace(
+    'claude-code',
+    jsonl(
+      { type: 'system', subtype: 'thinking_tokens' },
+      { type: 'system', subtype: 'hook_started' },
+      { type: 'system', subtype: 'api_retry' },
+      { type: 'system', subtype: 7 },
+      claudeDone(),
+    ),
+  );
+  assert.deepEqual(record.unrecognized_events, { 'system/hook_started': 1, system: 1 });
 });
 
 test('opencode skips step_start and counts every other unknown event type', () => {
