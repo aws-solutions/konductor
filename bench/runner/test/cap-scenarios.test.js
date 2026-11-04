@@ -218,3 +218,12 @@ test('lift-mode scenarios refuse the skill name in another spelling, as trigger 
   fine.scenarios[0].prompt = 'Please do a backend code review of the order service and write up what you find in notes.md.';
   assert.equal(S.validateScenarios(fine, { capName: 'backend-review', n: 8 }).ok, true);
 });
+
+test('lift mode does not take prose with the name parts across a sentence end for the skill name', () => {
+  const prose = goodReply();
+  prose.scenarios[0].prompt = 'Look at the backend. Review the order service and write up what you find in notes.md for the team.';
+  assert.equal(S.validateScenarios(prose, { capName: 'backend-review', n: 8 }).ok, true);
+  const spelled = goodReply();
+  spelled.scenarios[0].prompt = 'Please run backend.review over the order service and write up what you find in notes.md for the team.';
+  assert.match(S.validateScenarios(spelled, { capName: 'backend-review', n: 8 }).error, /names the capability "backend-review" \(as "backend\.review"\)/);
+});

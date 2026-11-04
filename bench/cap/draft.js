@@ -76,14 +76,15 @@ ${JSON.stringify(shape, null, 1)}`;
 }
 
 /**
- * The skill name in any spelling a writer might use: the parts of a multi-part name joined by a hyphen, an underscore, a
- * dot, spaces or nothing, in any case (backend-review, backend_review, Backend Review, BackendReview). A one-part name is
- * matched as a whole word only, as wordRe does.
+ * The skill name written as one term in any common spelling: the parts of a multi-part name joined by nothing or by one
+ * hyphen, underscore, dot or space, in any case (backend-review, backend_review, Backend Review, BackendReview,
+ * backend.review). One joiner at most, so "the backend. Review the" (a sentence end) and a line break do not match.
+ * A one-part name is matched as a whole word only, as wordRe does.
  */
 function nameVariantRe(name) {
   const parts = String(name).split(/[-_.\s]+/).filter(Boolean).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   if (parts.length < 2) return wordRe(name);
-  return new RegExp(`(?<![A-Za-z0-9])${parts.join('[-_.\\s]*')}(?![A-Za-z0-9])`, 'i');
+  return new RegExp(`(?<![A-Za-z0-9])${parts.join('[-_. ]?')}(?![A-Za-z0-9])`, 'i');
 }
 
 const wordRe = (name) => new RegExp(`(?<![\\w-])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, 'i');

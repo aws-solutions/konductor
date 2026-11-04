@@ -256,3 +256,20 @@ test('cap draft and cap import refuse a query that names the capability in anoth
   items[0].query = 'run backend_review on the signup handler and the login handler';
   assert.throws(() => D.importQueries(items, { capId: 'skill:backend-review', source: 'x.json' }), /item 1: the text names the capability "backend-review" \(as "backend_review"\)/);
 });
+
+test('ordinary prose with the name parts across a sentence end or a line is not a variant (trigger mode and cap draft)', () => {
+  const D = require('../../cap/draft.js');
+  const capText = 'Validate every input. Escape output.';
+  const prose = 'Look at the backend. Review the order service in src/orders.js and list every unvalidated field in notes.md.';
+  const d = reply();
+  d.scenarios[0].prompt = prose;
+  assert.equal(S.validateTriggerScenarios(d, { capName: 'backend-review', capText, neighbourIds: ['skill:delta', 'skill:beta'], n: 10 }).ok, true);
+  assert.equal(D.queryContentProblem(prose, { capName: 'backend-review' }), null);
+  assert.equal(D.nameVariantRe('backend-review').test('fix the backend\nreview it later'), false);
+  for (const spelled of ['backend_review', 'Backend Review', 'BACKEND-REVIEW', 'BackendReview', 'backend.review']) {
+    assert.match(D.queryContentProblem(`please run ${spelled} on the signup handler`, { capName: 'backend-review' }), /names the capability "backend-review"/, spelled);
+    const t = reply();
+    t.scenarios[0].prompt = `please run ${spelled} over src/routes/signup.js and list every unvalidated field you find in notes.md`;
+    assert.equal(S.validateTriggerScenarios(t, { capName: 'backend-review', capText, neighbourIds: ['skill:delta', 'skill:beta'], n: 10 }).ok, false, spelled);
+  }
+});
