@@ -18,6 +18,7 @@ const { analyze } = require('./generate.js');
 const { computeScores, qualityOfRun, loadScoring, MIN_N } = require('./scores.js');
 const { diffCI, pairedCellCI, MIN_CELLS } = require('./stats.js');
 const { THRESHOLDS } = require('./diligence.js');
+const { prefixIdentity } = require('./aa-identity.js');
 const { gradedSummary } = require('./graded.js');
 const { readLedger } = require('../runner/lib/credit-ledger.js');
 const { profileCheck } = require('../runner/lib/profiles.js');
@@ -199,19 +200,6 @@ function armOrder(input) {
   const present = [...new Set(input.rows.map((r) => r.armId))];
   const cfg = (input.run.config.armIds || []).filter((a) => present.includes(a));
   return [...cfg, ...present.filter((a) => !cfg.includes(a)).sort()];
-}
-
-/**
- * The prompt prefix (`run --arm-prefix`) part of an arm's identity. An arm with no prefix adds nothing, so its identity is
- * what it always was. An arm whose runs all carry the same hashed prefix adds that hash. Anything else (a prefix with no
- * hash, or runs that disagree) returns null: the arm has no identity and is never paired.
- */
-function prefixIdentity(rows) {
-  const keys = new Set(rows.map((r) => (r.armPrefix ? r.armPrefix.sha256 || '?' : '')));
-  if (keys.size !== 1) return null;
-  const k = [...keys][0];
-  if (k === '?') return null;
-  return k ? `|prefix:${k}` : '';
 }
 
 /**

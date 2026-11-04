@@ -9,6 +9,7 @@ const { modelFamily } = require('../judge/config.js');
 const { MIN_RECALL } = require('../runner/lib/contamination.js');
 const { qualityOfRun, DEFAULT_WEIGHTS } = require('./scores.js');
 const { checksRevision } = require('../runner/lib/recheck.js');
+const { prefixIdentity } = require('./aa-identity.js');
 
 const THRESHOLDS = {
   replicatesPass: 3, replicatesFail: 2,
@@ -63,6 +64,22 @@ function armQuality(rows, weights) {
   return mean(s);
 }
 
+/**
+ * Arms that share a commit or tree, an arm config and a prompt prefix, in order of first appearance. The prefix part comes
+ * from prefixIdentity, as in the verdict; an arm whose prefix cannot be read (no hash, or runs that disagree) is left out.
+ */
+function aaPairsOf(rows) {
+  const identity = new Map();
+  for (const r of rows) if (r.commitSha || r.contentHash) identity.set(r.arm, `${r.commitSha}|${r.contentHash}|${JSON.stringify(r.armConfig ?? null)}`);
+  const groups = new Map();
+  for (const [arm, id] of identity) {
+    const prefix = prefixIdentity(rows.filter((r) => r.arm === arm));
+    if (prefix === null) continue;
+    groups.set(`${id}${prefix}`, [...(groups.get(`${id}${prefix}`) || []), arm]);
+  }
+  return [...groups.values()].filter((g) => g.length > 1);
+}
+
 /** Everything `evaluate` needs, read from a loaded run, its rows and tasks. calibration: { kappa } or null. */
 function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, weights = DEFAULT_WEIGHTS, calibration = null }) {
   const arms = [...new Set(rows.map((r) => r.arm))];
@@ -76,11 +93,7 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
   for (const r of rows) cells.set(`${r.arm}/${r.task}`, (cells.get(`${r.arm}/${r.task}`) || 0) + 1);
   const minCell = [...cells.entries()].sort((a, b) => a[1] - b[1])[0];
 
-  const identity = new Map();
-  for (const r of rows) if (r.commitSha || r.contentHash) identity.set(r.arm, `${r.commitSha}|${r.contentHash}|${JSON.stringify(r.armConfig ?? null)}`);
-  const groups = new Map();
-  for (const [arm, id] of identity) groups.set(id, [...(groups.get(id) || []), arm]);
-  const aaPairs = [...groups.values()].filter((g) => g.length > 1);
+  const aaPairs = aaPairsOf(rows);
   const sameRefRepeat = Boolean(run.merged) && run.runs.some((e) => e.sourceReplicate !== undefined && e.sourceReplicate !== e.replicate);
   let aa = null;
   if (aaPairs.length) {
@@ -283,4 +296,4 @@ function scorecard(facts, t = THRESHOLDS) {
   return { rating, criteria, counts: { PASS: count('PASS'), WARN: count('WARN'), FAIL: count('FAIL'), 'N/A': count('N/A') }, blockers: blockers.map((c) => ({ id: c.id, label: c.label, status: c.status, value: c.value })), thresholds: t };
 }
 
-module.exports = { collectFacts, evaluate, rate, scorecard, THRESHOLDS, agreementOf };
+module.exports = { collectFacts, aaPairsOf, evaluate, rate, scorecard, THRESHOLDS, agreementOf };

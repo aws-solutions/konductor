@@ -46,3 +46,13 @@ test('the A/A arm picker sees a prefixed arm as a new condition, and keeps the o
   assert.ok(aaArmFor([ctl, frc]).spec, 'a plain and a prefixed arm of one ref are not a pair, so a repeat is added');
   assert.equal(aaArmFor([frc, { ...frc, id: 'frc-b' }]).spec, null);
 });
+
+test('the diligence scorecard pairs ctl with ctl-b, not with the forced arm listed between them', () => {
+  const { aaPairsOf } = require('../../report/diligence.js');
+  const d = (arm, extra = {}) => ({ arm, task: 't', commitSha: SHA, contentHash: null, armConfig: null, armPrefix: null, ...extra });
+  const rows = [d('ctl'), d('frc', { armPrefix: P1 }), d('ctl-b')];
+  assert.deepEqual(aaPairsOf(rows), [['ctl', 'ctl-b']]);
+  assert.deepEqual(aaPairsOf([d('ctl'), d('frc', { armPrefix: P1 }), d('frc-b', { armPrefix: P1 })]), [['frc', 'frc-b']]);
+  assert.deepEqual(aaPairsOf([d('ctl'), d('frc', { armPrefix: { bytes: 3 } }), d('frc-b', { armPrefix: { bytes: 3 } })]), [], 'an unhashed prefix is never paired');
+  assert.deepEqual(aaPairsOf([d('a'), d('b'), d('c', { commitSha: 'b'.repeat(40) })]), [['a', 'b']], 'arms without a prefix pair as before');
+});
