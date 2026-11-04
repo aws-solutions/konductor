@@ -36,7 +36,7 @@
 #   --cargo-target DIR  cargo target directory for the arm build (default: inside the scratch directory)
 #   --isolate MODE      passed to bench.js (auto, unshare, sandbox-exec, none; none also passes --allow-unisolated)
 #   --budget-usd X      total cap (default 1.5)       --run-budget-usd X   per-run cap (default 0.6)
-#   --out DIR           copy the two result directories and the verdict here before cleanup
+#   --out DIR           copy the two result directories here before cleanup (must not exist or be empty)
 #   --keep              keep the scratch directory and this run's /tmp/claude-<uid> entries
 #   --dry-run           print the plan and the commands; run nothing and read no credentials
 #
@@ -106,6 +106,10 @@ while [ $# -gt 0 ]; do
 done
 
 case "$ONLY" in vanilla | konductor | both) ;; *) die "--only takes vanilla, konductor or both" ;; esac
+if [ -n "$OUT_COPY" ]; then
+  if [ -e "$OUT_COPY" ] && [ ! -d "$OUT_COPY" ]; then die "--out $OUT_COPY exists and is not a directory"; fi
+  if [ -d "$OUT_COPY" ] && [ -n "$(ls -A "$OUT_COPY")" ]; then die "--out $OUT_COPY is not empty; pass a new or empty directory"; fi
+fi
 [ -f "$BENCH_JS" ] || die "bench runner not found at $BENCH_JS"
 command -v node >/dev/null 2>&1 || die "node is not on PATH"
 

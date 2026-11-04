@@ -154,6 +154,45 @@ test('the preflight asks the AWS CLI not to create its session state under the s
   }
 });
 
+test('--out must be absent or empty: a previous run there is refused before anything starts, also on --dry-run', () => {
+  const s = setup();
+  try {
+    const used = path.join(s.root, 'old-out');
+    fs.mkdirSync(path.join(used, 'out-vanilla'), { recursive: true });
+    for (const extra of [[], ['--dry-run']]) {
+      const r = smoke(s, ['--profile', 'good', '--only', 'vanilla', '--isolate', 'none', '--out', used, ...extra]);
+      assert.equal(r.status, 2, r.stdout + r.stderr);
+      assert.match(r.stderr, /--out .*old-out is not empty; pass a new or empty directory/);
+    }
+    assert.equal(started(s), false);
+    assert.deepEqual(fs.readdirSync(used), ['out-vanilla']);
+    assert.deepEqual(fs.readdirSync(path.join(used, 'out-vanilla')), [], 'the old results are untouched');
+    const file = path.join(s.root, 'a-file');
+    fs.writeFileSync(file, 'x');
+    assert.match(smoke(s, ['--dry-run', '--out', file]).stderr, /--out .*a-file exists and is not a directory/);
+    assert.equal(fs.readdirSync(s.scratchRoot).length, 0);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('--out takes the results into a new directory and into an existing empty one, without nesting', () => {
+  const s = setup();
+  try {
+    for (const make of [false, true]) {
+      const dest = path.join(s.root, make ? 'empty-out' : 'new-out');
+      if (make) fs.mkdirSync(dest);
+      const r = smoke(s, ['--profile', 'good', '--only', 'vanilla', '--isolate', 'none', '--out', dest]);
+      assert.equal(r.status, 0, r.stdout + r.stderr);
+      assert.deepEqual(fs.readdirSync(dest), ['out-vanilla']);
+      assert.equal(fs.existsSync(path.join(dest, 'out-vanilla', 'out-vanilla')), false);
+      assert.ok(fs.readdirSync(path.join(dest, 'out-vanilla')).length > 0);
+    }
+  } finally {
+    s.cleanup();
+  }
+});
+
 test('credentials already exported in the shell are used and no profile is needed', () => {
   const s = setup();
   try {
