@@ -91,6 +91,10 @@ not per individual commit.
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `konductor config set` keeps an existing `config.yml`'s permission bits and refuses a symlinked
   `.konductor/` or `config.yml` instead of writing through it.
+- `k-full-sdlc` now records the gate facts `konductor verify-run` checks, under keys listed once in
+  the `gate_facts` block of `sop-orchestration.yml`, and records `run.data.max_fix_cycles`, so a run
+  with a raised budget is no longer judged against the default of 2.
+  `make sop-orchestration-check` fails when a gated SOP stops naming its boundaries' keys.
 - `verify-run`'s `CONFIG_SOURCE` line now comes from the same config read as the threshold.
 - Orchestrators run `git` reads as `git --no-pager -c core.fsmonitor=` with `--no-ext-diff
   --no-textconv --submodule=short` (and `--no-show-signature` on `log` and `show`), so repository

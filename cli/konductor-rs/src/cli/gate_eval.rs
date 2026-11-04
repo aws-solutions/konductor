@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use serde_yaml::Value;
 
 use super::config::Severity;
-use super::gate_config::{Boundary, GateKind, GateMap, GatedSop, Scope, SeverityTable};
+use super::gate_config::{Boundary, GateFacts, GateKind, GateMap, GatedSop, Scope, SeverityTable};
 use super::{
     EXIT_BUDGET_EXCEEDED, EXIT_CRITICAL_GATE, EXIT_HALTED, EXIT_SUCCESS_WITH_WARNINGS,
     EXIT_VERIFY_FAILED,
@@ -23,7 +23,7 @@ const SCHEMA_VERSION: u64 = 1;
 /// No configured threshold can make a phase-gated SOP laxer than this.
 const STRICT_FLOOR: Severity = Severity::High;
 
-/// The fix-cycle cap when the run records no `max_fix_cycles`.
+/// The fix-cycle cap when the run records no cap (`gate_facts.fix_cycle_cap`).
 const DEFAULT_MAX_FIX_CYCLES: u64 = 2;
 
 const ORCHESTRATOR: &str = "konductor";
@@ -348,13 +348,14 @@ pub(crate) fn evaluate(session: &Session, ctx: &EvalContext<'_>) -> Verdict {
     let Some(sop) = check_phase_map(session, ctx, &mut report) else {
         return report.into_verdict();
     };
-    check_phase_order(session, sop, &mut report);
+    let facts = &ctx.gate_map.gate_facts;
+    check_phase_order(session, sop, facts, &mut report);
     check_boundaries(session, sop, ctx, &mut report);
-    check_cap_not_raised(session, ctx.pinned_max_fix_cycles, &mut report);
-    check_halted(session, sop, &mut report);
-    check_fix_cycles(session, ctx.pinned_max_fix_cycles, &mut report);
-    note_overrides(session, sop, &mut report);
-    check_findings(session, sop, ctx.policy, &mut report);
+    check_cap_not_raised(session, facts, ctx.pinned_max_fix_cycles, &mut report);
+    check_halted(session, sop, facts, &mut report);
+    check_fix_cycles(session, facts, ctx.pinned_max_fix_cycles, &mut report);
+    note_overrides(session, sop, facts, &mut report);
+    check_findings(session, sop, facts, ctx.policy, &mut report);
 
     if !report.fired() {
         let skipped = report.info.iter().any(|i| i.code == InfoCode::PhaseSkipped);
@@ -422,10 +423,12 @@ fn check_phase_map<'m>(
 /// unfinished one: the SOP runs phases in order and marks skipped ones SKIPPED
 /// at minting, so an earlier PENDING or IN_PROGRESS phase was passed over. A
 /// later PENDING or SKIPPED phase is fine.
-fn check_phase_order(session: &Session, sop: &GatedSop, report: &mut Report) {
+fn check_phase_order(session: &Session, sop: &GatedSop, facts: &GateFacts, report: &mut Report) {
     let span = feature_phase_span(sop);
     for (index, earlier) in session.phases.iter().enumerate() {
-        if !earlier.status.is_unfinished() || held_open_by_a_feature(session, sop, span, index) {
+        if !earlier.status.is_unfinished()
+            || held_open_by_a_feature(session, sop, facts, span, index)
+        {
             continue;
         }
         if let Some(later) = session.phases[index + 1..]
@@ -493,6 +496,7 @@ fn feature_phase_span(sop: &GatedSop) -> Option<(usize, usize)> {
 fn held_open_by_a_feature(
     session: &Session,
     sop: &GatedSop,
+    facts: &GateFacts,
     span: Option<(usize, usize)>,
     index: usize,
 ) -> bool {
@@ -504,7 +508,7 @@ fn held_open_by_a_feature(
         && session.phases[index + 1..]
             .iter()
             .any(|p| p.status.has_started())
-        && some_feature_has_not_cleared(session, sop, index)
+        && some_feature_has_not_cleared(session, sop, facts, index)
 }
 
 /// True when a registered feature has not cleared the feature-scope boundary
@@ -512,7 +516,12 @@ fn held_open_by_a_feature(
 /// none (implementation) the next one after it. A boundary is cleared by a
 /// string result fact; an approval gate also needs the word `approved`. A null
 /// value is absent. With no such feature the record is corrupt, not halted.
-fn some_feature_has_not_cleared(session: &Session, sop: &GatedSop, index: usize) -> bool {
+fn some_feature_has_not_cleared(
+    session: &Session,
+    sop: &GatedSop,
+    facts: &GateFacts,
+    index: usize,
+) -> bool {
     let position = |b: &&Boundary| sop.phases.iter().position(|p| *p == b.phase);
     let closing = sop
         .boundaries
@@ -521,7 +530,7 @@ fn some_feature_has_not_cleared(session: &Session, sop: &GatedSop, index: usize)
         .filter(|b| position(b) >= Some(index))
         .min_by_key(position);
     let pending: Vec<(String, GateKind)> = closing
-        .map(|b| (format!("gate_{}_result", b.phase), b.kind))
+        .map(|b| (facts.result(&b.phase), b.kind))
         .into_iter()
         .collect();
     session.features.values().any(|bag| {
@@ -608,9 +617,10 @@ fn check_boundaries(session: &Session, sop: &GatedSop, ctx: &EvalContext<'_>, re
                 format!("phase '{phase}' is COMPLETED with no registered feature"),
             );
         }
-        let result_key = format!("gate_{phase}_result");
-        let evidence_key = format!("gate_{phase}_evidence");
-        let checker_key = format!("gate_{phase}_checker");
+        let facts = &ctx.gate_map.gate_facts;
+        let result_key = facts.result(phase);
+        let evidence_key = facts.evidence(phase);
+        let checker_key = facts.checker(phase);
         for (label, bag) in targets {
             for key in [&result_key, &evidence_key, &checker_key] {
                 if let Fact::WrongType(kind) = fact(bag, key) {
@@ -657,7 +667,7 @@ fn check_boundaries(session: &Session, sop: &GatedSop, ctx: &EvalContext<'_>, re
 }
 
 /// V5: a BLOCKED phase, or a per-feature phase a feature never cleared.
-fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
+fn check_halted(session: &Session, sop: &GatedSop, facts: &GateFacts, report: &mut Report) {
     let span = feature_phase_span(sop);
     for (index, phase) in session.phases.iter().enumerate() {
         if phase.status == PhaseStatus::Blocked {
@@ -666,7 +676,7 @@ fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
                 ReasonCode::Halted,
                 format!("phase '{}' is BLOCKED", phase.id),
             );
-        } else if held_open_by_a_feature(session, sop, span, index) {
+        } else if held_open_by_a_feature(session, sop, facts, span, index) {
             report.fire(
                 EXIT_HALTED,
                 ReasonCode::Halted,
@@ -679,16 +689,22 @@ fn check_halted(session: &Session, sop: &GatedSop, report: &mut Report) {
     }
 }
 
-/// V6. The cap is the engineer's `max_fix_cycles`, read from `run.data`, and 2
-/// when none is recorded. The skill's SOP is what records it at minting; until
-/// it does, every run is judged against the default, and the
+/// V6. The cap is the engineer's `max_fix_cycles`, read from `run.data` under
+/// `gate_facts.fix_cycle_cap`, and 2 when none is recorded. The SOP records it
+/// at minting; a session without it is judged against the default, and the
 /// FIX_CYCLE_CAP_DEFAULTED note says so. A session file is plain YAML that any
 /// agent can edit, so the recorded value is only as trustworthy as the file
 /// unless the caller pins a cap (see `check_cap_not_raised`). The same cap
 /// bounds each feature's `fix_cycles_used` and the run-level `doc_fix_cycles_used` that the
 /// documentation step draws on; a count equal to the cap is within budget.
-fn check_fix_cycles(session: &Session, pinned: Option<u64>, report: &mut Report) {
-    let (cap, defaulted) = match recorded_fix_cycle_cap(session, pinned) {
+fn check_fix_cycles(
+    session: &Session,
+    facts: &GateFacts,
+    pinned: Option<u64>,
+    report: &mut Report,
+) {
+    let key = facts.fix_cycle_cap();
+    let (cap, defaulted) = match recorded_fix_cycle_cap(session, key, pinned) {
         Ok(found) => found,
         Err(detail) => {
             report.fire(EXIT_VERIFY_FAILED, ReasonCode::RecordIntegrity, detail);
@@ -698,11 +714,11 @@ fn check_fix_cycles(session: &Session, pinned: Option<u64>, report: &mut Report)
     let basis = if defaulted {
         report.note(
             InfoCode::FixCycleCapDefaulted,
-            format!("run.data.max_fix_cycles is not recorded; the default cap {cap} applies"),
+            format!("run.data.{key} is not recorded; the default cap {cap} applies"),
         );
-        " (default cap; run.data.max_fix_cycles not recorded)"
+        format!(" (default cap; run.data.{key} not recorded)")
     } else {
-        ""
+        String::new()
     };
     let doc_used = session
         .run
@@ -737,14 +753,18 @@ fn check_fix_cycles(session: &Session, pinned: Option<u64>, report: &mut Report)
 /// With a pinned cap, an absent key takes the pin and a recorded value is
 /// bounded by it. A recorded value above the pin is reported by
 /// `check_cap_not_raised`; the pin is still the cap used for the budget rows.
-fn recorded_fix_cycle_cap(session: &Session, pinned: Option<u64>) -> Result<(u64, bool), String> {
-    match (session.run.data.get("max_fix_cycles"), pinned) {
+fn recorded_fix_cycle_cap(
+    session: &Session,
+    key: &str,
+    pinned: Option<u64>,
+) -> Result<(u64, bool), String> {
+    match (session.run.data.get(key), pinned) {
         (None, None) => Ok((DEFAULT_MAX_FIX_CYCLES, true)),
         (None, Some(pin)) => Ok((pin, false)),
         (Some(value), pin) => {
-            let recorded = value.as_u64().ok_or_else(|| {
-                "run.data.max_fix_cycles is not a non-negative integer".to_string()
-            })?;
+            let recorded = value
+                .as_u64()
+                .ok_or_else(|| format!("run.data.{key} is not a non-negative integer"))?;
             Ok((pin.map_or(recorded, |pin| recorded.min(pin)), false))
         }
     }
@@ -755,14 +775,15 @@ fn recorded_fix_cycle_cap(session: &Session, pinned: Option<u64>) -> Result<(u64
 /// the other integrity checks, before the halted and budget rows, so a raised
 /// cap can never become a pass or a fix-cycle exit. A malformed recorded value
 /// is left to `check_fix_cycles`.
-fn check_cap_not_raised(session: &Session, pinned: Option<u64>, report: &mut Report) {
+fn check_cap_not_raised(
+    session: &Session,
+    facts: &GateFacts,
+    pinned: Option<u64>,
+    report: &mut Report,
+) {
     let Some(pin) = pinned else { return };
-    let Some(recorded) = session
-        .run
-        .data
-        .get("max_fix_cycles")
-        .and_then(Value::as_u64)
-    else {
+    let key = facts.fix_cycle_cap();
+    let Some(recorded) = session.run.data.get(key).and_then(Value::as_u64) else {
         return;
     };
     if recorded > pin {
@@ -770,19 +791,20 @@ fn check_cap_not_raised(session: &Session, pinned: Option<u64>, report: &mut Rep
             EXIT_VERIFY_FAILED,
             ReasonCode::CapRaised,
             format!(
-                "run.data.max_fix_cycles {recorded} is above the pinned cap {pin}; the recorded budget was raised"
+                "run.data.{key} {recorded} is above the pinned cap {pin}; the recorded budget was raised"
             ),
         );
     }
 }
 
-/// C3: an engineer override is recorded as `gate_<phase>_override`. It is
+/// C3: an engineer override is recorded as `gate_<phase>_override` (the
+/// `gate_facts.override` key). It is
 /// surfaced for audit and never clears a finding: the evaluator keeps judging
 /// the recorded result word.
-fn note_overrides(session: &Session, sop: &GatedSop, report: &mut Report) {
+fn note_overrides(session: &Session, sop: &GatedSop, facts: &GateFacts, report: &mut Report) {
     for boundary in &sop.boundaries {
         let phase = boundary.phase.as_str();
-        let key = format!("gate_{phase}_override");
+        let key = facts.override_note(phase);
         for (label, bag) in fact_targets(session, boundary.scope) {
             let note = match fact(bag, &key) {
                 Fact::Absent => continue,
@@ -808,9 +830,10 @@ const APPROVED_WORD: &str = "approved";
 fn note_ignored_words(
     session: &Session,
     boundary: &super::gate_config::Boundary,
+    facts: &GateFacts,
     report: &mut Report,
 ) {
-    let result_key = format!("gate_{}_result", boundary.phase);
+    let result_key = facts.result(&boundary.phase);
     for (label, bag) in fact_targets(session, boundary.scope) {
         if let Some(word) = text_fact(bag, &result_key) {
             report.note(
@@ -827,12 +850,18 @@ fn note_ignored_words(
 /// V7, plus the SEVERITY_UNKNOWN, FINDING_BELOW_GATE, SAME_TYPE_CHECKER and
 /// LOOP_EXIT_NOT_JUDGED notes. Like V4 it reads only COMPLETED phases: a
 /// result word left on a skipped or unfinished phase is not a finding.
-fn check_findings(session: &Session, sop: &GatedSop, policy: &SeverityPolicy, report: &mut Report) {
+fn check_findings(
+    session: &Session,
+    sop: &GatedSop,
+    facts: &GateFacts,
+    policy: &SeverityPolicy,
+    report: &mut Report,
+) {
     let threshold = policy.gated_threshold();
     for boundary in &sop.boundaries {
         let phase = boundary.phase.as_str();
         if phase_status(session, phase) != Some(PhaseStatus::Completed) {
-            note_ignored_words(session, boundary, report);
+            note_ignored_words(session, boundary, facts, report);
             continue;
         }
         match boundary.kind {
@@ -846,8 +875,8 @@ fn check_findings(session: &Session, sop: &GatedSop, policy: &SeverityPolicy, re
             }
             GateKind::CheckThreshold => {}
         }
-        let result_key = format!("gate_{phase}_result");
-        let checker_key = format!("gate_{phase}_checker");
+        let result_key = facts.result(phase);
+        let checker_key = facts.checker(phase);
         for (label, bag) in fact_targets(session, boundary.scope) {
             // Sessions record no maker, so the one same-type case visible is
             // the orchestrator checking its own run.
@@ -2050,6 +2079,41 @@ phases:
         let verdict = eval(&session);
         assert_eq!(codes(&verdict), vec!["HALTED"]);
         assert_eq!(verdict.exit, 1);
+    }
+
+    /// The evaluator reads its keys from `gate_facts`, not from its own
+    /// spelling: renamed keys leave the passing session's facts unread.
+    #[test]
+    fn gate_fact_keys_come_from_the_gate_config() {
+        let mut gate_map = gate_map().unwrap();
+        gate_map.gate_facts = crate::cli::gate_config::parse_gate_facts(
+            "result: 'fact_{phase}_result'\nevidence: 'fact_{phase}_evidence'\nchecker: 'fact_{phase}_checker'\noverride: 'fact_{phase}_override'\nfix_cycle_cap: budget\n",
+        )
+        .unwrap();
+        let policy = SeverityPolicy {
+            table: severity_table().unwrap(),
+            threshold: Severity::Critical,
+        };
+        let ctx = EvalContext {
+            session_prefix: PREFIX,
+            gate_map: &gate_map,
+            policy: &policy,
+            evidence_exists: &allow_all_evidence,
+            allow_running: false,
+            pinned_max_fix_cycles: None,
+        };
+        let verdict = evaluate_value(&passing(), &ctx);
+        assert_eq!(verdict.exit, EXIT_VERIFY_FAILED, "{verdict:#?}");
+        let details = format!("{verdict:?}");
+        assert!(
+            details.contains("no fact_design-review_result"),
+            "{details}"
+        );
+        assert!(details.contains("no fact_specs_evidence"), "{details}");
+        assert!(
+            details.contains("run.data.budget is not recorded"),
+            "{details}"
+        );
     }
 
     #[test]

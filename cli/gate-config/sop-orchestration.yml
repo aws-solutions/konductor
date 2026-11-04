@@ -65,7 +65,29 @@
 #            asks for them in a single pause. specs is feature: every
 #            feature's specs are approved at the end of the phase, and each
 #            feature is approved or blocked on its own.
+#
+# gate_facts names the session `data` keys a gated SOP records at each
+# boundary and `konductor verify-run` reads. `{phase}` is the boundary's
+# phase id. A run-scope boundary's facts go in `run.data`, a feature-scope
+# boundary's in `features.<slug>.data`:
+#   result    a check-threshold boundary records the highest severity word
+#             still open and not overridden, or `none`; an approval boundary
+#             records `approved`
+#   evidence  the file the gate judged, relative to the project root
+#   checker   who decided: the reviewing agent, or `user` for an approval
+#   override  check-threshold only: the engineer's override note, when one
+#             was given
+# fix_cycle_cap is the `run.data` key holding the run's fix-cycle budget. A
+# gated SOP with boundaries must name each of its boundaries' keys, and a SOP
+# that mentions fix_cycle_cap must say it records `run.data.<fix_cycle_cap>`;
+# the lint checks both.
 version: 1
+gate_facts:
+  result: 'gate_{phase}_result'
+  evidence: 'gate_{phase}_evidence'
+  checker: 'gate_{phase}_checker'
+  override: 'gate_{phase}_override'
+  fix_cycle_cap: max_fix_cycles
 marker: 'Orchestration: strict (phase-gated SOP)'
 meaning: 'Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it, or the SOP''s own round-cap rule says to proceed; record which.'
 gate_note: 'Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.'

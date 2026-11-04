@@ -12,6 +12,8 @@ Exit 3 when PyYAML is not installed. Exit 64 on a bad invocation.
 Codes: `bad-entry` means one entry is malformed on its own. The other
 `*-mismatch` and `unknown-boundary-*` codes mean a reference that does not
 resolve to the SOP or to the entry's own `phases` and `gates`.
+`missing-gate-fact` means a gated SOP does not name a session key from
+`gate_facts` that `konductor verify-run` reads for one of its boundaries.
 """
 import collections.abc
 import re
@@ -23,6 +25,10 @@ SOP_DIR = Path("agent-sops")
 SOP_SUFFIX = ".sop.md"
 GATE_KINDS = {"approval", "check-threshold", "loop-exit"}
 TOP_LEVEL_KEYS = {"version", "marker", "meaning", "gate_note", "gated", "not_gated"}
+OPTIONAL_TOP_LEVEL_KEYS = {"gate_facts"}
+GATE_FACT_TEMPLATES = ("result", "evidence", "checker", "override")
+GATE_FACT_KEYS = set(GATE_FACT_TEMPLATES) | {"fix_cycle_cap"}
+PHASE_PLACEHOLDER = "{phase}"
 GATED_ENTRY_KEYS = {"gates", "basis", "phases", "boundaries"}
 BOUNDARY_KEYS = {"phase", "kind", "scope"}
 BOUNDARY_SCOPES = {"run", "feature"}
@@ -80,8 +86,12 @@ def check_map_shape(data):
     errors = []
     for key in sorted(TOP_LEVEL_KEYS - data.keys()):
         errors.append(f"bad-entry: missing top-level key '{key}'")
-    for key in sorted(data.keys() - TOP_LEVEL_KEYS):
+    for key in sorted(data.keys() - TOP_LEVEL_KEYS - OPTIONAL_TOP_LEVEL_KEYS, key=str):
         errors.append(f"bad-entry: unknown top-level key '{key}'")
+    if "gate_facts" in data:
+        problem = gate_facts_problem(data["gate_facts"])
+        if problem:
+            errors.append(f"bad-entry: 'gate_facts' {problem}")
     if "version" in data:
         version = data["version"]
         if isinstance(version, bool) or not isinstance(version, int) or version != 1:
@@ -163,6 +173,60 @@ def boundary_problem(boundaries):
         if not (isinstance(boundary["scope"], str) and boundary["scope"] in BOUNDARY_SCOPES):
             return f"item {number} 'scope' must be one of {', '.join(sorted(BOUNDARY_SCOPES))}"
     return None
+
+
+def gate_facts_problem(facts):
+    """Return what is wrong with a `gate_facts` value, or None when it is valid.
+    The rules match the CLI's parser, which rejects the same values."""
+    if not isinstance(facts, dict) or facts.keys() != GATE_FACT_KEYS:
+        return f"must be a mapping with exactly the keys {', '.join(sorted(GATE_FACT_KEYS))}"
+    for key in GATE_FACT_TEMPLATES:
+        value = facts[key]
+        if not (isinstance(value, str) and value.count(PHASE_PLACEHOLDER) == 1):
+            return f"'{key}' must be a string containing {PHASE_PLACEHOLDER} exactly once"
+    if len({facts[key] for key in GATE_FACT_TEMPLATES}) != len(GATE_FACT_TEMPLATES):
+        return "templates must all differ"
+    cap = facts["fix_cycle_cap"]
+    if not (isinstance(cap, str) and cap.strip() and PHASE_PLACEHOLDER not in cap):
+        return f"'fix_cycle_cap' must be a non-empty key without {PHASE_PLACEHOLDER}"
+    return None
+
+
+def required_gate_facts(facts, boundary):
+    """The session keys verify-run reads for one boundary. A check-threshold
+    boundary also needs its override key, the only way the engineer clears it."""
+    names = ["result", "evidence", "checker"]
+    if boundary["kind"] == "check-threshold":
+        names.append("override")
+    return [facts[name].replace(PHASE_PLACEHOLDER, boundary["phase"]) for name in names]
+
+
+def check_gate_facts(root, gated, facts):
+    """Every gated SOP with boundaries must name, in backticks, each key it
+    records for them, and a SOP that names the fix-cycle cap key must say it
+    records it as `run.data.<key>`. Entries already reported as malformed are
+    skipped, and so is a SOP that cannot be read."""
+    errors = []
+    cap = facts["fix_cycle_cap"]
+    for name in sorted(gated):
+        entry = gated[name]
+        sop = SOP_DIR / (name + SOP_SUFFIX)
+        try:
+            text = (root / sop).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        named = set(re.findall(r"`([^`]+)`", text))
+        if isinstance(entry, dict) and "boundaries" in entry and boundary_problem(entry["boundaries"]) is None:
+            for boundary in entry["boundaries"]:
+                for key in required_gate_facts(facts, boundary):
+                    if key not in named:
+                        errors.append(
+                            f"missing-gate-fact: gated '{name}' does not name `{key}` "
+                            f"for boundary '{boundary['phase']}' in {sop}"
+                        )
+        if cap in text and f"run.data.{cap}" not in named:
+            errors.append(f"missing-gate-fact: gated '{name}' names {cap} but not `run.data.{cap}` in {sop}")
+    return errors
 
 
 def duplicate_phases(boundaries):
@@ -370,6 +434,9 @@ def check(root):
             root, gated, not_gated, marker.strip(), meaning.strip(), gate_note.strip()
         )
     errors += check_boundaries(root, gated)
+    facts = data.get("gate_facts")
+    if "gate_facts" in data and gate_facts_problem(facts) is None:
+        errors += check_gate_facts(root, gated, facts)
     return errors
 
 

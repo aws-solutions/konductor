@@ -152,11 +152,81 @@ pub(crate) struct GatedSop {
     pub(crate) boundaries: Vec<Boundary>,
 }
 
-/// sop-orchestration.yml's `gated` entries, keyed by SOP name. The
-/// `marker` and `not_gated` keys are for the list's lint and are ignored.
+/// sop-orchestration.yml's `gated` entries, keyed by SOP name, and the
+/// session keys their gate facts are recorded under. The `marker` and
+/// `not_gated` keys are for the list's lint and are ignored.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub(crate) struct GateMap {
     pub(crate) gated: BTreeMap<String, GatedSop>,
+    pub(crate) gate_facts: GateFacts,
+}
+
+/// The `gate_facts` block: the `data` keys a gated SOP writes and the
+/// evaluator reads. The four gate keys are templates with one `{phase}`;
+/// `fix_cycle_cap` is a plain `run.data` key. The SOP lint reads the same
+/// block, so a SOP and the evaluator cannot name different keys.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct GateFacts {
+    result: String,
+    evidence: String,
+    checker: String,
+    #[serde(rename = "override")]
+    override_note: String,
+    fix_cycle_cap: String,
+}
+
+const PHASE_PLACEHOLDER: &str = "{phase}";
+
+impl GateFacts {
+    pub(crate) fn result(&self, phase: &str) -> String {
+        self.result.replace(PHASE_PLACEHOLDER, phase)
+    }
+
+    pub(crate) fn evidence(&self, phase: &str) -> String {
+        self.evidence.replace(PHASE_PLACEHOLDER, phase)
+    }
+
+    pub(crate) fn checker(&self, phase: &str) -> String {
+        self.checker.replace(PHASE_PLACEHOLDER, phase)
+    }
+
+    pub(crate) fn override_note(&self, phase: &str) -> String {
+        self.override_note.replace(PHASE_PLACEHOLDER, phase)
+    }
+
+    /// The `run.data` key holding the run's fix-cycle budget.
+    pub(crate) fn fix_cycle_cap(&self) -> &str {
+        &self.fix_cycle_cap
+    }
+
+    /// Each template has exactly one `{phase}` and the four differ, so two
+    /// facts never share a key; the cap key is a non-empty plain key.
+    fn check(&self) -> Result<(), String> {
+        let templates = [
+            ("result", &self.result),
+            ("evidence", &self.evidence),
+            ("checker", &self.checker),
+            ("override", &self.override_note),
+        ];
+        for (name, template) in templates {
+            if template.matches(PHASE_PLACEHOLDER).count() != 1 {
+                return Err(format!(
+                    "gate_facts.{name} '{template}' must contain {PHASE_PLACEHOLDER} exactly once"
+                ));
+            }
+        }
+        let distinct: BTreeSet<&String> = templates.iter().map(|(_, t)| *t).collect();
+        if distinct.len() != templates.len() {
+            return Err("gate_facts templates must all differ".to_string());
+        }
+        if self.fix_cycle_cap.trim().is_empty() || self.fix_cycle_cap.contains(PHASE_PLACEHOLDER) {
+            return Err(format!(
+                "gate_facts.fix_cycle_cap must be a non-empty key without {PHASE_PLACEHOLDER}"
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Deserialize)]
@@ -291,11 +361,22 @@ pub(crate) fn check_parity(table: &SeverityTable) -> Result<(), String> {
     Ok(())
 }
 
+/// Parses a `gate_facts` block on its own, for tests that swap the keys.
+#[cfg(test)]
+pub(crate) fn parse_gate_facts(text: &str) -> Result<GateFacts, String> {
+    let facts: GateFacts = serde_yaml::from_str(text).map_err(|err| err.to_string())?;
+    facts.check()?;
+    Ok(facts)
+}
+
 fn parse_gate_map(text: &str) -> Result<GateMap, GateConfigError> {
-    serde_yaml::from_str(text).map_err(|err| GateConfigError {
+    let error = |message: String| GateConfigError {
         file: SOP_ORCHESTRATION_NAME,
-        message: err.to_string(),
-    })
+        message,
+    };
+    let map: GateMap = serde_yaml::from_str(text).map_err(|err| error(err.to_string()))?;
+    map.gate_facts.check().map_err(error)?;
+    Ok(map)
 }
 
 #[cfg(test)]
@@ -744,12 +825,69 @@ mod tests {
 
     #[test]
     fn gated_entry_without_phases_has_empty_vectors() {
-        let text = "marker: x\ngated:\n  some-sop:\n    gates: [loop-exit]\n    basis: b\nnot_gated:\n  other: o\n";
-        let map = parse_gate_map(text).unwrap();
+        let text = format!("marker: x\n{FACTS}gated:\n  some-sop:\n    gates: [loop-exit]\n    basis: b\nnot_gated:\n  other: o\n");
+        let map = parse_gate_map(&text).unwrap();
         let sop = &map.gated["some-sop"];
         assert_eq!(sop.gates, vec![GateKind::LoopExit]);
         assert!(sop.phases.is_empty());
         assert!(sop.boundaries.is_empty());
+    }
+
+    const FACTS: &str = "gate_facts:\n  result: 'gate_{phase}_result'\n  evidence: 'gate_{phase}_evidence'\n  checker: 'gate_{phase}_checker'\n  override: 'gate_{phase}_override'\n  fix_cycle_cap: max_fix_cycles\n";
+
+    fn map_with_facts(facts: &str) -> Result<GateMap, GateConfigError> {
+        parse_gate_map(&format!("{facts}gated: {{}}\n"))
+    }
+
+    #[test]
+    fn embedded_gate_facts_render_the_session_keys() {
+        let facts = gate_map().unwrap().gate_facts;
+        assert_eq!(facts.result("design-review"), "gate_design-review_result");
+        assert_eq!(facts.evidence("specs"), "gate_specs_evidence");
+        assert_eq!(facts.checker("testing"), "gate_testing_checker");
+        assert_eq!(facts.override_note("testing"), "gate_testing_override");
+        assert_eq!(facts.fix_cycle_cap(), "max_fix_cycles");
+    }
+
+    #[test]
+    fn gate_facts_must_be_present() {
+        let err = parse_gate_map("gated: {}\n").unwrap_err();
+        assert!(err.message.contains("gate_facts"), "{err}");
+    }
+
+    #[test]
+    fn gate_fact_template_needs_one_phase_placeholder() {
+        for bad in ["gate_result", "gate_{phase}_{phase}"] {
+            let facts = FACTS.replace("'gate_{phase}_result'", &format!("'{bad}'"));
+            let err = map_with_facts(&facts).unwrap_err();
+            assert!(err.message.contains("exactly once"), "{bad}: {err}");
+        }
+    }
+
+    #[test]
+    fn gate_fact_templates_must_differ() {
+        let facts = FACTS.replace("'gate_{phase}_checker'", "'gate_{phase}_result'");
+        let err = map_with_facts(&facts).unwrap_err();
+        assert!(err.message.contains("must all differ"), "{err}");
+    }
+
+    #[test]
+    fn gate_fact_cap_key_is_plain() {
+        for bad in ["''", "'cap_{phase}'"] {
+            let facts = FACTS.replace(
+                "fix_cycle_cap: max_fix_cycles",
+                &format!("fix_cycle_cap: {bad}"),
+            );
+            let err = map_with_facts(&facts).unwrap_err();
+            assert!(err.message.contains("fix_cycle_cap"), "{bad}: {err}");
+        }
+    }
+
+    #[test]
+    fn unknown_gate_fact_key_is_rejected() {
+        let facts = format!("{FACTS}  note: 'gate_{{phase}}_note'\n");
+        let err = map_with_facts(&facts).unwrap_err();
+        assert!(err.message.contains("note"), "{err}");
     }
 
     #[test]
