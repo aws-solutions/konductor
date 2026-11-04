@@ -99,6 +99,15 @@ test('aaArmFor repeats a directory arm by its path, keeps the opencode prefix an
   assert.equal(P.aaArmFor([git('v1.2.0', 'a'.repeat(40)), { ...git('v1.2.0-b', 'e'.repeat(40)) }]).spec, `v1.2.0-c=${'a'.repeat(40)}`);
 });
 
+test('aaArmFor names the repeat of a Claude Code arm with one cc- prefix', () => {
+  const cc = { id: 'cc-main', vanilla: false, runtime: 'claude-code', commitSha: 'f'.repeat(40), contentHash: 't' };
+  assert.equal(P.aaArmFor([cc]).spec, `cc-main-b=${'f'.repeat(40)}`);
+  const named = { id: 'cc-pr-105', vanilla: false, runtime: 'claude-code', commitSha: 'e'.repeat(40), contentHash: 't' };
+  assert.equal(P.aaArmFor([named, { ...cc, commitSha: 'a'.repeat(40) }]).spec, `cc-pr-105-b=${'e'.repeat(40)}`);
+  const taken = [cc, { id: 'cc-main-b', vanilla: true, runtime: 'claude-code' }];
+  assert.equal(P.aaArmFor(taken).spec, `cc-main-c=${'f'.repeat(40)}`);
+});
+
 // ---- calibration sample ----
 
 const run = (n) => ({ dir: '/r', runs: Array.from({ length: n }, (_, i) => ({ armId: i % 2 ? 'a' : 'vanilla', taskId: `t${i % 3}`, replicate: Math.floor(i / 2) + 1, dir: `/r/${i}`, result: { status: i === 0 ? 'budget_skipped' : 'success' } })) });

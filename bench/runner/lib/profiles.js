@@ -76,7 +76,7 @@ const identityOf = (a) => {
   const pre = a.prefixInfo ? `|prefix:${a.prefixInfo.sha256}` : '';
   return `${ref}${cfg}${pre}`;
 };
-const unprefixed = (id) => id.replace(/^oc-/, '');
+const unprefixed = (id) => id.replace(/^(oc|cc)-/, '');
 
 /**
  * The extra arm that gives a study its noise floor: the first non-vanilla arm repeated at the same exact commit (or
