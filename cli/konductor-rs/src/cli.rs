@@ -10,12 +10,18 @@
 // cli/init.rs, cli/doctor.rs).
 //
 // ── Exit-code contract (Engineering Design §6) ─────────────────────────────
-//   0 = all passed        1 = halted        2 = unresolved CRITICAL gate
-//   3 = budget exceeded    4 = user aborted a paused verdict
+//   0 = all passed        1 = halted
+//   2 = a finding at or above the effective threshold is unresolved
+//   3 = fix-cycle budget exceeded    4 = user aborted a paused verdict
+//   6 = success with warnings       64 = argument/usage error only
+//   65 = session content or integrity failure (corrupt or invalid session,
+//        record integrity, phase order (a started or completed phase after an
+//        earlier PENDING or IN_PROGRESS one), missing gate facts or evidence, an
+//        in-progress session without allow_running)
 //
 // ── Usage-error remap (PITFALL) ────────────────────────────────────────────
 // clap defaults usage errors to exit code 2, which collides with this
-// contract's "unresolved CRITICAL gate" signal. `Cli::try_parse()` catches
+// contract's "unresolved finding" signal. `Cli::try_parse()` catches
 // that and remaps it to `EX_USAGE` (64, BSD sysexits.h); `--help`/`--version`
 // keep clap's normal exit 0.
 
@@ -28,6 +34,8 @@ pub(crate) mod config;
 pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
+pub(crate) mod gate_config;
+pub(crate) mod gate_eval;
 pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
@@ -43,6 +51,7 @@ mod time;
 mod trace;
 mod uninstall;
 mod update;
+mod verify_run;
 
 /// Test-only shared lock for every test in this crate that mutates the
 /// process-global `HOME` env var, since `std::env::set_var` has no
@@ -66,8 +75,9 @@ pub(crate) mod test_home_lock {
     }
 }
 
-/// Exit code the workflow contract reserves for "unresolved CRITICAL gate".
-/// Never emit this for a CLI usage error.
+/// Exit code the workflow contract reserves for an unresolved finding at or
+/// above the effective severity threshold, emitted by the gate evaluator
+/// (`verify-run`). Never emit this for a CLI usage error.
 const EXIT_CRITICAL_GATE: u8 = 2;
 
 /// Remapped exit code for CLI usage errors (bad flag, unknown subcommand,
@@ -90,6 +100,9 @@ const EXIT_VERIFY_FAILED: u8 = 65;
 pub(crate) const EXIT_SUCCESS_WITH_WARNINGS: u8 = 6;
 
 const EXIT_HALTED: u8 = 1;
+
+/// A recorded fix-cycle count went above the cap.
+const EXIT_BUDGET_EXCEEDED: u8 = 3;
 
 /// `--help` text styling (clap's own `Command::styles()`). Independent of
 /// `--no-color`/`NO_COLOR`: clap does its own TTY detection for `--help`
@@ -145,6 +158,14 @@ fn harness_value_parser() -> clap::builder::PossibleValuesParser {
             .iter()
             .map(|transformer| transformer.name()),
     )
+}
+
+/// Digits only: no sign, spaces or decimals.
+fn parse_fix_cycle_pin(raw: &str) -> Result<u64, String> {
+    if raw.is_empty() || !raw.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(format!("`{raw}` is not a non-negative integer"));
+    }
+    raw.parse::<u64>().map_err(|err| format!("`{raw}`: {err}"))
 }
 
 #[derive(Subcommand, Debug)]
@@ -447,6 +468,32 @@ pub enum Commands {
         no_version_check: bool,
     },
 
+    /// Check a SOP session file against its gates and report one exit
+    /// code. Reads the session file and the project config; writes nothing.
+    #[command(name = "verify-run")]
+    VerifyRun {
+        /// The session file to check, relative to the root or absolute. It
+        /// must be a regular file inside the root.
+        #[arg(long)]
+        session: std::path::PathBuf,
+
+        /// The directory the session file and every recorded evidence path
+        /// must resolve under. Defaults to the current directory.
+        #[arg(long)]
+        root: Option<std::path::PathBuf>,
+
+        /// Accept a session whose run is still in progress (exit 0 when
+        /// nothing else fired) instead of failing it with exit 65.
+        #[arg(long = "allow-running", action = ArgAction::SetTrue)]
+        allow_running: bool,
+
+        /// Pin the fix-cycle budget from outside the session file. A
+        /// recorded `max_fix_cycles` above N exits 65 (`CAP_RAISED`); an
+        /// absent one takes N; a lower recorded cap stays in force.
+        #[arg(long = "max-fix-cycles", value_name = "N", value_parser = parse_fix_cycle_pin)]
+        max_fix_cycles: Option<u64>,
+    },
+
     /// Read or write Konductor configuration.
     ///
     /// Temporarily hidden from normal --help and dispatch while the
@@ -532,6 +579,7 @@ impl Commands {
             Commands::Synth { .. } => Self::SYNTH,
             Commands::Init { .. } => Self::INIT,
             Commands::Doctor { .. } => Self::DOCTOR,
+            Commands::VerifyRun { .. } => Self::VERIFY_RUN,
             Commands::Config { .. } => Self::CONFIG,
             Commands::Metrics { .. } => Self::METRICS,
             Commands::DumpSchema => "__dump_schema",
@@ -550,6 +598,7 @@ impl Commands {
     pub(crate) const SYNTH: &'static str = "synth";
     pub(crate) const INIT: &'static str = "init";
     pub(crate) const DOCTOR: &'static str = "doctor";
+    pub(crate) const VERIFY_RUN: &'static str = "verify-run";
     pub(crate) const CONFIG: &'static str = "config";
     #[allow(dead_code)]
     pub(crate) const METRICS: &'static str = "metrics";
@@ -575,9 +624,36 @@ impl ConfigAction {
     pub(crate) const LIST: &'static str = "list";
 }
 
+/// The text of a clap usage error before its `Usage:` section: the trimmed
+/// non-empty lines joined with a space, without the leading `error: `.
+fn usage_detail(err: &clap::Error) -> String {
+    let message = err.to_string();
+    let lines: Vec<&str> = message
+        .lines()
+        .take_while(|line| !line.trim().is_empty())
+        .map(str::trim)
+        .collect();
+    let joined = lines.join(" ");
+    joined
+        .strip_prefix("error: ")
+        .unwrap_or(&joined)
+        .to_string()
+}
+
+/// True when argv is a `verify-run` invocation with `--json`: its parse
+/// failures keep the one-object-on-stdout contract. The subcommand is the
+/// first argument that is not a flag, since the global flags take no value.
+fn wants_verify_run_json(argv: &[String]) -> bool {
+    let mut args = argv.iter().skip(1);
+    args.clone().any(|a| a == "--json")
+        && args
+            .find(|a| !a.starts_with('-'))
+            .is_some_and(|a| a == "verify-run")
+}
+
 /// Parse argv, remapping clap's usage-error exit code (2) to EX_USAGE (64)
-/// so it never collides with the workflow contract's "unresolved CRITICAL
-/// gate" code. `--help`/`--version` clap outcomes still exit 0.
+/// so it never collides with the workflow contract's "unresolved finding"
+/// code. `--help`/`--version` clap outcomes still exit 0.
 ///
 /// Every invocation is logged under ~/.konductor/logs/, including the exit
 /// paths below that terminate the process directly before `run()` ever
@@ -599,7 +675,7 @@ pub fn parse_or_exit() -> Cli {
                 ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
                     // A command group invoked with no subcommand (e.g.
                     // bare `konductor config`). `Error::exit()` would exit
-                    // 2 here, colliding with the reserved CRITICAL-gate
+                    // 2 here, colliding with the reserved unresolved-finding
                     // code, so flush and exit 0 manually instead.
                     use std::io::Write as _;
                     print!("{err}");
@@ -608,7 +684,11 @@ pub fn parse_or_exit() -> Cli {
                     std::process::exit(0);
                 }
                 _ => {
-                    eprint!("{err}");
+                    if wants_verify_run_json(&argv) {
+                        println!("{}", verify_run::usage_error_json(&usage_detail(&err)));
+                    } else {
+                        eprint!("{err}");
+                    }
                     logging::log_invocation(&argv, EXIT_USAGE_ERROR);
                     std::process::exit(EXIT_USAGE_ERROR.into());
                 }
@@ -650,15 +730,6 @@ fn run_inner(cli: Cli) -> u8 {
     };
 
     dispatch::dispatch(command, cli.verbose, cli.json, color)
-}
-
-/// `EXIT_CRITICAL_GATE` (2) is reserved for a future CRITICAL-gate feature
-/// and isn't returned by any handler yet; `EXIT_HALTED` (1) is returned
-/// today by `doctor`'s own local constant of the same value. This keeps
-/// both referenced so neither is flagged dead code.
-#[allow(dead_code)]
-fn _contract_constants_reference() -> (u8, u8) {
-    (EXIT_HALTED, EXIT_CRITICAL_GATE)
 }
 
 #[cfg(test)]
@@ -1765,8 +1836,42 @@ mod tests {
     fn usage_error_exit_code_is_not_critical_gate() {
         // Guards the pitfall documented at the top of this file: the
         // remapped usage-error code must never equal the contract's
-        // "unresolved CRITICAL gate" code.
+        // "unresolved finding" code.
         assert_ne!(EXIT_USAGE_ERROR, EXIT_CRITICAL_GATE);
+    }
+
+    #[test]
+    fn no_cli_text_calls_exit_2_an_unresolved_critical_gate() {
+        let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut files = vec![
+            manifest.join("../../AGENTS.md"),
+            manifest.join("../README.md"),
+            manifest.join("../gate-config/config.yml"),
+            manifest.join("../gate-config/run-state.json"),
+            manifest.join("../gate-config/severity-schema.yml"),
+        ];
+        let mut dirs = vec![manifest.join("src"), manifest.join("tests")];
+        while let Some(dir) = dirs.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    dirs.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    files.push(path);
+                }
+            }
+        }
+        let stale = ["unresolved", "critical", "gate"].join(" ");
+        for path in files {
+            let text = std::fs::read_to_string(&path).unwrap().to_lowercase();
+            let flat = text.replace(['-', '\n', '/', '#', '*', '!'], " ");
+            let flat = flat.split_whitespace().collect::<Vec<_>>().join(" ");
+            assert!(
+                !flat.contains(&stale),
+                "{} still uses the old exit 2 wording",
+                path.display()
+            );
+        }
     }
 
     // ── Help-text regression: `config get`'s <KEY> example must be a real

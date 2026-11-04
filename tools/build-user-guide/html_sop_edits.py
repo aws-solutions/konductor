@@ -193,16 +193,28 @@ SOP_EDITS += [
      "That is why they are granted shell in Kiro CLI while the plain orchestrator is not. In Claude Code the distinction disappears \u2014 all three declare Bash there."),
 ]
 
-# Exit-code contract: the table listed only 0 and 64, and omitted 1, 2, 6, 65.
+# Exit-code contract: the table lists 0, 1, 2, 3, 6, 64 and 65, with the verify-run meanings.
 SOP_EDITS += [
     ("exit codes: full table",
-     '"rows":[{"k":"0","v":"Success"},{"k":"64","v":"Usage error (EX_USAGE) \u2014 a bad flag, unknown command, missing argument, invalid value, or an invalid config"},',
      '"rows":[{"k":"0","v":"Success"},'
      '{"k":"1 (EXIT_HALTED)","v":"A command ran correctly and reported failure \u2014 today, doctor with one or more failed/stale checks"},'
      '{"k":"2","v":"RESERVED for the run-engine\'s unresolved-CRITICAL-gate signal. The run-engine is not yet built, so nothing emits 2 today \u2014 and a bad invocation never will"},'
      '{"k":"6 (EXIT_SUCCESS_WITH_WARNINGS)","v":"Everything the command was responsible for succeeded, but something peripheral did not \u2014 today, uninstall when a tracked --link-bin symlink could not be removed"},'
      '{"k":"64 (EXIT_USAGE_ERROR)","v":"Usage error (EX_USAGE) \u2014 a bad flag, unknown command, missing argument, invalid value, or an invalid config"},'
-     '{"k":"65 (EXIT_VERIFY_FAILED)","v":"A verification failed \u2014 a checksum mismatch on a fetched install source, or an unsupported ~/.konductor/installs schema version"},'),
+     '{"k":"65 (EXIT_VERIFY_FAILED)","v":"A verification failed \u2014 a checksum mismatch on a fetched install source, or an unsupported ~/.konductor/installs schema version"},',
+     '"rows":[{"k":"0","v":"Success"},'
+     '{"k":"1 (EXIT_HALTED)","v":"A command ran correctly and reported failure \u2014 today, doctor with one or more failed/stale checks, or verify-run on a blocked phase"},'
+     '{"k":"2 (EXIT_CRITICAL_GATE)","v":"Unresolved gating finding: an open finding at or above the effective threshold. Emitted by verify-run; a bad invocation never exits 2"},'
+     '{"k":"3 (EXIT_BUDGET_EXCEEDED)","v":"Budget exceeded. Emitted by verify-run when a feature\'s fix cycles go above the cap"},'
+     '{"k":"6 (EXIT_SUCCESS_WITH_WARNINGS)","v":"Everything the command was responsible for succeeded, but something peripheral did not \u2014 today, uninstall when a tracked --link-bin symlink could not be removed, or verify-run when a run passed with a skipped gate phase"},'
+     '{"k":"64 (EXIT_USAGE_ERROR)","v":"Usage error (EX_USAGE) \u2014 a bad flag, unknown command, missing argument, invalid value, or an invalid config. For verify-run, argument problems only (including a --root that is not a directory)"},'
+     '{"k":"65 (EXIT_VERIFY_FAILED)","v":"A verification failed \u2014 a checksum mismatch on a fetched install source, or an unsupported ~/.konductor/installs schema version. For verify-run, any content failure: an unusable session file (unreadable, not UTF-8, invalid YAML, a rejected tag or key, a symlink, outside --root, over 1 MiB) or config, a missing gate fact, an inconsistent session record, or a run still in progress without --allow-running"},'),
+    ("exit codes: config errors under verify-run",
+     '"paras":["All exit 64."]',
+     '"paras":["All exit 64, except under verify-run, where an invalid config exits 65."]'),
+    ("exit codes: verify-run current directory",
+     '{"k":"Current directory cannot be resolved","v":"\u2014"}',
+     '{"k":"Current directory cannot be resolved (also under verify-run)","v":"\u2014"},{"k":"verify-run with a --root that is missing or not a directory","v":"konductor verify-run --session s.yml --root nope"}'),
 ]
 
 # CLI command table: install needs --harness, update is an unconditional overwrite,
@@ -1063,4 +1075,35 @@ SOP_EDITS += [
     ("glossary: Konductor CLI entry drops the withdrawn config command",
      "diagnostics: install, update, uninstall, doctor, init, config, and synth.",
      "diagnostics: install, update, uninstall, doctor, init, synth, and metrics."),
+]
+
+# The contributor guide's SOP section gained the gated-SOP list and its lint
+# (docs/user-guide/appendix/contributing.md); the policy-file tree gained the
+# list file. Both strings are the page's decoded JavaScript source.
+SOP_EDITS += [
+    ("contributing: gated SOP list and marker paragraph",
+     'it is why the existing SOPs behave consistently."],\n        codeLang: "SHAPE"',
+     'it is why the existing SOPs behave consistently.", '
+     '"List the SOP in cli/gate-config/sop-orchestration.yml. A gated SOP, one that stops between steps for an approval, a threshold check or a loop exit, is a map with gates and basis. Any other SOP goes under not_gated as name: reason, one line of text. A gated SOP also needs the marker paragraph and the gate note between the title and ## Overview: the line \\"Orchestration: strict (phase-gated SOP)\\", then the line \\"Strict means: stop at each recorded gate, record the gate facts, and do not proceed past an unmet gate unless the engineer overrides it, or the SOP\'s own round-cap rule says to proceed; record which.\\", then a blank line and the line \\"Recorded gates are the stops this SOP names; where the run keeps a session file, record their gate facts there.\\"", '
+     '"A gated basis cites at least one step by its heading text in backticks, without the step or phase number, so it survives renumbering. Run make sop-orchestration-check; it fails on an unlisted SOP, a missing or misplaced marker or gate note, a basis that cites no heading (uncited-basis), or a cited heading that no longer exists. The check needs PyYAML and exits 3 without it. Run it again whenever you edit or renumber the steps of a listed SOP, and update basis if a gate moved."],\n        codeLang: "SHAPE"'),
+    ("reference: policy tree lists the SOP list file",
+     'Declarative policy shipped with the CLI\\n│       ├── config.yml            Default configuration\\n│       ├── severity-schema.yml   Finding severities\\n│       └── scope-table.yml       Change tiers',
+     'Declarative policy; the CLI embeds config.yml only\\n│       ├── config.yml            Default configuration\\n│       ├── severity-schema.yml   Finding severities\\n│       ├── scope-table.yml       Change tiers\\n│       └── sop-orchestration.yml Gated SOP list, repository lint input'),
+]
+
+# verify-run --max-fix-cycles: append-style edits on top of the verify-run rows above.
+SOP_EDITS += [
+    ("exit codes: 64 pinned cap",
+     "argument problems only (including a --root that is not a directory)",
+     "argument problems only (including a --root that is not a directory, or a --max-fix-cycles value that is not a non-negative integer)"),
+    ("exit codes: 65 pinned cap",
+     "an inconsistent session record, or a run still in progress without --allow-running",
+     "an inconsistent session record, a recorded max_fix_cycles above a pinned --max-fix-cycles (reason CAP_RAISED), or a run still in progress without --allow-running"),
+]
+
+# verify-run phase order: a started or completed phase after an unstarted one.
+SOP_EDITS += [
+    ("exit codes: 65 phase order",
+     "an inconsistent session record, a recorded max_fix_cycles above a pinned",
+     "an inconsistent session record (including a started or completed phase after an earlier phase still PENDING), a recorded max_fix_cycles above a pinned"),
 ]

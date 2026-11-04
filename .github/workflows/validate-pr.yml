@@ -16,7 +16,8 @@ name: Validate PR
 
 on:
   pull_request:
-    branches: [main]
+    # The stacked verify-run/gate PRs target feat/sop-gates-* branches, not main.
+    branches: [main, 'feat/sop-gates-*']
     types: [opened, edited, reopened, synchronize]
 
 permissions:
@@ -70,6 +71,11 @@ jobs:
         # ubuntu-latest) -- no Rust toolchain required, so this runs before
         # the toolchain setup below rather than depending on it.
         run: make kiro-power-check
+
+      - name: Check the SOP orchestration list (make sop-orchestration-check)
+        # Fails when cli/gate-config/sop-orchestration.yml, the marker lines
+        # and agent-sops/ disagree. Needs python3 and PyYAML (installed above).
+        run: make sop-orchestration-check
 
       - name: Require a CHANGELOG.md entry alongside any VERSION bump
         # CHANGELOG.md's own convention (entries consolidated per release,

@@ -12,6 +12,23 @@ not per individual commit.
 
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
+- The four phase-gated SOPs, such as `k-full-sdlc`, now carry an
+  `Orchestration: strict (phase-gated SOP)` line and a sentence saying what strict means.
+  `cli/gate-config/sop-orchestration.yml` lists every SOP as gated or not gated, and
+  `make sop-orchestration-check` (run in PR validation) fails when a new SOP is unlisted, a
+  gated SOP lacks the marker, or a gated basis cites a step heading that no longer exists.
+- Gated SOPs can list their phases and gate boundaries, and `make sop-orchestration-check`
+  checks them against each SOP's phase list.
+- `severity-schema.yml` maps the words checkers write for finding severities (IMPORTANT,
+  WARNING, WARNINGS, SUGGESTION, MINOR) to severity ids. Matching ignores case and reads the
+  leading word of labels such as `Warning Gap`. Any other word, an empty label, and risk,
+  priority or confidence scales such as `High Risk` rank as CRITICAL.
+- Groundwork for judging a SOP session file against its gates: an internal evaluator.
+  Phase-gated SOPs treat an open HIGH finding as unresolved, even when the threshold is
+  CRITICAL.
+- New `konductor verify-run --session <path>` checks a SOP session file and exits through the
+  existing exit-code contract. `--root <dir>` sets the directory the session and its evidence
+  must resolve under (default: the current directory). It writes nothing.
 
 ### Changed
 
@@ -68,6 +85,10 @@ not per individual commit.
   keeps being replaced under it, instead of retrying without a limit.
 - The plugin README link rewrite handles `[label]: <target>` reference definitions: it pins a
   relative target to the release tag and leaves an absolute one alone, keeping the brackets.
+- `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
+  such as a `telemetry:` opt-out. It now changes only the named key.
+  The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
+  anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 
 ## [1.2.0] - 2026-10-26
 

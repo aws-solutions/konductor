@@ -7,16 +7,16 @@ a Konductor-managed repository. It handles installation, configuration, and diag
 for the agent, skill and SOP content that Konductor manages — it does not itself run
 SDLC workflows (that's the Konductor Kiro agent's job).
 
-> **Status:** `init`, `install`, `update`, `uninstall`, `synth`, and `doctor` now
-> perform real work (see [Current state](#current-state)). The remaining command
+> **Status:** `init`, `install`, `update`, `uninstall`, `synth`, `doctor`, and
+> `verify-run` now perform real work (see [Current state](#current-state)). The remaining command
 > (`metrics`) is still a **stub** - it parses arguments and validates input correctly,
 > but does not yet perform real work.
 
 ---
 
-## The 7 commands
+## The 8 commands
 
-`install`, `update`, `uninstall`, `synth`, `init`, `doctor`, `metrics`.
+`install`, `update`, `uninstall`, `synth`, `init`, `doctor`, `verify-run`, `metrics`.
 
 Global options: `--verbose`/`-v`,
 `--json`, `--version`, `--no-color`.
@@ -60,6 +60,8 @@ of failing.
 
 Running an SDLC _workflow_ is **not** a CLI subcommand - that is driven by the Konductor
 Kiro agent. The CLI utility handles setup, content build, lifecycle, and diagnostics only.
+`verify-run` does not run a workflow either: it only checks the session file of a
+finished or running one.
 
 ---
 
@@ -854,8 +856,8 @@ With `--all`, this same object shape is nested once per target under a top-level
 `targets` array instead - see [Checking every tracked install with `--all`](#checking-every-tracked-install-with---all).
 
 Exit codes: `0` when every check is `ok`/`info`/`warn`; `1` (`EXIT_HALTED`) when at
-least one is `failed`/`stale`; `64` on a usage error. Never exit code 2 - see
-[Conventions](#conventions).
+least one is `failed`/`stale`; `64` on a usage error. `doctor` never emits exit code 2,
+which only the gate evaluator uses; see [Conventions](#conventions).
 
 ### `--json` error envelope (`install`/`synth`/`doctor`)
 
@@ -883,6 +885,97 @@ stdout instead:
 
 ---
 
+## `verify-run`
+
+```bash
+konductor verify-run --session .konductor/sessions/k-full-sdlc-<timestamp>-<suffix>.yml
+konductor verify-run --session <path> --allow-running   # accept a run still in progress
+konductor verify-run --session <path> --root <dir>      # session and evidence must live under <dir>
+konductor verify-run --session <path> --json            # one JSON object on stdout
+konductor verify-run --session <path> --max-fix-cycles 2 # pin the fix-cycle budget outside the session file
+```
+
+Checks one SOP session file, the file the `sop-state-management` skill writes for a
+phase-gated SOP, and reports one exit code. Today only `k-full-sdlc` lists its phases
+and gate boundaries in `cli/gate-config/sop-orchestration.yml`, so only its sessions can
+pass. The SOP name comes from the file name (`<sop>-<digit>...`).
+
+It reads the session file (at most 1 MiB), checks that the evidence files the session
+names exist (it never opens them), and reads the effective config (preset, then
+`~/.konductor/config.yml`, then `<cwd>/.konductor/config.yml`) for
+`fail_on_severity_at_or_above`. It writes nothing under the project and sends no
+telemetry. Like every command, it appends one line to the invocation log under
+`~/.konductor/logs/`.
+
+The current directory is the project and the only source of policy: the threshold comes
+from `<cwd>/.konductor/config.yml` layered over the user config, never from `--root`. The
+output names the file that set it in a `CONFIG_SOURCE` info line (`defaults` when no file
+sets it), in plain and `--json` output.
+
+`--root <dir>` only bounds where files may resolve. It defaults to the current directory.
+A relative `--root` is resolved against the current directory, and the root is
+canonicalized (symlinks resolved) before any check. The session path is resolved against
+the root (an absolute path is used as is); the file must be a regular file whose canonical
+path is inside the root, and it must not be a symlink. Evidence paths in the session are
+relative to the root and must canonicalize to a regular file inside it, spelled exactly as
+on disk (a case variant is `EVIDENCE_MISSING` on every host). Unlike the session file, an
+evidence path may be a symlink when it resolves inside the root; one resolving outside is
+refused. Use `--root` when the session lives in an output directory outside the checkout,
+for example `konductor verify-run --session <file> --root <output_dir> --allow-running`
+run from the project root. A `--root` that does not exist or is not a directory is a usage
+error (exit 64). The containment checks cover static paths and symlinks. They do not
+protect against another process replacing files while the command runs.
+
+The YAML is read as plain data: a local tag such as `!custom` or a non-string mapping
+key rejects the file. A `!!` tag such as `!!python/object` is resolved to its untagged
+value, so no object is ever constructed.
+
+The first row that fires sets the exit; every firing reason prints.
+
+| Row | Condition | Reason | Exit |
+| --- | --- | --- | --- |
+| V0 | A bad argument: a missing or unknown flag, a `--root` that is not a directory, or an unresolvable current directory | `ARGUMENT_INVALID` | 64 |
+| V1 | The file is missing, unreadable, not UTF-8, a symlink, outside the root, or rejected by the YAML loader. A `config.yml` that is present but invalid | `SESSION_INVALID`, `CONFIG_INVALID` | 65 |
+| V2 | `schema_version` is not 1, a status outside the skill's enums, a SOP name not in the gated list or with no `phases`, or session phases that differ from that list | `RECORD_INTEGRITY` | 65 |
+| V3 | A phase `COMPLETED` after an earlier `PENDING` or `IN_PROGRESS` one, `run_status: completed` with a phase not `COMPLETED` or `SKIPPED`, or a `SKIPPED` phase with no `skip_reason` | `PHASE_ORDER`, `PHASE_INCOMPLETE`, `SKIP_UNEXPLAINED` | 65 |
+| V4 | A gate phase is `COMPLETED` (per registered feature for a feature gate) with no `gate_<phase>_result`, an approval result other than `approved`, or no `gate_<phase>_evidence` naming a file in the project | `GATE_MISSING`, `APPROVAL_MISSING`, `EVIDENCE_MISSING` | 65 |
+| V5 | A phase is `BLOCKED`, or a per-feature phase stays `IN_PROGRESS` after a later phase completed | `HALTED` | 1 |
+| V6 | A feature's `fix_cycles_used` is above the cap: `run.data.max_fix_cycles`, or 2 when none is recorded. Also checks the run-level `doc_fix_cycles_used` | `BUDGET_EXCEEDED` | 3 |
+| V7 | A check-threshold or loop-exit `gate_<phase>_result` ranks at or above the effective threshold. A word in no severity list ranks as CRITICAL | `FINDING_UNRESOLVED` | 2 |
+| V8 | `run_status: completed` and nothing above fired | `PASSED` | 0, or 6 when a gate phase was skipped |
+| V9 | `run_status: in_progress` and nothing above fired | `RUNNING` | 0 with `--allow-running`, otherwise 65 |
+
+Info lines never change the exit: `SAME_TYPE_CHECKER`, `SEVERITY_UNKNOWN`,
+`FINDING_BELOW_GATE`, `FIX_CYCLE_CAP_DEFAULTED` (no `max_fix_cycles` is recorded, so
+the cap is 2), `PHASE_SKIPPED`, and `CONFIG_SOURCE` (which file set the threshold).
+
+**Strict floor.** The effective threshold is the configured
+`fail_on_severity_at_or_above` or `HIGH`, whichever is lower. With the preset
+`CRITICAL`, an open `IMPORTANT` or `WARNING` finding (both rank `HIGH`, see
+`cli/gate-config/severity-schema.yml`) at a gate exits 2. That is the intended report,
+"a HIGH-or-above finding was left open at a gate", not a broken run.
+
+Plain output prints a summary line, `konductor verify-run: <first reason> (exit <n>)`,
+then one `<CODE>: <detail>` line per reason and per info note, on stdout. Control
+characters in a detail print as visible escapes (`\n`, `\u{1b}`). A V1 failure prints
+`konductor verify-run: <CODE>: <detail>` on stderr instead. `--json` prints one object on
+stdout in every case, including argument errors clap rejects (stderr stays empty); `error`
+(the first reason's detail) is present for exits 64 and 65:
+
+```json
+{
+  "command": "verify-run",
+  "exit": 2,
+  "reasons": [{ "code": "FINDING_UNRESOLVED", "detail": "..." }],
+  "info": []
+}
+```
+
+It detects omission and inconsistency in the recorded session, not forgery: a session
+that records false facts consistently passes.
+
+---
+
 ## Using the orchestrator
 
 Agents installed with `--target <dir>` are discovered by a **cwd-relative scan** - they
@@ -905,29 +998,61 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
 
 - **Unified error prefix.** Every error line the CLI prints in plain-text mode sits
   under one greppable prefix family: `konductor <command>: <message>` for a
-  per-command error (`install`, `uninstall`, `update`, `doctor`, `synth`, `init`), or
+  per-command error (`install`, `uninstall`, `update`, `doctor`, `synth`, `init`,
+  `verify-run`), or
   `konductor: <message>` for the handful of command-agnostic paths (no
   subcommand resolved yet, or the shared working-directory resolution run before
   dispatch). This matters when output from multiple `konductor` invocations is
   interleaved in a CI log or terminal session alongside other tools' output.
 - **Exit code 64 for CLI usage errors.** A bad flag, unknown command, or missing required
   argument exits **64** (`EX_USAGE`), not the more common default of 2 - exit code 2 is
-  reserved by the exit-code contract for "unresolved CRITICAL gate" (the CI-failing
-  signal), so a malformed invocation is never mistaken for a gate failure.
+  reserved by the exit-code contract for an unresolved finding at or above the effective
+  severity threshold (the CI-failing signal), so a malformed invocation is never mistaken
+  for a gate failure. 64 covers argument and usage problems only.
 - **Exit-code contract** (the conductor that emits these for its own paused-verdict
-  workflow is post-launch - but one code is already reused, for its own distinct
-  local meaning, by a real command ahead of that conductor existing):
+  workflow is post-launch. `doctor`, `uninstall` and `verify-run` already emit some
+  of them, as each row says):
   | Code | Meaning |
   |------|---------|
   | 0 | All passed |
-  | 1 | Halted (timeout / runtime error / parse error) - reused by `doctor` for "at least one check failed/stale" |
-  | 2 | Unresolved CRITICAL gate - CI-failing signal (**never** used for usage errors) |
-  | 3 | Budget / turn limit exceeded |
+  | 1 | Halted (timeout / runtime error / parse error) - reused by `doctor` for "at least one check failed/stale", and by `verify-run` for a blocked phase |
+  | 2 | Unresolved finding at or above the effective severity threshold, from the gate evaluator; the CI-failing signal (**never** used for usage errors). Phase-gated SOPs never judge laxer than HIGH. Emitted by `verify-run` |
+  | 3 | Fix-cycle budget exceeded: a recorded count is above `run.data.max_fix_cycles` (default 2 when the session records none; the evaluator notes that default). Emitted by `verify-run` |
   | 4 | User aborted a paused verdict |
   | 5 | Reserved, not yet emitted by any command. |
-  | 6 | Success with warnings - emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
-  | 64 | CLI usage error (`EX_USAGE`) - never the reserved code `2` |
-  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error) |
+  | 6 | Success with warnings: `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink; `verify-run` when a run completed with a skipped gate |
+  | 64 | CLI usage error (`EX_USAGE`) - never the reserved code `2`. For `verify-run`, argument problems only, including a `--root` that is not a directory or a `--max-fix-cycles` that is not a non-negative integer |
+  | 65 | Content or integrity failure, distinct from a `64` usage error: an unsupported manifest/index `schema_version`, a failed checksum, or, for a SOP session file, a corrupt or invalid session, a broken record (including a non-integer `max_fix_cycles` or counter, a recorded `max_fix_cycles` above a pinned cap (`CAP_RAISED`), or a wrong-typed gate fact), phase order (a started or completed phase after an earlier phase that is still `PENDING` or `IN_PROGRESS`, unless that earlier per-feature phase is held open by a feature, which exits `1`), an unfinished phase or an unexplained skip, missing gate facts or evidence, or, reported last and only when nothing else fired, an in-progress session without `--allow-running` |
+
+  When several causes apply, the gate evaluator lists all of them but exits with the
+  code of the first check that fires. The checks run in this order: session and
+  record integrity (65), halted (1), budget (3), findings (2), then, when nothing else
+  fired, skipped gate (6) or an in-progress session without `allow_running` (65). The
+  words `none` (no findings) and `approved` match ignoring case and surrounding
+  whitespace, like severity words. One
+  exception: a malformed `max_fix_cycles` is found by the budget check, so after a
+  halt the exit stays 1 and the 65 cause is only listed. A recorded cap above a pinned
+  cap (`CAP_RAISED`) is not an exception: it is found with the integrity checks.
+  The fix-cycle cap comes from the SOP recording
+  `max_fix_cycles` in the session; only an absent key falls back to the default of 2. A
+  key that is present must hold a non-negative integer: an empty value (`max_fix_cycles:`),
+  a negative number, a float, a string, a bool or a list is a 65 integrity failure, never a silent default.
+  Pinned cap: `verify-run --max-fix-cycles <N>` (N a non-negative integer, digits only: no
+  sign, spaces or decimals; anything else is a `64` usage error) supplies the fix-cycle
+  budget from outside the session file. With the flag, a recorded
+  `max_fix_cycles` above N is a `65` integrity failure (reason code `CAP_RAISED`, naming
+  both values) because the recorded budget was raised above the pinned one. A recorded
+  value at or below N stays the cap, so a lower recorded cap is still enforced (exit `3`
+  when exceeded). An absent key takes N instead of the default 2. A present but malformed
+  key is still a `65` integrity failure. `CAP_RAISED` is found with the other record
+  integrity checks, before the halted and budget rows, so a raised cap never turns into a
+  pass or a `3`. Without the flag nothing changes: the recorded cap is trusted, and only an
+  absent key defaults to 2.
+  Trust boundary: the session file is plain YAML written by the orchestrating agent, and
+  without the flag `verify-run` cannot tell whether the cap was edited after minting. Like
+  every `gate_<phase>_*` fact, that assumes a cooperating agent. The flag protects checks
+  that CI or an engineer runs with a budget they chose. It does not protect an agent that
+  writes the session and also runs `verify-run`, because that agent can pass any value.
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 
@@ -948,10 +1073,11 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   - `doctor` inspecting a source tree/install destination via `synth`/`install`/`config`'s
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
+  - `verify-run` checking a SOP session file against its gate boundaries and
+    reporting one exit code, including exit code 2 for an unresolved gating finding
 - **Stubs:** `metrics` still prints "not yet implemented."
 - **Not yet started:** the run-engine/conductor (which will read/write
-  `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's
-  "unresolved CRITICAL gate" signal), and `.konductor/runs/` storage.
+  `.konductor/run-state.json`-shaped documents), and `.konductor/runs/` storage.
 
 ## Current limitations
 
