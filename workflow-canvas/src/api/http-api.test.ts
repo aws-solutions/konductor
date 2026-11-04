@@ -105,9 +105,25 @@ describe('createHttpApi', () => {
     expect(await api.getWorkflow('t')).toEqual({
       name: 'hello',
       text: 'name: hello\n',
+      hash: 'a'.repeat(64),
+      readOnly: false,
       view: DOCUMENT_BODY.view,
       diagnostics: [],
     });
+  });
+
+  it('reads a read-only workflow', async () => {
+    const { api } = apiFor(reply({ ...DOCUMENT_BODY, read_only: true }));
+
+    expect(await api.getWorkflow('t')).toMatchObject({ readOnly: true });
+  });
+
+  it('refuses a workflow that does not say whether it is read-only', async () => {
+    const without: Record<string, unknown> = { ...DOCUMENT_BODY };
+    delete without.read_only;
+    const { api } = apiFor(reply(without));
+
+    await expect(api.getWorkflow('t')).rejects.toBeInstanceOf(ApiError);
   });
 
   it('reads a workflow with no file as no text and no view', async () => {
@@ -116,24 +132,59 @@ describe('createHttpApi', () => {
 
     expect(await api.getWorkflow('t')).toMatchObject({
       text: null,
+      hash: null,
       view: null,
     });
   });
 
-  it('reads the message and line of each diagnostic', async () => {
+  it('reads the message, line, path and severity of each diagnostic', async () => {
     const body = {
       ...DOCUMENT_BODY,
       view: null,
       diagnostics: [
-        { code: 'MISSING_KEY', message: 'Missing key', line: 3 },
-        { code: 'WRONG_TYPE', message: 'Wrong type' },
+        {
+          code: 'MISSING_KEY',
+          severity: 'error',
+          path: 'stages.write',
+          message: 'Missing key',
+          line: 3,
+        },
+        {
+          code: 'WRONG_TYPE',
+          severity: 'warning',
+          path: 'intent',
+          message: 'Wrong type',
+        },
       ],
     };
     const { api } = apiFor(reply(body));
 
     expect((await api.getWorkflow('t')).diagnostics).toEqual([
-      { message: 'Missing key', line: 3 },
-      { message: 'Wrong type', line: undefined },
+      {
+        message: 'Missing key',
+        line: 3,
+        path: 'stages.write',
+        severity: 'error',
+      },
+      {
+        message: 'Wrong type',
+        line: undefined,
+        path: 'intent',
+        severity: 'warning',
+      },
+    ]);
+  });
+
+  it('takes a severity it does not know as an error', async () => {
+    const body = {
+      ...DOCUMENT_BODY,
+      view: null,
+      diagnostics: [{ message: 'Odd', severity: 'fatal', path: '' }],
+    };
+    const { api } = apiFor(reply(body));
+
+    expect((await api.getWorkflow('t')).diagnostics).toMatchObject([
+      { severity: 'error' },
     ]);
   });
 
@@ -147,7 +198,7 @@ describe('createHttpApi', () => {
       };
       const { api } = apiFor(reply(body));
 
-      expect((await api.getWorkflow('t')).diagnostics).toEqual([
+      expect((await api.getWorkflow('t')).diagnostics).toMatchObject([
         { message: 'Odd line', line: undefined },
       ]);
     },

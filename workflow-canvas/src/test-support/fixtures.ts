@@ -26,10 +26,19 @@ export const HELLO_SESSION: Session = {
   apiVersion: 1,
 };
 
+/** The text of the file behind the workflow above. */
+export const HELLO_TEXT =
+  'name: hello\nintent: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n  - name: review\n    agent: k-quality-assurance\n';
+
+/** The hash that the server gives that text; a test only needs it to differ. */
+export const HELLO_HASH = 'a'.repeat(64);
+
 /** The document that `GET /api/workflow` returns for the workflow above. */
 export const HELLO_DOCUMENT: WorkflowDocument = {
   name: 'hello',
-  text: 'name: hello\n',
+  text: HELLO_TEXT,
+  hash: HELLO_HASH,
+  readOnly: false,
   view: HELLO_VIEW,
   diagnostics: [],
 };
