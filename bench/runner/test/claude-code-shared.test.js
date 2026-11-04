@@ -17,6 +17,7 @@ const { runtimeOf, isUsdRuntime } = require('../lib/harness/runtime.js');
 const { loadRun } = require('../../report/load.js');
 const { buildReport, defaultBaseline, BASIS } = require('../../report/aggregate.js');
 const { renderMarkdown } = require('../../report/render.js');
+const { analyze } = require('../../report/generate.js');
 const { cellKeyOf } = require('../../report/orchpass.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { scanTree } = require('../lib/hygiene.js');
@@ -90,6 +91,25 @@ test('a Claude Code run reports in USD and tokens like opencode, with cc-vanilla
     assert.doesNotMatch(md, /credits per successful run/);
     const cell = cellKeyOf(run);
     assert.deepEqual([cell.harness, cell.model, cell.key], ['claude-code', MODEL, `claude-code / ${MODEL}`]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const pinOf = (dir, bench) => analyze({ run: loadRun(dir), tasks: loadTasks(bench) }).facts.pin;
+
+test('the model pin check compares canonical ids for Claude Code runs and leaves the other harnesses alone', () => {
+  const root = tmp();
+  try {
+    const bench = makeBench(path.join(root, 'bench'));
+    const cc = makeCcRun(path.join(root, 'cc'), bench, [...reps('cc-vanilla', () => ({ usd: 0.04, sessionModel: 'claude-sonnet-5-5' })), ...reps('cc-k', () => ({ usd: 0.1, sessionModel: 'claude-sonnet-5-5' }))], { canonicalModel: 'claude-sonnet-5-5' });
+    assert.deepEqual(pinOf(cc, bench), { runs: 6, verified: 6, mismatch: 0 });
+    const wrong = makeCcRun(path.join(root, 'cc2'), bench, reps('cc-vanilla', () => ({ usd: 0.04, sessionModel: 'claude-opus-5-5' })), { canonicalModel: 'claude-sonnet-5-5' });
+    assert.deepEqual(pinOf(wrong, bench), { runs: 3, verified: 0, mismatch: 0 });
+    const kiro = makeRun(path.join(root, 'k'), bench, reps('vanilla', () => ({ sessionModel: 'claude-sonnet-5.5' })), { model: 'claude-sonnet-5.5' });
+    assert.deepEqual(pinOf(kiro, bench), { runs: 3, verified: 3, mismatch: 0 });
+    const oc = makeRun(path.join(root, 'o'), bench, reps('oc-vanilla', () => ({ harness: 'opencode', sessionModel: 'claude-sonnet-5.5' })), { harness: 'opencode', model: 'claude-sonnet-5.5' });
+    assert.deepEqual(pinOf(oc, bench), { runs: 3, verified: 3, mismatch: 0 });
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

@@ -137,7 +137,9 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
   const contaminated = rows.filter((r) => r.contamination);
   const flagged = contaminated.filter((r) => (r.contamination.externalFetch || []).length || (r.contamination.fixRecallChars || 0) >= MIN_RECALL);
 
-  const pinOk = (r) => r.outcome !== 'modelMismatch' && ((r.sessionModel && r.sessionModel === (cfg.model || r.model)) || (r.modelNormalized === true && (!cfg.model || !r.sessionModel || r.sessionModel === cfg.model)));
+  // Claude Code reports the canonical id of the model it used; the run config holds the profile id the flag was given.
+  const pinned = (r) => (cfg.harness === 'claude-code' && cfg.canonicalModel ? cfg.canonicalModel : cfg.model || r.model);
+  const pinOk = (r) => r.outcome !== 'modelMismatch' && ((r.sessionModel && r.sessionModel === pinned(r)) || (r.modelNormalized === true && (!cfg.model || !r.sessionModel || r.sessionModel === cfg.model)));
   const capKey = 'budgetCredits' in cfg ? 'budgetCredits' : 'budgetUsd' in cfg ? 'budgetUsd' : null;
   const checkRows = rows.filter((r) => r.checks !== null);
   const revisionOf = (e) => (tasks.get(e.taskId) ? checksRevision(tasks.get(e.taskId)) : null);
