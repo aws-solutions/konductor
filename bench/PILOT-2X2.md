@@ -77,5 +77,12 @@ model identity check (Claude Code canonical-model rule; Kiro session model where
 - `bench/scripts/pilot-2x2.sh` runs the cells, judges them and calls `report-2x2`. It makes one `bench.js run` per cell and
   task, so a rerun skips finished tasks. Its helper `pilot-2x2.js` holds the resume marker, the finished-directory check and the
   spend arithmetic.
+- Order: within each harness the konductor cell runs before the vanilla cell, so a refused install (for example an agent
+  without the dashed model pin) stops the harness before the vanilla cell spends anything. If every konductor run of a harness
+  stops before recording a result, the vanilla cell of that harness is not started.
+- Budget: Claude Code runs stop starting at 90% of `--budget-usd`. Each run gets `min(--run-budget-usd, allowance left)` as its
+  cap, and none starts with less than USD 0.05 left. claude checks its cap between turns, so the run that crosses the allowance
+  can pass it by up to one turn; the 10% held for judging absorbs that. A run killed before it recorded a cost is counted at
+  the cap it was given, and the script says so.
 - Run directories are one harness each (the loader refuses mixed harnesses), which is why each cell is its own set of
   directories and why judging is per directory.

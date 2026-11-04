@@ -26,21 +26,13 @@ function* resultFiles(dir) {
   }
 }
 
-function summaryFiles(root) {
-  const found = [];
-  const walk = (d, depth) => {
-    if (depth > 3) return;
-    let entries = [];
-    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
-    for (const e of entries) {
-      if (!e.isDirectory()) continue;
-      const p = path.join(d, e.name);
-      if (fs.existsSync(path.join(p, 'summary.json'))) found.push(p);
-      else walk(p, depth + 1);
-    }
-  };
-  walk(root, 0);
-  return found.sort();
+// Every run directory under cells/<cell>/ and incomplete/, with or without a summary.json.
+function runDirs(root) {
+  const subdirs = (d) => { try { return fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => path.join(d, e.name)); } catch { return []; } };
+  return [
+    ...CELLS.flatMap((cell) => subdirs(path.join(root, 'cells', cell)).map((dir) => ({ dir, cell, cap: path.join(root, 'cells', cell, `.cap-${path.basename(dir)}.json`) }))),
+    ...subdirs(path.join(root, 'incomplete')).map((dir) => ({ dir, cell: CELLS.find((c) => path.basename(dir).startsWith(`${c}-`)) ?? null, cap: `${dir}.cap.json` })),
+  ].filter((x) => x.cell);
 }
 
 // A directory under cells/ that sits inside another pilot output, or an output that holds one, is refused.
@@ -84,30 +76,40 @@ function cellState(args) {
   out('complete');
 }
 
-// Spend so far: USD of the Claude Code cells and credits of the Kiro cells, from every summary under cells/ and incomplete/.
+// Spend so far: USD of the Claude Code cells and credits of the Kiro cells, from every run directory under cells/ and
+// incomplete/. A directory without summary.json (a killed run) is read from its result.json files; each Claude Code rep
+// with no cost record is counted at the cap the script passed for it (cap file), which is the most it could have spent.
 function spendOf(rootDir) {
   const root = path.resolve(rootDir);
-  const total = { credits: 0, usd: 0, judgeUsd: 0, byCell: {} };
+  const total = { credits: 0, usd: 0, judgeUsd: 0, assumedRuns: 0, assumedUsd: 0, byCell: {} };
   for (const c of CELLS) total.byCell[c] = { runs: 0, credits: 0, usd: 0, judgeUsd: 0, unmetered: 0 };
-  for (const sub of ['cells', 'incomplete']) {
-    for (const dir of summaryFiles(path.join(root, sub))) {
-      const rel = path.relative(path.join(root, sub), dir).split(path.sep);
-      const cell = sub === 'cells' ? rel[0] : (CELLS.find((c) => rel[0].startsWith(`${c}-`)) ?? null);
-      const row = cell && total.byCell[cell];
-      if (!row) continue;
-      const s = readJson(path.join(dir, 'summary.json'));
-      const results = Array.isArray(s?.results) ? s.results : [];
-      row.runs += results.length;
-      if (cell.startsWith('cc-')) {
-        const v = fin(s?.totalCostUsdCharged) ? s.totalCostUsdCharged : results.reduce((n, r) => n + (fin(r.costUsdCharged) ? r.costUsdCharged : fin(r.costUsd) ? r.costUsd : 0), 0);
-        row.usd += v;
-      } else {
-        row.credits += fin(s?.totalCreditsCharged) ? s.totalCreditsCharged : results.reduce((n, r) => n + (fin(r.creditsCharged) ? r.creditsCharged : fin(r.credits) ? r.credits : 0), 0);
+  const usdOf = (r) => (fin(r.costUsdCharged) ? r.costUsdCharged : fin(r.costUsd) ? r.costUsd : 0);
+  const creditsOf = (r) => (fin(r.creditsCharged) ? r.creditsCharged : fin(r.credits) ? r.credits : 0);
+  for (const { dir, cell, cap } of runDirs(root)) {
+    const row = total.byCell[cell];
+    const isCc = cell.startsWith('cc-');
+    const s = readJson(path.join(dir, 'summary.json'));
+    let results;
+    if (s) {
+      results = Array.isArray(s.results) ? s.results : [];
+      if (isCc) row.usd += fin(s.totalCostUsdCharged) ? s.totalCostUsdCharged : results.reduce((n, r) => n + usdOf(r), 0);
+      else row.credits += fin(s.totalCreditsCharged) ? s.totalCreditsCharged : results.reduce((n, r) => n + creditsOf(r), 0);
+    } else {
+      results = [...resultFiles(dir)].map((f) => readJson(f)).filter(Boolean);
+      if (isCc) row.usd += results.reduce((n, r) => n + usdOf(r), 0);
+      else row.credits += results.reduce((n, r) => n + creditsOf(r), 0);
+      const c = isCc ? readJson(cap) : null;
+      if (c && fin(c.cap) && fin(c.reps)) {
+        const missing = Math.max(0, c.reps - results.length);
+        row.usd += missing * c.cap;
+        total.assumedRuns += missing;
+        total.assumedUsd += missing * c.cap;
       }
-      row.unmetered += results.filter((r) => r.costCensored || r.creditsCensored).length;
-      const j = readJson(path.join(dir, 'judgments.json'));
-      if (fin(j?.spentUsd)) row.judgeUsd += j.spentUsd;
     }
+    row.runs += results.length;
+    row.unmetered += results.filter((r) => r.costCensored || r.creditsCensored).length;
+    const j = readJson(path.join(dir, 'judgments.json'));
+    if (fin(j?.spentUsd)) row.judgeUsd += j.spentUsd;
   }
   for (const r of Object.values(total.byCell)) { total.credits += r.credits; total.usd += r.usd; total.judgeUsd += r.judgeUsd; }
   return total;
@@ -116,7 +118,7 @@ function spendOf(rootDir) {
 function spend(args) {
   const total = spendOf(args[0]);
   if (args.includes('--json')) { out(JSON.stringify(total)); return; }
-  out(`cc_usd=${total.usd.toFixed(4)} judge_usd=${total.judgeUsd.toFixed(4)} kiro_credits=${total.credits.toFixed(3)}`);
+  out(`cc_usd=${total.usd.toFixed(4)} judge_usd=${total.judgeUsd.toFixed(4)} kiro_credits=${total.credits.toFixed(3)} assumed_runs=${total.assumedRuns} assumed_usd=${total.assumedUsd.toFixed(4)}`);
 }
 
 // full | partial N/M | none : rubric records of every panel judge for every scored run of a directory.
@@ -148,6 +150,7 @@ function summary(args) {
     out(`| ${c} | ${r.runs} | ${cost}${r.unmetered ? ` (${r.unmetered} run(s) not metered)` : ''} | ${r.judgeUsd.toFixed(3)} |`);
   }
   out(`Claude Code runs: USD ${sp.usd.toFixed(3)}; judging: USD ${sp.judgeUsd.toFixed(3)}; total USD ${(sp.usd + sp.judgeUsd).toFixed(3)}. Kiro runs: ${sp.credits.toFixed(2)} credits.`);
+  if (sp.assumedRuns) out(`${sp.assumedRuns} Claude Code run(s) left no cost record and are counted at the cap each was given (USD ${sp.assumedUsd.toFixed(3)} of the Claude Code figure above is an upper bound, not a measurement).`);
 }
 
 const [cmd, ...args] = process.argv.slice(2);

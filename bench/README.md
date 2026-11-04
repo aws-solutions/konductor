@@ -342,11 +342,12 @@ bash bench/scripts/pilot-2x2.sh --profile NAME --budget-usd CEILING --kiro-credi
 # 3. Only the table, from finished and judged cells
 bash bench/scripts/pilot-2x2.sh --cells report --out /var/tmp/pilot-2x2
 ```
-- Sequence: `kiro-vanilla`, `kiro-konductor`, `cc-vanilla`, `cc-konductor`, then rubric judging of each directory with
+- Sequence: `kiro-konductor`, `kiro-vanilla`, `cc-konductor`, `cc-vanilla` (the konductor cell goes first so a refused install stops before the other cell spends), then rubric judging of each directory with
   `gpt-5.6-luna`, `deepseek-3.2` and `glm-5` through opencode, then `report-2x2`. `--cells kiro|cc|judge|report` runs one part.
 - Budgets have no default. `--budget-usd` is the USD ceiling for the Claude Code runs and the judging together: Claude Code
-  runs stop at 90% of it and the rest is held for judging. `--kiro-credit-limit` is the credit limit of one Kiro run (the
-  runner's `--run-credit-limit`). `--run-budget-usd` caps one Claude Code run (default 1.5).
+  runs stop starting at 90% of it and the rest is held for judging. `--kiro-credit-limit` is the credit limit of one Kiro run (the
+  runner's `--run-credit-limit`). `--run-budget-usd` caps one Claude Code run (default 1.5); a run gets the smaller of that and the allowance left, none starts
+  with less than USD 0.05 left, and claude checks its cap between turns, so the last run can pass the allowance by up to one turn.
 - Cost: the figures below are the inputs for choosing the ceiling, not a forecast. Measured earlier on other tasks: Kiro runs
   averaged 1.74 credits for vanilla (50 runs) and 4.44 for konductor (25 runs; the longest run 14.6 credits); the
   Claude Code smoke runs cost about USD 0.044 vanilla and USD 0.185 with konductor on trivial tasks; rubric judging cost about

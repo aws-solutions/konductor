@@ -10,7 +10,9 @@
 #   bash bench/scripts/pilot-2x2.sh --profile NAME --budget-usd CEILING --kiro-credit-limit N --out /var/tmp/pilot-2x2 \
 #     --claude-tools-dir DIR
 #
-# Cells and order: kiro-vanilla, kiro-konductor, cc-vanilla, cc-konductor, then judging of each, then `report-2x2`.
+# Cells and order: kiro-konductor, kiro-vanilla, cc-konductor, cc-vanilla, then judging of each, then `report-2x2`.
+#   The konductor cell goes first in each harness so a failed install (for example a missing model pin) stops before the
+#   other cell spends anything.
 #   Each (cell, task) is its own `bench.js run` into OUT/cells/<cell>/<task>, so a rerun skips finished tasks and loses
 #   at most one. An unfinished or infra-errored directory is moved to OUT/incomplete/ (never deleted) and rerun.
 #   The konductor arm is the same git commit in both harnesses (--konductor-ref, a full commit resolved in this checkout).
@@ -19,8 +21,10 @@
 #   --out DIR              required; empty, or the output of an earlier run of this script with the same settings
 #   --cells WHICH          all | kiro | cc | judge | report (default all). Rerun with the same --out to resume.
 #   --budget-usd N         USD ceiling for the Claude Code runs and the judging together; required for all, cc, judge.
-#                          10% is held back for judging; each run call gets the remainder of the other 90%.
-#   --run-budget-usd N     claude's cap for one Claude Code run, default 1.5
+#                          10% is held back for judging; Claude Code runs stop starting at the other 90%.
+#   --run-budget-usd N     claude's cap for one Claude Code run, default 1.5. A run gets the smaller of this and the allowance left,
+#                          and none starts with less than $0.05 left. claude checks its cap between turns, so the run that
+#                          crosses the allowance can pass it by up to one turn.
 #   --kiro-credit-limit N  kills a Kiro run once its metered credits pass N; required for all, kiro
 #   --reps N               repetitions per task and cell, default 1 (n=1 gives a descriptive table, not statistics)
 #   --tasks LIST           comma-separated lite task ids (default: the five tasks of the earlier studies)
@@ -62,6 +66,11 @@ CC_MODEL=us.anthropic.claude-sonnet-5-5
 PANEL=gpt-5.6-luna,deepseek-3.2,glm-5
 JUDGE_RESERVE_PCT=10
 CELL_NAMES=(kiro-vanilla kiro-konductor cc-vanilla cc-konductor)
+# Order the cells run in; CELL_NAMES keeps the order judging and the table use.
+RUN_ORDER_KIRO=(kiro-konductor kiro-vanilla)
+RUN_ORDER_CC=(cc-konductor cc-vanilla)
+# No Claude Code run starts below this much allowance (about the cost of a trivial smoke run).
+RUN_FLOOR_USD=0.05
 
 OUT=""
 CELLS=all
@@ -330,6 +339,16 @@ cc_allowance() { # USD still available to Claude Code runs: (budget - judge rese
   spent="$(node "$HELPER" spend "$OUT" | sed -E 's/.*cc_usd=([0-9.]+).*/\1/')"
   awk -v b="$BUDGET_USD" -v r="$JUDGE_RESERVE_PCT" -v s="$spent" 'BEGIN { printf "%.4f", b * (100 - r) / 100 - s }'
 }
+run_cap() { # run_cap ALLOWANCE: the smaller of --run-budget-usd and the allowance left
+  awk -v r="$RUN_BUDGET_USD" -v a="$1" 'BEGIN { v = (a < r ? a : r); print int(v * 10000) / 10000 }'
+}
+note_assumed() { # say so when earlier runs left no cost record and are counted at the cap they were given
+  local line n usd
+  line="$(node "$HELPER" spend "$OUT")"
+  n="$(printf '%s' "$line" | sed -E 's/.*assumed_runs=([0-9]+).*/\1/')"
+  usd="$(printf '%s' "$line" | sed -E 's/.*assumed_usd=([0-9.]+).*/\1/')"
+  if [ "$n" -gt 0 ]; then say "$n earlier Claude Code run(s) left no cost record (killed before they finished); counted as spent at the cap each was given, USD $usd in all"; fi
+}
 judge_allowance() { # USD still available to judging: budget - Claude Code spend - judge spend
   local line cc j
   line="$(node "$HELPER" spend "$OUT")"
@@ -353,15 +372,15 @@ arms_of() { # arms_of CELL
     cc-konductor) printf 'cc-konductor=%s' "$SHA" ;;
   esac
 }
-run_args() { # run_args CELL TASK [ALLOWANCE]
-  local cell=$1 task=$2 allow=${3:-<remaining>}
+run_args() { # run_args CELL TASK [ALLOWANCE [RUN_CAP]]
+  local cell=$1 task=$2 allow=${3:-<remaining>} cap=${4:-<cap>}
   common_run_args "$task" "$(arms_of "$cell")" "$(cell_dir "$cell" "$task")"
   case "$cell" in
     kiro-*)
       printf '%s\0' --model "$KIRO_MODEL" --agent-engine "$KIRO_ENGINE" --run-credit-limit "$KIRO_LIMIT" --auth-db "$AUTH_DB"
       if [ -n "$KIRO_BIN_OPT" ]; then printf '%s\0' --kiro-bin "$KIRO_BIN_OPT"; fi
       ;;
-    cc-*) printf '%s\0' --model "$CC_MODEL" --budget-usd "$allow" --run-budget-usd "$RUN_BUDGET_USD" --aws-region "$REGION" --claude-bin "${CLAUDE_BIN:-<claude>}" ;;
+    cc-*) printf '%s\0' --model "$CC_MODEL" --budget-usd "$allow" --run-budget-usd "$cap" --aws-region "$REGION" --claude-bin "${CLAUDE_BIN:-<claude>}" ;;
   esac
 }
 judge_args() { # judge_args DIR BUDGET CREDSFILE
@@ -413,18 +432,19 @@ print_plan() {
   say "out: $OUT (cells/, incomplete/, report/, cache/, cargo-target/); scratch under $SCRATCH_ROOT, removed on exit"
   if [ -n "$BUDGET_USD" ]; then
     say "ceilings: \$$BUDGET_USD for Claude Code runs plus judging (\$$(awk -v b="$BUDGET_USD" -v r="$JUDGE_RESERVE_PCT" 'BEGIN { printf "%.2f", b * (100 - r) / 100 }') for runs, the rest for judging), at most \$$RUN_BUDGET_USD per Claude Code run"
-    say "worst case, Claude Code runs: $((runs_per_cell * 2)) runs x \$$RUN_BUDGET_USD = \$$(awk -v n="$((runs_per_cell * 2))" -v c="$RUN_BUDGET_USD" 'BEGIN { printf "%.2f", n * c }') (capped by the ceiling)"
+    say "worst case, Claude Code runs: \$$(awk -v n="$((runs_per_cell * 2))" -v c="$RUN_BUDGET_USD" -v b="$BUDGET_USD" -v r="$JUDGE_RESERVE_PCT" 'BEGIN { a = b * (100 - r) / 100; m = n * c; printf "%.2f", (m < a ? m : a) }') (the smaller of $((runs_per_cell * 2)) runs x \$$RUN_BUDGET_USD and the run allowance), plus up to one model turn past the cap on the run that crosses the allowance"
+    say "each Claude Code run gets <cap> = the smaller of \$$RUN_BUDGET_USD and the allowance left; none starts with less than \$$RUN_FLOOR_USD left"
   fi
   if [ -n "$KIRO_LIMIT" ]; then say "worst case, Kiro runs: $((runs_per_cell * 2)) runs x $KIRO_LIMIT credits = $(awk -v n="$((runs_per_cell * 2))" -v c="$KIRO_LIMIT" 'BEGIN { printf "%.1f", n * c }') credits"; fi
   say "cost expectations are unmeasured for this setup; the pilot exists to measure them"
   echo
   if [ "$do_kiro" -eq 1 ]; then
-    echo "Kiro runs (kiro-vanilla, kiro-konductor), one bench.js call per task:"
-    for c in kiro-vanilla kiro-konductor; do for t in "${TASKS[@]}"; do run_args "$c" "$t" | show; done; done
+    echo "Kiro runs (kiro-konductor, kiro-vanilla), one bench.js call per task:"
+    for c in "${RUN_ORDER_KIRO[@]}"; do for t in "${TASKS[@]}"; do run_args "$c" "$t" | show; done; done
   fi
   if [ "$do_cc" -eq 1 ]; then
-    echo "Claude Code runs (cc-vanilla, cc-konductor); <remaining> is the Claude Code allowance left at that moment:"
-    for c in cc-vanilla cc-konductor; do for t in "${TASKS[@]}"; do run_args "$c" "$t" | show; done; done
+    echo "Claude Code runs (cc-konductor, cc-vanilla); <remaining> is the Claude Code allowance left at that moment and <cap> the per-run cap derived from it:"
+    for c in "${RUN_ORDER_CC[@]}"; do for t in "${TASKS[@]}"; do run_args "$c" "$t" | show; done; done
   fi
   if [ "$do_judge" -eq 1 ]; then
     echo "Judging, one call per finished (cell, task) directory; the credentials file is made in the scratch directory and removed after:"
@@ -444,12 +464,19 @@ move_aside() { # move_aside CELL TASK
   dest="$OUT/incomplete/$1-$2-$(date -u +%Y%m%dT%H%M%SZ)"
   mkdir -p "$OUT/incomplete"
   mv -- "$src" "$dest"
+  if [ -f "$(cap_file "$1" "$2")" ]; then mv -- "$(cap_file "$1" "$2")" "$dest.cap.json"; fi
   say "moved the unfinished $1/$2 to $dest"
 }
 
+# The per-run cap and rep count are written before a Claude Code run starts. If the run is killed before it records a cost,
+# spend accounting counts the cap for each rep that has no record.
+cap_file() { printf '%s/cells/%s/.cap-%s.json' "$OUT" "$1" "$2"; }
+
 run_cell() { # run_cell CELL
-  local cell=$1 task state allow
+  local cell=$1 task state allow cap="" rc dir why
   local -a args=()
+  CELL_STARTED=0
+  CELL_SETUP_FAILED=0
   for task in "${TASKS[@]}"; do
     state="$(node "$HELPER" cell-state "$(cell_dir "$cell" "$task")" "$REPS")"
     if [ "$state" = complete ]; then say "$cell/$task: already finished, skipped"; continue; fi
@@ -458,23 +485,47 @@ run_cell() { # run_cell CELL
     case "$cell" in
       cc-*)
         allow="$(cc_allowance)"
-        if ! awk -v a="$allow" 'BEGIN { exit !(a > 0) }'; then
-          FAILURES+=("$cell/$task: the Claude Code allowance is used up; rerun with a higher --budget-usd to continue")
-          say "$cell/$task: allowance used up, stopping Claude Code runs"
+        if ! awk -v a="$allow" -v f="$RUN_FLOOR_USD" 'BEGIN { exit !(a >= f) }'; then
+          if awk -v a="$allow" 'BEGIN { exit !(a > 0) }'; then why="only \$$allow of the Claude Code allowance is left, below the \$$RUN_FLOOR_USD floor for a run"; else why="the Claude Code allowance is used up"; fi
+          FAILURES+=("$cell/$task: skipped, not started: $why; rerun with a higher --budget-usd to continue")
+          say "$cell/$task: not started, $why; stopping Claude Code runs"
           return 0
         fi
+        cap="$(run_cap "$allow")"
         load_credentials
         ;;
     esac
     args=()
-    while IFS= read -r -d '' a; do args+=("$a"); done < <(run_args "$cell" "$task" "$allow")
-    say "$cell/$task: running"
+    while IFS= read -r -d '' a; do args+=("$a"); done < <(run_args "$cell" "$task" "$allow" "$cap")
+    say "$cell/$task: running${cap:+ (cap \$$cap)}"
     mkdir -p "$(dirname "$(cell_dir "$cell" "$task")")"
-    if ! (case "$cell" in kiro-*) unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN ;; esac; run_bench "${args[@]}") >>"$OUT/logs/$cell.log" 2>&1; then
+    if [ -n "$cap" ]; then printf '{"cap":%s,"reps":%s}\n' "$cap" "$REPS" >"$(cap_file "$cell" "$task")"; fi
+    CELL_STARTED=$((CELL_STARTED + 1))
+    rc=0
+    (case "$cell" in kiro-*) unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN ;; esac; run_bench "${args[@]}") >>"$OUT/logs/$cell.log" 2>&1 || rc=$?
+    if [ "$rc" -ne 0 ]; then
       FAILURES+=("$cell/$task: bench.js exited nonzero (see $OUT/logs/$cell.log)")
       say "$cell/$task: FAILED (see $OUT/logs/$cell.log)"
+      # A runner that stopped by itself with nothing recorded (a refused install, bad arguments) started no run; only a kill (128+) or timeout leaves the cap counted.
+      dir="$(cell_dir "$cell" "$task")"
+      if [ "$rc" -lt 124 ] && [ -z "$(find "$dir" -name result.json -print -quit 2>/dev/null)" ]; then
+        CELL_SETUP_FAILED=$((CELL_SETUP_FAILED + 1))
+        rm -f -- "$(cap_file "$cell" "$task")"
+      fi
     fi
   done
+}
+
+# Run the konductor cell of a harness, then the vanilla cell, unless every konductor run stopped before recording anything
+# (a refused install). That keeps the other cell from spending on a setup that cannot work.
+run_pair() { # run_pair KONDUCTOR_CELL VANILLA_CELL
+  run_cell "$1"
+  if [ "$CELL_STARTED" -gt 0 ] && [ "$CELL_SETUP_FAILED" -eq "$CELL_STARTED" ]; then
+    FAILURES+=("$2: not started, $1 stopped before any run was recorded (see $OUT/logs/$1.log); fix that and rerun")
+    say "$2: not started, $1 stopped before any run was recorded"
+    return 0
+  fi
+  run_cell "$2"
 }
 
 write_judge_credentials() {
@@ -555,8 +606,8 @@ fi
 print_plan | sed -n '1,/^$/p'
 mkdir -p "$OUT/logs"
 
-if [ "$do_kiro" -eq 1 ]; then run_cell kiro-vanilla; run_cell kiro-konductor; fi
-if [ "$do_cc" -eq 1 ]; then run_cell cc-vanilla; run_cell cc-konductor; fi
+if [ "$do_kiro" -eq 1 ]; then run_pair "${RUN_ORDER_KIRO[@]}"; fi
+if [ "$do_cc" -eq 1 ]; then note_assumed; run_pair "${RUN_ORDER_CC[@]}"; fi
 if [ "$do_judge" -eq 1 ]; then judge_all; fi
 if [ "$do_report" -eq 1 ]; then report_all; fi
 

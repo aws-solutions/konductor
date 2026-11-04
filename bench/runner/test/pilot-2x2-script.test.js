@@ -96,10 +96,14 @@ test('--dry-run prints the plan and the exact commands, reads no credentials and
   assert.match(r.stdout, /--arms vanilla .*--model claude-sonnet-5\.5 --agent-engine v3 --run-credit-limit 15 --auth-db /);
   const sha = /--arms konductor=([0-9a-f]{40})/.exec(r.stdout)[1];
   assert.match(r.stdout, new RegExp(`--arms cc-konductor=${sha}`));
-  assert.match(r.stdout, /--arms cc-vanilla .*--model us\.anthropic\.claude-sonnet-5-5 --budget-usd <remaining> --run-budget-usd 1\.5 --aws-region us-east-1/);
+  assert.match(r.stdout, /--arms cc-vanilla .*--model us\.anthropic\.claude-sonnet-5-5 --budget-usd <remaining> --run-budget-usd <cap> --aws-region us-east-1/);
   assert.match(r.stdout, /judge --run \S+cells\/kiro-vanilla\/t1 --judge-backend opencode --judges gpt-5\.6-luna,deepseek-3\.2,glm-5 --mode rubric/);
   assert.match(r.stdout, /report-2x2 --out \S+report --kiro-vanilla \S+kiro-vanilla\/t1,\S+kiro-vanilla\/t2 --kiro-konductor/);
   assert.match(r.stdout, /ceilings: \$10 for Claude Code runs plus judging \(\$9\.00 for runs/);
+  assert.match(r.stdout, /worst case, Claude Code runs: \$6\.00 \(the smaller of 4 runs x \$1\.5 and the run allowance\), plus up to one model turn past the cap/);
+  assert.match(r.stdout, /<cap> = the smaller of \$1\.5 and the allowance left; none starts with less than \$0\.05 left/);
+  assert.doesNotMatch(r.stdout, /capped by the ceiling/);
+  assert.ok(r.stdout.indexOf('--arms cc-konductor=') < r.stdout.indexOf('--arms cc-vanilla'), 'konductor first in the printed Claude Code commands');
   assert.match(r.stdout, /worst case, Kiro runs: 4 runs x 15 credits = 60\.0 credits/);
   assert.match(r.stdout, /unmeasured/);
   assert.equal(s.awsLog(), '', 'aws was not called');
@@ -188,13 +192,13 @@ test('a relative --out that resolves into the checkout is refused, and so is a c
   assert.equal(fs.existsSync(path.join(checkout, 'out-rel')), false);
 });
 
-test('a full run goes Kiro vanilla, Kiro konductor, Claude Code vanilla, Claude Code konductor, judging, then the table, and leaves no secret and no scratch', () => {
+test('a full run goes Kiro konductor, Kiro vanilla, Claude Code konductor, Claude Code vanilla, judging, then the table, and leaves no secret and no scratch', () => {
   const s = setup();
   const r = run(s, FULL(s));
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const calls = s.calls();
   const runs = calls.filter((c) => c.cmd === 'run');
-  assert.deepEqual(runs.map(label), ['vanilla/t1', 'vanilla/t2', 'konductor/t1', 'konductor/t2', 'cc-vanilla/t1', 'cc-vanilla/t2', 'cc-konductor/t1', 'cc-konductor/t2']);
+  assert.deepEqual(runs.map(label), ['konductor/t1', 'konductor/t2', 'vanilla/t1', 'vanilla/t2', 'cc-konductor/t1', 'cc-konductor/t2', 'cc-vanilla/t1', 'cc-vanilla/t2']);
   const order = calls.map((c) => c.cmd);
   assert.deepEqual([order.indexOf('run'), order.indexOf('judge'), order.indexOf('report-2x2')].every((x, i, a) => i === 0 || x > a[i - 1]), true);
   assert.equal(order.filter((c) => c === 'judge').length, 8);
@@ -206,14 +210,17 @@ test('a full run goes Kiro vanilla, Kiro konductor, Claude Code vanilla, Claude 
   assert.deepEqual(runs.slice(4).map((c) => c.awsKeysInEnv.length), [3, 3, 3, 3]);
   assert.ok(runs.every((c) => c.profileVarsInEnv.length === 0));
   assert.deepEqual(runs.slice(4).map((c) => arg(c, '--budget-usd')), ['9.0000', '8.9000', '8.8000', '8.7000'], 'each Claude Code call gets what is left of the 90% share');
-  assert.equal(arg(runs[2], '--arms'), arg(runs[0], '--arms').replace('vanilla', 'konductor=') + /[0-9a-f]{40}/.exec(arg(runs[2], '--arms'))[0]);
-  assert.equal(arg(runs[2], '--arms').split('=')[1], arg(runs[6], '--arms').split('=')[1], 'the same commit in both harnesses');
+  assert.deepEqual(runs.slice(4).map((c) => arg(c, '--run-budget-usd')), ['1.5', '1.5', '1.5', '1.5'], 'the per-run cap stays at --run-budget-usd while the allowance is larger');
+  assert.equal(arg(runs[2], '--arms'), 'vanilla');
+  assert.match(arg(runs[0], '--arms'), /^konductor=[0-9a-f]{40}$/);
+  assert.equal(arg(runs[0], '--arms').split('=')[1], arg(runs[4], '--arms').split('=')[1], 'the same commit in both harnesses');
   const judges = calls.filter((c) => c.cmd === 'judge');
   assert.ok(judges.every((c) => c.credsFile.exists && c.credsFile.mode === '600' && c.credsFile.hasKeyId && c.awsKeysInEnv.length === 0));
   assert.ok(judges.every((c) => arg(c, '--judges') === 'gpt-5.6-luna,deepseek-3.2,glm-5' && arg(c, '--mode') === 'rubric' && arg(c, '--judge-backend') === 'opencode'));
   assert.ok(judges.every((c) => c.home.startsWith(s.scratch) && c.tmpdir.startsWith(s.scratch)), 'judging runs in a scratch HOME and a scratch TMPDIR');
   assert.match(r.stdout, /== spend ==/);
   assert.match(r.stdout, /\| cc-vanilla \| 2 \| USD 0\.200 \| 0\.100 \|/);
+  assert.match(r.stdout, /cc-konductor\/t1: running \(cap \$1\.5\)/);
   assert.match(r.stdout, /\| kiro-konductor \| 2 \| 4\.00 credits \| 0\.100 \|/);
   assert.match(r.stdout, /Table: \S+report\/factorial-2x2\.md/);
   assert.ok(fs.existsSync(path.join(s.out, 'report', 'factorial-2x2.md')));
@@ -249,7 +256,7 @@ test('a failed task is reported, the other tasks still run, and the rerun redoes
   const after = s.calls().slice(before);
   assert.deepEqual(after.filter((c) => c.cmd === 'run').map(label), ['konductor/t1', 'cc-vanilla/t2']);
   assert.equal(after.filter((c) => c.cmd === 'judge').length, 2);
-  const moved = fs.readdirSync(path.join(s.out, 'incomplete'));
+  const moved = fs.readdirSync(path.join(s.out, 'incomplete')).filter((f) => !f.endsWith('.cap.json'));
   assert.equal(moved.length, 1);
   assert.match(moved[0], /^cc-vanilla-t2-\d{8}T\d{6}Z$/);
 });
@@ -259,16 +266,73 @@ test('--cells kiro touches no AWS credentials and starts no Claude Code or judge
   const r = run(s, [...BASE(s), '--kiro-credit-limit', '15', '--cells', 'kiro']);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.equal(s.awsLog(), '');
-  assert.deepEqual(s.calls().map(label), ['vanilla/t1', 'vanilla/t2', 'konductor/t1', 'konductor/t2']);
+  assert.deepEqual(s.calls().map(label), ['konductor/t1', 'konductor/t2', 'vanilla/t1', 'vanilla/t2']);
 });
 
 test('the Claude Code allowance stops new runs once spent, and says how to continue', () => {
   const s = setup();
   const r = run(s, [...BASE(s), '--profile', 'good', '--budget-usd', '0.5', '--cells', 'cc'], { PILOT_FAKE_MODE: 'cost:0.3' });
   assert.equal(r.status, 1, r.stdout + r.stderr);
-  assert.deepEqual(s.calls().map(label), ['cc-vanilla/t1', 'cc-vanilla/t2']);
-  assert.match(r.stdout, /cc-vanilla\/t2: the Claude Code allowance is used up|cc-konductor\/t1: the Claude Code allowance is used up/);
+  assert.deepEqual(s.calls().map(label), ['cc-konductor/t1', 'cc-konductor/t2']);
+  assert.match(r.stdout, /cc-vanilla\/t1: skipped, not started: the Claude Code allowance is used up/);
   assert.match(r.stdout, /rerun with a higher --budget-usd/);
+});
+
+const arg = (c, name) => c.args[c.args.indexOf(name) + 1];
+
+test('each Claude Code run is capped at the allowance left, and no run starts below the floor', () => {
+  const s = setup();
+  const big = run(s, [...BASE(s), '--profile', 'good', '--budget-usd', '2', '--cells', 'cc', '--out', path.join(s.root, 'big')], { PILOT_FAKE_MODE: 'cost:0.7' });
+  assert.equal(big.status, 1, big.stdout + big.stderr);
+  const runs = s.calls().filter((c) => c.cmd === 'run');
+  assert.deepEqual(runs.map((c) => arg(c, '--run-budget-usd')), ['1.5', '1.1', '0.4'], 'the last run gets the 0.40 left, not 1.5');
+  assert.deepEqual(runs.map((c) => arg(c, '--budget-usd')), ['1.8000', '1.1000', '0.4000']);
+  assert.match(big.stdout, /cc-vanilla\/t2: not started, the Claude Code allowance is used up/);
+
+  const before = s.calls().length;
+  const low = run(s, [...BASE(s), '--profile', 'good', '--budget-usd', '1', '--cells', 'cc', '--out', path.join(s.root, 'low')], { PILOT_FAKE_MODE: 'cost:0.43' });
+  assert.equal(low.status, 1, low.stdout + low.stderr);
+  const started = s.calls().slice(before).filter((c) => c.cmd === 'run');
+  assert.deepEqual(started.map((c) => arg(c, '--run-budget-usd')), ['0.9', '0.47']);
+  assert.deepEqual(started.map(label), ['cc-konductor/t1', 'cc-konductor/t2']);
+  assert.match(low.stdout, /cc-vanilla\/t1: skipped, not started: only \$0\.0400 of the Claude Code allowance is left, below the \$0\.05 floor for a run/);
+});
+
+test('a killed run with no summary.json still counts toward spend: its result.json, else the cap it was given', () => {
+  const s = setup();
+  const helper = path.join(path.dirname(SCRIPT), 'pilot-2x2.js');
+  const spend = () => spawnSync('node', [helper, 'spend', s.out], { encoding: 'utf8' }).stdout.trim();
+  assert.equal(run(s, [...FULL(s), '--cells', 'cc']).status, 0);
+  assert.match(spend(), /^cc_usd=0\.4000 .*assumed_runs=0/);
+  const dir = path.join(s.out, 'cells', 'cc-konductor', 't1');
+  fs.rmSync(path.join(dir, 'summary.json'));
+  assert.match(spend(), /^cc_usd=0\.4000 .*assumed_runs=0/, 'result.json still carries the cost');
+  fs.rmSync(path.join(dir, 'cc-konductor'), { recursive: true });
+  assert.match(spend(), /^cc_usd=1\.8000 .*assumed_runs=1 assumed_usd=1\.5000$/, 'no record at all: the cap passed to that run (1.5) is counted');
+
+  const r = run(s, [...FULL(s), '--cells', 'cc']);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /1 earlier Claude Code run\(s\) left no cost record \(killed before they finished\); counted as spent at the cap each was given, USD 1\.5000 in all/);
+  const moved = fs.readdirSync(path.join(s.out, 'incomplete'));
+  assert.equal(moved.length, 2, 'the directory and its cap file are kept together');
+  assert.ok(moved.some((f) => /^cc-konductor-t1-\d{8}T\d{6}Z\.cap\.json$/.test(f)));
+  assert.match(spend(), /^cc_usd=1\.9000 .*assumed_runs=1 assumed_usd=1\.5000$/);
+});
+
+test('the konductor cell runs first in each harness, and a konductor install that stops before any run keeps the other cell from starting', () => {
+  const s = setup();
+  const ok = run(s, [...FULL(s), '--cells', 'cc']);
+  assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+  assert.equal(arg(s.calls()[0], '--arms').split('=')[0], 'cc-konductor');
+  assert.match(arg(s.calls()[0], '--arms'), /^cc-konductor=[0-9a-f]{40}$/);
+
+  const before = s.calls().length;
+  const out2 = path.join(s.root, 'refused');
+  const bad = run(s, [...BASE(s), '--profile', 'good', '--budget-usd', '10', '--cells', 'cc', '--out', out2], { PILOT_FAKE_MODE: 'fail:cc-konductor:t1 fail:cc-konductor:t2' });
+  assert.equal(bad.status, 1, bad.stdout + bad.stderr);
+  assert.deepEqual(s.calls().slice(before).map(label), ['cc-konductor/t1', 'cc-konductor/t2']);
+  assert.match(bad.stdout, /cc-vanilla: not started, cc-konductor stopped before any run was recorded/);
+  assert.match(spawnSync('node', [path.join(path.dirname(SCRIPT), 'pilot-2x2.js'), 'spend', out2], { encoding: 'utf8' }).stdout, /^cc_usd=0\.0000 .*assumed_runs=0/, 'a refused install is not counted as spend');
 });
 
 test('an expired credential stops the run before anything starts, with a redacted reason; --refresh-cmd retries once', () => {
