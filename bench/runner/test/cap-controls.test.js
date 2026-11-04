@@ -124,6 +124,13 @@ test('evaluateControls: under 3 runs a side is inconclusive, and the A/A spread 
   assert.equal(w.prune.status, 'PASS', '15 points is inside a 30 point A/A spread');
 });
 
+test('evaluateControls: aaGiven tells an A/A arm with no gap from no A/A arm at all', () => {
+  const rows = [...many('base', 'control-keep', 0, 5), ...many('base-b', 'control-keep', 0, 5), ...many('ctl-keep', 'control-keep', 100, 5), ...many('base', 'control-prune', 100, 5), ...many('base-b', 'control-prune', 100, 5), ...many('ctl-prune', 'control-prune', 100, 5)];
+  const withAa = C.evaluateControls({ rows, base: 'base', aa: 'base-b', keep: 'ctl-keep', prune: 'ctl-prune' });
+  assert.deepEqual([withAa.aaGiven, withAa.aaSpread], [true, 0], 'a zero gap is still an A/A result');
+  assert.equal(C.evaluateControls({ rows, base: 'base', keep: 'ctl-keep', prune: 'ctl-prune' }).aaGiven, false);
+});
+
 test('evaluateControls: a timed-out run scores 0 and stays in; an infra error is left out and listed', () => {
   const rows = [...many('base', 'control-keep', 0, 3), ...many('ctl-keep', 'control-keep', 100, 3), row('ctl-keep', 'control-keep', 100, 'infraError'), row('ctl-keep', 'control-keep', null, 'timeout'), ...many('base', 'control-prune', 100, 3), ...many('ctl-prune', 'control-prune', 100, 3)];
   const r = C.evaluateControls({ rows, base: 'base', keep: 'ctl-keep', prune: 'ctl-prune' });

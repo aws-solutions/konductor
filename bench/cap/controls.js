@@ -147,7 +147,7 @@ function judgeControl(kind, head, base, band) {
 
 /**
  * rows: report rows (arm, task, hidden, checks, rubric, outcome). `aa` is an optional repeat of the base arm; its
- * quality gap to the base on the control tasks widens the band. Returns { keep, prune, band, trusted, summary }.
+ * quality gap to the base on the control tasks widens the band. Returns { keep, prune, band, aaSpread, aaGiven, trusted, summary }.
  */
 function evaluateControls({ rows, base, keep, prune, aa = null, weights = loadScoring() }) {
   let spread = 0;
@@ -166,7 +166,7 @@ function evaluateControls({ rows, base, keep, prune, aa = null, weights = loadSc
   const summary = trusted
     ? 'The planted lift was found and the decoy showed no effect, so the skill verdicts from this study can be trusted.'
     : `Do not trust the skill verdicts from this study: keep control ${k.status}${k.reason ? ` (${k.reason})` : ''}, prune control ${p.status}${p.reason ? ` (${p.reason})` : ''}.`;
-  return { keep: k, prune: p, band, aaSpread: spread, trusted, summary };
+  return { keep: k, prune: p, band, aaSpread: spread, aaGiven: Boolean(aa), trusted, summary };
 }
 
 module.exports = {

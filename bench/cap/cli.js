@@ -531,7 +531,7 @@ async function cmdScenarios(opts) {
 
 function printControlCheck(r) {
   const row = (name, c) => `${name.padEnd(14)} ${c.status.padEnd(12)} ${c.delta === null ? 'n/a' : `${c.delta >= 0 ? '+' : ''}${c.delta.toFixed(1)} points`}  n ${c.nHead} vs ${c.nBase}  ${c.reason ?? ''}`;
-  console.log(`${row('keep control', r.keep)}\n${row('prune control', r.prune)}\nnoise band ${r.band.toFixed(1)} points${r.aaSpread ? ` (A/A spread ${r.aaSpread.toFixed(1)})` : ' (no A/A arm given, so the minimum band)'}\n${r.summary}`);
+  console.log(`${row('keep control', r.keep)}\n${row('prune control', r.prune)}\nnoise band ${r.band.toFixed(1)} points${r.aaGiven ? ` (A/A spread ${r.aaSpread.toFixed(1)})` : ' (no A/A arm given, so the minimum band)'}\n${r.summary}`);
 }
 
 function cmdControls(opts) {
