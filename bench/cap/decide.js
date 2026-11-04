@@ -24,6 +24,7 @@ const HIGH_RUNS = 30;
 const LOAD_MIN = 0.3;
 const CENSOR_MAX_SHARE = 0.1;
 const CENSOR_MAX_GAP = 1;
+const EXCLUDED_MAX_SHARE = 0.2;
 const LEVELS = ['low', 'medium', 'high'];
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -65,11 +66,37 @@ function censoring(variant, ctl) {
   return { reason: `censored by the time limit: ${why.join('; ')}${where ? ` (timeouts by task, ${where})` : ''}; the call needs runs that finish`, variant: v, control: c };
 }
 
+const excludedShare = (arm) => {
+  const x = Object.values(arm?.excluded ?? {}).reduce((n, v) => n + (Number(v) || 0), 0);
+  const kept = Number(arm?.runs) || finite(arm?.scores ?? []).length;
+  return { x, n: x + kept };
+};
+
+/**
+ * Runs left out as infra errors or model mismatches change what a score stands for. When more than 20% of the runs on
+ * either side were left out, or a task was scored on different components in different runs (some with a rubric score,
+ * some without), the comparison is not like for like. Returns null, or { reason }.
+ */
+function uneven(variant, ctl) {
+  const why = [];
+  for (const [label, arm] of [['variant', variant], ['control', ctl]]) {
+    const e = excludedShare(arm);
+    if (e.n && e.x / e.n > EXCLUDED_MAX_SHARE) why.push(`${e.x} of ${e.n} ${label} runs were left out (infra error or wrong model)`);
+  }
+  const tasks = new Set([...Object.keys(variant?.components ?? {}), ...Object.keys(ctl?.components ?? {})]);
+  for (const t of tasks) {
+    const sets = new Map();
+    for (const arm of [variant, ctl]) for (const [sig, n] of Object.entries(arm?.components?.[t] ?? {})) sets.set(sig, (sets.get(sig) ?? 0) + n);
+    if (sets.size > 1) why.push(`task ${t} was scored on different components in different runs (${[...sets].map(([k, n]) => `${n} on ${k}`).join(', ')})`);
+  }
+  return why.length ? { reason: `not like for like: ${why.join('; ')}; the call needs runs scored the same way` } : null;
+}
+
 /**
  * Where one variant stands against the control of its wave.
  * lost: removal made it worse, outside the noise. gained: removal made it better, outside the noise.
  * safe: within the margin, interval excludes a larger loss, the A/A spread is under the margin and both sides have enough runs.
- * unclear: none of those, with the reason. A censored comparison (see censoring) is unclear whatever the scores say.
+ * unclear: none of those, with the reason. A censored or uneven comparison (see censoring and uneven) is unclear whatever the scores say.
  */
 function variantStatus(variant, ctl, aaSpread) {
   const c = compareArms(variant.scores, ctl.scores);
@@ -82,6 +109,8 @@ function variantStatus(variant, ctl, aaSpread) {
   out.timeouts = { variant: timeoutCount(variant), control: timeoutCount(ctl) };
   const cens = censoring(variant, ctl);
   if (cens) { out.reason = cens.reason; out.censored = true; return out; }
+  const odd = uneven(variant, ctl);
+  if (odd) { out.reason = odd.reason; out.uneven = true; return out; }
   if (nEach < MIN_RUNS) { out.reason = `${nEach} run${nEach === 1 ? '' : 's'} on the smaller side, fewer than ${MIN_RUNS} needed`; return out; }
   if (!c.ci) { out.reason = 'no interval'; return out; }
   if (c.ci.hi < 0 && -c.delta > noise) { out.status = 'lost'; return out; }
@@ -284,4 +313,4 @@ function renderDecisions(decisions, meta = {}) {
   return L.join('\n');
 }
 
-module.exports = { compareArms, variantStatus, censoring, CENSOR_MAX_SHARE, CENSOR_MAX_GAP, decideSkill, evidenceRowsFor, renderDecisions, MARGIN, NOISE_FLOOR, MIN_RUNS, HIGH_RUNS, LOAD_MIN };
+module.exports = { compareArms, variantStatus, censoring, uneven, CENSOR_MAX_SHARE, CENSOR_MAX_GAP, EXCLUDED_MAX_SHARE, decideSkill, evidenceRowsFor, renderDecisions, MARGIN, NOISE_FLOOR, MIN_RUNS, HIGH_RUNS, LOAD_MIN };

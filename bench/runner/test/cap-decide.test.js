@@ -5,7 +5,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { compareArms, decideSkill, evidenceRowsFor, renderDecisions, censoring, MARGIN, MIN_RUNS } = require('../../cap/decide.js');
+const { compareArms, decideSkill, evidenceRowsFor, renderDecisions, censoring, uneven, MARGIN, MIN_RUNS } = require('../../cap/decide.js');
 const { parseEvidence } = require('../../cap/evidence.js');
 
 // n values centred on `mean`, alternating by `spread`, so the sample mean is exact and the sd is about `spread`.
@@ -249,4 +249,40 @@ test('a skill that loads only in the variant arm still has no information', () =
   const del = { ...arm(0.8), loaded: Array.from({ length: 40 }, () => true) };
   const d = decide([wave1(del, { ctl: arm(0.8, 40, { loaded: 0 }) })]);
   assert.equal(d.decision, 'NEEDS DATA');
+});
+
+// ---- runs scored differently ----
+
+const withMix = (a, over) => ({ ...a, runs: a.scores.length, ...over });
+
+test('uneven: more than 20% of a side left out as infra errors or wrong model is not like for like', () => {
+  assert.equal(uneven(withMix(arm(0.8, 40), { excluded: { infraError: 10, modelMismatch: 0 } }), withMix(arm(0.8, 40), { excluded: { infraError: 0, modelMismatch: 0 } })), null, '10 of 50 is exactly 20%');
+  assert.match(uneven(withMix(arm(0.8, 40), { excluded: { infraError: 8, modelMismatch: 3 } }), arm(0.8, 40)).reason, /11 of 51 variant runs were left out/);
+  assert.match(uneven(arm(0.8, 40), withMix(arm(0.8, 40), { excluded: { infraError: 0, modelMismatch: 11 } })).reason, /control runs were left out/);
+  assert.equal(uneven(arm(0.8, 40), arm(0.8, 40)), null, 'arms without the counts are not flagged');
+});
+
+test('uneven: a task scored on a rubric in some runs and without one in others is flagged; the same mix on every run is not', () => {
+  const same = withMix(arm(0.8, 40), { components: { a: { 'checks+rubric': 20 }, b: { checks: 20 } } });
+  assert.equal(uneven(same, same), null, 'a task that has no rubric by design is fine');
+  const mixed = withMix(arm(0.8, 40), { components: { a: { 'checks+rubric': 17, checks: 3 }, b: { checks: 20 } } });
+  assert.match(uneven(mixed, same).reason, /task a was scored on different components in different runs \(37 on checks\+rubric, 3 on checks\)/);
+  const other = withMix(arm(0.8, 40), { components: { a: { checks: 20 }, b: { checks: 20 } } });
+  assert.match(uneven(same, other).reason, /task a was scored on different components/, 'the sides differ for the same task');
+});
+
+test('a delete variant that looks safe is NEEDS DATA when its runs were scored on different components', () => {
+  const ok = withMix(arm(0.8), { components: { a: { 'checks+rubric': 40 } } });
+  assert.equal(decide([wave1(ok, { ctl: ok, aa: ok })]).decision, 'DELETE', 'control: scored the same way, a DELETE call');
+  const mixed = withMix(arm(0.8), { components: { a: { 'checks+rubric': 30, checks: 10 } } });
+  const d = decide([wave1(mixed, { ctl: ok, aa: ok })]);
+  assert.equal(d.decision, 'NEEDS DATA');
+  assert.match(d.reasons.join(' '), /not like for like.*task a/);
+  assert.equal(d.evidence.del.uneven, true);
+});
+
+test('a delete variant with too many runs left out is NEEDS DATA', () => {
+  const d = decide([wave1(withMix(arm(0.8), { excluded: { infraError: 20, modelMismatch: 0 } }), { ctl: arm(0.8), aa: arm(0.8) })]);
+  assert.equal(d.decision, 'NEEDS DATA');
+  assert.match(d.reasons.join(' '), /20 of 60 variant runs were left out/);
 });

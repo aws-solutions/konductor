@@ -48,6 +48,13 @@ test('armScoresFromRows counts the runs and the timeouts per arm, and the tasks 
   assert.deepEqual(out.del.timeoutTasks, { t1: 1, t2: 1 });
 });
 
+test('armScoresFromRows records which score components each task was scored on', () => {
+  const row = (task, rep, over) => ({ arm: 'ctl', task, rep, outcome: 'good', hidden: null, checks: 1, rubric: 0.5, credits: 1, ...over });
+  const rows = [row('a', 1), row('a', 2), row('a', 3, { rubric: null }), row('b', 1, { rubric: null, hidden: 1 })];
+  const a = armScoresFromRows(rows, { hidden: 0.5, checks: 0.2, rubric: 0.3 }).ctl;
+  assert.deepEqual(a.components, { a: { 'checks+rubric': 2, checks: 1 }, b: { 'hidden+checks': 1 } });
+});
+
 test('waveComplete wants a summary that is not interrupted, a passed isolation gate and every run', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'captest-'));
   const sum = (o = {}) => write(path.join(dir, 'summary.json'), JSON.stringify({ interrupted: null, isolationGate: { ok: true }, armIds: ['a', 'b'], replicates: 2, taskIds: ['t'], results: [1, 2, 3, 4].map(() => ({ status: 'success' })), ...o }));
