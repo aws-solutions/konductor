@@ -4,14 +4,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const mask = require('../lib/real-mask.js');
 const { makeIsolation, probeUnshare } = require('../lib/isolate.js');
-const { makeScratchRoot } = require('../lib/sandbox.js');
+const { makeScratchRoot } = require('./scratch.js');
+const { mkScratch } = require('./scratch.js');
 
-const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'rmask-')));
+const tmp = () => fs.realpathSync(mkScratch('rmask-'));
 const touch = (f, t = '') => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t); };
 
 // A fake home with two Pythons, a user site, a pip that vendors rich, and the package caches.

@@ -6,15 +6,15 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write, makeBench } = require('./helpers.js');
+const { mkScratch } = require('./scratch.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks, benchMask } = require('../lib/tasks.js');
 const { makeIsolation, probeUnshare } = require('../lib/isolate.js');
-const { makeScratchRoot } = require('../lib/sandbox.js');
+const { makeScratchRoot } = require('./scratch.js');
 
 const ARM = { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, harness: 'none', agent: null, vanilla: true };
 const CONFIG = { model: 'claude-sonnet-5.5', effort: 'high', agentEngine: 'v2' };
@@ -76,7 +76,7 @@ const skip = probe.ok ? false : `unshare namespace unavailable: ${probe.reason}`
 
 test('the namespace hides hidden tests and partials but leaves the task file readable', { skip }, () => {
   const scratch = makeScratchRoot();
-  const bench = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-'));
+  const bench = mkScratch('bench-');
   try {
     write(path.join(bench, 'tasks/hidden/t1/hidden/a.test.js'), 'HIDDEN');
     write(path.join(bench, 'tasks/partials/t1/p/src/x.js'), 'PARTIAL');

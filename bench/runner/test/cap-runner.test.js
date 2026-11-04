@@ -149,7 +149,7 @@ test('the validator proves an extra task against its own solution and rejects on
   const root = tmp();
   try {
     const dir = extraDir(root);
-    const run = (d) => spawnSync(process.execPath, [VALIDATE, '--only-extra', '--extra-tasks', d], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: path.join(root, 'h') } });
+    const run = (d) => spawnSync(process.execPath, [VALIDATE, '--only-extra', '--extra-tasks', d], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: path.join(root, 'h') } });
     fs.mkdirSync(path.join(root, 'h'));
     const ok = run(dir);
     assert.equal(ok.status, 0, ok.stdout + ok.stderr);
@@ -167,7 +167,7 @@ test('the run command refuses a missing --extra-tasks directory before anything 
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
-    const r = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--bench-dir', bench, '--arms', 'vanilla', '--extra-tasks', path.join(root, 'none'), '--prepare-only'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: path.join(root, 'h') } });
+    const r = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--bench-dir', bench, '--arms', 'vanilla', '--extra-tasks', path.join(root, 'none'), '--prepare-only'], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: path.join(root, 'h') } });
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /--extra-tasks directory not found/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
@@ -281,7 +281,7 @@ test('--run-credit-limit must be a positive number and does not apply to opencod
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
-    const run = (...a) => spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--bench-dir', bench, '--arms', 'vanilla', ...a], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: path.join(root, 'h') } });
+    const run = (...a) => spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'lite', '--bench-dir', bench, '--arms', 'vanilla', ...a], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: path.join(root, 'h') } });
     fs.mkdirSync(path.join(root, 'h'));
     assert.match(run('--run-credit-limit', '0').stderr, /--run-credit-limit must be a positive number/);
     assert.match(run('--run-credit-limit', 'abc').stderr, /--run-credit-limit must be a positive number/);

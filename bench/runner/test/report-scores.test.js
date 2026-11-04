@@ -4,9 +4,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { computeScores, qualityOfRun, DEFAULT_WEIGHTS, loadScoring, FORMULAS } = require('../../report/scores.js');
+const { mkScratch } = require('./scratch.js');
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
 
@@ -186,7 +186,7 @@ test('the scoring profile loads, validates and defaults to 0.5, 0.2, 0.3', () =>
   assert.deepEqual(DEFAULT_WEIGHTS, { hidden: 0.5, checks: 0.2, rubric: 0.3 });
   const real = loadScoring();
   assert.deepEqual(real, DEFAULT_WEIGHTS);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'scoretest-'));
+  const dir = mkScratch('scoretest-');
   const f = path.join(dir, 's.json');
   fs.writeFileSync(f, JSON.stringify({ weights: { hidden: 1, checks: 0, rubric: 0 } }));
   assert.deepEqual(loadScoring(f), { hidden: 1, checks: 0, rubric: 0 });

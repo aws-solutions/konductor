@@ -83,7 +83,7 @@ test('the validator accepts trigger tasks without the document rules and rejects
     const dir = path.join(root, 'tasks');
     trig.materializeTasks({ cap: CAP, queries: [Q('t1', 'load', 'train'), Q('t2', 'none')], dir });
     fs.mkdirSync(path.join(root, 'h'));
-    const run = () => spawnSync(process.execPath, [VALIDATE, '--only-extra', '--extra-tasks', dir], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: path.join(root, 'h') } });
+    const run = () => spawnSync(process.execPath, [VALIDATE, '--only-extra', '--extra-tasks', dir], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: path.join(root, 'h') } });
     const ok = run();
     assert.equal(ok.status, 0, ok.stdout + ok.stderr);
     const f = path.join(dir, 'trg-skill-alpha-t1.json');

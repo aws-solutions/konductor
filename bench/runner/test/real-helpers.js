@@ -4,15 +4,15 @@
 // A tiny upstream repository, a bench directory that points at it and a filled cache, for the real-repository tests.
 
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 const { spawnSync } = require('node:child_process');
 const assert = require('node:assert/strict');
 const reallib = require('../../real/lib.js');
 const { fetchEntry } = require('../../real/fetch.js');
 const { materialize } = require('../../real/materialize.js');
 
-const tmp = (p = 'rt-') => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
+const tmp = (p = 'rt-') => fs.realpathSync(mkScratch(p));
 const write = (f, t) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t); };
 const git = (cwd, ...args) => {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.org', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.org' } });

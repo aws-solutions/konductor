@@ -7,12 +7,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { makeIsolation, probeUnshare, describeHide, HIDE_IN_HOME, HIDE_CREDENTIALS_IN_HOME } = require('../lib/isolate.js');
-const { makeScratchRoot } = require('../lib/sandbox.js');
+const { makeScratchRoot } = require('./scratch.js');
 const { findMarker } = require('../../cap/public.js');
+const { mkScratch } = require('./scratch.js');
 
 const probe = probeUnshare();
 const skip = probe.ok ? false : `unshare namespace unavailable: ${probe.reason}`;
@@ -21,7 +21,7 @@ const SSO_DIR = join('.mid', 'way');
 const SSO_DIR_2 = join('.mw', 'init');
 
 function fakeHome() {
-  const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dh-home-')));
+  const home = fs.realpathSync(mkScratch('dh-home-'));
   const put = (rel, text = 'SECRET') => { const f = path.join(home, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); };
   put(`${SSO_DIR}/cookie`); put(`${SSO_DIR_2}/token`); put('.gitconfig'); put('.cargo/credentials.toml'); put('.cargo/bin/tool', 'TOOL');
   put('.rustup/settings.toml', 'x'); put('.kube/config'); put('.cache/pip/cache', 'x'); put('.local/share/mise/node', 'NODE'); put('.ssh/id', 'SECRET'); put('.extra-secret/f');

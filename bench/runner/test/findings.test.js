@@ -4,10 +4,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { countLabelledFindings } = require('../lib/findings.js');
 const { runChecks } = require('../lib/checks.js');
+const { mkScratch } = require('./scratch.js');
 
 const count = (text) => countLabelledFindings(text).count;
 
@@ -85,7 +85,7 @@ test('custom labels', () => {
 });
 
 test('labelled_findings check type through runChecks', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-find-'));
+  const dir = mkScratch('bench-find-');
   try {
     fs.writeFileSync(path.join(dir, 'r.md'), '## Critical\n### 1. A\n### 2. B\n## Minor\n### 3. C\n');
     const r = runChecks(dir, [

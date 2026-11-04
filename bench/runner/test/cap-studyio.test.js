@@ -6,7 +6,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { execFileSync, spawnSync } = require('node:child_process');
 const { write } = require('./helpers.js');
@@ -15,6 +14,7 @@ const { makeCapRepo, makeCapBench, spec } = require('./cap-helpers.js');
 const { armScoresFromRows, readWave, waveComplete, treeDiff, buildSkillPatch } = require('../../cap/studyio.js');
 const { parseSkill } = require('../../cap/sections.js');
 const { candidateSections } = require('../../cap/ablate.js');
+const { mkScratch } = require('./scratch.js');
 
 const ARMS = [{ id: 'ctl', ref: 'v0', sha: 'a'.repeat(40) }, { id: 'ctl-b', ref: 'v0', sha: 'a'.repeat(40) }, { id: 'del', ref: null, label: 'del@x', sha: null }];
 
@@ -56,7 +56,7 @@ test('armScoresFromRows records which score components each task was scored on',
 });
 
 test('waveComplete wants a summary that is not interrupted, a passed isolation gate and every run', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'captest-'));
+  const dir = mkScratch('captest-');
   const sum = (o = {}) => write(path.join(dir, 'summary.json'), JSON.stringify({ interrupted: null, isolationGate: { ok: true }, armIds: ['a', 'b'], replicates: 2, taskIds: ['t'], results: [1, 2, 3, 4].map(() => ({ status: 'success' })), ...o }));
   try {
     assert.equal(waveComplete(dir, { arms: 2, reps: 2, tasks: 1 }).complete, false, 'no summary yet');
@@ -75,7 +75,7 @@ test('waveComplete wants a summary that is not interrupted, a passed isolation g
 });
 
 test('readWave gives per-arm scores, credits, whether the skill loaded and how many runs opened a reference file', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'captest-'));
+  const root = mkScratch('captest-');
   try {
     const bench = makeCapBench(root);
     const dir = path.join(root, 'w1');
@@ -106,7 +106,7 @@ const body = (t, n) => Array.from({ length: n }, (_, i) => `${t} line ${i + 1} w
 const SKILL_TEXT = `---\nname: big\ndescription: Use when testing patches.\n---\n\n# Big\n\nOpening.\n\n## Workflow\n\n${body('workflow', 30)}\n\n## Template\n\n${body('template', 30)}\n\n## Checklist\n\n${body('check', 30)}\n`;
 
 function patchEnv() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'captest-'));
+  const root = mkScratch('captest-');
   const r = makeCapRepo(root, {
     files: (repo) => {
       write(path.join(repo, 'skills/big/SKILL.md'), SKILL_TEXT);
@@ -118,7 +118,7 @@ function patchEnv() {
 }
 
 function applyChecks(repo, patchText) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'captest-'));
+  const dir = mkScratch('captest-');
   try {
     const arch = spawnSync('git', ['-C', repo, 'archive', 'HEAD'], { maxBuffer: 1 << 28 });
     spawnSync('tar', ['-x', '-C', dir], { input: arch.stdout });

@@ -4,12 +4,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { validate, loadSchema } = require('../lib/schema.js');
 const { loadTasks, loadSuite, SUITE_DEFAULTS } = require('../lib/tasks.js');
 const { buildResult, skippedResult, classifyStatus, validateResult } = require('../lib/result.js');
 const { aggregateStream } = require('../lib/stream.js');
+const { mkScratch } = require('./scratch.js');
 
 const TASK = {
   id: 't1', class: 'simple', target: null, prompt: 'p', fixture: 'f', timeoutSec: 60,
@@ -34,7 +34,7 @@ test('task schema rejects bad class, tier, check type, extra keys and missing fi
 });
 
 function benchDirWith(tasks, suites = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-dir-'));
+  const dir = mkScratch('bench-dir-');
   fs.mkdirSync(path.join(dir, 'tasks'));
   fs.mkdirSync(path.join(dir, 'fixtures/f'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'suites'));

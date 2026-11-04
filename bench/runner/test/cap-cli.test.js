@@ -102,10 +102,10 @@ test('cap audit rejects an unknown harness and an unknown base, and cap alone is
   const s = setup();
   try {
     assert.equal(s.cap('audit', '--harness', 'claude').status, 2);
-    const base = spawnSync(process.execPath, [BENCH_JS, 'cap', 'audit', '--repo-root', s.repo, '--bench-dir', s.bench, '--base', 'no-such-ref'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: s.home } });
+    const base = spawnSync(process.execPath, [BENCH_JS, 'cap', 'audit', '--repo-root', s.repo, '--bench-dir', s.bench, '--base', 'no-such-ref'], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: s.home } });
     assert.equal(base.status, 2);
     assert.match(base.stderr, /not found/);
-    const bare = spawnSync(process.execPath, [BENCH_JS, 'cap'], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: s.home } });
+    const bare = spawnSync(process.execPath, [BENCH_JS, 'cap'], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: s.home } });
     assert.equal(bare.status, 2);
     assert.match(bare.stderr, /cap takes list, audit, variant, plan/);
   } finally { s.done(); }
@@ -115,7 +115,7 @@ test('cap audit --base dir: reads a directory in place, and --public is accepted
   const s = setup();
   try {
     const out = path.join(s.root, 'o2');
-    const r = spawnSync(process.execPath, [BENCH_JS, 'cap', 'audit', '--repo-root', s.repo, '--bench-dir', s.bench, '--base', `dir:${s.repo}`, '--public', '--out', out], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: s.home } });
+    const r = spawnSync(process.execPath, [BENCH_JS, 'cap', 'audit', '--repo-root', s.repo, '--bench-dir', s.bench, '--base', `dir:${s.repo}`, '--public', '--out', out], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: s.home } });
     assert.equal(r.status, 1, r.stderr);
     assert.match(r.stdout, /Base dir:repo/);
   } finally { s.done(); }

@@ -4,12 +4,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { copyFixture } = require('../lib/sandbox.js');
+const { mkScratch } = require('./scratch.js');
 
 test('copyFixture never copies the answer key into the agent working directory', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fixcopy-'));
+  const root = mkScratch('fixcopy-');
   try {
     const src = path.join(root, 'src');
     fs.mkdirSync(path.join(src, 'sub'), { recursive: true });

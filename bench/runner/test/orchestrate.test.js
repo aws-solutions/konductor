@@ -4,11 +4,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { planRuns, runPool, makeLedger, prepareAll, preflightTable } = require('../lib/orchestrate.js');
 const { parseArgs } = require('../bench.js');
 const { buildChildEnv, buildCheckEnv, describeEnv, snapshotKiroEnv } = require('../lib/env.js');
+const { mkScratch } = require('./scratch.js');
 
 test('planRuns is replicate-major and every (task, arm) pair runs once per replicate', () => {
   const tasks = [{ id: 't1' }, { id: 't2' }, { id: 't3' }];
@@ -135,7 +135,7 @@ test('snapshotKiroEnv lists only KIRO_ variables and redacts secret-like ones', 
 });
 
 test('prepareAll fails fast on an arm that cannot be built, and --allow-partial keeps the rest', () => {
-  const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'prep-'));
+  const cache = mkScratch('prep-');
   const bad = { id: 'v0', label: 'v0', ref: 'v0', commitSha: '0'.repeat(40), vanilla: false, warnings: [] };
   const vanilla = { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, vanilla: true, warnings: [] };
   const ctx = { repo: path.resolve(__dirname, '..', '..', '..'), cacheDir: cache, cargoTarget: path.join(cache, 't'), cargoOnline: false, config: { model: 'm' } };

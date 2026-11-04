@@ -4,10 +4,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { parseStream, aggregateStream } = require('../lib/stream.js');
 const { makeCreditMeter } = require('../lib/credit-watch.js');
+const { mkScratch } = require('./scratch.js');
 
 const line = (o) => JSON.stringify(o);
 const turnCompletion = (executionId, usage, extra = {}) => line({
@@ -46,14 +46,14 @@ test('engine v3: a non-credit unit is flagged, not summed', () => {
 });
 
 test('engine v3: the live credit meter reads turn_completion too', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cw-'));
+  const dir = mkScratch('cw-');
   const file = path.join(dir, 'stream.jsonl');
   fs.writeFileSync(file, `${V3}\n`);
   try { assert.ok(Math.abs(makeCreditMeter(file).poll() - 1.9854780343946932) < 1e-12); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('engine v3: the live credit meter counts a replayed turn once, as the parser does', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cw-'));
+  const dir = mkScratch('cw-');
   const file = path.join(dir, 'stream.jsonl');
   fs.writeFileSync(file, `${V3}\n${turnCompletion('ex1', 1.9854780343946932)}\n${turnCompletion('ex2', 1)}\n`);
   try { assert.ok(Math.abs(makeCreditMeter(file).poll() - 2.9854780343946932) < 1e-12); } finally { fs.rmSync(dir, { recursive: true, force: true }); }

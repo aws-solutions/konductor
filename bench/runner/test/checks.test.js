@@ -8,9 +8,10 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { runChecks } = require('../lib/checks.js');
+const { mkScratch } = require('./scratch.js');
 
 function workspace(files) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-checks-'));
+  const dir = mkScratch('bench-checks-');
   for (const [name, body] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true });
     fs.writeFileSync(path.join(dir, name), body);

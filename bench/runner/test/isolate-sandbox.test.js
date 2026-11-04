@@ -11,7 +11,8 @@ const path = require('node:path');
 const net = require('node:net');
 const { spawnSync } = require('node:child_process');
 const { makeIsolation, probeSandboxExec, resolveIsolation, autoMode, userLocalTrees, ISOLATE_MODES } = require('../lib/isolate.js');
-const { makeScratchRoot } = require('../lib/sandbox.js');
+const { makeScratchRoot } = require('./scratch.js');
+const { mkScratch } = require('./scratch.js');
 
 const probe = process.platform === 'darwin' ? probeSandboxExec() : { ok: false, reason: 'not macOS' };
 const skip = probe.ok ? false : `sandbox-exec unavailable: ${probe.reason}`;
@@ -37,7 +38,7 @@ test('--isolate sandbox-exec aborts when its probe fails', () => {
 test('the profile denies home writes, allows the scratch root and ~/Library, and denies credential reads', () => {
   const scratch = makeScratchRoot();
   try {
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sb-home-'));
+    const home = mkScratch('sb-home-');
     const { profile, wrap } = makeIsolation({ mode: 'sandbox-exec', scratchRoot: scratch, home, hide: ['.site-token'] });
     const homeReal = fs.realpathSync(home);
     const at = (s) => profile.indexOf(s);
@@ -72,7 +73,7 @@ test('the profile denies home writes, allows the scratch root and ~/Library, and
 });
 
 test('user-writable /usr/local trees are found so the profile can make them read-only', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sb-usr-local-'));
+  const base = mkScratch('sb-usr-local-');
   try {
     fs.mkdirSync(path.join(base, 'bin'));
     fs.mkdirSync(path.join(base, 'locked'));
@@ -126,7 +127,7 @@ test('inside the sandbox the scratch root is writable and the real home, temp di
 
 test('hidden home paths and masks cannot be read from the sandbox', { skip }, () => {
   const scratch = makeScratchRoot();
-  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'sb-mask-'));
+  const outside = mkScratch('sb-mask-');
   try {
     fs.writeFileSync(path.join(outside, 'secret'), 'x');
     const r = inSandbox(scratch, `cat "${path.join(outside, 'secret')}" >/dev/null 2>&1 && exit 3; exit 0`, { mask: [outside] });
@@ -153,7 +154,7 @@ function runInSandbox(iso, file, args) {
 
 test('a masked Unix socket outside scratch cannot be connected from the sandbox', { skip }, async () => {
   const scratch = makeScratchRoot();
-  const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'sb-sock-')));
+  const outside = fs.realpathSync(mkScratch('sb-sock-'));
   const sock = path.join(outside, 'runtime.sock');
   const server = net.createServer((c) => { c.on('error', () => {}); c.end('hi'); });
   await new Promise((resolve) => server.listen(sock, resolve));

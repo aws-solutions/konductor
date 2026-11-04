@@ -7,12 +7,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { tmp, write, makeBench } = require('./helpers.js');
 const { loadTasks, loadSuite, SUITE_DEFAULTS, BENCH_DIR } = require('../lib/tasks.js');
 const { checkPanel } = require('../../judge/config.js');
+const { mkScratch } = require('./scratch.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const PILOT_TASKS = [
@@ -79,7 +79,7 @@ test('the loader takes a task in several tiers and a suite of mixed tiers; unkno
 });
 
 test('an unknown suite name lists pilot among the valid ones', () => {
-  const r = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'nightly'], { env: { PATH: process.env.PATH, HOME: tmp() }, encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'nightly'], { env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: tmp() }, encoding: 'utf8' });
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /lite\|full\|hard\|real\|autonomy\|pilot/);
 });
@@ -114,7 +114,7 @@ test('list-arms works, and pr-plan --suite pilot refuses to guess credits unless
 // The real validator script on copies of bench/ with a few tasks kept. Other suites then disagree with the task
 // set, so only the lines about the kept tasks and the pilot suite are read.
 function validateCopy(keep, mutate) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'val-'));
+  const root = mkScratch('val-');
   fs.cpSync(BENCH_DIR, path.join(root, 'bench'), { recursive: true, filter: (p) => path.basename(p) !== 'results' });
   const bench = path.join(root, 'bench');
   const used = new Set();
@@ -126,7 +126,7 @@ function validateCopy(keep, mutate) {
   for (const f of fs.readdirSync(path.join(bench, 'fixtures'))) if (!used.has(f)) fs.rmSync(path.join(bench, 'fixtures', f), { recursive: true, force: true });
   mutate(bench);
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [path.join(bench, 'tasks/validate-tasks.js')], { cwd: root, env: { PATH: process.env.PATH, HOME: path.join(root, 'home') } });
+    const child = spawn(process.execPath, [path.join(bench, 'tasks/validate-tasks.js')], { cwd: root, env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: path.join(root, 'home') } });
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });

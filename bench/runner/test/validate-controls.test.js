@@ -7,13 +7,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write } = require('./helpers.js');
 const { evalCheck, ANSWER_KEY } = require('../lib/check-matcher.js');
 const controls = require('../../tasks/controls.js');
 const { loadTasks, BENCH_DIR } = require('../lib/tasks.js');
+const { mkScratch } = require('./scratch.js');
 
 const VALIDATE = path.join(__dirname, '..', '..', 'tasks', 'validate-tasks.js');
 const NO_QUESTIONS = 'Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.';
@@ -33,7 +33,7 @@ function extraDir(root, checks, { solution = { 'out.txt': 'done\n' } } = {}) {
 
 const validate = (root, dir) => {
   fs.mkdirSync(path.join(root, 'h'), { recursive: true });
-  return spawnSync(process.execPath, [VALIDATE, '--only-extra', '--extra-tasks', dir], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: path.join(root, 'h') } });
+  return spawnSync(process.execPath, [VALIDATE, '--only-extra', '--extra-tasks', dir], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: path.join(root, 'h') } });
 };
 
 const EXISTS = { type: 'file_exists', path: 'out.txt' };
@@ -86,9 +86,11 @@ test('every check of every bench task fails on an empty workspace', () => {
   const tasks = [...loadTasks(BENCH_DIR).values()].filter((t) => t.fixture && Array.isArray(t.checks) && t.class !== 'real' && t.class !== 'trigger');
   assert.ok(tasks.length > 30);
   const found = {};
+  const { env } = buildCheckEnv(process.env, { home: mkScratch('ctl-home-') });
+  fs.mkdirSync(env.TMPDIR, { recursive: true });
   for (const t of tasks) {
     const hiddenDir = t.hiddenDir ?? null;
-    const idx = controls.passingOnEmpty(t, (dir, c) => evalCheck(dir, c, { pristineDir: t.fixtureDir, hiddenDir }).passed);
+    const idx = controls.passingOnEmpty(t, (dir, c) => evalCheck(dir, c, { pristineDir: t.fixtureDir, hiddenDir, env }).passed);
     if (idx.length) found[t.id] = idx;
   }
   assert.deepEqual(found, {});
@@ -104,7 +106,7 @@ const SOLUTIONS = path.join(BENCH_DIR, 'tasks', 'solutions');
 
 function workspace(taskId, edit = () => {}) {
   const task = loadTasks(BENCH_DIR).get(taskId);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tight-'));
+  const dir = mkScratch('tight-');
   copyFixture(task.fixtureDir, dir);
   fs.cpSync(path.join(SOLUTIONS, taskId), dir, { recursive: true });
   edit(dir);

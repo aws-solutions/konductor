@@ -4,10 +4,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const rt = require('../lib/realtests.js');
+const { mkScratch } = require('./scratch.js');
 
 const PYTEST_OUT = [
   '============================= test session starts ==============================',
@@ -74,7 +74,7 @@ test('buildCommand fills {reporter}', () => {
 });
 
 test('node reporter: emits one line per finished test with the describe path, skips suite records', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-'));
+  const dir = mkScratch('rt-');
   try {
     fs.writeFileSync(path.join(dir, 'x.test.js'), [
       "const { test, describe } = require('node:test');",

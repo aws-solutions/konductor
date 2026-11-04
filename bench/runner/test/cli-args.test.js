@@ -165,7 +165,7 @@ test('calibrate takes exactly one subcommand; the flags of the other subcommand 
 });
 
 test('every flag in the usage text is accepted, and every accepted flag is in the usage text', () => {
-  const usage = spawnSync(process.execPath, [BENCH_JS, 'run', '--help'], { env: { PATH: process.env.PATH, HOME: tmp() }, encoding: 'utf8' }).stdout;
+  const usage = spawnSync(process.execPath, [BENCH_JS, 'run', '--help'], { env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: tmp() }, encoding: 'utf8' }).stdout;
   const blocks = usage.split(/\n(?=  node bench\/runner\/bench\.js )/).filter((b) => b.startsWith('  node bench/runner/bench.js '));
   const documented = {};
   for (const b of blocks) {

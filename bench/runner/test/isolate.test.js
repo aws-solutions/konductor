@@ -10,7 +10,8 @@ const { spawnSync } = require('node:child_process');
 const net = require('node:net');
 const { makeIsolation, probeUnshare, resolveIsolation, writableTrees, runtimeSockets, realHomes } = require('../lib/isolate.js');
 const { createTripwire, tripwireFlags, REPO_EXCLUDES } = require('../lib/tripwire.js');
-const { makeScratchRoot } = require('../lib/sandbox.js');
+const { makeScratchRoot } = require('./scratch.js');
+const { mkScratch } = require('./scratch.js');
 
 const probe = probeUnshare();
 const skip = probe.ok ? false : `unshare namespace unavailable: ${probe.reason}`;
@@ -92,7 +93,7 @@ test('the agent has no capabilities and cannot remount or unmount', { skip }, ()
 
 test('--hide masks files with /dev/null and directories with an empty tmpfs', { skip }, () => {
   const scratch = makeScratchRoot();
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'hide-home-'));
+  const home = mkScratch('hide-home-');
   try {
     fs.writeFileSync(path.join(home, '.token'), 'SECRET');
     fs.writeFileSync(path.join(home, '.bash_history'), 'SECRET');
@@ -116,7 +117,7 @@ test('--hide masks files with /dev/null and directories with an empty tmpfs', { 
 
 test('container runtime sockets and ssh agent dirs are masked', { skip }, async () => {
   const scratch = makeScratchRoot();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sock-'));
+  const dir = mkScratch('sock-');
   const sock = path.join(dir, 'docker-test.sock');
   const other = path.join(dir, 'plain.sock');
   const sshDir = path.join(dir, 'ssh-AAAA');
@@ -143,7 +144,7 @@ test('container runtime sockets and ssh agent dirs are masked', { skip }, async 
 
 test('mask hides bench fixtures, reference solutions and every answer key', { skip }, () => {
   const scratch = makeScratchRoot();
-  const bench = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-'));
+  const bench = mkScratch('bench-');
   try {
     fs.mkdirSync(path.join(bench, 'fixtures/fx'), { recursive: true });
     fs.mkdirSync(path.join(bench, 'tasks/solutions/t1'), { recursive: true });
@@ -196,7 +197,7 @@ test('a setsid grandchild dies with the namespace', { skip }, () => {
 });
 
 test('tripwire reports entries changed after the marker and respects excludes', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'trip-'));
+  const root = mkScratch('trip-');
   try {
     fs.mkdirSync(path.join(root, 'watch/deep/er/still'), { recursive: true });
     fs.mkdirSync(path.join(root, 'watch/skip'), { recursive: true });
@@ -227,7 +228,7 @@ test('tripwire reports entries changed after the marker and respects excludes', 
 });
 
 test('tripwire does not flag a directory only because an excluded child changed', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'trip-'));
+  const root = mkScratch('trip-');
   try {
     fs.mkdirSync(path.join(root, 'w/data/run'), { recursive: true });
     const t = createTripwire({ markerPath: path.join(root, 'm'), roots: [{ dir: path.join(root, 'w'), depth: 3, exclude: ['data/run'] }] });
@@ -262,7 +263,7 @@ test('tripwire hits are flags without the namespace and informational inside it'
 });
 
 test('realHomes finds the account home from the password database even when HOME points at a scratch directory', () => {
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'rh-'));
+  const scratch = mkScratch('rh-');
   try {
     const homes = realHomes(scratch);
     assert.ok(homes.includes(fs.realpathSync(scratch)));

@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { spawnSync } = require('node:child_process');
 const { makeIsolation, probeUnshare, UNSHARE_FLAGS } = require('../lib/isolate.js');
-const { makeScratchRoot } = require('../lib/sandbox.js');
+const { makeScratchRoot } = require('./scratch.js');
 
 test('offline adds a network namespace and brings loopback up before the capabilities are dropped', () => {
   const scratch = makeScratchRoot();

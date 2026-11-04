@@ -4,11 +4,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { addedLines, scanCopy, leakScan } = require('../../real/leakscan.js');
+const { mkScratch } = require('./scratch.js');
 
-const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'leak-')));
+const tmp = () => fs.realpathSync(mkScratch('leak-'));
 const touch = (f, t = '') => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t); };
 
 const PATCH = [

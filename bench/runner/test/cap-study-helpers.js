@@ -5,17 +5,17 @@
 // finished run directories to plan from. Nothing here calls a model.
 
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { write } = require('./helpers.js');
 const { pruneFiles, makeRunDir, V1, VAN } = require('./cap-prune-helpers.js');
 const { makeCapRepo, makeCapBench, spec } = require('./cap-helpers.js');
+const { mkScratch } = require('./scratch.js');
 
 const section = (title, n) => `## ${title}\n\n${Array.from({ length: n }, (_, i) => `${title} line ${i + 1} with enough words to take some bytes.`).join('\n')}\n`;
 const SECTIONED = `---\nname: sectioned\ndescription: Use when tracing sectioned flows through services. Maps the flow.\n---\n\n# Sectioned\n\nOpening.\n\n${section('Workflow', 30)}\n${section('Template', 30)}\n${section('Checklist', 30)}\n`;
 
 function env() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'captest-'));
+  const root = mkScratch('captest-');
   const r = makeCapRepo(root, {
     files: (repo) => {
       pruneFiles(repo);

@@ -7,13 +7,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { runChecks } = require('../lib/checks.js');
 const { copyFixture } = require('../lib/sandbox.js');
 const { buildCheckEnv } = require('../lib/env.js');
 const { loadTasks, BENCH_DIR } = require('../lib/tasks.js');
 const { loadCases, checkCases, MIN_NEGATIVES } = require('../lib/negatives.js');
+const { mkScratch } = require('./scratch.js');
 
 const NEGATIVES = path.join(BENCH_DIR, 'tasks', 'negatives');
 const SOLUTIONS = path.join(BENCH_DIR, 'tasks', 'solutions');
@@ -27,7 +27,7 @@ for (const file of fs.readdirSync(NEGATIVES).filter((f) => f.endsWith('.json')).
     const problems = checkCases({
       task, spec: loadCases(NEGATIVES, id),
       makeWorkspace: () => {
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'neg-'));
+        const dir = mkScratch('neg-');
         copyFixture(task.fixtureDir, dir);
         fs.cpSync(path.join(SOLUTIONS, id), dir, { recursive: true });
         return dir;
@@ -43,7 +43,7 @@ for (const file of fs.readdirSync(NEGATIVES).filter((f) => f.endsWith('.json')).
 
 test('checkCases reports a case that disagrees with its expectation and a loosened check without enough negatives', () => {
   const task = { id: 't', checks: [{ type: 'contains', path: 'a.txt', pattern: 'x' }] };
-  const make = () => fs.mkdtempSync(path.join(os.tmpdir(), 'neg-'));
+  const make = () => mkScratch('neg-');
   const evalOne = (dir, c) => runChecks(dir, [c])[0].passed;
   const spec = {
     loosened: [0],
@@ -62,7 +62,7 @@ test('checkCases rejects a case whose type does not match the check at that inde
   const task = { id: 't', checks: [{ type: 'contains', path: 'a.txt', pattern: 'x' }] };
   const problems = checkCases({
     task, spec: { cases: [{ name: 'c', check: 0, type: 'cmd', expect: 'pass', files: {} }] },
-    makeWorkspace: () => fs.mkdtempSync(path.join(os.tmpdir(), 'neg-')), evalOne: () => true,
+    makeWorkspace: () => mkScratch('neg-'), evalOne: () => true,
   });
   assert.match(problems[0], /check 0 is contains, case says cmd/);
 });

@@ -187,7 +187,7 @@ test('cap plan via the CLI prints the plan, exits 0, and leaves the scratch HOME
     assert.equal(r.status, 0, r.stderr);
     assert.match(r.stdout, /Plan: lift of skill:alpha/);
     assert.deepEqual(fs.readdirSync(home), []);
-    const bad = spawnSync(process.execPath, [BENCH_JS, 'cap', 'plan', '--mode', 'lift', '--cap', 'skill:alpha', '--base', 'nope-ref', '--repo-root', s.repo, '--bench-dir', s.bench, '--scratch', s.out], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: home } });
+    const bad = spawnSync(process.execPath, [BENCH_JS, 'cap', 'plan', '--mode', 'lift', '--cap', 'skill:alpha', '--base', 'nope-ref', '--repo-root', s.repo, '--bench-dir', s.bench, '--scratch', s.out], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: home } });
     assert.equal(bad.status, 2);
   } finally { s.done(); }
 });

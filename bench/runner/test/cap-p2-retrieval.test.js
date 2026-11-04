@@ -138,7 +138,7 @@ test('the result record has the fields the server returns', () => {
 
 function mcpCall(bin, args, calls) {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { stdio: ['pipe', 'pipe', 'ignore'], env: { PATH: process.env.PATH, HOME: args.home } });
+    const child = spawn(bin, args, { stdio: ['pipe', 'pipe', 'ignore'], env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: args.home } });
     let buf = '';
     const out = {};
     const send = (o) => child.stdin.write(`${JSON.stringify(o)}\n`);

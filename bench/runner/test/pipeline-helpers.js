@@ -8,6 +8,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 const { spawnSync } = require('node:child_process');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'scripts');
@@ -53,7 +54,7 @@ const PASSING_TEST = "const test = require('node:test');\ntest('ok', () => {});\
 function git(cwd, args, opts = {}) {
   const r = spawnSync('git', args, {
     cwd, encoding: 'utf8',
-    env: { PATH: process.env.PATH, HOME: opts.home || os.tmpdir(), GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.com' },
+    env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: opts.home || os.tmpdir(), GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.com' },
   });
   if (r.status !== 0) throw new Error(`git ${args.join(' ')}: ${r.stderr}`);
   return r.stdout;
@@ -62,7 +63,7 @@ function git(cwd, args, opts = {}) {
 function sandbox() {
   let parent = os.tmpdir();
   if (/bench/i.test(parent)) parent = '/tmp';
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(parent, 'pipe-')));
+  const root = fs.realpathSync(mkScratch('pipe-', parent));
   const dir = (...p) => { const d = path.join(root, ...p); fs.mkdirSync(d, { recursive: true }); return d; };
   const state = dir('state'), results = dir('results'), home = dir('home'), tmp = dir('tmp'), cargo = dir('cargo');
   const write = (rel, text, mode) => { const f = path.join(root, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text, mode ? { mode } : undefined); return f; };

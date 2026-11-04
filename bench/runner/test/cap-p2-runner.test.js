@@ -380,7 +380,7 @@ test('run takes --auth-db and names the file when it is missing, before anything
   try {
     const bench = makeBench(path.join(root, 'bench'));
     fs.mkdirSync(path.join(root, 'h'));
-    const r = require('node:child_process').spawnSync(process.execPath, [path.join(__dirname, '..', 'bench.js'), 'run', '--suite', 'lite', '--bench-dir', bench, '--arms', 'vanilla', '--auth-db', path.join(root, 'none.sqlite3')], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: path.join(root, 'h') } });
+    const r = require('node:child_process').spawnSync(process.execPath, [path.join(__dirname, '..', 'bench.js'), 'run', '--suite', 'lite', '--bench-dir', bench, '--arms', 'vanilla', '--auth-db', path.join(root, 'none.sqlite3')], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: path.join(root, 'h') } });
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /kiro-cli auth database not found: .*none\.sqlite3/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

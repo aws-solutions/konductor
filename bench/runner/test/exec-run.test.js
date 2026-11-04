@@ -4,6 +4,7 @@
 // executeRun against a fake kiro-cli: no credits, no network.
 
 const test = require('node:test');
+const { makeScratchRoot } = require('./scratch.js');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -185,7 +186,7 @@ test('the tripwire flags a write into a watched directory during the run', async
 });
 
 test('os.tmpdir based scratch roots use a neutral prefix', () => {
-  const dir = sandbox.makeScratchRoot();
+  const dir = makeScratchRoot();
   try {
     assert.match(path.basename(dir), /^w-[A-Za-z0-9]+$/);
     assert.equal(/konductor|bench/i.test(dir), false);

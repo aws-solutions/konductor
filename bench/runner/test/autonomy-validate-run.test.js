@@ -9,22 +9,24 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { mkScratch } = require('./scratch.js');
 
 const BENCH = path.join(__dirname, '..', '..');
 
 function validateCopy(keep, mutate) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'val-'));
+  const root = mkScratch('val-');
   fs.cpSync(BENCH, path.join(root, 'bench'), { recursive: true, filter: (p) => path.basename(p) !== 'results' });
   const tasks = path.join(root, 'bench/tasks');
   for (const f of fs.readdirSync(tasks)) if (f.endsWith('.json') && f !== `${keep}.json`) fs.rmSync(path.join(tasks, f));
   const fixtures = path.join(root, 'bench/fixtures');
   for (const f of fs.readdirSync(fixtures)) if (!f.startsWith('auto-')) fs.rmSync(path.join(fixtures, f), { recursive: true, force: true });
   mutate(path.join(root, 'bench'));
+  const childTmp = path.join(root, 'tmp');
+  fs.mkdirSync(childTmp);
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [path.join(root, 'bench/tasks/validate-tasks.js')], { cwd: root, env: { PATH: process.env.PATH, HOME: path.join(root, 'home') } });
+    const child = spawn(process.execPath, [path.join(root, 'bench/tasks/validate-tasks.js')], { cwd: root, env: { PATH: process.env.PATH, TMPDIR: childTmp, HOME: path.join(root, 'home') } });
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });

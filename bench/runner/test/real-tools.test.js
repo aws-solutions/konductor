@@ -10,6 +10,7 @@ const { spawnSync } = require('node:child_process');
 const lib = require('../../real/lib.js');
 const { fetchEntry } = require('../../real/fetch.js');
 const { materialize } = require('../../real/materialize.js');
+const { mkScratch } = require('./scratch.js');
 
 const sh = (cwd, ...args) => {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.org', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.org' } });
@@ -19,7 +20,7 @@ const sh = (cwd, ...args) => {
 
 // A local upstream with a base commit, a fix commit and a symlink plus an executable file.
 function makeUpstream() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'real-up-'));
+  const dir = mkScratch('real-up-');
   sh(dir, 'init', '-q', '-b', 'main');
   sh(dir, 'config', 'uploadpack.allowAnySHA1InWant', 'true');
   fs.mkdirSync(path.join(dir, 'pkg'));
@@ -41,7 +42,7 @@ function makeUpstream() {
   };
 }
 
-const tmp = (p) => fs.mkdtempSync(path.join(os.tmpdir(), p));
+const tmp = (p) => mkScratch(p);
 
 test('fetch pins both commits and a second call fetches nothing', () => {
   const up = makeUpstream();

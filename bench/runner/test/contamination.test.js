@@ -8,6 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { scanStream, fixRecall, contaminationFlags, MIN_RECALL } = require('../lib/contamination.js');
 const { parseStream } = require('../lib/stream.js');
+const { mkScratch } = require('./scratch.js');
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'kiro-main-orch-input-validation.stream.jsonl');
 
@@ -98,7 +99,7 @@ test('an unusable stream or entry gives no flag instead of a crash', () => {
 });
 
 // A base tree, an agent tree and the upstream patch.
-const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'contam-')));
+const tmp = () => fs.realpathSync(mkScratch('contam-'));
 const write = (f, t) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t); };
 
 const UPSTREAM_LINES = [

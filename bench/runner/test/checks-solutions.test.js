@@ -7,19 +7,19 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { runChecks } = require('../lib/checks.js');
 const { copyFixture } = require('../lib/sandbox.js');
 const { buildCheckEnv } = require('../lib/env.js');
 const { loadTasks, BENCH_DIR } = require('../lib/tasks.js');
+const { mkScratch } = require('./scratch.js');
 
 const SOLUTIONS = path.join(BENCH_DIR, 'tasks', 'solutions');
 
 for (const [id, task] of loadTasks(BENCH_DIR)) {
   if (id.startsWith('_') || !fs.existsSync(path.join(SOLUTIONS, id))) continue;
   test(`reference solution passes every runner check: ${id}`, () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sol-'));
+    const dir = mkScratch('sol-');
     try {
       copyFixture(task.fixtureDir, dir);
       fs.cpSync(path.join(SOLUTIONS, id), dir, { recursive: true });

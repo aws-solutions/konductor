@@ -17,6 +17,7 @@ const { guardInstalls, installsHash } = require('../../cap/guard.js');
 const { snapshotDir } = require('../lib/arm-source.js');
 const { parseArmSpec } = require('../lib/arms.js');
 const { loadAgentSpecs } = require('../../cap/scan.js');
+const { mkScratch } = require('./scratch.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
 const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
@@ -287,7 +288,7 @@ test('cap variant fails with exit 1 when a build changes the watched install reg
     fs.mkdirSync(watched);
     const home = path.join(s.root, 'h');
     fs.mkdirSync(home);
-    const run = (scratchDir) => spawnSync(process.execPath, [BENCH_JS, 'cap', 'variant', '--repo-root', s.repo, '--base', 'v0', '--drop', 'skill:alpha', '--scratch', scratchDir], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: home, BENCH_CAP_INSTALLS_HOMES: watched } });
+    const run = (scratchDir) => spawnSync(process.execPath, [BENCH_JS, 'cap', 'variant', '--repo-root', s.repo, '--base', 'v0', '--drop', 'skill:alpha', '--scratch', scratchDir], { encoding: 'utf8', env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, HOME: home, BENCH_CAP_INSTALLS_HOMES: watched } });
     const clean = run(path.join(s.root, 'elsewhere'));
     assert.equal(clean.status, 0, clean.stderr);
     const dirty = run(path.join(watched, '.konductor', 'installs', 'scratch'));
@@ -449,7 +450,7 @@ test('overlay refuses a directory without SKILL.md, a name change, stray files, 
 test('overlay will not overwrite a reference file the base already has', () => {
   const s = setup();
   try {
-    const own = makeCapRepo(fs.mkdtempSync(path.join(os.tmpdir(), 'captest-')), {
+    const own = makeCapRepo(mkScratch('captest-'), {
       files: (repo) => { require('./cap-helpers.js').writeFiles(repo); write(path.join(repo, 'skills/alpha/references/detail.md'), 'old\n'); },
     });
     assert.throws(() => buildVariant({ repo: own.repo, base: 'v0', overlay: [`skill:alpha=${overlayDir(s.root)}`], scratch: s.out }), /already has references\/detail\.md/);

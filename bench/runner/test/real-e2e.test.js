@@ -18,7 +18,7 @@ const { runChecks } = require('../lib/checks.js');
 const { buildCheckEnv } = require('../lib/env.js');
 const { makeIso } = require('../lib/run-one.js');
 const { probeUnshare } = require('../lib/isolate.js');
-const { makeScratchRoot } = require('../lib/sandbox.js');
+const { makeScratchRoot } = require('./scratch.js');
 
 const cache = reallib.resolveCache();
 const probe = probeUnshare();

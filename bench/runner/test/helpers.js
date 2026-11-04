@@ -4,8 +4,8 @@
 // Builds a tiny bench dir and run dir on disk for judge and report tests.
 
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const { mkScratch } = require('./scratch.js');
 
 const RUBRIC = [
   { id: 'c1', criterion: 'Does the first thing.', weight: 1 },
@@ -13,7 +13,7 @@ const RUBRIC = [
 ];
 
 function tmp() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'benchtest-'));
+  return mkScratch('benchtest-');
 }
 
 function write(file, text) {

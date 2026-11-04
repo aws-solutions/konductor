@@ -16,6 +16,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { write } = require('./helpers.js');
+const { mkScratch } = require('./scratch.js');
 
 const git = (repo, ...a) => execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@example.invalid', '-c', 'commit.gpgsign=false', ...a], { encoding: 'utf8' }).trim();
 
@@ -98,6 +99,6 @@ const writeEntry = (bench, e) => {
 };
 
 // The real path: on macOS os.tmpdir() is under the /var -> /private/var symlink, and the CLI prints real paths.
-const scratch = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'captest-')));
+const scratch = () => fs.realpathSync(mkScratch('captest-'));
 
 module.exports = { makeCapRepo, makeCapBench, entry, writeEntry, writeFiles, scratch, git, spec, ALPHA_DESC };

@@ -4,12 +4,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const probe = require('../../real/probe.js');
+const { mkScratch } = require('./scratch.js');
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'probe-test-'));
+const tmp = () => mkScratch('probe-test-');
 const write = (f, t) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t); };
 
 function runPy(root, hookDir, modules, extraPath) {
