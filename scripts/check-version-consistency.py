@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Fail if any Cargo version, any lockfile entry for this repo's own crates, or the
+"""Fail if any Cargo version, any lockfile entry for a Konductor product crate, or the
 CHANGELOG disagrees with the repo-root VERSION file.
 
 Checked against VERSION:
 - `[package].version` and `[workspace.package].version` in every Cargo.toml under
   cli/, mcp/ and shared/. Crates with `version.workspace = true` are covered by their
   workspace's own version.
-- Every Cargo.lock entry with no `source`, which are this repo's own crates.
+- Every Cargo.lock entry with no `source` whose name is a crate with a manifest under cli/,
+  mcp/ or shared/ (the product crates). Path crates that live elsewhere, such as the
+  workflow engine, keep their own versions and are not checked. A product crate absent
+  from a lockfile is not an error.
 - CHANGELOG.md has a `## [<VERSION>] - YYYY-MM-DD` heading.
 
 powers/konductor/plugin.json is checked by scripts/check-plugin-json-version-drift.sh.
@@ -37,10 +40,14 @@ def cargo_files(root, name):
 def check(root):
     version = (root / "VERSION").read_text(encoding="utf-8").strip()
     problems = []
+    product_crates = set()
 
     for path in sorted(cargo_files(root, "Cargo.toml")):
         data = tomllib.loads(path.read_text(encoding="utf-8"))
         rel = path.relative_to(root)
+        crate_name = data.get("package", {}).get("name")
+        if isinstance(crate_name, str):
+            product_crates.add(crate_name)
         for table, label in ((data.get("package", {}), "[package]"),
                              (data.get("workspace", {}).get("package", {}), "[workspace.package]")):
             found = table.get("version")
@@ -51,7 +58,8 @@ def check(root):
         data = tomllib.loads(path.read_text(encoding="utf-8"))
         rel = path.relative_to(root)
         for package in data.get("package", []):
-            if "source" not in package and package.get("version") != version:
+            if ("source" not in package and package.get("name") in product_crates
+                    and package.get("version") != version):
                 problems.append(f"{rel}: {package.get('name')} is {package.get('version')}")
 
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")

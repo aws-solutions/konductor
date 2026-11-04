@@ -65,6 +65,55 @@ def test_stale_lockfile_entry_fails_but_registry_crates_are_ignored(tmp_path):
     assert "serde" not in result.stderr
 
 
+def _add_engine_crates(root):
+    engine = root / "workflow-engine"
+    for name in ("core", "adapters"):
+        (engine / name).mkdir(parents=True)
+        (engine / name / "Cargo.toml").write_text(f'[package]\nname = "workflow-{name}"\nversion = "0.1.0"\n', encoding="utf-8")
+    lock = root / "cli" / "konductor-rs" / "Cargo.lock"
+    lock.write_text(
+        lock.read_text(encoding="utf-8")
+        + '\n[[package]]\nname = "workflow-adapters"\nversion = "0.1.0"\n'
+        + '\n[[package]]\nname = "workflow-core"\nversion = "0.1.0"\n',
+        encoding="utf-8",
+    )
+
+
+def test_independently_versioned_path_crates_outside_product_dirs_pass(tmp_path):
+    root = _tree(tmp_path)
+    _add_engine_crates(root)
+    result = _run(root)
+    assert result.returncode == 0, result.stderr
+
+
+def test_product_crate_depending_on_path_crate_is_still_checked(tmp_path):
+    root = _tree(tmp_path)
+    _add_engine_crates(root)
+    lock = root / "cli" / "konductor-rs" / "Cargo.lock"
+    lock.write_text(lock.read_text(encoding="utf-8").replace('name = "konductor"\nversion = "1.2.0"', 'name = "konductor"\nversion = "1.1.0"'), encoding="utf-8")
+    result = _run(root)
+    assert result.returncode == 1
+    assert "cli/konductor-rs/Cargo.lock: konductor is 1.1.0" in result.stderr
+    assert "workflow-" not in result.stderr
+
+
+def test_workspace_inherited_product_crate_lockfile_entry_is_checked(tmp_path):
+    root = _tree(tmp_path)
+    (root / "mcp" / "Cargo.lock").write_text(
+        '[[package]]\nname = "skill-lookup-mcp"\nversion = "1.1.0"\n', encoding="utf-8"
+    )
+    result = _run(root)
+    assert result.returncode == 1
+    assert "mcp/Cargo.lock: skill-lookup-mcp is 1.1.0" in result.stderr
+
+
+def test_product_crate_absent_from_lockfile_passes(tmp_path):
+    root = _tree(tmp_path)
+    (root / "cli" / "konductor-rs" / "Cargo.lock").write_text("version = 4\n", encoding="utf-8")
+    result = _run(root)
+    assert result.returncode == 0, result.stderr
+
+
 def test_missing_changelog_section_fails(tmp_path):
     root = _tree(tmp_path)
     (root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n## [1.1.0] - 2026-10-14\n", encoding="utf-8")
