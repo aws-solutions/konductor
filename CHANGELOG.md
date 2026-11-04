@@ -115,6 +115,17 @@ not per individual commit.
   to the with and without arm. A result made under another decision rule or from other inputs is
   rebuilt at no cost. Run `node --test bench/test/judge.test.js bench/test/judge-reply.test.js
   bench/test/score.test.js`.
+- `bench/test/pipeline.test.js`, a whole-pipeline test that runs offline. A scripted grader judges
+  eight synthetic pairs with a three-seat panel in both orders; the stored run is then judged
+  again from stored files alone with the replay plugin, and scored again with no plugin, and both
+  give the same pinned result (verdict `keep`, mean gap 2.08, 95% interval 1.79 to 2.37, eight
+  scored pairs). The test also pins that a template edit, a sanitizer version change or a
+  sanitizer rules change makes judgments pending, that a decision-rule change makes the result
+  stale and rebuilds it with no plugin call, that a missing replay key errors and writes nothing,
+  that a task id or seat label that could leave the run directory is refused, that a whole run
+  leaves directories at 0700 and files at 0600 (skipped where modes are not enforced), and that
+  the core, driver and replay sources import no network, process or provider module. Run
+  `node --test bench/test/pipeline.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
