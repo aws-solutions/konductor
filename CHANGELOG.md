@@ -92,6 +92,13 @@ not per individual commit.
   with distinct families and unique seat labels, rejecting an unknown field and reporting every
   problem at once. No model id appears in the code, a default config or a fixture. Run
   `node --test bench/test/plan.test.js bench/test/judge-roster.test.js`.
+- `bench/plugins/replay.js`, a grader plugin that answers a judge call from a judgment already
+  stored, so a stored run can be judged again with no model call, no credential and no network.
+  A call is found by its judge input digest, which leaves out the per-call marker id, so a stored
+  reply is found whatever marker the new prompt carries and only when the judge would see the
+  same input. A key with no stored reply is an error, never a made-up reply; `canServe(digest)`
+  lets a driver check every pending call first. `createReplayPlugin({ records })` and
+  `replayFromStore(store, skills)` build one. Run `node --test bench/test/replay.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
