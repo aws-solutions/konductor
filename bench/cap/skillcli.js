@@ -11,7 +11,7 @@ const { optionalProfile } = require('../runner/lib/profiles.js');
 const { planSkillStudy, renderPlan, LARGE_DEFAULT, DUPLICATE_PAIRS_DEFAULT, TIERS } = require('./skillplan.js');
 const { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec } = require('./skillstudy.js');
 const { expandGlob } = require('./usage.js');
-const { checkMode } = require('./forced.js');
+const { checkMode, checkHeldMin } = require('./forced.js');
 
 const list = (v) => (v === undefined || v === true || v === '' ? [] : String(v).split(',').filter(Boolean));
 const val = (v) => (v === undefined || v === true ? undefined : String(v));
@@ -96,6 +96,7 @@ function runtimeOverrides(opts) {
     awsProfile: val(opts['aws-profile']), awsRegion: val(opts['aws-region']), budgetUsdPerWave: num(opts['budget-usd'], 'budget-usd') ?? 15,
     budgetCreditsPerWave: num(opts['wave-budget-credits'], 'wave-budget-credits'), authDb: val(opts['auth-db']), cache: val(opts.cache), cargoTarget: val(opts['cargo-target']),
     kiroBin: val(opts['kiro-bin']), opencodeBin: val(opts['opencode-bin']), forcedLoad: checkMode(opts['forced-load']) ?? undefined,
+    forcedHeldMin: checkHeldMin(opts['forced-held-min']) ?? undefined,
   });
 }
 
@@ -104,6 +105,9 @@ async function cmdSkillStudy(opts) {
   if (!studyArg) throw new Error('--study DIR is required');
   const studyDir = path.resolve(studyArg);
   checkMode(opts['forced-load']);
+  checkHeldMin(opts['forced-held-min']);
+  const waves = val(opts.waves) ?? 'all';
+  if (!['all', '1'].includes(waves)) throw new Error('--waves takes 1 (controls and wave 1 only) or all');
   if (opts.status) { console.log(studyStatus(studyDir)); return; }
   if (opts.init) {
     const args = planArgs(opts);
@@ -123,7 +127,7 @@ async function cmdSkillStudy(opts) {
   process.once('SIGTERM', onSig);
   process.once('SIGINT', onSig);
   const log = (m) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${m}`);
-  const r = await runStudy({ studyDir, exec, log, tiers: tiers.length ? tiers : ['all'], skills: list(opts.only).length ? list(opts.only) : null, dryRun: Boolean(opts['dry-run']), shouldStop: () => stop, overrides: runtimeOverrides(opts) });
+  const r = await runStudy({ studyDir, exec, log, tiers: tiers.length ? tiers : ['all'], skills: list(opts.only).length ? list(opts.only) : null, dryRun: Boolean(opts['dry-run']), shouldStop: () => stop, overrides: runtimeOverrides(opts), waves });
   if (r.stopped) { console.error(`study stopped: ${r.stopped}`); process.exitCode = 1; }
 }
 
@@ -131,7 +135,7 @@ function cmdDecide(opts) {
   const studyArg = val(opts.study);
   if (!studyArg) throw new Error('--study DIR is required');
   const studyDir = path.resolve(studyArg);
-  const r = decideStudy({ studyDir, outDir: pathOpt(opts.out), patches: !opts['no-patches'] });
+  const r = decideStudy({ studyDir, outDir: pathOpt(opts.out), patches: !opts['no-patches'], heldMin: checkHeldMin(opts['forced-held-min']) });
   if (opts.json) { console.log(JSON.stringify(r.decisions, null, 2)); return; }
   const by = {};
   for (const d of r.decisions) (by[d.decision] ??= []).push(d.name);

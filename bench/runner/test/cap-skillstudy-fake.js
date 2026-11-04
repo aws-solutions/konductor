@@ -31,7 +31,8 @@ function setup({ tiers = ['loaded'], skills = ['sectioned'], e = env(), planOpts
 
 // quality: pass probability by arm id (tenths); trusted: what the controls check says; unloaded: arm ids whose runs never
 // load the skill; summary: fields merged into each summary.json (for example a failed isolation gate).
-function fakeExec({ quality = {}, trusted = true, calls = [], unloaded = [], summary = {} } = {}) {
+// failRuns: a pattern on --out; a matching run exits 1 and writes nothing (a run that crashed).
+function fakeExec({ quality = {}, trusted = true, calls = [], unloaded = [], summary = {}, failRuns = null } = {}) {
   const flag = (argv, name) => { const i = argv.indexOf(`--${name}`); return i < 0 ? null : argv[i + 1]; };
   const exec = async ({ argv }) => {
     calls.push(argv);
@@ -43,6 +44,12 @@ function fakeExec({ quality = {}, trusted = true, calls = [], unloaded = [], sum
     if (argv[0] === 'judge') { fs.writeFileSync(path.join(flag(argv, 'run'), 'judgments.json'), JSON.stringify({ schemaVersion: 1, baseline: 'ctl', judges: [], modes: ['rubric'], rubric: [], pairwise: [] })); return { code: 0 }; }
     if (argv[0] !== 'run') return { code: 0 };
     const out = flag(argv, 'out');
+    if (failRuns && failRuns.test(out)) return { code: 1 };
+    // What run records per arm: the sha256 and size of the --arm-prefix file, as result.armPrefix.
+    const prefixOf = new Map((flag(argv, 'arm-prefix') ?? '').split(',').filter(Boolean).map((x) => {
+      const buf = fs.readFileSync(x.slice(x.indexOf('=') + 1));
+      return [x.slice(0, x.indexOf('=')), { sha256: require('node:crypto').createHash('sha256').update(buf).digest('hex'), bytes: buf.length }];
+    }));
     const armIds = flag(argv, 'arms').split(',').map((a) => a.slice(0, a.indexOf('=')));
     const tasks = flag(argv, 'tasks').split(',');
     const reps = Number(flag(argv, 'replicates'));
@@ -62,7 +69,7 @@ function fakeExec({ quality = {}, trusted = true, calls = [], unloaded = [], sum
       });
     }
     makeRunDir(out, { arms, runs: rows });
-    write(path.join(out, 'summary.json'), JSON.stringify({ interrupted: null, isolationGate: { ok: true }, armIds, replicates: reps, taskIds: tasks, results: rows.map(() => ({ status: 'success' })), ...summary }));
+    write(path.join(out, 'summary.json'), JSON.stringify({ interrupted: null, isolationGate: { ok: true }, armIds, replicates: reps, taskIds: tasks, results: rows.map((r) => ({ status: 'success', armId: r.arm, armPrefix: prefixOf.get(r.arm) ?? null })), ...summary }));
     write(path.join(out, 'credit-ledger.jsonl'), `${rows.map(() => JSON.stringify({ kind: 'run', credits: 4, charged: 4 })).join('\n')}\n`);
     return { code: 0 };
   };

@@ -24,7 +24,7 @@ const { resolveBase } = require('./source.js');
 const { scanRepo } = require('./scan.js');
 const { readWave, waveComplete, buildSkillPatch } = require('./studyio.js');
 const { decideSkill, evidenceRowsFor, compareArms, variantStatus, renderDecisions, LOAD_MIN } = require('./decide.js');
-const { forcedPrefix, prefixHash, forcedWanted, forcedSummary, renderForced, FORCED_ARMS, FORCED_WAVE, ARM_LABEL } = require('./forced.js');
+const { forcedPrefix, forcedFiller, prefixHash, forcedWanted, forcedSummary, forcedFailure, renderForced, FORCED_ARMS, FORCED_WAVE, FORCED_LOAD_MIN, ARM_LABEL } = require('./forced.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'runner', 'bench.js');
 const STUDY_FILE = 'study.json';
@@ -121,24 +121,36 @@ function materialize(study, rec, armIds, studyDir) {
 
 /**
  * The forced-load wave: the base ref twice with a first instruction to load the skill (frc and its A/A repeat frc-b), and
- * the skill deleted (del) without it. The prefix file is kept in the skill's study folder next to the overlays.
+ * the skill deleted (del) with a neutral filler instruction of the same length. Both instruction files are kept in the
+ * skill's study folder next to the overlays, and their hashes go into the arms file so the gate can check every run.
  */
 function materializeForced(study, rec, studyDir) {
   const base = study.settings.base;
   const del = materialize(study, rec, ['del'], studyDir);
-  const text = `${forcedPrefix({ name: rec.name, harness: 'kiro-cli' })}\n`;
-  const file = path.join(paths(studyDir).skill(rec.name), 'forced-prefix.txt');
-  if (/[,=]/.test(file)) throw new Error(`the study path ${file} holds a comma or an equals sign, which --arm-prefix cannot carry`);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, text);
+  const dir = paths(studyDir).skill(rec.name);
+  const instruction = forcedPrefix({ name: rec.name, harness: 'kiro-cli' });
+  const texts = { forced: `${instruction}\n`, filler: `${forcedFiller(instruction.length)}\n` };
+  const files = { forced: path.join(dir, 'forced-prefix.txt'), filler: path.join(dir, 'forced-filler.txt') };
+  for (const f of Object.values(files)) if (/[,=]/.test(f)) throw new Error(`the study path ${f} holds a comma or an equals sign, which --arm-prefix cannot carry`);
+  fs.mkdirSync(dir, { recursive: true });
+  for (const k of Object.keys(files)) fs.writeFileSync(files[k], texts[k]);
+  const sha = { forced: prefixHash(texts.forced), filler: prefixHash(texts.filler) };
   return {
     specs: { frc: `frc=${base}`, 'frc-b': `frc-b=${base}`, del: del.specs.del },
-    meta: { frc: { kind: 'forced', section: null, range: null }, 'frc-b': { kind: 'forced-aa', section: null, range: null }, del: del.meta.del },
+    meta: { frc: { kind: 'forced', section: null, range: null }, 'frc-b': { kind: 'forced-aa', section: null, range: null }, del: { ...del.meta.del, kind: 'delete-filler' } },
     refPaths: {},
-    prefix: { frc: file, 'frc-b': file },
-    forced: { label: ARM_LABEL, harness: 'kiro-cli', prefixFile: file, sha256: prefixHash(text), usedForCall: false },
+    prefix: { frc: files.forced, 'frc-b': files.forced, del: files.filler },
+    forced: {
+      label: ARM_LABEL, harness: 'kiro-cli', usedForCall: false, prefixFile: files.forced, fillerFile: files.filler, sha256: sha.forced, fillerSha256: sha.filler,
+      prefixes: { frc: sha.forced, 'frc-b': sha.forced, del: sha.filler },
+    },
   };
 }
+
+/** Step labels of a wave. The forced wave's are `<skill>-w1f-run` and `<skill>-w1f-judge`: never `-w2-` or `-w3-`. */
+const stepLabel = (name, n, kind) => `${name}-w${n}-${kind}`;
+// What a wave-1-only runner must skip: every step after wave 1, the forced wave included.
+const AFTER_WAVE1_STEP = /-w(?:1f|2|3)-(?:run|judge)$/;
 
 // ---- commands ----
 
@@ -218,7 +230,7 @@ function readSkillWave(study, studyDir, rec, n, baseline = 'ctl') {
 function skillWaveComplete(study, studyDir, rec, n) {
   const where = waveWhere(study, studyDir, rec, n);
   if (!where.arms || !fs.existsSync(where.dir)) return false;
-  return waveComplete(where.dir, { arms: where.arms, reps: study.plan.profile.reps, tasks: where.tasks }).complete;
+  return waveComplete(where.dir, { arms: where.arms, reps: study.plan.profile.reps, tasks: where.tasks, prefixes: where.armsFile?.forced?.prefixes ?? {} }).complete;
 }
 
 function statusesOf(study, studyDir, rec, n, armIds) {
@@ -262,14 +274,15 @@ function checkCreds(study, selected, log, dryRun) {
  * Runs (or with dryRun, only prints) the study. `exec({ argv, label })` runs one bench.js command and returns { code }.
  * Returns { decisions, stopped, dryRun }; `stopped` is set when controls failed, a command failed or a stop was requested.
  */
-async function runStudy({ studyDir, exec, log = () => {}, tiers = ['all'], skills = null, dryRun = false, shouldStop = () => false, overrides = null }) {
+async function runStudy({ studyDir, exec, log = () => {}, tiers = ['all'], skills = null, dryRun = false, shouldStop = () => false, overrides = null, waves = 'all' }) {
+  if (!['all', '1'].includes(String(waves))) throw new Error('--waves takes 1 (controls and wave 1 only) or all');
   const study = loadStudy(studyDir);
   if (overrides) Object.assign(study.settings, overrides);
   const p = paths(studyDir);
   const sel = study.plan.skills.filter((s) => s.lift && (tiers.includes('all') || tiers.includes(s.tier)) && (!skills || skills.includes(s.name)));
   checkCreds(study, sel, log, dryRun);
   fs.mkdirSync(p.logs, { recursive: true });
-  const result = { dryRun, stopped: null, decisions: [] };
+  const result = { dryRun, stopped: null, decisions: [], forcedFailed: [] };
   const step = async (label, argv) => {
     if (shouldStop()) { result.stopped = 'stop-requested'; return null; }
     log(`${label}: node bench/runner/bench.js ${argv.join(' ')}`);
@@ -286,7 +299,7 @@ async function runStudy({ studyDir, exec, log = () => {}, tiers = ['all'], skill
     }
     for (const rec of sel) {
       if (result.stopped) break;
-      await skillSteps({ study, studyDir, rec, step, log, dryRun, result, controlsTrusted: controls.trusted });
+      await skillSteps({ study, studyDir, rec, step, log, dryRun, result, controlsTrusted: controls.trusted, wave1Only: String(waves) === '1' });
     }
   }
   if (!dryRun) result.decisions = decideStudy({ studyDir }).decisions;
@@ -367,7 +380,7 @@ async function screenStep({ study, studyDir, sc, step, log, dryRun, result }) {
   fs.writeFileSync(mark, `${new Date().toISOString()}\n`);
 }
 
-async function skillSteps({ study, studyDir, rec, step, log, dryRun, result, controlsTrusted }) {
+async function skillSteps({ study, studyDir, rec, step, log, dryRun, result, controlsTrusted, wave1Only = false }) {
   const p = paths(studyDir);
   const reps = study.plan.profile.reps;
   const chosen = rec.tasks.chosen;
@@ -378,29 +391,44 @@ async function skillSteps({ study, studyDir, rec, step, log, dryRun, result, con
   const armAgent = rec.reach.armAgent;
   fs.mkdirSync(p.skill(rec.name), { recursive: true });
 
+  // A failed forced wave is recorded in w1f.failed and the study goes on: it never feeds a call, so nothing else depends
+  // on it. The marker is cleared when the wave is tried again on resume. A stop request still stops everything.
   const runWave = async (n, armIds, { forced = false } = {}) => {
     const dir = p.wave(rec.name, n);
     const doneMark = path.join(p.skill(rec.name), `w${n}.done`);
+    const armsFile = path.join(p.skill(rec.name), `w${n}.arms.json`);
+    const failMark = path.join(p.skill(rec.name), `w${n}.failed`);
+    const expected = () => readJson(armsFile)?.forced?.prefixes ?? {};
+    const fail = (why) => {
+      log(`${rec.name} wave ${n}: ${why}`);
+      if (forced) { fs.writeFileSync(failMark, `${why}\n`); result.forcedFailed.push(rec.name); log(`${rec.name} wave ${n}: the forced wave is reported as failed and the study goes on; rerun to retry it`); }
+      else result.stopped = why.startsWith('judge') ? `judge-failed:${rec.name}:w${n}` : `wave-failed:${rec.name}:w${n}`;
+      return false;
+    };
     log(`${rec.name} wave ${n}: arms ${armIds.join(', ')}`);
     if (dryRun) {
       log(`  ${rec.name} wave ${n}: run --suite ${suite} --tasks ${chosen.join(',')} --replicates ${reps} --out ${dir}${judged ? ' (then judge on the opencode backend)' : ''}`);
-      log(`  ${rec.name} wave ${n}: ${dryState(dir, { arms: armIds.length, reps, tasks: chosen.length }, judged)}`);
+      log(`  ${rec.name} wave ${n}: ${dryState(dir, { arms: armIds.length, reps, tasks: chosen.length, prefixes: expected() }, judged)}`);
       return true;
     }
-    const state = fs.existsSync(dir) ? waveComplete(dir, { arms: armIds.length, reps, tasks: chosen.length }) : { complete: false };
+    const state = fs.existsSync(dir) ? waveComplete(dir, { arms: armIds.length, reps, tasks: chosen.length, prefixes: expected() }) : { complete: false };
     if (!state.complete) {
       moveAside(studyDir, dir, `${rec.name}-w${n}`);
       fs.rmSync(doneMark, { force: true });
-      const m = forced ? materializeForced(study, rec, studyDir) : materialize(study, rec, armIds, studyDir);
-      writeJson(path.join(p.skill(rec.name), `w${n}.arms.json`), { arms: armIds, meta: m.meta, refPaths: m.refPaths, specs: m.specs, ...(m.forced ? { forced: m.forced } : {}) });
-      const r = await step(`${rec.name}-w${n}-run`, runArgv(study, { tasks: chosen, specs: m.specs, armIds, out: dir, reps, armAgent, armConfig, suite, prefix: m.prefix }));
+      fs.rmSync(failMark, { force: true });
+      let m;
+      try { m = forced ? materializeForced(study, rec, studyDir) : materialize(study, rec, armIds, studyDir); } catch (e) { if (!forced) throw e; return fail(`could not be built: ${e.message}`); }
+      writeJson(armsFile, { arms: armIds, meta: m.meta, refPaths: m.refPaths, specs: m.specs, ...(m.forced ? { forced: m.forced } : {}) });
+      const r = await step(stepLabel(rec.name, n, 'run'), runArgv(study, { tasks: chosen, specs: m.specs, armIds, out: dir, reps, armAgent, armConfig, suite, prefix: m.prefix }));
       if (!r) return false;
-      if (r.code !== 0 || !waveComplete(dir, { arms: armIds.length, reps, tasks: chosen.length }).complete) { log(`${rec.name} wave ${n}: did not finish cleanly (exit ${r.code})`); result.stopped = `wave-failed:${rec.name}:w${n}`; return false; }
+      const after = waveComplete(dir, { arms: armIds.length, reps, tasks: chosen.length, prefixes: expected() });
+      if (r.code !== 0 || !after.complete) return fail(`did not finish cleanly (exit ${r.code}, ${after.state})`);
     }
     if (judged && !fs.existsSync(path.join(dir, 'judgments.json'))) {
-      const r = await step(`${rec.name}-w${n}-judge`, judgeArgv(study, dir, forced ? 'frc' : 'ctl'));
+      fs.rmSync(failMark, { force: true });
+      const r = await step(stepLabel(rec.name, n, 'judge'), judgeArgv(study, dir, forced ? 'frc' : 'ctl'));
       if (!r) return false;
-      if (r.code !== 0) { result.stopped = `judge-failed:${rec.name}:w${n}`; return false; }
+      if (r.code !== 0) return fail(`judge failed (exit ${r.code})`);
     }
     fs.writeFileSync(doneMark, `${new Date().toISOString()}\n`);
     return true;
@@ -410,16 +438,20 @@ async function skillSteps({ study, studyDir, rec, step, log, dryRun, result, con
     if (dryRun) { log(`${rec.name} wave 1: shared ${rec.screen}`); return; }
     if (!skillWaveComplete(study, studyDir, rec, 1)) return;
   } else if (!(await runWave(1, ['ctl', 'ctl-b', 'del']))) return;
+  if (wave1Only) { log(`${rec.name}: --waves 1, so the forced wave and waves 2 and 3 are skipped`); return; }
   const forcedMode = study.settings.forcedLoad ?? null;
   if (dryRun && forcedMode) log(`${rec.name} wave ${FORCED_WAVE}: arms ${FORCED_ARMS.join(', ')} (forced load, reported apart, never used for a call); ${forcedMode === 'always' ? 'runs for every skill' : `runs only if the skill loaded in under ${Math.round(LOAD_MIN * 100)}% of wave 1 control runs`}`);
   if (dryRun || controlsTrusted === false) return;
   if (forcedMode) {
     const ctlLoaded = readSkillWave(study, studyDir, rec, 1).arms.ctl?.loaded ?? [];
     const rate = ctlLoaded.length ? ctlLoaded.filter(Boolean).length / ctlLoaded.length : null;
-    if (forcedWanted(forcedMode, rate, LOAD_MIN)) {
-      if (!(await runWave(FORCED_WAVE, FORCED_ARMS, { forced: true }))) return;
+    const want = forcedWanted(forcedMode, rate, LOAD_MIN);
+    if (want.run) {
+      fs.rmSync(path.join(p.skill(rec.name), `w${FORCED_WAVE}.skipped`), { force: true });
+      await runWave(FORCED_WAVE, FORCED_ARMS, { forced: true });
+      if (result.stopped) return;
     } else {
-      fs.writeFileSync(path.join(p.skill(rec.name), `w${FORCED_WAVE}.skipped`), `the skill loaded in ${Math.round(rate * 100)}% of wave 1 control runs, at or over the ${Math.round(LOAD_MIN * 100)}% floor; --forced-load low-load runs the forced wave only below it\n`);
+      fs.writeFileSync(path.join(p.skill(rec.name), `w${FORCED_WAVE}.skipped`), `${want.reason}\n`);
     }
   }
   if (!rec.sections.length) { fs.writeFileSync(path.join(p.skill(rec.name), 'w2.skipped'), 'no sections to test\n'); return; }
@@ -435,9 +467,12 @@ async function skillSteps({ study, studyDir, rec, step, log, dryRun, result, con
 
 // ---- decisions ----
 
-function decideStudy({ studyDir, outDir = null, patches = true }) {
+function decideStudy({ studyDir, outDir = null, patches = true, heldMin = null }) {
   const study = loadStudy(studyDir);
   const p = paths(studyDir);
+  const held = heldMin ?? study.settings.forcedHeldMin ?? FORCED_LOAD_MIN;
+  // The forced comparisons are one family, counted over the skills whose forced wave finished.
+  const forcedDone = new Set(study.plan.skills.filter((r) => r.lift && skillWaveComplete(study, studyDir, r, FORCED_WAVE)).map((r) => r.name));
   const out = outDir ?? p.decisions;
   const ctl = readJson(path.join(p.controlRun, 'controls-check.json'));
   const controls = { trusted: ctl ? ctl.trusted === true : null };
@@ -460,9 +495,12 @@ function decideStudy({ studyDir, outDir = null, patches = true }) {
     const d = decideSkill({ skill: { id: rec.id, name: rec.name, estTokens: rec.estTokens, sections: rec.sections }, controls, waves });
     const full = { ...d, tier: rec.tier, waves: waves.map((w) => w.wave), estTokens: rec.estTokens };
     // Read after the call is made and kept out of it: no forced arm reaches decideSkill or the evidence rows.
-    if (skillWaveComplete(study, studyDir, rec, FORCED_WAVE)) {
+    const failMark = path.join(p.skill(rec.name), `w${FORCED_WAVE}.failed`);
+    if (forcedDone.has(rec.name)) {
       const fw = readSkillWave(study, studyDir, rec, FORCED_WAVE, 'frc');
-      full.forced = forcedSummary({ arms: fw.arms, organic: d.evidence?.ctlLoad ?? null });
+      full.forced = forcedSummary({ arms: fw.arms, organic: d.evidence?.ctlLoad ?? null, comparisons: forcedDone.size, heldMin: held });
+    } else if (fs.existsSync(failMark)) {
+      full.forced = forcedFailure(fs.readFileSync(failMark, 'utf8').trim());
     }
     if (patches && ['DELETE', 'PRUNE'].includes(d.decision)) {
       try {
@@ -510,6 +548,7 @@ function studyStatus(studyDir) {
     // The forced wave is shown but not counted in "waves done": it is optional and never feeds a call.
     const fdir = p.wave(rec.name, FORCED_WAVE);
     if (fs.existsSync(path.join(p.skill(rec.name), `w${FORCED_WAVE}.done`))) { marks.push(`w${FORCED_WAVE} done (forced load, reported apart)`); if (!dirs.includes(fdir)) dirs.push(fdir); }
+    else if (fs.existsSync(path.join(p.skill(rec.name), `w${FORCED_WAVE}.failed`))) marks.push(`w${FORCED_WAVE} failed (forced load, reported apart; rerun to retry)`);
     else if (fs.existsSync(path.join(p.skill(rec.name), `w${FORCED_WAVE}.skipped`))) marks.push(`w${FORCED_WAVE} skipped`);
     else if (fs.existsSync(fdir)) { marks.push(`w${FORCED_WAVE} running (forced load)`); if (!dirs.includes(fdir)) dirs.push(fdir); }
     per.push(`  ${rec.name} (${rec.tier}): ${marks.join(', ')}`);
@@ -550,4 +589,4 @@ function makeExec({ cwd, env = process.env, nodeBin = process.execPath, timeoutS
   return exec;
 }
 
-module.exports = { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec, paths, runArgv, judgeArgv, materializeForced, STUDY_FILE };
+module.exports = { initStudy, loadStudy, runStudy, decideStudy, studyStatus, makeExec, paths, runArgv, judgeArgv, materializeForced, stepLabel, AFTER_WAVE1_STEP, STUDY_FILE };

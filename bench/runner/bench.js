@@ -181,15 +181,17 @@ const USAGE = `Usage:
        [--model M] [--arm-config name=key.path=value] [--credits-per-run X|low,mid,high] [--sec-per-run N] [--judge-usd-per-run X] [--budget-credits X]
        [--profile quick|detailed] [--allow-regex] [--screen] [--screen-tasks N] [--seed N] [--scratch DIR] [--control-reps N] [--judge-backend kiro|opencode] [--aws-creds-file FILE]
        [--aws-profile NAME] [--aws-region R] [--budget-usd X] [--wave-budget-credits X] [--auth-db FILE] [--cache DIR] [--cargo-target DIR] [--kiro-bin PATH]
-       [--opencode-bin PATH] [--forced-load low-load|always] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       [--opencode-bin PATH] [--forced-load low-load|always] [--forced-held-min X] [--waves 1|all] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (the per-skill study in one shared directory. --init plans it into study.json (idempotent for the same base); --status shows waves, runs and credits;
        --dry-run prints each wave and its exact commands and builds nothing; with none of them it runs: the known-answer controls first (a failed control stops the study),
        then per skill wave 1, then wave 2 only if removing the skill lost quality, then wave 3 for the sections whose removal lost quality, judging each wave
        on the opencode backend with --aws-creds-file, and finally cap decide. Resumable: a finished wave is skipped, an unfinished one is moved to incomplete/.
-       --forced-load adds wave 1f after wave 1: the skill forced to load (frc and its A/A repeat frc-b) against the skill deleted, for skills that loaded in under
-       30% of wave 1 control runs (low-load) or for all (always). It is reported in its own section of decisions.md and never feeds a call.
+       --forced-load adds wave 1f after wave 1: the skill forced to load (frc and its A/A repeat frc-b) against the skill deleted (with a neutral filler of the
+       same length), for skills that loaded in under 30% of wave 1 control runs (low-load; an unknown rate does not run it) or for all (always). It is reported in
+       its own section of decisions.md, never feeds a call, and a failure is recorded in w1f.failed without stopping the study. --forced-held-min X (default 0.9)
+       is the share of forced runs that must load the skill. --waves 1 runs the controls and wave 1 only and skips the forced wave and waves 2 and 3.
        Spends credits only when it runs; run it with no other bench study active)
-  node bench/runner/bench.js cap decide --study DIR [--out DIR] [--no-patches] [--json] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+  node bench/runner/bench.js cap decide --study DIR [--out DIR] [--no-patches] [--forced-held-min X] [--json] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (read-only, no credits: one call per skill from the study waves: DELETE, PRUNE (sections to remove or move, with SKILL.md line ranges), KEEP or NEEDS DATA,
        with confidence, lift against the control with an interval, the A/A spread, tokens saved and a unified diff per DELETE or PRUNE under patches/. No call
        unless the controls passed, an A/A arm exists, scores are on a 0 to 1 scale, enough runs back it and the skill loaded. Nothing is applied)

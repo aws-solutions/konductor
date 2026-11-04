@@ -47,8 +47,12 @@ function armScoresFromRows(rows, weights) {
   return out;
 }
 
-/** { complete, state } for a wave directory, with the same checks the study scripts use. */
-function waveComplete(dir, { arms, reps, tasks }) {
+/**
+ * { complete, state } for a wave directory, with the same checks the study scripts use. `prefixes` maps each arm id to the
+ * sha256 of the prompt prefix it was planned with (absent or null: no prefix). A run that carries a prefix its arm was not
+ * planned with, or lacks one it was, fails the gate: its arm identity would not say what the run was asked to do.
+ */
+function waveComplete(dir, { arms, reps, tasks, prefixes = {} }) {
   let s;
   try { s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf8')); } catch { return { complete: false, state: 'no-summary' }; }
   if (s.interrupted) return { complete: false, state: `interrupted:${s.interrupted}` };
@@ -57,6 +61,8 @@ function waveComplete(dir, { arms, reps, tasks }) {
   const want = arms * reps * tasks;
   if (!Array.isArray(s.results) || s.results.length !== want) return { complete: false, state: `runs ${(s.results ?? []).length}/${want}` };
   if (s.results.some((r) => r.status === 'budget_skipped')) return { complete: false, state: 'budget-skipped' };
+  const odd = s.results.find((r) => (r.armPrefix ? r.armPrefix.sha256 || 'unhashed' : null) !== (prefixes[r.armId] ?? null));
+  if (odd) return { complete: false, state: `prefix-not-in-identity:${odd.armId ?? 'unknown arm'}` };
   return { complete: true, state: 'complete' };
 }
 
