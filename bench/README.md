@@ -102,6 +102,72 @@ node bench/runner/bench.js run --suite lite --arms oc-vanilla,oc-v1.2.0,oc-main 
 - Bedrock caches prompts for about 5 minutes, so a run started soon after another can read its cache: cost carries
   run-order noise (the seeded shuffle is kept). The model id, region, variant, version and start time are recorded.
 
+## Claude Code harness
+A third harness runs the same tasks through `claude -p` (Claude Code) on Amazon Bedrock, so a study can cross harness
+(Kiro CLI, Claude Code) with konductor (off, on) on one model. Like opencode it is a USD cell: real tokens and the
+list-price cost the stream reports, `credits` null. One harness per run; `compare` exits 2 across harnesses unless `--force`.
+```bash
+# credentials: export them in the shell that starts the bench (names below), then
+node bench/runner/bench.js run --suite lite --arms cc-vanilla,cc-main --out $OUT \
+  --budget-usd 5 [--run-budget-usd 1] [--aws-region us-east-1] [--claude-bin PATH] [--repo-root DIR]
+bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first run; see "Smoke test" below
+```
+- Arms: `cc-vanilla` (empty config dir, no `--agent`), `cc-main`, `cc-name=<git ref>` (same grammar as `oc-`). A konductor arm is
+  built from its own source tree, `synth`-ed, and installed with `konductor install --harness claude` into each run's scratch
+  HOME (the install writes absolute paths, so it is repeated per run). It starts in `--agent konductor`. The ref must carry the
+  dashed model pin (`model: claude-sonnet-5-5`) on every agent: a dotted pin is not a Bedrock id and sub-agent spawns fail, so
+  the install is refused with that reason, as is any install that does not give exactly 11 agents.
+- The binary: the newest `~/.toolbox/tools/claude-code/<version>/claude`, or `--claude-bin` (`BENCH_CLAUDE_BIN`). The toolbox
+  wrapper (`~/.toolbox/bin/claude`) is refused: it ignores `AWS_PROFILE`, installs plugins and writes a settings file that
+  overrides the model and region, so a vanilla arm through it is not vanilla. Version, path and sha256 go to run-config.
+- Command: `claude -p PROMPT --output-format stream-json --verbose --model us.anthropic.claude-sonnet-5-5 --max-budget-usd N
+  --permission-mode acceptEdits [--agent konductor] [--include-hook-events] --allowedTools Bash Edit Write Read`, stdin from
+  `/dev/null`. `--max-budget-usd` is `--run-budget-usd` (default 5). `--effort`, `--stop-on`, `--max-tool-calls`,
+  `--run-credit-limit`, `--aws-creds-file` and `--agent-engine` are refused for these arms; the effort level is not passed to
+  claude, so results say `effort: default`. Multi-turn (autonomy) tasks are not supported yet.
+- Credentials come from the environment of the shell that starts the bench: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and
+  `AWS_SESSION_TOKEN`, for example from `aws configure export-credentials --format env`. They go to claude through its
+  process environment only; no file is written. `AWS_PROFILE`, `AWS_DEFAULT_PROFILE`, `AWS_CONFIG_FILE` and
+  `AWS_SHARED_CREDENTIALS_FILE` are never passed on: with a profile set, the SDK skips the exported keys and the run fails with
+  `cloud_credential_error`. That failure is recorded as an infra error, not a model failure. Exact secret values are scrubbed
+  from every output file; run-config and `env.json` list variable names only.
+- Isolation: per run, `HOME` and `CLAUDE_CONFIG_DIR=<HOME>/.claude` are scratch, `<config>/rules/empty.md` is the only rules
+  file (the invoking user's rules never load), telemetry, auto-update and error reporting are off. Built-in agents (`Explore`,
+  `general-purpose`, `Plan`, ...) and skills exist even in the vanilla arm, so vanilla is not empty; run-config says so.
+- Model identity: a run counts only if every `modelUsage[*].canonicalModel` and every assistant `message.model` (main agent and
+  sub-agents, `<synthetic>` ignored) equals the canonical model of `--model` (`claude-sonnet-5-5` for
+  `us.anthropic.claude-sonnet-5-5`). Anything else sets `modelMismatch`, status `error`, and the run is left out of the
+  medians. The `modelUsage` keys are not compared: they legitimately differ between the main agent (profile id) and sub-agents.
+- Cost and tokens: `costUsd` is `total_cost_usd` of the last `result` line, tokens are the sums of `modelUsage`
+  (`costBasis: list`). A session that resumes after a background task prints a second `result` line; totals are cumulative, so
+  the last is used and durations are summed. A run killed before its `result` line (timeout, SIGTERM, exit 143) has
+  `costCensored: true`, `tokens` as a lower bound from the assistant messages seen, and `costUsd` null unless per-million rates
+  are supplied in `ctx.claudeRates`; the budget ledger then charges the arm median or the censored floor.
+- Orchestration metrics: spawn count is `subagent_stats.spawned` (failed spawns included), depth comes from the
+  `parent_tool_use_id` chain and `subagent_stats.max_depth`; review rounds and reworks read the `Agent` tool input and the
+  sub-agent's notification summary. Skill loads are `Skill` tool calls and reads of a `SKILL.md`, in all sessions.
+  `result.json` gains `claudeCode` (models seen, `modelUsage` keys, cost basis, hook events, permission denials, spawn counts,
+  where the task directory landed). A denied tool call exits 0; it shows as the `permissionDenied` flag and a count.
+- Cleanup: `TMPDIR` is the run's own directory. Claude Code writes task output to `<tmp>/claude-<uid>/<cwd slug>/`; each run
+  removes that directory under its TMPDIR and under the default temp directory (the slug is unique to the run, so parallel runs
+  never touch each other). `claudeCode.tmpCleanup` records which one held it.
+- Smoke test: `claude-code-smoke.sh` runs one vanilla and one delegating konductor task (about $0.2 to $0.5), checks the
+  credentials under claude's exact environment first, prints PASS/FAIL per criterion (schema, success, cost > 0, one canonical
+  model, at least one spawn and no failed spawn, 11 agents with the pin, no credential value in any output, nothing left in
+  `/tmp/claude-<uid>` or the scratch directories) and removes what it made. `--dry-run` shows the plan without credentials.
+- Known gaps: `askedUser` is true only when the `AskUserQuestion` tool is called (the name is in the binary; no recorded stream
+  has it), otherwise the final-text detector decides. Whether claude honors `TMPDIR` for `/tmp/claude-<uid>` is not verified (the
+  smoke script reports it). The `global.` inference profile is untested (the default is `us.`). Only the `SessionStart` hook
+  was seen under `-p`; the `--include-hook-events` flag is passed to konductor arms when the binary has it. The skill startup
+  size (`startupResources`) is not measured for this harness.
+- Where it plugs in (for reviewers): `runner/lib/harness/claude-code.js` and `claude-code-parse.js`; `harness/runtime.js`
+  (`runtimeOf`, `isUsdRuntime`) and `harness/index.js`; `arms.js` (`cc-` prefix) and `profiles.js` (A/A repeat prefix);
+  `run-cmd.js` (flags, guards, config, run-config record); `run-one.js` (post-run `cleanupRun`); `result.js` and
+  `schema/result.schema.json` (`claudeCode`, harness enum, canonical model check); `skills.js` (Claude load extractor);
+  `orch-metrics.js` (accepts a spawn tree); `report/aggregate.js` (`BASIS`, baseline), `report/render.js`, `report/compare.js`;
+  `report/load.js` and `report/orchpass.js` (`cellKeyOf`) needed no change. The credit meter and early-stop watcher read kiro-cli
+  and opencode events only, so their flags are refused here.
+
 ## Skills actually used
 Which skills and SOPs a run loaded is read after the fact from `stream.jsonl`; nothing is added to the runs (no hooks, no
 extra servers, no config change). New runs write these `result.json` fields (all nullable): `skillsLoaded`
