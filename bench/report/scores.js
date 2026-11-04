@@ -24,6 +24,12 @@ const FORMULAS = {
   capability: 'For cap prune-report: load rate = runs that loaded the skill / runs that could load it, with a Wilson 95% interval, the exposure n, the skill size in bytes, the class and the evidence verdict. No composite number is made.',
 };
 
+// The cost figure of a Claude Code cell is the list-price USD Claude Code reports; the shared text names credits and opencode.
+function formulasForClaudeCode() {
+  const efficiency = FORMULAS.efficiency.replace('credits, or USD on opencode', 'USD at list price, as Claude Code reports it');
+  return { ...FORMULAS, efficiency };
+}
+
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 
 /** Weights file: { weights: { hidden, checks, rubric } }, each a number of 0 or more, at least one above 0. */
@@ -160,7 +166,7 @@ function flatRows(arms, scopes, baseline) {
  * rows: one record per executed run (rows.js). Returns { weights, formulas, baseline, scopes, arms, rows }.
  * arms[arm][scope] = { quality, reliability, autonomy|null, efficiency }.
  */
-function computeScores({ rows, baseline, weights = DEFAULT_WEIGHTS, unit = 'credits' }) {
+function computeScores({ rows, baseline, weights = DEFAULT_WEIGHTS, unit = 'credits', harness = null }) {
   const armIds = [...new Set(rows.map((r) => r.arm))];
   const classes = [...new Set(rows.map((r) => r.cls))];
   const scopes = ['overall', ...classes];
@@ -177,7 +183,7 @@ function computeScores({ rows, baseline, weights = DEFAULT_WEIGHTS, unit = 'cred
       arms[arm][scope] = { quality, reliability: reliabilityBlock(mine), autonomy: autonomyBlock(mine), efficiency: efficiencyBlock(mine, baseRows, baseQuality, quality, unit) };
     }
   }
-  return { weights, unit, formulas: FORMULAS, baseline: base, scopes, arms, rows: flatRows(arms, scopes, base) };
+  return { weights, unit, formulas: harness === 'claude-code' ? formulasForClaudeCode() : FORMULAS, baseline: base, scopes, arms, rows: flatRows(arms, scopes, base) };
 }
 
 module.exports = { computeScores, qualityOfRun, loadScoring, DEFAULT_WEIGHTS, FORMULAS, MIN_N, CEILING, RELIABILITY_FAILS };

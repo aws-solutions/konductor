@@ -18,6 +18,9 @@ const { loadRun } = require('../../report/load.js');
 const { buildReport, defaultBaseline, BASIS } = require('../../report/aggregate.js');
 const { renderMarkdown } = require('../../report/render.js');
 const { analyze } = require('../../report/generate.js');
+const { buildVerdict, sentenceFor } = require('../../report/verdict.js');
+const { buildVerdictDocument } = require('../../report/verdictdoc.js');
+const { buildOrchestratorPass } = require('../../report/orchpass.js');
 const { cellKeyOf } = require('../../report/orchpass.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { scanTree } = require('../lib/hygiene.js');
@@ -110,6 +113,32 @@ test('the model pin check compares canonical ids for Claude Code runs and leaves
     assert.deepEqual(pinOf(kiro, bench), { runs: 3, verified: 3, mismatch: 0 });
     const oc = makeRun(path.join(root, 'o'), bench, reps('oc-vanilla', () => ({ harness: 'opencode', sessionModel: 'claude-sonnet-5.5' })), { harness: 'opencode', model: 'claude-sonnet-5.5' });
     assert.deepEqual(pinOf(oc, bench), { runs: 3, verified: 3, mismatch: 0 });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the report, verdict and orchestrator-pass text for a Claude Code run speak of USD at list price, not credits or opencode', () => {
+  const root = tmp();
+  try {
+    const bench = makeBench(path.join(root, 'bench'));
+    const dir = makeCcRun(path.join(root, 'run'), bench, [...reps('cc-vanilla', () => ({ usd: 0.04, tok: 20000 })), ...reps('cc-k', (r) => ({ usd: 0.1 * r, tok: 50000 * r })), ...reps('cc-k-b', (r) => ({ usd: 0.1 * r, tok: 50000 * r }))]);
+    const run = loadRun(dir);
+    const md = renderMarkdown(buildReport({ run, tasks: loadTasks(bench) }).report);
+    assert.match(md, /USD is the list price Claude Code reports \(`total_cost_usd`, cost basis list\)/);
+    assert.doesNotMatch(md, /computed by opencode|session database/);
+    const a = analyze({ run, tasks: loadTasks(bench) });
+    assert.doesNotMatch(a.scores.formulas.efficiency, /opencode|credits/);
+    assert.match(a.scores.formulas.efficiency, /USD at list price, as Claude Code reports it/);
+    const v = buildVerdict({ dirs: [dir], benchDir: bench, baseline: 'cc-vanilla' });
+    const verdictText = JSON.stringify(buildVerdictDocument(v).blocks);
+    assert.doesNotMatch(verdictText, /credits/);
+    assert.match(verdictText, /cost is USD at list price per successful run/);
+    assert.match(verdictText, /cost \(ledger\)/);
+    const pass = buildOrchestratorPass({ dirs: [dir], benchDir: bench, baseline: 'cc-vanilla' });
+    assert.match(pass.rule.cost, /mean USD at list price per executed run and as USD at list price per successful run/);
+    assert.doesNotMatch(pass.rule.cost, /credits/);
+    assert.equal(sentenceFor({ verdict: 'KEEP', label: 'x', quality: { delta: 5, deltaCiLow: 1, deltaCiHigh: 9, k: 6, n: 6, baseN: 6, level: 0.95 }, noise: { pts: 3 }, minReps: 3, cost: { ratio: 1.2, ciLow: 1, ciHigh: 1.4 } }, 'b', 'claude-code').includes('1.20x the cost per successful run'), true);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

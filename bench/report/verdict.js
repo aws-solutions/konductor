@@ -228,11 +228,11 @@ function combineGraded(parts) {
   return { n, armGrade: w('armGrade'), baseGrade: w('baseGrade'), delta: w('delta'), orderDisagreements: dis, disagreementRate: dis / n, errors: parts.reduce((s, p) => s + (p?.errors || 0), 0) };
 }
 
-function sentenceFor(a, baseLabel) {
+function sentenceFor(a, baseLabel, harness = null) {
   if (a.aaRepeatOf) return `A/A repeat of ${a.aaRepeatOf}. It exists to measure run-to-run noise, so it gets no verdict.`;
   if (a.verdict === NEE) return `Not enough evidence. ${a.reason}.`;
   const dir = a.quality.delta > 0 ? 'higher' : 'lower';
-  const cost = a.cost.ratio === null ? '' : ` It cost ${a.cost.ratio.toFixed(2)}x the credits per successful run (95% interval ${a.cost.ciLow.toFixed(2)} to ${a.cost.ciHigh.toFixed(2)}, limit ${COST_MAX.toFixed(1)}x).`;
+  const cost = a.cost.ratio === null ? '' : ` It cost ${a.cost.ratio.toFixed(2)}x the ${harness === 'claude-code' ? 'cost' : 'credits'} per successful run (95% interval ${a.cost.ciLow.toFixed(2)} to ${a.cost.ciHigh.toFixed(2)}, limit ${COST_MAX.toFixed(1)}x).`;
   const verb = a.verdict === KEEP ? 'Keep' : 'Discard';
   return `${verb}. ${a.label} scored ${f1(Math.abs(a.quality.delta))} points ${dir} than ${baseLabel} (paired ${levelText(a.quality.level ?? 0.95)} interval of the difference ${f1(a.quality.deltaCiLow)} to ${f1(a.quality.deltaCiHigh)} over ${a.quality.k} task cells), outside the A/A noise of ${f1(a.noise.pts)} points, over ${a.quality.n} runs against ${a.quality.baseN} at ${a.minReps} or more replicates per cell.${cost}`;
 }
@@ -260,6 +260,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
 
   const all = inputs.flatMap((i) => i.rows);
   const unit = inputs[0].a.scores.unit;
+  const harness = inputs.every((i) => i.run.harness === 'claude-code') ? 'claude-code' : null;
   const baseRows = all.filter((r) => r.armId === baseline);
   const baselineLabel = [...new Set(baseRows.map((r) => r.label))].join(' + ');
   const labels = [...new Set(all.filter((r) => r.armId !== baseline).map((r) => r.label))];
@@ -301,7 +302,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
     const out = { label, armId: headC[0]?.armId ?? headAll[0].armId, aaRepeatOf: repeatOf.get(label) ?? null, dirs: headDirs.map((s) => inputs[s].dir), commitSha: headAll[0].commitSha, contentHash: headAll[0].contentHash };
     const nCells = common.size;
     const renamed = [...headC.map((r) => ({ ...r, arm: 'head' })), ...base.map((r) => ({ ...r, arm: 'base' }))];
-    const sc = nCells ? computeScores({ rows: renamed, baseline: 'base', weights, unit }) : null;
+    const sc = nCells ? computeScores({ rows: renamed, baseline: 'base', weights, unit, harness }) : null;
     const h = sc?.arms.head?.overall;
     const b = sc?.arms.base?.overall;
     const hq = qualityList(headC, weights);
@@ -356,7 +357,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
       noise, nonScored, components, diligence: { rating, byDir: ratingBy }, graded,
       verdict: out.aaRepeatOf ? null : decision.verdict, reason: out.aaRepeatOf ? null : decision.reason, reasons: out.aaRepeatOf ? [] : decision.reasons,
     });
-    out.sentence = sentenceFor(out, baselineLabel);
+    out.sentence = sentenceFor(out, baselineLabel, harness);
     return out;
   });
 
@@ -376,7 +377,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
       judges: i.a.facts.judging.judges, profileName: i.run.config.profile?.name ?? null,
     };
   });
-  return { schemaVersion: 1, baseline, baselineLabel, comparisons, unit: unit === 'USD' ? 'USD' : 'credits', arms, dirs: dirInfo, skippedDirs, notes, weights, noiseFloorPts: NOISE_FLOOR_PTS };
+  return { schemaVersion: 1, baseline, baselineLabel, comparisons, unit: unit === 'USD' ? 'USD' : 'credits', ...(harness ? { harness } : {}), arms, dirs: dirInfo, skippedDirs, notes, weights, noiseFloorPts: NOISE_FLOOR_PTS };
 }
 
 module.exports = { buildVerdict, decide, unisolatedReason, aaNoiseFromCells, levelText, refLabel, sentenceFor, normalize, qualityList, aaGroups, prefixIdentity, armOrder, perCellMin, pairCells, nonScoredOf, componentCheck, cellKey, KEEP, DISCARD, NEE, NOISE_FLOOR_PTS, MAX_NONSCORED_SHARE, COST_MAX };

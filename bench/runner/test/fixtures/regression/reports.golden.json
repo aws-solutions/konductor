@@ -427,7 +427,410 @@
    "judging": null,
    "checksRecheck": null
   },
-  "md": "# Benchmark report\n\nRun: <DIR>  \nSuite: lite, model claude-sonnet-5.5, effort high, 1 task(s), kiro-cli kiro-cli 2.35.1  \nBaseline: vanilla. Judges: none (run the judge command for rubric and pairwise results)\n\nHow to read: efficiency cells (credits, calls, wall clock, tokens) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median, so they cannot make an arm look cheap; they are shown as rates beside every cost figure (timeout, error, infra, model mismatch, checks failed, budget-skipped). \"success\" is the share of runs that finished cleanly; \"pass\" also needs every check to pass. \"credits per successful run\" is the total charged over all executed runs divided by clean passes, so failures raise it; a run killed before its final metering event is charged the runner's ledger value, not its partial figure. Tokens are not exposed by kiro-cli, so credits are the cost measure and estTokens is transcript characters / 4, an estimate. \"asked user\" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.\n\n## Flags\n\nNone.\n\n## Results\n\n### overall\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs vanilla | credits per successful run |\n|---|---|---|---|---|---|---|---|---|\n| vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 3.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| v1.2.0 | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 5.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | credits | modelCalls | toolCalls | subagentCalls | wallClock s | estTokens (estimate) |\n|---|---|---|---|---|---|---|---|\n| vanilla | 3 of 3 | 3.00 [2.00, 4.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n| v1.2.0 | 3 of 3 | 5.00 [4.00, 6.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n\n### simple\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs vanilla | credits per successful run |\n|---|---|---|---|---|---|---|---|---|\n| vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 3.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| v1.2.0 | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 5.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | credits | modelCalls | toolCalls | subagentCalls | wallClock s | estTokens (estimate) |\n|---|---|---|---|---|---|---|---|\n| vanilla | 3 of 3 | 3.00 [2.00, 4.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n| v1.2.0 | 3 of 3 | 5.00 [4.00, 6.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n"
+  "md": "# Benchmark report\n\nRun: <DIR>  \nSuite: lite, model claude-sonnet-5.5, effort high, 1 task(s), kiro-cli kiro-cli 2.35.1  \nBaseline: vanilla. Judges: none (run the judge command for rubric and pairwise results)\n\nHow to read: efficiency cells (credits, calls, wall clock, tokens) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median, so they cannot make an arm look cheap; they are shown as rates beside every cost figure (timeout, error, infra, model mismatch, checks failed, budget-skipped). \"success\" is the share of runs that finished cleanly; \"pass\" also needs every check to pass. \"credits per successful run\" is the total charged over all executed runs divided by clean passes, so failures raise it; a run killed before its final metering event is charged the runner's ledger value, not its partial figure. Tokens are not exposed by kiro-cli, so credits are the cost measure and estTokens is transcript characters / 4, an estimate. \"asked user\" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.\n\n## Flags\n\nNone.\n\n## Results\n\n### overall\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs vanilla | credits per successful run |\n|---|---|---|---|---|---|---|---|---|\n| vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 3.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| v1.2.0 | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 5.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | credits | modelCalls | toolCalls | subagentCalls | wallClock s | estTokens (estimate) |\n|---|---|---|---|---|---|---|---|\n| vanilla | 3 of 3 | 3.00 [2.00, 4.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n| v1.2.0 | 3 of 3 | 5.00 [4.00, 6.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n\n### simple\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs vanilla | credits per successful run |\n|---|---|---|---|---|---|---|---|---|\n| vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 3.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| v1.2.0 | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 5.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | credits | modelCalls | toolCalls | subagentCalls | wallClock s | estTokens (estimate) |\n|---|---|---|---|---|---|---|---|\n| vanilla | 3 of 3 | 3.00 [2.00, 4.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n| v1.2.0 | 3 of 3 | 5.00 [4.00, 6.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n",
+  "legends": {
+   "formulas": {
+    "quality": "Per run, the weighted mean of the components the run has, times 100: hidden tests (FAIL_TO_PASS, hiddenTests, or intendedTests, as passed / total), checks (1 when every check passed, else 0), rubric (mean over judges of the verified score, 0..1). Weights come from profiles/scoring.json (default 0.5, 0.2, 0.3). A missing component is dropped and the remaining weights are renormalised; nothing is imputed. Runs with infraError or modelMismatch, and runs with no component at all, are left out and counted in \"excluded\". The arm score is the mean over runs with a 95% bootstrap interval.",
+    "reliability": "100 minus the share of executed runs that timed out, errored, hit infraError or had a modelMismatch. A run whose checks failed still counts as reliable; the miss shows in quality.",
+    "autonomy": "Autonomy-tier runs only (turns > 0): the share of runs with completedWithoutHelp (no scripted reply needed and every intended and invariant test passed), times 100. Shown beside it: mean interjections per task and the share of runs that asked a question on a task that needs none.",
+    "efficiency": "Not a 0..100 number. Each metric is head / base for the same scope: cost per successful run (all charged cost over clean passes; credits, or USD on opencode), then mean wall clock, model calls, work tool calls and subagent calls over clean passes. The interval is a 95% bootstrap of the ratio. \"Cost per quality point\" is cost per successful run divided by the quality score; at quality 95 or above it mostly measures cost and says so.",
+    "capability": "For cap prune-report: load rate = runs that loaded the skill / runs that could load it, with a Wilson 95% interval, the exposure n, the skill size in bytes, the class and the evidence verdict. No composite number is made."
+   },
+   "pin": {
+    "runs": 6,
+    "verified": 0,
+    "mismatch": 0
+   },
+   "verdict": {
+    "rule": [
+     "Not enough evidence. fewer than 5 paired task cells (1), too few for an interval that holds its 95% level; there is no A/A noise floor, so a difference cannot be told from run-to-run noise; the paired interval of the quality difference could not be computed."
+    ],
+    "blocks": [
+     {
+      "t": "h",
+      "level": 1,
+      "text": "Platform verdict: keep or discard"
+     },
+     {
+      "t": "p",
+      "text": "Baseline: vanilla. 1 arm(s) compared on 1 run directory. Arms are named by exact ref (name@commit). Cost is in credits as metered."
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Verdict"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "verdict",
+       "in plain words"
+      ],
+      "rows": [
+       [
+        "v1.2.0",
+        "NOT ENOUGH EVIDENCE",
+        "Not enough evidence. fewer than 5 paired task cells (1), too few for an interval that holds its 95% level; there is no A/A noise floor, so a difference cannot be told from run-to-run noise; the paired interval of the quality difference could not be computed."
+       ]
+      ]
+     },
+     {
+      "t": "note",
+      "text": "A verdict is only as good as the evidence behind it. The rules are at the end of this page."
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Numbers against vanilla"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "Quality /100 (arm, vanilla)",
+       "Difference in points [paired 95% CI]",
+       "Unpaired difference (descriptive, not used)",
+       "Reliability /100 (arm, baseline)",
+       "Autonomy /100 (arm, baseline)",
+       "Cost ratio (credits per successful run)",
+       "Latency ratio (mean wall clock)"
+      ],
+      "rows": [
+       [
+        "v1.2.0",
+        "100.0, 100.0",
+        "0.0",
+        "0.0 [0.0, 0.0]",
+        "100, 100",
+        "n/a",
+        "1.67x [1.18, 2.50]",
+        "1.00x [1.00, 1.00]"
+       ]
+      ]
+     },
+     {
+      "t": "chart",
+      "name": "verdict-quality",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-labelledby=\"verdict-quality-t verdict-quality-d\" viewBox=\"0 0 720 144\" width=\"720\" height=\"144\" font-family=\"Helvetica, Arial, sans-serif\" font-size=\"11\"><title id=\"verdict-quality-t\">Quality difference versus vanilla</title><desc id=\"verdict-quality-d\">Quality difference versus vanilla. 1 row(s). v1.2.0 delta 0. Noise band 0 to 0.</desc><rect width=\"720\" height=\"144\" fill=\"#ffffff\"/><text x=\"16\" y=\"22\" font-size=\"13\" font-weight=\"bold\" fill=\"#222222\">Quality difference versus vanilla</text><line x1=\"190\" y1=\"64\" x2=\"190\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"190\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">-1</text><line x1=\"285\" y1=\"64\" x2=\"285\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"285\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">-0.5</text><line x1=\"380\" y1=\"64\" x2=\"380\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"380\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">0</text><line x1=\"475\" y1=\"64\" x2=\"475\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"475\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">0.5</text><line x1=\"570\" y1=\"64\" x2=\"570\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"570\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">1</text><text x=\"380\" y=\"118\" text-anchor=\"middle\" fill=\"#444444\">quality points (arm minus baseline)</text><rect data-role=\"noise-band\" x=\"380\" y=\"64\" width=\"0\" height=\"24\" fill=\"#9a9a9a\" fill-opacity=\"0.25\"/><text x=\"380\" y=\"58\" text-anchor=\"middle\" font-size=\"10\" fill=\"#444444\">no A/A noise measured</text><line data-role=\"zero-line\" x1=\"380\" y1=\"64\" x2=\"380\" y2=\"88\" stroke=\"#222222\" stroke-width=\"1.5\"/><text x=\"182\" y=\"79\" text-anchor=\"end\" font-size=\"10\" fill=\"#222222\">v1.2.0</text><rect fill=\"#555555\" stroke=\"#ffffff\" stroke-width=\"1\" x=\"376\" y=\"72\" width=\"8\" height=\"8\"/><text x=\"582\" y=\"79\" font-size=\"10\" fill=\"#222222\">0 n=3</text><text x=\"16\" y=\"136\" font-size=\"10\" fill=\"#555555\">Green: better than the base outside the noise. Orange: worse. Grey: inside the noise or unclear.</text></svg>",
+      "alt": "Forest plot of the quality difference of each arm against the baseline, with the A/A noise band"
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "How much evidence"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "runs (arm / baseline)",
+       "cells (task x directory)",
+       "replicates in the smallest cell",
+       "runs without a score (arm, baseline)",
+       "A/A noise",
+       "diligence rating",
+       "graded judge (arm, baseline; order disagreements)"
+      ],
+      "rows": [
+       [
+        "v1.2.0",
+        "3 / 3",
+        1,
+        3,
+        "0 / 0",
+        "none measured",
+        "indicative",
+        "not run"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Failed runs"
+     },
+     {
+      "t": "p",
+      "text": "No run is dropped. These are the outcomes of every executed run of the arm on the cells it shares with the baseline; the last column counts runs that failed with nothing to score and so enter quality as 0."
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "clean passes",
+       "checks failed",
+       "timeout",
+       "error",
+       "infra error",
+       "model mismatch",
+       "quality counted as 0",
+       "budget-skipped cells",
+       "vanilla on the same cells"
+      ],
+      "rows": [
+       [
+        "v1.2.0",
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        "3 clean, 0 failed"
+       ]
+      ]
+     },
+     {
+      "t": "note",
+      "text": "Infra errors and model mismatches are not the arm's result: they are left out of the quality mean, counted against reliability and listed here."
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Run directories"
+     },
+     {
+      "t": "table",
+      "head": [
+       "run directory",
+       "suite",
+       "diligence rating",
+       "executed runs",
+       "arms (exact refs)",
+       "credits (ledger)",
+       "skill-study controls"
+      ],
+      "rows": [
+       [
+        "<DIR>",
+        "lite",
+        "indicative",
+        6,
+        "v1.2.0, vanilla",
+        "no ledger",
+        "not checked"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Exact refs"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "arm id",
+       "commit",
+       "tree or directory hash"
+      ],
+      "rows": [
+       [
+        "v1.2.0",
+        "v1.2.0",
+        "none (no install)",
+        "none"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "How to read this page"
+     },
+     {
+      "t": "list",
+      "items": [
+       "KEEP needs a quality gain over the baseline that is larger than the A/A noise and whose paired 95% interval is above 0, at least 3 runs on each side, at least 5 paired task cells, at least 3 replicates in every cell, no anecdotal diligence rating, no clearly lower reliability, and a cost of at most 2.0x the baseline per successful run.",
+       "DISCARD needs the same evidence for a quality loss. Its cost is not weighed: a loss is a loss at any price.",
+       "When several arms are compared with the baseline, each quality interval is widened to the Bonferroni level 1 - 0.05/m for m arms (an A/A repeat is not an arm), and the page notes the level. The interval is paired by cell. A cell is one task in one run directory; each cell contributes the mean of the arm's scores minus the mean of the baseline's, and the 95% interval is a t interval on those differences. Runs of the same task are not independent, so an interval over pooled runs is shown only as a descriptive column. In a simulation with no true effect the paired interval excluded 0 in 4.1% to 6.5% of trials from 5 cells up, where the pooled one excluded it in 20% of trials at 3 runs a side.",
+       "NOT ENOUGH EVIDENCE is the answer in every other case. It is forced when there are fewer than 3 runs on a side or fewer than 5 paired task cells, when the difference is inside the A/A noise, or when the diligence rating is anecdotal. It is also the answer when no A/A noise was measured, when a cell has fewer than 3 replicates, when the interval of the difference includes 0, when more than a fifth of the runs on a side have no score, when the arm and the baseline were scored on different components in any cell, or when a gain costs more than 2.0x.",
+       "The A/A noise is pooled over every paired task cell of an arm and its repeat at the same commit: each cell gives the arm's mean quality minus the repeat's, and the noise is the larger end of the 95% interval of those differences, with a floor of 5.0 points. Two paired cells are the least that give it; with fewer there is no noise floor.",
+       "Efficiency is a ratio, never a 0 to 100 number: cost is credits per successful run, arm over baseline, and latency is mean wall clock over clean passes, arm over baseline. A ratio above 1 means the arm costs more.",
+       "A failed or timed-out run counts as quality 0 when it has nothing to score, and counts against reliability. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side."
+      ]
+     },
+     {
+      "t": "p",
+      "text": "Scoring weights come from profiles/scoring.json (hidden 0.5, checks 0.2, rubric 0.3); the formulas are in bench/README.md."
+     },
+     {
+      "t": "note",
+      "text": "NOT ENOUGH EVIDENCE is not a finding that the arm is no better. It means this study cannot say. More replicates, an A/A arm and judged output are what settle it."
+     }
+    ]
+   },
+   "orchPass": {
+    "rule": {
+     "costMax": 2,
+     "qualityFloorPts": 5,
+     "minCells": 5,
+     "maxNonScoredShare": 0.2,
+     "cost": "Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean credits per executed run and as credits per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.",
+     "quality": "Quality is paired by cell (one task in one run directory): each cell contributes the arm's mean score minus vanilla's, and the interval is a t interval on those differences, at 95% for one test arm and at the Bonferroni level 1 - 0.05/m when m test arms are compared in the report. The tolerance is the pooled within-cell standard deviation of vanilla's scores, at least 5 points. The arm passes when the lower end of the interval is at least minus the tolerance. A difference below minus the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE. A gain passes.",
+     "drift": "Drift = the quality drift pooled over every paired task cell of an arm and its A/A repeat (the larger end of the 95% interval of the per-cell differences, at least 5 points) and the largest cost ratio gap of the repeat to the arm. A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.",
+     "evidence": "NOT ENOUGH EVIDENCE also when a side has fewer than 3 scored runs, the cell has fewer than 5 paired task cells, no A/A repeat, no task where vanilla has two scored runs, more than a fifth of the runs on a side have no score (infra error, model mismatch, nothing to score), the arm and vanilla were scored on different components in any cell, or a change that lives only in skills never loaded one.",
+     "gpt": "A GPT cell is judged on its own ratios to vanilla; the Claude cell on the same harness is shown beside it, ratio against ratio, never raw credits."
+    },
+    "blocks": [
+     {
+      "t": "h",
+      "level": 1,
+      "text": "Orchestrator pass rule"
+     },
+     {
+      "t": "p",
+      "text": "Baseline: vanilla. 1 cell(s), keyed by harness and model. A test arm passes in a cell when it costs at most 2.0x vanilla and the 95% interval of its quality difference, paired by task, stays within vanilla's spread on a single task. Cost is in credits."
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Calls"
+     },
+     {
+      "t": "table",
+      "head": [
+       "cell (harness / model)",
+       "arm",
+       "call",
+       "in plain words"
+      ],
+      "rows": [
+       [
+        "kiro-cli / claude-sonnet-5.5",
+        "v1.2.0",
+        "NOT ENOUGH EVIDENCE",
+        "NOT ENOUGH EVIDENCE. Fewer than 5 paired task cells (1), too few for an interval that holds its 95% level. There is no A/A repeat in this cell with two or more paired task cells, so drift cannot be told from an effect. Quality could not be computed for both sides, with an interval."
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Cell: kiro-cli / claude-sonnet-5.5"
+     },
+     {
+      "t": "p",
+      "text": "Baseline vanilla. Run directories: <DIR>."
+     },
+     {
+      "t": "p",
+      "text": "No A/A repeat in this cell."
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "cost per run (arm vs vanilla)",
+       "cost ratio per run",
+       "cost ratio per successful run [95% CI]",
+       "quality (arm, vanilla)",
+       "paired difference [95% CI]",
+       "tolerance (vanilla spread within a task)",
+       "task cells",
+       "runs (arm / vanilla)",
+       "runs without a score (arm / vanilla)",
+       "thresholds met"
+      ],
+      "rows": [
+       [
+        "v1.2.0",
+        "5.00 vs 3.00",
+        "1.67x",
+        "1.67x [1.18, 2.50]",
+        "100.0, 100.0",
+        "0.0 [n/a, n/a]",
+        "5.0",
+        1,
+        "3 / 3",
+        "0 / 0",
+        "n/a"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 3,
+      "text": "Orchestration"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "runs with data",
+       "spawns (mean)",
+       "max spawn depth",
+       "review rounds (mean)",
+       "reworks after a pass (mean)"
+      ],
+      "rows": [
+       [
+        "v1.2.0",
+        3,
+        "1.0",
+        1,
+        "0.0",
+        "0.0"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 3,
+      "text": "Failed runs"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "clean passes",
+       "checks failed",
+       "timeout",
+       "error",
+       "infra error",
+       "model mismatch",
+       "counted as quality 0"
+      ],
+      "rows": [
+       [
+        "v1.2.0",
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Definitions"
+     },
+     {
+      "t": "list",
+      "items": [
+       "Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean credits per executed run and as credits per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.",
+       "Quality is paired by cell (one task in one run directory): each cell contributes the arm's mean score minus vanilla's, and the interval is a t interval on those differences, at 95% for one test arm and at the Bonferroni level 1 - 0.05/m when m test arms are compared in the report. The tolerance is the pooled within-cell standard deviation of vanilla's scores, at least 5 points. The arm passes when the lower end of the interval is at least minus the tolerance. A difference below minus the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE. A gain passes.",
+       "Drift = the quality drift pooled over every paired task cell of an arm and its A/A repeat (the larger end of the 95% interval of the per-cell differences, at least 5 points) and the largest cost ratio gap of the repeat to the arm. A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.",
+       "NOT ENOUGH EVIDENCE also when a side has fewer than 3 scored runs, the cell has fewer than 5 paired task cells, no A/A repeat, no task where vanilla has two scored runs, more than a fifth of the runs on a side have no score (infra error, model mismatch, nothing to score), the arm and vanilla were scored on different components in any cell, or a change that lives only in skills never loaded one.",
+       "A GPT cell is judged on its own ratios to vanilla; the Claude cell on the same harness is shown beside it, ratio against ratio, never raw credits.",
+       "A failed or timed-out run counts as quality 0 when it has nothing to score, and its cost counts. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side. The unpaired mean difference is not used for any call."
+      ]
+     },
+     {
+      "t": "note",
+      "text": "NOT ENOUGH EVIDENCE is not a finding that the arm is fine or not fine. It means this study cannot say. The thresholds are stated in full above so the same numbers can be re-read against a different rule."
+     }
+    ]
+   }
+  }
  },
  "oc": {
   "harness": "opencode",
@@ -813,7 +1216,410 @@
    "judging": null,
    "checksRecheck": null
   },
-  "md": "# Benchmark report\n\nRun: <DIR>  \nSuite: lite, model global.anthropic.claude-sonnet-5-5, effort high, 1 task(s), opencode 1.19.5  \nBaseline: oc-vanilla. Judges: none (run the judge command for rubric and pairwise results)\n\nHow to read: efficiency cells (USD, tokens, calls, wall clock) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median; they are shown as rates beside every cost figure. \"success\" is the share of runs that finished cleanly; \"pass\" also needs every check to pass. \"USD per successful run\" is the total charged over all executed runs divided by clean passes, so failures raise it. USD is list price computed by opencode from token counts (input, output, cache read, cache write); it is not a bill. Tokens and calls are summed over the parent session and every subagent session read from the session database. Prompt-cache reads depend on whether a run started within about 5 minutes of another, so cache read and cost carry run-order noise. A timed-out run is charged the rows present at the kill or the arm median, whichever is larger. \"asked user\" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.\n\n## Flags\n\nNone.\n\n## Results\n\n### overall\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs oc-vanilla | USD per successful run |\n|---|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.030<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| oc-k | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.200<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | USD (list price) | tokens (input + output + cache read + cache write) | modelCalls | toolCalls | subagentCalls | wallClock s |\n|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 of 3 | 0.030 [0.030, 0.030]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n| oc-k | 3 of 3 | 0.200 [0.100, 0.300]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n\n### simple\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs oc-vanilla | USD per successful run |\n|---|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.030<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| oc-k | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.200<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | USD (list price) | tokens (input + output + cache read + cache write) | modelCalls | toolCalls | subagentCalls | wallClock s |\n|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 of 3 | 0.030 [0.030, 0.030]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n| oc-k | 3 of 3 | 0.200 [0.100, 0.300]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n"
+  "md": "# Benchmark report\n\nRun: <DIR>  \nSuite: lite, model global.anthropic.claude-sonnet-5-5, effort high, 1 task(s), opencode 1.19.5  \nBaseline: oc-vanilla. Judges: none (run the judge command for rubric and pairwise results)\n\nHow to read: efficiency cells (USD, tokens, calls, wall clock) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median; they are shown as rates beside every cost figure. \"success\" is the share of runs that finished cleanly; \"pass\" also needs every check to pass. \"USD per successful run\" is the total charged over all executed runs divided by clean passes, so failures raise it. USD is list price computed by opencode from token counts (input, output, cache read, cache write); it is not a bill. Tokens and calls are summed over the parent session and every subagent session read from the session database. Prompt-cache reads depend on whether a run started within about 5 minutes of another, so cache read and cost carry run-order noise. A timed-out run is charged the rows present at the kill or the arm median, whichever is larger. \"asked user\" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.\n\n## Flags\n\nNone.\n\n## Results\n\n### overall\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs oc-vanilla | USD per successful run |\n|---|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.030<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| oc-k | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.200<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | USD (list price) | tokens (input + output + cache read + cache write) | modelCalls | toolCalls | subagentCalls | wallClock s |\n|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 of 3 | 0.030 [0.030, 0.030]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n| oc-k | 3 of 3 | 0.200 [0.100, 0.300]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n\n### simple\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs oc-vanilla | USD per successful run |\n|---|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.030<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| oc-k | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.200<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | USD (list price) | tokens (input + output + cache read + cache write) | modelCalls | toolCalls | subagentCalls | wallClock s |\n|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 of 3 | 0.030 [0.030, 0.030]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n| oc-k | 3 of 3 | 0.200 [0.100, 0.300]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n",
+  "legends": {
+   "formulas": {
+    "quality": "Per run, the weighted mean of the components the run has, times 100: hidden tests (FAIL_TO_PASS, hiddenTests, or intendedTests, as passed / total), checks (1 when every check passed, else 0), rubric (mean over judges of the verified score, 0..1). Weights come from profiles/scoring.json (default 0.5, 0.2, 0.3). A missing component is dropped and the remaining weights are renormalised; nothing is imputed. Runs with infraError or modelMismatch, and runs with no component at all, are left out and counted in \"excluded\". The arm score is the mean over runs with a 95% bootstrap interval.",
+    "reliability": "100 minus the share of executed runs that timed out, errored, hit infraError or had a modelMismatch. A run whose checks failed still counts as reliable; the miss shows in quality.",
+    "autonomy": "Autonomy-tier runs only (turns > 0): the share of runs with completedWithoutHelp (no scripted reply needed and every intended and invariant test passed), times 100. Shown beside it: mean interjections per task and the share of runs that asked a question on a task that needs none.",
+    "efficiency": "Not a 0..100 number. Each metric is head / base for the same scope: cost per successful run (all charged cost over clean passes; credits, or USD on opencode), then mean wall clock, model calls, work tool calls and subagent calls over clean passes. The interval is a 95% bootstrap of the ratio. \"Cost per quality point\" is cost per successful run divided by the quality score; at quality 95 or above it mostly measures cost and says so.",
+    "capability": "For cap prune-report: load rate = runs that loaded the skill / runs that could load it, with a Wilson 95% interval, the exposure n, the skill size in bytes, the class and the evidence verdict. No composite number is made."
+   },
+   "pin": {
+    "runs": 6,
+    "verified": 0,
+    "mismatch": 0
+   },
+   "verdict": {
+    "rule": [
+     "Not enough evidence. fewer than 5 paired task cells (1), too few for an interval that holds its 95% level; there is no A/A noise floor, so a difference cannot be told from run-to-run noise; the paired interval of the quality difference could not be computed."
+    ],
+    "blocks": [
+     {
+      "t": "h",
+      "level": 1,
+      "text": "Platform verdict: keep or discard"
+     },
+     {
+      "t": "p",
+      "text": "Baseline: oc-vanilla. 1 arm(s) compared on 1 run directory. Arms are named by exact ref (name@commit). Cost is in USD at list price as metered."
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Verdict"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "verdict",
+       "in plain words"
+      ],
+      "rows": [
+       [
+        "oc-k",
+        "NOT ENOUGH EVIDENCE",
+        "Not enough evidence. fewer than 5 paired task cells (1), too few for an interval that holds its 95% level; there is no A/A noise floor, so a difference cannot be told from run-to-run noise; the paired interval of the quality difference could not be computed."
+       ]
+      ]
+     },
+     {
+      "t": "note",
+      "text": "A verdict is only as good as the evidence behind it. The rules are at the end of this page."
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Numbers against oc-vanilla"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "Quality /100 (arm, oc-vanilla)",
+       "Difference in points [paired 95% CI]",
+       "Unpaired difference (descriptive, not used)",
+       "Reliability /100 (arm, baseline)",
+       "Autonomy /100 (arm, baseline)",
+       "Cost ratio (USD per successful run)",
+       "Latency ratio (mean wall clock)"
+      ],
+      "rows": [
+       [
+        "oc-k",
+        "100.0, 100.0",
+        "0.0",
+        "0.0 [0.0, 0.0]",
+        "100, 100",
+        "n/a",
+        "6.67x [3.33, 10.00]",
+        "1.00x [1.00, 1.00]"
+       ]
+      ]
+     },
+     {
+      "t": "chart",
+      "name": "verdict-quality",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-labelledby=\"verdict-quality-t verdict-quality-d\" viewBox=\"0 0 720 144\" width=\"720\" height=\"144\" font-family=\"Helvetica, Arial, sans-serif\" font-size=\"11\"><title id=\"verdict-quality-t\">Quality difference versus oc-vanilla</title><desc id=\"verdict-quality-d\">Quality difference versus oc-vanilla. 1 row(s). oc-k delta 0. Noise band 0 to 0.</desc><rect width=\"720\" height=\"144\" fill=\"#ffffff\"/><text x=\"16\" y=\"22\" font-size=\"13\" font-weight=\"bold\" fill=\"#222222\">Quality difference versus oc-vanilla</text><line x1=\"190\" y1=\"64\" x2=\"190\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"190\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">-1</text><line x1=\"285\" y1=\"64\" x2=\"285\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"285\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">-0.5</text><line x1=\"380\" y1=\"64\" x2=\"380\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"380\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">0</text><line x1=\"475\" y1=\"64\" x2=\"475\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"475\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">0.5</text><line x1=\"570\" y1=\"64\" x2=\"570\" y2=\"88\" stroke=\"#e3e3e3\" stroke-width=\"1\"/><text x=\"570\" y=\"102\" text-anchor=\"middle\" font-size=\"10\" fill=\"#222222\">1</text><text x=\"380\" y=\"118\" text-anchor=\"middle\" fill=\"#444444\">quality points (arm minus baseline)</text><rect data-role=\"noise-band\" x=\"380\" y=\"64\" width=\"0\" height=\"24\" fill=\"#9a9a9a\" fill-opacity=\"0.25\"/><text x=\"380\" y=\"58\" text-anchor=\"middle\" font-size=\"10\" fill=\"#444444\">no A/A noise measured</text><line data-role=\"zero-line\" x1=\"380\" y1=\"64\" x2=\"380\" y2=\"88\" stroke=\"#222222\" stroke-width=\"1.5\"/><text x=\"182\" y=\"79\" text-anchor=\"end\" font-size=\"10\" fill=\"#222222\">oc-k</text><rect fill=\"#555555\" stroke=\"#ffffff\" stroke-width=\"1\" x=\"376\" y=\"72\" width=\"8\" height=\"8\"/><text x=\"582\" y=\"79\" font-size=\"10\" fill=\"#222222\">0 n=3</text><text x=\"16\" y=\"136\" font-size=\"10\" fill=\"#555555\">Green: better than the base outside the noise. Orange: worse. Grey: inside the noise or unclear.</text></svg>",
+      "alt": "Forest plot of the quality difference of each arm against the baseline, with the A/A noise band"
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "How much evidence"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "runs (arm / baseline)",
+       "cells (task x directory)",
+       "replicates in the smallest cell",
+       "runs without a score (arm, baseline)",
+       "A/A noise",
+       "diligence rating",
+       "graded judge (arm, baseline; order disagreements)"
+      ],
+      "rows": [
+       [
+        "oc-k",
+        "3 / 3",
+        1,
+        3,
+        "0 / 0",
+        "none measured",
+        "indicative",
+        "not run"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Failed runs"
+     },
+     {
+      "t": "p",
+      "text": "No run is dropped. These are the outcomes of every executed run of the arm on the cells it shares with the baseline; the last column counts runs that failed with nothing to score and so enter quality as 0."
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "clean passes",
+       "checks failed",
+       "timeout",
+       "error",
+       "infra error",
+       "model mismatch",
+       "quality counted as 0",
+       "budget-skipped cells",
+       "oc-vanilla on the same cells"
+      ],
+      "rows": [
+       [
+        "oc-k",
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        "3 clean, 0 failed"
+       ]
+      ]
+     },
+     {
+      "t": "note",
+      "text": "Infra errors and model mismatches are not the arm's result: they are left out of the quality mean, counted against reliability and listed here."
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Run directories"
+     },
+     {
+      "t": "table",
+      "head": [
+       "run directory",
+       "suite",
+       "diligence rating",
+       "executed runs",
+       "arms (exact refs)",
+       "credits (ledger)",
+       "skill-study controls"
+      ],
+      "rows": [
+       [
+        "<DIR>",
+        "lite",
+        "indicative",
+        6,
+        "oc-k, oc-vanilla",
+        "no ledger",
+        "not checked"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Exact refs"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "arm id",
+       "commit",
+       "tree or directory hash"
+      ],
+      "rows": [
+       [
+        "oc-k",
+        "oc-k",
+        "none (no install)",
+        "none"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "How to read this page"
+     },
+     {
+      "t": "list",
+      "items": [
+       "KEEP needs a quality gain over the baseline that is larger than the A/A noise and whose paired 95% interval is above 0, at least 3 runs on each side, at least 5 paired task cells, at least 3 replicates in every cell, no anecdotal diligence rating, no clearly lower reliability, and a cost of at most 2.0x the baseline per successful run.",
+       "DISCARD needs the same evidence for a quality loss. Its cost is not weighed: a loss is a loss at any price.",
+       "When several arms are compared with the baseline, each quality interval is widened to the Bonferroni level 1 - 0.05/m for m arms (an A/A repeat is not an arm), and the page notes the level. The interval is paired by cell. A cell is one task in one run directory; each cell contributes the mean of the arm's scores minus the mean of the baseline's, and the 95% interval is a t interval on those differences. Runs of the same task are not independent, so an interval over pooled runs is shown only as a descriptive column. In a simulation with no true effect the paired interval excluded 0 in 4.1% to 6.5% of trials from 5 cells up, where the pooled one excluded it in 20% of trials at 3 runs a side.",
+       "NOT ENOUGH EVIDENCE is the answer in every other case. It is forced when there are fewer than 3 runs on a side or fewer than 5 paired task cells, when the difference is inside the A/A noise, or when the diligence rating is anecdotal. It is also the answer when no A/A noise was measured, when a cell has fewer than 3 replicates, when the interval of the difference includes 0, when more than a fifth of the runs on a side have no score, when the arm and the baseline were scored on different components in any cell, or when a gain costs more than 2.0x.",
+       "The A/A noise is pooled over every paired task cell of an arm and its repeat at the same commit: each cell gives the arm's mean quality minus the repeat's, and the noise is the larger end of the 95% interval of those differences, with a floor of 5.0 points. Two paired cells are the least that give it; with fewer there is no noise floor.",
+       "Efficiency is a ratio, never a 0 to 100 number: cost is credits per successful run, arm over baseline, and latency is mean wall clock over clean passes, arm over baseline. A ratio above 1 means the arm costs more.",
+       "A failed or timed-out run counts as quality 0 when it has nothing to score, and counts against reliability. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side."
+      ]
+     },
+     {
+      "t": "p",
+      "text": "Scoring weights come from profiles/scoring.json (hidden 0.5, checks 0.2, rubric 0.3); the formulas are in bench/README.md."
+     },
+     {
+      "t": "note",
+      "text": "NOT ENOUGH EVIDENCE is not a finding that the arm is no better. It means this study cannot say. More replicates, an A/A arm and judged output are what settle it."
+     }
+    ]
+   },
+   "orchPass": {
+    "rule": {
+     "costMax": 2,
+     "qualityFloorPts": 5,
+     "minCells": 5,
+     "maxNonScoredShare": 0.2,
+     "cost": "Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean credits per executed run and as credits per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.",
+     "quality": "Quality is paired by cell (one task in one run directory): each cell contributes the arm's mean score minus vanilla's, and the interval is a t interval on those differences, at 95% for one test arm and at the Bonferroni level 1 - 0.05/m when m test arms are compared in the report. The tolerance is the pooled within-cell standard deviation of vanilla's scores, at least 5 points. The arm passes when the lower end of the interval is at least minus the tolerance. A difference below minus the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE. A gain passes.",
+     "drift": "Drift = the quality drift pooled over every paired task cell of an arm and its A/A repeat (the larger end of the 95% interval of the per-cell differences, at least 5 points) and the largest cost ratio gap of the repeat to the arm. A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.",
+     "evidence": "NOT ENOUGH EVIDENCE also when a side has fewer than 3 scored runs, the cell has fewer than 5 paired task cells, no A/A repeat, no task where vanilla has two scored runs, more than a fifth of the runs on a side have no score (infra error, model mismatch, nothing to score), the arm and vanilla were scored on different components in any cell, or a change that lives only in skills never loaded one.",
+     "gpt": "A GPT cell is judged on its own ratios to vanilla; the Claude cell on the same harness is shown beside it, ratio against ratio, never raw credits."
+    },
+    "blocks": [
+     {
+      "t": "h",
+      "level": 1,
+      "text": "Orchestrator pass rule"
+     },
+     {
+      "t": "p",
+      "text": "Baseline: oc-vanilla. 1 cell(s), keyed by harness and model. A test arm passes in a cell when it costs at most 2.0x vanilla and the 95% interval of its quality difference, paired by task, stays within vanilla's spread on a single task. Cost is in USD."
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Calls"
+     },
+     {
+      "t": "table",
+      "head": [
+       "cell (harness / model)",
+       "arm",
+       "call",
+       "in plain words"
+      ],
+      "rows": [
+       [
+        "opencode / global.anthropic.claude-sonnet-5-5",
+        "oc-k",
+        "NOT ENOUGH EVIDENCE",
+        "NOT ENOUGH EVIDENCE. Fewer than 5 paired task cells (1), too few for an interval that holds its 95% level. There is no A/A repeat in this cell with two or more paired task cells, so drift cannot be told from an effect. Quality could not be computed for both sides, with an interval. It costs 6.67x vanilla per run, over the 2.0x limit. On the raw thresholds alone it would fail."
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Cell: opencode / global.anthropic.claude-sonnet-5-5"
+     },
+     {
+      "t": "p",
+      "text": "Baseline oc-vanilla. Run directories: <DIR>."
+     },
+     {
+      "t": "p",
+      "text": "No A/A repeat in this cell."
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "cost per run (arm vs vanilla)",
+       "cost ratio per run",
+       "cost ratio per successful run [95% CI]",
+       "quality (arm, vanilla)",
+       "paired difference [95% CI]",
+       "tolerance (vanilla spread within a task)",
+       "task cells",
+       "runs (arm / vanilla)",
+       "runs without a score (arm / vanilla)",
+       "thresholds met"
+      ],
+      "rows": [
+       [
+        "oc-k",
+        "0.20 vs 0.03",
+        "6.67x",
+        "6.67x [3.33, 10.00]",
+        "100.0, 100.0",
+        "0.0 [n/a, n/a]",
+        "5.0",
+        1,
+        "3 / 3",
+        "0 / 0",
+        "no"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 3,
+      "text": "Orchestration"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "runs with data",
+       "spawns (mean)",
+       "max spawn depth",
+       "review rounds (mean)",
+       "reworks after a pass (mean)"
+      ],
+      "rows": [
+       [
+        "oc-k",
+        3,
+        "0.0",
+        0,
+        "0.0",
+        "0.0"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 3,
+      "text": "Failed runs"
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "clean passes",
+       "checks failed",
+       "timeout",
+       "error",
+       "infra error",
+       "model mismatch",
+       "counted as quality 0"
+      ],
+      "rows": [
+       [
+        "oc-k",
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Definitions"
+     },
+     {
+      "t": "list",
+      "items": [
+       "Cost ratio = the arm over vanilla, on the cells (run directory and task) both ran, as mean credits per executed run and as credits per successful run. Both must be at most 2.0. A run with no metered cost is counted at the largest metered cost of its task when that is what pushes a ratio over 2.0, and the cell is then NOT ENOUGH EVIDENCE.",
+       "Quality is paired by cell (one task in one run directory): each cell contributes the arm's mean score minus vanilla's, and the interval is a t interval on those differences, at 95% for one test arm and at the Bonferroni level 1 - 0.05/m when m test arms are compared in the report. The tolerance is the pooled within-cell standard deviation of vanilla's scores, at least 5 points. The arm passes when the lower end of the interval is at least minus the tolerance. A difference below minus the tolerance fails; one above it whose interval reaches below it is NOT ENOUGH EVIDENCE. A gain passes.",
+       "Drift = the quality drift pooled over every paired task cell of an arm and its A/A repeat (the larger end of the 95% interval of the per-cell differences, at least 5 points) and the largest cost ratio gap of the repeat to the arm. A criterion whose measured effect is not larger than the drift is uncertain, and the cell is NOT ENOUGH EVIDENCE unless the other criterion fails clearly.",
+       "NOT ENOUGH EVIDENCE also when a side has fewer than 3 scored runs, the cell has fewer than 5 paired task cells, no A/A repeat, no task where vanilla has two scored runs, more than a fifth of the runs on a side have no score (infra error, model mismatch, nothing to score), the arm and vanilla were scored on different components in any cell, or a change that lives only in skills never loaded one.",
+       "A GPT cell is judged on its own ratios to vanilla; the Claude cell on the same harness is shown beside it, ratio against ratio, never raw credits.",
+       "A failed or timed-out run counts as quality 0 when it has nothing to score, and its cost counts. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side. The unpaired mean difference is not used for any call."
+      ]
+     },
+     {
+      "t": "note",
+      "text": "NOT ENOUGH EVIDENCE is not a finding that the arm is fine or not fine. It means this study cannot say. The thresholds are stated in full above so the same numbers can be re-read against a different rule."
+     }
+    ]
+   }
+  }
  },
  "results": {
   "kiro": {

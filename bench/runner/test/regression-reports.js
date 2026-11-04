@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Builds a kiro-cli run and an opencode run on disk and renders their reports with the code under `benchRoot`.
+// Builds a kiro-cli run and an opencode run on disk and renders their reports, scorecard facts, formulas, verdict and orchestrator-pass documents with the code under `benchRoot`.
 // The golden files were produced with the code from before the Claude Code harness was added, so a test that
 // renders the same runs with the current code and compares proves existing results still report the same.
 
@@ -40,6 +40,11 @@ function produce(benchRoot) {
   const { renderMarkdown } = require(path.join(benchRoot, 'report/render.js'));
   const { loadRun } = require(path.join(benchRoot, 'report/load.js'));
   const { loadTasks } = require(path.join(benchRoot, 'runner/lib/tasks.js'));
+  const { analyze } = require(path.join(benchRoot, 'report/generate.js'));
+  const { buildVerdict } = require(path.join(benchRoot, 'report/verdict.js'));
+  const { buildVerdictDocument } = require(path.join(benchRoot, 'report/verdictdoc.js'));
+  const { buildOrchestratorPass } = require(path.join(benchRoot, 'report/orchpass.js'));
+  const { buildOrchestratorPassDocument } = require(path.join(benchRoot, 'report/orchpassdoc.js'));
   const root = tmp();
   try {
     const bench = makeBench(path.join(root, 'bench'));
@@ -61,6 +66,17 @@ function produce(benchRoot) {
       const r = buildReport({ run, tasks: loadTasks(bench) });
       const norm = (text) => text.split(path.join(root, name)).join('<DIR>');
       out[name] = { harness: run.harness, json: JSON.parse(norm(JSON.stringify(r.report))), md: norm(renderMarkdown(r.report)) };
+      const baseline = name === 'kiro' ? 'vanilla' : 'oc-vanilla';
+      const dir = path.join(root, name);
+      const a = analyze({ run, tasks: loadTasks(bench) });
+      const verdict = buildVerdict({ dirs: [dir], benchDir: bench, baseline });
+      const pass = buildOrchestratorPass({ dirs: [dir], benchDir: bench, baseline });
+      const plain = (v) => JSON.parse(norm(JSON.stringify(v)));
+      out[name].legends = {
+        formulas: a.scores.formulas, pin: a.facts.pin,
+        verdict: plain({ rule: verdict.arms.map((x) => x.sentence), blocks: buildVerdictDocument(verdict).blocks }),
+        orchPass: plain({ rule: pass.rule, blocks: buildOrchestratorPassDocument(pass).blocks }),
+      };
     }
     out.results = buildResults(benchRoot);
     return out;

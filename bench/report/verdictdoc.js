@@ -36,6 +36,9 @@ const RULES = [
   'A failed or timed-out run counts as quality 0 when it has nothing to score, and counts against reliability. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side.',
 ];
 
+// Claude Code cells are costed in list-price USD, not credits.
+const rulesFor = (v) => (v.harness === 'claude-code' ? RULES.map((r) => r.replace('cost is credits per successful run', 'cost is USD at list price per successful run')) : RULES);
+
 function buildVerdictDocument(v) {
   const blocks = [];
   const charts = new Map();
@@ -99,7 +102,7 @@ function buildVerdictDocument(v) {
   blocks.push(D.h(2, 'Run directories'));
   const hasProfile = v.dirs.some((d) => d.profile);
   blocks.push(D.table(
-    ['run directory', 'suite', 'diligence rating', 'executed runs', 'arms (exact refs)', 'credits (ledger)', 'skill-study controls', ...(hasProfile ? ['profile check'] : [])],
+    ['run directory', 'suite', 'diligence rating', 'executed runs', 'arms (exact refs)', v.harness === 'claude-code' ? 'cost (ledger)' : 'credits (ledger)', 'skill-study controls', ...(hasProfile ? ['profile check'] : [])],
     v.dirs.map((d) => [
       d.dir, d.suite ?? 'n/a', d.rating, d.runs, d.arms.join(', '),
       d.ledger ? `${f(d.ledger.total, 2)} ${unit === 'USD' ? 'USD' : 'credits'} (runs ${f(d.ledger.run, 2)}, judge ${f(d.ledger.judge, 2)})` : 'no ledger',
@@ -112,7 +115,7 @@ function buildVerdictDocument(v) {
   blocks.push(D.table(['arm', 'arm id', 'commit', 'tree or directory hash'], heads.map((a) => [a.label, a.armId, a.commitSha ?? 'none (no install)', a.contentHash ?? 'none'])));
 
   blocks.push(D.h(2, 'How to read this page'));
-  blocks.push(D.list(RULES));
+  blocks.push(D.list(rulesFor(v)));
   blocks.push(D.p(`Scoring weights come from profiles/scoring.json (hidden ${v.weights.hidden}, checks ${v.weights.checks}, rubric ${v.weights.rubric}); the formulas are in bench/README.md.`));
   blocks.push(D.note(`${NEE} is not a finding that the arm is no better. It means this study cannot say. More replicates, an A/A arm and judged output are what settle it.`));
   return { blocks, charts, title: 'Platform verdict' };

@@ -61,7 +61,7 @@ function analyze({ run, tasks, baseline, scoringFile }) {
   const built = buildReport({ run, tasks, baseline: base });
   const weights = loadScoring(scoringFile);
   const rows = buildRows(run, tasks, built.ctx);
-  const scores = computeScores({ rows, baseline: base, weights, unit: built.report.costUnit === 'usd' ? 'USD' : 'credits' });
+  const scores = computeScores({ rows, baseline: base, weights, unit: built.report.costUnit === 'usd' ? 'USD' : 'credits', harness: run.harness ?? null });
   const skipped = skippedCount(run);
   const facts = collectFacts({ run, tasks, rows, ctx: built.ctx, report: built.report, skipped, baseline: scores.baseline, weights, calibration: readCalibration(run) });
   const card = scorecard(facts);
