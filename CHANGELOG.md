@@ -116,6 +116,17 @@ not per individual commit.
 
 ### Fixed
 
+- `bench/lib/sanitize.js` now removes the skill's name when it is glued to other words, so a
+  judge cannot tell the arms apart by a file name such as `docs/release-notes-notes.md`. A name is
+  read as its parts (`release` and `notes`), joined by `-`, `_`, `.` or nothing, in any case, so
+  `release_notes`, `ReleaseNotes` and `releasenotes` match. A separator or a case change outside
+  the name is a boundary (`my-release-notes`, `release-notes_v2`, `myReleaseNotes`); letters or
+  digits touching the name are not, so `releases` and `prerelease-notes` stay. A space between
+  the parts stays as ordinary English except next to the word skill, in a code span or in a
+  slash or namespaced form. A `name: <skill>` line goes whole, and `skills/<name>/SKILL.md` goes
+  whole. `SANITIZER_VERSION` is 2. The header lists what is kept by decision and what is not
+  caught. `bench/test/skill-name-leak.test.js` plants about twenty spellings in a reply, a file
+  path and file content, for two names, on both judge scales and in both orders.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
   and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared

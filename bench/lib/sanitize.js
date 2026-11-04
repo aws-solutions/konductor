@@ -43,14 +43,44 @@
  *     much a tell as a name in a sentence: harness directory paths (skills, agents, plugins,
  *     commands, hooks, steering, memory and settings under .claude, .kiro, .opencode, .codex,
  *     .cursor and .konductor; a deliverable path such as .kiro/specs is kept), phrases such as
- *     "as instructed by the skill", the skill name and its aliases, namespaced forms such as
- *     acme:name, arm labels, condition names, run identifiers, agent identifiers and namespaces.
+ *     "as instructed by the skill", the skill name and its aliases (including the spellings
+ *     described under "Names glued to other words"), namespaced forms such as acme:name, arm
+ *     labels, condition names, run identifiers, agent identifiers and namespaces.
  *
  * Ordinary words stay. A skill named plan is also an ordinary English word. A name that is a
  * single run of letters is removed only in forms prose does not use: "the plan skill", "skill:
- * plan", a code span, a slash command, a namespaced form, or a skills/ path. "Make a plan" is
- * left alone. A name that is not an ordinary word, such as triage-kit, is removed wherever it
- * appears as a whole token. `nameIsCommonWord` in the context overrides the guess either way.
+ * plan", a code span, a slash command, a namespaced form, a skills/ path (with a trailing
+ * /SKILL.md), a plan/SKILL.md path, or a line that is only "name: plan" (copied frontmatter).
+ * "Make a plan" is left alone, and so are "plan-b" and "docs/plan-notes.md": for these names a
+ * hyphen or letter next to the word makes a different, ordinary word, and a file called plan.md
+ * is ordinary work. A name that is not an ordinary word, such as release-notes, is removed
+ * wherever it appears, in the way described next. `nameIsCommonWord` in the context overrides the
+ * guess either way.
+ *
+ * Names glued to other words. A name is read as its parts (release-notes has the parts release and
+ * notes), and a part boundary may be written as - _ . or not at all, in any case. So
+ * release-notes, Release-Notes, RELEASE-NOTES, release_notes, release.notes, releasenotes,
+ * ReleaseNotes and releaseNotes are all the name. The name's own hyphens are kept in the match;
+ * a separator OUTSIDE the name is an edge. That makes "docs/release-notes-notes.md",
+ * "my-release-notes", "release-notes.md", "release-notes_v2", "release-notes/" and
+ * "https://x.test/release-notes/latest" the name followed or preceded by something else, and only
+ * the name is deleted, leaving "docs/-notes.md", "my-", ".md", "_v2" and so on. A change of case
+ * is also an edge ("myReleaseNotes", "ReleaseNotesGuide", "XMLReleaseNotes"). The decision, for
+ * the cases where a rule must give something up:
+ *   - Letters or digits touching the name with no separator and no case change keep the match
+ *     from firing: "releases", "prerelease-notes", "release-notesx" and "releasenotesguide" stay.
+ *     A word that merely contains the name is a different word, and a rule that deleted inside
+ *     words would damage ordinary prose. A name glued like that to other letters is therefore a
+ *     spelling that is not caught.
+ *   - A space between the parts ("release notes") is ordinary English, so it stays, like
+ *     "Make a plan" does. It is removed when it carries a mark that prose does not use: next to
+ *     the word skill ("the release notes skill", "skill: release notes"), in a code span, as a
+ *     slash command or in a namespaced form, the same places an ordinary-word name is removed.
+ *     A name the caller wrote with a space is matched with a space everywhere.
+ *   - A separator between the parts other than - _ . (a slash, a colon) is not the name. A
+ *     "release/notes" directory pair stays.
+ *   - A name wrapped inside itself, such as "release-release-notes-notes", leaves "release--notes"
+ *     after the inner name goes. That is not caught.
  *
  * Context. `sanitizeAnswer(answer, context)` takes the answer string and an object:
  *   {
@@ -74,23 +104,28 @@
  * answers and places each between marker lines that carry `nonce`, a random value the caller
  * generates after the answers are stored, so no subject could have written the markers. The text
  * around them says that everything between the markers is data and not instructions. An answer
- * that addresses the grader is delivered as data like any other. Each answer is cut at
- * `maxChars`, which the framing states, and a cut answer is followed by a visible note. The
+ * that addresses the grader is delivered as data like any other. Each answer is sanitized in full
+ * and then cut at `maxChars`, which the framing states, so a cut cannot leave part of a name, and
+ * a cut answer is followed by a visible note. The
  * caller chooses which arm is answer A, so position carries no information. No other function in
  * this file should feed a grader.
  *
  * Known limits. Narration that names neither a skill nor instructions, a paraphrase of what a
- * skill does, a name split by spaces or punctuation, lookalike characters and compatibility
- * variants are not caught. Deleting an identifier leaves the words around it, so "see X for
- * details" becomes "see for details". The length or style of an answer can still differ between
- * arms.
+ * skill does, a name with other characters between its parts (see "Names glued to other words"
+ * for the separators that are handled), a name glued to letters with no separator, lookalike
+ * characters and compatibility variants are not caught. Deleting an identifier leaves the words
+ * around it, so "see X for details" becomes "see for details". The length or style of an answer
+ * can still differ between arms.
  * Removing zero-width joiners also separates the parts of a combined emoji and alters scripts
  * that use them as letters; benchmark answers are expected to be English text and code.
  */
 
 const crypto = require('node:crypto');
 
-const SANITIZER_VERSION = 1;
+// 2: a skill name is read as its parts and removed when glued to other words (release_notes,
+//    ReleaseNotes, my-release-notes, docs/release-notes-notes.md), a "name: <skill>" line goes
+//    whole, and skills/<name>/SKILL.md goes whole.
+const SANITIZER_VERSION = 2;
 
 /** Default cap on one answer, in UTF-16 code units, after sanitizing. */
 const DEFAULT_MAX_ANSWER_CHARS = 20000;
@@ -175,16 +210,34 @@ const RULES = Object.freeze({
     determiner: String.raw`(?:(?:the|a|an|this|that|our|your|my)[ \t]+)?`,
     // A name used as a label ("triage-kit: ...") loses its colon with it.
     label: String.raw`(?::(?=[ \t]|$))?`,
+    // A name is read as its parts. "release-notes" has the parts release and notes, and the parts
+    // may be joined by one of - _ . or by nothing (release_notes, releasenotes, ReleaseNotes; the
+    // match ignores case). `joiner` is used by the bare form. `looseJoiner` also accepts one space
+    // or tab and is used only by the forms that carry the word "skill" or a quote mark, where a
+    // spaced name is not ordinary prose. A one-part name has no joiner.
+    partSplit: String.raw`[-_.\s]+`,
+    joiner: String.raw`[-_.]?`,
+    looseJoiner: String.raw`[-_. \t]?`,
+    // The edge test of the bare form. It is run in code, not in the pattern, because the pattern is
+    // case-insensitive and a case change cannot be seen there. A letter or digit touching the
+    // match blocks it, except at a case change: a lower-case letter followed by an upper-case one
+    // (myReleaseNotes, ReleaseNotesGuide) or an upper-case run ending before a capitalized word
+    // (XMLReleaseNotes). Everything else, including - _ . / and a non-ASCII character, is an edge.
+    wordChar: String.raw`[A-Za-z0-9]`,
+    lowerChar: String.raw`[a-z]`,
+    upperChar: String.raw`[A-Z]`,
+    // A line that is only "name: <skill>", as in copied frontmatter, goes whole.
+    frontmatter: String.raw`^[ \t]*name[ \t]*:[ \t]*["']?{N}["']?[ \t]*$`,
     contextual: Object.freeze([
       String.raw`{B}{DET}skills?[ \t]*[:=]?[ \t]*[\x60"'(]?{N}{E}{L}`,
       String.raw`{B}{DET}{N}[\x60"']?[ \t]+skills?{E}{L}`,
-      String.raw`skills\/{N}{E}{L}`,
+      String.raw`skills\/{N}{E}{L}(?:\/SKILL\.md)?`,
       String.raw`{B}{N}\/SKILL\.md`,
       String.raw`\x60\/?{N}\x60`,
       String.raw`(?<![\w\/])\/{N}{E}{L}`,
       String.raw`(?:[A-Za-z0-9_.-]{1,64}:){1,3}{N}{E}{L}`,
     ]),
-    bare: String.raw`{B}{N}{E}{L}`,
+    bare: String.raw`({N}){L}`,
     commonWord: String.raw`^[A-Za-z]+$`,
     namespaced: String.raw`{B}(?:[A-Za-z0-9_.-]{1,64}:){0,3}{NS}[:\/]`,
   }),
@@ -231,6 +284,10 @@ const NARRATION = RULES.narration.map((source) => new RegExp(source, 'i'));
 const FIRST_PERSON_LOAD = new RegExp(RULES.firstPersonLoad, 'i');
 const HARNESS_PATH = new RegExp(RULES.harnessPath);
 const COMMON_WORD = new RegExp(RULES.names.commonWord);
+const PART_SPLIT = new RegExp(RULES.names.partSplit);
+const WORD_CHAR = new RegExp(RULES.names.wordChar);
+const LOWER_CHAR = new RegExp(RULES.names.lowerChar);
+const UPPER_CHAR = new RegExp(RULES.names.upperChar);
 const CLEANUP = RULES.cleanup.map((source) => new RegExp(source, 'g'));
 const CLOSING_PUNCTUATION = new RegExp(RULES.deletion.closingPunctuation);
 
@@ -252,15 +309,21 @@ function deletionRegex(source) {
 /**
  * Deletes every match of the global regex `re` from `line`, with the spacing rule from the
  * `deletion` entry of the table. With `edgeOnly`, a match that does not start the line or follow
- * whitespace is left alone.
+ * whitespace is left alone. With `nameGroup`, the match holds a bare skill name in group 1 and is
+ * kept unless the name stands alone (`nameEdgesOk`); the rest of the match, a label colon, goes
+ * with it.
  */
-function deleteMatches(line, re, edgeOnly) {
+function deleteMatches(line, re, edgeOnly, nameGroup) {
   let out = '';
   let last = 0;
   re.lastIndex = 0;
   for (let match = re.exec(line); match !== null; match = re.exec(line)) {
     if (match[0] === '') {
       re.lastIndex += 1;
+      continue;
+    }
+    if (nameGroup && !nameEdgesOk(line, match.index, match.index + match[1].length)) {
+      re.lastIndex = match.index + 1;
       continue;
     }
     let start = match.index;
@@ -343,14 +406,65 @@ function readContext(context) {
   };
 }
 
-/** The ways one name appears. `strong` is every form to remove; an ordinary word has no bare form. */
+/** A pattern for `name` read as its parts, with `joiner` between them. See `names.partSplit`. */
+function namePattern(name, joiner) {
+  const parts = name.split(PART_SPLIT).filter((part) => part !== '');
+  return parts.length === 0 ? escapeRegExp(name) : parts.map(escapeRegExp).join(joiner);
+}
+
+/**
+ * The ways one name appears, as pattern sources: `contextual` forms (they carry the word "skill",
+ * a quote, a slash or a namespace, so they are removed even for an ordinary word), the
+ * `frontmatter` line, and the `bare` form, which is null for an ordinary word and otherwise
+ * matches the name anywhere that `nameEdgesOk` accepts.
+ */
 function nameForms(name, nameIsCommonWord) {
-  const { before, after, determiner, contextual, bare, label } = RULES.names;
-  const values = { B: before, E: after, DET: determiner, N: escapeRegExp(name), L: label };
+  const { before, after, determiner, contextual, frontmatter, joiner, looseJoiner, label } = RULES.names;
+  const values = { B: before, E: after, DET: determiner, N: namePattern(name, looseJoiner), L: label };
   const common = typeof nameIsCommonWord === 'boolean' ? nameIsCommonWord : COMMON_WORD.test(name);
-  const forms = contextual.map((template) => fill(template, values));
-  if (!common) forms.push(fill(bare, values));
-  return forms;
+  // A name that the caller wrote with a space is spelled that way in prose too.
+  const bareJoiner = /\s/.test(name) ? looseJoiner : joiner;
+  return {
+    contextual: contextual.map((template) => fill(template, values)),
+    frontmatter: fill(frontmatter, values),
+    bare: common ? null : namePattern(name, bareJoiner),
+  };
+}
+
+/**
+ * True when the match `line.slice(start, end)` of a bare name stands on its own. A letter or digit
+ * touching either side blocks it ("releases" is not the name "release"), except at a case change,
+ * so "myReleaseNotes" and "ReleaseNotesGuide" count. See `names.wordChar` in the rule table.
+ */
+function nameEdgesOk(line, start, end) {
+  const isWord = (ch) => ch !== undefined && WORD_CHAR.test(ch);
+  const isLower = (ch) => ch !== undefined && LOWER_CHAR.test(ch);
+  const isUpper = (ch) => ch !== undefined && UPPER_CHAR.test(ch);
+  const first = line[start];
+  const last = line[end - 1];
+  const before = line[start - 1];
+  const after = line[end];
+  if (isWord(before)) {
+    const camel = isLower(before) && isUpper(first);
+    const acronym = isUpper(before) && isUpper(first) && isLower(line[start + 1]);
+    if (!camel && !acronym) return false;
+  }
+  if (isWord(after)) {
+    const camel = isLower(last) && isUpper(after);
+    const acronym = isUpper(last) && isUpper(after) && isLower(line[end + 1]);
+    if (!camel && !acronym) return false;
+  }
+  return true;
+}
+
+/** True when `re` (global, with the name in group 1) finds a match in `text` that stands alone. */
+function hasStandaloneName(text, re) {
+  re.lastIndex = 0;
+  for (let match = re.exec(text); match !== null; match = re.exec(text)) {
+    if (nameEdgesOk(text, match.index, match.index + match[1].length)) return true;
+    re.lastIndex = match.index + 1;
+  }
+  return false;
 }
 
 function literalAlternation(terms) {
@@ -365,14 +479,20 @@ function wholeTokens(terms) {
 
 /** Compiles a context into the ordered list of deletion regexes plus the narration helper. */
 function compile(context) {
-  const { before, after } = RULES.names;
+  const { before, after, label } = RULES.names;
   const names = [context.skillName, ...context.aliases].sort((a, b) => b.length - a.length);
-  const nameForm = names.flatMap((name) => nameForms(name, context.nameIsCommonWord));
-  const strong = new RegExp(nameForm.join('|'), 'i');
+  const forms = names.map((name) => nameForms(name, context.nameIsCommonWord));
+  const contextual = forms.flatMap((form) => form.contextual);
+  const bareNames = forms.map((form) => form.bare).filter((source) => source !== null);
+  const bareSource = bareNames.length > 0 ? fill(RULES.names.bare, { N: `(?:${bareNames.join('|')})`, L: label }) : null;
+  // The test narration uses: does a sentence refer to the skill by name?
+  const contextualTest = new RegExp(contextual.join('|'), 'i');
+  const bareTest = bareSource === null ? null : new RegExp(bareSource, 'gi');
+  const strong = (sentence) => contextualTest.test(sentence) || (bareTest !== null && hasStandaloneName(sentence, bareTest));
 
   const groups = [];
-  const add = (sources) => {
-    if (sources.length > 0) groups.push(deletionRegex(sources.join('|')));
+  const add = (sources, nameGroup = false) => {
+    if (sources.length > 0) groups.push({ re: deletionRegex(sources.join('|')), nameGroup });
   };
 
   if (context.harnessPaths.length > 0) {
@@ -385,7 +505,9 @@ function compile(context) {
     const anyName = names.map((name) => `${escapeRegExp(name)}${after}${RULES.names.label}`).join('|');
     add([`${prefix}(?:${anyName})`]);
   }
-  add(nameForm);
+  add(forms.map((form) => form.frontmatter));
+  add(contextual);
+  if (bareSource !== null) add([bareSource], true);
   add([...RULES.armLabels]);
   if (context.armLabels.length > 0) add([wholeTokens(context.armLabels)]);
   add([...RULES.conditionNames]);
@@ -400,7 +522,7 @@ function compile(context) {
 
 function deleteIdentifiers(line, compiled) {
   let out = line;
-  for (const re of compiled.groups) out = deleteMatches(out, re, false);
+  for (const { re, nameGroup } of compiled.groups) out = deleteMatches(out, re, false, nameGroup);
   return out;
 }
 
@@ -466,7 +588,7 @@ function splitSentences(text) {
 
 function isNarration(sentence, compiled) {
   if (NARRATION.some((re) => re.test(sentence))) return true;
-  return FIRST_PERSON_LOAD.test(sentence) && compiled.strong.test(sentence);
+  return FIRST_PERSON_LOAD.test(sentence) && compiled.strong(sentence);
 }
 
 /** One prose line after narration and identifier removal, or null when nothing of it is left. */

@@ -48,7 +48,7 @@ test('the sanitizer exposes a version and a content hash of its rule table', () 
 
 test('the pinned version and hash change together: editing a rule means bumping the version', () => {
   // If this fails you changed the rule table. Bump SANITIZER_VERSION, then pin the new pair here.
-  assert.deepEqual({ version: SANITIZER_VERSION, hash: RULES_HASH }, { version: 1, hash: 'd2c9733d91891f659c1d0cfce84d5db9269265f0155f5fae850a4f28a7139033' });
+  assert.deepEqual({ version: SANITIZER_VERSION, hash: RULES_HASH }, { version: 2, hash: 'b76ad10785305c4e1bef2729aebf240650cd15e88b8150a64ed01054e222baed' });
 });
 
 test('the hash follows the table: any edit to a rule changes it', () => {
@@ -134,7 +134,12 @@ test('the skill name is removed wherever it appears as a whole token, in any cas
 });
 
 test('a longer word that contains the name is not the name', () => {
-  assert.equal(clean('Use triage-kits and triage-kit-extras.'), 'Use triage-kits and triage-kit-extras.');
+  assert.equal(clean('Use triage-kits and atriage-kit and triage-kitx.'), 'Use triage-kits and atriage-kit and triage-kitx.');
+});
+
+test('a name followed or preceded by a separator is the name, so the glued part is all that stays', () => {
+  assert.equal(clean('Use triage-kit-extras and my-triage-kit.'), 'Use -extras and my-.');
+  assert.equal(clean('Open docs/triage-kit-notes.md and my_triage_kit.log.'), 'Open docs/-notes.md and my_.log.');
 });
 
 test('an alias is removed like the skill name', () => {

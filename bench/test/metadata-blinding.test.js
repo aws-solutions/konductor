@@ -170,27 +170,47 @@ test('an arm record with extra fields renders the same prompt as one without the
 
 // ---- the cleaner on files ---------------------------------------------------------------------
 
-test('the skill name planted in a file path or file content is removed', () => {
-  const planted = record('with', `I used ${SKILL} for this.`, {
+/** The prompt with every separator stripped, so a name cannot hide behind one. */
+const squash = (text) => text.toLowerCase().replace(/[\s\-_./\\:]+/g, '');
+
+/** A stored result that names the skill in the reply, in file paths and in file content. */
+function planted(armLabel) {
+  return record(armLabel, `I used ${SKILL} for this. See docs/${SKILL}-notes.md.`, {
     [`notes/${SKILL}.md`]: `Notes from ${SKILL}.\nAlso zz-alias-sentinel was mentioned.\n`,
+    // the name glued to other words, in a path and in content
+    [`docs/${SKILL}-notes.md`]: `See ${SKILL}-guide, my-${SKILL}, ${SKILL}_v2 and ${SKILL}.md.\n`,
+    [`docs/${SKILL.replace(/-/g, '_')}.md`]: 'ZzSkillSentinel and zzSkillSentinel and zzskillsentinel.\n',
+    [`my-${SKILL}/index.md`]: `---\nname: ${SKILL}\ndescription: Does things.\n---\n`,
     [`.claude/skills/${SKILL}/SKILL.md`]: 'copied text',
     'docs/plain.md': `I loaded the skill first.\nThe release is ready.\n${SKILL}\n`,
   });
-  const clean = record('without', 'Done.', { 'docs/plain.md': 'The release is ready.\n' });
+}
+
+test('the skill name planted in a file path or file content is removed, in either arm and order', () => {
+  const clean = (label) => record(label, 'Done.', { 'docs/plain.md': 'The release is ready.\n' });
+  const cases = {
+    'with has it': [planted('with'), clean('without')],
+    'without has it': [clean('with'), planted('without')],
+    'both have it': [planted('with'), planted('without')],
+  };
   for (const scale of Object.keys(SCALES)) {
-    for (const [a, b] of [
-      [planted, clean],
-      [clean, planted],
-    ]) {
-      const { prompt } = judgePrompt(TASK, a, b, { context: CONTEXT, scale });
-      assert.ok(!contains(prompt, SKILL), `skill name reached the ${scale} prompt`);
-      assert.ok(!contains(prompt, 'zz-alias-sentinel'), `alias reached the ${scale} prompt`);
-      assert.ok(!contains(prompt, 'I loaded the skill first'), `narration reached ${scale}`);
-      assert.ok(!prompt.includes('.claude/'), `a harness path reached the ${scale} prompt`);
-      assert.ok(prompt.includes('The release is ready.'), 'ordinary file text is kept');
+    for (const [name, [x, y]] of Object.entries(cases)) {
+      for (const [order, [a, b]] of Object.entries({ 'x first': [x, y], 'y first': [y, x] })) {
+        const where = `${scale}/${name}/${order}`;
+        const { prompt } = judgePrompt(TASK, a, b, { context: CONTEXT, scale });
+        assert.ok(!contains(prompt, SKILL), `skill name reached the prompt (${where})`);
+        assert.ok(!squash(prompt).includes('zzskillsentinel'), `a spelling of the name reached the prompt (${where})`);
+        assert.ok(!contains(prompt, 'zz-alias-sentinel'), `alias reached the prompt (${where})`);
+        assert.ok(!contains(prompt, 'I loaded the skill first'), `narration reached the prompt (${where})`);
+        assert.ok(!prompt.includes('.claude/'), `a harness path reached the prompt (${where})`);
+        assert.ok(prompt.includes('The release is ready.'), `ordinary file text is kept (${where})`);
+        assert.ok(prompt.includes('description: Does things.'), `the rest of copied frontmatter is kept (${where})`);
+      }
     }
   }
 });
+
+
 
 // ---- one arm never shows the other's files -----------------------------------------------------
 

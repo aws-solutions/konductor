@@ -262,6 +262,19 @@ test('changed files: every path and all content go through the cleaner', () => {
   assert.match(out, /### notes\/\.md \(added\)/);
 });
 
+test('changed files: a name glued to other words is cleaned in a path and in content', () => {
+  const out = render(
+    {},
+    {
+      'docs/triage-kit-notes.md': 'See my-triage-kit and TriageKitGuide and triage_kit_v2.\n',
+      'name-triage-kit.md': '---\nname: triage-kit\ndescription: Does things.\n---\n',
+    },
+  );
+  assert.ok(!/triage.?kit/i.test(out), out);
+  assert.ok(out.includes('### docs/-notes.md (added)'));
+  assert.ok(out.includes('description: Does things.'));
+});
+
 test('changed files: both arms use the same limits', () => {
   const limits = { maxFileChars: 5, maxTotalChars: 8, maxFiles: 2 };
   const a = arm('r', { 'n.md': 'aaaaaaaaaaaa' });
