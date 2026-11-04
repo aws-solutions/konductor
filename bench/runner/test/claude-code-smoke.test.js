@@ -21,8 +21,17 @@ const ACCOUNT = '123456789012';
 // A fake aws: `configure export-credentials` prints env lines for the profile "good"; `sts get-caller-identity` answers
 // only when the exported keys are present and no profile variable is, as the real SDK does in export mode.
 const FAKE_AWS = `#!/bin/sh
+MODE="$(cat "$(dirname "$0")/fake-aws.mode" 2>/dev/null)"
 case "$1 $2" in
   "configure export-credentials")
+    N=$(( $(cat "$(dirname "$0")/export-count" 2>/dev/null || echo 0) + 1 )); echo "$N" > "$(dirname "$0")/export-count"
+    case " $MODE " in
+      *" fail-first "*) [ "$N" -gt 1 ] || { echo "the SSO session has expired" >&2; exit 255; } ;;
+      *" fail-always "*) echo "the SSO session has expired" >&2; exit 255 ;;
+      *" fail-first-key "*) [ "$N" -gt 1 ] || { echo "bad key ${KEY_ID} for profile good" >&2; echo "SECONDLINE" >&2; exit 255; } ;;
+      *" fail-first-token "*) [ "$N" -gt 1 ] || { echo "sso token=${SECRET} expired" >&2; exit 255; } ;;
+      *" fail-first-long "*) [ "$N" -gt 1 ] || { printf 'x%.0s' $(seq 1 400) >&2; echo >&2; exit 255; } ;;
+    esac
     [ "$3" = "--profile" ] && [ "$4" = "good" ] || { echo "profile not found" >&2; exit 255; }
     echo "export AWS_ACCESS_KEY_ID=${KEY_ID}"
     echo "export AWS_SECRET_ACCESS_KEY=${SECRET}"
@@ -30,7 +39,6 @@ case "$1 $2" in
     ;;
   "sts get-caller-identity")
     [ -n "$AWS_ACCESS_KEY_ID" ] && [ -z "$AWS_PROFILE" ] || exit 255
-    MODE="$(cat "$(dirname "$0")/fake-aws.mode" 2>/dev/null)"
     case " $MODE " in *" telemetry "*) : > "$TMPDIR/mcs-telemetry-l1-1.log" ;; esac
     case " $MODE " in *" stray "*) : > "$TMPDIR/stray.txt" ;; esac
     case " $MODE " in *" cli-state "*) [ "$AWS_CLI_SESSION_ID_DISABLED" = true ] || mkdir -p "$HOME/.aws/cli/cache" ;; esac
@@ -67,7 +75,10 @@ function smoke(s, args, env = {}) {
     },
   });
 }
-const awsMode = (s, mode) => fs.writeFileSync(path.join(s.root, 'bin', 'fake-aws.mode'), mode);
+const awsMode = (s, mode) => {
+  fs.writeFileSync(path.join(s.root, 'bin', 'fake-aws.mode'), mode);
+  fs.rmSync(path.join(s.root, 'bin', 'export-count'), { force: true });
+};
 const started = (s) => fs.existsSync(path.join(s.probe, 'started.json'));
 const noSecrets = (r) => { for (const v of [SECRET, TOKEN, KEY_ID]) { assert.equal(r.stdout.includes(v), false); assert.equal(r.stderr.includes(v), false); } };
 
@@ -188,6 +199,104 @@ test('--out takes the results into a new directory and into an existing empty on
       assert.equal(fs.existsSync(path.join(dest, 'out-vanilla', 'out-vanilla')), false);
       assert.ok(fs.readdirSync(path.join(dest, 'out-vanilla')).length > 0);
     }
+  } finally {
+    s.cleanup();
+  }
+});
+
+const exportCount = (s) => Number(fs.readFileSync(path.join(s.root, 'bin', 'export-count'), 'utf8'));
+const GOOD = ['--profile', 'good', '--only', 'vanilla', '--isolate', 'none'];
+
+test('a failed export runs the refresh command once, retries the export once and carries on', () => {
+  const s = setup();
+  try {
+    awsMode(s, 'fail-first');
+    const marker = path.join(s.root, 'refreshed');
+    const r = smoke(s, [...GOOD, '--refresh-cmd', `echo ran >> '${marker}'`]);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.equal(fs.readFileSync(marker, 'utf8'), 'ran\n', 'the refresh command ran once');
+    assert.equal(exportCount(s), 2);
+    assert.match(r.stdout, /exported credentials from profile good/);
+    assert.match(r.stderr, /export-credentials failed: the SSO session has expired/);
+    noSecrets(r);
+    awsMode(s, 'fail-first');
+    fs.rmSync(marker);
+    const viaEnv = smoke(s, GOOD, { SMOKE_REFRESH_CMD: `echo ran >> '${marker}'` });
+    assert.equal(viaEnv.status, 0, viaEnv.stdout + viaEnv.stderr);
+    assert.equal(fs.readFileSync(marker, 'utf8'), 'ran\n', 'SMOKE_REFRESH_CMD is read too');
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('without a refresh command a failed export stops with a one-line reason and exit 2', () => {
+  const s = setup();
+  try {
+    awsMode(s, 'fail-first');
+    const r = smoke(s, GOOD);
+    assert.equal(r.status, 2, r.stdout + r.stderr);
+    assert.match(r.stderr, /export-credentials failed: the SSO session has expired/);
+    assert.match(r.stderr, /aws configure export-credentials failed for profile good \(--refresh-cmd CMD or SMOKE_REFRESH_CMD can refresh and retry\)/);
+    assert.equal(exportCount(s), 1);
+    assert.equal(started(s), false);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('a failing refresh command, or one that does not fix the export, stops with exit 2 and no secret in the output', () => {
+  const s = setup();
+  try {
+    awsMode(s, 'fail-first');
+    const bad = smoke(s, [...GOOD, '--refresh-cmd', 'exit 3']);
+    assert.equal(bad.status, 2, bad.stdout + bad.stderr);
+    assert.match(bad.stderr, /the refresh command failed \(exit 3\)/);
+    assert.equal(exportCount(s), 1, 'no retry after a failed refresh');
+    noSecrets(bad);
+    awsMode(s, 'fail-always');
+    const still = smoke(s, [...GOOD, '--refresh-cmd', 'true']);
+    assert.equal(still.status, 2, still.stdout + still.stderr);
+    assert.match(still.stderr, /still failed after the refresh command/);
+    assert.equal(started(s), false);
+    noSecrets(still);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('credentials already exported, or --dry-run, never run the refresh command', () => {
+  const s = setup();
+  try {
+    awsMode(s, 'fail-first');
+    const marker = path.join(s.root, 'refreshed');
+    const cmd = `touch '${marker}'`;
+    const have = smoke(s, ['--only', 'vanilla', '--isolate', 'none', '--refresh-cmd', cmd], { AWS_ACCESS_KEY_ID: KEY_ID, AWS_SECRET_ACCESS_KEY: SECRET, AWS_SESSION_TOKEN: TOKEN });
+    assert.equal(have.status, 0, have.stdout + have.stderr);
+    const dry = smoke(s, [...GOOD, '--refresh-cmd', cmd, '--dry-run']);
+    assert.equal(dry.status, 0, dry.stdout + dry.stderr);
+    assert.equal(fs.existsSync(marker), false);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('the export error shown to the user is one line, capped, with key ids and token values redacted', () => {
+  const s = setup();
+  try {
+    awsMode(s, 'fail-first-key');
+    const key = smoke(s, GOOD);
+    assert.equal(key.status, 2);
+    assert.match(key.stderr, /export-credentials failed: bad key \[redacted\] for profile good/);
+    assert.equal(key.stderr.includes('SECONDLINE'), false, 'only the first line is shown');
+    noSecrets(key);
+    awsMode(s, 'fail-first-token');
+    const tok = smoke(s, GOOD);
+    assert.match(tok.stderr, /export-credentials failed: sso token=\[redacted\]/);
+    noSecrets(tok);
+    awsMode(s, 'fail-first-long');
+    const long = smoke(s, GOOD);
+    const line = long.stderr.split('\n').find((l) => l.includes('export-credentials failed:'));
+    assert.ok(line.length <= 'export-credentials failed: '.length + 200 + '[smoke] '.length, `line length ${line.length}`);
   } finally {
     s.cleanup();
   }

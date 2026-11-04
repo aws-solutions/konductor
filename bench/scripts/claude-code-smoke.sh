@@ -37,6 +37,10 @@
 #   --isolate MODE      passed to bench.js (auto, unshare, sandbox-exec, none; none also passes --allow-unisolated)
 #   --budget-usd X      total cap (default 1.5)       --run-budget-usd X   per-run cap (default 0.6)
 #   --out DIR           copy the two result directories here before cleanup (must not exist or be empty)
+#   --refresh-cmd CMD   if the credentials export fails, run CMD once in your normal environment with this terminal attached
+#                       (so a login prompt can work), then retry the export once (env SMOKE_REFRESH_CMD also works).
+#                       CMD is whatever refreshes your credentials, for example '<your credentials refresh command>'.
+#                       It is not run when credentials are already exported or with --dry-run.
 #   --keep              keep the scratch directory and this run's /tmp/claude-<uid> entries
 #   --dry-run           print the plan and the commands; run nothing and read no credentials
 #
@@ -66,6 +70,7 @@ ISOLATE=""
 BUDGET_USD=1.5
 RUN_BUDGET_USD=0.6
 OUT_COPY=""
+REFRESH_CMD="${SMOKE_REFRESH_CMD:-}"
 KEEP=0
 DRY_RUN=0
 
@@ -98,6 +103,7 @@ while [ $# -gt 0 ]; do
     --budget-usd) BUDGET_USD="${2:?--budget-usd needs a number}"; shift 2 ;;
     --run-budget-usd) RUN_BUDGET_USD="${2:?--run-budget-usd needs a number}"; shift 2 ;;
     --out) OUT_COPY="${2:?--out needs a directory}"; shift 2 ;;
+    --refresh-cmd) REFRESH_CMD="${2:?--refresh-cmd needs a command}"; shift 2 ;;
     --keep) KEEP=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     -h | --help) usage; exit 0 ;;
@@ -178,6 +184,27 @@ parse_export_output() {
   if [ -n "$st" ]; then export AWS_SESSION_TOKEN="$st"; else unset AWS_SESSION_TOKEN; fi
 }
 
+# redact_line TEXT: the first line of TEXT, with key ids and the part after "=" on SECRET or TOKEN lines removed, at most
+# 200 characters. Redaction comes first so the cap cannot cut a value in half.
+redact_line() {
+  local line
+  line="$(printf '%s\n' "$1" | head -n 1 | sed -E 's/A[SK]IA[0-9A-Z]{16}/[redacted]/g')"
+  if printf '%s' "$line" | grep -qiE 'secret|token'; then line="$(printf '%s' "$line" | sed -E 's/=.*/=[redacted]/')"; fi
+  printf '%.200s' "$line"
+}
+
+EXPORT_OUT=""
+# try_export: runs the export once. On failure prints the redacted first line of its error and returns 1.
+try_export() {
+  local errf="$SCRATCH/export.err" rc=0
+  EXPORT_OUT="$(aws configure export-credentials --profile "$PROFILE" --format env 2>"$errf")" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    printf '[smoke] export-credentials failed: %s\n' "$(redact_line "$(cat "$errf")")" >&2
+  fi
+  rm -f -- "$errf"
+  return "$rc"
+}
+
 load_credentials() {
   if [ -n "${AWS_ACCESS_KEY_ID:-}" ] && [ -n "${AWS_SECRET_ACCESS_KEY:-}" ]; then
     say "using the AWS credentials already exported in this shell"
@@ -185,9 +212,15 @@ load_credentials() {
   fi
   [ -n "$PROFILE" ] || die "no credentials: pass --profile NAME, or export AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_SESSION_TOKEN"
   command -v aws >/dev/null 2>&1 || die "the aws CLI is not on PATH (needed for --profile)"
-  local out
-  out="$(aws configure export-credentials --profile "$PROFILE" --format env 2>/dev/null)" || die "aws configure export-credentials failed for profile $PROFILE"
-  parse_export_output "$out" || die "export-credentials output unusable: $CRED_ERR"
+  if ! try_export; then
+    [ -n "$REFRESH_CMD" ] || die "aws configure export-credentials failed for profile $PROFILE (--refresh-cmd CMD or SMOKE_REFRESH_CMD can refresh and retry)"
+    say "running the credentials refresh command (it may ask you to log in)"
+    local rc=0
+    bash -c "$REFRESH_CMD" || rc=$?
+    [ "$rc" -eq 0 ] || die "the refresh command failed (exit $rc)"
+    try_export || die "aws configure export-credentials still failed after the refresh command"
+  fi
+  parse_export_output "$EXPORT_OUT" || die "export-credentials output unusable: $CRED_ERR"
   say "exported credentials from profile $PROFILE (values not shown)"
 }
 
