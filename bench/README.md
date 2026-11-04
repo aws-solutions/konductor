@@ -156,6 +156,12 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   credentials under claude's exact environment first, prints PASS/FAIL per criterion (schema, success, cost > 0, one canonical
   model, at least one spawn and no failed spawn, 11 agents with the pin, no credential value in any output, nothing left in
   `/tmp/claude-<uid>` or the scratch directories) and removes what it made. `--dry-run` shows the plan without credentials.
+  Two lines answer an open question: whether `claude` honors `TMPDIR` for `/tmp/claude-<uid>`, and whether sub-agents still
+  start when isolation makes `/tmp` read-only. The `INFO` line says where the task directory was found (the run `TMPDIR` or the
+  default temp directory). The konductor task prints `delegation worked under isolation: yes` or `no`. If it says `no` under the
+  default isolation, run the script again with `--isolate none`: a pass there and a fail here means the isolation is the cause;
+  a fail in both is something else. Until the first run, treat both as unverified. Only this script removes its own
+  `/tmp/claude-<uid>` entries; other Claude Code sessions' entries are left alone.
 - Known gaps: `askedUser` is true only when the `AskUserQuestion` tool is called (the name is in the binary; no recorded stream
   has it), otherwise the final-text detector decides. Whether claude honors `TMPDIR` for `/tmp/claude-<uid>` is not verified (the
   smoke script reports it). The `global.` inference profile is untested (the default is `us.`). Only the `SessionStart` hook

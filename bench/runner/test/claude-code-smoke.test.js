@@ -214,6 +214,29 @@ test('the script passes shellcheck at style level when shellcheck is installed',
   assert.equal(r.status, 0, r.stdout);
 });
 
+const HELPER = path.join(__dirname, '..', '..', 'scripts', 'claude-code-smoke.js');
+
+function konductorDir(root, { spawned, spawnFailed, isolation }) {
+  const dir = path.join(root, 'out-konductor');
+  fs.mkdirSync(path.join(dir, 'cc-smoke', 'smoke-delegate', '1'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'cc-smoke', 'smoke-delegate', '1', 'result.json'), JSON.stringify({ status: 'success', isolation, claudeCode: { spawned, spawnFailed, canonicalModel: 'claude-sonnet-5-5', modelsSeen: ['claude-sonnet-5-5'] } }));
+  fs.writeFileSync(path.join(dir, 'run-config.json'), JSON.stringify({ canonicalModel: 'claude-sonnet-5-5' }));
+  return dir;
+}
+
+test('the delegation check says in one line whether sub-agents worked under the isolation used', () => {
+  const root = tmp();
+  try {
+    const run = (o) => spawnSync(process.execPath, [HELPER, 'verify', '--konductor', konductorDir(root, o)], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME } }).stdout;
+    assert.match(run({ spawned: 2, spawnFailed: 0, isolation: 'unshare' }), /PASS {2}konductor: delegation worked under isolation: yes \(isolation unshare\)/);
+    const failed = run({ spawned: 1, spawnFailed: 1, isolation: 'unshare' });
+    assert.match(failed, /FAIL {2}konductor: delegation worked under isolation: no \(isolation unshare; if this fails here but passes with --isolate none/);
+    assert.match(run({ spawned: 2, spawnFailed: 0, isolation: 'none' }), /delegation worked under isolation: yes \(isolation none, so nothing was isolated\)/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 const TARGET = process.env.KD_SMOKE_CARGO_TARGET;
 const realHome = require('node:os').userInfo().homedir;
 test('both tasks with a real konductor build (opt-in: KD_SMOKE_CARGO_TARGET names a warm cargo target directory)', { skip: TARGET ? false : 'set KD_SMOKE_CARGO_TARGET to run' }, () => {

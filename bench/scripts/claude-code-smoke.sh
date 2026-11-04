@@ -16,7 +16,7 @@
 #   3. Checks them with `aws sts get-caller-identity` under claude's exact environment (scratch HOME, exported keys,
 #      no profile variables).
 #   4. Runs `bench.js run` twice: a vanilla task, then a task that makes the konductor arm delegate to a sub-agent.
-#   5. Prints PASS or FAIL per criterion: result.json parses and matches the schema, the run succeeded, cost > 0, one
+#   5. Prints PASS or FAIL per criterion ("delegation worked under isolation: yes/no" is the sub-agent check under the isolation mode used): result.json parses and matches the schema, the run succeeded, cost > 0, one
 #      canonical model, the konductor run delegated at least once with no failed spawn, 11 agents installed with the
 #      model pin, no credential value in any output, nothing of this run left in /tmp/claude-<uid>, nothing left in the scratch dirs.
 #   6. Removes everything it created (scratch directories, this run's /tmp/claude-<uid> entries), also on Ctrl-C. Entries of

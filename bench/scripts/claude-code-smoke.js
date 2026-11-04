@@ -105,6 +105,9 @@ function verify(args) {
     report((r.checks ?? []).length > 0 && r.checks.every((c) => c.passed), `${kind}: task checks passed`);
     if (kind === 'konductor') {
       report((r.claudeCode?.spawned ?? 0) >= 1 && (r.claudeCode?.spawnFailed ?? 1) === 0, `${kind}: delegated at least once, no failed spawn (spawned ${r.claudeCode?.spawned}, failed ${r.claudeCode?.spawnFailed})`);
+      const delegated = (r.claudeCode?.spawned ?? 0) >= 1 && (r.claudeCode?.spawnFailed ?? 1) === 0;
+      const mode = r.isolation ?? 'unknown';
+      report(delegated, `${kind}: delegation worked under isolation: ${delegated ? 'yes' : 'no'} (isolation ${mode}${mode === 'none' ? ', so nothing was isolated' : ''}${delegated ? '' : '; if this fails here but passes with --isolate none, the isolation is the cause'})`);
       const log = (() => { try { return fs.readFileSync(path.join(path.dirname(file), 'install.log'), 'utf8'); } catch { return ''; } })();
       report(/agents \(11\)/.test(log) && /pin: model/.test(log), `${kind}: 11 agents installed, all pinned to the canonical model`);
     }
