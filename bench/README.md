@@ -149,22 +149,35 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   sub-agent's notification summary. Skill loads are `Skill` tool calls and reads of a `SKILL.md`, in all sessions.
   `result.json` gains `claudeCode` (models seen, `modelUsage` keys, cost basis, hook events, permission denials, spawn counts,
   where the task directory landed). A denied tool call exits 0; it shows as the `permissionDenied` flag and a count. A result line with no `total_cost_usd` or `modelUsage` sets `costMissing` (the cost is null, not 0), and unparseable stream lines set `streamTruncated`.
-- Cleanup: `TMPDIR` is the run's own directory. Claude Code writes task output to `<tmp>/claude-<uid>/<cwd slug>/`; each run
-  removes that directory under its TMPDIR and under the default temp directory (the slug is unique to the run, so parallel runs
-  never touch each other). `claudeCode.tmpCleanup` records which one held it.
+- Cleanup: `TMPDIR` and `CLAUDE_CODE_TMPDIR` are both the run's own directory (run-config lists the variable names). Claude Code
+  writes task output to `<tmp>/claude-<uid>/<cwd slug>/`; each run removes that directory under its temp directory and under the
+  default temp directory (the slug is unique to the run, so parallel runs never touch each other). `claudeCode.tmpCleanup`
+  records which one held it. Whether claude honors `CLAUDE_CODE_TMPDIR` is unverified until a run creates a task directory.
 - Smoke test: `claude-code-smoke.sh` runs one vanilla and one delegating konductor task (about $0.2 to $0.5), checks the
   credentials under claude's exact environment first, prints PASS/FAIL per criterion (schema, success, cost > 0, one canonical
   model, at least one spawn and no failed spawn, 11 agents with the pin, no credential value in any output, nothing left in
   `/tmp/claude-<uid>` or the scratch directories) and removes what it made. `--dry-run` shows the plan without credentials.
-  Two lines answer an open question: whether `claude` honors `TMPDIR` for `/tmp/claude-<uid>`, and whether sub-agents still
-  start when isolation makes `/tmp` read-only. The `INFO` line says where the task directory was found (the run `TMPDIR` or the
-  default temp directory). The konductor task prints `delegation worked under isolation: yes` or `no`. If it says `no` under the
+  Two lines answer an open question: whether `claude` honors `TMPDIR` or `CLAUDE_CODE_TMPDIR` for `/tmp/claude-<uid>`, and
+  whether sub-agents still start when isolation makes `/tmp` read-only. The `INFO` line says where the task directory was
+  found (the run temp directory or the default one), or `no task directory was made` (expected for runs that only use
+  Read/Write and a foreground sub-agent). The konductor task prints `delegation worked under isolation: yes` or `no`. If it says `no` under the
   default isolation, run the script again with `--isolate none`: a pass there and a fail here means the isolation is the cause;
   a fail in both is something else. Until the first run, treat both as unverified. Only this script removes its own
   `/tmp/claude-<uid>` entries; other Claude Code sessions' entries are left alone.
+  - `--out DIR` copies the two result directories there before cleanup. DIR must not exist or be empty; a directory that
+    already has files is refused with exit 2 (also with `--dry-run`), so a second run cannot nest into the first.
+  - `--refresh-cmd CMD` (or `SMOKE_REFRESH_CMD`) is for expired credentials: when `aws configure export-credentials` fails, CMD
+    runs once in your normal environment with the terminal attached (a login prompt can work), then the export is retried once.
+    Use whatever refreshes your credentials, for example `--refresh-cmd '<your credentials refresh command>'`. It is skipped when
+    credentials are already exported and with `--dry-run`. On a failed export the script prints the first line of the AWS CLI
+    error (at most 200 characters, with key ids and values on secret or token lines redacted).
+  - Leftover checks: files named `mcs-telemetry-*` in the scratch temp directory are written by host tooling that inherits
+    `TMPDIR`, so they are not counted; any other file there fails. The credentials check looks for regular files named
+    `credentials` or `.credentials.json` under the scratch HOME and temp directory; an `.aws` directory alone does not fail
+    it, and the preflight sets `AWS_CLI_SESSION_ID_DISABLED=true` so the AWS CLI does not create session state there.
 - Known gaps: `askedUser` is true only when the `AskUserQuestion` tool is called (the name is in the binary; no recorded stream
-  has it), otherwise the final-text detector decides. Whether claude honors `TMPDIR` for `/tmp/claude-<uid>` is not verified (the
-  smoke script reports it). The `global.` inference profile is untested (the default is `us.`). Only the `SessionStart` hook
+  has it), otherwise the final-text detector decides. Whether claude honors `TMPDIR` or `CLAUDE_CODE_TMPDIR` for `/tmp/claude-<uid>` is not
+  verified (the smoke script reports it). The `global.` inference profile is untested (the default is `us.`). Only the `SessionStart` hook
   was seen under `-p`; the `--include-hook-events` flag is passed to konductor arms when the binary has it. The skill startup
   size (`startupResources`) is not measured for this harness.
 - Where it plugs in (for reviewers): `runner/lib/harness/claude-code.js` and `claude-code-parse.js`; `harness/runtime.js`
@@ -255,6 +268,8 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   raised for any hit with `--isolate none`, for hits in the `~/Library` dirs macOS runs code from
   (`LaunchAgents`, `Services`, `Scripts`, `QuickLook` and similar) with `--isolate sandbox-exec`
   (system processes write elsewhere in `~/Library` all the time), and never with `--isolate unshare`, where a hit is another process (an IDE).
+  A hit on a credentials path (`.aws`, `credentials`, `.credentials.json`) prints a note on stderr: the run's scratch HOME hides
+  those paths, so the hit may come from a credentials refresh in another shell.
   With `none` or `sandbox-exec`, a scan that stops at its entry cap raises `homeTripwireTruncated`.
 - SIGINT/SIGTERM/SIGHUP kills every agent group, removes scratch dirs and auth copies, writes
   `summary.json` with `interrupted`, and exits non-zero. The judge phase does the same for its calls.
