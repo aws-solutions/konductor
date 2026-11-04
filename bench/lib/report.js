@@ -114,6 +114,13 @@ function judgeGapLine(verdict) {
   return `- Judge gap (with minus without): not computed, ${n} usable pairs`;
 }
 
+/** A line that counts the pairs left out of the word-check gap for unequal check lists, or none. */
+function mismatchLines(aggregate) {
+  const n = aggregate.check_mismatch_pairs;
+  if (!Number.isInteger(n) || n <= 0) return [];
+  return [`- Word-check pairs left out: ${n}, the two arms ran different numbers of checks`];
+}
+
 function wordCheckLine(wc) {
   if (!isObject(wc)) return '- Word-check gap: not recorded';
   const k = countOf(wc.k ?? wc.pairs);
@@ -165,6 +172,7 @@ function skillLines(name, entry) {
     `- Judge-only verdict: ${verdictWord(verdict.judge_verdict ?? verdict.verdict)}`,
     judgeGapLine(verdict),
     wordCheckLine(verdict.word_check),
+    ...mismatchLines(aggregate),
     gateLine(verdict),
     ...trustLines(isObject(entry) ? entry : {}),
     `- Reason: ${oneLine(verdict.reason)}`,

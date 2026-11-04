@@ -76,7 +76,8 @@
  * which turns them into `c_with`, `c_without` and `w` and applies the word-check gate. The judge
  * never sees them, and they do not enter the judge gap. They are part of the pair digest, so
  * editing them makes the stored result stale and it is rebuilt from stored judgments with no call.
- * Step 6 fills `check_results`; this driver only reads it.
+ * `checkResultsFor` (checks.js) fills `check_results` when a pair is written; this driver only
+ * reads it.
  *
  * ## The judge sees
  *

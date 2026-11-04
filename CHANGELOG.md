@@ -276,6 +276,14 @@ not per individual commit.
   exhausted work budget, a check past the ceiling, a missing final snapshot, or a
   `fixture_unchanged` check with no start snapshot). A task with no checks gives `[]`. It is pure
   and never throws. Run `node --test bench/test/check-results.test.js`.
+- An equal-length rule for the word-check results of a task. The two arms must hold the same
+  number of results, and an arm with no list counts as none. When they differ, `aggregateSkill`
+  leaves the pair out of the word-check gap (`c_with`, `c_without` and `w` are null), keeps it in
+  the judge gap, marks it `check_mismatch: { with, without }`, and counts such pairs in the skill
+  result as `check_mismatch_pairs`. It does not throw, so a stored run still replays, and it does
+  not change the verdict rule: a pair with a `null` entry already leaves the gate the same way.
+  The report prints "Word-check pairs left out: N, the two arms ran different numbers of checks"
+  when N is above zero. Run `node --test bench/test/check-mismatch.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.

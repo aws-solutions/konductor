@@ -8,9 +8,9 @@
  * call.
  *
  * Where word-check results come from. The caller passes `wordChecks`, and the judge driver
- * (run/judge.js) builds it from the `check_results` stored on each arm's pair (store.js). Step 6
- * of the port plan fills `check_results` by running the task's checks on the arm's final
- * snapshot; nothing in this file runs a check.
+ * (run/judge.js) builds it from the `check_results` stored on each arm's pair (store.js). Whoever
+ * writes a pair fills `check_results` with `checkResultsFor` (checks.js), which runs the task's
+ * checks on the arm's final snapshot; nothing in this file runs a check.
  */
 const { MIN_SEATS_PER_PAIR, DECISION_RULE_NAME, decisionRuleSha256 } = require('./decision-rule');
 const { gradedVerdict, wordCheckGate } = require('./verdict');
@@ -86,6 +86,9 @@ function checkShare(results) {
   return results.filter((r) => r === true).length / results.length;
 }
 
+/** How many word checks `results` holds; a missing or non-array value holds none. */
+const checkCount = (results) => (Array.isArray(results) ? results.length : 0);
+
 /**
  * Aggregates one skill.
  *
@@ -97,7 +100,12 @@ function checkShare(results) {
  *  - `treatment`: optional `{ [taskId]: { required, adhered } }`. Where `required`, the pair counts
  *    only if `adhered`. Only a control skill has one.
  *  - `wordChecks`: optional `{ [taskId]: { with: results, without: results } }`, each `results`
- *    as in `checkShare`. A missing entry or arm gives no word-check gap for the pair.
+ *    as in `checkShare`. A missing entry or arm gives no word-check gap for the pair. Both arms of
+ *    a task must hold the same number of results (a missing arm counts as none). When they differ
+ *    the pair has no word-check gap (`c_with`, `c_without` and `w` are null), stays in the judge
+ *    gap, and carries `check_mismatch: { with, without }` with the two lengths; the skill result
+ *    then carries `check_mismatch_pairs`, their count. The aggregation does not throw on it,
+ *    because a stored run must still replay.
  *  - `cfg`: `{ judges: [{ seat }] }`, the planned seats.
  *
  * A pair is scored when at least MIN_SEATS_PER_PAIR of the planned seats (fewer if fewer were
@@ -139,8 +147,14 @@ function aggregateSkill({
     const check = treatment[t.id] || null;
     const adhered = !check || !check.required || !!check.adhered;
     const words = wordChecks[t.id] || {};
-    const cWith = checkShare(words.with);
-    const cWithout = checkShare(words.without);
+    // The two arms of one task must have run the same list of checks. Unequal lists (an arm re-run
+    // after the checks were edited, or one arm missing its results) give shares that do not compare,
+    // so the pair is left out of the word-check gap and says so.
+    const withLength = checkCount(words.with);
+    const withoutLength = checkCount(words.without);
+    const mismatched = withLength !== withoutLength;
+    const cWith = mismatched ? null : checkShare(words.with);
+    const cWithout = mismatched ? null : checkShare(words.without);
     return {
       task_id: t.id,
       target_section: t.target_section,
@@ -159,8 +173,10 @@ function aggregateSkill({
       c_with: cWith,
       c_without: cWithout,
       w: cWith !== null && cWithout !== null ? cWith - cWithout : null,
+      ...(mismatched ? { check_mismatch: { with: withLength, without: withoutLength } } : {}),
     };
   });
+  const mismatchedPairs = pairs.filter((p) => p.check_mismatch !== undefined).length;
   const prune_safety = { blocked_reason: pruneBlockedReason };
   const graded = gradedVerdict(pairs, prune_safety);
   const verdict = wordCheckGate(graded, pairs);
@@ -183,6 +199,7 @@ function aggregateSkill({
     prune_safety,
     graded,
     verdict,
+    ...(mismatchedPairs > 0 ? { check_mismatch_pairs: mismatchedPairs } : {}),
   };
 }
 

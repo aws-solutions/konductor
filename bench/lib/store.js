@@ -35,8 +35,8 @@
  * (it failed) or `null` (it gave no verdict). The field is absent when the task has no word checks,
  * and an absent field is not the same as an empty array. It is covered by the pair's input digest,
  * so editing it makes the pair, and any result built from it, stale. The store only keeps and
- * compares it. Step 6 of the port plan fills it, by running the task's checks on the arm's final
- * snapshot; until then a pair carries it only when a caller supplies it.
+ * compares it. `checkResultsFor` (checks.js) fills it, by running the task's checks on the arm's
+ * final snapshot; a pair carries it only when its writer supplies it.
  *
  * Freshness is strict. A stored record is current only when it carries the digest of the inputs a
  * caller computes now, and every field of its format. Nothing is reused on a missing field, an
