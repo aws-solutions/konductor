@@ -118,6 +118,30 @@ test('SB_SKILLS is passed to the skill bench as --only through run-skill-bench -
   } finally { s.done(); }
 });
 
+test('a controls run that could not start is not reported as failed controls, and failed controls still are', opts, () => {
+  const s = sandbox();
+  try {
+    const { env } = chain(s);
+    const ran = s.spawn(SCRIPT, ['--foreground'], { ...env, FAKE_SB_STOP: 'controls-run-failed' });
+    assert.equal(ran.status, 1, out(ran));
+    const reason = state(s).P5_reason;
+    assert.match(reason, /the known-answer controls could not run \(the runner exited with an error\)/);
+    assert.match(reason, /controls-run-failed/);
+    assert.match(reason, /no verdict was made/);
+    assert.doesNotMatch(reason, /no skill verdict can be trusted/);
+    assert.doesNotMatch(reason, /controls failed/i);
+  } finally { s.done(); }
+  const t = sandbox();
+  try {
+    const { env } = chain(t);
+    const failed = t.spawn(SCRIPT, ['--foreground'], { ...env, FAKE_SB_STOP: 'controls-failed' });
+    assert.equal(failed.status, 1, out(failed));
+    const reason = state(t).P5_reason;
+    assert.match(reason, /controls failed \(controls-failed\): no skill verdict can be trusted/i);
+    assert.doesNotMatch(reason, /could not run/);
+  } finally { t.done(); }
+});
+
 test('with patches, P2 applies them, runs the suite, and makes one commit per patch with the right messages; nothing else is staged', opts, () => {
   const s = sandbox();
   try {

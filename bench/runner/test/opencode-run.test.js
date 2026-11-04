@@ -298,6 +298,24 @@ test('CLI: an opencode run writes run-config pins, names-only env.json and a USD
   }
 });
 
+test('CLI: run-config records the effective hide settings, and --no-default-hide turns the default credential set off', async () => {
+  const s = prepareRoot({});
+  try {
+    const read = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'run-config.json'), 'utf8')).isolation;
+    const base = ['--arms', 'oc-vanilla', '--seed', '1', '--budget-usd', '1', '--effort', 'low'];
+    const on = await collect(runCli(s.root, [...base, '--out', path.join(s.root, 'out-on'), '--hide', '.extra-one']));
+    assert.equal(on.code, 0, on.err);
+    const a = read(path.join(s.root, 'out-on'));
+    assert.equal(a.defaultHide, true);
+    assert.deepEqual(a.hide, ['.extra-one']);
+    assert.deepEqual(a.hideInHome, [], 'mode none hides nothing, and the record says so');
+    const off = await collect(runCli(s.root, [...base, '--out', path.join(s.root, 'out-off'), '--no-default-hide']));
+    assert.equal(off.code, 0, off.err);
+    assert.match(off.err + off.out, /--no-default-hide: the credential paths added to the default hide set stay readable/);
+    assert.equal(read(path.join(s.root, 'out-off')).defaultHide, false);
+  } finally { s.cleanup(); }
+});
+
 test('CLI: arms of two harnesses in one run are refused', async () => {
   const s = prepareRoot({});
   try {

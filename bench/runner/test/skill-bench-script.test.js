@@ -7,6 +7,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { env: studyEnv, withRuns } = require('./cap-study-helpers.js');
@@ -199,6 +200,42 @@ test('a foreground run plans every skill at init and applies the tier and skill 
     assert.match(calls[1], new RegExp(`--aws-creds-file ${s.creds}`));
     assert.equal(fs.existsSync(path.join(s.state, 'skill-bench.pid')), false, 'the pid file is removed when the run ends');
     assert.match(fs.readFileSync(path.join(s.state, 'skill-bench.study'), 'utf8'), /skill-bench-/);
+  } finally { s.done(); }
+});
+
+test('every runner call gets the real toolchain dirs and the cache and cargo-target flags (fake runner that records its env)', () => {
+  const s = sandbox();
+  try {
+    const log = path.join(s.e.root, 'env.log');
+    const fake = path.join(s.e.root, 'fake-env-cli.js');
+    fs.writeFileSync(fake, `require('fs').appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv: process.argv.slice(2), home: process.env.HOME, cargo: process.env.CARGO_HOME, rustup: process.env.RUSTUP_HOME }) + '\\n');`);
+    const r = s.run(['--foreground', '--skills', 'sectioned'], { CLI_JS: fake });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const calls = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    assert.equal(calls.length, 2);
+    const realHome = os.userInfo().homedir;
+    for (const c of calls) {
+      assert.equal(c.cargo, path.join(realHome, '.cargo'));
+      assert.equal(c.rustup, path.join(realHome, '.rustup'));
+      assert.notEqual(c.home, realHome, 'the scratch HOME is still used');
+      assert.equal(c.argv[c.argv.indexOf('--cache') + 1], path.join(s.state, 'cache'));
+      assert.equal(c.argv[c.argv.indexOf('--cargo-target') + 1], path.join(s.state, 'cargo-target'));
+    }
+  } finally { s.done(); }
+});
+
+test('CACHE and CARGO_TARGET override the default cache and cargo-target locations', () => {
+  const s = sandbox();
+  try {
+    const log = path.join(s.e.root, 'calls.log');
+    const fake = path.join(s.e.root, 'fake-cli.js');
+    fs.writeFileSync(fake, `require('fs').appendFileSync(${JSON.stringify(log)}, process.argv.slice(2).join(' ') + '\\n');`);
+    const r = s.run(['--foreground', '--skills', 'sectioned'], { CLI_JS: fake, CACHE: path.join(s.e.root, 'my-cache'), CARGO_TARGET: path.join(s.e.root, 'my-target') });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    for (const line of fs.readFileSync(log, 'utf8').trim().split('\n')) {
+      assert.ok(line.includes(`--cache ${path.join(s.e.root, 'my-cache')} `), line);
+      assert.ok(line.includes(`--cargo-target ${path.join(s.e.root, 'my-target')}`), line);
+    }
   } finally { s.done(); }
 });
 

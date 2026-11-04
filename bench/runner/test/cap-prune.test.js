@@ -11,7 +11,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { makeEnv, prefEntry, makeRunDir, V1, V2, VAN } = require('./cap-prune-helpers.js');
-const { classify, trimFor, percentile90 } = require('../../cap/prune.js');
+const { classify, trimFor, percentile90, buildPruneReport } = require('../../cap/prune.js');
 const { parseEvidence } = require('../../cap/evidence.js');
 const { expandGlob } = require('../../cap/usage.js');
 
@@ -133,6 +133,29 @@ test('classify: HARMS wins over everything, even a helps row and an unreachable 
   const helps = { verdict: 'helps', n: 6, delta: 0.5, aaSpread: 0.1, behaviorChange: false, kind: 'lift' };
   assert.equal(classify({ ...base, evidence: [helps, hurts] }).class, 'HARMS');
   assert.equal(classify({ ...base, reachable: false, evidence: [hurts] }).class, 'HARMS');
+});
+
+test('classify: HARMS needs at least 6 evidence runs on the hurting rows; fewer is NEEDS DATA at low confidence', () => {
+  const hurts = (n) => ({ verdict: 'hurts', n, delta: -0.5, aaSpread: 0.1, behaviorChange: false, kind: 'lift' });
+  for (const n of [1, 5]) {
+    const thin = classify({ ...base, evidence: [hurts(n)] });
+    assert.equal(thin.class, 'NEEDS DATA', `n=${n}`);
+    assert.equal(thin.confidence, 'low');
+    assert.match(thin.reason, new RegExp(`only ${n} run`));
+    assert.match(thin.wouldChange, /6/);
+  }
+  assert.equal(classify({ ...base, evidence: [hurts(6)] }).class, 'HARMS');
+  assert.equal(classify({ ...base, evidence: [hurts(3), hurts(3)] }).class, 'HARMS', 'rows add up');
+  assert.equal(classify({ ...base, reachable: false, exposed: 0, evidence: [hurts(1)] }).class, 'PRUNE', 'thin evidence does not hide an unreachable skill');
+});
+
+test('classify: FIX confidence is never high under 30 exposed runs, whatever the minimum, and a tiny minimum is not enough for medium', () => {
+  assert.notEqual(classify({ ...base, exposed: 3, minExposure: 1 }).confidence, 'high');
+  assert.notEqual(classify({ ...base, exposed: 29, minExposure: 5 }).confidence, 'high');
+  assert.equal(classify({ ...base, exposed: 30, minExposure: 5 }).confidence, 'high');
+  assert.equal(classify({ ...base, exposed: 30, minExposure: 10 }).confidence, 'high');
+  assert.equal(classify({ ...base, exposed: 3, minExposure: 3 }).confidence, 'low', 'under 5 runs is low');
+  assert.equal(classify({ ...base, exposed: 5, minExposure: 5 }).confidence, 'medium');
 });
 
 test('classify: unreachable decides RELOCATE only with a sign of another harness, else PRUNE, and PRUNE needs every assessed harness to miss it', () => {
@@ -547,6 +570,31 @@ test('input errors exit 2 and write nothing: missing --base, bad harness, bad mi
     assert.equal(typo.status, 2);
     assert.match(typo.stderr, /unknown flag --evidance \(did you mean --evidence\?\)/);
   } finally { env.done(); }
+});
+
+test('--min-exposure under 3 is refused, and one under the default of 10 prints a note that confidence is capped', () => {
+  const env = makeEnv();
+  try {
+    for (const v of ['1', '2']) {
+      const { r, report } = prune(env, ['--min-exposure', v]);
+      assert.equal(r.status, 2, v);
+      assert.match(r.stderr, /--min-exposure takes a whole number of at least 3/);
+      assert.equal(report, null, 'nothing is written');
+    }
+    const low = prune(env, ['--min-exposure', '4']);
+    assert.equal(low.r.status, 0, low.r.stderr);
+    assert.match(low.r.stderr, /note: --min-exposure 4 is under the default of 10; confidence is never high below 30 exposed runs/);
+    assert.equal(low.report.minExposure, 4);
+    const dflt = prune(env, [], { out: path.join(env.root, 'out-default') });
+    assert.equal(dflt.r.status, 0, dflt.r.stderr);
+    assert.doesNotMatch(dflt.r.stderr, /--min-exposure/);
+  } finally { env.done(); }
+});
+
+test('buildPruneReport refuses a minimum exposure under 3 or a non-integer, whoever calls it', () => {
+  for (const minExposure of [1, 2, 0, -5, 3.5, NaN]) {
+    assert.throws(() => buildPruneReport({ repo: '/nonexistent', base: 'v0', minExposure }), /minimum exposure takes a whole number of at least 3/, String(minExposure));
+  }
 });
 
 test('with no run directories the report still classifies by reach and says no usage was read', () => {

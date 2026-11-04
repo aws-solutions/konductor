@@ -839,7 +839,10 @@ p5_skillbench() {
     st_set P5_last_stop "exit $rc reason ${reason:-none recorded}"
     say "P5: run-skill-bench exited $rc; stop reason: ${reason:-none recorded}"
     case "$reason" in
-      controls-failed*|controls-run-failed*)
+      controls-run-failed*)
+        fail_phase "the known-answer controls could not run (the runner exited with an error): see $sbv/logs/controls-run.log; no verdict was made ($reason), so stage 1 stopped. Nothing was applied."
+        return 1 ;;
+      controls-failed*)
         fail_phase "THE KNOWN-ANSWER CONTROLS FAILED ($reason): no skill verdict can be trusted, so stage 1 stopped. Study $sbv, controls under controls/. Nothing was applied."
         return 1 ;;
     esac

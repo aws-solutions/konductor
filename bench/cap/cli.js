@@ -31,7 +31,7 @@ const { scoreTrigger, crossCheck } = require('./score.js');
 const { cmdRun } = require('../runner/lib/run-cmd.js');
 const { loadRun } = require('../report/load.js');
 const { seedOf } = require('../runner/lib/pr-plan.js');
-const { buildPruneReport, renderPrune } = require('./prune.js');
+const { buildPruneReport, renderPrune, DEFAULT_MIN_EXPOSURE, MIN_EXPOSURE_FLOOR, HIGH_MIN_EXPOSED } = require('./prune.js');
 const { buildPruneDocument } = require('../report/prunedoc.js');
 const { buildSkillCards } = require('../report/skillcard.js');
 const { writeOutputs, detailOf, formatOf } = require('../report/generate.js');
@@ -459,8 +459,9 @@ function cmdPruneReport(opts) {
   if (!opts.base || opts.base === true) throw new Error('prune-report needs --base REF, so reachability and usage refer to a known tree');
   const harness = opts.harness && opts.harness !== true ? opts.harness : 'both';
   if (!['kiro-cli', 'opencode', 'both'].includes(harness)) throw new Error('--harness takes kiro-cli, opencode or both');
-  const minRaw = opts['min-exposure'] === undefined ? '10' : String(opts['min-exposure']);
-  if (!/^[1-9]\d*$/.test(minRaw)) throw new Error('--min-exposure takes a whole number of at least 1');
+  const minRaw = opts['min-exposure'] === undefined ? String(DEFAULT_MIN_EXPOSURE) : String(opts['min-exposure']);
+  if (!/^\d+$/.test(minRaw) || Number(minRaw) < MIN_EXPOSURE_FLOOR) throw new Error(`--min-exposure takes a whole number of at least ${MIN_EXPOSURE_FLOOR}: a load rate from fewer runs says nothing`);
+  if (Number(minRaw) < DEFAULT_MIN_EXPOSURE) console.error(`note: --min-exposure ${minRaw} is under the default of ${DEFAULT_MIN_EXPOSURE}; confidence is never high below ${HIGH_MIN_EXPOSED} exposed runs`);
   const runDirs = list(opts.runs).map((d) => path.resolve(d));
   for (const d of runDirs) if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) throw new Error(`run directory not found: ${d}`);
   if (opts['runs-glob'] !== undefined) {

@@ -18,7 +18,7 @@ const real = require('./real.js');
 const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
 const { buildChildEnv, describeEnv } = require('./env.js');
-const { resolveIsolation, ISOLATE_MODES } = require('./isolate.js');
+const { resolveIsolation, describeHide, ISOLATE_MODES } = require('./isolate.js');
 const { DEFAULT_EXCLUDES, REPO_EXCLUDES } = require('./tripwire.js');
 const procs = require('./procs.js');
 const sandbox = require('./sandbox.js');
@@ -188,6 +188,7 @@ async function cmdRun(opts) {
   log(plan.text);
   const note = budgetNote(plan.planned, budgetCredits, budgetFlag);
   if (note) log(note);
+  if (opts['no-default-hide']) { process.env.BENCH_NO_DEFAULT_HIDE = '1'; log('--no-default-hide: the credential paths added to the default hide set stay readable'); }
   const isolation = resolveIsolation(isolate);
   log(`isolation: ${isolation.mode} (${isolation.reason})`);
   if (parallel > 1) log(`warning: --parallel ${parallel} shares one account; wall-clock comparisons need --parallel 1`);
@@ -275,7 +276,7 @@ async function cmdRun(opts) {
       order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',
       timeoutSecByTask: Object.fromEntries(tasks.map((t) => [t.id, t.timeoutSec])),
       ...config, ...ctx.envInfo,
-      isolation: { ...isolation, hide: ctx.hide, mask: ctx.mask }, tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
+      isolation: { ...isolation, ...describeHide(isolation.mode, ctx.hide), mask: ctx.mask }, tripwire: { depth: ctx.tripwire.roots[0].depth, excludes: [...DEFAULT_EXCLUDES, ...tripExtra], roots: ctx.tripwire.roots.map((r) => r.dir) },
       arms: rc.armRecords(arms, prepared, errors),
       originMain: mainArm ? { originMainSha: mainArm.originMainSha, localMainSha: mainArm.localMainSha, behindOrigin: mainArm.behindOrigin, usedRef: mainArm.ref } : null,
       modelNormalized: arms.some((a) => !a.vanilla),

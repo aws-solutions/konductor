@@ -7,7 +7,7 @@
 const FLAGS = {
   run: [
     'suite', 'arms', 'tasks', 'replicates', 'parallel', 'budget-credits', 'budget-usd', 'out', 'model', 'effort', 'cache', 'cargo-target',
-    'cargo-online', 'seed', 'isolate', 'allow-partial', 'censored-floor', 'hide', 'env-keep', 'tripwire-exclude', 'tripwire-depth', 'tripwire-dir',
+    'cargo-online', 'seed', 'isolate', 'allow-partial', 'censored-floor', 'hide', 'no-default-hide', 'env-keep', 'tripwire-exclude', 'tripwire-depth', 'tripwire-dir',
     'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'agent-engine',
     'extra-tasks', 'run-credit-limit', 'auth-db', 'arm-prefix', 'arm-agent', 'arm-config', 'stop-on', 'max-tool-calls', 'profile',
   ],
@@ -60,7 +60,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'va
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'screen',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'screen', 'no-default-hide',
 ]);
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];

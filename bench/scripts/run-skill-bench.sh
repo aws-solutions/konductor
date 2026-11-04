@@ -41,6 +41,8 @@
 #   EXPOSURE_RUNS  comma list of finished run directories used for load data   [none]
 #   RUNS_GLOBS  comma list of globs of finished run directories                [none]
 #   ARM_CONFIG  per-arm konductor config            [orchestration.mode=coordinator]
+#   CACHE       arm build cache, kept across calls     [STATE_DIR/cache]
+#   CARGO_TARGET  cargo target dir shared by builds    [STATE_DIR/cargo-target]
 #   MODEL, ENGINE, PROFILE, SEED, REPS, TASKS_PER_SKILL, MAX_SECTIONS, BUDGET_USD, WAVE_BUDGET_CREDITS
 #   SCREEN      1 (default) shares wave 1 between skills that enter through the same agent: one control and A/A, a delete arm per skill. 0 gives each skill its own wave 1
 #   MIN_FREE_GB [20], MIN_FREE_GB_TMPFS [same as MIN_FREE_GB]: free space needed on the results filesystem
@@ -81,6 +83,8 @@ SEED=${SEED:-20261103}
 MIN_FREE_GB=${MIN_FREE_GB:-20}
 SCRATCH_PARENT=${SCRATCH_PARENT:-/tmp}
 BUDGET_USD=${BUDGET_USD:-15}
+CACHE=${CACHE:-$STATE_DIR/cache}
+CARGO_TARGET=${CARGO_TARGET:-$STATE_DIR/cargo-target}
 
 MODE=daemon
 TIER=all
@@ -186,11 +190,12 @@ on_term() {
 }
 trap on_term TERM INT HUP
 
-# run_node <args...>: node bench.js with a scratch HOME and a TMPDIR without "bench" in its path
+# run_node <args...>: node bench.js with a scratch HOME and a TMPDIR without "bench" in its path. The scratch HOME has no
+# rustup settings, so the real toolchain dirs are passed explicitly or cargo finds no default toolchain.
 run_node() {
   CUR_SH=$(mktemp -d "$SCRATCH_PARENT/xq-home.XXXXXX") || return 99
   CUR_TD=$(mktemp -d "$SCRATCH_PARENT/xq.XXXXXX") || return 99
-  ( cd "$REPO" && exec env HOME="$CUR_SH" TMPDIR="$CUR_TD" node "$CLI_JS" "$@" ) &
+  ( cd "$REPO" && exec env HOME="$CUR_SH" TMPDIR="$CUR_TD" CARGO_HOME="$REAL_HOME/.cargo" RUSTUP_HOME="$REAL_HOME/.rustup" node "$CLI_JS" "$@" ) &
   CHILD_PID=$!
   wait "$CHILD_PID"; local rc=$?
   CHILD_PID=""
@@ -208,8 +213,8 @@ plan_args() { # flags shared by skill-plan and skill-study --init; the study pla
   [ "${SCREEN:-1}" = 1 ] && a+=(--screen)
   printf '%s\0' "${a[@]}"
 }
-run_flags() { # flags for the run itself
-  local -a a=(--budget-usd "$BUDGET_USD" --aws-creds-file "$CREDS" --auth-db "$AUTH_DB")
+run_flags() { # flags for the run itself; cache and cargo target live outside the per-call TMPDIR so builds survive between calls
+  local -a a=(--budget-usd "$BUDGET_USD" --aws-creds-file "$CREDS" --auth-db "$AUTH_DB" --cache "$CACHE" --cargo-target "$CARGO_TARGET")
   [ -n "$OC" ] && a+=(--opencode-bin "$OC")
   [ -n "${WAVE_BUDGET_CREDITS:-}" ] && a+=(--wave-budget-credits "$WAVE_BUDGET_CREDITS")
   [ -n "$SEED" ] && a+=(--seed "$SEED")

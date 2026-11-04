@@ -27,7 +27,7 @@ Every script takes `--help`.
 | P2 | PATCH | Optional. Skipped unless `PATCHES` lists patch files. Otherwise applies them to the checkout in order, runs the bench suite, and makes one local commit per patch. Nothing is pushed. A failing suite reverts every patch. |
 | P3 | AUTONOMY | Optional. Runs when `RERUN_AUTONOMY=1`, which is the default once `PATCHES` is set. Moves the autonomy task dirs to `incomplete/autonomy-rerun-<UTC>/` and reruns them through `run-real-pilot.sh --foreground`. |
 | P4 | JUDGE | Judges every capability task dir with the opencode backend on Bedrock, then builds the free reports and `real-pilot-summary.txt`. Needs valid AWS credentials. |
-| P5 | SKILLBENCH | `run-skill-bench.sh --foreground` (stage 1). Known-answer controls run first; a failed control stops the chain. Needs valid credentials. |
+| P5 | SKILLBENCH | `run-skill-bench.sh --foreground` (stage 1). Known-answer controls run first; a failed control stops the chain, and so does a controls run that cannot start (the stop reason says which: `controls-failed` is a verdict, `controls-run-failed` is a runner error with no verdict). Needs valid credentials. |
 | P6 | SUMMARY | Writes `after-capability-summary.txt` and ends with `DONE` or `FAILED at phase N`. |
 
 ## Set up a fresh study

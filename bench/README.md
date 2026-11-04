@@ -22,7 +22,7 @@ node bench/tasks/validate-tasks.js                                  # tasks vs r
 Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--budget-credits X`,
 `--model ID` (default claude-sonnet-5.5), `--effort LEVEL` (default high), `--agent-engine v2|v3` (default v2), `--seed N`,
 `--isolate auto|unshare|sandbox-exec|none`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
-`--hide PATH,..`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
+`--hide PATH,..`, `--no-default-hide`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
 `--suite lite|full|hard|real|autonomy|pilot|cap` (`cap` is the fallback the `cap` commands use; they name their arms).
 No credit cap is the default: every run is a line in `credit-ledger.jsonl` in the results directory and `run` prints the running total. `--budget-credits X` is an optional guard
@@ -138,6 +138,13 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   user-writable trees outside the home (hidden, or read-only if a PATH tool lives there), the bench
   `fixtures`, `tasks/solutions`, `tasks/stubs`, `tasks/hidden`, `tasks/partials`, every answer key and the output directory. Capabilities
   are emptied after setup (`setpriv`, no-new-privs), so the agent cannot remount or unmount anything.
+- Also hidden by default, on top of that list: the single-sign-on cookie and token directories, `.gitconfig`,
+  `.cargo/credentials*` (the files only: `.cargo/bin`, `.rustup`, `.cache` and the language toolchains stay
+  readable), and the cloud-CLI and password-store credentials `.kube .azure .oci .vault-token .pgpass .my.cnf
+  .s3cfg .boto .password-store .gem/credentials .terraform.d/credentials.tfrc.json .local/share/keyrings`.
+  `--no-default-hide` (or env `BENCH_NO_DEFAULT_HIDE=1`) turns off only this added set; the list above and
+  `--hide` extras are unaffected. `run-config.json` records `isolation.hideInHome` (the effective list, empty
+  with `--isolate none`), `isolation.hide` (extras) and `isolation.defaultHide`.
 - Site-specific cookie or token paths: `--hide PATH,..` or env `BENCH_HIDE_EXTRA=a,b` (names relative
   to the home, or absolute; files and directories). Not network isolated: the agent can reach any host
   the machine can, and sibling runs' scratch dirs stay readable when `--parallel` is above 1.

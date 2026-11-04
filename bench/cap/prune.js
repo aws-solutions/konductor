@@ -6,6 +6,7 @@
 
 const { runAudit } = require('./audit.js');
 const { scanRunDirs, tallyUsage } = require('./usage.js');
+const { MIN_EVIDENCE_N } = require('../report/skillcard.js');
 
 const TOOL_VERSION = 'cap-prune-report/1';
 const LOAD_RATE_MIN = 0.3;
@@ -14,9 +15,13 @@ const CLASSES = ['HARMS', 'RELOCATE', 'PRUNE', 'FIX', 'KEEP', 'NEEDS DATA'];
 const CLAUDE_TEXT = /\bclaude[ -]?code\b|\bclaudeCli\b/i;
 const estTokens = (bytes) => Math.round(bytes / 4);
 const LEVELS = ['low', 'medium', 'high'];
+const DEFAULT_MIN_EXPOSURE = 10;
+const MIN_EXPOSURE_FLOOR = 3;
+const MEDIUM_MIN_EXPOSED = 5;
+const HIGH_MIN_EXPOSED = 30;
 
 // Printed in the text and document reports so none of these cut-offs reads as borrowed from a published method.
-const OWN_THRESHOLDS_NOTE = 'Thresholds that are our own, not from an external source: load rate 30%, near-duplicate Jaccard 0.6, size over the p90 of skill bytes, minimum exposure 10 runs (default), evidence of at least 6 runs, the A/A rule (a delta inside the spread is noise), the 0.95 ceiling, the 600 and 60 character description limits, the 5% leakage limit, and the mapping from classes to keep, prune candidate, needs human review and incomplete.';
+const OWN_THRESHOLDS_NOTE = 'Thresholds that are our own, not from an external source: load rate 30%, near-duplicate Jaccard 0.6, size over the p90 of skill bytes, minimum exposure 10 runs (default, never under 3), confidence medium from 5 exposed runs and high from 30, evidence of at least 6 runs for HARMS, the A/A rule (a delta inside the spread is noise), the 0.95 ceiling, the 600 and 60 character description limits, the 5% leakage limit, and the mapping from classes to keep, prune candidate, needs human review and incomplete.';
 const LOAD_RATE_NOTE = 'Load rate is runs that loaded the skill through a skill tool call, divided by runs where an agent could. It is not comparable to SkillsBench\'s skill invocation rate, which counts task-matched trials where the agent reads or invokes a bundled skill. A direct read of a SKILL.md is not counted as a load here.';
 
 /** Nearest-rank 90th percentile. */
@@ -37,15 +42,16 @@ function trimFor(rec, p90, bytesOf) {
 
 function summarizeEvidence(rows) {
   const has = (v) => rows.some((r) => r.verdict === v);
+  const hurtsN = rows.filter((r) => r.verdict === 'hurts').reduce((a, r) => a + r.n, 0);
   const n = rows.reduce((a, r) => a + r.n, 0);
   const inside = rows.some((r) => ['helps', 'hurts'].includes(r.verdict) && r.delta !== null && r.aaSpread !== null && Math.abs(r.delta) <= r.aaSpread);
-  return { hurts: has('hurts'), helps: has('helps'), behaviorChange: rows.some((r) => r.behaviorChange), n, inside };
+  return { hurts: has('hurts'), hurtsN, helps: has('helps'), behaviorChange: rows.some((r) => r.behaviorChange), n, inside };
 }
 
 const evidenceConfidence = (ev) => (ev.inside || ev.n < 6 ? 'low' : ev.n >= 10 ? 'high' : 'medium');
 const lower = (level) => LEVELS[Math.max(0, LEVELS.indexOf(level) - 1)];
 function exposureConfidence(exposed, min, uncertain) {
-  const level = exposed >= 3 * min ? 'high' : exposed >= min ? 'medium' : 'low';
+  const level = exposed >= Math.max(3 * min, HIGH_MIN_EXPOSED) ? 'high' : exposed >= Math.max(min, MEDIUM_MIN_EXPOSED) ? 'medium' : 'low';
   return uncertain > 0 ? lower(level) : level;
 }
 
@@ -65,7 +71,8 @@ function classify(i) {
   const out = (klass, reason, confidence, wouldChange, provisional = false) => ({ class: klass, provisional, reason, confidence, wouldChange });
   const oc = i.harness === 'opencode';
 
-  if (ev.hurts) {
+  const thinHurts = ev.hurts && ev.hurtsN < MIN_EVIDENCE_N;
+  if (ev.hurts && !thinHurts) {
     const conflict = ev.helps ? ' Other rows say it helps, so the evidence conflicts.' : '';
     return out('HARMS', `Evidence says it hurts: ${describeEvidence(i.evidence.filter((r) => r.verdict === 'hurts'))}.${conflict}`, evidenceConfidence(ev),
       'A repeat with more replicates in which the delta clears the A/A spread and the verdict is helps or none.');
@@ -83,6 +90,11 @@ function classify(i) {
     }
     return out('PRUNE', `No ${i.harness} agent lists it and nothing suggests another harness uses it.${i.assessedCount < 2 ? ' Only one harness was assessed, and this tool does not cover Claude Code.' : ''}`,
       i.assessedCount < 2 ? 'low' : 'medium', 'Any run that loads it, a registry owner or task for it, or a harness that is not assessed here and uses it.');
+  }
+
+  if (thinHurts) {
+    return out('NEEDS DATA', `Evidence says it hurts, but only ${ev.hurtsN} run${ev.hurtsN === 1 ? '' : 's'} back${ev.hurtsN === 1 ? 's' : ''} that: ${describeEvidence(i.evidence.filter((r) => r.verdict === 'hurts'))}. HARMS needs at least ${MIN_EVIDENCE_N}.`, 'low',
+      `A repeat with at least ${MIN_EVIDENCE_N} runs on the hurting rows, in which the delta clears the A/A spread.`);
   }
 
   const rate = i.exposed ? i.runsLoaded / i.exposed : null;
@@ -140,9 +152,10 @@ const labelOf = (c) => (c.class === 'KEEP' && c.provisional ? 'KEEP (provisional
 
 /**
  * Builds the report. `runDirs` are run directories (read only); `evidence` is { file, rows, warnings } from loadEvidence.
- * Throws on an unresolvable base or an invalid harness.
+ * Throws on an unresolvable base, an invalid harness or a minExposure under MIN_EXPOSURE_FLOOR.
  */
-function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = [], evidence = null, minExposure = 10, now = new Date() }) {
+function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = [], evidence = null, minExposure = DEFAULT_MIN_EXPOSURE, now = new Date() }) {
+  if (!Number.isInteger(minExposure) || minExposure < MIN_EXPOSURE_FLOOR) throw new Error(`minimum exposure takes a whole number of at least ${MIN_EXPOSURE_FLOOR}`);
   const { report: audit } = runAudit({ repo, base, harness, benchDir });
   const harnesses = harness === 'both' ? ['kiro-cli', 'opencode'] : [harness];
   const skills = audit.capabilities.filter((c) => c.kind === 'skill');
@@ -348,4 +361,4 @@ function renderPrune(report, { compact = false } = {}) {
   return `${L.join('\n')}\n`;
 }
 
-module.exports = { buildPruneReport, renderPrune, classify, trimFor, percentile90, TOOL_VERSION, CLASSES, OWN_THRESHOLDS_NOTE, LOAD_RATE_NOTE };
+module.exports = { buildPruneReport, renderPrune, classify, trimFor, percentile90, TOOL_VERSION, CLASSES, OWN_THRESHOLDS_NOTE, LOAD_RATE_NOTE, DEFAULT_MIN_EXPOSURE, MIN_EXPOSURE_FLOOR, HIGH_MIN_EXPOSED };

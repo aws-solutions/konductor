@@ -26,7 +26,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
-       [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-partial] [--censored-floor X] [--hide DIR,DIR]
+       [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        [--extra-tasks DIR,DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]

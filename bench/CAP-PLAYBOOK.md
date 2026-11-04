@@ -37,10 +37,10 @@ Rules apply in this order per skill and harness. TRIM is a separate flag beside 
 
 | Class | Rule | Do this | Never |
 | --- | --- | --- | --- |
-| HARMS | Evidence verdict `hurts` | Look at it first. Rerun with more replicates before acting. | Act on a delta inside the A/A spread |
+| HARMS | Evidence verdict `hurts` on rows that add up to at least 6 runs (fewer is NEEDS DATA) | Look at it first. Rerun with more replicates before acting. | Act on a delta inside the A/A spread |
 | RELOCATE | Unreachable on every assessed harness, and its text, owner or Claude Code list says another harness | Keep it where it is listed | Prune it |
 | PRUNE | Unreachable on every assessed harness, no sign of another | Open a prune review (checklist below) | Prune because it is unreachable on one harness only |
-| FIX | Reachable, offered in at least `--min-exposure` runs (default 10), loaded 0 times | Check discovery: routing text, description, prompt. Run `cap trigger` queries that should load it. | Delete it |
+| FIX | Reachable, offered in at least `--min-exposure` runs (default 10, minimum 3; under 10 prints a note), loaded 0 times. Confidence is low under 5 exposed runs and never high under 30 | Check discovery: routing text, description, prompt. Run `cap trigger` queries that should load it. | Delete it |
 | KEEP | Evidence verdict `helps`; or registry class `preference` with loads; or loaded in 30% or more of exposed runs with a behavior change in the evidence file | Leave it | Treat a load rate alone as proof |
 | KEEP (provisional) | Loaded in 30% or more of exposed runs, no evidence of effect | Leave it, plan a controlled run | Cite it as a measured benefit |
 | NEEDS DATA | Everything else, including exposure below the minimum | Gather runs or evidence | Decide on it |

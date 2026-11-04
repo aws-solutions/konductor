@@ -41,6 +41,7 @@ if (cmd === 'judge') {
 if (cmd === 'report' || cmd === 'contrast') { fs.mkdirSync(arg('--out'), { recursive: true }); process.exit(0); }
 if (cmd === 'cap') {
   if (a.includes('--init')) fs.mkdirSync(arg('--study'), { recursive: true });
+  if (!a.includes('--init') && process.env.FAKE_SB_STOP) { console.log('study stopped: ' + process.env.FAKE_SB_STOP); process.exit(1); }
   process.exit(0);
 }
 process.exit(0);

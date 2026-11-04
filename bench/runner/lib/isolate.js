@@ -34,6 +34,21 @@ const HIDE_IN_HOME = [
   '.bash_history', '.zsh_history', '.zhistory', '.sh_history', '.python_history', '.node_repl_history',
   '.psql_history', '.mysql_history', '.lesshst', '.viminfo',
 ];
+// Credential-bearing paths an agent has no use for, hidden on top of HIDE_IN_HOME unless BENCH_NO_DEFAULT_HIDE=1 or
+// `defaultHide: false`. Credential files inside a directory the build needs (.cargo) are masked one by one; .cargo/bin,
+// .rustup, .cache and the language toolchains stay readable. Two names are joined so no internal tool name sits in this file.
+const joinParts = (...p) => p.join('');
+const HIDE_CREDENTIALS_IN_HOME = [
+  joinParts('.mid', 'way'), joinParts('.mw', 'init'), '.gitconfig', '.cargo/credentials.toml', '.cargo/credentials',
+  '.kube', '.azure', '.oci', '.vault-token', '.pgpass', '.my.cnf', '.s3cfg', '.boto', '.password-store', '.gem/credentials',
+  '.terraform.d/credentials.tfrc.json', '.local/share/keyrings',
+];
+const defaultHideOn = () => process.env.BENCH_NO_DEFAULT_HIDE !== '1';
+// What a mode hides under the home, for the run record: nothing for mode none.
+function describeHide(mode, hide = [], { defaultHide = defaultHideOn() } = {}) {
+  const hideInHome = mode === 'none' ? [] : [...HIDE_IN_HOME, ...(defaultHide ? HIDE_CREDENTIALS_IN_HOME : [])];
+  return { defaultHide, hide: [...hide], hideInHome };
+}
 // kiro-cli keeps its auth database under ~/.local/share on Linux and ~/Library/Application Support on macOS.
 const MASK_IN_HOME = ['.local/share/kiro-cli', 'Library/Application Support/kiro-cli']
   .flatMap((d) => ['data.sqlite3', 'data.sqlite3-wal', 'data.sqlite3-shm'].map((f) => `${d}/${f}`));
@@ -227,12 +242,14 @@ function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTree
 /**
  * Returns {mode, wrap(file, args)}. Mode 'none' passes commands through unchanged.
  * `scratchRoot` is the only path under /tmp (or anywhere) that stays writable.
+ * `hide` lists extra home-relative (or absolute) paths to hide; the credential set above is added unless `defaultHide` is false.
  * `mask` lists extra paths to hide (bench fixtures, reference solutions, the output
  * directory); every answer key under `mask` or `keyRoots` is blanked as well. `keep` lists
  * paths that must stay visible (the agent binary). `offline` also gives the command an empty network namespace.
  */
-function makeIsolation({ mode, scratchRoot, home, hide = [], mask = [], keyRoots = [], keep = [], socketDirs, sshTmp, offline = false }) {
+function makeIsolation({ mode, scratchRoot, home, hide: extraHide = [], mask = [], keyRoots = [], keep = [], socketDirs, sshTmp, offline = false, defaultHide = defaultHideOn() }) {
   if (mode !== 'unshare' && mode !== SANDBOX_BIN) return { mode: 'none', wrap: (file, args) => ({ file, args }) };
+  const hide = defaultHide ? uniq([...HIDE_CREDENTIALS_IN_HOME, ...extraHide]) : extraHide;
   const scratch = fs.realpathSync(scratchRoot);
   const homes = realHomes(home);
   const systemDirs = realDirs([...RO_SYSTEM_DIRS, os.tmpdir()]);
@@ -349,5 +366,5 @@ function workingMode(home) {
 
 module.exports = {
   makeIsolation, probeUnshare, probeSandboxExec, resolveIsolation, workingMode, autoMode, realHomes, writableTrees, userLocalTrees, runtimeSockets, findAnswerKeys,
-  UNSHARE_FLAGS, HIDE_IN_HOME, ISOLATE_MODES,
+  UNSHARE_FLAGS, HIDE_IN_HOME, HIDE_CREDENTIALS_IN_HOME, describeHide, ISOLATE_MODES,
 };
