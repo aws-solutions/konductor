@@ -126,7 +126,7 @@ The sections below are the full reference. [CAP-PLAYBOOK.md](CAP-PLAYBOOK.md) is
 | --- | --- |
 | Prerequisites and `run` flags | [Prerequisites](#prerequisites), [Quick start](#quick-start) |
 | Suites and arms | [Suites and arms](#suites-and-arms) |
-| Other harnesses | [opencode harness](#opencode-harness), [Claude Code harness](#claude-code-harness) |
+| Other harnesses | [opencode harness](#opencode-harness), [Claude Code harness](#claude-code-harness), [2x2 pilot](#2x2-pilot) |
 | Isolation and safety | [Isolation, environment, safety](#isolation-environment-safety) |
 | Judging and calibration | [Judging](#judging), [Calibration](#calibration) |
 | Per-capability commands | [Capability benchmarking (cap)](#capability-benchmarking-cap) |
@@ -325,6 +325,48 @@ bash bench/scripts/claude-code-smoke.sh --profile NAME      # the checked first 
   `orch-metrics.js` (accepts a spawn tree); `report/aggregate.js` (`BASIS`, baseline), `report/render.js`, `report/compare.js`;
   `report/load.js` and `report/orchpass.js` (`cellKeyOf`) needed no change. The credit meter and early-stop watcher read kiro-cli
   and opencode events only, so their flags are refused here.
+
+## 2x2 pilot
+A small pilot of the question "does konductor help, and does the answer depend on the harness?": Kiro CLI and Claude Code,
+each vanilla and with konductor, on one model, judged by one panel. The design, units and limits are in
+[PILOT-2X2.md](PILOT-2X2.md). One repetition of five lite tasks in four cells is 20 runs. It measures what each cell costs
+and checks the whole pipeline; with n=1 per task the table is descriptive, not a test.
+
+```bash
+# 1. Look at the plan. Reads no credentials, starts nothing.
+bash bench/scripts/pilot-2x2.sh --dry-run --profile NAME --budget-usd CEILING --kiro-credit-limit N \
+  --claude-tools-dir DIR --out /var/tmp/pilot-2x2
+# 2. Run it, from your own terminal. Rerun the same command to resume.
+bash bench/scripts/pilot-2x2.sh --profile NAME --budget-usd CEILING --kiro-credit-limit N \
+  --claude-tools-dir DIR --out /var/tmp/pilot-2x2
+# 3. Only the table, from finished and judged cells
+bash bench/scripts/pilot-2x2.sh --cells report --out /var/tmp/pilot-2x2
+```
+- Sequence: `kiro-vanilla`, `kiro-konductor`, `cc-vanilla`, `cc-konductor`, then rubric judging of each directory with
+  `gpt-5.6-luna`, `deepseek-3.2` and `glm-5` through opencode, then `report-2x2`. `--cells kiro|cc|judge|report` runs one part.
+- Budgets have no default. `--budget-usd` is the USD ceiling for the Claude Code runs and the judging together: Claude Code
+  runs stop at 90% of it and the rest is held for judging. `--kiro-credit-limit` is the credit limit of one Kiro run (the
+  runner's `--run-credit-limit`). `--run-budget-usd` caps one Claude Code run (default 1.5).
+- Cost: the figures below are the inputs for choosing the ceiling, not a forecast. Measured earlier on other tasks: Kiro runs
+  averaged 1.74 credits for vanilla (50 runs) and 4.44 for konductor (25 runs; the longest run 14.6 credits); the
+  Claude Code smoke runs cost about USD 0.044 vanilla and USD 0.185 with konductor on trivial tasks; rubric judging cost about
+  USD 0.009 per run. The Claude Code cost on the five real tasks has not been measured. The pilot exists to measure it.
+- Resume: each (cell, task) is its own `bench.js run` under `OUT/cells/<cell>/<task>`. Finished tasks are skipped. An
+  unfinished, interrupted or infra-errored directory is moved to `OUT/incomplete/` and rerun; nothing is deleted. `--out` must
+  be empty or the output of this script with the same `--tasks`, `--reps`, `--seed` and commit; it cannot sit inside another
+  pilot output or the checkout.
+- Credentials: AWS keys come from `--profile` (exported with `aws configure export-credentials`; `--refresh-cmd CMD` runs once
+  if that fails) or from the three `AWS_*` variables already in the shell. Claude Code gets them through its environment.
+  Judging gets a mode 0600 credentials file in the scratch directory, removed when judging ends or the script exits. Nothing
+  is printed, put on a command line or written under `OUT`. Kiro runs get no AWS keys.
+- Table: `bench.js report-2x2 --kiro-vanilla DIR --kiro-konductor DIR --cc-vanilla DIR --cc-konductor DIR [--out DIR] [--json]`
+  (each flag takes one or more comma-separated judged run directories). It refuses cells with different tasks, judge panel,
+  rubric revision, model, konductor commit or cost unit. It prints quality per task and cell, the five contrasts, the
+  konductor over vanilla cost ratio inside each harness, success, timeouts, delegation and model identity. Intervals appear
+  only with 5 or more tasks of 2 or more replicates per cell (`--reps 2` or more).
+- Paste back: `OUT/report/factorial-2x2.md`, the spend table the script prints at the end, and the `NOT DONE` list if there is one.
+  `OUT/logs/` holds the runner output; it carries no credentials.
+- Not covered: autonomy tasks (Claude Code refuses them), the pairwise judge mode, and any statistics at n=1.
 
 ## Skills actually used
 Which skills and SOPs a run loaded is read after the fact from `stream.jsonl`; nothing is added to the runs (no hooks, no
