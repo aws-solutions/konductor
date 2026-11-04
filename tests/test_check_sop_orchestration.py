@@ -81,7 +81,7 @@ def test_valid_fixture_passes_silently(case):
         ("phase-list-missing-bullet", "phase-list-mismatch: gated 'alpha-gated' has phases but"),
         ("unknown-boundary-phase", "unknown-boundary-phase: gated 'alpha-gated' boundary 'zero'"),
         ("unknown-boundary-kind", "unknown-boundary-kind: gated 'alpha-gated' boundary 'one' kind 'loop-exit'"),
-        ("bad-boundary-shape", "'boundaries' item 1 'scope' must be one of feature, run"),
+        ("bad-boundary-shape", "bad-entry: gated 'alpha-gated' 'boundaries' item 1 must be a mapping with keys phase, kind, scope"),
         ("bad-boundary-scope-list", "'boundaries' item 1 'scope' must be one of feature, run"),
         ("bad-boundary-scope-dict", "'boundaries' item 1 'scope' must be one of feature, run"),
         ("bad-boundary-scope-value", "'boundaries' item 1 'scope' must be one of feature, run"),
