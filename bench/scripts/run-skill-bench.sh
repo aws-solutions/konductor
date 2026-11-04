@@ -22,6 +22,7 @@
 #   bash run-skill-bench.sh --status            daemon state, waves done, runs and credits so far, last log lines
 #   bash run-skill-bench.sh --stop              SIGTERM the daemon (the runner flushes its summary as interrupted)
 #   Options: --tier triage|loaded|large|duplicates|all   (default all)    --skills a,b   only these skills
+#            --forced-load low-load|always   add wave 1f, the skill forced to load against it deleted (reported apart, never a call)
 #   Tiers: loaded = skills that loaded in finished runs; large = named large skills and the biggest; duplicates = near-duplicate
 #   pairs; triage = everything else, which gets the free audit only (no lift run: a skill nobody loads cannot show lift).
 #
@@ -89,6 +90,7 @@ CARGO_TARGET=${CARGO_TARGET:-$STATE_DIR/cargo-target}
 MODE=daemon
 TIER=all
 SKILLS=
+FORCED_LOAD=
 while [ $# -gt 0 ]; do
   case "$1" in
     --foreground) MODE=foreground ;;
@@ -98,12 +100,14 @@ while [ $# -gt 0 ]; do
     --stop) MODE=stop ;;
     --tier) shift; TIER=${1:-}; [ -n "$TIER" ] || { echo "--tier needs a value" >&2; exit 2; } ;;
     --skills) shift; SKILLS=${1:-}; [ -n "$SKILLS" ] || { echo "--skills needs a value" >&2; exit 2; } ;;
+    --forced-load) shift; FORCED_LOAD=${1:-}; [ -n "$FORCED_LOAD" ] || { echo "--forced-load needs a value" >&2; exit 2; } ;;
     -h|--help) awk 'NR>1 && /^set -u/ {exit} NR>1 {print}' "$SELF"; exit 0 ;;
     *) echo "unknown option: $1 (see --help)" >&2; exit 2 ;;
   esac
   shift
 done
 case "$TIER" in triage|loaded|large|duplicates|all) ;; *) echo "--tier takes triage|loaded|large|duplicates|all" >&2; exit 2 ;; esac
+case "$FORCED_LOAD" in ''|low-load|always) ;; *) echo "--forced-load takes low-load|always" >&2; exit 2 ;; esac
 [ "${SB_CHILD:-0}" = 1 ] && MODE=foreground
 
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -221,6 +225,7 @@ plan_args() { # flags shared by skill-plan and skill-study --init; the study pla
   [ -n "${TASKS_PER_SKILL:-}" ] && a+=(--tasks-per-skill "$TASKS_PER_SKILL")
   [ -n "${MAX_SECTIONS:-}" ] && a+=(--max-sections "$MAX_SECTIONS")
   [ "${SCREEN:-1}" = 1 ] && a+=(--screen)
+  [ -n "$FORCED_LOAD" ] && a+=(--forced-load "$FORCED_LOAD")
   printf '%s\0' "${a[@]}"
 }
 run_flags() { # flags for the run itself; cache and cargo target live outside the per-call TMPDIR so builds survive between calls
@@ -258,7 +263,7 @@ if [ "$MODE" = dry-run ]; then
   say "DRY RUN: nothing is built, planned on disk or run"
   if V=$(study_dir); then
     say "study dir: $V"
-    run_node cap skill-study --dry-run --study "$V" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} "${RF[@]}"
+    run_node cap skill-study --dry-run --study "$V" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} ${FORCED_LOAD:+--forced-load "$FORCED_LOAD"} "${RF[@]}"
   else
     say "no study yet; the plan that --init would write (free, no model; shown for the chosen tier and skills):"
     run_node cap skill-plan "${PA[@]}" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"}
@@ -275,7 +280,7 @@ if [ "${SB_CHILD:-0}" != 1 ]; then
   run_node cap skill-study --init --study "$V" "${PA[@]}" "${RF[@]}" || die "planning the study failed"
   if [ "$MODE" = daemon ]; then
     mkdir -p "$STATE_DIR"
-    SB_CHILD=1 setsid nohup bash "$SELF" --foreground ${TIER:+--tier "$TIER"} ${SKILLS:+--skills "$SKILLS"} >> "$LOG" 2>&1 < /dev/null &
+    SB_CHILD=1 setsid nohup bash "$SELF" --foreground ${TIER:+--tier "$TIER"} ${SKILLS:+--skills "$SKILLS"} ${FORCED_LOAD:+--forced-load "$FORCED_LOAD"} >> "$LOG" 2>&1 < /dev/null &
     dp=$!
     say "LAUNCHED: pid $dp, study $V"
     say "log:    tail -f $LOG"
@@ -288,7 +293,7 @@ fi
 echo $$ > "$PIDFILE"
 V=$(study_dir) || die "no study directory ($STUDYFILE)"
 say "run-skill-bench started, pid $$, study $V"
-run_node cap skill-study --study "$V" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} "${RF[@]}"
+run_node cap skill-study --study "$V" ${TIER:+--tier "$TIER"} ${SKILLS:+--only "$SKILLS"} ${FORCED_LOAD:+--forced-load "$FORCED_LOAD"} "${RF[@]}"
 rc=$?
 rm -f -- "$PIDFILE"
 if [ "$rc" = 0 ]; then say "DONE: decisions are in $V/decisions/decisions.md (nothing was applied)"; else say "FAILED or stopped (exit $rc). Rerun $SELF to resume."; fi

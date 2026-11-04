@@ -359,3 +359,36 @@ test('forced-wave step labels are -w1f-, never -w2- or -w3-, and --waves 1 skips
     await assert.rejects(runStudy({ studyDir: s.studyDir, exec, waves: '2' }), /--waves takes 1/);
   } finally { s.e.done(); }
 });
+
+// ---- the plan's cost line ----
+
+const { forcedEstimate, renderPlan } = require('../../cap/skillplan.js');
+
+test('the skill plan shows the forced wave as its own line: 3 arms x tasks x reps x qualifying skills', () => {
+  const scale = (runs, judged) => ({ runs, credits: { low: runs, mid: runs * 2, high: runs * 3 }, judgeUsd: runs * judged, wallHours: runs / 60 });
+  const sk = (name, exposed, rate) => ({ name, lift: true, judgedShare: 1, exposure: { exposed, runsLoaded: Math.round(exposed * (rate ?? 0)), rate } });
+  const skills = [sk('rare', 10, 0.1), sk('common', 10, 0.8), sk('never-seen', 0, null), { ...sk('triage', 10, 0), lift: false }];
+  const low = forcedEstimate({ skills, mode: 'low-load', target: 8, repsN: 5, scale });
+  assert.deepEqual(low.qualifying, ['rare']);
+  assert.deepEqual(low.unknown, ['never-seen']);
+  assert.equal(low.formula, '3 arms x 8 tasks x 5 reps x 1 qualifying skill = 120 runs');
+  assert.equal(low.cost.runs, 120);
+  assert.equal(low.cost.credits.mid, 240);
+  const all = forcedEstimate({ skills, mode: 'always', target: 8, repsN: 5, scale });
+  assert.equal(all.formula, '3 arms x 8 tasks x 5 reps x 3 qualifying skills = 360 runs');
+});
+
+test('cap skill-plan with --forced-load adds the line, and the totals stay as they were', () => {
+  const plain = setup();
+  const forced = setup({ planOpts: { forcedLoad: 'always' } });
+  try {
+    assert.equal(plain.plan.forced, null);
+    assert.deepEqual(forced.plan.totals.expected, plain.plan.totals.expected);
+    assert.equal(forced.plan.forced.qualifying.length, 1);
+    assert.equal(forced.plan.totals.withForced.runs, forced.plan.totals.expected.runs + forced.plan.forced.cost.runs);
+    const md = renderPlan(forced.plan);
+    assert.match(md, /## Forced-load wave \(its own line, an estimate\)/);
+    assert.match(md, /3 arms x 2 tasks x 8 reps x 1 qualifying skill = 48 runs/);
+    assert.doesNotMatch(renderPlan(plain.plan), /Forced-load wave/);
+  } finally { plain.e.done(); forced.e.done(); }
+});

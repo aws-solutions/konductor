@@ -292,3 +292,26 @@ setInterval(() => {}, 1000);
     assert.deepEqual(fs.readdirSync(s.base.TMPDIR).filter((n) => n.startsWith('xq')), []);
   } finally { s.done(); }
 });
+
+test('--forced-load is checked and forwarded: the plan gets the forced-wave line and an existing study prints wave 1f', () => {
+  const s = sandbox();
+  try {
+    const bad = s.run(['--dry-run', '--forced-load', 'often']);
+    assert.equal(bad.status, 2);
+    assert.match(bad.stderr, /--forced-load takes low-load\|always/);
+    const plan = s.run(['--dry-run', '--tier', 'loaded', '--skills', 'sectioned', '--forced-load', 'always']);
+    assert.equal(plan.status, 0, plan.stderr + plan.stdout);
+    assert.match(plan.stdout, /## Forced-load wave \(its own line, an estimate\)/);
+    assert.match(plan.stdout, /--forced-load always: 3 arms x \d+ tasks x \d+ reps x 1 qualifying skill = \d+ runs/);
+    const study = path.join(s.results, 'skill-bench-test');
+    const init = spawnSync(process.execPath, [path.join(REPO, 'bench/runner/bench.js'), 'cap', 'skill-study', '--init', '--study', study, '--base', 'v0', '--repo-root', s.e.repo, '--bench-dir', s.e.bench,
+      '--runs', s.base.EXPOSURE_RUNS, '--only', 'sectioned', '--tasks-per-skill', '2', '--reps', '5', '--aws-creds-file', s.creds, '--scratch', path.join(s.e.root, 'scratch')], { env: { PATH: process.env.PATH, HOME: s.base.HOME, TMPDIR: s.base.TMPDIR, BENCH_CAP_INSTALLS_HOMES: s.base.HOME }, encoding: 'utf8' });
+    assert.equal(init.status, 0, init.stderr);
+    fs.writeFileSync(path.join(s.state, 'skill-bench.study'), `${study}\n`);
+    const dry = s.run(['--dry-run', '--forced-load', 'low-load'], { BENCH_CAP_INSTALLS_HOMES: s.base.HOME });
+    assert.equal(dry.status, 0, dry.stderr + dry.stdout);
+    assert.match(dry.stdout, /sectioned wave 1f: arms frc, frc-b, del \(forced load/);
+    const without = s.run(['--dry-run'], { BENCH_CAP_INSTALLS_HOMES: s.base.HOME });
+    assert.doesNotMatch(without.stdout, /wave 1f/);
+  } finally { s.done(); }
+});

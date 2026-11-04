@@ -169,13 +169,14 @@ const USAGE = `Usage:
   node bench/runner/bench.js cap skill-plan --base REF [--runs DIR[,DIR...]] [--runs-glob GLOB] [--tier loaded|large|duplicates|triage|all] [--only a,b]
        [--tasks-per-skill N] [--reps N] [--max-sections N] [--min-section-bytes N] [--large a,b] [--large-top N] [--duplicates a:b,c:d]
        [--agent-engine v2|v3] [--model M] [--arm-config name=key.path=value] [--credits-per-run X|low,mid,high] [--sec-per-run N] [--judge-usd-per-run X]
-       [--budget-credits X] [--profile quick|detailed] [--allow-regex] [--screen] [--screen-tasks N] [--out DIR] [--json] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       [--budget-credits X] [--profile quick|detailed] [--allow-regex] [--screen] [--screen-tasks N] [--forced-load low-load|always] [--out DIR] [--json] [--repo-root DIR] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (read-only, no credits: which skills get which study. Tiers: loaded (the skill loaded in a finished run), large (named large skills and the biggest),
        duplicates (near-duplicate and named pairs), triage (the rest: free checks only, because a skill nobody loads cannot show lift). Per skill: the tasks
        that exercise it (registry links, tasks naming it, tasks where it loaded), the shortfall against the profile minimum, the sections that can be tested,
        the waves (1 control, A/A and delete; 2 section removals; 3 moves to references) and credit, judge and wall-clock estimates from observed per-run
        figures. --budget-credits marks the skills that fit, in tier order. --screen puts skills that enter through the same agent into one shared wave 1
-       (one control and A/A, one delete arm per skill, the most common tasks, at most --screen-tasks). Writes skill-plan.md and skill-plan.json with --out)
+       (one control and A/A, one delete arm per skill, the most common tasks, at most --screen-tasks). --forced-load adds the forced wave as its own estimate line,
+       3 arms x tasks x reps x qualifying skills, outside the totals. Writes skill-plan.md and skill-plan.json with --out)
   node bench/runner/bench.js cap skill-study --study DIR (--init | --status | --dry-run | [run]) [--tier T] [--only a,b] [--base REF] [--runs DIR[,DIR...]] [--runs-glob GLOB]
        [--tasks-per-skill N] [--reps N] [--max-sections N] [--min-section-bytes N] [--large a,b] [--large-top N] [--duplicates a:b,c:d] [--agent-engine v2|v3]
        [--model M] [--arm-config name=key.path=value] [--credits-per-run X|low,mid,high] [--sec-per-run N] [--judge-usd-per-run X] [--budget-credits X]
