@@ -19,6 +19,8 @@ export type ExecutionState =
       started: boolean;
       /** Set when the start got no clear answer, so the run may be going. */
       maybeStarted?: true;
+      /** The run that was being followed, when the failure came after it began. */
+      runId?: string;
     };
 
 /** Something that happened to the run, in the order it can. */
@@ -88,7 +90,7 @@ function failedOf(
       : { phase: 'error', message, started: false };
   }
   if (state.phase === 'following' && runId === state.runId) {
-    return { phase: 'error', message, started: true };
+    return { phase: 'error', message, started: true, runId: state.runId };
   }
   return state;
 }

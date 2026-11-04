@@ -79,14 +79,14 @@ describe('App', () => {
     ).toBeTruthy();
   });
 
-  it('shows a placeholder on the Execution tab', () => {
+  it('draws the workflow with a Run button on the Execution tab', async () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
 
-    expect(
-      screen.getByRole('tabpanel', { name: 'Execution' }).textContent,
-    ).toContain('Nothing here yet.');
+    const panel = screen.getByRole('tabpanel', { name: 'Execution' });
+    expect(await within(panel).findByTestId('node-stage-draft')).toBeTruthy();
+    expect(within(panel).getByRole('button', { name: 'Run' })).toBeTruthy();
   });
 
   it('keeps the loaded workflow when the tabs are switched back and forth', async () => {
