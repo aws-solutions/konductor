@@ -16,6 +16,7 @@
 //                       is measured only when the data has it. The coarse rate (pass against not pass) is shown beside.
 // The margin default is the cap decide MARGIN, imported, so the two cannot drift apart.
 
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { diffCI, pairedCellCI, withinCellSd } = require('../report/stats.js');
@@ -33,40 +34,74 @@ const short = (s, n = 80) => { const t = String(s ?? '').replace(/\s+/g, ' ').tr
 const checkIdOf = (c) => (typeof c?.id === 'string' && c.id ? c.id : typeof c?.name === 'string' && c.name ? c.name : null);
 const checkLabel = (c) => short(`${c.type} ${c.path ?? c.cmd ?? c.pattern ?? ''}`);
 
+// The fields the task schema defines for a check. A content id hashes the ones a check sets, so the same check gets the
+// same id from its task definition and from the record a run wrote. No task file or schema changes: a real id field would
+// change checksRevision and mark every earlier result as not current.
+const CONTENT_FIELDS = Object.keys(require('../schema/task.schema.json').properties.checks.items.properties).sort();
+
+function contentHash(c) {
+  const picked = {};
+  for (const k of CONTENT_FIELDS) if (c?.[k] !== undefined) picked[k] = c[k];
+  return crypto.createHash('sha256').update(JSON.stringify(picked)).digest('hex').slice(0, 12);
+}
+
 /**
- * Check observations for one run. Checks are matched by `id` (or `name`) when every result record carries one. Without
- * ids they are matched by position, and only when the run has as many check results as the reference list (the task's
- * checks, or the first run seen for a task with no loaded definition) with the same type at each place. Anything else
- * is an error for the run rather than a guess. Returns { observations, error }.
+ * Content ids for a check list. Two checks with the same content get #1, #2... in list order; they run the same check on
+ * the same workspace, so which of them a result is paired with cannot change its value.
+ */
+function contentIds(list) {
+  const hashes = list.map(contentHash);
+  const total = new Map();
+  for (const h of hashes) total.set(h, (total.get(h) ?? 0) + 1);
+  const seen = new Map();
+  return hashes.map((h) => { const k = (seen.get(h) ?? 0) + 1; seen.set(h, k); return total.get(h) > 1 ? `content:${h}#${k}` : `content:${h}`; });
+}
+
+/**
+ * Check observations for one run, matched in this order: an explicit `id` (or `name`) when every result record carries
+ * one; the content id; position, only when the run has as many check results as the reference list (the task's checks,
+ * or the first run seen for a task with no loaded definition) with the same type at each place. Anything else is an
+ * error for the run rather than a guess. When content ids fail because result records lack fields the reference sets,
+ * `note` names those fields. Returns { observations, error, note }.
  */
 function matchChecks(results, reference, base) {
   const done = results.filter((c) => typeof c?.passed === 'boolean');
-  if (!done.length) return { observations: [], error: null };
+  if (!done.length) return { observations: [], error: null, note: null };
+  const obsOf = (c, id, spec) => ({ ...base, kind: 'check', id, label: checkLabel(spec ?? c), value: c.passed ? 1 : 0, judgeValues: null });
   const ids = done.map(checkIdOf);
   if (ids.every(Boolean)) {
-    return { observations: done.map((c, i) => { const spec = (reference ?? []).find((r) => checkIdOf(r) === ids[i]) ?? c; return { ...base, kind: 'check', id: `check:${ids[i]}`, label: checkLabel(spec), value: c.passed ? 1 : 0, judgeValues: null }; }), error: null };
+    return { observations: done.map((c, i) => obsOf(c, `check:${ids[i]}`, (reference ?? []).find((r) => checkIdOf(r) === ids[i]))), error: null, note: null };
   }
+  const refIds = contentIds(reference);
+  const resIds = contentIds(results);
+  if (resIds.every((id) => refIds.includes(id))) {
+    return { observations: results.map((c, i) => (typeof c?.passed === 'boolean' ? obsOf(c, resIds[i], reference[refIds.indexOf(resIds[i])]) : null)).filter(Boolean), error: null, note: null };
+  }
+  const missing = [...new Set(reference.flatMap((r, i) => (results[i] && results[i].type === r.type ? CONTENT_FIELDS.filter((k) => r[k] !== undefined && results[i][k] === undefined) : [])))].sort();
+  const why = missing.length ? `result check records lack ${missing.join(', ')}, which the task's checks set, so content ids cannot be computed the same way` : 'the check contents differ from the reference list (the checks may have changed since the run)';
   const where = `arm ${base.arm}, replicate ${base.rep}`;
-  if (results.length !== reference.length) return { observations: [], error: `${where}: ${results.length} check results against ${reference.length} checks, and the checks have no id, so they cannot be matched` };
+  if (results.length !== reference.length) return { observations: [], error: `${where}: ${results.length} check results against ${reference.length} checks; ${why}, and position cannot be used`, note: null };
   const off = results.findIndex((c, i) => c?.type !== reference[i]?.type);
-  if (off >= 0) return { observations: [], error: `${where}: check ${off + 1} is ${results[off]?.type} in the result and ${reference[off]?.type} in the reference list, and the checks have no id, so they cannot be matched` };
+  if (off >= 0) return { observations: [], error: `${where}: check ${off + 1} is ${results[off]?.type} in the result and ${reference[off]?.type} in the reference list; ${why}, and position cannot be used`, note: null };
   return {
-    observations: results.map((c, i) => (typeof c?.passed === 'boolean' ? { ...base, kind: 'check', id: `check-${i + 1}`, label: checkLabel(reference[i]), value: c.passed ? 1 : 0, judgeValues: null } : null)).filter(Boolean),
+    observations: results.map((c, i) => (typeof c?.passed === 'boolean' ? obsOf(c, refIds[i], reference[i]) : null)).filter(Boolean),
     error: null,
+    note: `${why}; matched by position`,
   };
 }
 
 /**
  * Observations from one loaded run directory: one per item and run, after leaving out infra errors and model mismatches
  * as `cap decide` does. `rows` and `ctx` come from report/generate.js analyze(). Returns { observations, judgesPerRun,
- * checkErrors } where judgesPerRun counts runs by number of usable judges and checkErrors lists runs whose checks could
- * not be matched.
+ * checkErrors, checkNotes } where judgesPerRun counts runs by number of usable judges, checkErrors lists runs whose
+ * checks could not be matched and checkNotes says, per task, why content ids gave way to position.
  */
 function collectObservations({ run, rows, ctx, tasks, src = run.dir, armMap = null }) {
   const outcome = new Map(rows.map((r) => [`${r.arm}\u0000${r.task}\u0000${r.rep}`, r.outcome]));
   const observations = [];
   const judgesPerRun = {};
   const checkErrors = [];
+  const checkNotes = new Map();
   const firstSeen = new Map();
   for (const e of run.runs) {
     if (e.result.status === 'budget_skipped') continue;
@@ -82,6 +117,7 @@ function collectObservations({ run, rows, ctx, tasks, src = run.dir, armMap = nu
       const m = matchChecks(results, task?.checks ?? firstSeen.get(e.taskId), base);
       observations.push(...m.observations);
       if (m.error) checkErrors.push({ task: e.taskId, arm, rep: e.replicate, src, reason: m.error });
+      if (m.note) checkNotes.set(`${e.taskId}\u0000${m.note}`, { task: e.taskId, note: m.note, runs: (checkNotes.get(`${e.taskId}\u0000${m.note}`)?.runs ?? 0) + 1 });
     }
     const byCriterion = new Map();
     let usable = 0;
@@ -102,7 +138,7 @@ function collectObservations({ run, rows, ctx, tasks, src = run.dir, armMap = nu
       observations.push({ ...base, kind: 'rubric', id, label: short(spec?.criterion ?? id), weight: spec?.weight ?? null, value: mean(vals), judgeValues: vals });
     }
   }
-  return { observations, judgesPerRun, checkErrors };
+  return { observations, judgesPerRun, checkErrors, checkNotes: [...checkNotes.values()] };
 }
 
 const itemKey = (o) => `${o.kind}\u0000${o.task}\u0000${o.id}`;
@@ -231,9 +267,9 @@ function analyzeDir({ dir, benchDir, extraTasks = [], baseline = null, aa = null
   const rawBase = armMap ? Object.keys(armMap).find((k) => armMap[k] === baseline) : baseline;
   const base = rawBase && present.includes(rawBase) ? rawBase : undefined;
   const a = analyze({ run, tasks, baseline: base });
-  const { observations, judgesPerRun, checkErrors } = collectObservations({ run, rows: a.rows, ctx: a.ctx, tasks, src: src ?? dir, armMap });
+  const { observations, judgesPerRun, checkErrors, checkNotes } = collectObservations({ run, rows: a.rows, ctx: a.ctx, tasks, src: src ?? dir, armMap });
   const baselineId = baseline ?? (armMap ? armMap[a.base] : a.base);
-  return { observations, judgesPerRun, checkErrors, baseline: baselineId, aa, config };
+  return { observations, judgesPerRun, checkErrors, checkNotes, baseline: baselineId, aa, config };
 }
 
 /** Every lift skill and finished wave of a study. Wave 1 of a screened skill reads only its own delete arm, shown as del. */
@@ -247,7 +283,7 @@ function analyzeStudy({ studyDir, config = {}, benchDir = null, extraTasks = nul
       const where = waveWhere(study, studyDir, rec, n);
       const armMap = where.screen ? { ctl: 'ctl', 'ctl-b': 'ctl-b', [`del-${rec.name}`]: 'del' } : null;
       const r = analyzeDir({ dir: where.dir, benchDir: benchDir ?? study.settings.benchDir, extraTasks: extraTasks ?? study.settings.extraTasks ?? [], baseline: 'ctl', aa: 'ctl-b', armMap, config });
-      groups.push({ skill: rec.name, wave: n, dir: path.relative(studyDir, where.dir), judges: judgeNote(r.judgesPerRun), ...analyzeObservations(r.observations, { baseline: 'ctl', aa: 'ctl-b', config, checkErrors: r.checkErrors }) });
+      groups.push({ skill: rec.name, wave: n, dir: path.relative(studyDir, where.dir), judges: judgeNote(r.judgesPerRun), checkNotes: r.checkNotes, ...analyzeObservations(r.observations, { baseline: 'ctl', aa: 'ctl-b', config, checkErrors: r.checkErrors }) });
     }
   }
   return groups;
@@ -257,6 +293,7 @@ function analyzeStudy({ studyDir, config = {}, benchDir = null, extraTasks = nul
 function analyzeRuns({ dirs, benchDir, extraTasks = [], baseline = null, aa = null, config = {} }) {
   const obs = [];
   const errs = [];
+  const notes = [];
   const jpr = {};
   let base = baseline;
   for (const dir of dirs) {
@@ -264,9 +301,10 @@ function analyzeRuns({ dirs, benchDir, extraTasks = [], baseline = null, aa = nu
     base = base ?? r.baseline;
     obs.push(...r.observations);
     errs.push(...r.checkErrors);
+    notes.push(...r.checkNotes);
     for (const [k, v] of Object.entries(r.judgesPerRun)) jpr[k] = (jpr[k] ?? 0) + v;
   }
-  return [{ skill: null, wave: null, dir: dirs.join(', '), judges: judgeNote(jpr), ...analyzeObservations(obs, { baseline: base, aa, config, checkErrors: errs }) }];
+  return [{ skill: null, wave: null, dir: dirs.join(', '), judges: judgeNote(jpr), checkNotes: notes, ...analyzeObservations(obs, { baseline: base, aa, config, checkErrors: errs }) }];
 }
 
 // ---- report ----
@@ -303,6 +341,8 @@ function renderCriteria(report) {
   for (const g of report.groups) {
     L.push(`## ${g.skill ? `${g.skill}, wave ${g.wave}` : 'Run directories'} (${g.dir})`, '');
     L.push(`Baseline ${g.baseline}${g.aa ? `, A/A ${g.aa}` : ''}; variants ${g.variants.join(', ') || 'none'}. ${g.judges.note}.`, '');
+    for (const n of g.checkNotes ?? []) L.push(`- checks of ${n.task}: ${n.note} (${n.runs} run${n.runs === 1 ? '' : 's'})`);
+    if (g.checkNotes?.length) L.push('');
     const flagged = g.items.filter((i) => i.flags.length || i.insufficient || i.error);
     if (!flagged.length) { L.push(`No item flagged (${g.items.length} items).`, ''); continue; }
     L.push(table(['task', 'item', 'rate by arm', 'variant minus baseline (interval)', 'A/A', 'judges disagree (strict; pass against not pass)', 'replicate SD', 'flags', 'why'], flagged.map((i) => [
@@ -316,7 +356,7 @@ function renderCriteria(report) {
     '- A rubric criterion and a check belong to one task, so a comparison inside one run directory rests on that task\'s replicates; the interval is a bootstrap over them and treats runs as independent. Items found in two or more run directories get a paired interval by directory.',
     '- An item that does not separate these arms can still matter on another skill or task. NON-DISCRIMINATING says the item gave no information here, not that it is wrong.',
     '- Judge disagreement is counted after the evidence check that downgrades an unfound quote. The strict rate counts any difference in verdict, partial included, and drives HIGH-VARIANCE; the pass against not pass rate is shown beside it.',
-    '- Checks are matched by id when the result records carry one, else by position when the lists have the same length and types; a run whose checks cannot be matched is an error for that task, and its checks are not judged.',
+    '- Checks are matched by an explicit id or name when every result record has one, else by a content id (a hash of the fields the task schema defines for a check), else by position when the lists have the same length and types. Two checks with the same content are numbered in list order (#1, #2); they run the same check, so the pairing cannot change a value. A run whose checks cannot be matched is an error for that task, and its checks are not judged.',
     '- Timeouts and errors stay in; infra errors and model mismatches are left out, as in cap decide.', '');
   return L.join('\n');
 }
@@ -328,4 +368,4 @@ function writeCriteria(outDir, report) {
   return [path.join(outDir, 'criteria.md'), path.join(outDir, 'criteria.json')];
 }
 
-module.exports = { DEFAULTS, FLAGS, collectObservations, analyzeObservations, judgeNote, analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCriteria };
+module.exports = { DEFAULTS, FLAGS, CONTENT_FIELDS, contentIds, collectObservations, analyzeObservations, judgeNote, analyzeStudy, analyzeRuns, buildCriteriaReport, renderCriteria, writeCriteria };

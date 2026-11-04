@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { analyzeObservations, collectObservations, judgeNote, buildCriteriaReport, renderCriteria, DEFAULTS } = require('../../cap/criteria.js');
+const { analyzeObservations, collectObservations, contentIds, CONTENT_FIELDS, judgeNote, buildCriteriaReport, renderCriteria, DEFAULTS } = require('../../cap/criteria.js');
 const { MARGIN } = require('../../cap/decide.js');
 const { decideStudy } = require('../../cap/skillstudy.js');
 const { setupAndRun } = require('./cap-skillstudy-fake.js');
@@ -104,23 +104,64 @@ test('checks are matched by id when every result carries one, whatever the order
   assert.deepEqual([of('ctl', 'check:mentions'), of('del', 'check:mentions'), of('del', 'check:exists')], [0, 1, 1]);
 });
 
-test('without ids, checks are matched by position only when the lengths and types agree', () => {
-  const ok = checkRun([{ arm: 'ctl', rep: 1, checks: [{ type: 'file_exists', passed: true }, { type: 'contains', passed: false }] }]);
-  assert.deepEqual(ok.checkErrors, []);
-  assert.deepEqual(ok.observations.map((o) => [o.id, o.value, o.label]), [['check-1', 1, 'file_exists a'], ['check-2', 0, 'contains b']]);
-  const noTask = checkRun([{ arm: 'ctl', rep: 1, checks: [{ type: 'cmd', passed: true }] }, { arm: 'del', rep: 1, checks: [{ type: 'cmd', passed: false }] }], { hasTask: false });
-  assert.deepEqual(noTask.checkErrors, [], 'with no task definition the first run seen is the reference');
-  const swapped = checkRun([{ arm: 'ctl', rep: 1, checks: [{ type: 'contains', passed: true }, { type: 'file_exists', passed: true }] }]);
-  assert.match(swapped.checkErrors[0].reason, /check 1 is contains in the result and file_exists in the reference list/);
+// Result records as the runner writes them: the task's content fields plus passed and detail.
+const FX = { type: 'file_exists', path: 'a' };
+const CT = { type: 'contains', path: 'b', pattern: 'x' };
+const rec = (spec, passed, over = {}) => ({ ...spec, passed, detail: 'ok', ...over });
+
+test('without an explicit id, checks are matched by content id even when the order differs', () => {
+  const r = checkRun([
+    { arm: 'ctl', rep: 1, checks: [rec(FX, true), rec(CT, false)] },
+    { arm: 'del', rep: 1, checks: [rec(CT, true), rec(FX, false)] },
+  ]);
+  assert.deepEqual([r.checkErrors, r.checkNotes], [[], []]);
+  const [fx, ct] = contentIds([FX, CT]);
+  const of = (arm, id) => r.observations.find((o) => o.arm === arm && o.id === id);
+  assert.deepEqual([of('ctl', fx).value, of('ctl', ct).value, of('del', fx).value, of('del', ct).value], [1, 0, 0, 1]);
+  assert.equal(of('del', ct).label, 'contains b');
+  assert.ok(CONTENT_FIELDS.includes('expectExit') && CONTENT_FIELDS.includes('pattern'), 'the content fields come from the task schema');
 });
 
-test('a check list of a different length with no ids is an error for that task, never a guess', () => {
+test('two checks with the same content are numbered in list order and both are kept', () => {
   const r = checkRun([
-    { arm: 'ctl', rep: 1, checks: [{ type: 'file_exists', passed: true }, { type: 'contains', passed: true }] },
-    { arm: 'del', rep: 2, checks: [{ type: 'file_exists', passed: true }] },
+    { arm: 'ctl', rep: 1, checks: [rec(FX, true), rec(CT, false), rec(FX, true)] },
+    { arm: 'del', rep: 1, checks: [rec(FX, false), rec(CT, true), rec(FX, false)] },
+  ], { taskChecks: [FX, CT, FX] });
+  const ids = contentIds([FX, CT, FX]);
+  assert.match(ids[0], /#1$/);
+  assert.match(ids[2], /#2$/);
+  assert.equal(ids[1].includes('#'), false, 'a unique check has no number');
+  assert.deepEqual(r.checkErrors, []);
+  assert.deepEqual(r.observations.filter((o) => o.arm === 'del').map((o) => o.id), [ids[0], ids[1], ids[2]]);
+  assert.equal(new Set(analyzeObservations(r.observations, { baseline: 'ctl' }).items.map((i) => i.id)).size, 3);
+});
+
+test('old results whose records lack a field the task sets still load, by position, and the note names the field', () => {
+  const tasked = [{ ...FX, group: 'intended' }, { type: 'cmd', cmd: 'node t.js', expectExit: 0 }];
+  const r = checkRun([
+    { arm: 'ctl', rep: 1, checks: [rec(FX, true), rec({ type: 'cmd', cmd: 'node t.js' }, false)] },
+    { arm: 'del', rep: 1, checks: [rec(FX, true), rec({ type: 'cmd', cmd: 'node t.js' }, true)] },
+  ], { taskChecks: tasked });
+  assert.deepEqual(r.checkErrors, []);
+  assert.equal(r.checkNotes.length, 1);
+  assert.match(r.checkNotes[0].note, /result check records lack expectExit, group, which the task's checks set.*matched by position/);
+  assert.equal(r.checkNotes[0].runs, 2);
+  assert.deepEqual(r.observations.map((o) => o.id), [...contentIds(tasked), ...contentIds(tasked)], 'items keep the ids of the task definition');
+  const md = renderCriteria(buildCriteriaReport([{ skill: 's', wave: 1, dir: 'w1', judges: judgeNote({}), checkNotes: r.checkNotes, ...analyzeObservations(r.observations, { baseline: 'ctl' }) }], { source: 't' }));
+  assert.match(md, /- checks of t1: result check records lack expectExit, group/);
+  const noTask = checkRun([{ arm: 'ctl', rep: 1, checks: [rec({ type: 'cmd' }, true)] }, { arm: 'del', rep: 1, checks: [rec({ type: 'cmd' }, false)] }], { hasTask: false });
+  assert.deepEqual([noTask.checkErrors, noTask.checkNotes], [[], []], 'with no task definition the first run seen is the reference');
+  const swapped = checkRun([{ arm: 'ctl', rep: 1, checks: [rec({ type: 'contains' }, true), rec({ type: 'file_exists' }, true)] }]);
+  assert.match(swapped.checkErrors[0].reason, /check 1 is contains in the result and file_exists in the reference list; .*position cannot be used/);
+});
+
+test('a check list that matches by neither content nor position is an error for that task, never a guess', () => {
+  const r = checkRun([
+    { arm: 'ctl', rep: 1, checks: [rec(FX, true), rec(CT, true)] },
+    { arm: 'del', rep: 2, checks: [rec({ type: 'file_exists', path: 'other' }, true)] },
   ]);
   assert.equal(r.checkErrors.length, 1);
-  assert.match(r.checkErrors[0].reason, /arm del, replicate 2: 1 check results against 2 checks, and the checks have no id, so they cannot be matched/);
+  assert.match(r.checkErrors[0].reason, /arm del, replicate 2: 1 check results against 2 checks; the check contents differ from the reference list .*position cannot be used/);
   const a = analyzeObservations(r.observations, { baseline: 'ctl', checkErrors: r.checkErrors });
   for (const it of a.items.filter((i) => i.kind === 'check')) {
     assert.deepEqual(it.flags, []);
