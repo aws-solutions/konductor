@@ -1,0 +1,145 @@
+[
+  {
+    "id": "plain-writing-habits-summary-outage",
+    "skill": "plain-writing-habits",
+    "kind": "core",
+    "task": "Summarize this incident for a status page in at most three sentences: a deploy at 14:05 doubled the database load, requests were slow for 20 minutes, the deploy was rolled back at 14:25, and load returned to normal.",
+    "rubric": [
+      "The summary says that requests were slow for about twenty minutes.",
+      "It names the deploy as the cause and the rollback as the fix.",
+      "It says that things are back to normal.",
+      "It runs to three sentences or fewer."
+    ],
+    "target_section": "Short Summaries",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "plain-writing-habits-summary-meeting",
+    "skill": "plain-writing-habits",
+    "kind": "core",
+    "task": "Summarize in two sentences: the team agreed to move the release from Friday to Tuesday because the payment review is not finished, and Dana will tell the customers.",
+    "rubric": [
+      "The new release day (Tuesday) and the old one (Friday) are both stated.",
+      "The unfinished payment review is given as the reason.",
+      "Dana is named as the person who informs the customers.",
+      "The summary is two sentences long."
+    ],
+    "target_section": "Short Summaries",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "plain-writing-habits-summary-change",
+    "skill": "plain-writing-habits",
+    "kind": "core",
+    "task": "Write a one-line summary of a change that adds a retry to the export job and fixes a typo in the help text.",
+    "rubric": [
+      "The line mentions the retry added to the export job.",
+      "The line mentions the typo fix in the help text.",
+      "It fits on one line and reads as a single statement."
+    ],
+    "target_section": "Short Summaries",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "plain-writing-habits-summary-cache",
+    "skill": "plain-writing-habits",
+    "kind": "coverage",
+    "task": "Explain in under 80 words why a cache can return stale data.",
+    "rubric": [
+      "The answer states that a cache holds a copy that can differ from the source after the source changes.",
+      "It mentions at least one way staleness is limited, such as expiry times or invalidation.",
+      "It uses fewer than eighty words."
+    ],
+    "target_section": "Short Summaries",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "plain-writing-habits-names-date-gap",
+    "skill": "plain-writing-habits",
+    "kind": "core",
+    "task": "Suggest a name for a function that returns the number of days between two dates, and names for its two parameters.",
+    "rubric": [
+      "The function name says that it counts days between dates.",
+      "The two parameter names tell the reader which date comes first and which comes second, or what each one means.",
+      "No parameter is a single letter or an unclear abbreviation."
+    ],
+    "target_section": "Plain Names",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "plain-writing-habits-names-unconfirmed",
+    "skill": "plain-writing-habits",
+    "kind": "core",
+    "task": "A variable holds the list of users who have not confirmed their email address. Suggest a name for it and explain the choice in one sentence.",
+    "rubric": [
+      "The name says it is a collection of users and that they are unconfirmed.",
+      "The name is not a single letter or a cryptic short form.",
+      "The explanation is one sentence."
+    ],
+    "target_section": "Plain Names",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "plain-writing-habits-names-mailer",
+    "skill": "plain-writing-habits",
+    "kind": "coverage",
+    "task": "Name a class that wraps a connection to a mail server and sends messages. Also name two of its methods.",
+    "rubric": [
+      "The class name says that it sends mail or talks to a mail server.",
+      "Two method names are given, and each one says what it does.",
+      "The names avoid single letters and obscure abbreviations."
+    ],
+    "target_section": "Plain Names",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "plain-writing-habits-errors-upload-size",
+    "skill": "plain-writing-habits",
+    "kind": "core",
+    "task": "Write the error message shown when a user uploads a file of 14 MB and the limit is 10 MB.",
+    "rubric": [
+      "The message says the upload was rejected because the file is too large.",
+      "It includes the actual size, 14 MB, and the limit, 10 MB.",
+      "It tells the user what to do next, such as choosing a smaller file."
+    ],
+    "target_section": "Error Messages",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "plain-writing-habits-errors-missing-config",
+    "skill": "plain-writing-habits",
+    "kind": "core",
+    "task": "Write the error message shown when a configuration file named app.toml cannot be found in /etc/app.",
+    "rubric": [
+      "The message says that the configuration file was not found.",
+      "It includes the file name and the directory that was searched.",
+      "It suggests a next step, such as creating the file or setting a different path."
+    ],
+    "target_section": "Error Messages",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "plain-writing-habits-errors-two-cases",
+    "skill": "plain-writing-habits",
+    "kind": "coverage",
+    "task": "Write error messages for two cases: a password shorter than 12 characters, and a username that is already taken.",
+    "rubric": [
+      "Two messages are given, one for each case.",
+      "The password message states the minimum of 12 characters.",
+      "The username message names the taken username or says clearly that it is taken.",
+      "Each message tells the user what to do next."
+    ],
+    "target_section": "Error Messages",
+    "fixtures": [],
+    "checks": []
+  }
+]

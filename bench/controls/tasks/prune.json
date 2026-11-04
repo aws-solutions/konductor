@@ -1,0 +1,182 @@
+[
+  {
+    "id": "team-coding-notes-settings-loader",
+    "skill": "team-coding-notes",
+    "kind": "core",
+    "task": "Write a Python function load_settings(path) that reads a JSON settings file and returns its contents as a dict. The program should still start when the file is missing.",
+    "rubric": [
+      "A missing file is detected on its own and leads to a default result instead of a crash.",
+      "A file that exists but holds invalid JSON is reported to the caller (raised, logged or returned as an error) and is not quietly turned into empty settings.",
+      "The failures handled are named one by one; the function does not catch every possible exception.",
+      "On success the function returns the parsed dict."
+    ],
+    "target_section": "Reading Settings Files",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-settings-host-port",
+    "skill": "team-coding-notes",
+    "kind": "core",
+    "task": "Write a Python function read_config(path) that loads a JSON file with the keys host and port and returns them. If port is absent, use 8080.",
+    "rubric": [
+      "The port falls back to 8080 only when that key is absent from a valid file.",
+      "A missing file and a malformed file are each handled by a specific, named error type.",
+      "A problem with the file stays visible to the caller; it is not swallowed and replaced by an empty result.",
+      "No blanket exception handler wraps the whole body."
+    ],
+    "target_section": "Reading Settings Files",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-settings-flags",
+    "skill": "team-coding-notes",
+    "kind": "core",
+    "task": "Write a Python function load_flags(path) that reads a JSON file mapping feature names to true or false and returns the dict. A missing flags file means every flag is off.",
+    "rubric": [
+      "The missing file case returns an empty mapping or an all-off default, and the code makes that choice openly.",
+      "A file with broken JSON produces an error the caller can see instead of an all-off result.",
+      "Specific error types are caught, not every exception.",
+      "The dict from a valid file is returned unchanged."
+    ],
+    "target_section": "Reading Settings Files",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-settings-three-cases",
+    "skill": "team-coding-notes",
+    "kind": "coverage",
+    "task": "Write a Python function load_settings(path) for a JSON settings file. Callers must be able to tell three situations apart: the file is missing, the file cannot be read because of permissions, and the file is not valid JSON. Show how a caller sees each one.",
+    "rubric": [
+      "All three situations lead to visibly different outcomes, such as separate exception types or separate return values.",
+      "A permission problem is not treated as a missing file and is not replaced by defaults.",
+      "Invalid JSON is reported as such.",
+      "The code does not use an exception handler that catches everything."
+    ],
+    "target_section": "Reading Settings Files",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-totals-invoice",
+    "skill": "team-coding-notes",
+    "kind": "core",
+    "task": "Write a Python function invoice_total(lines) where each line is a dict with price (a number such as 19.99) and quantity (an integer). Return the invoice total rounded to two decimal places.",
+    "rubric": [
+      "Money is not added up in binary floating point; the code uses Decimal, whole minor units or another exact representation.",
+      "Three lines of 0.10 add up to exactly 0.30 with no stray digits.",
+      "Rounding to two places happens by an explicit, stated rule.",
+      "An empty list of lines gives a total of zero."
+    ],
+    "target_section": "Order Totals",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-totals-discount",
+    "skill": "team-coding-notes",
+    "kind": "core",
+    "task": "Write a Python function discounted_total(lines, percent) that applies a percentage discount to an order and returns the amount to charge, rounded to two decimal places. Each line has price and quantity.",
+    "rubric": [
+      "The arithmetic uses an exact representation such as Decimal or whole minor units, not plain floats.",
+      "The discount is applied in a way that gives the right result for a case like 10 percent off 59.97.",
+      "The rounding rule is explicit and applied once, at a sensible point.",
+      "A discount of zero returns the undiscounted total."
+    ],
+    "target_section": "Order Totals",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-totals-tax",
+    "skill": "team-coding-notes",
+    "kind": "core",
+    "task": "Write a Python function total_with_tax(subtotal, rate) that adds a sales tax rate such as 0.0825 to a subtotal such as 59.97 and returns the amount to charge, to two decimal places.",
+    "rubric": [
+      "Exact decimal or integer arithmetic is used for the money values.",
+      "The result for 59.97 at 0.0825 is 64.92, with the tax rounded to the nearest unit of two decimals.",
+      "The rounding rule is stated or visible in the code.",
+      "The function does not return a value with floating point noise such as many trailing digits."
+    ],
+    "target_section": "Order Totals",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-totals-split",
+    "skill": "team-coding-notes",
+    "kind": "coverage",
+    "task": "Write a Python function split_bill(total, people) that divides a total such as 100.00 between 3 people so that the shares add up to exactly the total.",
+    "rubric": [
+      "The shares sum to exactly the original total, with the leftover amount handed out rather than lost.",
+      "Money is handled with Decimal or whole minor units and not with plain floats.",
+      "For 100.00 and 3 people the shares are 33.34, 33.33 and 33.33 in some order.",
+      "The function works for any number of people of at least one."
+    ],
+    "target_section": "Order Totals",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-retry-fetch-json",
+    "skill": "team-coding-notes",
+    "kind": "core",
+    "task": "Write a Python function fetch_json(url) using the requests library. It returns the parsed JSON body and retries when the request fails.",
+    "rubric": [
+      "The code pauses between attempts, and the pause grows from one attempt to the next.",
+      "There is an upper limit on the number of attempts, after which the last error reaches the caller.",
+      "Only failures that can go away are retried, such as timeouts, connection errors and server errors; a client error like a 404 is not retried.",
+      "Each request has a timeout of its own."
+    ],
+    "target_section": "Retrying Requests",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-retry-database",
+    "skill": "team-coding-notes",
+    "kind": "core",
+    "task": "Write a Python function connect_with_retry(connect). The argument connect is a function that opens a database connection and sometimes fails at startup because the database is still booting. Return the connection once it works.",
+    "rubric": [
+      "The function waits between tries and does not call connect in a tight loop.",
+      "It gives up after a bounded number of tries or a total time limit and raises the final error.",
+      "The wait grows between tries or has random variation.",
+      "A working connection is returned immediately."
+    ],
+    "target_section": "Retrying Requests",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-retry-queue",
+    "skill": "team-coding-notes",
+    "kind": "core",
+    "task": "Write a Python function send_message(client, message) that publishes with client.publish(message). That call sometimes raises TemporaryError. Make send_message robust against it.",
+    "rubric": [
+      "Only TemporaryError is retried; other exceptions pass straight through.",
+      "A delay separates one attempt from the next.",
+      "The number of attempts is capped, and the last TemporaryError is raised when the cap is reached.",
+      "A call that succeeds on the first attempt returns without any delay."
+    ],
+    "target_section": "Retrying Requests",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "team-coding-notes-retry-download",
+    "skill": "team-coding-notes",
+    "kind": "coverage",
+    "task": "Write a Python function download(url, path) that saves a file from a URL and retries on failures. A 404 or 403 reply must not be retried.",
+    "rubric": [
+      "A 404 or 403 reply ends the function at once with an error and causes no further attempts.",
+      "Other failures are retried with a wait between attempts.",
+      "The attempts are limited and the final failure is passed on to the caller.",
+      "The file at path is only written when a download has completed."
+    ],
+    "target_section": "Retrying Requests",
+    "fixtures": [],
+    "checks": []
+  }
+]

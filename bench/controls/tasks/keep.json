@@ -1,0 +1,162 @@
+[
+  {
+    "id": "tarnwick-conventions-commit-empty-batch",
+    "skill": "tarnwick-conventions",
+    "kind": "core",
+    "task": "I fixed a crash in the job scheduler that happened when a batch had no items. It is ticket 318 and the change is in the jobs area. Write the commit subject our team would use for it.",
+    "rubric": [
+      "The text starts with TW-0318.",
+      "The divider is a colon pair with one blank on each side, and it occurs exactly twice, so the line falls into three pieces.",
+      "The middle piece is jobs.",
+      "The last piece has no capital letters and does not finish with a period or any other mark.",
+      "The last piece is under 51 characters and says what the fix does."
+    ],
+    "target_section": "Commit Subjects",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "tarnwick-conventions-commit-signin-message",
+    "skill": "tarnwick-conventions",
+    "kind": "core",
+    "task": "Ticket 2045 changes the wording of an error message on the sign-in page. That page belongs to the web area. Give me the commit subject for this change in our team's format.",
+    "rubric": [
+      "The text starts with TW-2045.",
+      "Two dividers, each a colon pair with a blank before and after, cut the line into three pieces.",
+      "The middle piece is web.",
+      "Nothing in the last piece is capitalised, and it does not end with a period or any other mark.",
+      "The last piece is no more than 50 characters and refers to the changed message wording."
+    ],
+    "target_section": "Commit Subjects",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "tarnwick-conventions-commit-readme-typo",
+    "skill": "tarnwick-conventions",
+    "kind": "core",
+    "task": "Ticket 77 is a one-character typo fix in the README. Write the subject line for the commit.",
+    "rubric": [
+      "The text starts with TW-0077, the number 77 written out as 0077.",
+      "Two dividers, each a colon pair with a blank before and after, cut the line into three pieces.",
+      "The middle piece is docs, because a README is documentation.",
+      "The last piece has no capital letters and no closing mark.",
+      "The last piece is at most 50 characters long."
+    ],
+    "target_section": "Commit Subjects",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "tarnwick-conventions-commit-add-index",
+    "skill": "tarnwick-conventions",
+    "kind": "coverage",
+    "task": "Ticket 1203 adds an index to the invoices table. The code lives in the api area. Write the complete commit message our team would use: the subject line and a short body.",
+    "rubric": [
+      "The first line starts with TW-1203.",
+      "The first line is cut into three pieces by two dividers, each a colon pair with a blank before and after.",
+      "The middle piece is api.",
+      "The third piece has no capital letters, no closing mark and at most 50 characters.",
+      "The very last line of the whole message reads Schema: changed, because a table was altered."
+    ],
+    "target_section": "Commit Subjects",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "tarnwick-conventions-log-import-failure",
+    "skill": "tarnwick-conventions",
+    "kind": "core",
+    "task": "Our dockside service needs a log line for the moment a nightly import fails to open its input file. Write the line, using 1767398400 as the timestamp.",
+    "rubric": [
+      "The line begins t=1767398400.",
+      "After that come sev=3, svc=dockside and msg=, in exactly that sequence.",
+      "Severity 3 is right because a failed import counts as an error.",
+      "Blanks, one at a time, separate the four pairs, and no commas or other separators are used.",
+      "The words after msg= sit between double quotation marks, are all small letters and end without a period."
+    ],
+    "target_section": "Log Lines",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "tarnwick-conventions-log-startup-done",
+    "skill": "tarnwick-conventions",
+    "kind": "core",
+    "task": "Write the log line the beacon service writes when it has finished starting up. The timestamp is 1767484800.",
+    "rubric": [
+      "The line begins t=1767484800.",
+      "After that come sev=1, svc=beacon and msg=, in exactly that sequence.",
+      "Severity 1 is right because start-up is routine news.",
+      "Blanks, one at a time, separate the four pairs, and no commas or other separators are used.",
+      "The words after msg= sit between double quotation marks, are all small letters and end without a period."
+    ],
+    "target_section": "Log Lines",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "tarnwick-conventions-log-rate-limit",
+    "skill": "tarnwick-conventions",
+    "kind": "coverage",
+    "task": "Write two log lines for the gateway service. The first, at time 1767571200, says a client was rate limited. The second, at time 1767571205, says the limit was lifted.",
+    "rubric": [
+      "There are two lines. One begins t=1767571200 and the other begins t=1767571205.",
+      "Each line has sev, svc and msg after the time, in exactly that sequence, with single blanks between pairs.",
+      "The line about the client being limited has sev=2, since that is a warning.",
+      "The line about the limit being lifted has sev=1, since that is routine news.",
+      "Both lines have svc=gateway, and each msg value is in double quotation marks, in small letters and without a closing period."
+    ],
+    "target_section": "Log Lines",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "tarnwick-conventions-setting-call-timeout",
+    "skill": "tarnwick-conventions",
+    "kind": "core",
+    "task": "Name the environment variable that sets how many seconds the dockside service waits before it gives up on an upstream call. Its group is upstream and the setting itself is called call timeout.",
+    "rubric": [
+      "The expected name is TWK__DOCKSIDE__UPSTREAM__CALL_TIMEOUT_SECS.",
+      "It begins TWK and the three pieces after that are cut apart by double underscores.",
+      "Call and timeout are tied together with one underscore, as one piece.",
+      "No lower case letter appears.",
+      "The closing SECS marks the value as a length of time."
+    ],
+    "target_section": "Setting Names",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "tarnwick-conventions-setting-cache-size",
+    "skill": "tarnwick-conventions",
+    "kind": "core",
+    "task": "What should we call the environment variable for the maximum size of the gateway service's cache, measured in kibibytes? The group is cache and the setting is called max size.",
+    "rubric": [
+      "The expected name is TWK__GATEWAY__CACHE__MAX_SIZE_KIB.",
+      "It begins TWK and the three pieces after that are cut apart by double underscores.",
+      "Max and size are tied together with one underscore, as one piece.",
+      "No lower case letter appears.",
+      "The closing KIB marks the value as an amount of storage."
+    ],
+    "target_section": "Setting Names",
+    "fixtures": [],
+    "checks": []
+  },
+  {
+    "id": "tarnwick-conventions-setting-two-names",
+    "skill": "tarnwick-conventions",
+    "kind": "coverage",
+    "task": "Give me the names of two environment variables for the beacon service. One is a switch for verbose output (group logging, setting verbose). The other is a base retry delay in seconds (group retry, setting base delay).",
+    "rubric": [
+      "The first name is TWK__BEACON__LOGGING__VERBOSE and has no unit ending, since it is an on-off switch.",
+      "The second name is TWK__BEACON__RETRY__BASE_DELAY_SECS.",
+      "Both begin TWK and have their pieces cut apart by double underscores.",
+      "Base and delay are tied together with one underscore, and no lower case letter appears in either name.",
+      "Only the delay ends in SECS."
+    ],
+    "target_section": "Setting Names",
+    "fixtures": [],
+    "checks": []
+  }
+]

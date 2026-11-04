@@ -138,6 +138,20 @@ not per individual commit.
   from stored judgments with no model call. `bench/run/judge.js` runs the check when it builds a
   result and passes the records to `aggregateSkill`. Run `node --test
   bench/test/treatment-check.test.js bench/test/decision-rule.test.js`.
+- `bench/controls/`, three control skills, each with a task set in the task schema's fields, and
+  the file that explains them. A control has a known right verdict, so a run that misses it shows a
+  fault in the method. `keep/SKILL.md` holds conventions of an invented team that no model can know
+  (a commit subject, a service log line and a setting name); its tasks ask for the team's format,
+  and the expected verdict is `keep`. `prune/SKILL.md` holds three coding directions that are
+  plainly worse than the usual answer (a bare `except:` that returns `{}`, floats for money, an
+  immediate retry loop with no limit); the expected verdict is `prune`, and its treatment spec
+  `treatment/team-coding-notes.json` counts a with-arm run only when it took the direction.
+  `null/SKILL.md` is a neutral skill for the null control, whose two arms are identical and whose
+  expected verdict is review. Task sets are in `tasks/`: 10 tasks for keep, 12 for prune and 10 for
+  null, because a verdict needs 8 usable pairs and one task is one pair, so each control can lose
+  some and still decide. No `SKILL.md` names its role or its verdict; `README.md` there is the only
+  place that does, and defines identical arms for the subject runner. Run `node --test
+  bench/test/control-files.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
