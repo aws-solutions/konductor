@@ -426,3 +426,42 @@ test('turnSummary returns the last answer of a finished run', () => {
   assert.equal(t.finalText, 'hi');
   assert.equal(t.askedUser, false);
 });
+
+test('if claude honors TMPDIR (simulated, not verified against the real binary) its task directory goes with the run', async () => {
+  const s = setup('vanilla-success', { tmpBases: null });
+  try {
+    const cfgFile = path.join(path.dirname(s.bin), 'fake-claude.config.json');
+    const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
+    delete cfg.tmpBases;
+    fs.writeFileSync(cfgFile, JSON.stringify(cfg));
+    const r = await run(s);
+    assert.equal(r.status, 'success', r.error);
+    const made = fs.readdirSync(s.probe).filter((f) => f.startsWith('made-')).flatMap((f) => JSON.parse(fs.readFileSync(path.join(s.probe, f), 'utf8')));
+    assert.equal(made.length, 1);
+    assert.match(made[0], /scratch\/r-[^/]+\/tmp\/claude-\d+\//);
+    assert.equal(fs.existsSync(made[0]), false);
+    assert.deepEqual(fs.readdirSync(s.scratchDir), []);
+    assert.deepEqual(fs.readdirSync(s.tmpBase), []);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('two runs at once each remove only their own claude-<uid> directory and leave a foreign one', async () => {
+  const a = setup('vanilla-success');
+  try {
+    const uid = process.getuid();
+    const foreign = path.join(a.tmpBase, `claude-${uid}`, '-some-other-session', 'tasks');
+    fs.mkdirSync(foreign, { recursive: true });
+    const b = { ...a, outDir: path.join(a.root, 'out2', 't1'), scratchDir: path.join(a.root, 'scratch2') };
+    fs.mkdirSync(b.scratchDir);
+    b.ctx = { ...a.ctx, scratchDir: b.scratchDir };
+    const [r1, r2] = await Promise.all([run(a), run(b)]);
+    assert.equal(r1.status, 'success', r1.error);
+    assert.equal(r2.status, 'success', r2.error);
+    assert.deepEqual(fs.readdirSync(path.join(a.tmpBase, `claude-${uid}`)), ['-some-other-session']);
+    assert.equal(fs.existsSync(foreign), true);
+  } finally {
+    a.cleanup();
+  }
+});

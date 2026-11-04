@@ -23,11 +23,14 @@ fs.writeFileSync(path.join(cfg.dir, 'started.json'), JSON.stringify({
   stdinIsTty: require('tty').isatty(0),
 }));
 const slug = process.cwd().replace(/[^A-Za-z0-9]/g, '-');
+const made = [];
 for (const base of cfg.tmpBases || [process.env.TMPDIR]) {
   const d = path.join(base, 'claude-' + process.getuid(), slug, 'tasks');
   fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, 'task.output'), 'x');
+  made.push(d);
 }
+fs.writeFileSync(path.join(cfg.dir, 'made-' + process.pid + '.json'), JSON.stringify(made));
 if (cfg.sleepSec) { setTimeout(() => {}, cfg.sleepSec * 1000); return; }
 fs.writeFileSync(path.join(process.cwd(), 'hello.txt'), 'hello\\n');
 if (cfg.leak) console.log(JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: process.env.AWS_SECRET_ACCESS_KEY + ' ' + process.env.AWS_SESSION_TOKEN }] }, parent_tool_use_id: null }));
