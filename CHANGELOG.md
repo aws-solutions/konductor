@@ -57,6 +57,17 @@ not per individual commit.
   that replaces `adr-generator`, which is removed (81 skills). `adversarial-code-review` points
   to its three pass skills for each lens's checklist and severities, and `frontend-review`
   checks changes against the rules in `frontend-development`.
+- A direct `adversarial-code-review` run now applies the pass skills' full checklists:
+  hardcoded secrets and widened IAM policies at CRITICAL, retries without idempotency keys,
+  ordering across async events, enum and error-code changes, and auth-path wiring. It merges
+  duplicate findings across passes and keeps the highest severity.
+- Two pass ratings now match the old `adversarial-code-review` gate: a new field missing
+  validation or a default at any entry point is IMPORTANT (was SUGGESTION), and any unguarded
+  map or optional access is IMPORTANT (was limited to access reached at runtime). The security
+  pass also rates an internal error code or raw exception message surfaced to a caller CRITICAL.
+- `frontend-review` now checks the full `frontend-development` rule set, including `.refine()`
+  over `.transform()` for cross-field validation, defensive checks on array index access, and
+  TypeScript utility types.
 
 ### Fixed
 
