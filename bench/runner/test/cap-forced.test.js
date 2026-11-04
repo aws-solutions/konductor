@@ -186,7 +186,8 @@ test('low-load: a skill that never loads in wave 1 gets wave 1f with the prefix 
     // The call and the evidence rows do not depend on the forced wave.
     const dPlain = readJson(path.join(plain.studyDir, 'decisions/decisions.json')).decisions;
     const dForced = readJson(path.join(forced.studyDir, 'decisions/decisions.json')).decisions;
-    assert.deepEqual(withoutForced(dForced).map((d) => [d.name, d.decision, d.reasons]), withoutForced(dPlain).map((d) => [d.name, d.decision, d.reasons]));
+    assert.deepEqual(withoutForced(dForced), withoutForced(dPlain), 'every field of every decision is the same without the forced record');
+    assert.ok(dForced.some((d) => d.forced) && dPlain.every((d) => d.forced === undefined));
     const sec = r.decisions.find((d) => d.name === 'sectioned');
     assert.equal(sec.decision, 'NEEDS DATA');
     assert.equal(sec.forced.usedForCall, false);
@@ -406,4 +407,52 @@ test('cap skill-plan with --forced-load adds the line, and the totals stay as th
     assert.match(md, /3 arms x 2 tasks x 8 reps x 1 qualifying skill = 48 runs/);
     assert.doesNotMatch(renderPlan(plain.plan), /Forced-load wave/);
   } finally { plain.e.done(); forced.e.done(); }
+});
+
+// ---- persisted forced settings and dry runs ----
+
+const listTree = (dir) => { const out = []; const walk = (d) => { for (const n of fs.readdirSync(d).sort()) { const f = path.join(d, n); out.push(path.relative(dir, f)); if (fs.statSync(f).isDirectory()) walk(f); } }; walk(dir); return out; };
+
+test('--forced-held-min and --forced-load given on a run are saved to study.json and used by the final decide', async () => {
+  const s = setup();
+  try {
+    const lines = [];
+    const { exec } = fakeExec({ unloaded: ['ctl', 'ctl-b'] });
+    const r = await runStudy({ studyDir: s.studyDir, exec, log: (m) => lines.push(m), overrides: { forcedLoad: 'low-load', forcedHeldMin: 0.5 } });
+    const saved = readJson(path.join(s.studyDir, 'study.json')).settings;
+    assert.equal(saved.forcedLoad, 'low-load');
+    assert.equal(saved.forcedHeldMin, 0.5);
+    assert.equal(r.decisions.find((d) => d.name === 'sectioned').forced.heldMin, 0.5);
+    assert.equal(readJson(path.join(s.studyDir, 'decisions/decisions.json')).decisions.find((d) => d.name === 'sectioned').forced.heldMin, 0.5);
+    assert.ok(lines.some((l) => /--forced-held-min 0\.5: from the flag; saved to study\.json/.test(l)));
+    assert.equal(decideStudy({ studyDir: s.studyDir }).decisions.find((d) => d.name === 'sectioned').forced.heldMin, 0.5, 'a later cap decide reads it too');
+  } finally { s.e.done(); }
+});
+
+test('a resume without the flags uses the saved forced settings and says so; a flag on resume overrides and is saved', async () => {
+  const s = setup();
+  try {
+    const first = fakeExec({ unloaded: ['ctl', 'ctl-b'], failRuns: /w1f$/ });
+    await runStudy({ studyDir: s.studyDir, exec: first.exec, log: () => {}, overrides: { forcedLoad: 'low-load' } });
+    const lines = [];
+    const again = fakeExec({ unloaded: ['ctl', 'ctl-b'] });
+    await runStudy({ studyDir: s.studyDir, exec: again.exec, log: (m) => lines.push(m) });
+    assert.equal(runsOf(again.calls).filter((x) => armsOf(x).includes('frc')).length, 1, 'the resume ran the forced wave without the flag');
+    assert.ok(lines.some((l) => /--forced-load low-load: as saved in study\.json \(no flag given\)/.test(l)), lines.join('\n'));
+    const third = [];
+    await runStudy({ studyDir: s.studyDir, exec: fakeExec({}).exec, log: (m) => third.push(m), overrides: { forcedHeldMin: 0.7 } });
+    assert.equal(readJson(path.join(s.studyDir, 'study.json')).settings.forcedHeldMin, 0.7);
+  } finally { s.e.done(); }
+});
+
+test('a dry run creates no directory and saves no flag', async () => {
+  const s = setup();
+  try {
+    const before = listTree(s.studyDir);
+    const { exec, calls } = fakeExec();
+    await runStudy({ studyDir: s.studyDir, exec, log: () => {}, dryRun: true, overrides: { forcedLoad: 'always', forcedHeldMin: 0.6 } });
+    assert.equal(calls.length, 0);
+    assert.deepEqual(listTree(s.studyDir), before);
+    assert.equal(readJson(path.join(s.studyDir, 'study.json')).settings.forcedLoad, undefined);
+  } finally { s.e.done(); }
 });

@@ -61,6 +61,38 @@ function loadStudy(studyDir) {
   return s;
 }
 
+// Settings that change what the study measures, kept in study.json so a resume does the same without the flags.
+const PERSISTED = [['forcedLoad', '--forced-load'], ['forcedHeldMin', '--forced-held-min']];
+
+/**
+ * Saves --forced-load and --forced-held-min into study.json when a flag sets a new value, and says where each value in
+ * force comes from. A dry run saves nothing. Returns the persisted settings in force.
+ */
+function persistForced(studyDir, study, overrides, { log, dryRun }) {
+  const saved = study.settings;
+  const out = {};
+  const changed = {};
+  for (const [key, flag] of PERSISTED) {
+    const given = overrides?.[key];
+    const value = given ?? saved[key];
+    if (value === undefined || value === null) continue;
+    out[key] = value;
+    if (given !== undefined && given !== saved[key]) {
+      changed[key] = given;
+      log(`${flag} ${given}: from the flag${saved[key] === undefined ? '' : ` (study.json had ${saved[key]})`}${dryRun ? '; a dry run does not save it' : '; saved to study.json'}`);
+    } else {
+      log(`${flag} ${value}: as saved in study.json${given === undefined ? ' (no flag given)' : ''}`);
+    }
+  }
+  if (Object.keys(changed).length && !dryRun) {
+    const onDisk = loadStudy(studyDir);
+    Object.assign(onDisk.settings, changed);
+    writeJson(paths(studyDir).study, onDisk);
+    Object.assign(study.settings, changed);
+  }
+  return out;
+}
+
 // ---- arms ----
 
 const pairs = (ids, value) => (value ? ids.map((id) => `${id}=${value}`).join(',') : null);
@@ -277,11 +309,12 @@ function checkCreds(study, selected, log, dryRun) {
 async function runStudy({ studyDir, exec, log = () => {}, tiers = ['all'], skills = null, dryRun = false, shouldStop = () => false, overrides = null, waves = 'all' }) {
   if (!['all', '1'].includes(String(waves))) throw new Error('--waves takes 1 (controls and wave 1 only) or all');
   const study = loadStudy(studyDir);
-  if (overrides) Object.assign(study.settings, overrides);
+  const forcedSettings = persistForced(studyDir, study, overrides, { log, dryRun });
+  if (overrides) Object.assign(study.settings, overrides, forcedSettings);
   const p = paths(studyDir);
   const sel = study.plan.skills.filter((s) => s.lift && (tiers.includes('all') || tiers.includes(s.tier)) && (!skills || skills.includes(s.name)));
   checkCreds(study, sel, log, dryRun);
-  fs.mkdirSync(p.logs, { recursive: true });
+  if (!dryRun) fs.mkdirSync(p.logs, { recursive: true });
   const result = { dryRun, stopped: null, decisions: [], forcedFailed: [] };
   const step = async (label, argv) => {
     if (shouldStop()) { result.stopped = 'stop-requested'; return null; }
@@ -302,7 +335,7 @@ async function runStudy({ studyDir, exec, log = () => {}, tiers = ['all'], skill
       await skillSteps({ study, studyDir, rec, step, log, dryRun, result, controlsTrusted: controls.trusted, wave1Only: String(waves) === '1' });
     }
   }
-  if (!dryRun) result.decisions = decideStudy({ studyDir }).decisions;
+  if (!dryRun) result.decisions = decideStudy({ studyDir, heldMin: study.settings.forcedHeldMin ?? null }).decisions;
   return result;
 }
 
@@ -389,7 +422,7 @@ async function skillSteps({ study, studyDir, rec, step, log, dryRun, result, con
   const suite = suiteOf(study, chosen);
   const armConfig = rec.reach.armConfig;
   const armAgent = rec.reach.armAgent;
-  fs.mkdirSync(p.skill(rec.name), { recursive: true });
+  if (!dryRun) fs.mkdirSync(p.skill(rec.name), { recursive: true });
 
   // A failed forced wave is recorded in w1f.failed and the study goes on: it never feeds a call, so nothing else depends
   // on it. The marker is cleared when the wave is tried again on resume. A stop request still stops everything.
