@@ -114,3 +114,25 @@ describe('the shared Playwright config, read from the environment', () => {
     expect(shared.API_URL).toBe('http://127.0.0.1:8080');
   });
 });
+
+describe('the projects of the default Playwright config', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function projectNames(target: string | undefined) {
+    vi.stubEnv('WC_API_TARGET', target);
+    vi.resetModules();
+    const { default: config } = await import('../playwright.config.ts');
+    return (config.projects ?? []).map((project) => project.name);
+  }
+
+  it('run the editing specs after the functional ones against the stub', async () => {
+    expect(await projectNames(undefined)).toEqual(['functional', 'editing']);
+  });
+
+  it('leave out the editing specs, which save, against another server', async () => {
+    expect(await projectNames('http://127.0.0.1:8080')).toEqual(['functional']);
+  });
+});

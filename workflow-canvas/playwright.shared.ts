@@ -44,6 +44,9 @@ export const stableRendering: NonNullable<Project['use']> = {
   },
 };
 
+/** The name of the project whose tests save to the stub, one at a time. */
+export const EDITING_PROJECT = 'editing';
+
 /** Settings shared by the functional run and the screenshot capture. */
 export const sharedConfig: PlaywrightTestConfig = {
   outputDir: 'test-results',
