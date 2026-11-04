@@ -27,26 +27,30 @@
  * Only an unknown runtime name throws, because that is a caller bug, not bad data.
  *
  * Verification status. Which input formats have been checked against a real capture:
- *  - Claude Code: verified against two captured `claude` 2.1.318 `--output-format stream-json
- *    --verbose` runs. One has a `Read` call (fixtures/traces/claude-code-2.1.318-read.jsonl); the
- *    other loads a project skill through the `Skill` tool
- *    (fixtures/traces/claude-code-2.1.318-skill-tool.jsonl). They cover `system/init`, the `Read`
- *    and `Skill` calls with their results, and `result`. They do not cover subagent events, tool
- *    errors or MCP tools.
+ *  - Claude Code: verified against captured `claude` `--output-format stream-json --verbose` runs
+ *    (fixtures/traces/claude-code-<version>-*.jsonl): a `Read` call and a `Skill` call that loads a
+ *    project skill (2.1.318), a `Skill` call that succeeds (2.1.316), a `Skill` call blocked by
+ *    permission rules with its `system/permission_denied` event (2.1.314), and a failed `Bash`
+ *    call (2.1.306). They cover `system/init`, the calls with their results, the failed and
+ *    blocked statuses, `system/thinking_tokens`, and `result`. Not verified: subagent events and
+ *    MCP tool calls.
  *  - Kiro CLI: the ACP envelope (`type: 'sessionUpdate'`, `data.update.sessionUpdate`) is verified
  *    against captured `kiro-cli` 3.0.0 `chat --output-format stream-json` runs
- *    (fixtures/traces/kiro-cli-3.0.0-*.jsonl). The captures contain no failed tool status, no MCP
- *    tool call and no `_meta.kiro.toolName`. Not verified: how kiro-cli reports a call to the
- *    `get_skill` MCP tool (see "Skill loads"); there is no capture of one yet. The older flat shape (`type: 'tool_call'` with
+ *    (fixtures/traces/kiro-cli-3.0.0-*.jsonl). Not verified, because no capture holds them: a
+ *    failed tool status, `_meta.kiro.toolName`, `rawInput.operations[]`, and a call to the
+ *    `get_skill` MCP tool (see "Skill loads"). The older flat shape (`type: 'tool_call'` with
  *    `tool_call_id`, `tool_name`, `arguments`, string `content`, and a `model` event) is NOT known to
  *    be emitted by any release: it was written from an assumed format, and it is kept only so the
- *    synthetic behavior fixtures keep working. Treat it as unverified.
+ *    synthetic behavior fixtures keep working. Treat it as unverified. The 3.0.0 stream names no
+ *    model and reports credits, not token counts or USD, so `model_id` is null and `usage` and
+ *    `cost_usd` are always null. That is what the stream carries, not a gap in the parser.
  *  - OpenCode: verified against captured `opencode` 2.0.27 `run --format json` runs: one with a
  *    completed `read` call (fixtures/traces/opencode-2.0.27-read.jsonl) and one in which the model
  *    reads a `skills/<name>/SKILL.md` and then a second file
  *    (fixtures/traces/opencode-2.0.27-skill-read.jsonl). They cover `step_start`, `tool_use`
- *    (status `completed`), `step_finish` and `text`, and the skill-load path. They do not cover a failed or unfinished tool state, the
- *    `error` event, or a `callID` field, so those paths still rest on the documented shapes only.
+ *    (status `completed`), `step_finish` and `text`, and the skill-load path. Not verified: the
+ *    `error` event and a failed or unfinished tool state; those paths rest on the documented
+ *    shapes only. opencode 2.0.27 sends no `callID`; its tool part carries the call id as `id`.
  * A fixture is a real capture only when its file name carries the CLI name and version; the others
  * under fixtures/traces/ are synthetic.
  *
