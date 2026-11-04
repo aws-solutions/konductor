@@ -136,14 +136,8 @@ fn deny_entry_shadows_grant(deny_entry: &str, grant: &str) -> bool {
 /// error here -- `symlink_metadata` on a nonexistent path just means
 /// there is nothing to reject yet.
 fn reject_symlink(path: &Path, kind: &str) -> Result<(), String> {
-    match std::fs::symlink_metadata(path) {
-        Ok(meta) if meta.file_type().is_symlink() => Err(format!(
-            "{} is a symlink, not a real {kind} -- refusing to write through it; fix or \
-             remove it before installing",
-            path.display()
-        )),
-        _ => Ok(()),
-    }
+    crate::cli::atomic_write::reject_symlink(path, kind)
+        .map_err(|err| format!("{err}; fix or remove it before installing"))
 }
 
 /// Why a Claude settings merge failed, so callers match on the variant

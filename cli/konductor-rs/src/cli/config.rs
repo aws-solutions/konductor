@@ -245,6 +245,9 @@ pub enum ConfigError {
     LockFailed {
         source: crate::cli::config_lock::ConfigLockError,
     },
+    /// `config set` found `.konductor/` or `.konductor/config.yml` to be a
+    /// symlink and refused to read or write through it.
+    SymlinkRefused { source: std::io::Error },
 }
 
 impl std::fmt::Display for ConfigError {
@@ -294,6 +297,7 @@ impl std::fmt::Display for ConfigError {
                 write!(f, "could not write {}: {source}", path.display())
             }
             ConfigError::LockFailed { source } => write!(f, "{source}"),
+            ConfigError::SymlinkRefused { source } => write!(f, "{source}"),
         }
     }
 }
@@ -318,6 +322,7 @@ impl ConfigError {
             ConfigError::SerializeFailed { .. } => "config.serialize_failed",
             ConfigError::WriteFailed { .. } => "config.write_failed",
             ConfigError::LockFailed { .. } => "config.lock_failed",
+            ConfigError::SymlinkRefused { .. } => "config.symlink_refused",
         }
     }
 }
@@ -435,7 +440,11 @@ fn dirs_home_dir() -> Option<PathBuf> {
 /// field's expected type, sets that one key on the parsed YAML mapping
 /// of the project's `.konductor/config.yml` (an empty mapping if the
 /// file does not exist yet), and writes it back atomically via
-/// `atomic_write`.
+/// `atomic_write`. An existing file keeps its permission bits; a new one
+/// is written at `write_atomic`'s `0o644`. A symlinked `.konductor/` or
+/// `config.yml` is refused with `ConfigError::SymlinkRefused`, checked
+/// before the lock is taken, before the read, and again before the write,
+/// so the write never follows a link out of the project.
 ///
 /// Every other key and block in the file (for example `telemetry:`) is
 /// kept, in its original order. A key not yet in the file is appended.
@@ -478,6 +487,11 @@ pub fn set_config_value(
     }
 
     let konductor_dir = project_root.join(KONDUCTOR_DIR_NAME);
+    let project_config_path = konductor_dir.join(CONFIG_FILE_NAME);
+
+    // The lock file is created inside `.konductor/`, so refuse a symlinked
+    // directory before taking the lock as well as under it.
+    refuse_symlinks(&konductor_dir, &project_config_path)?;
 
     // Acquire the lock BEFORE the read step and hold `_lock_guard` until
     // this function returns (it drops, releasing the lock, at the end of
@@ -487,7 +501,8 @@ pub fn set_config_value(
     let _lock_guard = crate::cli::config_lock::acquire(&konductor_dir)
         .map_err(|source| ConfigError::LockFailed { source })?;
 
-    let project_config_path = konductor_dir.join(CONFIG_FILE_NAME);
+    refuse_symlinks(&konductor_dir, &project_config_path)?;
+    let original_mode = existing_file_mode(&project_config_path)?;
     let (mut mapping, original_text) = load_project_mapping(&project_config_path)?;
 
     let parsed = parse_field_value(key, value)?;
@@ -514,14 +529,44 @@ pub fn set_config_value(
         path: konductor_dir.clone(),
         source,
     })?;
-    crate::cli::atomic_write::write_atomic(&project_config_path, serialized.as_bytes()).map_err(
-        |source| ConfigError::WriteFailed {
-            path: project_config_path.clone(),
-            source,
-        },
-    )?;
+    refuse_symlinks(&konductor_dir, &project_config_path)?;
+    let bytes = serialized.as_bytes();
+    match original_mode {
+        Some(mode) => {
+            crate::cli::atomic_write::write_atomic_with_mode(&project_config_path, bytes, mode)
+        }
+        None => crate::cli::atomic_write::write_atomic(&project_config_path, bytes),
+    }
+    .map_err(|source| ConfigError::WriteFailed {
+        path: project_config_path.clone(),
+        source,
+    })?;
 
     Ok(effective)
+}
+
+/// Refuses a symlinked `.konductor/` directory or `config.yml`.
+fn refuse_symlinks(konductor_dir: &Path, config_path: &Path) -> Result<(), ConfigError> {
+    for (path, kind) in [(konductor_dir, "directory"), (config_path, "file")] {
+        crate::cli::atomic_write::reject_symlink(path, kind)
+            .map_err(|source| ConfigError::SymlinkRefused { source })?;
+    }
+    Ok(())
+}
+
+/// The permission bits of an existing regular file, or `None` when there
+/// is no file yet.
+fn existing_file_mode(path: &Path) -> Result<Option<u32>, ConfigError> {
+    use std::os::unix::fs::PermissionsExt;
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let metadata =
+        std::fs::metadata(path).map_err(|source| ConfigError::ProjectConfigNotReadable {
+            path: path.to_path_buf(),
+            source,
+        })?;
+    Ok(Some(metadata.permissions().mode() & 0o7777))
 }
 
 /// Picks the parse error to show when the edited buffer fails to
@@ -1274,6 +1319,67 @@ mod tests {
         let (root, config_path) = project_with_config("set-repairs-wrong-type", contents);
         set_config_value(&root, "version", "1").expect("setting the broken field must repair it");
         assert_eq!(read_mapping(&config_path)["version"].as_u64(), Some(1));
+        fs::remove_dir_all(&root).ok();
+    }
+
+    fn file_mode(path: &Path) -> u32 {
+        use std::os::unix::fs::PermissionsExt;
+        fs::metadata(path).unwrap().permissions().mode() & 0o7777
+    }
+
+    #[test]
+    fn set_keeps_the_existing_file_mode() {
+        use std::os::unix::fs::PermissionsExt;
+        let (root, config_path) = project_with_config("set-keeps-mode", "tier: minor\n");
+        fs::set_permissions(&config_path, fs::Permissions::from_mode(0o600)).unwrap();
+        set_config_value(&root, "tier", "major").unwrap();
+        assert_eq!(file_mode(&config_path), 0o600);
+        assert_eq!(read_mapping(&config_path)["tier"].as_str(), Some("major"));
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_writes_a_new_file_at_0644() {
+        let root = scratch_dir("set-new-file-mode");
+        set_config_value(&root, "tier", "major").unwrap();
+        assert_eq!(file_mode(&root.join(".konductor/config.yml")), 0o644);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_refuses_a_symlinked_config_file() {
+        let (root, config_path) = project_with_config("set-symlink-file", "tier: minor\n");
+        let target = root.join("elsewhere.yml");
+        fs::rename(&config_path, &target).unwrap();
+        std::os::unix::fs::symlink(&target, &config_path).unwrap();
+        let before = fs::read(&target).unwrap();
+
+        let err = set_config_value(&root, "tier", "major").expect_err("a symlink must be refused");
+        assert!(matches!(err, ConfigError::SymlinkRefused { .. }), "{err:?}");
+        assert_eq!(err.error_code(), "config.symlink_refused");
+        assert!(err.to_string().contains("is a symlink"), "{err}");
+        assert_eq!(fs::read(&target).unwrap(), before);
+        assert!(fs::symlink_metadata(&config_path)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_refuses_a_symlinked_konductor_dir_without_writing_through_it() {
+        let root = scratch_dir("set-symlink-dir");
+        let target = root.join("real-dir");
+        fs::create_dir_all(&target).unwrap();
+        std::os::unix::fs::symlink(&target, root.join(".konductor")).unwrap();
+
+        let err = set_config_value(&root, "tier", "major").expect_err("a symlink must be refused");
+        assert!(matches!(err, ConfigError::SymlinkRefused { .. }), "{err:?}");
+        assert_eq!(
+            fs::read_dir(&target).unwrap().count(),
+            0,
+            "nothing may land in the link target"
+        );
         fs::remove_dir_all(&root).ok();
     }
 
