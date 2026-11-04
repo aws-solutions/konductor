@@ -51,7 +51,10 @@ limits on characters per file, characters in total and number of files. A file o
 and says so; a file past the total or count limit shows its path and change only.
 
 Every path and all file text go through `sanitizeAnswer`, the same cleaner as the reply, so a file
-cannot tell the judge which arm wrote it.
+cannot tell the judge which arm wrote it. A file is cleaned in full and then cut to the limits, so a
+cut cannot leave the start of the skill's name. The cleaner also removes the name when it is glued
+to other words (`release_notes`, `ReleaseNotes`, `docs/release-notes-notes.md`); see the header of
+`bench/lib/sanitize.js` for the spellings it keeps on purpose.
 
 ## Iterate on it
 

@@ -31,6 +31,16 @@
  * Entries are taken in path order, so which entry is cut or omitted depends only on the two
  * snapshots and the limits. A cut never splits a surrogate pair. An unknown option or a limit that
  * is not a positive integer throws.
+ *
+ * Cleaning before cutting. The optional fourth argument `clean(text) => text` is applied to the
+ * final text of every file that will show content, before any limit is applied. The limits then
+ * count the cleaned text, and `truncated` compares the cleaned length with the cut. A caller that
+ * must hide something (the judge prompt hides the skill's name) passes its cleaner here. Cutting
+ * a file first and cleaning the piece would let a cut leave the start of a name that the cleaner,
+ * seeing only the piece, no longer recognises. A file that is deleted or omitted is never passed
+ * to `clean`, so its cost is bounded by `maxFiles` files of at most the snapshot's own size
+ * limit each. Change detection uses the raw texts. `clean` must be deterministic and must return
+ * a string.
  */
 
 /** The limits used when the caller passes none, or leaves one out. */
@@ -121,7 +131,10 @@ const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
  * The files that differ between `start` and `final`, sorted by path and bounded by `limits`.
  * See the module header for the entry shape and the limits.
  */
-function workspaceChanges(start, final, limits) {
+function workspaceChanges(start, final, limits, clean) {
+  if (clean !== undefined && typeof clean !== 'function') {
+    throw new TypeError('clean must be a function from text to text');
+  }
   const before = readSnapshot(start, 'start');
   const after = readSnapshot(final, 'final');
   const caps = resolveLimits(limits);
@@ -144,9 +157,13 @@ function workspaceChanges(start, final, limits) {
       return { ...entry, omitted: true };
     }
     if (change === 'deleted') return entry;
-    const content = cutText(text, Math.min(caps.maxFileChars, remaining));
+    // The cleaner sees the whole file, then the cut is made, so a cut can never leave the start
+    // of something the cleaner would have removed.
+    const whole = clean === undefined ? text : clean(text);
+    if (typeof whole !== 'string') throw new TypeError('clean must return a string');
+    const content = cutText(whole, Math.min(caps.maxFileChars, remaining));
     shown += content.length;
-    return { ...entry, content, truncated: content.length < text.length };
+    return { ...entry, content, truncated: content.length < whole.length };
   });
 }
 

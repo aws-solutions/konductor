@@ -127,6 +127,14 @@ not per individual commit.
   whole. `SANITIZER_VERSION` is 2. The header lists what is kept by decision and what is not
   caught. `bench/test/skill-name-leak.test.js` plants about twenty spellings in a reply, a file
   path and file content, for two names, on both judge scales and in both orders.
+- The judge prompt now cleans a changed file in full and only then cuts it to the size limits.
+  It used to cut first, so a cut inside the skill's name left a fragment such as `release-no`
+  that the cleaner no longer recognised. `workspaceChanges(start, final, limits, clean)` takes the
+  cleaner as a fourth argument and applies it to the final text of each file that will show
+  content, so the limits count the cleaned text. A deleted or omitted file is never cleaned, so the
+  extra work is bounded by `maxFiles` files of at most the snapshot size limit each. Replies were
+  already cleaned before the cut. `bench/test/skill-name-cut.test.js` puts the cap inside the name
+  at every offset, for the per-file cap, the total cap and the reply cap.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
   and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared

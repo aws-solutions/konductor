@@ -22,7 +22,7 @@
  * Placeholders, each replaced in a single pass (substituted text is never scanned again):
  *   {{task}}      the task's request text
  *   {{rubric}}    the task's rubric as a numbered list ("1. ...\n2. ...")
- *   {{answer_a}}  the reply shown first, sanitized by sanitize.js, then cleaned (control
+ *   {{answer_a}}  the reply shown first, sanitized by sanitize.js in full, then cleaned (control
  *                 characters stripped, overlong text cut)
  *   {{answer_b}}  the reply shown second, same cleaning
  *   {{files_a}}   the "Changed files" section of the first answer (see below)
@@ -36,8 +36,12 @@
  * file cut at a limit says so, and a file past a limit shows its path and change only. Every path
  * and all content go through `sanitizeAnswer`, the same cleaner as the reply, because a path or a
  * file can name the skill as easily as a reply can. A path that the cleaner empties is shown as
- * "(unnamed file)". The cleaner works on the text after a limit has cut it, so a cut can leave a
- * fragment of a name. The two files sections sit inside their answer's marker lines.
+ * "(unnamed file)". A file is cleaned in full and only then cut to the size limits (the cleaner is
+ * handed to `workspaceChanges`), so a cut cannot leave the start of a name. The cleaner runs once
+ * more over the piece that is shown, as a guard for a caller that renders a section from changes
+ * it cut itself; that second pass is bounded by the total limit. Known limit: the entries are
+ * sorted by their real paths, so the order of the files can still reflect where a path that held
+ * the name sorts. The two files sections sit inside their answer's marker lines.
  *
  * What a judge may see. Of a task, only `task.task` and `task.rubric` (JUDGE_VISIBLE_FIELDS).
  * `visibleTask` reads exactly those two fields and `assertAllowListed` refuses any other, so a
@@ -226,7 +230,8 @@ function armValues(arm, label, context, limits) {
   }
   let changes;
   try {
-    changes = workspaceChanges(arm.start, arm.final, limits);
+    // Each file is cleaned in full inside workspaceChanges, then cut to the size limits.
+    changes = workspaceChanges(arm.start, arm.final, limits, (fileText) => sanitizeAnswer(fileText, context));
   } catch (err) {
     err.message = `answer ${label}: ${err.message}`;
     throw err;

@@ -222,3 +222,49 @@ test('ordinary relative paths are accepted', () => {
   };
   assert.equal(workspaceChanges({}, final).length, 5);
 });
+
+// ---- cleaning before cutting -----------------------------------------------------------------
+
+const dropSecret = (text) => text.split('SECRET').join('');
+
+test('clean runs on the whole file before the cut, so a name split by the cut is gone', () => {
+  const final = { 'a.txt': 'abcSECRETdef' };
+  // Cleaned first: "abcdef", cut at 4 -> "abcd". Cut first: "abcS" and the cleaner would miss it.
+  const out = workspaceChanges({}, final, { maxFileChars: 4 }, dropSecret);
+  assert.deepEqual(out, [entry('a.txt', 'added', 'abcd', { truncated: true })]);
+  const cutFirst = dropSecret(workspaceChanges({}, final, { maxFileChars: 6 })[0].content);
+  assert.equal(cutFirst, 'abcSEC', 'the old order leaves a fragment');
+});
+
+test('the limits count the cleaned text and truncated compares the cleaned length', () => {
+  const final = { 'a.txt': 'SECRET1234', 'b.txt': 'SECRETab' };
+  const out = workspaceChanges({}, final, { maxFileChars: 4, maxTotalChars: 6 }, dropSecret);
+  assert.deepEqual(out, [
+    entry('a.txt', 'added', '1234'),
+    entry('b.txt', 'added', 'ab'),
+  ]);
+  const cleanedToNothing = workspaceChanges({}, { 'a.txt': 'SECRET' }, undefined, dropSecret);
+  assert.deepEqual(cleanedToNothing, [entry('a.txt', 'added', '')]);
+});
+
+test('clean is not called for a deleted file or an omitted entry, and change detection uses the raw text', () => {
+  const seen = [];
+  const spy = (text) => {
+    seen.push(text);
+    return text;
+  };
+  const start = { 'gone.txt': 'old', 'same.txt': 'SECRET', 'edit.txt': 'SECRET' };
+  const final = { 'same.txt': 'SECRET', 'edit.txt': 'SECRETx', 'b.txt': 'b', 'c.txt': 'c' };
+  workspaceChanges(start, final, { maxFiles: 2 }, spy);
+  assert.deepEqual(seen, ['b', 'c'], 'only entries that show content, in path order');
+  const same = workspaceChanges({ 'a.txt': 'SECRET' }, { 'a.txt': 'SECRET' }, undefined, dropSecret);
+  assert.deepEqual(same, [], 'identical raw text is not a change');
+  const edited = workspaceChanges({ 'a.txt': 'xSECRET' }, { 'a.txt': 'SECRETx' }, undefined, dropSecret);
+  assert.equal(edited[0].change, 'edited', 'texts that differ raw are an edit even when they clean alike');
+});
+
+test('clean must be a function that returns a string', () => {
+  assert.throws(() => workspaceChanges({}, {}, undefined, 'x'), /clean must be a function/);
+  assert.throws(() => workspaceChanges({}, { 'a.txt': 'x' }, undefined, () => 5), /clean must return a string/);
+  assert.deepEqual(workspaceChanges({}, { 'a.txt': 'x' }, undefined, undefined), [entry('a.txt', 'added', 'x')]);
+});
