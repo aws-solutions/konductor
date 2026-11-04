@@ -12,6 +12,9 @@
  *    user and host names) and no event added. Large events that list the machine's own commands,
  *    models or steering files keep their shape but have those lists emptied.
  *      - claude-code-2.1.318-read.jsonl: Claude Code 2.1.318, `--output-format stream-json --verbose`.
+ *      - claude-code-2.1.318-skill-tool.jsonl: the same CLI and flags; the model loads a synthetic
+ *        project skill through the `Skill` tool. Sanitized like the others; no event or field was
+ *        added or removed. This verifies the Claude Code skill-load path.
  *      - kiro-cli-3.0.0-read.jsonl, kiro-cli-3.0.0-skill-read.jsonl: kiro-cli 3.0.0,
  *        `chat --output-format stream-json`; the second run reads a SKILL.md.
  *      - opencode-2.0.27-read.jsonl: opencode 2.0.27, `run --format json`, one completed `read`
@@ -28,7 +31,8 @@
  *    release emits. The synthetic kiro-* fixtures use the flat shape, which no release is known to
  *    emit.
  * Only the real captures prove a format. Every other trace is built inline from the helpers
- * below, and those inline Kiro ACP events are synthetic too. No test makes a network or model
+ * below, and those inline Kiro ACP events are synthetic too. That includes the `get_skill` tests:
+ * no kiro-cli capture of an MCP tool call exists yet, so the Kiro `get_skill` path is unverified. No test makes a network or model
  * call. Credential-shaped test values are assembled from fragments so no real-looking token
  * appears in this file.
  */
@@ -278,7 +282,7 @@ test('the CHANGELOG entry is found, and does not end at a following bullet or he
 
 test('fixtures, library, test source and CHANGELOG entry hold no private paths, identities, credentials or hosts', () => {
   const fixtureNames = fs.readdirSync(FIXTURES_DIR);
-  assert.ok(fixtureNames.length >= 17, 'twelve synthetic fixtures plus the five real captures');
+  assert.ok(fixtureNames.length >= 18, 'twelve synthetic fixtures plus the six real captures');
   const sources = fixtureNames.map((name) => [`fixtures/traces/${name}`, loadFixture(name)]);
   sources.push(['bench/test/trace-normalizer.test.js', fs.readFileSync(__filename, 'utf8')]);
   sources.push(['bench/lib/trace-normalizer.js', fs.readFileSync(LIBRARY_PATH, 'utf8')]);
@@ -1981,6 +1985,19 @@ test('normalizeToolName collapses mcp__<server>__<tool> and plugin:server:tool__
   assert.equal(normalizeToolName(''), '');
 });
 
+// Built from parts so the public safety scan does not read it as a scoped package name.
+const SCOPED_GET_SKILL = ['@', 'skills-server', '/get_skill'].join('');
+
+test('normalizeToolName drops an @<server>/ prefix the way it drops mcp__<server>__', () => {
+  assert.equal(normalizeToolName(SCOPED_GET_SKILL), 'get_skill');
+  assert.equal(normalizeToolName(['@', 'Skills-Server', '/Get_Skill'].join('')), 'get_skill');
+  assert.equal(normalizeToolName(['@', 'outer', '/inner', '/Tool'].join('')), 'tool');
+  assert.equal(normalizeToolName(['@', 'skills-server', '/'].join('')), '');
+  // A slash without a leading @ is not a server prefix.
+  assert.equal(normalizeToolName('docs/Read'), 'docs/read');
+  assert.equal(normalizeToolName('mcp__example__get_skill'), 'get_skill');
+});
+
 test('normalizeToolName returns an empty string for non-string input', () => {
   for (const value of [null, undefined, 5, {}, []]) {
     assert.equal(normalizeToolName(value), '');
@@ -2199,6 +2216,7 @@ test('adding tool_call_id is additive: schema_version stays 1 and the other call
 const OPENCODE_REAL = 'opencode-2.0.27-read.jsonl';
 const OPENCODE_REAL_SKILL = 'opencode-2.0.27-skill-read.jsonl';
 const CLAUDE_REAL = 'claude-code-2.1.318-read.jsonl';
+const CLAUDE_REAL_SKILL = 'claude-code-2.1.318-skill-tool.jsonl';
 const KIRO_REAL_READ = 'kiro-cli-3.0.0-read.jsonl';
 const KIRO_REAL_SKILL = 'kiro-cli-3.0.0-skill-read.jsonl';
 
@@ -2228,6 +2246,37 @@ test('real capture, Claude Code 2.1.318: one Read call, its result, the answer, 
   assert.deepEqual(record.errors, []);
   assert.equal(record.parse_errors, 0);
   assert.deepEqual(record.unrecognized_events, {});
+});
+
+test('real capture, Claude Code 2.1.318: a Skill tool call is recorded as a skill load', () => {
+  const record = normalizeTrace('claude-code', loadFixture(CLAUDE_REAL_SKILL));
+  assert.equal(record.tool_calls.length, 1);
+  const [call] = record.tool_calls;
+  assert.equal(call.tool_call_id, 'toolu_fixture_1');
+  assert.equal(call.raw_tool_name, 'Skill');
+  assert.equal(call.tool_name, 'skill');
+  assert.deepEqual(call.arguments, { skill: 'sample-notes' });
+  assert.equal(call.status, 'completed');
+  assert.equal(call.result, 'Launching skill: sample-notes');
+  assert.deepEqual(record.skill_loads, [
+    { skill_name: 'sample-notes', source: 'dedicated-event', raw_path: null, subagent: false },
+  ]);
+  assert.deepEqual(record.available_tools, ['Read', 'Skill']);
+  assert.equal(record.response_text, 'The code word is alpha-7.');
+  assert.equal(record.complete, true);
+  assert.deepEqual(record.errors, []);
+  assert.equal(record.parse_errors, 0);
+  // The skill text arrives as a separate synthetic user event; it is read without being counted.
+  assert.deepEqual(record.unrecognized_events, {});
+});
+
+test('real capture, Claude Code 2.1.318: a Skill call whose result is missing is not a load', () => {
+  const lines = loadFixture(CLAUDE_REAL_SKILL)
+    .split('\n')
+    .filter((line) => line && !line.includes('"type":"tool_result"'));
+  const record = normalizeTrace('claude-code', lines.join('\n'));
+  assert.equal(record.tool_calls[0].status, 'unknown');
+  assert.deepEqual(record.skill_loads, []);
 });
 
 test('real capture, OpenCode 2.0.27: one read call, its result, the answer, usage, cost and completeness', () => {
@@ -2523,6 +2572,78 @@ const acpText = (text) => acp({ sessionUpdate: 'agent_message_chunk', content: {
 const acpDone = (extra = {}) => ({
   type: 'runFinished',
   data: { sessionId: 'sess_a', status: 'success', stopReason: 'end_turn', ...extra },
+});
+
+// get_skill: no kiro-cli capture of an MCP tool call exists, so these events are synthetic. They
+// follow the review's description (the tool name in _meta.kiro.toolName, the skill in `name`).
+const acpGetSkill = (id, toolName, rawInput) =>
+  acpCall(id, 'other', rawInput, { _meta: { kiro: { toolName } } });
+
+test('kiro ACP: a completed get_skill call is a skill load, whichever way the server is spelled', () => {
+  for (const toolName of [SCOPED_GET_SKILL, 'mcp__example__get_skill', 'get_skill']) {
+    const record = normalizeTrace(
+      'kiro',
+      jsonl(acpGetSkill('a', toolName, { name: 'demo-skill' }), acpUpdate('a', 'completed'), acpDone()),
+    );
+    assert.equal(record.tool_calls[0].raw_tool_name, toolName);
+    assert.equal(record.tool_calls[0].tool_name, 'get_skill');
+    assert.deepEqual(record.skill_loads, [
+      { skill_name: 'demo-skill', source: 'mcp-get-skill', raw_path: null, subagent: false },
+    ]);
+    assert.deepEqual(record.errors, []);
+  }
+});
+
+test('kiro flat shape: a completed get_skill call is a skill load too', () => {
+  const record = normalizeTrace(
+    'kiro',
+    jsonl(kiroCall('a', SCOPED_GET_SKILL, { name: 'demo-skill' }), kiroUpdate('a', 'completed')),
+  );
+  assert.equal(record.tool_calls[0].tool_name, 'get_skill');
+  assert.deepEqual(
+    record.skill_loads.map((l) => [l.skill_name, l.source]),
+    [['demo-skill', 'mcp-get-skill']],
+  );
+});
+
+test('kiro ACP: a get_skill call that failed, never completed or names no skill is not a load', () => {
+  const failed = normalizeTrace(
+    'kiro',
+    jsonl(acpGetSkill('a', SCOPED_GET_SKILL, { name: 'demo-skill' }), acpUpdate('a', 'failed', { rawOutput: { message: 'unknown skill' } })),
+  );
+  assert.equal(failed.tool_calls[0].status, 'error');
+  assert.deepEqual(failed.skill_loads, []);
+
+  const open = normalizeTrace(
+    'kiro',
+    jsonl(acpGetSkill('a', SCOPED_GET_SKILL, { name: 'demo-skill' }), acpUpdate('a', 'in_progress')),
+  );
+  assert.equal(open.tool_calls[0].status, 'unknown');
+  assert.deepEqual(open.skill_loads, []);
+
+  for (const rawInput of [{}, { name: '' }, { name: 7 }, { skill: 'demo-skill' }]) {
+    const record = normalizeTrace('kiro', jsonl(acpGetSkill('a', SCOPED_GET_SKILL, rawInput), acpUpdate('a', 'completed')));
+    assert.equal(record.tool_calls[0].status, 'completed');
+    assert.deepEqual(record.skill_loads, [], JSON.stringify(rawInput));
+  }
+});
+
+test('kiro ACP: other MCP tools are not skill loads, even with a name argument', () => {
+  const names = [
+    ['@', 'skills-server', '/find_skills'].join(''),
+    ['@', 'other-server', '/lookup'].join(''),
+    'mcp__example__reload_skills',
+    'get_skill_body',
+    'not_get_skill',
+  ];
+  const events = names.flatMap((toolName, i) => [
+    acpGetSkill(`t${i}`, toolName, { name: 'demo-skill' }),
+    acpUpdate(`t${i}`, 'completed'),
+  ]);
+  const record = normalizeTrace('kiro', jsonl(...events));
+  assert.equal(record.tool_calls.length, names.length);
+  assert.ok(record.tool_calls.every((c) => c.status === 'completed'));
+  assert.deepEqual(record.skill_loads, []);
 });
 
 test('kiro ACP: the tool name is _meta.kiro.toolName, then kind, then title', () => {

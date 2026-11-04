@@ -27,14 +27,17 @@
  * Only an unknown runtime name throws, because that is a caller bug, not bad data.
  *
  * Verification status. Which input formats have been checked against a real capture:
- *  - Claude Code: verified against a captured `claude` 2.1.318 `--output-format stream-json
- *    --verbose` run (fixtures/traces/claude-code-2.1.318-read.jsonl). The capture covers
- *    `system/init`, one `Read` call and its result, and `result`. It does not cover the `Skill`
- *    tool, subagent events, tool errors or MCP tools.
+ *  - Claude Code: verified against two captured `claude` 2.1.318 `--output-format stream-json
+ *    --verbose` runs. One has a `Read` call (fixtures/traces/claude-code-2.1.318-read.jsonl); the
+ *    other loads a project skill through the `Skill` tool
+ *    (fixtures/traces/claude-code-2.1.318-skill-tool.jsonl). They cover `system/init`, the `Read`
+ *    and `Skill` calls with their results, and `result`. They do not cover subagent events, tool
+ *    errors or MCP tools.
  *  - Kiro CLI: the ACP envelope (`type: 'sessionUpdate'`, `data.update.sessionUpdate`) is verified
  *    against captured `kiro-cli` 3.0.0 `chat --output-format stream-json` runs
  *    (fixtures/traces/kiro-cli-3.0.0-*.jsonl). The captures contain no failed tool status, no MCP
- *    tool call and no `_meta.kiro.toolName`. The older flat shape (`type: 'tool_call'` with
+ *    tool call and no `_meta.kiro.toolName`. Not verified: how kiro-cli reports a call to the
+ *    `get_skill` MCP tool (see "Skill loads"); there is no capture of one yet. The older flat shape (`type: 'tool_call'` with
  *    `tool_call_id`, `tool_name`, `arguments`, string `content`, and a `model` event) is NOT known to
  *    be emitted by any release: it was written from an assumed format, and it is kept only so the
  *    synthetic behavior fixtures keep working. Treat it as unverified.
@@ -69,7 +72,7 @@
  *     skill_loads: [
  *       {
  *         skill_name: string,
- *         source: 'dedicated-event' | 'path-heuristic',
+ *         source: 'dedicated-event' | 'path-heuristic' | 'mcp-get-skill',
  *         raw_path: string | null,
  *         subagent: boolean,
  *       },
@@ -118,13 +121,25 @@
  *    `mcp__x__Skill`. Other skill-loading tools (an MCP skills tool, for example) are not
  *    counted; they stay visible in `tool_calls`. The `skill_name` comes from the call's input,
  *    so it is redacted and capped at MAX_STORED_STRING characters like every other stored string.
- *  - Kiro: a completed call to a read tool (KIRO_READ_TOOL_NAMES, matched on the exact reported
+ *    The source is `dedicated-event`. Verified against the claude-code-2.1.318-skill-tool capture:
+ *    the call's input is `{ "skill": "<name>" }` and its result is a short "Launching skill" text.
+ *  - Kiro, read tool: a completed call to a read tool (KIRO_READ_TOOL_NAMES, matched on the exact reported
  *    name, so `mcp__x__fs_read` does not count) whose path argument matches
  *    `skills/<name>/SKILL.md` (SKILL_PATH_PATTERN). Writes and failed reads are not loads. The path
  *    is read from `path`, `file_path` or `filePath` in the call's input (kiro-cli 3.0.0 sends
  *    `rawInput.path`), and from the same keys of each entry in an `operations` array. The
  *    `operations` form is not in any capture here; it is read because the review reported it, and is
  *    unverified. One call that reads several skill files records one load per file.
+ *  - Kiro, `get_skill`: a Kiro agent can load a skill through the `get_skill` tool of the
+ *    konductor-skills MCP server instead of reading the file. A completed call whose normalized
+ *    tool name is `get_skill` (so `@<server>/get_skill` and `mcp__<server>__get_skill` match, and
+ *    no other MCP tool does) and whose `name` argument is a non-empty string is a load, with
+ *    source `mcp-get-skill` and `raw_path` null. A call that did not complete, or one with no
+ *    `name`, is not a load. UNVERIFIED: the `name` key comes from the tool's schema, and the
+ *    `@<server>/<tool>` spelling and the field that carries it come from the review. No kiro-cli
+ *    capture of an MCP tool call exists yet, so this path is tested with synthetic events only.
+ *    If kiro-cli reports the tool under a different name, the load is missed and the call still
+ *    shows in `tool_calls`.
  *  - OpenCode: has no skill-load event either, so a load is a completed `read` call (matched on the
  *    exact reported name, OPENCODE_READ_TOOL_NAMES) whose input `path` matches SKILL_PATH_PATTERN,
  *    with the same path keys and `operations` handling as Kiro. A failed or unfinished read is not
@@ -270,6 +285,13 @@ const NO_TYPE_KEY = '[no type]';
 const KIRO_READ_TOOL_NAMES = new Set(['read', 'fsRead', 'fs_read']);
 /** The OpenCode tool that reads a file, matched exactly against the tool name as reported. */
 const OPENCODE_READ_TOOL_NAMES = new Set(['read']);
+/**
+ * The MCP tool a Kiro agent uses to load a skill, and the argument that holds the skill name. The
+ * argument key comes from the tool's own schema (a single required `name`). No kiro-cli capture
+ * of a call to it exists yet, so the way kiro-cli reports the tool is unverified.
+ */
+const KIRO_GET_SKILL_TOOL = 'get_skill';
+const KIRO_GET_SKILL_ARG = 'name';
 
 /**
  * Kiro (ACP) `sessionUpdate` kinds the parser knowingly skips: thought and user echoes, plans,
@@ -322,12 +344,15 @@ function defaultRedact(text) {
 }
 
 /**
- * Collapses a raw tool name to its base identifier: `mcp__<server>__<tool>` and
- * `plugin:server:tool__subtool` both reduce to the lowercased tool part. Returns '' for a
- * missing or non-string name.
+ * Collapses a raw tool name to its base identifier: `mcp__<server>__<tool>`,
+ * `plugin:server:tool__subtool` and `@<server>/<tool>` all reduce to the lowercased tool part.
+ * Returns '' for a missing or non-string name.
  */
 function normalizeToolName(name) {
   if (typeof name !== 'string' || !name) return '';
+  if (name.startsWith('@') && name.includes('/')) {
+    return normalizeToolName(name.slice(name.lastIndexOf('/') + 1));
+  }
   if (name.includes(':')) {
     const lastColon = name.lastIndexOf(':');
     const toolPart = name.slice(lastColon + 1);
@@ -1127,10 +1152,11 @@ function kiroReadPaths(args) {
  * module comment). A duplicate call id is kept as its own unpaired call and adds a
  * `duplicate_tool_id` error; the first call keeps its pairing.
  *
- * Skill loads are decided after the whole trace is read: a call whose tool name, as reported,
- * is exactly one of KIRO_READ_TOOL_NAMES and whose input names a path that matches
- * SKILL_PATH_PATTERN counts once its status is 'completed' (see "Skill loads" in the module
- * header for the input keys).
+ * Skill loads are decided after the whole trace is read: a call counts once its status is
+ * 'completed' when either its tool name, as reported, is exactly one of KIRO_READ_TOOL_NAMES and
+ * its input names a path that matches SKILL_PATH_PATTERN, or its normalized tool name is
+ * `get_skill` and its input has a `name` (see "Skill loads" in the module header for the input
+ * keys).
  */
 function normalizeKiro(rawTrace, options = {}) {
   const ctx = createContext('kiro', options);
@@ -1164,6 +1190,17 @@ function normalizeKiro(rawTrace, options = {}) {
         }
       }
       if (loads.length > 0) skillCandidates.set(index, loads);
+    }
+    // A `get_skill` call (the konductor-skills MCP tool) names the skill in its `name` argument.
+    // Unlike the read tool, the match is on the normalized name, so `@<server>/get_skill` and
+    // `mcp__<server>__get_skill` count; no other MCP tool does.
+    if (normalizeToolName(rawName) === KIRO_GET_SKILL_TOOL) {
+      const skillName = rawArgs[KIRO_GET_SKILL_ARG];
+      if (typeof skillName === 'string' && skillName) {
+        skillCandidates.set(index, [
+          { skill_name: ctx.text(skillName), source: 'mcp-get-skill', raw_path: null, subagent: false },
+        ]);
+      }
     }
   };
 
