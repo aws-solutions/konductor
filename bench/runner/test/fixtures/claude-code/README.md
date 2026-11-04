@@ -2,7 +2,7 @@
 
 Real `claude -p --output-format stream-json --verbose` streams from Claude Code 2.1.316 on Bedrock, sanitized
 (paths, user names, account ids and thinking signatures replaced). In every `system/init` event the `slash_commands`
-list is emptied and `skills` is cut to six names to keep the files small; nothing else was changed.
+list is emptied and `skills` is cut to six names to keep the files small; em and en dashes in captured model text became hyphens; nothing else was changed.
 
 | file | what it shows |
 | --- | --- |
