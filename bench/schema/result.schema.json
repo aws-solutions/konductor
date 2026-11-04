@@ -50,7 +50,8 @@
     "harness": {
       "enum": [
         "kiro-cli",
-        "opencode"
+        "opencode",
+        "claude-code"
       ]
     },
     "model": {
@@ -143,6 +144,13 @@
         "null"
       ],
       "description": "Spawns, spawn depth, review rounds, reworks after a pass and phase documents read from the stream and the workspace (runner/lib/orch-metrics.js)."
+    },
+    "claudeCode": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Claude Code runs only: canonical model, models seen, modelUsage keys, cost basis, hook events, permission denials, spawn counts (runner/lib/harness/claude-code.js)."
     },
     "armConfig": {
       "type": [

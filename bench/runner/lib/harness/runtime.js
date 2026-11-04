@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// Which harness produced an arm or a result. Arms made by the opencode adapter carry runtime 'opencode' and
-// their results carry harness 'opencode'; every other arm, and results written before the field existed
+// Which harness produced an arm or a result. Arms made by the opencode or Claude Code adapter carry that runtime and
+// their results carry it as `harness`; every other arm, and results written before the field existed
 // (harness 'none' or 'kiro-cli-v2'), belong to kiro-cli.
-const runtimeOf = (armOrResult) => (armOrResult?.runtime === 'opencode' || armOrResult?.harness === 'opencode' ? 'opencode' : 'kiro-cli');
+const RUNTIMES = ['kiro-cli', 'opencode', 'claude-code'];
+// Runtimes costed in list-price USD with real token counts; kiro-cli is metered in credits.
+const USD_RUNTIMES = ['opencode', 'claude-code'];
+const runtimeOf = (armOrResult) => RUNTIMES.find((r) => r !== 'kiro-cli' && (armOrResult?.runtime === r || armOrResult?.harness === r)) ?? 'kiro-cli';
+const isUsdRuntime = (runtime) => USD_RUNTIMES.includes(runtime);
 
 // kiro-cli --agent-engine value -> the `konductor install --harness` value whose agents that engine loads.
 const KIRO_INSTALL_HARNESS = { v2: 'kiro-cli-v2', v3: 'kiro-v3' };
@@ -17,4 +21,4 @@ function kiroInstallHarness(agentEngine = DEFAULT_ENGINE) {
   return harness;
 }
 
-module.exports = { runtimeOf, AGENT_ENGINES, DEFAULT_ENGINE, kiroInstallHarness };
+module.exports = { runtimeOf, isUsdRuntime, RUNTIMES, USD_RUNTIMES, AGENT_ENGINES, DEFAULT_ENGINE, kiroInstallHarness };

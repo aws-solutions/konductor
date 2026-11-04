@@ -15,10 +15,11 @@
 
 const kiro = require('./kiro.js');
 const opencode = require('./opencode.js');
+const claudeCode = require('./claude-code.js');
 const { runtimeOf } = require('./runtime.js');
 
-const HARNESSES = { 'kiro-cli': kiro, opencode };
+const HARNESSES = { 'kiro-cli': kiro, opencode, 'claude-code': claudeCode };
 
 const harnessFor = (armOrResult) => HARNESSES[runtimeOf(armOrResult)];
 
-module.exports = { harnessFor, runtimeOf, HARNESSES, kiro, opencode };
+module.exports = { harnessFor, runtimeOf, HARNESSES, kiro, opencode, claudeCode };

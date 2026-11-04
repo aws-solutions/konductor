@@ -6,7 +6,7 @@ const { resultFields, capInvocationOf } = require('./skills.js');
 const { aggregateHidden, aggregateRegression, aggregateGroup } = require('./check-matcher.js');
 const { autonomyFields } = require('./autonomy.js');
 const { provenanceOf } = require('./runconfig.js');
-const { kiroInstallHarness } = require('./harness/runtime.js');
+const { kiroInstallHarness, isUsdRuntime } = require('./harness/runtime.js');
 const { isComparableMode } = require('./isolate.js');
 
 const isolationOf = (mode) => (typeof mode === 'string' && mode && mode !== 'auto' ? mode : 'none');
@@ -60,7 +60,7 @@ function streamFields(agg, orch = null) {
  */
 function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, orch = null, checks, transcript, env, meta = {}, conv = null }) {
   const runtime = arm.runtime ?? 'kiro-cli';
-  const oc = runtime === 'opencode';
+  const oc = isUsdRuntime(runtime);
   const flags = [...(meta.flags || [])];
   let status = classifyStatus({
     timedOut: exec.timedOut,
@@ -70,11 +70,12 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
   let error = exec.error ?? null;
   const sessionModel = session?.model ?? null;
   // A resumed conversation has one model entry per turn; any turn on another model invalidates the run.
-  const wrongModel = [...new Set([...(session?.models ?? []), sessionModel].filter((m) => m && m !== config.model))];
+  const expectedModel = config.canonicalModel ?? config.model;
+  const wrongModel = [...new Set([...(session?.models ?? []), sessionModel].filter((m) => m && m !== expectedModel))];
   if (wrongModel.length) {
     flags.push('modelMismatch');
     if (status === 'success') status = 'error';
-    error = [error, `parent session ran on ${wrongModel.join(', ')}, expected ${config.model}`].filter(Boolean).join(' | ');
+    error = [error, `parent session ran on ${wrongModel.join(', ')}, expected ${expectedModel}`].filter(Boolean).join(' | ');
   }
   const fromStream = streamFields(agg, orch);
   flags.push(...fromStream.flags);
@@ -164,6 +165,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     variant: arm.variant ?? null,
     armPrefix: arm.prefixInfo ? { ...arm.prefixInfo } : null,
     armConfig: arm.armConfig ?? null,
+    ...(meta.claudeCode ? { claudeCode: meta.claudeCode } : {}),
     ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),
   };
 }
@@ -177,7 +179,7 @@ function errorResult({ arm, task, replicate, config, env, message, meta, conv = 
 }
 
 function skippedResult({ arm, task, replicate, config, env, reason = 'budget reached' }) {
-  return { ...errorResult({ arm, task, replicate, config, env, message: reason }), status: 'budget_skipped', creditsCensored: false, creditsLowerBound: null, ...(arm.runtime === 'opencode' ? { costCensored: false } : {}) };
+  return { ...errorResult({ arm, task, replicate, config, env, message: reason }), status: 'budget_skipped', creditsCensored: false, creditsLowerBound: null, ...(isUsdRuntime(arm.runtime) ? { costCensored: false } : {}) };
 }
 
 function validateResult(result) {

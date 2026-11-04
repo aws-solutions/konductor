@@ -253,8 +253,7 @@ function phaseDocuments(workspaceDir, docs = loadPhaseDocs(), { phases = null } 
 }
 
 /** The orch record of one run: spawns, depth, review flow and phase documents. */
-function orchMetrics({ events, workspaceDir = null, spec = loadMetricsSpec(), docs = loadPhaseDocs(), phases = null }) {
-  const tree = spawnTree(events);
+function orchMetrics({ events, workspaceDir = null, spec = loadMetricsSpec(), docs = loadPhaseDocs(), phases = null, tree = spawnTree(events) }) {
   const flow = reviewFlow(events, spec, tree);
   return {
     spawns: tree.spawns, spawnCalls: tree.spawnCalls, maxSpawnDepth: tree.maxSpawnDepth, childSessions: tree.childSessions,

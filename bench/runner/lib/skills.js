@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { SUBAGENT_TOOL, subagentTargets, toolNameOf, isV3Call, skillsCallOf, mcpInputOf } = require('./stream.js');
 const { frontmatter, fmValue } = require('./frontmatter.js');
+const claudeParse = require('./harness/claude-code-parse.js');
 
 const SKILL_FIELDS = [
   'skillsLoaded', 'skillQueries', 'sopsLoaded', 'skillBytesLoaded', 'skillCallsFailed', 'findSkillsCalls', 'findSkillsEmpty',
@@ -98,6 +99,16 @@ function inputsById(events, id) {
  */
 function firstDecisionOf(events, runtime) {
   const none = { kind: 'none', name: null };
+  if (runtime === 'claude-code') {
+    for (const ev of events ?? []) {
+      for (const b of ev?.type === 'assistant' && Array.isArray(ev.message?.content) ? ev.message.content : []) {
+        if (b?.type !== 'tool_use') continue;
+        if (b.name === 'Skill') return { kind: 'skill', name: b.input?.skill ?? b.input?.name ?? null };
+        if (claudeParse.SUBAGENT_TOOLS.has(b.name)) return { kind: 'subagent', name: b.input?.subagent_type ?? null };
+      }
+    }
+    return none;
+  }
   if (runtime === 'opencode') {
     for (const ev of events ?? []) {
       const p = ev?.type === 'tool_use' ? ev.part : null;
@@ -126,7 +137,8 @@ function firstDecisionOf(events, runtime) {
  * An empty find_skills result is an answer, counted in findSkillsEmpty, not a failure.
  */
 function extractSkills(events, runtime) {
-  const oc = runtime === 'opencode';
+  // Both report a loaded skill's text on the call and a status; the kiro-cli path reads a skills-server answer instead.
+  const oc = runtime === 'opencode' || runtime === 'claude-code';
   const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, bytesByName: {}, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], firstDecision: firstDecisionOf(events, runtime) };
   const byName = new Map();
   const requested = new Set();
@@ -138,7 +150,7 @@ function extractSkills(events, runtime) {
     out.skillBytesLoaded += bytes;
     out.bytesByName[key] = (out.bytesByName[key] ?? 0) + bytes;
   };
-  for (const c of oc ? opencodeCalls(events) : kiroCalls(events)) {
+  for (const c of runtime === 'claude-code' ? claudeParse.skillCalls(events) : oc ? opencodeCalls(events) : kiroCalls(events)) {
     if (c.tool === 'find_skills') {
       out.findSkillsCalls++;
       out.skillQueries.push(...queriesOf(c.input));
@@ -157,7 +169,7 @@ function extractSkills(events, runtime) {
     const bytes = bytesOfTexts(texts);
     const failed = !name || bytes === 0 || (oc ? c.status === 'error' : c.output == null || kiroErrored(c));
     if (failed) out.skillCallsFailed++;
-    else load(name, oc ? 'skill-tool' : 'get_skill', bytes);
+    else load(name, c.via ?? (oc ? 'skill-tool' : 'get_skill'), bytes);
   }
   out.skillsLoaded = [...byName.values()];
   out.requested = [...requested];
@@ -344,6 +356,11 @@ function opencodeSkillInfo(cfgDir, exportDir) {
   return safe(() => ({ catalog: catalogFrom(listCatalogDir(exportDir)), startup: startupOpencode(cfgDir) }));
 }
 
+/** Claude Code: the catalog of the arm's source tree. Its startup resources are not measured. */
+function claudeSkillInfo(configDir, exportDir) {
+  return safe(() => ({ catalog: catalogFrom(listCatalogDir(exportDir)), startup: null }));
+}
+
 /** Called by a harness after the stream is parsed. Never throws: tracking must not affect a run. */
 function captureSkills({ runtime, events, arm, ctx }) {
   return safe(() => ({ extraction: extractSkills(events, runtime), info: arm?.vanilla ? null : ctx?.skillInfo?.get(arm?.id) ?? null }));
@@ -391,6 +408,6 @@ function resultFields({ extraction, info, task, arm }) {
 
 module.exports = {
   SKILL_FIELDS, extractSkills, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
-  startupKiro, startupOpencode, builtinStartup, kiroSkillInfo, opencodeSkillInfo, captureSkills, resultFields, normalizeUri, has,
+  startupKiro, startupOpencode, builtinStartup, kiroSkillInfo, opencodeSkillInfo, claudeSkillInfo, captureSkills, resultFields, normalizeUri, has,
   firstDecisionOf, identifiedSops, capInvocationOf,
 };
