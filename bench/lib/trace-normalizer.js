@@ -22,7 +22,8 @@
  *    to `errors`. A number or boolean name is converted to its string form and adds no entry.
  * Only an unknown runtime name throws, because that is a caller bug, not bad data.
  *
- * Record schema (schema_version 1; fields added later stay additive and do not bump it):
+ * Record schema (schema_version 1; fields added later stay additive and do not bump it.
+ * `tool_calls[].tool_call_id` was added this way):
  *   {
  *     schema_version: 1,
  *     runtime: 'claude-code' | 'opencode' | 'kiro',
@@ -30,6 +31,7 @@
  *     session_ids: string[],           // OpenCode: every session id seen. Empty for the others.
  *     tool_calls: [
  *       {
+ *         tool_call_id: string | null, // the id the runtime reported for the call (see "Tool call ids")
  *         tool_name: string,           // normalized (see normalizeToolName); 'unknown' if unusable
  *         raw_tool_name: string,       // as reported; a number or boolean is stringified; redacted and capped
  *         arguments: object,           // redacted; string values and keys capped (see below)
@@ -61,6 +63,15 @@
  *     degraded_reason: string | null,
  *   }
  *
+ * Tool call ids. `tool_calls[].tool_call_id` is the id the runtime's own trace gives the call,
+ * kept as the raw string (a numeric id is stringified, so id 0 becomes "0"). It is `null` when
+ * the trace has none. It is redacted and capped like every other stored string, and is not
+ * hashed or renamed. The id is not guaranteed unique: a repeated id still adds `duplicate_tool_id`.
+ *  - Claude Code: the `tool_use` block's `id`, the same value a result carries as `tool_use_id`.
+ *  - OpenCode: the tool part's `callID`, or the part's `id` when the trace has no usable `callID`.
+ *  - Kiro: the `tool_call` event's `tool_call_id`, or its `id` when that is absent; a
+ *    `tool_call_update` carries the same value.
+ *
  * Skill loads. Only a load that provably happened is recorded.
  *  - Claude Code: a tool named exactly `Skill` whose paired tool_result is not an error. A call
  *    with no result yet is not a load, and neither is a differently named tool such as
@@ -91,8 +102,8 @@
  *    replaced with `[REDACTED]` without calling the redactor. This is the library's own rule, not
  *    part of `defaultRedact`, so it also applies when `options.redact` is supplied. Numbers,
  *    booleans and null are kept.
- *  - Redacted and capped at MAX_STORED_STRING characters: `tool_name`, `raw_tool_name`,
- *    `skill_loads[].skill_name` and `raw_path`, `model_id`, each of `session_ids`, each of
+ *  - Redacted and capped at MAX_STORED_STRING characters: `tool_call_id`, `tool_name`,
+ *    `raw_tool_name`, `skill_loads[].skill_name` and `raw_path`, `model_id`, each of `session_ids`, each of
  *    `available_tools`, and `errors[].message`.
  *  - `errors[].raw.event_type` is redacted and capped at MAX_EVENT_TYPE characters. A type that
  *    is not a string is stored as null.
@@ -143,6 +154,30 @@
  *  - Kiro `usage` and `cost_usd` are always null: its stream carries neither.
  *  - `options.expectedCallCount` is a non-negative integer used for the degraded check. Any
  *    other value is ignored and adds an `invalid_option` error.
+ *
+ * OpenTelemetry GenAI mapping. The table lists the nearest OpenTelemetry GenAI semantic-convention
+ * attribute for each record field. Those conventions are marked Development and are still being
+ * renamed, so the normalizer keeps its own field names on purpose and exports nothing to OTel.
+ * The attribute names come from the registry at
+ * https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/registry/attributes/gen-ai.md
+ *
+ *   Normalizer field                     Nearest OTel attribute
+ *   model_id                             gen_ai.response.model
+ *   session_ids[]                        gen_ai.conversation.id
+ *   tool_calls[].tool_call_id            gen_ai.tool.call.id
+ *   tool_calls[].raw_tool_name           gen_ai.tool.name
+ *   tool_calls[].arguments               gen_ai.tool.call.arguments
+ *   tool_calls[].result                  gen_ai.tool.call.result
+ *   skill_loads[].skill_name             gen_ai.skill.name
+ *   usage.input_tokens                   gen_ai.usage.input_tokens (see note)
+ *   usage.output_tokens                  gen_ai.usage.output_tokens
+ *   usage.cache_read_tokens              gen_ai.usage.cache_read.input_tokens
+ *   usage.cache_write_tokens             gen_ai.usage.cache_write.input_tokens
+ *   runtime, tool_calls[].tool_name,
+ *   cost_usd, degraded                   none
+ *
+ * Note: OTel counts cached tokens inside its input-token total. The normalizer keeps
+ * `usage.input_tokens` separate from the two cache counts, so an exporter has to add them.
  */
 
 const SCHEMA_VERSION = 1;
@@ -433,14 +468,18 @@ function createContext(runtime, options) {
      * Builds a tool call entry. `args` is sanitized here. A name that is not a non-empty string,
      * number or boolean is recorded as 'unknown' and adds an `invalid_tool_name` error.
      */
-    newCall(rawName, args, { line = null, eventType = null, subagent = false } = {}) {
+    newCall(rawName, args, { line = null, eventType = null, subagent = false, toolCallId = null } = {}) {
       const reported = toolNameFrom(rawName);
       if (reported === null) {
         ctx.addError('invalid_tool_name', 'tool name is missing or not a string; recorded as unknown', line, eventType);
       }
       const name = reported ?? 'unknown';
       const safeArgs = ctx.sanitize(isObject(args) ? args : {});
+      // The id the runtime reported, as a string: redacted and capped like other stored text.
+      // A missing, empty or non-string/number id is null.
+      const idText = idKey(toolCallId);
       return {
+        tool_call_id: idText === null || idText === '' ? null : text(idText),
         tool_name: text(normalizeToolName(name)),
         raw_tool_name: text(name),
         arguments: safeArgs.value,
@@ -640,7 +679,12 @@ function normalizeClaudeCode(rawTrace, options = {}) {
           continue;
         }
         if (block.type === 'tool_use') {
-          const call = ctx.newCall(block.name, block.input, { line: lineNo, eventType: 'assistant', subagent });
+          const call = ctx.newCall(block.name, block.input, {
+            line: lineNo,
+            eventType: 'assistant',
+            subagent,
+            toolCallId: block.id,
+          });
           record.tool_calls.push(call);
           const index = record.tool_calls.length - 1;
           registerCallId(ctx, pending, block.id, index, lineNo, 'assistant');
@@ -788,7 +832,12 @@ function normalizeOpenCode(rawTrace, options = {}) {
         return;
       }
       const toolState = isObject(event.part.state) ? event.part.state : {};
-      const call = ctx.newCall(event.part.tool, toolState.input, { line: lineNo, eventType: 'tool_use' });
+      // `callID` is OpenCode's call id; `part.id` is the fallback for traces that carry only that.
+      const call = ctx.newCall(event.part.tool, toolState.input, {
+        line: lineNo,
+        eventType: 'tool_use',
+        toolCallId: idKey(event.part.callID) ? event.part.callID : event.part.id,
+      });
       // OpenCode fuses call and result into one event, so `state.status` is the outcome. Any
       // status other than "completed" is an error so an in-flight call never reads as completed.
       call.status = toolState.status === 'completed' ? 'completed' : 'error';
@@ -903,7 +952,11 @@ function normalizeKiro(rawTrace, options = {}) {
     if (event.type === 'tool_call') {
       const rawArgs = isObject(event.arguments) ? event.arguments : isObject(event.input) ? event.input : {};
       const rawName = event.tool_name ?? event.name ?? event.tool;
-      const call = ctx.newCall(rawName, rawArgs, { line: lineNo, eventType: 'tool_call' });
+      const call = ctx.newCall(rawName, rawArgs, {
+        line: lineNo,
+        eventType: 'tool_call',
+        toolCallId: event.tool_call_id ?? event.id,
+      });
       record.tool_calls.push(call);
       const index = record.tool_calls.length - 1;
       registerCallId(ctx, pending, event.tool_call_id ?? event.id, index, lineNo, 'tool_call');

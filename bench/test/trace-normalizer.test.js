@@ -176,7 +176,12 @@ const SAFETY_RULES = [
   },
 ];
 
-function findPublicBlockers(text) {
+// The one public reference the library documents: the OpenTelemetry GenAI attribute registry.
+// Only URLs under this exact repository path are exempt; any other host or repository is still flagged.
+const ALLOWED_REFERENCE_URL = /https:\/\/github\.com\/open-telemetry\/semantic-conventions-genai\/[^\s"'`)]*/g;
+
+function findPublicBlockers(rawText) {
+  const text = rawText.replace(ALLOWED_REFERENCE_URL, '');
   const found = [];
   for (const rule of SAFETY_RULES) {
     const hit = rule.find(text);
@@ -216,6 +221,17 @@ test('the public safety scan flags each class of private data (samples are built
     'ids ses_fixture_happy, ses_a and toolu_parent are short placeholders',
   ].join('\n');
   assert.deepEqual(findPublicBlockers(benign), []);
+});
+
+test('the safety scan exempts only the OpenTelemetry GenAI registry URL, not other repository links', () => {
+  const join = (...parts) => parts.join('');
+  const base = join('https', '://', 'git', 'hub', '.', 'com/');
+  const registry = `${base}open-telemetry/semantic-conventions-genai/blob/main/docs/registry/attributes/gen-ai.md`;
+  assert.deepEqual(findPublicBlockers(`See ${registry}`), []);
+  const expected = ['URL to a host that is not a reserved example host', 'host name that is not a reserved example host'];
+  assert.deepEqual(findPublicBlockers(`${base}some-org/some-repo/blob/main/x.md`), expected);
+  assert.deepEqual(findPublicBlockers(`${base}open-telemetry/other-repo/blob/main/x.md`), expected);
+  assert.deepEqual(findPublicBlockers(`${registry} and ${base}some-org/some-repo`), expected);
 });
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
@@ -1962,4 +1978,197 @@ test('skillLoadFromPath matches a SKILL.md path and extracts the skill name', ()
   assert.equal(skillLoadFromPath('src/index.ts'), null);
   assert.equal(skillLoadFromPath(42), null);
   assert.equal(skillLoadFromPath(undefined), null);
+});
+
+// --- tool_call_id ------------------------------------------------------------------------------
+
+test('claude-code tool_call_id is the tool_use id and pairs each call with its own result', () => {
+  const record = normalizeTrace(
+    'claude-code',
+    jsonl(
+      claudeCall('toolu_a', 'Read', { path: 'a.md' }),
+      claudeCall('toolu_b', 'Read', { path: 'b.md' }),
+      // Results arrive out of order, so the id is what ties a result to its call.
+      claudeResult('toolu_b', 'content of b'),
+      claudeResult('toolu_a', 'content of a'),
+    ),
+  );
+  assert.deepEqual(
+    record.tool_calls.map((c) => [c.tool_call_id, c.arguments.path, c.result]),
+    [
+      ['toolu_a', 'a.md', 'content of a'],
+      ['toolu_b', 'b.md', 'content of b'],
+    ],
+  );
+});
+
+test('claude-code tool_call_id is also kept for a subagent call and for a call with no result yet', () => {
+  const record = normalizeTrace(
+    'claude-code',
+    jsonl(claudeCall('toolu_sub', 'Read', {}, { parent_tool_use_id: 'toolu_parent' }), claudeCall('toolu_open', 'Read', {})),
+  );
+  assert.equal(record.tool_calls[0].subagent, true);
+  assert.deepEqual(
+    record.tool_calls.map((c) => c.tool_call_id),
+    ['toolu_sub', 'toolu_open'],
+  );
+});
+
+test('claude-code tool_call_id is null when the tool_use has no usable id, and a numeric id is stringified', () => {
+  const noId = { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: {} }] } };
+  const record = normalizeTrace(
+    'claude-code',
+    jsonl(
+      noId,
+      claudeCall('', 'Read', {}),
+      claudeCall(null, 'Read', {}),
+      claudeCall({ nested: 1 }, 'Read', {}),
+      claudeCall(0, 'Read', {}),
+    ),
+  );
+  assert.deepEqual(
+    record.tool_calls.map((c) => c.tool_call_id),
+    [null, null, null, null, '0'],
+  );
+  assert.deepEqual(record.errors, []);
+});
+
+test('opencode tool_call_id is the part callID, falling back to the part id, and is null when neither exists', () => {
+  const record = normalizeTrace(
+    'opencode',
+    jsonl(
+      openCodeTool('read', 'completed', { callID: 'call_oc_1', id: 'prt_oc_1' }),
+      openCodeTool('read', 'completed', { id: 'tooluse_oc_2' }),
+      openCodeTool('read', 'completed'),
+      openCodeTool('read', 'completed', { callID: '', id: 'prt_oc_4' }),
+      openCodeTool('read', 'completed', { callID: { bad: true } }),
+    ),
+  );
+  assert.deepEqual(
+    record.tool_calls.map((c) => c.tool_call_id),
+    ['call_oc_1', 'tooluse_oc_2', null, 'prt_oc_4', null],
+  );
+});
+
+test('opencode fuses call and result, so tool_call_id sits beside the result it belongs to', () => {
+  const record = normalizeTrace('opencode', loadFixture('opencode-happy-path.jsonl'));
+  assert.ok(record.tool_calls.length > 0);
+  const first = record.tool_calls[0];
+  assert.equal(first.tool_call_id, 'tooluse_fixture_1');
+  assert.equal(first.status, 'completed');
+  assert.notEqual(first.result, null);
+});
+
+test('kiro tool_call_id is the tool_call_id, falling back to id, and pairs with its update', () => {
+  const record = normalizeTrace(
+    'kiro',
+    jsonl(
+      kiroCall('call_k1', 'fsRead', { path: 'a.md' }),
+      { type: 'tool_call', id: 'call_k2', tool_name: 'fsRead', arguments: { path: 'b.md' } },
+      { type: 'tool_call', tool_name: 'fsRead', arguments: { path: 'c.md' } },
+      kiroCall(0, 'fsRead', { path: 'd.md' }),
+      kiroUpdate('call_k2', 'completed', { result: 'content of b' }),
+      kiroUpdate('call_k1', 'completed', { result: 'content of a' }),
+      kiroUpdate(0, 'completed', { result: 'content of d' }),
+    ),
+  );
+  assert.deepEqual(
+    record.tool_calls.map((c) => [c.tool_call_id, c.arguments.path, c.result]),
+    [
+      ['call_k1', 'a.md', 'content of a'],
+      ['call_k2', 'b.md', 'content of b'],
+      [null, 'c.md', null],
+      ['0', 'd.md', 'content of d'],
+    ],
+  );
+});
+
+test('a duplicate call id is kept on both calls, and the first call keeps the pairing', () => {
+  for (const [runtime, trace] of [
+    [
+      'claude-code',
+      jsonl(claudeCall('dup', 'Read', {}), claudeCall('dup', 'Read', {}), claudeResult('dup', 'out')),
+    ],
+    ['kiro', jsonl(kiroCall('dup', 'fsRead', {}), kiroCall('dup', 'fsRead', {}), kiroUpdate('dup', 'completed', { result: 'out' }))],
+  ]) {
+    const record = normalizeTrace(runtime, trace);
+    assert.deepEqual(
+      record.tool_calls.map((c) => [c.tool_call_id, c.result]),
+      [
+        ['dup', 'out'],
+        ['dup', null],
+      ],
+      runtime,
+    );
+    assert.equal(record.errors.filter((e) => e.type === 'duplicate_tool_id').length, 1, runtime);
+  }
+});
+
+test('tool_call_id goes through the redactor and the size cap, and is not hashed or renamed', () => {
+  const secretId = `call_${FAKE_ACCESS_KEY_ID}`;
+  const traces = {
+    'claude-code': jsonl(claudeCall(secretId, 'Read', {})),
+    opencode: jsonl(openCodeTool('read', 'completed', { callID: secretId })),
+    kiro: jsonl(kiroCall(secretId, 'fsRead', {})),
+  };
+  for (const [runtime, trace] of Object.entries(traces)) {
+    const masked = normalizeTrace(runtime, trace).tool_calls[0].tool_call_id;
+    assert.equal(masked, 'call_[REDACTED_AWS_KEY_ID]', runtime);
+    const custom = normalizeTrace(runtime, trace, { redact: (s) => s.replace('call_', 'seen_') }).tool_calls[0];
+    assert.ok(custom.tool_call_id.startsWith('seen_'), runtime);
+    const broken = normalizeTrace(runtime, trace, { redact: () => 42 }).tool_calls[0];
+    assert.equal(broken.tool_call_id, '[REDACTION_FAILED]', runtime);
+    const long = 'i'.repeat(MAX_STORED_STRING + 50);
+    const longTrace = {
+      'claude-code': jsonl(claudeCall(long, 'Read', {})),
+      opencode: jsonl(openCodeTool('read', 'completed', { callID: long })),
+      kiro: jsonl(kiroCall(long, 'fsRead', {})),
+    }[runtime];
+    assert.equal(normalizeTrace(runtime, longTrace).tool_calls[0].tool_call_id.length, MAX_STORED_STRING, runtime);
+  }
+  // The raw id is otherwise kept as it was reported.
+  assert.equal(normalizeTrace('kiro', jsonl(kiroCall('Call-ID_09.x', 'fsRead', {}))).tool_calls[0].tool_call_id, 'Call-ID_09.x');
+});
+
+test('every tool call in every fixture carries tool_call_id as a string or null, and happy paths have ids', () => {
+  for (const runtime of ['claude-code', 'opencode', 'kiro']) {
+    for (const kind of ['happy-path', 'degraded', 'error', 'no-tool-calls']) {
+      const record = normalizeTrace(runtime, loadFixture(`${runtime}-${kind}.jsonl`));
+      for (const call of record.tool_calls) {
+        assert.ok('tool_call_id' in call, `${runtime}-${kind}: tool_call_id is missing`);
+        assert.ok(call.tool_call_id === null || typeof call.tool_call_id === 'string', `${runtime}-${kind}`);
+      }
+      if (kind === 'happy-path') {
+        assert.ok(record.tool_calls.length > 0, runtime);
+        assert.ok(record.tool_calls.every((c) => typeof c.tool_call_id === 'string' && c.tool_call_id), runtime);
+      }
+    }
+  }
+});
+
+test('adding tool_call_id is additive: schema_version stays 1 and the other call fields are unchanged', () => {
+  assert.equal(SCHEMA_VERSION, 1);
+  const call = normalizeTrace('kiro', jsonl(kiroCall('c1', 'fsRead', { path: 'a.md' }), kiroUpdate('c1', 'completed', { result: 'ok' })))
+    .tool_calls[0];
+  assert.deepEqual(Object.keys(call).sort(), [
+    'arguments',
+    'raw_tool_name',
+    'result',
+    'status',
+    'subagent',
+    'tool_call_id',
+    'tool_name',
+    'truncated',
+  ]);
+  const { tool_call_id: id, ...rest } = call;
+  assert.equal(id, 'c1');
+  assert.deepEqual(rest, {
+    tool_name: 'fsread',
+    raw_tool_name: 'fsRead',
+    arguments: { path: 'a.md' },
+    status: 'completed',
+    result: 'ok',
+    truncated: false,
+    subagent: false,
+  });
 });

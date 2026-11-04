@@ -18,7 +18,9 @@ not per individual commit.
   truncated. Other credential formats are not detected. `options.redact` replaces the built-in
   redactor; a caller who wants to keep the built-in rules should call `defaultRedact` from inside
   their own function. The known limits of the built-in redactor are listed in the module header.
-  `normalizeTrace`, `defaultRedact`, and `SCHEMA_VERSION` are its stable API. Tests and synthetic
+  `normalizeTrace`, `defaultRedact`, and `SCHEMA_VERSION` are its stable API. Each tool call
+  carries `tool_call_id`, the id the runtime reported (`null` when it has none). The module header
+  maps the record fields to the nearest OpenTelemetry GenAI attributes. Tests and synthetic
   fixtures are in `bench/test/`; run `node --test bench/test/trace-normalizer.test.js`.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
