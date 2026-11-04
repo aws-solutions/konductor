@@ -53,7 +53,11 @@ export default defineConfig(({ command, mode }) => {
           test: {
             name: 'node',
             environment: 'node',
-            include: ['api/**/*.test.ts', 'stub-api/**/*.test.ts'],
+            include: [
+              'api/**/*.test.ts',
+              'stub-api/**/*.test.ts',
+              'test-support/**/*.test.ts',
+            ],
           },
         },
       ],

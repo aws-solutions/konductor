@@ -35,8 +35,16 @@ info:
       request body with a field this document does not name is refused with
       400 `bad_request`.
     - Every call but `POST /api/session` carries `Authorization: Bearer <token>`.
-      A missing or wrong token is 401 `unauthorized`. A client keeps the token
-      in memory only.
+      A missing or wrong token is 401 `unauthorized`. A client may keep the
+      token in the `sessionStorage` of its browser tab, so that a reload of the
+      page needs no new launch code, and nowhere else: not in `localStorage`, a
+      cookie or a file. The client removes it on any 401 and when the user
+      ends the session. `sessionStorage` is copied into a tab made by
+      Duplicate or `window.open`, and a browser may restore it with the tab, so
+      script on the page can read the token. Where the page is served matters:
+      see **The page**. The server does not know where a client keeps the
+      token. The token is valid exactly as **Session** says, whether the client
+      holds it in memory, in `sessionStorage` or in several tabs.
     - The `Host` must be `127.0.0.1:<port>` or `localhost:<port>`, with the
       port the server listens on, or the call is 403 `forbidden_host`. The
       server's own `Origin` is `http://` and that `Host`. A `PUT` or `POST`
@@ -90,7 +98,19 @@ info:
     gets the session token. A code works once, so another session needs a new
     code. The launch code and the token are each at least
     128 bits from a secure random source, and the server compares them in
-    constant time. A token is valid until the server stops.
+    constant time. A token is valid until the server stops. It has no idle
+    timeout and no expiry by age, and a call with it does not extend or shorten
+    its life, so a reloaded or duplicated tab neither breaks nor extends it.
+    Tabs that share a token share its fate: after the server stops, all of
+    them get 401.
+
+    **The page.** A server that serves the Designer page (`index.html`) must
+    send, as an HTTP response header on that response, a
+    `Content-Security-Policy` that includes `frame-ancestors 'none'` and the
+    policy of the page's own `<meta>` tag (`default-src 'self'`,
+    `base-uri 'none'`, `form-action 'none'`). A `<meta>` policy cannot set
+    `frame-ancestors` and applies only if the file is served unmodified, so it
+    is a fallback, not the requirement.
 
     **Which workflow.** A server is started on one workflow, the `root`
     that `POST /api/session` returns. Only the root can be loaded, saved,
