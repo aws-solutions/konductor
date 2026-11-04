@@ -305,7 +305,7 @@ function readIfPresent(file) {
 
 function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
   const streamText = fs.readFileSync(path.join(outDir, 'stream.jsonl'), 'utf8');
-  const { events } = parseStream(streamText);
+  const { events, badLines } = parseStream(streamText);
   const canonical = config.canonicalModel ?? canonicalModel(config.model);
   const a = parse.aggregateEvents(events, { expectedModel: canonical, rates: ctx.claudeRates ?? null });
   const stderr = readIfPresent(path.join(outDir, 'stderr.txt'));
@@ -319,6 +319,8 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
   if (a.modelIdentity.offending.length > 0) flags.push('modelMismatch');
   if (a.errorKind === 'api' || a.errorKind === 'other') acc.meta.runError = a.errors[0]?.slice(0, 300) ?? null;
   if (a.costBasis && a.costBasis !== 'list') flags.push('costBasisNotList');
+  if (a.costMissing) flags.push('costMissing');
+  if (badLines > 0) flags.push('streamTruncated');
 
   const finalText = a.finalText === null ? null : a.finalText.slice(0, 20000);
   acc.agg = {
@@ -336,7 +338,7 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
     modelUsageKeys: a.modelUsageKeys, costBasis: a.costBasis, terminalReason: a.terminalReason, errorKind: a.errorKind,
     permissionDenials: a.permissionDenials.length, hookEvents: a.hooks.length, spawned: a.spawn.spawned, spawnFailed: a.spawn.failed,
     maxSpawnDepth: a.spawn.maxDepth, resultLines: a.resultCount, numTurns: a.numTurns, apiDurationMs: a.apiDurationMs,
-    initAgents: a.init?.agents?.length ?? null, initSkills: a.init?.skills?.length ?? null, initTools: a.init?.tools ?? null,
+    badLines, initAgents: a.init?.agents?.length ?? null, initSkills: a.init?.skills?.length ?? null, initTools: a.init?.tools ?? null,
   };
   return acc;
 }

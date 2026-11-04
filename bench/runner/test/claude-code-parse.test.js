@@ -249,3 +249,61 @@ test('a truncated last line and unknown event types are tolerated', () => {
   const a = cc.aggregateEvents(events, {});
   assert.equal(a.runFinishedStatus, 'success');
 });
+
+// ---- malformed input ----
+
+const typeMutations = (events) => {
+  const paths = (o, pre = [], out = []) => {
+    if (o && typeof o === 'object') for (const k of Object.keys(o)) { out.push([...pre, k]); paths(o[k], [...pre, k], out); }
+    return out;
+  };
+  const cases = [];
+  events.forEach((ev, i) => {
+    for (const pth of paths(ev)) {
+      for (const v of [null, 0, 'x', [], {}, true]) {
+        const copy = JSON.parse(JSON.stringify(events));
+        let cur = copy[i];
+        for (const k of pth.slice(0, -1)) cur = cur[k];
+        cur[pth.at(-1)] = v;
+        cases.push({ events: copy, where: `event ${i} ${pth.join('.')} = ${JSON.stringify(v)}` });
+      }
+    }
+  });
+  return cases;
+};
+
+test('a field of the wrong type anywhere in a recorded stream never makes the parser throw', () => {
+  for (const name of ['delegation-dashed-pin', 'vanilla-success', 'permission-denied', 'sigterm']) {
+    for (const { events, where } of typeMutations(load(name))) {
+      try {
+        cc.aggregateEvents(events, { expectedModel: 'claude-sonnet-5-5' });
+        cc.spawnTree(events);
+        cc.skillCalls(events);
+      } catch (e) {
+        assert.fail(`${name}: ${where}: ${e.message}`);
+      }
+    }
+  }
+});
+
+test('a result line without a usable cost or model usage is flagged as missing cost, with tokens from the assistant messages', () => {
+  const events = load('vanilla-success');
+  const strip = (mutate) => events.map((ev) => (ev.type === 'result' ? mutate(JSON.parse(JSON.stringify(ev))) : ev));
+  const noCost = cc.aggregateEvents(strip((r) => { delete r.total_cost_usd; return r; }), { expectedModel: 'claude-sonnet-5-5' });
+  assert.equal(noCost.costMissing, true);
+  assert.equal(noCost.costUsd, null);
+  const noUsage = cc.aggregateEvents(strip((r) => { r.modelUsage = null; return r; }), { expectedModel: 'claude-sonnet-5-5' });
+  assert.equal(noUsage.costMissing, true);
+  assert.ok(noUsage.tokens.total > 0, 'falls back to the assistant message sums');
+  const fine = agg('vanilla-success');
+  assert.equal(fine.costMissing, false);
+  assert.equal(agg('model-400').costMissing, false, 'a zero cost and empty modelUsage on an API error are real values');
+});
+
+test('canonicalModelOf handles government-cloud prefixes and versioned ids', () => {
+  assert.equal(cc.canonicalModelOf('us-gov.anthropic.claude-sonnet-5-5'), 'claude-sonnet-5-5');
+  assert.equal(cc.canonicalModelOf('eu.anthropic.claude-sonnet-5-5-v1:0'), 'claude-sonnet-5-5');
+  assert.equal(cc.canonicalModelOf('anthropic.claude-sonnet-5-5-20260101-v2:0'), 'claude-sonnet-5-5-20260101');
+  assert.equal(cc.canonicalModelOf('claude-sonnet-5-5'), 'claude-sonnet-5-5');
+  assert.equal(cc.canonicalModelOf('arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-sonnet-5-5'), 'arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-sonnet-5-5', 'an ARN is left as given');
+});

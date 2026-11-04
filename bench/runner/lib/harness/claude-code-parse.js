@@ -13,12 +13,17 @@ const SYNTHETIC_MODEL = '<synthetic>';
 const CREDENTIAL_ERROR = /cloud_credential_error|could not load (aws )?credentials/i;
 
 const zeroTokens = () => ({ input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 });
+const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const list = (v) => (Array.isArray(v) ? v : []);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
-/** `us.anthropic.claude-sonnet-5-5` and `claude-sonnet-5-5` both name the model `claude-sonnet-5-5`. */
+/**
+ * `us.anthropic.claude-sonnet-5-5`, `us-gov.anthropic.claude-sonnet-5-5-v1:0` and `claude-sonnet-5-5` all name the model
+ * `claude-sonnet-5-5`: the inference profile prefix and the Bedrock `-vN:M` version suffix are dropped.
+ */
 function canonicalModelOf(id) {
   if (typeof id !== 'string' || !id.trim()) return null;
-  return id.trim().replace(/^(?:[a-z]{2,6}\.)?anthropic\./, '');
+  return id.trim().replace(/^(?:[a-z]{2,6}(?:-[a-z]{2,6})?\.)?anthropic\./, '').replace(/-v\d+(?::\d+)?$/, '');
 }
 
 const textOf = (content) => {
@@ -31,7 +36,8 @@ const blocks = (ev) => (Array.isArray(ev?.message?.content) ? ev.message.content
 
 // Claude Code emits one assistant event per content block, so one API message can appear several times; usage is
 // read once per message id (the largest value seen for each field, since output tokens grow while a message streams).
-function addUsage(byId, id, u = {}) {
+function addUsage(byId, id, usage) {
+  const u = usage && typeof usage === 'object' ? usage : {};
   const cur = byId.get(id) ?? zeroTokens();
   cur.input = Math.max(cur.input, num(u.input_tokens));
   cur.output = Math.max(cur.output, num(u.output_tokens));
@@ -49,11 +55,11 @@ function priceTokens(t, r) {
 
 function tokensFromModelUsage(modelUsage) {
   const t = zeroTokens();
-  for (const m of Object.values(modelUsage ?? {})) {
-    t.input += num(m.inputTokens);
-    t.output += num(m.outputTokens);
-    t.cacheRead += num(m.cacheReadInputTokens);
-    t.cacheWrite += num(m.cacheCreationInputTokens);
+  for (const m of Object.values(isPlainObject(modelUsage) ? modelUsage : {})) {
+    t.input += num(m?.inputTokens);
+    t.output += num(m?.outputTokens);
+    t.cacheRead += num(m?.cacheReadInputTokens);
+    t.cacheWrite += num(m?.cacheCreationInputTokens);
   }
   return t;
 }
@@ -165,7 +171,7 @@ function aggregateEvents(events, { expectedModel = null, rates = null } = {}) {
     sessionId: null, sessionIds: [], init: null, initCount: 0, resultCount: 0,
     runFinishedStatus: null, stopReason: null, terminalReason: null, errorKind: null, errors: [], retries: {},
     finalText: null, lastText: null, askedUser: null,
-    tokens: zeroTokens(), costUsd: null, costBasis: null, costCensored: false, modelCalls: 0,
+    tokens: zeroTokens(), costUsd: null, costBasis: null, costCensored: false, costMissing: false, modelCalls: 0,
     modelUsageKeys: [], modelIdentity: { expected: expectedModel, canonicalModels: [], messageModels: [], offending: [], ok: null },
     toolCalls: 0, workToolCalls: 0, subagentCalls: 0, toolNames: {}, delegatedTo: {},
     spawn: { spawned: 0, failed: 0, completed: 0, maxDepth: 0, byType: {} }, tasks: [],
@@ -188,7 +194,7 @@ function aggregateEvents(events, { expectedModel = null, rates = null } = {}) {
         out.initCount++;
         out.init = out.init ?? {
           model: ev.model ?? null, permissionMode: ev.permissionMode ?? null, version: ev.claude_code_version ?? null, apiKeySource: ev.apiKeySource ?? null,
-          tools: ev.tools ?? [], agents: ev.agents ?? [], skills: ev.skills ?? [], plugins: (ev.plugins ?? []).map((p) => p?.name ?? p), mcpServers: ev.mcp_servers ?? [],
+          tools: list(ev.tools), agents: list(ev.agents), skills: list(ev.skills), plugins: list(ev.plugins).map((p) => p?.name ?? p), mcpServers: list(ev.mcp_servers),
         };
       } else if (ev.subtype === 'hook_started' || ev.subtype === 'hook_response') {
         out.hooks.push({ subtype: ev.subtype, event: ev.hook_event ?? null, name: ev.hook_name ?? null, outcome: ev.outcome ?? null, exitCode: ev.exit_code ?? null });
@@ -237,22 +243,25 @@ function aggregateEvents(events, { expectedModel = null, rates = null } = {}) {
 
   const canonical = new Set();
   if (last) {
-    out.modelUsageKeys = Object.keys(last.modelUsage ?? {});
-    for (const [key, m] of Object.entries(last.modelUsage ?? {})) {
+    const modelUsage = isPlainObject(last.modelUsage) ? last.modelUsage : {};
+    out.modelUsageKeys = Object.keys(modelUsage);
+    for (const [key, m] of Object.entries(modelUsage)) {
       const c = canonicalModelOf(m?.canonicalModel) ?? canonicalModelOf(key);
       if (c) canonical.add(c);
     }
-    out.tokens = tokensFromModelUsage(last.modelUsage);
+    out.tokens = isPlainObject(last.modelUsage) ? tokensFromModelUsage(last.modelUsage) : assistantTokens;
     // Totals are cumulative; the larger of the result lines guards against a later line that restarts from zero.
-    out.costUsd = Math.max(...results.map((r) => num(r.total_cost_usd)));
-    out.costBasis = Object.values(last.modelUsage ?? {}).map((m) => m?.costBasis).find(Boolean) ?? null;
+    const costs = results.map((r) => r.total_cost_usd).filter((c) => typeof c === 'number' && Number.isFinite(c));
+    out.costUsd = costs.length ? Math.max(...costs) : null;
+    out.costMissing = costs.length === 0 || !isPlainObject(last.modelUsage);
+    out.costBasis = Object.values(modelUsage).map((m) => m?.costBasis).find(Boolean) ?? null;
     out.terminalReason = last.terminal_reason ?? null;
     out.stopReason = last.subtype && last.subtype !== 'success' ? last.subtype : last.stop_reason ?? null;
     out.finalText = typeof last.result === 'string' ? last.result : '';
     out.numTurns = results.reduce((n, r) => n + num(r.num_turns), 0);
     out.turnDurationMs = results.reduce((n, r) => n + num(r.duration_ms), 0);
     out.apiDurationMs = results.reduce((n, r) => Math.max(n, num(r.duration_api_ms)), 0);
-    out.permissionDenials = (last.permission_denials ?? []).map((d) => ({ tool: d?.tool_name ?? null, toolUseId: d?.tool_use_id ?? null }));
+    out.permissionDenials = list(last.permission_denials).map((d) => ({ tool: d?.tool_name ?? null, toolUseId: d?.tool_use_id ?? null }));
     const s = last.subagent_stats;
     if (s) {
       out.spawn = { spawned: num(s.spawned), failed: num(s.failed), completed: num(s.completed), maxDepth: num(s.max_depth), byType: s.by_type ?? {} };

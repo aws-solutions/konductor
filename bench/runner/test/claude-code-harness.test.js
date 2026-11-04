@@ -413,6 +413,27 @@ test('a credential error with no result line (killed or timed out) is still an i
   }
 });
 
+test('a result line with no cost and a stream with a broken line are flagged, not silently zero', async () => {
+  const s = setup('vanilla-success');
+  try {
+    const lines = fs.readFileSync(path.join(FX, 'vanilla-success.stream.jsonl'), 'utf8').trim().split('\n').map((l) => {
+      const ev = JSON.parse(l);
+      if (ev.type === 'result') delete ev.total_cost_usd;
+      return JSON.stringify(ev);
+    });
+    const streamFile = path.join(s.root, 'damaged.stream.jsonl');
+    fs.writeFileSync(streamFile, `${lines.join('\n')}\n{"type":"assistant","message":{"id":"cut\n`);
+    fs.writeFileSync(path.join(path.dirname(s.bin), 'fake-claude.config.json'), JSON.stringify({ dir: s.probe, streamFile, tmpBases: [s.tmpBase], helloText: 'hello\n' }));
+    const r = await run(s);
+    assert.ok(r.flags.includes('costMissing'));
+    assert.ok(r.flags.includes('streamTruncated'));
+    assert.equal(r.claudeCode.badLines, 1);
+    assert.equal(r.costUsd, null, 'a missing cost is not recorded as zero');
+  } finally {
+    s.cleanup();
+  }
+});
+
 test('an API error with no model seen is an error with its reason, not a model mismatch', async () => {
   const s = setup('model-400', { exitCode: 1 });
   try {
