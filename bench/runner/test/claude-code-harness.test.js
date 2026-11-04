@@ -394,6 +394,21 @@ test('a credential error is an infra error and not a model failure', async () =>
     assert.match(r.infraError, /could not load AWS credentials/);
     assert.equal(r.claudeCode.errorKind, 'credentials');
     assert.equal(r.costUsd, 0);
+    assert.equal(r.flags.includes('modelMismatch'), false, 'no model was seen, so there is nothing to mismatch');
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('an API error with no model seen is an error with its reason, not a model mismatch', async () => {
+  const s = setup('model-400', { exitCode: 1 });
+  try {
+    const r = await run(s);
+    assert.equal(r.status, 'error');
+    assert.equal(r.flags.includes('modelMismatch'), false);
+    assert.match(r.error, /400/);
+    assert.equal(r.claudeCode.errorKind, 'api');
+    assert.equal(r.infraError, null);
   } finally {
     s.cleanup();
   }

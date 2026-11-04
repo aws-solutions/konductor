@@ -316,7 +316,8 @@ function parseResult(outDir, { home, tmpdir, acc, arm, ctx, config }) {
   if (a.errorKind === 'credentials') acc.meta.infraError = [acc.meta.infraError, 'Claude Code could not load AWS credentials (cloud_credential_error); this is not a model failure'].filter(Boolean).join(' | ');
   if (a.permissionDenials.length) flags.push('permissionDenied');
   if (THROTTLE.test([...a.errors, ...Object.keys(a.retries), stderr.slice(-4000)].join('\n'))) flags.push('throttled');
-  if (a.resultCount > 0 && a.modelIdentity.ok === false) flags.push('modelMismatch');
+  if (a.modelIdentity.offending.length > 0) flags.push('modelMismatch');
+  if (a.errorKind === 'api' || a.errorKind === 'other') acc.meta.runError = a.errors[0]?.slice(0, 300) ?? null;
   if (a.costBasis && a.costBasis !== 'list') flags.push('costBasisNotList');
 
   const finalText = a.finalText === null ? null : a.finalText.slice(0, 20000);

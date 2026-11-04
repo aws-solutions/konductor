@@ -55,7 +55,7 @@ function streamFields(agg, orch = null) {
  * skills: {extraction, info} from the harness (see skills.js), or null.
  * orch: spawns, depth, review flow and phase documents (see orch-metrics.js), or null.
  * conv: the autonomy conversation (see autonomy.newConversation), for tasks with an autonomy block.
- * meta: runner-side facts {agentStarted, flags, infraError, modelNormalized, rewrittenAgents, mcpSha256,
+ * meta: runner-side facts {agentStarted, flags, infraError, runError, modelNormalized, rewrittenAgents, mcpSha256,
  *   isolation, homeTripwireHits, inFlightAtStart, creditsSessionTotal}.
  */
 function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, orch = null, checks, transcript, env, meta = {}, conv = null }) {
@@ -68,6 +68,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     runFinishedStatus: agg?.runFinishedStatus ?? null,
   });
   let error = exec.error ?? null;
+  if (meta.runError) error = [error, meta.runError].filter(Boolean).join(' | ');
   const sessionModel = session?.model ?? null;
   // A resumed conversation has one model entry per turn; any turn on another model invalidates the run.
   const expectedModel = config.canonicalModel ?? config.model;
