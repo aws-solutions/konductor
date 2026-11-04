@@ -1,7 +1,7 @@
 ---
 name: adversarial-code-review-pass-integrity
-description: 'Reviews a diff through the lens of data integrity — multi-item mutations, atomicity, ordering, idempotency. Use only when the adversarial-code-review coordinator spawns it, alongside the security and schema passes.'
-version: 1.0.0
+description: 'Reviews a diff through the lens of data integrity — multi-item mutations, atomicity, ordering, idempotency. Use only when the adversarial-code-review coordinator spawns it or adversarial-code-review loads it inline, alongside the security and schema passes.'
+version: 1.1.0
 tags: [skill, data-integrity, code-review, adversarial, pass]
 ---
 
@@ -61,4 +61,4 @@ Problem: {what is wrong and why it is a risk}
 Fix: {concrete suggested change}
 ```
 
-Return the findings list. Do not deduplicate against other passes — the coordinator does that.
+Return the findings list. Do not deduplicate against other passes. Whoever runs the passes does that: the coordinator SOP, or adversarial-code-review when it loads the passes inline.

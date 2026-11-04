@@ -58,6 +58,8 @@ Output for each finding: `KEEP` with the finding unchanged, or `REJECT` with a o
 
 Each lens has its own pass skill, which is the single source for that lens's checklist, codebase-awareness rules, out-of-scope exemptions, and severity guidance. In Generator Mode, load all three and apply each to the diff. A coordinator SOP such as `k-adversarial-pull-request-review` runs them as parallel subagents instead.
 
+When you run the passes inline, you are the coordinator: merge findings that share a file:line and root cause, and keep the highest severity. A direct run is Generator Mode only. The Validator Mode filter does not run on its output, because the two modes must not be mixed in one pass; the merged findings go to the user with the closing "Fix these issues?" prompt. To filter them, run Validator Mode separately, as a different persona, the way the coordinator SOP does.
+
 | Lens                                   | Pass skill                               | Covers                                                                                                          |
 | -------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Security / information disclosure      | `adversarial-code-review-pass-security`  | Stack traces and internal details reaching callers, logged payloads, unvalidated tokens and input, secrets, IAM |

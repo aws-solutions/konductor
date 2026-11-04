@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review-pass-security
-description: 'Reviews a diff through the lens of security concerns — information disclosure, authorization, injection, secrets. Use only when the adversarial-code-review coordinator spawns it, alongside the integrity and schema passes.'
+description: 'Reviews a diff through the lens of security concerns — information disclosure, authorization, injection, secrets. Use only when the adversarial-code-review coordinator spawns it or adversarial-code-review loads it inline, alongside the integrity and schema passes.'
 version: 1.1.0
 tags: [skill, security, code-review, adversarial, pass]
 ---
@@ -49,7 +49,7 @@ Findings produced by this pass are candidates, not verdicts. The coordinator for
 
 ## Severity guidance
 
-- **CRITICAL** — stack trace or internal ID surfaced to caller; unvalidated input used in a query; hardcoded credential; widened IAM policy on a production role
+- **CRITICAL** — stack trace, internal ID, internal error code, or raw exception message surfaced to caller; unvalidated input used in a query; hardcoded credential; widened IAM policy on a production role
 - **IMPORTANT** — request payload logged at info/debug; opaque token decoded inline where a utility exists; new auth path not wired into existing middleware
 - **SUGGESTION** — abstraction boundary leak that does not directly expose sensitive data; log field that could be sensitive under some inputs
 
@@ -61,4 +61,4 @@ Problem: {what is wrong and why it is a risk}
 Fix: {concrete suggested change}
 ```
 
-Return the findings list. Do not deduplicate against other passes — the coordinator does that.
+Return the findings list. Do not deduplicate against other passes. Whoever runs the passes does that: the coordinator SOP, or adversarial-code-review when it loads the passes inline.

@@ -273,8 +273,8 @@ mod tests {
         let description =
             "Reviews a diff through the lens of security concerns \u{2014} information \
                            disclosure, authorization, injection, secrets. Use only when the \
-                           adversarial-code-review coordinator spawns it, alongside the integrity \
-                           and schema passes.";
+                           adversarial-code-review coordinator spawns it or adversarial-code-review \
+                           loads it inline, alongside the integrity and schema passes.";
         let got = trigger(description).unwrap();
         assert!(
             got.contains("Use only when the adversarial-code-review coordinator spawns it"),
