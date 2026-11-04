@@ -14,9 +14,15 @@
  *      - claude-code-2.1.318-read.jsonl: Claude Code 2.1.318, `--output-format stream-json --verbose`.
  *      - kiro-cli-3.0.0-read.jsonl, kiro-cli-3.0.0-skill-read.jsonl: kiro-cli 3.0.0,
  *        `chat --output-format stream-json`; the second run reads a SKILL.md.
- *      - OpenCode has NO real capture: opencode 2.0.27 had no authenticated provider here, so its
- *        only run ended in a provider quota error before any tool call. OpenCode parsing is
- *        unverified.
+ *      - opencode-2.0.27-read.jsonl: opencode 2.0.27, `run --format json`, one completed `read`
+ *        call. It is an earlier run, not a fresh one: the installed opencode here has no
+ *        authenticated provider. It was sanitized like the others (ids, timestamps, the planted
+ *        marker); no event was added.
+ *      - opencode-2.0.27-skill-read.jsonl: opencode 2.0.27, `run --format json`, a fresh run
+ *        in which the model reads a `skills/sample-notes/SKILL.md`, reads a second file, then
+ *        answers. The skill and notes are synthetic. Sanitized like the others (ids, absolute
+ *        paths, timestamps); no event or field was added or removed. OpenCode parsing,
+ *        including the skill-load path, is verified for these two shapes only.
  *  - Every other fixture (claude-code-*, opencode-*, kiro-* without a version) is a synthetic
  *    behavior example, hand-written from the event shapes in the doc comments of
  *    bench/lib/trace-normalizer.js. It shows how the parser treats that shape, not what a
@@ -273,7 +279,7 @@ test('the CHANGELOG entry is found, and does not end at a following bullet or he
 
 test('fixtures, library, test source and CHANGELOG entry hold no private paths, identities, credentials or hosts', () => {
   const fixtureNames = fs.readdirSync(FIXTURES_DIR);
-  assert.ok(fixtureNames.length >= 15, 'twelve synthetic fixtures plus the three real captures');
+  assert.ok(fixtureNames.length >= 17, 'twelve synthetic fixtures plus the five real captures');
   const sources = fixtureNames.map((name) => [`fixtures/traces/${name}`, loadFixture(name)]);
   sources.push(['bench/test/trace-normalizer.test.js', fs.readFileSync(__filename, 'utf8')]);
   sources.push(['bench/lib/trace-normalizer.js', fs.readFileSync(LIBRARY_PATH, 'utf8')]);
@@ -2187,10 +2193,12 @@ test('adding tool_call_id is additive: schema_version stays 1 and the other call
 });
 
 // --- Real captures -----------------------------------------------------------------------------
-// These three fixtures are sanitized captures of the installed CLIs (see the header). The
+// These five fixtures are sanitized captures of the CLIs (see the header). The
 // assertions read key fields the way a consumer would, so a change in what a CLI emits, or a
 // parser regression, fails here and not only in a hand-written shape.
 
+const OPENCODE_REAL = 'opencode-2.0.27-read.jsonl';
+const OPENCODE_REAL_SKILL = 'opencode-2.0.27-skill-read.jsonl';
 const CLAUDE_REAL = 'claude-code-2.1.318-read.jsonl';
 const KIRO_REAL_READ = 'kiro-cli-3.0.0-read.jsonl';
 const KIRO_REAL_SKILL = 'kiro-cli-3.0.0-skill-read.jsonl';
@@ -2221,6 +2229,210 @@ test('real capture, Claude Code 2.1.318: one Read call, its result, the answer, 
   assert.deepEqual(record.errors, []);
   assert.equal(record.parse_errors, 0);
   assert.deepEqual(record.unrecognized_events, {});
+});
+
+test('real capture, OpenCode 2.0.27: one read call, its result, the answer, usage, cost and completeness', () => {
+  const record = normalizeTrace('opencode', loadFixture(OPENCODE_REAL));
+  assert.equal(record.tool_calls.length, 1);
+  const [call] = record.tool_calls;
+  assert.equal(call.tool_call_id, 'tooluse_fixture_1');
+  assert.equal(call.raw_tool_name, 'read');
+  assert.equal(call.tool_name, 'read');
+  assert.deepEqual(call.arguments, { path: 'build/smoke/scenario-artifact.md' });
+  assert.equal(call.status, 'completed');
+  assert.match(call.result, /^Read file build\/smoke\/scenario-artifact\.md/);
+  assert.match(call.result, /marker_fixture_1/);
+  assert.match(record.response_text, /"defect_found": true/);
+  assert.match(record.response_text, /marker_fixture_1/);
+  assert.equal(record.response_text.length, 267);
+  assert.deepEqual(record.session_ids, ['ses_fixture_1']);
+  assert.equal(record.complete, true);
+  assert.deepEqual(record.usage, {
+    input_tokens: 4,
+    output_tokens: 59,
+    cache_read_tokens: 12045,
+    cache_write_tokens: 142,
+  });
+  assert.equal(record.cost_usd, 0.0047465);
+  // OpenCode 2.0.27 does not name the model in its event stream or list its tools.
+  assert.equal(record.model_id, null);
+  assert.equal(record.available_tools, 'unknown');
+  assert.deepEqual(record.skill_loads, []);
+  assert.deepEqual(record.errors, []);
+  assert.equal(record.parse_errors, 0);
+  assert.deepEqual(record.unrecognized_events, {});
+});
+
+test('real capture, OpenCode 2.0.27: the tool part has no callID, so the call id is the part id', () => {
+  const events = loadFixture(OPENCODE_REAL).trim().split('\n').map(JSON.parse);
+  assert.deepEqual(
+    events.map((e) => e.type),
+    ['step_start', 'tool_use', 'step_finish', 'step_start', 'text'],
+  );
+  const toolPart = events.find((e) => e.type === 'tool_use').part;
+  assert.equal(toolPart.callID, undefined);
+  assert.equal(toolPart.id, 'tooluse_fixture_1');
+  assert.equal(toolPart.state.status, 'completed');
+  // The one session id appears on the event and on its part.
+  assert.ok(events.every((e) => e.sessionID === 'ses_fixture_1' && e.part.sessionID === 'ses_fixture_1'));
+});
+
+test('real capture, OpenCode 2.0.27: a trace cut before step_finish is incomplete and has no usage', () => {
+  const cut = loadFixture(OPENCODE_REAL)
+    .split('\n')
+    .filter((line) => line && !line.includes('"step_finish"'))
+    .join('\n');
+  const record = normalizeTrace('opencode', cut);
+  assert.equal(record.complete, false);
+  assert.equal(record.usage, null);
+  assert.equal(record.cost_usd, null);
+  assert.equal(record.tool_calls.length, 1);
+  assert.match(record.response_text, /defect_found/);
+});
+
+test('real capture, OpenCode 2.0.27: the same call with a status other than completed is an error', () => {
+  const edited = loadFixture(OPENCODE_REAL).replace('"status":"completed"', '"status":"running"');
+  assert.notEqual(edited, loadFixture(OPENCODE_REAL));
+  const record = normalizeTrace('opencode', edited);
+  assert.equal(record.tool_calls[0].status, 'error');
+  assert.deepEqual(
+    record.errors.map((e) => e.type),
+    ['tool_error'],
+  );
+});
+
+test('real capture, OpenCode 2.0.27: reading a SKILL.md then a second file is recorded as one skill load', () => {
+  const record = normalizeTrace('opencode', loadFixture(OPENCODE_REAL_SKILL));
+  assert.equal(record.tool_calls.length, 2);
+  assert.deepEqual(
+    record.tool_calls.map((c) => [c.tool_call_id, c.raw_tool_name, c.tool_name, c.status]),
+    [
+      ['tooluse_fixture_1', 'read', 'read', 'completed'],
+      ['tooluse_fixture_2', 'read', 'read', 'completed'],
+    ],
+  );
+  assert.deepEqual(record.tool_calls[0].arguments, { path: '/work/skills/sample-notes/SKILL.md' });
+  assert.deepEqual(record.tool_calls[1].arguments, { path: '/work/notes.md' });
+  assert.match(record.tool_calls[0].result, /^Read file \/work\/skills\/sample-notes\/SKILL\.md/);
+  assert.match(record.tool_calls[0].result, /name: sample-notes/);
+  assert.match(record.tool_calls[1].result, /garden club newsletter/);
+  // Only the SKILL.md read is a load; the notes read is not.
+  assert.deepEqual(record.skill_loads, [
+    {
+      skill_name: 'sample-notes',
+      source: 'path-heuristic',
+      raw_path: '/work/skills/sample-notes/SKILL.md',
+      subagent: false,
+    },
+  ]);
+  assert.equal(
+    record.response_text,
+    '## Garden club newsletter planning\nSummary: Maria writes the spring planting section, Devon collects member photos, the draft is due the following Friday, and the next meeting moves to the library.',
+  );
+  assert.equal(record.response_text.length, 197);
+  assert.deepEqual(record.session_ids, ['ses_fixture_1']);
+  assert.equal(record.complete, true);
+  assert.deepEqual(record.usage, {
+    input_tokens: 6,
+    output_tokens: 316,
+    cache_read_tokens: 1407,
+    cache_write_tokens: 1843,
+  });
+  // Two step_finish costs are summed; compare with a tolerance for float addition.
+  assert.ok(Math.abs(record.cost_usd - 0.00871222) < 1e-12);
+  assert.equal(record.model_id, null);
+  assert.equal(record.available_tools, 'unknown');
+  assert.deepEqual(record.errors, []);
+  assert.equal(record.parse_errors, 0);
+  assert.deepEqual(record.unrecognized_events, {});
+  assert.equal(record.degraded, false);
+});
+
+test('real capture, OpenCode 2.0.27: the skill-read run is three turns, the first two ending in tool calls', () => {
+  const events = loadFixture(OPENCODE_REAL_SKILL).trim().split('\n').map(JSON.parse);
+  assert.deepEqual(
+    events.map((e) => e.type),
+    ['step_start', 'tool_use', 'step_finish', 'step_start', 'tool_use', 'step_finish', 'step_start', 'text'],
+  );
+  assert.deepEqual(
+    events.filter((e) => e.type === 'step_finish').map((e) => e.part.reason),
+    ['tool-calls', 'tool-calls'],
+  );
+  for (const e of events.filter((x) => x.type === 'tool_use')) {
+    assert.equal(e.part.callID, undefined);
+    assert.equal(e.part.tool, 'read');
+    assert.equal(e.part.state.status, 'completed');
+  }
+  assert.ok(events.every((e) => e.sessionID === 'ses_fixture_1' && e.part.sessionID === 'ses_fixture_1'));
+});
+
+test('real capture, OpenCode 2.0.27: dropping the SKILL.md read leaves no skill load', () => {
+  const lines = loadFixture(OPENCODE_REAL_SKILL).split('\n');
+  const withoutSkillRead = lines.filter((line) => line && !line.includes('"id":"tooluse_fixture_1"')).join('\n');
+  const record = normalizeTrace('opencode', withoutSkillRead);
+  assert.equal(record.tool_calls.length, 1);
+  assert.deepEqual(record.skill_loads, []);
+});
+
+test('real capture, OpenCode 2.0.27: a SKILL.md read with a status other than completed is not a load', () => {
+  const raw = loadFixture(OPENCODE_REAL_SKILL);
+  const edited = raw.replace('"status":"completed"', '"status":"running"');
+  assert.notEqual(edited, raw);
+  const record = normalizeTrace('opencode', edited);
+  assert.equal(record.tool_calls[0].status, 'error');
+  assert.equal(record.tool_calls[1].status, 'completed');
+  assert.deepEqual(record.skill_loads, []);
+});
+
+const openCodeInput = (tool, input, status = 'completed') => ({
+  type: 'tool_use',
+  sessionID: 'ses_a',
+  part: { id: `t_${tool}`, tool, state: { status, input, output: 'out' } },
+});
+
+test('opencode skill loads: only a completed read of skills/<name>/SKILL.md counts', () => {
+  const skillPath = '/work/skills/demo/SKILL.md';
+  const loads = (...events) => normalizeTrace('opencode', jsonl(...events)).skill_loads.map((l) => l.skill_name);
+  assert.deepEqual(loads(openCodeInput('read', { path: skillPath })), ['demo']);
+  // Another tool, a namespaced tool and a differently cased name are not the read tool.
+  assert.deepEqual(loads(openCodeInput('edit', { path: skillPath })), []);
+  assert.deepEqual(loads(openCodeInput('write', { path: skillPath })), []);
+  assert.deepEqual(loads(openCodeInput('mcp__x__read', { path: skillPath })), []);
+  assert.deepEqual(loads(openCodeInput('Read', { path: skillPath })), []);
+  // A path that is not a skill file, or that is only a similar suffix, is not a load.
+  assert.deepEqual(loads(openCodeInput('read', { path: '/work/notes.md' })), []);
+  assert.deepEqual(loads(openCodeInput('read', { path: '/work/myskills/demo/SKILL.md' })), []);
+  assert.deepEqual(loads(openCodeInput('read', { path: '/work/skills/demo/skill.md' })), []);
+  // A relative path, a file_path key and an operations array are read like Kiro's.
+  assert.deepEqual(loads(openCodeInput('read', { path: 'skills/demo/SKILL.md' })), ['demo']);
+  assert.deepEqual(loads(openCodeInput('read', { filePath: skillPath })), ['demo']);
+  assert.deepEqual(loads(openCodeInput('read', { operations: [{ path: skillPath }, { path: '/work/notes.md' }] })), ['demo']);
+  // Failed and unfinished reads are not loads.
+  assert.deepEqual(loads(openCodeInput('read', { path: skillPath }, 'error')), []);
+  assert.deepEqual(loads(openCodeInput('read', { path: skillPath }, 'running')), []);
+  // Input that is not an object, or has no path, adds no load and does not throw.
+  assert.deepEqual(loads(openCodeInput('read', 'skills/demo/SKILL.md')), []);
+  assert.deepEqual(loads(openCodeInput('read', {})), []);
+  assert.deepEqual(loads(openCodeInput('read', { path: 7 })), []);
+});
+
+test('opencode skill loads: two skills read in one run are two loads in call order, and the tool calls stay listed', () => {
+  const record = normalizeTrace(
+    'opencode',
+    jsonl(
+      openCodeInput('read', { path: '/work/skills/first/SKILL.md' }),
+      openCodeInput('read', { path: '/work/notes.md' }),
+      openCodeInput('read', { path: '/work/skills/second/SKILL.md' }),
+    ),
+  );
+  assert.deepEqual(
+    record.skill_loads.map((l) => [l.skill_name, l.raw_path]),
+    [
+      ['first', '/work/skills/first/SKILL.md'],
+      ['second', '/work/skills/second/SKILL.md'],
+    ],
+  );
+  assert.equal(record.tool_calls.length, 3);
 });
 
 test('real capture, kiro-cli 3.0.0: one read call, its result, the answer, the session id and completeness', () => {
@@ -2609,6 +2821,8 @@ test('feeding a real capture as arbitrary multi-line chunks gives the same recor
     ['claude-code', CLAUDE_REAL],
     ['kiro', KIRO_REAL_READ],
     ['kiro', KIRO_REAL_SKILL],
+    ['opencode', OPENCODE_REAL],
+    ['opencode', OPENCODE_REAL_SKILL],
     ['claude-code', 'claude-code-happy-path.jsonl'],
     ['opencode', 'opencode-happy-path.jsonl'],
     ['kiro', 'kiro-happy-path.jsonl'],

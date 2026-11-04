@@ -35,8 +35,12 @@
  *    `tool_call_id`, `tool_name`, `arguments`, string `content`, and a `model` event) is NOT known to
  *    be emitted by any release: it was written from an assumed format, and it is kept only so the
  *    synthetic behavior fixtures keep working. Treat it as unverified.
- *  - OpenCode: UNVERIFIED. No tool-call run could be captured (the installed 2.0.27 had no
- *    authenticated provider), so the parser still reflects the documented event shapes only.
+ *  - OpenCode: verified against captured `opencode` 2.0.27 `run --format json` runs: one with a
+ *    completed `read` call (fixtures/traces/opencode-2.0.27-read.jsonl) and one in which the model
+ *    reads a `skills/<name>/SKILL.md` and then a second file
+ *    (fixtures/traces/opencode-2.0.27-skill-read.jsonl). They cover `step_start`, `tool_use` (status `completed`), `step_finish`
+ *    and `text`, and the skill-load path. They do not cover a failed or unfinished tool state, the
+ *    `error` event, or a `callID` field, so those paths still rest on the documented shapes only.
  * A fixture is a real capture only when its file name carries the CLI name and version; the others
  * under fixtures/traces/ are synthetic.
  *
@@ -101,6 +105,7 @@
  * and the repeated event is kept as its own call. This holds for all three runtimes.
  *  - Claude Code: the `tool_use` block's `id`, the same value a result carries as `tool_use_id`.
  *  - OpenCode: the tool part's `callID`, or the part's `id` when the trace has no usable `callID`.
+ *    OpenCode 2.0.27 sends no `callID`; its tool part carries the call id (`tooluse_...`) as `id`.
  *  - Kiro (ACP): the `tool_call` update's `toolCallId`; a `tool_call_update` carries the same value.
  *  - Kiro (flat shape): the `tool_call` event's `tool_call_id`, or its `id` when that is absent.
  *
@@ -117,7 +122,10 @@
  *    `rawInput.path`), and from the same keys of each entry in an `operations` array. The
  *    `operations` form is not in any capture here; it is read because the review reported it, and is
  *    unverified. One call that reads several skill files records one load per file.
- *  - OpenCode reports no skill-load signal, so `skill_loads` stays empty.
+ *  - OpenCode: has no skill-load event either, so a load is a completed `read` call (matched on the
+ *    exact reported name, OPENCODE_READ_TOOL_NAMES) whose input `path` matches SKILL_PATH_PATTERN,
+ *    with the same path keys and `operations` handling as Kiro. A failed or unfinished read is not
+ *    a load. opencode 2.0.27 sends an absolute path in `input.path`; the pattern matches its tail.
  *
  * Kiro (ACP) tool names. The call's name is `_meta.kiro.toolName` when the event has one (reported
  * by the review, absent from the kiro-cli 3.0.0 captures here), else the ACP `kind` (`read` for the
@@ -256,6 +264,8 @@ const NO_TYPE_KEY = '[no type]';
  * not match.
  */
 const KIRO_READ_TOOL_NAMES = new Set(['read', 'fsRead', 'fs_read']);
+/** The OpenCode tool that reads a file, matched exactly against the tool name as reported. */
+const OPENCODE_READ_TOOL_NAMES = new Set(['read']);
 
 /**
  * Kiro (ACP) `sessionUpdate` kinds the parser knowingly skips: thought and user echoes, plans,
@@ -914,9 +924,11 @@ function normalizeClaudeCode(rawTrace, options = {}) {
  *  - `text`: assistant output; the last non-empty one is the final answer.
  *  - `error`: a runtime error.
  * `step_start` carries nothing the record needs and is skipped silently; any other event type is
- * counted in `unrecognized_events`. This shape is unverified against a real run (see "Verification
- * status" in the module header). OpenCode emits no terminal result event, so `complete` means
- * "at least one step_finish was seen". A repeated call id adds `duplicate_tool_id`. `response_text`
+ * counted in `unrecognized_events`. Real 2.0.27 runs confirm the shapes above for a completed
+ * call and for a SKILL.md read (see "Verification status" and "Skill loads" in the module header).
+ * A completed `read` of `skills/<name>/SKILL.md` adds a skill load. OpenCode emits no terminal result event,
+ * so `complete` means "at least one step_finish was seen". A repeated call id adds
+ * `duplicate_tool_id`. `response_text`
  * keeps the answer as reported (redacted), including any markdown fence; stripping it is
  * left to the consumer.
  * `available_tools` stays 'unknown' because OpenCode lists no tools at session start. More than
@@ -965,6 +977,22 @@ function normalizeOpenCode(rawTrace, options = {}) {
       call.status = toolState.status === 'completed' ? 'completed' : 'error';
       ctx.setResult(call, toolState.output);
       record.tool_calls.push(call);
+      // A skill load is a completed `read` of `skills/<name>/SKILL.md`. The tool name is matched as
+      // reported, so a namespaced tool that merely ends in "read" does not count.
+      const isRead = typeof event.part.tool === 'string' && OPENCODE_READ_TOOL_NAMES.has(event.part.tool);
+      if (call.status === 'completed' && isRead) {
+        for (const path of kiroReadPaths(isObject(toolState.input) ? toolState.input : {})) {
+          const load = skillLoadFromPath(path);
+          if (load) {
+            record.skill_loads.push({
+              skill_name: ctx.text(load.skill_name),
+              source: load.source,
+              raw_path: ctx.text(load.raw_path),
+              subagent: false,
+            });
+          }
+        }
+      }
       // A repeated id keeps the event as its own call and adds `duplicate_tool_id`, as in the
       // other runtimes. No result ever looks the call up by id, so the index is not used again.
       registerCallId(ctx, pending, toolCallId, record.tool_calls.length - 1, lineNo, 'tool_use');
