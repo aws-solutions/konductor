@@ -37,9 +37,10 @@ export interface EditState {
   draft: Draft;
   selectedId: string;
   /**
-   * Counts the changes of the draft; a check answers for one revision. It
-   * only grows, also across `open` and `reloaded`, so an answer meant for an
-   * earlier document never fits a later one.
+   * Counts the changes of the draft; a check answers for one revision. A
+   * revision is never used twice in an `EditSlot`, also across `open` and
+   * `reloaded`, so an answer meant for an earlier document never fits a later
+   * one.
    */
   revision: number;
   /**
@@ -49,6 +50,17 @@ export interface EditState {
   check: Check;
   save: SaveState;
 }
+
+/**
+ * What the editor holds: the state, if there is a workflow to edit, and the
+ * highest revision handed out so far, which outlives the state.
+ */
+export interface EditSlot {
+  current: EditState | undefined;
+  lastRevision: number;
+}
+
+export const EMPTY_SLOT: EditSlot = { current: undefined, lastRevision: -1 };
 
 /** Something that happened to the editor. */
 export type EditEvent =
