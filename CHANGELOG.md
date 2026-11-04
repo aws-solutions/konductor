@@ -164,6 +164,20 @@ not per individual commit.
   and every real skill's result with `trusted` and `trust_reasons`; when the run fails, each real
   skill carries `trusted: false` and the failing controls' reasons, and its computed verdict is
   left as it is. Run `node --test bench/test/controls.test.js`.
+- `bench/test/controls-pipeline.test.js`, the controls through the whole offline pipeline: stored
+  pairs and crafted judge replies go through the judge driver, the treatment check and the
+  aggregation, and the gate reads the stored results. Replies that favour the with arm make keep
+  read `keep`; replies that favour the without arm make prune read `prune`; both pass the gate.
+  Prune pairs whose stored run set the direction aside (shown as a counter-example, or narrated
+  and so removed from the judge's view by the sanitizer) are dropped and counted as treatment
+  failures; with 5 of 12 dropped, prune falls to review and the gate fails with the reason. A
+  direction taken only in a changed file counts. The null control, with identical arms and
+  independent noisy scores, never reads `keep` or `prune` over 20 fixed seeds, reads `keep` when
+  one arm is given a one-point lean, and reads `keep` or `prune` by chance in about 1% of 2000
+  seeds. A control at the wrong verdict, or a missing one, fails the run and marks the real skill
+  `trusted: false` without changing its verdict. Editing a treatment spec changes
+  `decisionRuleSha256()` and a stored control result made under the old spec is rebuilt with no
+  plugin call. Run `node --test bench/test/controls-pipeline.test.js`.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
