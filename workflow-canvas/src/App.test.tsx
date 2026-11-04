@@ -1,11 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { MODE_STORAGE_KEY } from './theme/mode';
 import { App } from './App';
 import { HELLO_DOCUMENT, failed, loaded } from './test-support/fixtures';
 import type { LoadResult } from './workflow/load-workflow';
 
 const settled = (result: LoadResult) => Promise.resolve(result);
+
+// The top bar measures itself, and jsdom has no layout, so it shows its
+// buttons in the overflow menu. The measuring copy is hidden from the
+// accessibility tree, but it is the same button with the same handler.
+const themeButton = (mode: 'light' | 'dark') =>
+  screen.getAllByRole('button', {
+    name: new RegExp(`^Theme: ${mode}`),
+    hidden: true,
+  })[0]!;
+
+afterEach(() => {
+  window.localStorage.clear();
+  delete document.documentElement.dataset.theme;
+  document.documentElement.style.colorScheme = '';
+});
 
 describe('App', () => {
   it('renders the page title inside a main landmark', () => {
@@ -82,5 +98,59 @@ describe('App', () => {
 
     expect(screen.getByTestId('node-end')).toBeTruthy();
     expect(screen.queryByText('Loading the workflow')).toBeNull();
+  });
+
+  it('shows the top bar with the page name and a theme button', () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    expect(themeButton('light').textContent).toBe('Theme: light');
+    expect(themeButton('light').getAttribute('aria-label')).toBe(
+      'Theme: light. Switch to dark',
+    );
+  });
+
+  it('shows the breadcrumb Workflows > the open workflow, with no dead link', async () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    const trail = await screen.findByRole('navigation', {
+      name: 'Breadcrumbs',
+    });
+    expect(within(trail).getByText('Workflows')).toBeTruthy();
+    expect(
+      (await within(trail).findByText('hello')).closest('[aria-current]'),
+    ).toBeTruthy();
+    expect(within(trail).queryAllByRole('link')).toEqual([]);
+  });
+
+  it('switches to the dark mode, remembers it and switches back', () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    fireEvent.click(themeButton('light'));
+
+    expect(document.documentElement.style.colorScheme).toBe('dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(window.localStorage.getItem(MODE_STORAGE_KEY)).toBe('dark');
+    expect(themeButton('dark').textContent).toBe('Theme: dark');
+
+    fireEvent.click(themeButton('dark'));
+
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(themeButton('light').textContent).toBe('Theme: light');
+    expect(window.localStorage.getItem(MODE_STORAGE_KEY)).toBe('light');
+  });
+
+  it('starts in the mode that was saved', () => {
+    window.localStorage.setItem(MODE_STORAGE_KEY, 'dark');
+
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(themeButton('dark').textContent).toBe('Theme: dark');
+  });
+
+  it('does not save a mode that nobody chose', () => {
+    render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
+
+    expect(window.localStorage.getItem(MODE_STORAGE_KEY)).toBeNull();
   });
 });

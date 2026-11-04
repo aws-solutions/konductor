@@ -11,7 +11,7 @@ export const ESTIMATED_FOR = {
   nodeWidthPx: 280,
   titleFontPx: 14,
   subFontPx: 12,
-  paddingXPx: 12,
+  paddingXPx: 14,
   outcomeLines: 3,
 } as const;
 

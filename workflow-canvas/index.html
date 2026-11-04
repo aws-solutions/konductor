@@ -6,9 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; base-uri 'none'; form-action 'none'"
+      content="default-src 'self'; script-src 'self' 'sha256-6DS8tA6eyrMVjv4FFOtIp1XAk+gNs8StIWOzlWnoWhg='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; base-uri 'none'; form-action 'none'"
     />
     <title>Workflow canvas</title>
+    <script>
+      // Sets the mode before the first paint, so a dark page does not flash
+      // white. It repeats the rule of src/theme/mode.ts; early-mode.test.ts keeps
+      // the storage key in step.
+      (function () {
+        var mode;
+        try {
+          mode = localStorage.getItem('konductor-workflow-canvas-theme');
+        } catch (error) {
+          mode = null;
+        }
+        if (mode !== 'light' && mode !== 'dark') {
+          mode = matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+        document.documentElement.style.colorScheme = mode;
+        document.documentElement.dataset.theme = mode;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

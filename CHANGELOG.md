@@ -20,6 +20,7 @@ not per individual commit.
 - Reloading the canvas page resumes the open workflow from a session kept for the tab; a restarted server asks for a fresh launch address.
 - A spent launch address in the tab falls back to the kept session and says so, and a first load that failed, of an opened or a pasted address, can be retried with a reload.
 - The workflow canvas API contract says where the session token may be kept (`sessionStorage` only) and requires the served page to send a `Content-Security-Policy` header with `frame-ancestors 'none'`.
+- The workflow canvas uses the Konductor docs theme, with light and dark modes, and system colours in forced-colors mode.
 
 ### Changed
 
