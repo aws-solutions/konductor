@@ -164,21 +164,38 @@ const fmt = (x) => (x >= 0 ? `+${x.toFixed(2)}` : x.toFixed(2));
  * If the interval cannot be computed, a `keep` or `prune` becomes review, so the gate fails closed.
  *
  * Returns a copy of `verdict` with `judge_verdict` (the verdict before the gate), `word_check`
- * ({ gate: 'on' | 'off', pairs, need, mean, ci, vetoed }) and an updated `reason`. The `verdict`
- * field is either unchanged or review; this function never produces `keep` or `prune`.
+ * and an updated `reason`. The `verdict` field is either unchanged or review; this function never
+ * produces `keep` or `prune`. `word_check` is
+ * `{ gate: 'on' | 'off', pairs, k, need, mean, ci, vetoed, off_reason }`:
+ *  - `pairs` and `k` are the same number, the usable pairs that have a word-check gap, `need` is
+ *    the minimum (MIN_DECISION_PAIRS);
+ *  - `mean` and `ci` are the gap and its 95% interval, null while the gate is off;
+ *  - `vetoed` is true when the gate turned a `keep` or `prune` into review;
+ *  - `off_reason` says why there is no usable gap: too few pairs with checks, or a gap or interval
+ *    that is not finite. It is null when the gap was computed.
  */
 function wordCheckGate(verdict, pairs) {
   const gaps = pairs.filter((p) => isUsablePair(p) && Number.isFinite(p.w)).map((p) => p.w);
   const k = gaps.length;
   const judged = verdict.verdict;
   const decisive = judged === 'keep' || judged === 'prune';
-  const wc = { gate: 'off', pairs: k, need: MIN_DECISION_PAIRS, mean: null, ci: null, vetoed: false };
+  const tooFew = `${k} pairs with checks, need ${MIN_DECISION_PAIRS}`;
+  const wc = {
+    gate: 'off',
+    pairs: k,
+    k,
+    need: MIN_DECISION_PAIRS,
+    mean: null,
+    ci: null,
+    vetoed: false,
+    off_reason: tooFew,
+  };
   const out = (fields) => ({ ...verdict, judge_verdict: judged, ...fields });
 
   if (k < MIN_DECISION_PAIRS) {
     return out({
       word_check: wc,
-      reason: `${verdict.reason}; word checks off: ${k} pairs with checks, need ${MIN_DECISION_PAIRS}`,
+      reason: `${verdict.reason}; word checks off: ${tooFew}`,
     });
   }
 
@@ -187,13 +204,14 @@ function wordCheckGate(verdict, pairs) {
   const standardError = Math.sqrt(variance / k);
   const t95 = tCritical(k - 1, T_975);
   const ci = [mean - t95 * standardError, mean + t95 * standardError];
-  const on = { ...wc, gate: 'on' };
+  const on = { ...wc, gate: 'on', off_reason: null };
 
   if (![mean, variance, standardError, ...ci].every(Number.isFinite)) {
-    if (!decisive) return out({ word_check: on });
+    const notFinite = { ...on, off_reason: 'the word-check gap or its interval is not finite' };
+    if (!decisive) return out({ word_check: notFinite });
     return out({
       verdict: REVIEW,
-      word_check: { ...on, vetoed: true },
+      word_check: { ...notFinite, vetoed: true },
       reason: `word-check gap is not finite, so the judge verdict ${judged} cannot be confirmed`,
     });
   }

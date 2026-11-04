@@ -186,6 +186,12 @@ not per individual commit.
   two lists to `aggregateSkill`, so `c_with`, `c_without`, `w` and the word-check gate are filled
   from stored data. Nothing here runs a check: the check evaluator comes in a later change and
   fills `check_results` from the arm's final snapshot.
+- The skill result's `verdict.word_check` block now names `k`, the number of usable pairs that have
+  a word-check gap, next to `pairs` (the same number), and `off_reason`, which says why there is no
+  gap: too few pairs with checks ("3 pairs with checks, need 8") or a gap that is not finite. It is
+  null when the gap was computed. Together with `graded` (the judge verdict alone), `verdict` (the
+  verdict after the gate), `verdict.judge_verdict`, and `word_check.mean`, `ci` and `vetoed`, the
+  result now carries everything a report needs. The gate rule and the thresholds are unchanged.
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.

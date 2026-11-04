@@ -103,7 +103,9 @@ function checkShare(results) {
  * A pair is scored when at least MIN_SEATS_PER_PAIR of the planned seats (fewer if fewer were
  * planned) gave a valid score. Each pair record carries `c_with`, `c_without` and
  * `w = c_with - c_without`, each null when absent. The result has `graded` (the judge verdict
- * alone) and `verdict` (after the word-check gate).
+ * alone) and `verdict` (after the word-check gate). `verdict.judge_verdict` repeats the judge-only
+ * verdict, and `verdict.word_check` holds `k` (usable pairs with a word-check gap), the gap's mean
+ * and 95% interval, `vetoed`, and `off_reason` (why there is no gap; see wordCheckGate).
  */
 function aggregateSkill({
   skill,
