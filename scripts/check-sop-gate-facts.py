@@ -1,0 +1,396 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""Check that each gated SOP with gate boundaries in
+cli/gate-config/sop-orchestration.yml records its gate facts and runs
+`konductor verify-run` the way its boundaries require.
+
+Usage: check-sop-gate-facts.py [repo-root]
+
+Exit 0 and print nothing when they agree. Exit 1 and print one
+`<code>: <detail>` line per violation to stderr when they do not.
+Exit 64 on a bad invocation.
+"""
+import importlib.util
+import re
+import sys
+from pathlib import Path
+
+EX_USAGE = 64
+FACT_SUFFIXES = ("result", "evidence", "checker")
+FACT_KEY = re.compile(r"gate_([a-z0-9][a-z0-9-]*)_(result|evidence|checker|override|verdict)")
+STEP_HEADING = re.compile(r"^### (\d+)\. ", re.MULTILINE)
+SECTION_END = re.compile(r"^#{2,3} ", re.MULTILINE)
+CHECKER_WORDS = r"IMPORTANT|SUGGESTION|MINOR|WARNING"
+GATE_IDS = r"HIGH|MEDIUM|LOW|INFO"
+MAPS_TO = r"\s*(?:->|\u2192|=|maps to|means|becomes|counts as|is treated as)\s*"
+WORD_MAPPING = re.compile(
+    rf"\b(?:{CHECKER_WORDS})\b`?{MAPS_TO}`?\b(?:{GATE_IDS})\b"
+    rf"|\b(?:{GATE_IDS})\b`?{MAPS_TO}`?\b(?:{CHECKER_WORDS})\b"
+)
+RELATIVE_TO_ROOT = re.compile(r"relative to (?:the project root|`output_dir`)")
+RELATIVE_TO_OUTPUT_DIR = "relative to `output_dir`"
+RELATIVE_TO_PROJECT_ROOT = "relative to the project root"
+RUN_FROM_OUTPUT_DIR = re.compile(r"(?:run from|working directory (?:set to )?)\s*`output_dir`")
+EXIT_CODES = (1, 2, 3, 6, 64, 65)
+ABSOLUTE_PATH = re.compile(r"`(?:/|~|[A-Za-z]:[\\/])")
+SUMMARY_WRITE = re.compile(r"\bwrite `sdlc-summary\.md`", re.IGNORECASE)
+VERIFY_RUN_SOP = "k-full-sdlc"
+VERIFY_CALL = "konductor verify-run --session"
+ROUND_CAP_NOTE = re.compile(r"`[^`]*round cap, approved by <alias>[^`]*`")
+STALE_OVERRIDE_WORDING = ("no approver", "attended cap exit", "recorded route", "round-cap exit")
+CODE_REVIEW = "code-review"
+CAP_READING_PHASES = ("implementation", "code-review", "testing", "documentation")
+CAP_KEY = "run.data.max_fix_cycles"
+CAP_RESUME_LABEL = "Reconciliation on resume (max_fix_cycles)"
+DISAGREEMENT_ITEM = "verify-run disagrees with the Quality Gate"
+PINNED_CAP_FLAG = re.compile(r"--max-fix-cycles <max_fix_cycles>")
+PHASE_ORDER_KEY = "PHASE_ORDER"
+RECORD_BULLET = "- Record the `{phase}` phase's outcome"
+
+
+def load_orchestration_check():
+    """The orchestration lint owns the map and Phase list parsing; reuse it."""
+    path = Path(__file__).resolve().parent / "check-sop-orchestration.py"
+    spec = importlib.util.spec_from_file_location("check_sop_orchestration", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def sentences(text):
+    return re.split(r"(?<=\.)\s+", text)
+
+
+def step_sections(text, phases):
+    """Map each phase id to its `### <n>.` Step section, in order."""
+    starts = [m.start() for m in STEP_HEADING.finditer(text)]
+    sections = {}
+    for phase, start in zip(phases, starts):
+        end = SECTION_END.search(text, start + 1)
+        sections[phase] = text[start : end.start() if end else len(text)]
+    return sections
+
+
+def check_step_headings(name, text, phases):
+    """The phase list maps to Steps by position, so the Step headings must be
+    numbered 0..N-1 and match the phase count."""
+    numbers = [int(m.group(1)) for m in STEP_HEADING.finditer(text)]
+    if numbers == list(range(len(phases))):
+        return []
+    return [
+        f"step-phase-mismatch: '{name}' has Step headings numbered {numbers}, "
+        f"but its {len(phases)} phases need Steps 0 through {len(phases) - 1} in order"
+    ]
+
+
+def check_fact_keys(name, text, sections, boundaries):
+    errors = []
+    boundary_phases = [b["phase"] for b in boundaries]
+    for boundary in boundaries:
+        phase = boundary["phase"]
+        section = sections.get(phase, "")
+        suffixes = FACT_SUFFIXES + (("override",) if boundary["kind"] == "check-threshold" else ())
+        for suffix in suffixes:
+            key = f"gate_{phase}_{suffix}"
+            if key not in section:
+                errors.append(f"gate-fact-missing: '{name}' Step for '{phase}' does not name `{key}`")
+        if boundary["kind"] == "approval" and f"gate_{phase}_override" in section:
+            errors.append(f"gate-override-on-approval: '{name}' names `gate_{phase}_override`, but '{phase}' is an approval boundary and has no override key")
+    for phase in sorted({m.group(1) for m in FACT_KEY.finditer(text)} - set(boundary_phases)):
+        errors.append(f"gate-fact-unknown-phase: '{name}' names a gate fact for '{phase}', which is not a boundary")
+    return errors
+
+
+def check_skip_rule(name, text):
+    for line in text.splitlines():
+        if "`skip_phases`" in line and "no gate facts" in line and "`skip_reason`" in line:
+            return []
+    return [f"gate-skip-unexplained: '{name}' lacks the sentence that a skipped boundary writes no gate facts and needs a `skip_reason`"]
+
+
+def check_evidence(name, text):
+    errors = []
+    if not RELATIVE_TO_ROOT.search(text):
+        errors.append(
+            f"gate-evidence-path: '{name}' does not say evidence is relative to the project root or `output_dir`"
+        )
+    for line in text.splitlines():
+        for match in re.finditer(r"gate_([a-z0-9][a-z0-9-]*)_evidence", line):
+            rest = line[match.end() :]
+            following = re.search(r"gate_[a-z0-9-]+_(?:result|checker)", rest)
+            segment = rest[: following.start()] if following else rest
+            if ABSOLUTE_PATH.search(segment) or "worktree" in segment.lower():
+                errors.append(
+                    f"gate-evidence-path: '{name}' gate_{match.group(1)}_evidence names an absolute or worktree path"
+                )
+    return errors
+
+
+def check_evidence_root(name, text):
+    """k-full-sdlc only: Step 11 passes --root <output_dir>, so evidence must
+    be anchored to output_dir, not the project root."""
+    evidence_sentences = [s for s in sentences(text) if "_evidence`" in s or "The evidence is" in s]
+    if any(RELATIVE_TO_OUTPUT_DIR in s for s in evidence_sentences) and not any(
+        RELATIVE_TO_PROJECT_ROOT in s for s in evidence_sentences
+    ):
+        return []
+    return [f"gate-evidence-root (k-full-sdlc only): '{name}' must anchor evidence relative to `output_dir` and nowhere relative to the project root"]
+
+
+def check_word_mapping(name, text):
+    errors = []
+    if not any("verbatim" in s and "checker" in s for s in sentences(text)):
+        errors.append(f"gate-word-mapped: '{name}' does not say the result is copied verbatim from the checker")
+    for match in WORD_MAPPING.finditer(text):
+        errors.append(f"gate-word-mapped: '{name}' maps a checker word to a gate id: '{match.group(0).strip()}'")
+    return errors
+
+
+def check_result_rule(name, text):
+    errors = []
+    result_tokens = ("highest", "still open", "not overridden", "verdict")
+    if not any(all(tok in s for tok in result_tokens) for s in sentences(text)):
+        errors.append(
+            f"gate-result-rule: '{name}' lacks the rule that the result is the highest severity still open and not overridden, whatever its verdict"
+        )
+    written_tokens = ("only after", "checker's report", "complete")
+    if not any(all(tok in s for tok in written_tokens) for s in sentences(text)):
+        errors.append(f"gate-result-rule: '{name}' does not say the result is written only after the checker's report is complete")
+    return errors
+
+
+def check_override_rule(name, text):
+    """Needed when a boundary is check-threshold: the engineer's way past an open finding."""
+    errors = []
+    way_forward = ("`gate_<phase>_override`", "override", "engineer")
+    if not any(all(tok in s for tok in way_forward) for s in sentences(text)):
+        errors.append(
+            f"gate-override-rule: '{name}' lacks the sentence recording an engineer override as `gate_<phase>_override`"
+        )
+    if not any(all(tok in s for tok in ("unattended", "never", "override")) for s in sentences(text)):
+        errors.append(f"gate-override-rule: '{name}' does not say an unattended run never overrides")
+    if name == VERIFY_RUN_SOP:
+        if not ROUND_CAP_NOTE.search(text):
+            errors.append(f"gate-override-rule: '{name}' does not give the round-cap override note as a `... round cap, approved by <alias>` template")
+        for wording in STALE_OVERRIDE_WORDING:
+            if wording in text:
+                errors.append(f"gate-override-rule: '{name}' still says '{wording}'; a round cap needs the engineer to resolve or override each finding with a named approver")
+    return errors
+
+
+def check_approval_result(name, text, sections, boundaries):
+    """k-full-sdlc only: an approval boundary always records `approved`; the
+    code-review pull request verdict goes in `gate_code-review_verdict`."""
+    errors = []
+    if any("verdict word" in s and "instead" in s for s in sentences(text)):
+        errors.append(f"gate-approval-result (k-full-sdlc only): '{name}' records a verdict word instead of `approved`; it belongs in `gate_{CODE_REVIEW}_verdict`")
+    if any(b["phase"] == CODE_REVIEW and b["kind"] == "approval" for b in boundaries):
+        section = sections.get(CODE_REVIEW, "")
+        for key in (f"gate_{CODE_REVIEW}_verdict", "`approved`"):
+            if key not in section:
+                errors.append(f"gate-approval-result (k-full-sdlc only): '{name}' Step for '{CODE_REVIEW}' does not name {key}")
+    return errors
+
+
+def check_max_fix_cycles(name, text, sections):
+    """k-full-sdlc only: the evaluator reads the fix-cycle cap from run.data,
+    and every step that spends fix cycles reads it from there too."""
+    errors = []
+    required = ("`max_fix_cycles`", "`run.data`", "minting", "non-negative integer")
+    if not any(all(part in s for part in required) for s in sentences(text)):
+        errors.append(
+            f"max-fix-cycles-unrecorded (k-full-sdlc only): '{name}' does not say `max_fix_cycles` is written into `run.data` at minting as a non-negative integer"
+        )
+    for phase in CAP_READING_PHASES:
+        if phase in sections and CAP_KEY not in sections[phase]:
+            errors.append(f"max-fix-cycles-unread (k-full-sdlc only): '{name}' Step for '{phase}' does not read the cap from `{CAP_KEY}`")
+    rule = resume_rule(text)
+    if rule is None:
+        errors.append(f"max-fix-cycles-resume (k-full-sdlc only): '{name}' lacks the '{CAP_RESUME_LABEL}' rule")
+    else:
+        errors += check_resume_rule_stops(name, rule)
+    final_section = list(sections.values())[-1] if sections else ""
+    if final_section:
+        errors += check_pinned_cap_source(name, final_section)
+    return errors
+
+
+def resume_rule(text):
+    """The bullet that starts with the max_fix_cycles reconciliation label."""
+    match = re.search(rf"^\s*- \*\*{re.escape(CAP_RESUME_LABEL)}\.\*\*(.*)$", text, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def check_resume_rule_stops(name, rule):
+    """A stored cap that differs from the parameter is a hard stop. Each fact is
+    read from one sentence of the rule: the stop, the BLOCKED mark, the unattended
+    final-summary BLOCKED, and the reset of that BLOCKED status on a later continue."""
+    facts = (
+        ("a mismatch must say `MUST NOT continue`", lambda s: "differs" in s and "MUST NOT continue" in s),
+        ("a mismatch must mark the run BLOCKED", lambda s: "BLOCKED" in s and "final-summary" not in s),
+        ("no reply channel must record `final-summary` BLOCKED", lambda s: "reply_channel_available" in s and "final-summary" in s and "BLOCKED" in s),
+        ("a later passing resume must reset `final-summary` to PENDING", lambda s: "final-summary" in s and "PENDING" in s and "resume" in s),
+    )
+    parts = sentences(rule)
+    errors = [
+        f"max-fix-cycles-resume-stop (k-full-sdlc only): '{name}' resume rule: {fact}"
+        for fact, holds in facts
+        if not any(holds(s) for s in parts)
+    ]
+    return errors
+
+
+def check_pinned_cap_source(name, section):
+    """The Step 11 pin is read from the stored key, not from the invocation parameter alone."""
+    definition = [s for s in sentences(section) if "<max_fix_cycles>`" in s and " is " in s]
+    if not any(CAP_KEY in s for s in definition):
+        return [f"max-fix-cycles-pin-source (k-full-sdlc only): '{name}' final Step must define `<max_fix_cycles>` as the cap stored in `{CAP_KEY}`"]
+    return []
+
+
+def check_verify_run_step(name, section):
+    """Rules for the final Step of k-full-sdlc only (sdlc-summary.md, k-developer);
+    check_sop runs this for no other SOP."""
+    errors = []
+    call = section.find(VERIFY_CALL)
+    write = SUMMARY_WRITE.search(section)
+    if call < 0:
+        return [f"verify-run-step (k-full-sdlc only): '{name}' final Step does not delegate `{VERIFY_CALL}`"]
+    sentence = sentences(section[call:])[0]
+    if not all(part in sentence for part in ("--allow-running", "--root", "`k-developer`")):
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' verify-run call must pass --allow-running and --root and go to `k-developer`")
+    if not all(part in sentence for part in ("--root <output_dir>", "`codebase_path`", "absolute")) or RUN_FROM_OUTPUT_DIR.search(sentence):
+        errors.append(
+            f"verify-run-root (k-full-sdlc only): '{name}' verify-run call must run from `codebase_path` with an absolute session path and `--root <output_dir>`"
+        )
+    if not PINNED_CAP_FLAG.search(sentence):
+        errors.append(f"verify-run-pinned-cap (k-full-sdlc only): '{name}' verify-run call must pass `--max-fix-cycles <max_fix_cycles>`")
+    if not any("CAP_RAISED" in s and "exit 65" in s and "satisfied=false" in s for s in sentences(section)):
+        errors.append(f"verify-run-pinned-cap (k-full-sdlc only): '{name}' final Step does not say a `CAP_RAISED` exit 65 is a Quality Gate disagreement that forces `satisfied=false`")
+    if write is None or write.start() < call:
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' verify-run must come before the first write of `sdlc-summary.md`")
+    if "no session file" not in section:
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not cover 'no session file'")
+    if not any("not found" in s and "verify-run unavailable" in s for s in sentences(section)):
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not cover 'verify-run unavailable' for a binary that is not found")
+    if "unrecognized subcommand" not in section:
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not cover 'unrecognized subcommand'")
+    for code in EXIT_CODES:
+        if not any(re.search(rf"\bexit {code}\b", s, re.IGNORECASE) and re.search(r"\b(report|reported|records?)\b", s, re.IGNORECASE) for s in sentences(section)):
+            errors.append(f"verify-run-exits (k-full-sdlc only): '{name}' final Step does not say what to do with exit {code}")
+    for phrase in ("unexpected argument", "needs a build with --root"):
+        if phrase not in section:
+            errors.append(f"verify-run-exits (k-full-sdlc only): '{name}' final Step does not cover '{phrase}'")
+    if not any("`CONFIG_SOURCE`" in s and "`Gate check`" in s for s in sentences(section)):
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step does not put every reason and info line, `CONFIG_SOURCE` included, under `Gate check`")
+    if not any(DISAGREEMENT_ITEM in s and "satisfied=false" in s for s in sentences(section)):
+        errors.append(f"verify-run-disagreement (k-full-sdlc only): '{name}' final Step does not force `satisfied=false` and name '{DISAGREEMENT_ITEM}' as an open item")
+    expected = re.search(r"\*\*Expected Output:\*\*[^\n]*", section)
+    if expected is None or "`Gate check`" not in expected.group(0):
+        errors.append(f"verify-run-step (k-full-sdlc only): '{name}' final Step's Expected Output does not name the `Gate check` section")
+    return errors
+
+
+def check_record_skipped(name, sections, phases):
+    """k-full-sdlc only: Steps 2 through the one before the last must let their
+    Record bullet write SKIPPED, so a skipped phase is never left PENDING."""
+    errors = []
+    for phase in phases[2:-1]:
+        section = sections.get(phase, "")
+        start = section.find(RECORD_BULLET.format(phase=phase))
+        bullet = section[start:].split("\n", 1)[0] if start >= 0 else ""
+        if "`SKIPPED`" not in bullet:
+            errors.append(f"record-skipped-missing (k-full-sdlc only): '{name}' Step for '{phase}' has no Record bullet with a `SKIPPED` outcome")
+    return errors
+
+
+def check_pre_verify_phase_status(name, section):
+    """k-full-sdlc only: the final Step confirms no earlier phase is PENDING
+    before verify-run, and names the exit 65 PHASE_ORDER result."""
+    errors = []
+    call = section.find(VERIFY_CALL)
+    before = [
+        s for s in sentences(section[: max(call, 0)])
+        if "`verify-run`" in s and "`PENDING`" in s and PHASE_ORDER_KEY in s and "Never" in s
+    ]
+    if call >= 0 and not before:
+        errors.append(
+            f"verify-run-phase-status (k-full-sdlc only): '{name}' final Step lacks the constraint, before the verify-run call, that no earlier phase may be `PENDING` (it exits 65 with `{PHASE_ORDER_KEY}`)"
+        )
+    if not any(re.search(r"\bexit 65\b", s, re.IGNORECASE) and f"`{PHASE_ORDER_KEY}`" in s for s in sentences(section[call:] if call >= 0 else section)):
+        errors.append(f"verify-run-phase-order (k-full-sdlc only): '{name}' final Step does not name `{PHASE_ORDER_KEY}` under exit 65")
+    return errors
+
+
+def check_sop(name, text, entry):
+    phases = entry["phases"]
+    boundaries = entry["boundaries"]
+    sections = step_sections(text, phases)
+    errors = check_step_headings(name, text, phases)
+    errors += check_fact_keys(name, text, sections, boundaries)
+    errors += check_skip_rule(name, text)
+    errors += check_evidence(name, text)
+    errors += check_word_mapping(name, text)
+    errors += check_result_rule(name, text)
+    if any(b["kind"] == "check-threshold" for b in boundaries):
+        errors += check_override_rule(name, text)
+    if name == VERIFY_RUN_SOP:
+        errors += check_evidence_root(name, text)
+        errors += check_max_fix_cycles(name, text, sections)
+        errors += check_approval_result(name, text, sections, boundaries)
+        errors += check_verify_run_step(name, sections.get(phases[-1], ""))
+        errors += check_pre_verify_phase_status(name, sections.get(phases[-1], ""))
+        errors += check_record_skipped(name, sections, phases)
+    return errors
+
+
+def check(root):
+    orchestration = load_orchestration_check()
+    try:
+        import yaml
+    except ImportError:
+        return ["setup: PyYAML is required (python3 -m pip install pyyaml)"]
+    map_file = root / orchestration.MAP_PATH
+    try:
+        data = yaml.safe_load(map_file.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, UnicodeDecodeError, OSError) as exc:
+        return [f"bad-entry: {orchestration.MAP_PATH}: {orchestration.first_line(exc)}"]
+    gated = data.get("gated") if isinstance(data, dict) else None
+    if not isinstance(gated, dict):
+        return [f"bad-entry: {orchestration.MAP_PATH} has no 'gated' mapping"]
+    errors = []
+    for name in sorted(gated):
+        entry = gated[name]
+        if not (isinstance(entry, dict) and "boundaries" in entry):
+            continue
+        if not (
+            orchestration.phases_are_valid(entry.get("phases"))
+            and orchestration.boundary_problem(entry["boundaries"]) is None
+        ):
+            continue  # check-sop-orchestration.py reports the bad shape
+        sop = orchestration.SOP_DIR / (name + orchestration.SOP_SUFFIX)
+        try:
+            text = (root / sop).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError) as exc:
+            errors.append(f"bad-entry: {sop}: {orchestration.first_line(exc)}")
+            continue
+        errors += check_sop(name, text, entry)
+    return errors
+
+
+def main(argv):
+    if len(argv) > 2 or (len(argv) == 2 and argv[1].startswith("-")):
+        print("usage: check-sop-gate-facts.py [repo-root]", file=sys.stderr)
+        return EX_USAGE
+    root = Path(argv[1]) if len(argv) == 2 else Path(".")
+    if not root.is_dir():
+        print(f"usage: repo root '{root}' is not a directory", file=sys.stderr)
+        return EX_USAGE
+    errors = check(root)
+    for error in errors:
+        print(error, file=sys.stderr)
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

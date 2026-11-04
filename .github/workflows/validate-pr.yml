@@ -16,7 +16,8 @@ name: Validate PR
 
 on:
   pull_request:
-    branches: [main]
+    # The stacked verify-run/gate PRs target feat/sop-gates-* branches, not main.
+    branches: [main, 'feat/sop-gates-*']
     types: [opened, edited, reopened, synchronize]
 
 permissions:
@@ -71,6 +72,16 @@ jobs:
         # the toolchain setup below rather than depending on it.
         run: make kiro-power-check
 
+      - name: Check the SOP orchestration list (make sop-orchestration-check)
+        # Fails when cli/gate-config/sop-orchestration.yml, the marker lines
+        # and agent-sops/ disagree. Needs python3 and PyYAML (installed above).
+        run: make sop-orchestration-check
+
+      - name: Check gate facts in phase-gated SOP text (make sop-gate-facts-check)
+        # Fails when a gated SOP's text and its gate boundaries in
+        # cli/gate-config/sop-orchestration.yml disagree. Needs PyYAML.
+        run: make sop-gate-facts-check
+
       - name: Require a CHANGELOG.md entry alongside any VERSION bump
         # CHANGELOG.md's own convention (entries consolidated per release,
         # not per commit) is otherwise unenforced -- a PR could bump VERSION
@@ -98,6 +109,11 @@ jobs:
             scripts/validate-version-semver.sh "$RAW_VERSION"
           fi
 
+      - name: Check every crate, lockfile and CHANGELOG.md match VERSION
+        # Runs on every PR, not only VERSION bumps, so a crate or lockfile left
+        # behind by an earlier bump is caught too.
+        run: make version-check
+
       - name: Run the skill shell tests (make test-skills-sh)
         run: make test-skills-sh
 
@@ -122,6 +138,9 @@ jobs:
 
       - name: Run the Python test suite (make test-py)
         # After synth so the tests that need build/cli/konductor run instead of skipping.
+        # KONDUCTOR_REQUIRE_FULL_BIN makes a missing binary or capability fail them.
+        env:
+          KONDUCTOR_REQUIRE_FULL_BIN: "1"
         run: make test-py
 
       - name: Run the Rust tests for cli, mcp and shared
@@ -214,3 +233,14 @@ jobs:
             echo "FATAL: packaged tarball's version segment ($TARBALL_VERSION, from Cargo.toml) does not match the root VERSION file ($EXPECTED_TARBALL_VERSION). This will fail release.yml's build job after merge. Bump Cargo.toml's version to match VERSION before merging. Failing closed." >&2
             exit 1
           fi
+
+      - name: Lint the Rust crates (clippy -D warnings and rustfmt)
+        # Lint runs on a pinned toolchain so a new Rust release can't add clippy
+        # lints that fail every PR under -D warnings. Builds and tests stay on
+        # stable, like release.yml. Bump the pin deliberately in its own PR, and
+        # update the user guide with it (`make guide-check` compares them).
+        env:
+          RUST_LINT_TOOLCHAIN: 1.98.1
+        run: |
+          rustup toolchain install "$RUST_LINT_TOOLCHAIN" --profile minimal -c clippy -c rustfmt
+          make lint CARGO="cargo +$RUST_LINT_TOOLCHAIN"

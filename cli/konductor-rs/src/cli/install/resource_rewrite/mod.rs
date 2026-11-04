@@ -40,7 +40,9 @@ pub(crate) use claude_settings::CLAUDE_SETTINGS_RELATIVE_PATH;
 pub(crate) use claude_settings::{
     claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_telemetry_hooks,
 };
-pub(super) use mcp_server::{McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME};
+pub(super) use mcp_server::{
+    installed_server_supports_install_info, McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME,
+};
 
 use mcp_server::McpServerPassV3;
 use telemetry_hook_pass::TelemetryHookPass;
@@ -99,6 +101,48 @@ pub(super) struct RewriteContext<'a> {
     /// entry and empty `Vec` both mean "do not pass
     /// `--skill-name-filter` at all".
     pub(super) agent_skill_names: &'a std::collections::HashMap<String, Vec<String>>,
+    /// Whether this run is opted out of telemetry. Gates
+    /// `TelemetryHookPass` in `standard_passes`, and makes the MCP passes
+    /// add `--telemetry off` for a server without `--install-info`.
+    pub(super) no_telemetry: bool,
+    /// The target's `install-info.json` in portable form, from
+    /// `install_info_arg`, passed to `skill-lookup-mcp` as
+    /// `--install-info` so its telemetry follows the target-wide record
+    /// rather than this one harness's run.
+    pub(super) install_info_path: &'a Path,
+    /// Whether the installed `skill-lookup-mcp` accepts `--install-info`,
+    /// from `installed_server_supports_install_info`.
+    pub(super) server_supports_install_info: bool,
+}
+
+/// A stand-in `skill-lookup-mcp` whose `--help` lists `--install-info`,
+/// for tests that need the supported path. Unix only.
+#[cfg(test)]
+pub(crate) const FAKE_SERVER_WITH_INSTALL_INFO: &str =
+    "#!/bin/sh\necho '      --install-info <PATH>'\n";
+
+/// The `--install-info` value for `target_dir`, spelled like the
+/// `--skills-dir` pair so agent files stay portable:
+/// `~/.konductor/install-info.json` for a `$HOME` install, otherwise
+/// `.konductor/install-info.json`, which the server resolves from the
+/// project root it is launched in.
+pub(super) fn install_info_arg(target_dir: &Path) -> std::path::PathBuf {
+    let root = if target_dir_is_home(target_dir) {
+        Path::new("~")
+    } else {
+        Path::new("")
+    };
+    crate::cli::telemetry::install_info_path(root)
+}
+
+/// Whether `target_dir` is `$HOME`, the global install target.
+/// Canonicalized so a symlinked spelling of either still matches.
+pub(super) fn target_dir_is_home(target_dir: &Path) -> bool {
+    let canonical =
+        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    std::env::var_os("HOME")
+        .filter(|home| !home.is_empty())
+        .is_some_and(|home| canonical(Path::new(&home)) == canonical(target_dir))
 }
 
 impl RewriteContext<'_> {
@@ -406,6 +450,51 @@ mod tests {
         dir
     }
 
+    #[test]
+    fn install_info_arg_is_home_relative_for_home_and_project_relative_otherwise() {
+        let _lock = crate::cli::test_home_lock::lock_home();
+        let home = scratch_dir("install-info-arg-home");
+        let project = home.join("project");
+        fs::create_dir_all(&project).unwrap();
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", &home);
+
+        let for_home = install_info_arg(&home);
+        let for_project = install_info_arg(&project);
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+        assert_eq!(for_home, Path::new("~/.konductor/install-info.json"));
+        assert_eq!(for_project, Path::new(".konductor/install-info.json"));
+        fs::remove_dir_all(&home).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_info_arg_treats_a_symlink_to_home_as_home() {
+        let _lock = crate::cli::test_home_lock::lock_home();
+        let home = scratch_dir("install-info-arg-home-link");
+        let link = home.with_file_name(format!(
+            "{}-link",
+            home.file_name().unwrap().to_str().unwrap()
+        ));
+        std::os::unix::fs::symlink(&home, &link).unwrap();
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", &home);
+
+        let via_link = install_info_arg(&link);
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+        assert_eq!(via_link, Path::new("~/.konductor/install-info.json"));
+        fs::remove_file(&link).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
     /// Exercises the default "no agent opted in" backward-compatibility
     /// path for tests that don't care about SOP scoping. Tests that DO
     /// care build their own map and pass it directly.
@@ -435,6 +524,9 @@ mod tests {
             bin_files,
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
+            no_telemetry: false,
+            install_info_path: Path::new(""),
+            server_supports_install_info: false,
         }
     }
 
@@ -448,6 +540,9 @@ mod tests {
             bin_files: &[],
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
+            no_telemetry: false,
+            install_info_path: Path::new(""),
+            server_supports_install_info: false,
         }
     }
 

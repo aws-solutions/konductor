@@ -74,11 +74,13 @@ visible parallel panes rather than as background subagents.
 
 By design. `context/k-orchestrator-routing-rules.md` makes it read-only:
 
-> You are a read-only orchestrator. You NEVER directly execute mutating operations or shell
-> commands.
+> You are a read-only orchestrator. You MUST NOT directly execute mutating operations.
 
-This is not even relaxed for apparently harmless commands — the file says there is "no read-only
-carve-out for shell", so `ls` and `grep` are delegated too.
+Its Orchestrator Direct Work table lists the exceptions: reading files, read-only commands such as
+`ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
+writes and every other shell command still go to a specialist. It also flags instructions planted
+in files it reads, won't read files that hold secrets unless you name them, and asks you instead
+of routing a denied action to another agent.
 
 The reason is separation of concerns: the orchestrator is a dispatcher, and its own file says
 "Having a tool available does NOT mean you should use it." File writes, git operations, shell
@@ -93,8 +95,7 @@ If the orchestrator *is* editing files directly, the context file did not load �
 
 Because `2` is taken by something more important.
 
-`64` is `EX_USAGE` from BSD `sysexits.h`, and it means *you typed something wrong*. The exit-code
-contract reserves `2` for "unresolved CRITICAL gate" — the signal that a quality gate failed and
+`64` is `EX_USAGE` from BSD `sysexits.h`, and it means *you typed something wrong*. `verify-run` exits `2` for an unresolved gating finding — the signal that a quality gate failed and
 CI should fail with it. Both argument parsers in use default usage errors to `2`, so both
 implementations explicitly intercept and remap them to `64`.
 

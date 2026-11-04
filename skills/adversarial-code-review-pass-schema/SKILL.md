@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review-pass-schema
-description: 'Reviews a diff through the lens of schema and contract — API/schema/type changes, backward compatibility, validation completeness. One pass of the parallelized adversarial review; the coordinator spawns this alongside security and integrity passes.'
+description: 'Reviews a diff through the lens of schema and contract — API/schema/type changes, backward compatibility, validation completeness. Use only when the adversarial-code-review coordinator spawns it, alongside the security and integrity passes.'
 version: 1.0.0
 tags: [skill, schema, code-review, adversarial, pass]
 ---
