@@ -94,6 +94,7 @@ not per individual commit.
   such as a `telemetry:` opt-out. It now changes only the named key.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
+- `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
 
 ### Security
 
