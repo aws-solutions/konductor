@@ -27,6 +27,9 @@ def _tree(tmp_path, version="1.2.0"):
     (mcp / "servers" / "skill-lookup" / "Cargo.toml").write_text(
         '[package]\nname = "skill-lookup-mcp"\nversion.workspace = true\n', encoding="utf-8"
     )
+    shared = tmp_path / "shared" / "konductor-telemetry"
+    shared.mkdir(parents=True)
+    (shared / "Cargo.toml").write_text(f'[package]\nname = "konductor-telemetry"\nversion = "{version}"\n', encoding="utf-8")
     return tmp_path
 
 
@@ -44,7 +47,7 @@ def test_lagging_crate_version_fails(tmp_path):
     (root / "cli" / "konductor-rs" / "Cargo.toml").write_text('[package]\nname = "konductor"\nversion = "1.1.0"\n', encoding="utf-8")
     result = _run(root)
     assert result.returncode == 1
-    assert "cli/konductor-rs/Cargo.toml: [package] version is 1.1.0" in result.stderr
+    assert "cli/konductor-rs/Cargo.toml: [package] version is 1.1.0, expected 1.2.0" in result.stderr
 
 
 def test_lagging_workspace_version_fails(tmp_path):
@@ -52,7 +55,7 @@ def test_lagging_workspace_version_fails(tmp_path):
     (root / "mcp" / "Cargo.toml").write_text('[workspace]\nmembers = ["servers/*"]\n\n[workspace.package]\nversion = "1.0.3"\n', encoding="utf-8")
     result = _run(root)
     assert result.returncode == 1
-    assert "mcp/Cargo.toml: [workspace.package] version is 1.0.3" in result.stderr
+    assert "mcp/Cargo.toml: [workspace.package] version is 1.0.3, expected 1.2.0" in result.stderr
 
 
 def test_stale_lockfile_entry_fails_but_registry_crates_are_ignored(tmp_path):
@@ -61,7 +64,7 @@ def test_stale_lockfile_entry_fails_but_registry_crates_are_ignored(tmp_path):
     lock.write_text(lock.read_text(encoding="utf-8").replace('name = "konductor"\nversion = "1.2.0"', 'name = "konductor"\nversion = "1.1.0"'), encoding="utf-8")
     result = _run(root)
     assert result.returncode == 1
-    assert "cli/konductor-rs/Cargo.lock: konductor is 1.1.0" in result.stderr
+    assert "cli/konductor-rs/Cargo.lock: product crate konductor is 1.1.0, expected 1.2.0" in result.stderr
     assert "serde" not in result.stderr
 
 
@@ -93,7 +96,7 @@ def test_product_crate_depending_on_path_crate_is_still_checked(tmp_path):
     lock.write_text(lock.read_text(encoding="utf-8").replace('name = "konductor"\nversion = "1.2.0"', 'name = "konductor"\nversion = "1.1.0"'), encoding="utf-8")
     result = _run(root)
     assert result.returncode == 1
-    assert "cli/konductor-rs/Cargo.lock: konductor is 1.1.0" in result.stderr
+    assert "cli/konductor-rs/Cargo.lock: product crate konductor is 1.1.0, expected 1.2.0" in result.stderr
     assert "workflow-" not in result.stderr
 
 
@@ -104,7 +107,7 @@ def test_workspace_inherited_product_crate_lockfile_entry_is_checked(tmp_path):
     )
     result = _run(root)
     assert result.returncode == 1
-    assert "mcp/Cargo.lock: skill-lookup-mcp is 1.1.0" in result.stderr
+    assert "mcp/Cargo.lock: product crate skill-lookup-mcp is 1.1.0, expected 1.2.0" in result.stderr
 
 
 def test_product_crate_absent_from_lockfile_passes(tmp_path):
@@ -129,6 +132,31 @@ def test_build_output_under_target_is_ignored(tmp_path):
     (vendored / "Cargo.toml").write_text('[package]\nname = "konductor"\nversion = "0.1.0"\n', encoding="utf-8")
     result = _run(root)
     assert result.returncode == 0, result.stderr
+
+
+def test_unparseable_manifest_is_reported_with_its_path(tmp_path):
+    root = _tree(tmp_path)
+    (root / "mcp" / "servers" / "skill-lookup" / "Cargo.toml").write_text("not [valid", encoding="utf-8")
+    result = _run(root)
+    assert result.returncode == 1
+    assert "mcp/servers/skill-lookup/Cargo.toml: cannot parse" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_unparseable_lockfile_is_reported_with_its_path(tmp_path):
+    root = _tree(tmp_path)
+    (root / "cli" / "konductor-rs" / "Cargo.lock").write_text("x [", encoding="utf-8")
+    result = _run(root)
+    assert result.returncode == 1
+    assert "cli/konductor-rs/Cargo.lock: cannot parse" in result.stderr
+
+
+def test_product_dir_without_manifests_fails(tmp_path):
+    root = _tree(tmp_path)
+    (root / "shared" / "konductor-telemetry" / "Cargo.toml").unlink()
+    result = _run(root)
+    assert result.returncode == 1
+    assert "shared/: no Cargo.toml found" in result.stderr
 
 
 def test_repository_itself_passes():
