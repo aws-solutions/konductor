@@ -89,6 +89,9 @@ not per individual commit.
   such as a `telemetry:` opt-out. It now changes only the named key.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
+- Orchestrators run `git` reads as `git --no-pager -c core.fsmonitor=` with `--no-ext-diff
+  --no-textconv --submodule=short` (and `--no-show-signature` on `log` and `show`), so repository
+  config cannot make a read-only `git` command run a program.
 
 ## [1.2.0] - 2026-10-26
 
