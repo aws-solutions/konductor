@@ -97,3 +97,33 @@ test('binary files are compared by content, not size', () => {
     assert.doesNotMatch(text, /b\.bin/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+const CC_FIXTURES = path.join(__dirname, 'fixtures', 'claude-code');
+
+function claudeCodeBundle(fixture) {
+  const root = tmp();
+  const bench = makeBench(path.join(root, 'bench'));
+  const runDir = makeRun(path.join(root, 'run'), bench, [{ arm: 'cc-vanilla', harness: 'claude-code' }]);
+  const dir = path.join(runDir, 'cc-vanilla/t1/1');
+  fs.copyFileSync(path.join(CC_FIXTURES, `${fixture}.stream.jsonl`), path.join(dir, 'stream.jsonl'));
+  const result = JSON.parse(fs.readFileSync(path.join(dir, 'result.json'), 'utf8'));
+  const text = buildBundle({ runDir: dir, result, fixtureDir: path.join(bench, 'fixtures/fx'), limits: DEFAULTS.limits, redactions: compileRedactions(DEFAULT_REDACTIONS) }).text;
+  return { root, text };
+}
+
+test('a Claude Code run shows its final text to the judge', () => {
+  for (const [fixture, expected] of [['delegation-dashed-pin', /This small, clean script defines a type-annotated/], ['vanilla-success', /## Final assistant text\nhi\n/]]) {
+    const { root, text } = claudeCodeBundle(fixture);
+    try {
+      assert.match(text, expected, fixture);
+      assert.doesNotMatch(text, /Final assistant text\n\(none\)/, fixture);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
+test('a Claude Code run killed before its result line shows the last assistant text, not nothing', () => {
+  const { root, text } = claudeCodeBundle('sigterm');
+  try {
+    assert.match(text, /## Final assistant text\n/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

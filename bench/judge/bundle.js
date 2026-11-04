@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const path = require('node:path');
 const { parseStream, aggregateStream } = require('../runner/lib/stream.js');
 const { aggregateEvents } = require('../runner/lib/harness/opencode-parse.js');
+const claudeParse = require('../runner/lib/harness/claude-code-parse.js');
 const { runtimeOf } = require('../runner/lib/harness/runtime.js');
 const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { redact } = require('./redact.js');
@@ -38,12 +39,19 @@ function readText(file) {
   return { binary: true, size: buf.length, sha: crypto.createHash('sha256').update(buf).digest('hex') };
 }
 
-// kiro-cli: the runFinished event's text. opencode: the last assistant text event of the parent session.
+// kiro-cli: the runFinished event's text. opencode: the last assistant text event of the parent session. Claude Code: the
+// last result line's text, else the last assistant text of the main session.
 function finalTextOf(runDir, result = null) {
   const file = path.join(runDir, 'stream.jsonl');
   if (!fs.existsSync(file)) return null;
   const { events } = parseStream(fs.readFileSync(file, 'utf8'));
-  return runtimeOf(result) === 'opencode' ? aggregateEvents(events).lastText : aggregateStream(events).finalText;
+  const runtime = runtimeOf(result);
+  if (runtime === 'opencode') return aggregateEvents(events).lastText;
+  if (runtime === 'claude-code') {
+    const a = claudeParse.aggregateEvents(events);
+    return a.finalText ?? a.lastText;
+  }
+  return aggregateStream(events).finalText;
 }
 
 // Autonomy runs only: what the scripted user was asked and what it answered. Judged with the rest of the bundle, so redaction applies.
