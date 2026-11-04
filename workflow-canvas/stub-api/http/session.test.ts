@@ -3,7 +3,7 @@
 import { networkInterfaces } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { LOOPBACK, originOf } from '../address.ts';
-import { probeUntilAnswered } from '../test-support/probe-port.ts';
+import { probeUntilAnswered, type Probe } from '../test-support/probe-port.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { LAUNCH_CODE, openStub, useStub } from '../test-support/harness.ts';
 import { FakeClock } from '../test-support/fake-clock.ts';
@@ -184,17 +184,33 @@ describe('the stub', () => {
       const answers = await Promise.all(
         addresses.map((address) => probeUntilAnswered(address, stub.port)),
       );
-      expect(answers).not.toContain('connected');
-      if (!answers.includes('refused'))
+      expect(answers.filter(acceptedConnection)).toEqual([]);
+      if (!answers.some(refusedConnection))
         skipWithReason(
           skip,
-          'every other address dropped the probe, so no refusal was seen',
+          `no other address refused the probe, so nothing was proven: ${answers
+            .map(describeProbe)
+            .join(', ')}`,
         );
     } finally {
       await stub.close();
     }
   });
 });
+
+const acceptedConnection = (probe: Probe) => probe.kind === 'connected';
+const refusedConnection = (probe: Probe) => probe.kind === 'refused';
+
+function describeProbe(probe: Probe): string {
+  switch (probe.kind) {
+    case 'connected':
+    case 'refused':
+    case 'silent':
+      return probe.kind;
+    case 'unreachable':
+      return `unreachable (${probe.code})`;
+  }
+}
 
 /** The default reporter shows only a count of skips, so the reason is logged. */
 function skipWithReason(skip: (note?: string) => never, reason: string): never {

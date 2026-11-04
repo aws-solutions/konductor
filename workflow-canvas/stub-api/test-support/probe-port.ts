@@ -5,10 +5,23 @@ import { connect, type Socket } from 'node:net';
 export const PROBE_TIMEOUT_MS = 500;
 
 /**
- * What a probe saw: a connection was accepted, the connection failed at once
- * (refused or unreachable), or nothing answered before the timeout.
+ * What a probe saw. `refused` means the host answered with a reset
+ * (ECONNREFUSED), the only proof that nothing listens there. `unreachable`
+ * means the connect failed some other way (no route, no permission) and carries
+ * the error code; it says nothing about whether anything listens.
  */
-export type Probe = 'connected' | 'refused' | 'silent';
+export type Probe =
+  | { kind: 'connected' }
+  | { kind: 'refused' }
+  | { kind: 'unreachable'; code: string }
+  | { kind: 'silent' };
+
+/** Maps a socket error to the probe result it proves. */
+export function probeFromError(error: NodeJS.ErrnoException): Probe {
+  return error.code === 'ECONNREFUSED'
+    ? { kind: 'refused' }
+    : { kind: 'unreachable', code: error.code ?? 'UNKNOWN' };
+}
 
 /** The part of `net.connect` a probe uses, so a test can stand in for it. */
 export type Connect = (options: {
@@ -37,9 +50,11 @@ export function probePort(
       socket.destroy();
       resolve(result);
     };
-    socket.once('connect', () => settle('connected'));
-    socket.once('error', () => settle('refused'));
-    socket.once('timeout', () => setImmediate(() => settle('silent')));
+    socket.once('connect', () => settle({ kind: 'connected' }));
+    socket.once('error', (error) => settle(probeFromError(error)));
+    socket.once('timeout', () =>
+      setImmediate(() => settle({ kind: 'silent' })),
+    );
   });
 }
 
@@ -54,8 +69,8 @@ export async function probeUntilAnswered(
   timeoutMs = PROBE_TIMEOUT_MS,
   open: Connect = connect,
 ): Promise<Probe> {
-  let result: Probe = 'silent';
-  for (let i = 0; i < attempts && result === 'silent'; i++) {
+  let result: Probe = { kind: 'silent' };
+  for (let i = 0; i < attempts && result.kind === 'silent'; i++) {
     result = await probePort(host, port, timeoutMs, open);
   }
   return result;

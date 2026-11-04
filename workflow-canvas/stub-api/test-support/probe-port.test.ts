@@ -4,6 +4,7 @@ import { createServer, type Server } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import { LOOPBACK } from '../address.ts';
 import {
+  probeFromError,
   probePort,
   probeUntilAnswered,
   type Connect,
@@ -36,6 +37,21 @@ function fakeConnect(answerAfter = Infinity) {
   return { open, sockets };
 }
 
+/** A stand-in whose connect fails at once with the given socket error code. */
+function failingConnect(code: string) {
+  const open: Connect = () => {
+    const socket = Object.assign(new EventEmitter(), {
+      destroy: () => socket,
+      setTimeout: () => socket,
+    });
+    setImmediate(() =>
+      socket.emit('error', Object.assign(new Error(code), { code })),
+    );
+    return socket as unknown as ReturnType<Connect>;
+  };
+  return open;
+}
+
 /** Blocks the event loop, as a paused or starved process does. */
 function stallFor(ms: number): void {
   const until = performance.now() + ms;
@@ -58,19 +74,23 @@ describe('probePort', () => {
     });
 
   it('sees a connection that is accepted', async () => {
-    expect(await probePort(LOOPBACK, await listen())).toBe('connected');
+    expect(await probePort(LOOPBACK, await listen())).toEqual({
+      kind: 'connected',
+    });
   });
 
   it('sees a connection that is refused', async () => {
     const port = await listen();
     server!.close();
-    expect(await probePort(LOOPBACK, port)).toBe('refused');
+    expect(await probePort(LOOPBACK, port)).toEqual({ kind: 'refused' });
   });
 
   it('is silent when nothing answers before the timeout, and gives the socket up', async () => {
     const { open, sockets } = fakeConnect();
 
-    expect(await probePort('192.0.2.1', 9, 20, open)).toBe('silent');
+    expect(await probePort('192.0.2.1', 9, 20, open)).toEqual({
+      kind: 'silent',
+    });
     expect(sockets).toHaveLength(1);
     expect(sockets[0]?.destroyed).toBe(true);
   });
@@ -93,7 +113,7 @@ describe('probePort', () => {
         schedule(() => stallFor(stall));
         answers.push(await probe);
       }
-      expect(answers).toEqual(Array(6).fill('connected'));
+      expect(answers).toEqual(Array(6).fill({ kind: 'connected' }));
     },
   );
 
@@ -101,7 +121,9 @@ describe('probePort', () => {
     const started = performance.now();
     const { open } = fakeConnect();
 
-    expect(await probePort('192.0.2.1', 9, 50, open)).toBe('silent');
+    expect(await probePort('192.0.2.1', 9, 50, open)).toEqual({
+      kind: 'silent',
+    });
     expect(performance.now() - started).toBeGreaterThanOrEqual(45);
   });
 
@@ -122,25 +144,66 @@ describe('probePort', () => {
 
     const probe = probePort('192.0.2.1', 9, 20, open);
     expect(calls).toEqual(['connect sent']);
-    expect(await probe).toBe('connected');
+    expect(await probe).toEqual({ kind: 'connected' });
     expect(calls).toEqual(['connect sent', 'timeout armed']);
   });
 
   it('probes again while the answer is silence, up to the attempts given', async () => {
     const { open, sockets } = fakeConnect();
 
-    expect(await probeUntilAnswered('192.0.2.1', 9, 3, 20, open)).toBe(
-      'silent',
-    );
+    expect(await probeUntilAnswered('192.0.2.1', 9, 3, 20, open)).toEqual({
+      kind: 'silent',
+    });
     expect(sockets).toHaveLength(3);
   });
 
   it('stops probing once an attempt gets an answer', async () => {
     const { open, sockets } = fakeConnect(1);
 
-    expect(await probeUntilAnswered('192.0.2.1', 9, 3, 20, open)).toBe(
-      'connected',
-    );
+    expect(await probeUntilAnswered('192.0.2.1', 9, 3, 20, open)).toEqual({
+      kind: 'connected',
+    });
     expect(sockets).toHaveLength(2);
+  });
+});
+
+describe('a failed connect', () => {
+  it.each([
+    ['ECONNREFUSED', { kind: 'refused' }],
+    ['EHOSTUNREACH', { kind: 'unreachable', code: 'EHOSTUNREACH' }],
+    ['ENETUNREACH', { kind: 'unreachable', code: 'ENETUNREACH' }],
+    ['ETIMEDOUT', { kind: 'unreachable', code: 'ETIMEDOUT' }],
+    ['ENETDOWN', { kind: 'unreachable', code: 'ENETDOWN' }],
+    ['EADDRNOTAVAIL', { kind: 'unreachable', code: 'EADDRNOTAVAIL' }],
+    ['EACCES', { kind: 'unreachable', code: 'EACCES' }],
+    ['EPERM', { kind: 'unreachable', code: 'EPERM' }],
+  ])('maps %s to %j', async (code, expected) => {
+    expect(probeFromError(Object.assign(new Error(code), { code }))).toEqual(
+      expected,
+    );
+    expect(await probePort('192.0.2.1', 9, 20, failingConnect(code))).toEqual(
+      expected,
+    );
+  });
+
+  it('maps an error without a code to unreachable', () => {
+    expect(probeFromError(new Error('boom'))).toEqual({
+      kind: 'unreachable',
+      code: 'UNKNOWN',
+    });
+  });
+
+  it('does not probe again after an unreachable answer', async () => {
+    let opened = 0;
+    const open: Connect = (target) => {
+      opened++;
+      return failingConnect('EHOSTUNREACH')(target);
+    };
+
+    expect(await probeUntilAnswered('192.0.2.1', 9, 3, 20, open)).toEqual({
+      kind: 'unreachable',
+      code: 'EHOSTUNREACH',
+    });
+    expect(opened).toBe(1);
   });
 });
