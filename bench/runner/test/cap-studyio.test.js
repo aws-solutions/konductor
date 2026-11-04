@@ -34,6 +34,20 @@ test('armScoresFromRows turns quality 0..100 into 0..1, keeps credits, drops inf
   assert.equal(a.credits.length, 2);
 });
 
+test('armScoresFromRows counts the runs and the timeouts per arm, and the tasks that timed out', () => {
+  const row = (arm, over) => ({ arm, task: 't1', rep: 1, outcome: 'good', hidden: 1, checks: 1, rubric: null, credits: 2, ...over });
+  const rows = [
+    row('ctl'), row('ctl', { rep: 2, task: 't2' }),
+    row('del', { outcome: 'timeout', hidden: 0.5, checks: 0.5 }), row('del', { rep: 2, outcome: 'timeout', hidden: null, checks: null, task: 't2' }), row('del', { rep: 3 }),
+    row('del', { rep: 4, outcome: 'infraError' }),
+  ];
+  const out = armScoresFromRows(rows, { hidden: 0.5, checks: 0.2, rubric: 0.3 });
+  assert.deepEqual([out.ctl.runs, out.ctl.timeouts, out.ctl.timeoutTasks], [2, 0, {}]);
+  assert.equal(out.del.runs, 3, 'an infra error is left out of the count');
+  assert.equal(out.del.timeouts, 2, 'a timeout that still earned a partial score is a timeout');
+  assert.deepEqual(out.del.timeoutTasks, { t1: 1, t2: 1 });
+});
+
 test('waveComplete wants a summary that is not interrupted, a passed isolation gate and every run', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'captest-'));
   const sum = (o = {}) => write(path.join(dir, 'summary.json'), JSON.stringify({ interrupted: null, isolationGate: { ok: true }, armIds: ['a', 'b'], replicates: 2, taskIds: ['t'], results: [1, 2, 3, 4].map(() => ({ status: 'success' })), ...o }));

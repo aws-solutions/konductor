@@ -5,7 +5,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { compareArms, decideSkill, evidenceRowsFor, MARGIN, MIN_RUNS } = require('../../cap/decide.js');
+const { compareArms, decideSkill, evidenceRowsFor, renderDecisions, censoring, MARGIN, MIN_RUNS } = require('../../cap/decide.js');
 const { parseEvidence } = require('../../cap/evidence.js');
 
 // n values centred on `mean`, alternating by `spread`, so the sample mean is exact and the sd is about `spread`.
@@ -165,4 +165,88 @@ test('the credit and token effect of each variant is reported next to quality', 
   const d = decide([wave1(arm(0.79, 40, { credits: 3 }), { ctl: arm(0.8, 40, { credits: 4 }) })]);
   assert.ok(d.evidence.del.credits.delta < 0);
   assert.equal(d.evidence.del.credits.unit, 'credits');
+});
+
+// ---- timeouts (censored runs) ----
+
+const withTimeouts = (a, t, over = {}) => ({ ...a, runs: a.scores.length, timeouts: t, timeoutTasks: t ? { 'design-hold-service': t } : {}, ...over });
+
+test('censoring: more than 10% timeouts on either side, or counts that differ by more than one, is censored', () => {
+  const ctl = withTimeouts(arm(0.8, 40), 0);
+  assert.equal(censoring(withTimeouts(arm(0.8, 40), 4), withTimeouts(arm(0.8, 40), 4)), null, '4 of 40 on both sides is exactly 10%, not over it');
+  assert.match(censoring(withTimeouts(arm(0.8, 40), 5), withTimeouts(arm(0.8, 40), 5)).reason, /5 of 40 runs of the variant timed out/);
+  assert.match(censoring(ctl, withTimeouts(arm(0.8, 40), 5)).reason, /5 of 40 control runs timed out/);
+  assert.equal(censoring(withTimeouts(arm(0.8, 40), 1), withTimeouts(arm(0.8, 40), 0)), null, 'a gap of one is allowed');
+  assert.match(censoring(withTimeouts(arm(0.8, 40), 0), withTimeouts(arm(0.8, 40), 2)).reason, /timeout counts differ \(0 of 40 against 2 of 40\)/);
+  assert.match(censoring(withTimeouts(arm(0.8, 40), 2), withTimeouts(arm(0.8, 40), 0)).reason, /timeout counts differ/);
+  assert.equal(censoring(arm(0.8, 40), arm(0.8, 40)), null, 'arms without timeout counts are not censored');
+  assert.match(censoring(withTimeouts(arm(0.8, 40), 5), ctl).reason, /design-hold-service 5/, 'the tasks that timed out are named');
+});
+
+test('censoring scales the count gap by the smaller side when the sides have different run counts', () => {
+  assert.equal(censoring(withTimeouts(arm(0.8, 20), 2), withTimeouts(arm(0.8, 40), 4)), null, 'same share, no gap');
+  assert.match(censoring(withTimeouts(arm(0.8, 20), 2), withTimeouts(arm(0.8, 40), 0)).reason, /differ/, '10% of 20 runs against none is a gap of 2');
+});
+
+test('a delete variant that looks safe is NEEDS DATA when too many runs timed out, never a DELETE', () => {
+  const clean = decide([wave1(arm(0.8), { ctl: arm(0.8) })]);
+  assert.equal(clean.decision, 'DELETE', 'control: the same scores without timeouts are a DELETE call');
+  const d = decide([wave1(withTimeouts(arm(0.8), 6), { ctl: withTimeouts(arm(0.8), 0), aa: withTimeouts(arm(0.8), 0) })]);
+  assert.equal(d.decision, 'NEEDS DATA');
+  assert.match(d.reasons.join(' '), /censored by the time limit.*6 of 40 runs of the variant/);
+  assert.equal(d.evidence.del.censored, true);
+});
+
+test('a delete variant that lost quality is NEEDS DATA, not KEEP, when its timeouts are unbalanced', () => {
+  const kept = decide([wave1(arm(0.5))]);
+  assert.equal(kept.decision, 'KEEP', 'control: without timeouts the loss is a KEEP');
+  const d = decide([wave1(withTimeouts(arm(0.5), 2), { ctl: withTimeouts(arm(0.8), 0), aa: withTimeouts(arm(0.8), 0) })]);
+  assert.equal(d.decision, 'NEEDS DATA');
+  assert.match(d.reasons.join(' '), /timeout counts differ/);
+});
+
+test('timeouts spread evenly and under the limit do not change the call', () => {
+  const d = decide([wave1(withTimeouts(arm(0.8), 2), { ctl: withTimeouts(arm(0.8), 1), aa: withTimeouts(arm(0.8), 1) })]);
+  assert.equal(d.decision, 'DELETE');
+});
+
+test('a censored harm call (removal looks better) is NEEDS DATA too', () => {
+  const clean = decide([wave1(arm(0.95), { ctl: arm(0.7), aa: arm(0.7) })]);
+  assert.equal(clean.decision, 'DELETE');
+  const d = decide([wave1(withTimeouts(arm(0.95), 0), { ctl: withTimeouts(arm(0.7), 5), aa: arm(0.7) })]);
+  assert.equal(d.decision, 'NEEDS DATA');
+  assert.match(d.reasons.join(' '), /5 of 40 control runs timed out/);
+});
+
+test('the report shows the timeout counts and the reason on a NEEDS DATA row', () => {
+  const d = decide([wave1(withTimeouts(arm(0.8), 6), { ctl: withTimeouts(arm(0.8), 0), aa: withTimeouts(arm(0.8), 0) })]);
+  const md = renderDecisions([{ ...d, tier: 'loaded', waves: [1] }], { base: 'b', controls: TRUSTED });
+  assert.match(md, /timeouts: 6 of 40 variant runs, 0 of 40 control runs/);
+  assert.match(md, /censored by the time limit/);
+});
+
+// ---- skills the agent never loads ----
+
+test('a skill that never loaded in the control arm is NEEDS DATA with no information, whatever the scores show', () => {
+  for (const del of [arm(0.8), arm(0.95), arm(0.4)]) {
+    const d = decide([wave1(del, { ctl: arm(0.8, 40, { loaded: 0 }) })]);
+    assert.equal(d.decision, 'NEEDS DATA');
+    assert.notEqual(d.decision, 'DELETE');
+    assert.match(d.reasons.join(' '), /loaded in 0 of 40 control runs.*no information/);
+    assert.equal(d.tokensSaved, 0);
+    assert.equal(d.evidence.ctlLoad.loaded, 0);
+  }
+});
+
+test('no load data at all (an empty list) is NEEDS DATA, never a DELETE or PRUNE', () => {
+  const ctl = { ...arm(0.8), loaded: [] };
+  const d = decide([wave1(arm(0.8), { ctl })]);
+  assert.equal(d.decision, 'NEEDS DATA');
+  assert.match(d.reasons.join(' '), /loaded in 0 of 0 control runs/);
+});
+
+test('a skill that loads only in the variant arm still has no information', () => {
+  const del = { ...arm(0.8), loaded: Array.from({ length: 40 }, () => true) };
+  const d = decide([wave1(del, { ctl: arm(0.8, 40, { loaded: 0 }) })]);
+  assert.equal(d.decision, 'NEEDS DATA');
 });

@@ -20,16 +20,22 @@ const { applyCuts } = require('./ablate.js');
 
 const FAILED_OUTCOMES = ['timeout', 'error'];
 
-/** Quality per run on a 0..1 scale, by arm. Infra errors and model mismatches are left out; a timeout or error counts as 0. */
+/**
+ * Quality per run on a 0..1 scale, by arm. Infra errors and model mismatches are left out; a timeout or error counts as 0.
+ * `runs` is the number of runs that count and `timeouts` how many of them hit the time limit (by task in `timeoutTasks`),
+ * so `cap decide` can tell a score that rests on cut-off runs.
+ */
 function armScoresFromRows(rows, weights) {
   const out = {};
   for (const r of rows) {
-    const a = (out[r.arm] ??= { scores: [], credits: [], keys: [], excluded: { infraError: 0, modelMismatch: 0 }, failedAsZero: 0, unscored: 0 });
+    const a = (out[r.arm] ??= { scores: [], credits: [], keys: [], excluded: { infraError: 0, modelMismatch: 0 }, failedAsZero: 0, unscored: 0, runs: 0, timeouts: 0, timeoutTasks: {} });
     if (r.outcome === 'infraError' || r.outcome === 'modelMismatch') { a.excluded[r.outcome]++; continue; }
     const q = qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights);
     if (q) a.scores.push(q.score / 100);
     else if (FAILED_OUTCOMES.includes(r.outcome)) { a.scores.push(0); a.failedAsZero++; } else { a.unscored++; continue; }
     a.keys.push({ task: r.task, rep: r.rep });
+    a.runs++;
+    if (r.outcome === 'timeout') { a.timeouts++; a.timeoutTasks[r.task] = (a.timeoutTasks[r.task] ?? 0) + 1; }
     if (typeof r.credits === 'number' && Number.isFinite(r.credits)) a.credits.push(r.credits);
   }
   return out;

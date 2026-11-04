@@ -22,6 +22,8 @@ const NOISE_FLOOR = 0.05;
 const MIN_RUNS = 15;
 const HIGH_RUNS = 30;
 const LOAD_MIN = 0.3;
+const CENSOR_MAX_SHARE = 0.1;
+const CENSOR_MAX_GAP = 1;
 const LEVELS = ['low', 'medium', 'high'];
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -39,11 +41,35 @@ function compareArms(head, base) {
   return { delta: r.delta, ci: h.length < 2 || b.length < 2 ? null : { lo: r.ciLow, hi: r.ciHigh }, nHead: h.length, nBase: b.length };
 }
 
+const timeoutCount = (arm) => ({ t: Number(arm?.timeouts) || 0, n: Number(arm?.runs) || finite(arm?.scores ?? []).length });
+
+/**
+ * A comparison is censored when a run that hit the time limit can stand in for a finished one: more than 10% of the runs
+ * on either side timed out, or the sides differ by more than one timeout (the smaller side's run count scales the gap
+ * when the sides are unequal). Scores of cut-off runs come from half-finished work, so no call rests on them.
+ * Returns null when the comparison is not censored, else { reason, variant, control }.
+ */
+function censoring(variant, ctl) {
+  const v = timeoutCount(variant);
+  const c = timeoutCount(ctl);
+  if (!v.t && !c.t) return null;
+  const share = (x) => (x.n ? x.t / x.n : 0);
+  const gap = Math.abs(share(v) - share(c)) * Math.min(v.n, c.n);
+  const why = [];
+  if (share(v) > CENSOR_MAX_SHARE) why.push(`${v.t} of ${v.n} runs of the variant timed out`);
+  if (share(c) > CENSOR_MAX_SHARE) why.push(`${c.t} of ${c.n} control runs timed out`);
+  if (gap > CENSOR_MAX_GAP) why.push(`the timeout counts differ (${v.t} of ${v.n} against ${c.t} of ${c.n})`);
+  if (!why.length) return null;
+  const tasks = (a) => Object.entries(a?.timeoutTasks ?? {}).map(([k, n]) => `${k} ${n}`).join(', ');
+  const where = [tasks(variant) && `variant: ${tasks(variant)}`, tasks(ctl) && `control: ${tasks(ctl)}`].filter(Boolean).join('; ');
+  return { reason: `censored by the time limit: ${why.join('; ')}${where ? ` (timeouts by task, ${where})` : ''}; the call needs runs that finish`, variant: v, control: c };
+}
+
 /**
  * Where one variant stands against the control of its wave.
  * lost: removal made it worse, outside the noise. gained: removal made it better, outside the noise.
  * safe: within the margin, interval excludes a larger loss, the A/A spread is under the margin and both sides have enough runs.
- * unclear: none of those, with the reason.
+ * unclear: none of those, with the reason. A censored comparison (see censoring) is unclear whatever the scores say.
  */
 function variantStatus(variant, ctl, aaSpread) {
   const c = compareArms(variant.scores, ctl.scores);
@@ -53,6 +79,9 @@ function variantStatus(variant, ctl, aaSpread) {
   const cr = finite(variant.credits ?? []);
   const cc = finite(ctl.credits ?? []);
   out.credits = cr.length && cc.length ? { delta: round(mean(cr) - mean(cc)), unit: 'credits', variant: round(mean(cr)), control: round(mean(cc)) } : { delta: null, unit: 'credits' };
+  out.timeouts = { variant: timeoutCount(variant), control: timeoutCount(ctl) };
+  const cens = censoring(variant, ctl);
+  if (cens) { out.reason = cens.reason; out.censored = true; return out; }
   if (nEach < MIN_RUNS) { out.reason = `${nEach} run${nEach === 1 ? '' : 's'} on the smaller side, fewer than ${MIN_RUNS} needed`; return out; }
   if (!c.ci) { out.reason = 'no interval'; return out; }
   if (c.ci.hi < 0 && -c.delta > noise) { out.status = 'lost'; return out; }
@@ -106,7 +135,8 @@ function decideSkill({ skill, controls, waves }) {
   const loadedOf = (ctl.loaded ?? []).length;
   base.evidence.ctlLoad = { loaded: loadedN, of: loadedOf, rate: loadedOf ? loadedN / loadedOf : null };
   if (!loadedOf || loadedN / loadedOf < LOAD_MIN) {
-    return { ...needs(`the skill loaded in ${loadedN} of ${loadedOf} control runs, under ${Math.round(LOAD_MIN * 100)}%: a study cannot show lift or harm for a skill the agent does not load`, 'check discovery (cap trigger, routing text, description) or pick tasks that need the skill'), evidence: base.evidence, aaSpread: base.aaSpread };
+    const none = loadedN === 0 ? ' (never loaded: no information about this skill)' : '';
+    return { ...needs(`the skill loaded in ${loadedN} of ${loadedOf} control runs, under ${Math.round(LOAD_MIN * 100)}%${none}: a study cannot show lift or harm for a skill the agent does not load`, 'check discovery (cap trigger, routing text, description) or pick tasks that need the skill'), evidence: base.evidence, aaSpread: base.aaSpread };
   }
 
   const dv = variantStatus(del, ctl, aaSpread);
@@ -237,6 +267,8 @@ function renderDecisions(decisions, meta = {}) {
     for (const m of d.missing ?? []) L.push(`- missing: ${m}`);
     const ev = d.evidence?.del;
     if (ev) L.push(`- delete variant: ${ev.status}, delta ${round(ev.delta, 3)}${ev.ci ? ` (95% interval ${round(ev.ci.lo, 3)} to ${round(ev.ci.hi, 3)})` : ''}, ${ev.nHead} vs ${ev.nBase} runs, A/A spread ${round(ev.aaSpread, 3)}${ev.credits?.delta !== null && ev.credits?.delta !== undefined ? `, credits per run ${ev.credits.delta >= 0 ? '+' : ''}${ev.credits.delta}` : ''}`);
+    const to = ev?.timeouts;
+    if (to && (to.variant.t || to.control.t)) L.push(`- timeouts: ${to.variant.t} of ${to.variant.n} variant runs, ${to.control.t} of ${to.control.n} control runs`);
     if (d.evidence?.ctlLoad) L.push(`- the skill loaded in ${d.evidence.ctlLoad.loaded} of ${d.evidence.ctlLoad.of} control runs`);
     const secs = (d.sections ?? []).filter((s) => s.action !== 'untested' || d.decision === 'KEEP');
     if (secs.length && d.sections.some((s) => s.action !== 'untested')) {
@@ -252,4 +284,4 @@ function renderDecisions(decisions, meta = {}) {
   return L.join('\n');
 }
 
-module.exports = { compareArms, variantStatus, decideSkill, evidenceRowsFor, renderDecisions, MARGIN, NOISE_FLOOR, MIN_RUNS, HIGH_RUNS, LOAD_MIN };
+module.exports = { compareArms, variantStatus, censoring, CENSOR_MAX_SHARE, CENSOR_MAX_GAP, decideSkill, evidenceRowsFor, renderDecisions, MARGIN, NOISE_FLOOR, MIN_RUNS, HIGH_RUNS, LOAD_MIN };
