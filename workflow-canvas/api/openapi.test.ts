@@ -774,6 +774,24 @@ describe('workflow canvas API contract', () => {
     });
   });
 
+  describe('the page and the token', () => {
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+
+    it('requires the page to carry frame-ancestors in a response header', () => {
+      const text = words(spec.info.description);
+      expect(text).toMatch(/\*\*The page\.\*\*/);
+      expect(text).toMatch(/response header/);
+      expect(text).toContain("frame-ancestors 'none'");
+    });
+
+    it('lets the client keep the token in sessionStorage only', () => {
+      const text = words(spec.info.description);
+      expect(text).toMatch(/`sessionStorage` of its browser tab/);
+      expect(text).toMatch(/not in `localStorage`/);
+      expect(text).toMatch(/no idle\s+timeout/);
+    });
+  });
+
   describe('the checks themselves', () => {
     it('accepts a running run between two stages', () => {
       const [answer] = valuesFor(
