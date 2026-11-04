@@ -142,23 +142,45 @@ pub(crate) struct Boundary {
 }
 
 /// One `gated` entry of sop-orchestration.yml. `basis` is prose for
-/// people and is not kept.
+/// people; it is declared only so that `deny_unknown_fields` turns a
+/// misspelled `boundaries` into an error rather than an empty gate list.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct GatedSop {
     pub(crate) gates: Vec<GateKind>,
     #[serde(default)]
     pub(crate) phases: Vec<String>,
     #[serde(default)]
     pub(crate) boundaries: Vec<Boundary>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    basis: Option<String>,
 }
 
 /// sop-orchestration.yml's `gated` entries, keyed by SOP name, and the
-/// session keys their gate facts are recorded under. The `marker` and
-/// `not_gated` keys are for the list's lint and are ignored.
+/// session keys their gate facts are recorded under. `version`, `marker`,
+/// `meaning`, `gate_note` and `not_gated` are for the list's lint and are
+/// not used here; they are declared so an unknown top-level key is an error.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct GateMap {
     pub(crate) gated: BTreeMap<String, GatedSop>,
     pub(crate) gate_facts: GateFacts,
+    #[serde(default)]
+    #[allow(dead_code)]
+    version: Option<u32>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    marker: Option<String>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    meaning: Option<String>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    gate_note: Option<String>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    not_gated: BTreeMap<String, String>,
 }
 
 /// The `gate_facts` block: the `data` keys a gated SOP writes and the
@@ -888,6 +910,21 @@ mod tests {
         let facts = format!("{FACTS}  note: 'gate_{{phase}}_note'\n");
         let err = map_with_facts(&facts).unwrap_err();
         assert!(err.message.contains("note"), "{err}");
+    }
+
+    #[test]
+    fn misspelled_gated_entry_key_is_rejected() {
+        let text = format!(
+            "{FACTS}gated:\n  s:\n    gates: [approval]\n    phases: [a]\n    boundries:\n      - {{phase: a, kind: approval, scope: run}}\n"
+        );
+        let err = parse_gate_map(&text).unwrap_err();
+        assert!(err.message.contains("boundries"), "{err}");
+    }
+
+    #[test]
+    fn unknown_top_level_key_is_rejected() {
+        let err = parse_gate_map(&format!("{FACTS}gated: {{}}\nnot_gatd: {{}}\n")).unwrap_err();
+        assert!(err.message.contains("not_gatd"), "{err}");
     }
 
     #[test]

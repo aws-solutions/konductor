@@ -103,6 +103,8 @@ not per individual commit.
   Memory & Skill Reflexes ask for.
 - The routing rules' example search that skips `.env` files keeps `.env.example` in its results.
 - `persistent-memory` allows removing an untagged entry when the user asks, as the agent prompts do.
+- `verify-run` rejects a misspelled key in `sop-orchestration.yml`, such as `boundries`, instead of
+  reading it as a SOP with no gate boundaries.
 
 ## [1.2.0] - 2026-10-26
 
