@@ -56,6 +56,10 @@ not per individual commit.
   `.konductor/memory/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
   or `.konductor/memory`, and treating memory as content when a tracked top-level dot name is
   non-ASCII; orchestrators never bypass a denial or read unnamed secrets.
+- `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
+  check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
+  The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
+  unattended run stops and reports, and a later attended resume can resolve or override.
 
 ### Fixed
 
