@@ -11,7 +11,7 @@ const { spawnSync } = require('node:child_process');
 const { tmp, makeBench, makeRun, writeJudgments } = require('./helpers.js');
 const { DEFAULTS } = require('../../judge/config.js');
 const { compileRedactions, DEFAULT_REDACTIONS } = require('../../judge/redact.js');
-const { writeReview, importRatings, validateRatings, sampleParams, raterIdOf } = require('../../cap/review.js');
+const { writeReview, importRatings, validateRatings, sampleParams, raterIdOf, seenHash } = require('../../cap/review.js');
 const { formatRaterKappas, raterKappas, scoreLabels } = require('../../judge/calibrate.js');
 const { readCalibration } = require('../../report/generate.js');
 const viewer = require('../../cap/review-viewer.js');
@@ -387,7 +387,7 @@ test('an import that fails while scoring writes nothing, and the retry then impo
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
-test('a re-run in the same layout is refused by item; an unchanged copy of the run imports', () => {
+test('the fingerprint is what the rater saw: recheck passes, a changed stream or shown file is refused by item, a copy imports', () => {
   const f = fixture();
   try {
     judgePanel(f.runDir, { only: ['good'] });
@@ -396,21 +396,40 @@ test('a re-run in the same layout is refused by item; an unchanged copy of the r
     const ratingsFile = path.join(f.root, 'ratings.json');
     fs.writeFileSync(ratingsFile, JSON.stringify(rate(r)));
     const key = readJson(r.keyPath);
-    assert.ok(key.groups.every((g) => g.items.every((i) => /^[0-9a-f]{64}$/.test(i.runHash))));
-    // An unchanged copy elsewhere imports.
-    const copy = path.join(f.root, 'copy');
-    fs.cpSync(f.runDir, copy, { recursive: true });
-    assert.equal(importRatings({ ratingsFile, keyFile: r.keyPath, run: copy, thresholds: DEFAULTS.thresholds }).res.judges.good.kappa, 1);
-    // A re-run with the same layout and the same result.json but a different stream is refused, naming the item.
-    const rerun = path.join(f.root, 'rerun');
-    fs.cpSync(f.runDir, rerun, { recursive: true });
+    for (const g of key.groups) for (const i of g.items) {
+      assert.match(i.seenHash, /^[0-9a-f]{64}$/);
+      assert.deepEqual(i.seen, { files: ['a.txt'], deleted: [] }, 'the shown workspace files are recorded');
+    }
     const it = key.groups[1].items[0];
-    const stream = path.join(rerun, it.armId, it.taskId, String(it.replicate), 'stream.jsonl');
-    fs.appendFileSync(stream, `${JSON.stringify({ type: 'runFinished', data: { status: 'success', finalText: 'another answer' } })}\n`);
-    const before = snapshot(keys);
-    assert.throws(() => importRatings({ ratingsFile, keyFile: r.keyPath, run: rerun, force: true, thresholds: DEFAULTS.thresholds }),
-      new RegExp(`different output for item ${it.itemId} \\(${it.armId.replace(/\./g, '\\.')}/${it.taskId}/${it.replicate}\\)`));
-    assert.deepEqual(snapshot(keys), before);
+    const at = (root) => path.join(root, it.armId, it.taskId, String(it.replicate));
+    const fresh = (name) => { const d = path.join(f.root, name); fs.cpSync(f.runDir, d, { recursive: true }); return d; };
+    const item = new RegExp(`different output for item ${it.itemId} \\(${it.armId.replace(/\./g, '\\.')}/${it.taskId}/${it.replicate}\\)`);
+    // An unchanged copy imports.
+    assert.equal(importRatings({ ratingsFile, keyFile: r.keyPath, run: fresh('copy'), thresholds: DEFAULTS.thresholds }).res.judges.good.kappa, 1);
+    // A recheck rewrites result.json's current checks and keeps the first ones under checksOriginal: still imports.
+    const rechecked = fresh('rechecked');
+    for (const g of key.groups) for (const i of g.items) {
+      const file = path.join(rechecked, i.armId, i.taskId, String(i.replicate), 'result.json');
+      const res = readJson(file);
+      fs.writeFileSync(file, JSON.stringify({ ...res, checksOriginal: res.checksOriginal ?? res.checks, checks: [{ type: 'file_exists', path: 'a.txt', passed: false }], checksRevision: 'r2', recheckedAt: 'now' }));
+    }
+    assert.equal(importRatings({ ratingsFile, keyFile: r.keyPath, run: rechecked, force: true, thresholds: DEFAULTS.thresholds }).res.judges.good.kappa, 1);
+    // A changed stream, or an edited shown workspace file, is refused by item and writes nothing.
+    const streamed = fresh('streamed');
+    fs.appendFileSync(path.join(at(streamed), 'stream.jsonl'), `${JSON.stringify({ type: 'runFinished', data: { status: 'success', finalText: 'another answer' } })}\n`);
+    const edited = fresh('edited');
+    fs.writeFileSync(path.join(at(edited), 'workspace', 'a.txt'), 'edited after the page was made\n');
+    const changedChecks = fresh('changed-checks');
+    const cf = path.join(at(changedChecks), 'result.json');
+    fs.writeFileSync(cf, JSON.stringify({ ...readJson(cf), checks: [{ type: 'file_exists', path: 'a.txt', passed: false }] }));
+    for (const run of [streamed, edited, changedChecks]) {
+      const before = snapshot(keys);
+      assert.throws(() => importRatings({ ratingsFile, keyFile: r.keyPath, run, force: true, thresholds: DEFAULTS.thresholds }), item);
+      assert.deepEqual(snapshot(keys), before, `${path.basename(run)}: nothing written`);
+    }
+    // seenHash itself: a workspace file the bundle did not show is not part of it.
+    fs.writeFileSync(path.join(at(f.runDir), 'workspace', 'unshown.txt'), 'x');
+    assert.equal(seenHash(at(f.runDir), it.seen), it.seenHash);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
@@ -502,32 +521,37 @@ test('ids such as __proto__, constructor and toString work as rater and criterio
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('a signal during an import removes its staging directory, and a stale one is cleared by the next import', () => {
+test('a failed import removes its staging directory; one left by a killed run is cleared by the next import', () => {
   const f = fixture();
   try {
     judgePanel(f.runDir, { only: ['good'] });
     const r = writeReview(opts(f, { n: 6, seed: 2 }));
     const ratingsFile = path.join(f.root, 'ratings.json');
     fs.writeFileSync(ratingsFile, JSON.stringify(rate(r)));
+    // An error while staging: the directory goes with the import, and nothing else is written.
+    let seen = null;
+    assert.throws(() => importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds, onStaged: (d) => { seen = d; throw new Error('boom'); } }), /boom/);
+    assert.ok(seen && !fs.existsSync(seen));
+    assert.deepEqual(fs.readdirSync(r.keyDir), ['review-key.json']);
+    // A real SIGINT while staging kills the process (nothing handles it), so the staging directory stays behind.
     const script = `
       const { importRatings } = require(${JSON.stringify(path.join(__dirname, '..', '..', 'cap', 'review.js'))});
       const { DEFAULTS } = require(${JSON.stringify(path.join(__dirname, '..', '..', 'judge', 'config.js'))});
       importRatings({ ratingsFile: ${JSON.stringify(ratingsFile)}, keyFile: ${JSON.stringify(r.keyPath)}, thresholds: DEFAULTS.thresholds,
-        onStaged: (dir) => { process.stdout.write(dir + '\\n'); process.emit(process.argv[1]); } });
+        onStaged: (dir) => { require('node:fs').writeSync(1, dir + '\\n'); process.kill(process.pid, 'SIGINT'); const t = Date.now(); while (Date.now() - t < 5000); } });
       process.stdout.write('not interrupted\\n');`;
-    for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
-      const c = spawnSync(process.execPath, ['-e', script, sig], { encoding: 'utf8' });
-      assert.equal(c.status, { SIGINT: 130, SIGTERM: 143, SIGHUP: 129 }[sig], c.stderr);
-      const stage = c.stdout.split('\n')[0];
-      assert.match(path.basename(stage), /^\.import-/);
-      assert.ok(!fs.existsSync(stage), `${sig}: the staging directory is gone`);
-      assert.deepEqual(fs.readdirSync(r.keyDir), ['review-key.json'], `${sig}: nothing else was written`);
-    }
-    // A staging directory left by a killed process (SIGKILL cannot be caught) is removed by the next import.
-    fs.mkdirSync(path.join(r.keyDir, '.import-stale'));
-    fs.writeFileSync(path.join(r.keyDir, '.import-stale', 'key.json'), '{}');
-    importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    const c = spawnSync(process.execPath, ['-e', script], { encoding: 'utf8', timeout: 20000 });
+    assert.equal(c.signal, 'SIGINT', `${c.status} ${c.stderr}`);
+    assert.doesNotMatch(c.stdout, /not interrupted/);
+    const stage = c.stdout.split('\n')[0];
+    assert.match(path.basename(stage), /^\.import-/);
+    assert.ok(fs.existsSync(stage), 'the killed run left its staging directory');
+    assert.ok(!fs.existsSync(path.join(r.keyDir, 'raters')), 'and no rater file');
+    // The next import clears it and imports.
+    const out = importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    assert.ok(!fs.existsSync(stage));
     assert.deepEqual(fs.readdirSync(r.keyDir).filter((n) => n.startsWith('.import-')), []);
+    assert.equal(out.res.judges.good.kappa, 1);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 

@@ -11,8 +11,8 @@
 //
 // Nothing written for later use records the run's absolute path: review-key.json holds the run directory relative to
 // itself and the pooled key.json relative to its own directory, so a run moved together with its key still imports, and
-// `--run DIR` on import points at a run moved without it. Each item also records a hash of its result.json and
-// stream.jsonl, so a different run in the same layout is refused instead of being scored against these ratings.
+// `--run DIR` on import points at a run moved without it. Each item also records a hash of what the rater saw (seenHash),
+// so a different run in the same layout, or an edited shown file, is refused instead of being scored against these ratings.
 //
 // Rater ids, item ids and criterion ids come from people and task files, so they are only used as Map keys or as keys of
 // objects without a prototype; "__proto__" or "toString" is an ordinary id.
@@ -25,7 +25,7 @@ const { ANSWER_KEY } = require('../runner/lib/sandbox.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { secretLiterals, scrubString } = require('../runner/lib/scrub.js');
 const { loadRun, readJson } = require('../report/load.js');
-const procs = require('../runner/lib/procs.js');
+const { runtimeOf } = require('../runner/lib/harness/runtime.js');
 const { buildBundle } = require('../judge/bundle.js');
 const { effectiveLimits } = require('../judge/config.js');
 const { drawSample, scoreLabels, raterKappas } = require('../judge/calibrate.js');
@@ -57,14 +57,34 @@ const sha16 = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0
 const dict = () => Object.create(null);
 const own = (o, k) => o !== null && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
 
-/** What a rater saw came from: sha256 of the run's result.json and stream.jsonl (a missing stream counts as empty). */
-function runHash(runDir) {
-  const h = crypto.createHash('sha256');
-  h.update(fs.readFileSync(path.join(runDir, 'result.json')));
-  h.update('\u0000');
+// JSON with object keys sorted at every level, so the same content always gives the same bytes.
+function canonical(v) {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v !== null && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
+  return JSON.stringify(v === undefined ? null : v);
+}
+const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
+
+/**
+ * A hash of what the rater saw for one run: the stream.jsonl bytes (the final text comes from them), the checks the
+ * bundle shows (checksOriginal ?? checks, which recheck leaves alone), the questions and turns, the harness that decides
+ * how the stream is read, and the raw bytes of each workspace file the bundle was built from (`files`, from
+ * buildBundle), plus whether each file it listed as deleted is still gone. result.json fields the page never shows, such
+ * as a rechecked `checks`, do not change it.
+ */
+function seenHash(runDir, { files = [], deleted = [] } = {}) {
+  const result = readJson(path.join(runDir, 'result.json'));
   const stream = path.join(runDir, 'stream.jsonl');
-  if (fs.existsSync(stream)) h.update(fs.readFileSync(stream));
-  return h.digest('hex');
+  const ws = (rel) => path.join(runDir, 'workspace', rel);
+  return sha256(canonical({
+    stream: fs.existsSync(stream) ? sha256(fs.readFileSync(stream)) : null,
+    checks: result.checksOriginal ?? result.checks ?? [],
+    questions: result.questions ?? null,
+    turns: result.turns ?? null,
+    runtime: runtimeOf(result),
+    files: [...files].sort().map((rel) => [rel, fs.existsSync(ws(rel)) ? sha256(fs.readFileSync(ws(rel))) : null]),
+    deleted: [...deleted].sort().map((rel) => [rel, fs.existsSync(ws(rel))]),
+  }));
 }
 
 // Files an earlier review left in a page directory that name arms or hold ratings; such a directory is never handed over.
@@ -133,7 +153,8 @@ function writeReview({ runDir, benchDir, extraTasks = [], n, seed, sampleOnly = 
       const built = buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions });
       const bundle = scrubString(built.text, literals);
       outputs.push({ itemId, label, bundle });
-      keyItems.push({ itemId, label, armId: r.armId, taskId: r.taskId, replicate: r.replicate, runHash: runHash(r.dir), bundle });
+      const seen = { files: built.changed, deleted: built.deleted };
+      keyItems.push({ itemId, label, armId: r.armId, taskId: r.taskId, replicate: r.replicate, seen, seenHash: seenHash(r.dir, seen), bundle });
     });
     groups.push({ groupId, task: { prompt: scrubString(task.prompt, literals), rubric, answerKey }, outputs });
     keyGroups.push({ groupId, taskId: g.taskId, replicate: g.replicate, rubric, items: keyItems });
@@ -253,8 +274,8 @@ function writeJson(file, value) {
 
 /**
  * The run a key belongs to: --run when given, else the key's recorded path relative to the key's own directory.
- * Checked against the key: every run it lists must be there with the same result.json and stream.jsonl, so a wrong
- * directory, or a re-run in the same layout, is refused by name.
+ * Checked against the key: every run it lists must be there and show what the rater saw (seenHash), so a wrong
+ * directory, a re-run in the same layout or an edited workspace file is refused by name.
  */
 function resolveRun(key, keyFile, runOpt) {
   const runDir = runOpt ? path.resolve(runOpt) : key.run !== undefined ? path.resolve(path.dirname(keyFile), key.run) : null;
@@ -264,10 +285,10 @@ function resolveRun(key, keyFile, runOpt) {
   if (missing.length) {
     throw new ReviewError(`${runDir} is not the run this key was made from (${missing.length} of its runs are missing there, first ${missing[0].armId}/${missing[0].taskId}/${missing[0].replicate}); ${runOpt ? 'check --run' : 'the run moved without its key: pass --run DIR'}`);
   }
-  const changed = items.filter((i) => runHash(path.join(runDir, i.armId, i.taskId, String(i.replicate))) !== i.runHash);
+  const changed = items.filter((i) => seenHash(path.join(runDir, i.armId, i.taskId, String(i.replicate)), i.seen) !== i.seenHash);
   if (changed.length) {
     const c = changed[0];
-    throw new ReviewError(`${runDir} has different output for item ${c.itemId} (${c.armId}/${c.taskId}/${c.replicate}) than the page was made from${changed.length > 1 ? `, and ${changed.length - 1} more` : ''}: its result.json or stream.jsonl changed, so the ratings would be scored against outputs nobody rated. Nothing was written`);
+    throw new ReviewError(`${runDir} has different output for item ${c.itemId} (${c.armId}/${c.taskId}/${c.replicate}) than the page was made from${changed.length > 1 ? `, and ${changed.length - 1} more` : ''}: its stream, shown checks, questions or shown workspace files changed, so the ratings would be scored against outputs nobody rated. Nothing was written`);
   }
   return runDir;
 }
@@ -339,15 +360,15 @@ function importRatings({ ratingsFile, keyFile, run: runOpt, rater: raterOpt, out
   const sheetKey = { runDir: path.relative(dir, runDir) || '.', seed: key.seed, source: { kind: 'review', viewerId: key.viewerId }, items };
 
   fs.mkdirSync(dir, { recursive: true });
+  // The staging directory is removed when the import ends, by success or error. A run killed partway leaves it, so a
+  // stale one is cleared here; none of them is ever read.
   for (const old of fs.readdirSync(dir).filter((n) => n.startsWith('.import-'))) fs.rmSync(path.join(dir, old), { recursive: true, force: true });
   const stage = fs.mkdtempSync(path.join(dir, '.import-'));
-  procs.trackScratch(stage);
-  const removeHandlers = procs.installSignalHandlers({ flush: () => {} });
   const files = [];
   let res;
   let quotes = null;
   try {
-    // Tests use onStaged to deliver a signal while the staging directory exists.
+    // Optional test hook, never set by the CLI: lets a test act while the staging directory exists.
     if (onStaged) onStaged(stage);
     const stagedKey = path.join(stage, 'key.json');
     writeJson(stagedKey, { ...sheetKey, runDir });
@@ -375,8 +396,6 @@ function importRatings({ ratingsFile, keyFile, run: runOpt, rater: raterOpt, out
     files.push([path.join(dir, 'sheet.json'), { schemaVersion: 1, items: pooled }], [sheetKeyPath, sheetKey]);
   } finally {
     fs.rmSync(stage, { recursive: true, force: true });
-    procs.untrackScratch(stage);
-    removeHandlers();
   }
 
   // One level of backup: the pooled result this import replaces is kept as result.prev.json (any older .prev is replaced).
@@ -394,4 +413,4 @@ function importRatings({ ratingsFile, keyFile, run: runOpt, rater: raterOpt, out
   };
 }
 
-module.exports = { writeReview, importRatings, validateRatings, raterIdOf, groupSample, sampleParams, runHash, ReviewError, KEY_FILE, PAGE_FILE };
+module.exports = { writeReview, importRatings, validateRatings, raterIdOf, groupSample, sampleParams, seenHash, ReviewError, KEY_FILE, PAGE_FILE };
