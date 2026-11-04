@@ -35,10 +35,33 @@ test('a check that always passes in both arms is NON-DISCRIMINATING and SATURATE
 });
 
 test('a check that always fails is flagged as possibly broken and SATURATED at the floor', () => {
-  const it = item(analyzeObservations([...obs('ctl', 4, () => 0), ...obs('del', 4, () => 0)], { baseline: 'ctl' }));
+  const it = item(analyzeObservations([...obs('ctl', 5, () => 0), ...obs('del', 5, () => 0)], { baseline: 'ctl' }));
   assert.ok(it.flags.includes('NON-DISCRIMINATING'));
   assert.match(it.comparisons[0].reason, /always fails.*broken/);
   assert.match(it.reasons.join(' '), /floor/);
+});
+
+test('an item that always passes with 4 runs per arm is INSUFFICIENT-DATA and not flagged; with 5 it is NON-DISCRIMINATING', () => {
+  const four = item(analyzeObservations([...obs('ctl', 4, () => 1), ...obs('del', 4, () => 1)], { baseline: 'ctl' }));
+  assert.equal(four.comparisons[0].status, 'INSUFFICIENT-DATA');
+  assert.ok(!four.flags.includes('NON-DISCRIMINATING'));
+  assert.equal(four.insufficient, true);
+  assert.match(four.reasons.join(' '), /4 and 4 runs, under the 5 per arm/);
+  const five = item(analyzeObservations([...obs('ctl', 5, () => 1), ...obs('del', 5, () => 1)], { baseline: 'ctl' }));
+  assert.equal(five.comparisons[0].status, 'NON-DISCRIMINATING');
+  assert.ok(five.flags.includes('NON-DISCRIMINATING'));
+  assert.equal(five.insufficient, false);
+});
+
+test('the run minimum is configurable and the report counts and lists INSUFFICIENT-DATA items', () => {
+  const data = [...obs('ctl', 4, () => 1), ...obs('del', 4, () => 1)];
+  assert.ok(item(analyzeObservations(data, { baseline: 'ctl', config: { minRuns: 4 } })).flags.includes('NON-DISCRIMINATING'));
+  const g = { skill: 'alpha', wave: 1, dir: 'w1', judges: judgeNote({}), ...analyzeObservations([...obs('ctl', 4, () => 1), ...obs('del', 3, () => 1)], { baseline: 'ctl', config: { saturated: 1.1 } }) };
+  const rep = buildCriteriaReport([g], { source: 'test' });
+  assert.deepEqual([rep.summary.flagged, rep.summary.insufficient], [0, 1]);
+  const md = renderCriteria(rep);
+  assert.match(md, /\| min-runs \| 5 \|/);
+  assert.match(md, /\| INSUFFICIENT-DATA \| del: the same value in every run, but 3 and 4 runs/);
 });
 
 test('an item that separates the arms carries no flag', () => {

@@ -48,7 +48,7 @@ const FLAGS = {
     'wave-budget-credits', 'auth-db', 'cache', 'cargo-target', 'kiro-bin', 'opencode-bin',
   ],
   'cap decide': ['study', 'out', 'json', 'repo-root', 'bench-dir', 'extra-tasks', 'no-patches'],
-  'cap criteria': ['study', 'runs', 'runs-glob', 'baseline', 'aa', 'out', 'json', 'margin', 'saturated', 'judge-disagree', 'replicate-sd', 'no-adjust', 'bench-dir', 'extra-tasks'],
+  'cap criteria': ['study', 'runs', 'runs-glob', 'baseline', 'aa', 'out', 'json', 'margin', 'saturated', 'judge-disagree', 'replicate-sd', 'min-runs', 'no-adjust', 'bench-dir', 'extra-tasks'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
     'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',

@@ -6,8 +6,9 @@
 //
 // Per item (a rubric criterion or a check of one task) and arm: the pass rate (pass 1, partial 0.5, fail 0; a rubric
 // criterion is the mean over judges). Each variant arm is compared with the baseline. Flags:
-//   NON-DISCRIMINATING  every comparison gives the same value in every run (always pass, always fail), or its interval
-//                       lies inside the no-effect margin of cap decide.
+//   NON-DISCRIMINATING  every comparison gives the same value in every run (always pass, always fail) with at least
+//                       minRuns runs per arm, or its interval lies inside the no-effect margin of cap decide.
+//                       An always-the-same item with fewer runs is INSUFFICIENT-DATA instead, never flagged.
 //   SATURATED           every arm sits at or above the ceiling rate, or every arm at or below the floor (1 - ceiling).
 //   HIGH-VARIANCE       judges disagree on more than a share of the runs, or replicates of one arm and task spread more
 //                       than a pooled standard deviation. Each half is measured only when the data has it.
@@ -18,7 +19,7 @@ const { diffCI, pairedCellCI, withinCellSd } = require('../report/stats.js');
 const { VERDICT_VALUE } = require('../judge/config.js');
 const { MARGIN } = require('./decide.js');
 
-const DEFAULTS = Object.freeze({ margin: MARGIN, saturated: 0.95, judgeDisagree: 0.3, replicateSd: 0.4, adjust: true });
+const DEFAULTS = Object.freeze({ margin: MARGIN, saturated: 0.95, judgeDisagree: 0.3, replicateSd: 0.4, minRuns: 5, adjust: true });
 const FLAGS = ['NON-DISCRIMINATING', 'SATURATED', 'HIGH-VARIANCE'];
 const LEFT_OUT = ['infraError', 'modelMismatch'];
 
@@ -93,6 +94,7 @@ function compare(headObs, baseObs, comparisons) {
 function statusOf(c, head, base, cfg) {
   const vals = [...head, ...base].map((o) => o.value);
   if (vals.length && head.length && base.length && vals.every((v) => v === vals[0])) {
+    if (head.length < cfg.minRuns || base.length < cfg.minRuns) return { status: 'INSUFFICIENT-DATA', reason: `the same value in every run, but ${head.length} and ${base.length} runs, under the ${cfg.minRuns} per arm needed to call it` };
     const word = vals[0] === 1 ? 'always passes' : vals[0] === 0 ? 'always fails' : `always scores ${round(vals[0], 2)}`;
     return { status: 'NON-DISCRIMINATING', reason: `${word} in both arms${vals[0] === 0 ? ' (the criterion or check may be broken or out of reach)' : ''}` };
   }
@@ -147,7 +149,9 @@ function analyzeObservations(observations, { baseline, aa = null, config = {} } 
     if (judge && judge.rate > cfg.judgeDisagree) hv.push(`judges disagreed on ${judge.disagree} of ${judge.runs} runs`);
     if (replicate && replicate.sd > cfg.replicateSd) hv.push(`replicate SD ${replicate.sd} over ${replicate.cells} cells`);
     if (hv.length) { flags.push('HIGH-VARIANCE'); reasons.push(...hv); }
-    items.push({ kind: first.kind, task: first.task, id: first.id, label: first.label, weight: first.weight ?? null, rates, comparisons, aa: aaCmp, judge, replicate, flags, reasons });
+    const insufficient = !flags.includes('NON-DISCRIMINATING') && comparisons.some((c) => c.status === 'INSUFFICIENT-DATA');
+    if (insufficient) reasons.push(...comparisons.filter((c) => c.status === 'INSUFFICIENT-DATA').map((c) => `${c.arm}: ${c.reason}`));
+    items.push({ kind: first.kind, task: first.task, id: first.id, label: first.label, weight: first.weight ?? null, rates, comparisons, aa: aaCmp, judge, replicate, flags, insufficient, reasons });
   }
   items.sort((a, b) => b.flags.length - a.flags.length || a.task.localeCompare(b.task) || a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id, undefined, { numeric: true }));
   return { arms, baseline, aa, variants, items, config: cfg };
@@ -221,7 +225,7 @@ const table = (head, rows) => [`| ${head.join(' | ')} |`, `|${head.map(() => '--
 
 function summarize(groups) {
   const items = groups.flatMap((g) => g.items);
-  return { items: items.length, flagged: items.filter((i) => i.flags.length).length, byFlag: Object.fromEntries(FLAGS.map((f) => [f, items.filter((i) => i.flags.includes(f)).length])) };
+  return { items: items.length, flagged: items.filter((i) => i.flags.length).length, insufficient: items.filter((i) => i.insufficient).length, byFlag: Object.fromEntries(FLAGS.map((f) => [f, items.filter((i) => i.flags.includes(f)).length])) };
 }
 
 function buildCriteriaReport(groups, meta = {}) {
@@ -241,20 +245,21 @@ function renderCriteria(report) {
     ['saturated', t.saturated, 'SATURATED when every arm is at or above this rate, or every arm at or below 1 minus it'],
     ['judge-disagree', t.judgeDisagree, 'HIGH-VARIANCE when judges gave different verdicts on more than this share of runs'],
     ['replicate-sd', t.replicateSd, 'HIGH-VARIANCE when the pooled SD of one arm and task across replicates is above this (0.5 is a coin flip)'],
+    ['min-runs', t.minRuns, 'runs per arm needed before an item that scored the same in every run is called NON-DISCRIMINATING; below it the item is INSUFFICIENT-DATA'],
     ['adjust', t.adjust ? 'on' : 'off', 'intervals widened for the number of items on each arm pair (Bonferroni)'],
   ]), '');
-  L.push('## Summary', '', table(['flag', 'items'], [...FLAGS.map((f) => [f, report.summary.byFlag[f]]), ['any flag', report.summary.flagged], ['all items', report.summary.items]]), '');
+  L.push('## Summary', '', table(['flag', 'items'], [...FLAGS.map((f) => [f, report.summary.byFlag[f]]), ['any flag', report.summary.flagged], ['INSUFFICIENT-DATA (not flagged)', report.summary.insufficient], ['all items', report.summary.items]]), '');
   for (const g of report.groups) {
     L.push(`## ${g.skill ? `${g.skill}, wave ${g.wave}` : 'Run directories'} (${g.dir})`, '');
     L.push(`Baseline ${g.baseline}${g.aa ? `, A/A ${g.aa}` : ''}; variants ${g.variants.join(', ') || 'none'}. ${g.judges.note}.`, '');
-    const flagged = g.items.filter((i) => i.flags.length);
+    const flagged = g.items.filter((i) => i.flags.length || i.insufficient);
     if (!flagged.length) { L.push(`No item flagged (${g.items.length} items).`, ''); continue; }
     L.push(table(['task', 'item', 'rate by arm', 'variant minus baseline (interval)', 'A/A', 'judges disagree', 'replicate SD', 'flags', 'why'], flagged.map((i) => [
       i.task, `${i.kind === 'rubric' ? `rubric ${i.id}` : i.id}: ${i.label}`, Object.entries(i.rates).map(([a, r]) => `${a} ${r.rate} (n ${r.n})`).join('; '),
       i.comparisons.map(fmtCmp).join('; ') || '-', i.aa ? fmtCmp(i.aa) : '-', i.judge ? `${i.judge.disagree} of ${i.judge.runs}` : 'not measured',
-      i.replicate ? i.replicate.sd : 'not measured', i.flags.join(', '), i.reasons.join('; '),
+      i.replicate ? i.replicate.sd : 'not measured', i.flags.length ? i.flags.join(', ') : 'INSUFFICIENT-DATA', i.reasons.join('; '),
     ])), '');
-    L.push(`${g.items.length - flagged.length} of ${g.items.length} items have no flag; criteria.json lists them all.`, '');
+    L.push(`${g.items.length - flagged.length} of ${g.items.length} items have no flag and enough runs; criteria.json lists them all.`, '');
   }
   L.push('## Not shown by this report', '',
     '- A rubric criterion and a check belong to one task, so a comparison inside one run directory rests on that task\'s replicates; the interval is a bootstrap over them and treats runs as independent. Items found in two or more run directories get a paired interval by directory.',

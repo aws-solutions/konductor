@@ -144,12 +144,18 @@ function share(v, name) {
   return n;
 }
 
+function minRuns(v) {
+  const n = num(v, 'min-runs');
+  if (n !== undefined && (!Number.isInteger(n) || n < 1)) throw new Error('--min-runs takes a whole number of 1 or more');
+  return n;
+}
+
 function cmdCriteria(opts) {
   const studyArg = val(opts.study);
   const dirs = runDirsOf(opts);
   if (!studyArg && !dirs.length) throw new Error('--study DIR or --runs DIR[,DIR] is required');
   if (studyArg && dirs.length) throw new Error('give --study or --runs, not both');
-  const config = withoutUndefined({ margin: share(opts.margin, 'margin'), saturated: share(opts.saturated, 'saturated'), judgeDisagree: share(opts['judge-disagree'], 'judge-disagree'), replicateSd: share(opts['replicate-sd'], 'replicate-sd'), adjust: opts['no-adjust'] ? false : undefined });
+  const config = withoutUndefined({ margin: share(opts.margin, 'margin'), saturated: share(opts.saturated, 'saturated'), judgeDisagree: share(opts['judge-disagree'], 'judge-disagree'), replicateSd: share(opts['replicate-sd'], 'replicate-sd'), minRuns: minRuns(opts['min-runs']), adjust: opts['no-adjust'] ? false : undefined });
   const extra = list(opts['extra-tasks']).map((d) => path.resolve(d));
   let groups;
   let outDir = pathOpt(opts.out);

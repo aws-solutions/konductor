@@ -187,9 +187,9 @@ const USAGE = `Usage:
        with confidence, lift against the control with an interval, the A/A spread, tokens saved and a unified diff per DELETE or PRUNE under patches/. No call
        unless the controls passed, an A/A arm exists, scores are on a 0 to 1 scale, enough runs back it and the skill loaded. Nothing is applied)
   node bench/runner/bench.js cap criteria --study DIR | --runs DIR[,DIR] | --runs-glob 'DIR/*' [--baseline ARM] [--aa ARM] [--out DIR] [--json] [--margin 0.1]
-       [--saturated 0.95] [--judge-disagree 0.3] [--replicate-sd 0.4] [--no-adjust] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       [--saturated 0.95] [--judge-disagree 0.3] [--replicate-sd 0.4] [--min-runs 5] [--no-adjust] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (read-only, no model call, advisory: per rubric criterion and check, the pass rate per arm and the variant minus baseline difference with an interval,
-       flagged NON-DISCRIMINATING, SATURATED or HIGH-VARIANCE from the judgments and check results on disk. Writes criteria.md and criteria.json to --out
+       flagged NON-DISCRIMINATING, SATURATED or HIGH-VARIANCE (or reported INSUFFICIENT-DATA) from the judgments and check results on disk. Writes criteria.md and criteria.json to --out
        (default DIR/criteria for --study). Changes no call, margin or floor of cap decide)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
