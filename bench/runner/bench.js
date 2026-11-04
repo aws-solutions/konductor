@@ -193,10 +193,12 @@ const USAGE = `Usage:
        arm's run of the drawn task and replicate (--sample-only: the drawn runs only) under the letters A, B, ... in a seeded random order; the
        letter-to-arm map goes to review-key.json beside the page. Outputs are the judge bundles, with the same redaction plus credential scrubbing.
        The page loads nothing and needs no server; ratings download as a JSON file. Default --out: DIR/calibration/review)
-  node bench/runner/bench.js cap review-import --ratings FILE [--key FILE] [--out DIR] [--save FILE] [--force] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--json]
-       (free: checks the downloaded ratings against review-key.json, joins each letter back to its run, writes sheet.json and key.json for
-       calibrate score, prints judge-vs-human kappa, agreement and Spearman, checks any evidence quotes against the output, and saves the result
-       to DIR/calibration/result.json, which report reads. A result.json from anything other than this page is kept unless --force or --save FILE)
+  node bench/runner/bench.js cap review-import --ratings FILE [--key FILE] [--rater ID] [--out DIR] [--save FILE] [--force] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--json]
+       (free: checks the downloaded ratings against review-key.json, joins each letter back to its run and keeps them per rater under
+       raters/ID/ (ID from --rater, else the Rater name on the page). Each rater is scored alone, and all raters on file are pooled into the
+       sheet.json and key.json that calibrate score reads and into DIR/calibration/result.json, which report reads; it prints judge-vs-human
+       kappa, agreement and Spearman and checks any evidence quotes against the output. A file that rates nothing is refused. An existing
+       rater's ratings, or a result.json this page did not write, are kept unless --force; nothing is written when the import is refused)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
        [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
   node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--save FILE]

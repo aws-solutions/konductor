@@ -313,15 +313,20 @@ rater the page and not the key. The rater marks each criterion pass, partial or 
 browser keeps the ratings in local storage, and Download ratings saves them as a JSON file. Load ratings resumes from such a file.
 
 `cap review-import --ratings FILE --key DIR/calibration/review/review-key.json` checks the file against the key (same page, known items
-and criteria, verdicts pass, partial, fail or null), joins each letter back to its arm, task and replicate, and writes `sheet.json` and
-`key.json` beside the key in the format `calibrate score` reads. It then prints the same judge-vs-human and judge-vs-judge table, says how
-many evidence quotes were found in the output (the judges' quote rule), and saves the result to `DIR/calibration/result.json`, where
-`report` and the detailed profile look for it. A `result.json` that came from anything other than this page is kept unless `--force` or
-`--save FILE`.
+and criteria, verdicts pass, partial, fail or null) and joins each letter back to its arm, task and replicate. Ratings are kept per rater
+in `raters/ID/` beside the key; the id is `--rater ID`, else the Rater name typed on the page. A file that rates no criterion, or has no
+rater id, is refused. Importing a rater that is already on file is refused unless `--force`, so a second import never replaces the first.
+
+With several raters on file, each is scored alone (`raters/ID/result.json`), and all of them are pooled for the combined result: the
+`sheet.json` and `key.json` beside the key list every output once per rater, so each rater's labels count as their own criterion pairs
+against each judge in the same kappa, agreement and Spearman code `calibrate score` uses. The command prints that table, says how many
+evidence quotes were found in the output (the judges' quote rule), and saves the pooled result, with each rater's figures under `byRater`,
+to `DIR/calibration/result.json`, where `report` and the detailed profile look for it. A `result.json` that this page did not write is
+kept unless `--force` or `--save FILE`. A refused import writes nothing.
 
 ```
 node bench/runner/bench.js cap review --run V/claude
-node bench/runner/bench.js cap review-import --ratings ~/Downloads/ratings-VIEWER.json --key V/claude/calibration/review/review-key.json
+node bench/runner/bench.js cap review-import --ratings ~/Downloads/ratings-VIEWER.json --key V/claude/calibration/review/review-key.json --rater alice
 ```
 
 ## Benchmark a PR or work in progress

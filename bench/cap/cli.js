@@ -614,7 +614,7 @@ function cmdReviewImport(opts) {
   if (!ratingsFile) throw new Error('--ratings FILE is required (the JSON file the review page downloaded)');
   const t = DEFAULTS.thresholds;
   const r = importRatings({
-    ratingsFile, keyFile: pathOpt(opts.key), outDir: pathOpt(opts.out), save: pathOpt(opts.save), force: Boolean(opts.force),
+    ratingsFile, keyFile: pathOpt(opts.key), rater: opts.rater && opts.rater !== true ? String(opts.rater) : undefined, outDir: pathOpt(opts.out), save: pathOpt(opts.save), force: Boolean(opts.force),
     thresholds: { kappaMin: posNum(opts, 'kappa-min') ?? t.kappaMin, agreementMin: posNum(opts, 'agreement-min') ?? t.agreementMin, spearmanMin: posNum(opts, 'spearman-min') ?? t.spearmanMin },
   });
   if (opts.json) { console.log(JSON.stringify(r.res, null, 2)); return; }
@@ -622,6 +622,7 @@ function cmdReviewImport(opts) {
   console.log([
     formatCalibration(r.res), '',
     `Evidence quotes: ${q.checked ? `${q.found} of ${q.checked} found in the output${q.notFound.length ? `; not found: ${q.notFound.join(', ')}` : ''}` : 'none given'}`,
+    `rater "${r.raterId}" kept in ${r.raterFile}; raters on file: ${r.raters.join(', ')} (the table pools them; each rater's own figures are in raters/<id>/result.json and under byRater)`,
     `wrote ${r.sheetPath} and ${r.sheetKeyPath} (calibrate score reads these) and ${r.savePath} (the report reads this)`,
   ].join('\n'));
 }

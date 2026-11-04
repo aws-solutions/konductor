@@ -11,7 +11,7 @@ const { spawnSync } = require('node:child_process');
 const { tmp, makeBench, makeRun, writeJudgments } = require('./helpers.js');
 const { DEFAULTS } = require('../../judge/config.js');
 const { compileRedactions, DEFAULT_REDACTIONS } = require('../../judge/redact.js');
-const { writeReview, importRatings, validateRatings, sampleParams } = require('../../cap/review.js');
+const { writeReview, importRatings, validateRatings, sampleParams, raterIdOf } = require('../../cap/review.js');
 const viewer = require('../../cap/review-viewer.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
@@ -148,6 +148,8 @@ test('import joins ratings to runs through the key, writes the calibrate files a
     fs.writeFileSync(ratingsFile, JSON.stringify(rate(r, { quote: (it) => (it.armId === 'vanilla' ? 'answer one' : 'not in the output at all') })));
     const out = importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
     assert.equal(out.savePath, path.join(f.runDir, 'calibration', 'result.json'));
+    assert.equal(out.raterId, 'tester');
+    assert.equal(out.raterFile, path.join(r.dir, 'raters', 'tester', 'ratings.json'));
     assert.equal(out.res.itemsLabeled, 6);
     assert.equal(out.res.judges.good.status, 'PASS');
     assert.equal(out.res.judges.good.kappa, 1);
@@ -161,13 +163,93 @@ test('import joins ratings to runs through the key, writes the calibrate files a
     const sheet = readJson(out.sheetPath);
     for (const it of sheet.items) assert.equal(it.labels.c1, sheetKey.items[it.itemId].replicate % 2 ? 'pass' : 'fail');
     const saved = readJson(out.savePath);
-    assert.equal(saved.source.kind, 'review');
-    assert.equal(saved.source.rater, 'tester');
-    // Re-importing the same page replaces its own result; a result from elsewhere needs --force.
-    importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    assert.deepEqual(saved.source.raters, ['tester']);
+    assert.equal(saved.byRater.tester.judges.good.kappa, 1);
+    assert.equal(readJson(path.join(r.dir, 'raters', 'tester', 'result.json')).judges.good.kappa, 1);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+// Every file under a directory with its bytes, to show a refused import wrote nothing.
+const snapshot = (dir) => {
+  const out = {};
+  const visit = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) visit(p); else out[p] = fs.readFileSync(p, 'utf8'); } };
+  visit(dir);
+  return out;
+};
+
+test('a second import for the same rater is refused and writes nothing; --force replaces it', () => {
+  const f = fixture();
+  try {
+    judgePanel(f.runDir);
+    const r = writeReview(opts(f, { n: 6, seed: 2 }));
+    const first = path.join(f.root, 'first.json');
+    fs.writeFileSync(first, JSON.stringify(rate(r)));
+    importRatings({ ratingsFile: first, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    const second = rate(r);
+    for (const it of second.items) it.labels.c1 = 'partial';
+    const secondFile = path.join(f.root, 'second.json');
+    fs.writeFileSync(secondFile, JSON.stringify(second));
+    const before = snapshot(f.runDir);
+    assert.throws(() => importRatings({ ratingsFile: secondFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }), /already holds ratings from rater "tester"; pass --force/);
+    assert.deepEqual(snapshot(f.runDir), before);
+    const out = importRatings({ ratingsFile: secondFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds, force: true });
+    assert.equal(readJson(out.raterFile).items[0].labels.c1, 'partial');
+    assert.deepEqual(out.raters, ['tester']);
+    // A result.json this page did not write is kept unless --force, and nothing else is written either.
     fs.writeFileSync(out.savePath, JSON.stringify({ judges: {} }));
-    assert.throws(() => importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }), /pass --force/);
-    importRatings({ ratingsFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds, force: true });
+    const third = path.join(f.root, 'third.json');
+    fs.writeFileSync(third, JSON.stringify({ ...rate(r), rater: 'someone else' }));
+    const kept = snapshot(f.runDir);
+    assert.throws(() => importRatings({ ratingsFile: third, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }), /did not write; pass --force/);
+    assert.deepEqual(snapshot(f.runDir), kept);
+    importRatings({ ratingsFile: third, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds, force: true });
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('a ratings file that rates nothing, or has no rater id, is refused and writes nothing', () => {
+  const f = fixture();
+  try {
+    const r = writeReview(opts(f, { n: 2, seed: 1 }));
+    const data = dataOf(fs.readFileSync(r.pagePath, 'utf8'));
+    const blank = viewer.ratingsPayload(data, { ...viewer.emptyState(data), rater: 'tester' }, null);
+    const blankFile = path.join(f.root, 'blank.json');
+    fs.writeFileSync(blankFile, JSON.stringify(blank));
+    const before = snapshot(f.runDir);
+    assert.throws(() => importRatings({ ratingsFile: blankFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }), /rates no criterion of any output; nothing was written/);
+    assert.throws(() => importRatings({ ratingsFile: blankFile, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds, force: true }), /rates no criterion/);
+    const nameless = path.join(f.root, 'nameless.json');
+    fs.writeFileSync(nameless, JSON.stringify({ ...rate(r), rater: '  ' }));
+    assert.throws(() => importRatings({ ratingsFile: nameless, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds }), /no rater id/);
+    assert.deepEqual(snapshot(f.runDir), before);
+    assert.equal(raterIdOf('Jane Doe!'), 'jane-doe');
+    assert.equal(raterIdOf('../x'), 'x');
+    assert.equal(raterIdOf(''), null);
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('two raters coexist: each is kept and scored alone, and the combined result pools both', () => {
+  const f = fixture();
+  try {
+    judgePanel(f.runDir);
+    const r = writeReview(opts(f, { n: 6, seed: 2 }));
+    const a = path.join(f.root, 'a.json');
+    fs.writeFileSync(a, JSON.stringify(rate(r)));
+    importRatings({ ratingsFile: a, keyFile: r.keyPath, thresholds: DEFAULTS.thresholds });
+    // The second rater agrees with the "bad" judge on c1.
+    const other = rate(r);
+    const key = readJson(r.keyPath);
+    const rep = new Map(key.groups.flatMap((g) => g.items.map((i) => [i.itemId, i.replicate])));
+    for (const it of other.items) it.labels.c1 = rep.get(it.itemId) % 2 ? 'fail' : 'pass';
+    const b = path.join(f.root, 'b.json');
+    fs.writeFileSync(b, JSON.stringify(other));
+    const out = importRatings({ ratingsFile: b, keyFile: r.keyPath, rater: 'second', thresholds: DEFAULTS.thresholds });
+    assert.deepEqual(out.raters, ['second', 'tester']);
+    assert.ok(fs.existsSync(path.join(r.dir, 'raters', 'tester', 'ratings.json')), 'the first rater is still on file');
+    assert.equal(out.res.byRater.tester.judges.good.kappa, 1);
+    assert.ok(out.res.byRater.second.judges.good.kappa < 0.6);
+    assert.equal(out.res.judges.good.nCriteria, 24, 'pooled: each rater adds its own criterion pairs');
+    assert.equal(readJson(out.sheetPath).items.length, 12);
+    assert.ok(out.res.judges.good.kappa < 1 && out.res.judges.good.kappa > out.res.byRater.second.judges.good.kappa);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
@@ -282,6 +364,10 @@ test('cap review and cap review-import from the command line', () => {
     assert.equal(b.status, 0, b.stderr);
     assert.match(b.stdout, /good\s+PASS/);
     assert.match(b.stdout, /Evidence quotes: none given/);
+    assert.match(b.stdout, /rater "tester" kept in/);
+    const again = cli(['cap', 'review-import', '--ratings', ratingsFile, '--key', keyPath]);
+    assert.equal(again.status, 2);
+    assert.match(again.stderr, /pass --force/);
     const bad = cli(['cap', 'review-import', '--ratings', path.join(f.root, 'missing.json'), '--key', keyPath]);
     assert.equal(bad.status, 2);
     assert.match(bad.stderr, /cannot read/);

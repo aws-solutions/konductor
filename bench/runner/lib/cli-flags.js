@@ -49,7 +49,7 @@ const FLAGS = {
   ],
   'cap decide': ['study', 'out', 'json', 'repo-root', 'bench-dir', 'extra-tasks', 'no-patches'],
   'cap review': ['run', 'n', 'seed', 'sample-only', 'out', 'force', 'bench-dir', 'extra-tasks', 'max-file-chars', 'max-bundle-chars', 'redact-file'],
-  'cap review-import': ['ratings', 'key', 'out', 'save', 'force', 'kappa-min', 'agreement-min', 'spearman-min', 'json'],
+  'cap review-import': ['ratings', 'key', 'rater', 'out', 'save', 'force', 'kappa-min', 'agreement-min', 'spearman-min', 'json'],
   'cap plan': [
     'mode', 'cap', 'base', 'reps', 'tasks', 'budget-credits', 'vanilla', 'allow-regex', 'force', 'candidate', 'acting-agent', 'agent-engine', 'scratch', 'seed',
     'repo-root', 'bench-dir', 'extra-tasks', 'json', 'profile',
