@@ -174,6 +174,7 @@ async function cmdRun(opts) {
   if (isCc) {
     const multiTurn = tasks.filter((t) => t.autonomy).map((t) => t.id);
     if (multiTurn.length) throw new Error(`multi-turn (autonomy) tasks are not supported on the Claude Code harness yet: ${multiTurn.join(', ')}; the resume flags have not been verified. Choose other tasks with --tasks`);
+    cc.checkCredentials(process.env);
   }
   const budgetCredits = opts[budgetFlag] ? Number(opts[budgetFlag]) : null;
   if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
@@ -236,7 +237,6 @@ async function cmdRun(opts) {
       if (opts['run-budget-usd'] === true || !(runBudgetUsd > 0)) throw new Error('--run-budget-usd must be a positive number');
     }
     ccRegion = opts['aws-region'] && opts['aws-region'] !== true ? opts['aws-region'] : cc.REGION;
-    cc.checkCredentials(process.env);
   } else if (opts['aws-region'] !== undefined) {
     throw new Error('--aws-region applies to Claude Code (cc-) arms only; judge commands take it separately');
   }

@@ -253,6 +253,8 @@ test('CLI: missing credentials stop the run before claude starts and the message
     assert.notEqual(r.code, 0);
     assert.match(r.err, /missing AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY/);
     assert.equal(fs.existsSync(path.join(s.probe, 'started.json')), false);
+    assert.deepEqual(fs.readdirSync(path.join(s.root, 'tmp')), [], 'no scratch directory is left');
+    assert.equal(fs.existsSync(path.join(s.root, 'o')), false, 'no output directory is made');
   } finally {
     fs.rmSync(s.root, { recursive: true, force: true });
   }
