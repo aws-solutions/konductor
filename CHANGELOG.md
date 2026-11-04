@@ -192,6 +192,16 @@ not per individual commit.
   null when the gap was computed. Together with `graded` (the judge verdict alone), `verdict` (the
   verdict after the gate), `verdict.judge_verdict`, and `word_check.mean`, `ci` and `vetoed`, the
   result now carries everything a report needs. The gate rule and the thresholds are unchanged.
+- `bench/lib/report.js`, `renderReport(run)`: a plain-markdown report of one run, from the object
+  `runSummary` returns. It is deterministic and reads no clock, file or environment. It prints the
+  run status and each control's verdict against the expected one; then, for each skill in name
+  order, the final verdict and the judge-only verdict, the judge gap as a mean and 95% interval
+  over the usable pairs, the word-check gap as a mean and 95% interval or "gate off: k pairs with
+  checks, need 8", whether the gate changed the verdict and why, `trusted` and the reasons it is
+  not, and the counts of load failures, treatment failures and unscored pairs. Every threshold is
+  introduced as provisional. It copies named numeric and fixed-word fields only, so no task id,
+  answer, file path or file content, and no text a treatment check matched, can reach it; a key
+  that is not a valid skill name prints as "(unnamed skill)".
 - PR CI runs the bench tests (`node --test "bench/test/**/*.test.js"`) on Node 22.
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
   toolchain; builds and tests stay on stable.
