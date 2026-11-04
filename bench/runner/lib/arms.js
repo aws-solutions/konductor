@@ -7,7 +7,8 @@ const source = require('./arm-source.js');
 
 const MAIN_LABEL = 'main-unreleased';
 const OC_PREFIX = 'oc-';
-const KNOWN_ARMS = ['vanilla', 'v1.0.0', 'v1.1.0', 'v1.2.0', 'main', 'oc-vanilla', 'oc-v1.2.0', 'oc-main'];
+const CC_PREFIX = 'cc-';
+const KNOWN_ARMS = ['vanilla', 'v1.0.0', 'v1.1.0', 'v1.2.0', 'main', 'oc-vanilla', 'oc-v1.2.0', 'oc-main', 'cc-vanilla', 'cc-main'];
 
 function git(repo, args) {
   return execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -48,11 +49,12 @@ const TAG_NAME_RE = /^v\d+\.\d+\.\d+$/;
 
 /**
  * Arm spec grammar: `vanilla` | `main` | `vX.Y.Z` (a release tag) | `name=<git ref>` | `name=dir:<path>`,
- * optionally prefixed `oc-` for the opencode runtime. A bare ref without a name is refused so a label always
+ * optionally prefixed `oc-` for the opencode runtime or `cc-` for Claude Code. A bare ref without a name is refused so a label always
  * says what it is.
  */
 function parseArmSpec(spec) {
   if (spec.startsWith(OC_PREFIX)) return { ...parseArmSpec(spec.slice(OC_PREFIX.length)), oc: true };
+  if (spec.startsWith(CC_PREFIX)) return { ...parseArmSpec(spec.slice(CC_PREFIX.length)), cc: true };
   if (spec === 'vanilla') return { kind: 'vanilla', name: 'vanilla' };
   const eq = spec.indexOf('=');
   if (eq === -1) {
@@ -125,6 +127,10 @@ function resolveArm(spec, repo) {
     const base = resolveArm(spec.slice(OC_PREFIX.length), repo);
     return { ...base, id: `${OC_PREFIX}${base.id}`, label: `${OC_PREFIX}${base.label}`, runtime: 'opencode', harness: base.vanilla ? 'none' : 'claude' };
   }
+  if (parsed.cc) {
+    const base = resolveArm(spec.slice(CC_PREFIX.length), repo);
+    return { ...base, id: `${CC_PREFIX}${base.id}`, label: `${CC_PREFIX}${base.label}`, runtime: 'claude-code', harness: base.vanilla ? 'none' : 'claude' };
+  }
   if (parsed.kind === 'vanilla') {
     return { id: 'vanilla', label: 'vanilla', ref: null, commitSha: null, source: null, dirty: null, contentHash: null, harness: 'none', runtime: 'kiro-cli', agent: null, vanilla: true, warnings: [] };
   }
@@ -146,15 +152,18 @@ function resolveArms(specs, repo) {
 function listArms() {
   return KNOWN_ARMS.map((id) => {
     const oc = id.startsWith(OC_PREFIX);
-    const base = oc ? id.slice(OC_PREFIX.length) : id;
+    const cc = id.startsWith(CC_PREFIX);
+    const base = oc ? id.slice(OC_PREFIX.length) : cc ? id.slice(CC_PREFIX.length) : id;
     const vanilla = base === 'vanilla';
     return {
       id,
-      condition: oc
+      condition: cc
+        ? (vanilla ? 'Claude Code on Bedrock, empty config dir, no agent' : 'Claude Code, --agent konductor (claude harness install)')
+        : oc
         ? (vanilla ? 'opencode on Bedrock, empty config, no agent' : 'opencode, --agent konductor (claude harness content translated)')
         : (vanilla ? 'kiro-cli, empty ~/.kiro, no --agent' : '--agent konductor'),
       ref: base === 'vanilla' ? null : base,
-      note: base === 'main' ? `local origin/main (no fetch), labelled ${oc ? OC_PREFIX : ''}${MAIN_LABEL}@<sha>` : '',
+      note: base === 'main' ? `local origin/main (no fetch), labelled ${oc ? OC_PREFIX : cc ? CC_PREFIX : ''}${MAIN_LABEL}@<sha>` : '',
     };
   });
 }
@@ -192,4 +201,4 @@ function formatArmRows(arms) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ').trimEnd()).join('\n');
 }
 
-module.exports = { resolveArm, resolveArms, parseArmSpec, resolveMain, listArms, formatArmRows, ARM_SYNTAX, KNOWN_ARMS, MAIN_LABEL, OC_PREFIX };
+module.exports = { resolveArm, resolveArms, parseArmSpec, resolveMain, listArms, formatArmRows, ARM_SYNTAX, KNOWN_ARMS, MAIN_LABEL, OC_PREFIX, CC_PREFIX };

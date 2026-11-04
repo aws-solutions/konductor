@@ -53,6 +53,7 @@ const BASIS = {
   'kiro-cli': { unit: 'credits', efficiency: EFFICIENCY, charged: chargedCredits, observed: (r) => num(r.credits), censored: (r) => r.creditsCensored === true, perSuccess: 'creditsPerSuccess' },
   opencode: { unit: 'usd', efficiency: EFFICIENCY_OC, charged: chargedUsd, observed: (r) => num(r.costUsd), censored: (r) => r.costCensored === true, perSuccess: 'costPerSuccess' },
 };
+BASIS['claude-code'] = BASIS.opencode;
 
 // Mutually exclusive outcome of one executed run. Only 'good' runs feed the efficiency medians.
 function outcomeOf(r) {
@@ -306,9 +307,9 @@ function recheckSummary(runs) {
 
 // vanilla when the run has it; a run without vanilla (for example --no-vanilla) uses the release arm, then the first arm.
 function defaultBaseline(run) {
-  const oc = run.harness === 'opencode';
+  const prefix = run.harness === 'opencode' ? 'oc-' : run.harness === 'claude-code' ? 'cc-' : '';
   const present = [...new Set((run.runs || []).map((r) => r.armId))];
-  const prefer = [oc ? 'oc-vanilla' : 'vanilla', oc ? 'oc-v1.2.0' : 'v1.2.0'];
+  const prefer = [`${prefix}vanilla`, `${prefix}v1.2.0`];
   return prefer.find((a) => present.includes(a)) ?? (present.length ? [...present].sort()[0] : prefer[0]);
 }
 

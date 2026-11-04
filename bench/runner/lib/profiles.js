@@ -93,7 +93,7 @@ function aaArmFor(arms) {
   }
   const twin = real[0];
   const taken = new Set(arms.map((a) => a.id));
-  const prefix = twin.runtime === 'opencode' ? 'oc-' : '';
+  const prefix = twin.runtime === 'opencode' ? 'oc-' : twin.runtime === 'claude-code' ? 'cc-' : '';
   const stem = unprefixed(twin.id);
   let name = null;
   for (const suffix of 'bcdefgh') {

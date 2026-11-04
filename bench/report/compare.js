@@ -45,10 +45,10 @@ function describe(run) {
     judges: [...(run.judgments?.judges || [])].sort().join(','),
     contentHash: run.config.contentHash ?? '',
     harness: run.harness ?? 'kiro-cli',
-    harnessVersion: (run.harness === 'opencode' ? run.config.harnessVersion ?? results[0].harnessVersion : run.config.kiroCliVersion ?? results[0].kiroCliVersion) ?? '',
+    harnessVersion: (run.harness !== undefined && run.harness !== 'kiro-cli' ? run.config.harnessVersion ?? results[0].harnessVersion : run.config.kiroCliVersion ?? results[0].kiroCliVersion) ?? '',
     isolation: run.config.isolation?.mode ?? results[0].isolation ?? '',
     // Runs written before --agent-engine existed all used v2.
-    agentEngine: run.harness === 'opencode' ? '' : run.config.agentEngine ?? results[0].agentEngine ?? 'v2',
+    agentEngine: run.harness !== undefined && run.harness !== 'kiro-cli' ? '' : run.config.agentEngine ?? results[0].agentEngine ?? 'v2',
   };
 }
 

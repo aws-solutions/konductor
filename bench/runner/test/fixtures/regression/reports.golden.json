@@ -1,0 +1,1047 @@
+{
+ "kiro": {
+  "harness": "kiro-cli",
+  "json": {
+   "schemaVersion": 1,
+   "harness": "kiro-cli",
+   "costUnit": "credits",
+   "run": {
+    "dir": "<DIR>",
+    "suite": "lite",
+    "model": "claude-sonnet-5.5",
+    "effort": "high",
+    "taskIds": [
+     "t1"
+    ],
+    "kiroCliVersion": "kiro-cli 2.35.1",
+    "harnessVersion": "kiro-cli 2.35.1"
+   },
+   "baseline": "vanilla",
+   "judges": [],
+   "scopes": [
+    "overall",
+    "simple"
+   ],
+   "arms": {
+    "vanilla": {
+     "overall": {
+      "n": 3,
+      "skipped": 0,
+      "byStatus": {
+       "success": 3,
+       "timeout": 0,
+       "error": 0
+      },
+      "counts": {
+       "good": 3,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "rates": {
+       "good": 1,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "successRate": 1,
+      "timeoutRate": 0,
+      "askedUserRate": null,
+      "flagCounts": {},
+      "checkPassRate": 1,
+      "hidden": null,
+      "regression": null,
+      "contamination": null,
+      "minReplicates": 3,
+      "lowReplicates": false,
+      "notJudged": 0,
+      "efficiencyRuns": 3,
+      "credits": {
+       "unit": "credits",
+       "total": 9,
+       "observedTotal": 9,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 3
+      },
+      "rubric": null,
+      "pairwise": null,
+      "efficiency": {
+       "credits": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 2,
+        "ciHigh": 4
+       },
+       "modelCalls": {
+        "n": 3,
+        "median": 2,
+        "ciLow": 2,
+        "ciHigh": 2
+       },
+       "toolCalls": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 3,
+        "ciHigh": 3
+       },
+       "subagentCalls": {
+        "n": 3,
+        "median": 0,
+        "ciLow": 0,
+        "ciHigh": 0
+       },
+       "wallClockMs": {
+        "n": 3,
+        "median": 1000,
+        "ciLow": 1000,
+        "ciHigh": 1000
+       },
+       "estTokens": {
+        "n": 3,
+        "median": 100,
+        "ciLow": 100,
+        "ciHigh": 100,
+        "isEstimate": true
+       }
+      },
+      "flags": [],
+      "cost": {
+       "unit": "credits",
+       "total": 9,
+       "observedTotal": 9,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 3
+      }
+     },
+     "simple": {
+      "n": 3,
+      "skipped": 0,
+      "byStatus": {
+       "success": 3,
+       "timeout": 0,
+       "error": 0
+      },
+      "counts": {
+       "good": 3,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "rates": {
+       "good": 1,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "successRate": 1,
+      "timeoutRate": 0,
+      "askedUserRate": null,
+      "flagCounts": {},
+      "checkPassRate": 1,
+      "hidden": null,
+      "regression": null,
+      "contamination": null,
+      "minReplicates": 3,
+      "lowReplicates": false,
+      "notJudged": 0,
+      "efficiencyRuns": 3,
+      "credits": {
+       "unit": "credits",
+       "total": 9,
+       "observedTotal": 9,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 3
+      },
+      "rubric": null,
+      "pairwise": null,
+      "efficiency": {
+       "credits": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 2,
+        "ciHigh": 4
+       },
+       "modelCalls": {
+        "n": 3,
+        "median": 2,
+        "ciLow": 2,
+        "ciHigh": 2
+       },
+       "toolCalls": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 3,
+        "ciHigh": 3
+       },
+       "subagentCalls": {
+        "n": 3,
+        "median": 0,
+        "ciLow": 0,
+        "ciHigh": 0
+       },
+       "wallClockMs": {
+        "n": 3,
+        "median": 1000,
+        "ciLow": 1000,
+        "ciHigh": 1000
+       },
+       "estTokens": {
+        "n": 3,
+        "median": 100,
+        "ciLow": 100,
+        "ciHigh": 100,
+        "isEstimate": true
+       }
+      },
+      "flags": [],
+      "cost": {
+       "unit": "credits",
+       "total": 9,
+       "observedTotal": 9,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 3
+      }
+     }
+    },
+    "v1.2.0": {
+     "overall": {
+      "n": 3,
+      "skipped": 0,
+      "byStatus": {
+       "success": 3,
+       "timeout": 0,
+       "error": 0
+      },
+      "counts": {
+       "good": 3,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "rates": {
+       "good": 1,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "successRate": 1,
+      "timeoutRate": 0,
+      "askedUserRate": null,
+      "flagCounts": {},
+      "checkPassRate": 1,
+      "hidden": null,
+      "regression": null,
+      "contamination": null,
+      "minReplicates": 3,
+      "lowReplicates": false,
+      "notJudged": 0,
+      "efficiencyRuns": 3,
+      "credits": {
+       "unit": "credits",
+       "total": 15,
+       "observedTotal": 15,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 5
+      },
+      "rubric": null,
+      "pairwise": null,
+      "efficiency": {
+       "credits": {
+        "n": 3,
+        "median": 5,
+        "ciLow": 4,
+        "ciHigh": 6
+       },
+       "modelCalls": {
+        "n": 3,
+        "median": 2,
+        "ciLow": 2,
+        "ciHigh": 2
+       },
+       "toolCalls": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 3,
+        "ciHigh": 3
+       },
+       "subagentCalls": {
+        "n": 3,
+        "median": 0,
+        "ciLow": 0,
+        "ciHigh": 0
+       },
+       "wallClockMs": {
+        "n": 3,
+        "median": 1000,
+        "ciLow": 1000,
+        "ciHigh": 1000
+       },
+       "estTokens": {
+        "n": 3,
+        "median": 100,
+        "ciLow": 100,
+        "ciHigh": 100,
+        "isEstimate": true
+       }
+      },
+      "flags": [],
+      "cost": {
+       "unit": "credits",
+       "total": 15,
+       "observedTotal": 15,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 5
+      }
+     },
+     "simple": {
+      "n": 3,
+      "skipped": 0,
+      "byStatus": {
+       "success": 3,
+       "timeout": 0,
+       "error": 0
+      },
+      "counts": {
+       "good": 3,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "rates": {
+       "good": 1,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "successRate": 1,
+      "timeoutRate": 0,
+      "askedUserRate": null,
+      "flagCounts": {},
+      "checkPassRate": 1,
+      "hidden": null,
+      "regression": null,
+      "contamination": null,
+      "minReplicates": 3,
+      "lowReplicates": false,
+      "notJudged": 0,
+      "efficiencyRuns": 3,
+      "credits": {
+       "unit": "credits",
+       "total": 15,
+       "observedTotal": 15,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 5
+      },
+      "rubric": null,
+      "pairwise": null,
+      "efficiency": {
+       "credits": {
+        "n": 3,
+        "median": 5,
+        "ciLow": 4,
+        "ciHigh": 6
+       },
+       "modelCalls": {
+        "n": 3,
+        "median": 2,
+        "ciLow": 2,
+        "ciHigh": 2
+       },
+       "toolCalls": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 3,
+        "ciHigh": 3
+       },
+       "subagentCalls": {
+        "n": 3,
+        "median": 0,
+        "ciLow": 0,
+        "ciHigh": 0
+       },
+       "wallClockMs": {
+        "n": 3,
+        "median": 1000,
+        "ciLow": 1000,
+        "ciHigh": 1000
+       },
+       "estTokens": {
+        "n": 3,
+        "median": 100,
+        "ciLow": 100,
+        "ciHigh": 100,
+        "isEstimate": true
+       }
+      },
+      "flags": [],
+      "cost": {
+       "unit": "credits",
+       "total": 15,
+       "observedTotal": 15,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 5
+      }
+     }
+    }
+   },
+   "judging": null,
+   "checksRecheck": null
+  },
+  "md": "# Benchmark report\n\nRun: <DIR>  \nSuite: lite, model claude-sonnet-5.5, effort high, 1 task(s), kiro-cli kiro-cli 2.35.1  \nBaseline: vanilla. Judges: none (run the judge command for rubric and pairwise results)\n\nHow to read: efficiency cells (credits, calls, wall clock, tokens) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median, so they cannot make an arm look cheap; they are shown as rates beside every cost figure (timeout, error, infra, model mismatch, checks failed, budget-skipped). \"success\" is the share of runs that finished cleanly; \"pass\" also needs every check to pass. \"credits per successful run\" is the total charged over all executed runs divided by clean passes, so failures raise it; a run killed before its final metering event is charged the runner's ledger value, not its partial figure. Tokens are not exposed by kiro-cli, so credits are the cost measure and estTokens is transcript characters / 4, an estimate. \"asked user\" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.\n\n## Flags\n\nNone.\n\n## Results\n\n### overall\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs vanilla | credits per successful run |\n|---|---|---|---|---|---|---|---|---|\n| vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 3.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| v1.2.0 | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 5.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | credits | modelCalls | toolCalls | subagentCalls | wallClock s | estTokens (estimate) |\n|---|---|---|---|---|---|---|---|\n| vanilla | 3 of 3 | 3.00 [2.00, 4.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n| v1.2.0 | 3 of 3 | 5.00 [4.00, 6.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n\n### simple\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs vanilla | credits per successful run |\n|---|---|---|---|---|---|---|---|---|\n| vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 3.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| v1.2.0 | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 5.00<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | credits | modelCalls | toolCalls | subagentCalls | wallClock s | estTokens (estimate) |\n|---|---|---|---|---|---|---|---|\n| vanilla | 3 of 3 | 3.00 [2.00, 4.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n| v1.2.0 | 3 of 3 | 5.00 [4.00, 6.00]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] | 100 [100, 100] |\n"
+ },
+ "oc": {
+  "harness": "opencode",
+  "json": {
+   "schemaVersion": 1,
+   "harness": "opencode",
+   "costUnit": "usd",
+   "run": {
+    "dir": "<DIR>",
+    "suite": "lite",
+    "model": "global.anthropic.claude-sonnet-5-5",
+    "effort": "high",
+    "taskIds": [
+     "t1"
+    ],
+    "kiroCliVersion": null,
+    "harnessVersion": "1.19.5"
+   },
+   "baseline": "oc-vanilla",
+   "judges": [],
+   "scopes": [
+    "overall",
+    "simple"
+   ],
+   "arms": {
+    "oc-vanilla": {
+     "overall": {
+      "n": 3,
+      "skipped": 0,
+      "byStatus": {
+       "success": 3,
+       "timeout": 0,
+       "error": 0
+      },
+      "counts": {
+       "good": 3,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "rates": {
+       "good": 1,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "successRate": 1,
+      "timeoutRate": 0,
+      "askedUserRate": null,
+      "flagCounts": {},
+      "checkPassRate": 1,
+      "hidden": null,
+      "regression": null,
+      "contamination": null,
+      "minReplicates": 3,
+      "lowReplicates": false,
+      "notJudged": 0,
+      "efficiencyRuns": 3,
+      "cost": {
+       "unit": "usd",
+       "total": 0.09,
+       "observedTotal": 0.09,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 0.03
+      },
+      "rubric": null,
+      "pairwise": null,
+      "efficiency": {
+       "costUsd": {
+        "n": 3,
+        "median": 0.03,
+        "ciLow": 0.03,
+        "ciHigh": 0.03
+       },
+       "tokens": {
+        "n": 3,
+        "median": 2000,
+        "ciLow": 1000,
+        "ciHigh": 3000
+       },
+       "modelCalls": {
+        "n": 3,
+        "median": 2,
+        "ciLow": 2,
+        "ciHigh": 2
+       },
+       "toolCalls": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 3,
+        "ciHigh": 3
+       },
+       "subagentCalls": {
+        "n": 3,
+        "median": 0,
+        "ciLow": 0,
+        "ciHigh": 0
+       },
+       "wallClockMs": {
+        "n": 3,
+        "median": 1000,
+        "ciLow": 1000,
+        "ciHigh": 1000
+       }
+      },
+      "flags": []
+     },
+     "simple": {
+      "n": 3,
+      "skipped": 0,
+      "byStatus": {
+       "success": 3,
+       "timeout": 0,
+       "error": 0
+      },
+      "counts": {
+       "good": 3,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "rates": {
+       "good": 1,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "successRate": 1,
+      "timeoutRate": 0,
+      "askedUserRate": null,
+      "flagCounts": {},
+      "checkPassRate": 1,
+      "hidden": null,
+      "regression": null,
+      "contamination": null,
+      "minReplicates": 3,
+      "lowReplicates": false,
+      "notJudged": 0,
+      "efficiencyRuns": 3,
+      "cost": {
+       "unit": "usd",
+       "total": 0.09,
+       "observedTotal": 0.09,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 0.03
+      },
+      "rubric": null,
+      "pairwise": null,
+      "efficiency": {
+       "costUsd": {
+        "n": 3,
+        "median": 0.03,
+        "ciLow": 0.03,
+        "ciHigh": 0.03
+       },
+       "tokens": {
+        "n": 3,
+        "median": 2000,
+        "ciLow": 1000,
+        "ciHigh": 3000
+       },
+       "modelCalls": {
+        "n": 3,
+        "median": 2,
+        "ciLow": 2,
+        "ciHigh": 2
+       },
+       "toolCalls": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 3,
+        "ciHigh": 3
+       },
+       "subagentCalls": {
+        "n": 3,
+        "median": 0,
+        "ciLow": 0,
+        "ciHigh": 0
+       },
+       "wallClockMs": {
+        "n": 3,
+        "median": 1000,
+        "ciLow": 1000,
+        "ciHigh": 1000
+       }
+      },
+      "flags": []
+     }
+    },
+    "oc-k": {
+     "overall": {
+      "n": 3,
+      "skipped": 0,
+      "byStatus": {
+       "success": 3,
+       "timeout": 0,
+       "error": 0
+      },
+      "counts": {
+       "good": 3,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "rates": {
+       "good": 1,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "successRate": 1,
+      "timeoutRate": 0,
+      "askedUserRate": null,
+      "flagCounts": {},
+      "checkPassRate": 1,
+      "hidden": null,
+      "regression": null,
+      "contamination": null,
+      "minReplicates": 3,
+      "lowReplicates": false,
+      "notJudged": 0,
+      "efficiencyRuns": 3,
+      "cost": {
+       "unit": "usd",
+       "total": 0.6000000000000001,
+       "observedTotal": 0.6000000000000001,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 0.20000000000000004
+      },
+      "rubric": null,
+      "pairwise": null,
+      "efficiency": {
+       "costUsd": {
+        "n": 3,
+        "median": 0.2,
+        "ciLow": 0.1,
+        "ciHigh": 0.30000000000000004
+       },
+       "tokens": {
+        "n": 3,
+        "median": 2000,
+        "ciLow": 1000,
+        "ciHigh": 3000
+       },
+       "modelCalls": {
+        "n": 3,
+        "median": 2,
+        "ciLow": 2,
+        "ciHigh": 2
+       },
+       "toolCalls": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 3,
+        "ciHigh": 3
+       },
+       "subagentCalls": {
+        "n": 3,
+        "median": 0,
+        "ciLow": 0,
+        "ciHigh": 0
+       },
+       "wallClockMs": {
+        "n": 3,
+        "median": 1000,
+        "ciLow": 1000,
+        "ciHigh": 1000
+       }
+      },
+      "flags": []
+     },
+     "simple": {
+      "n": 3,
+      "skipped": 0,
+      "byStatus": {
+       "success": 3,
+       "timeout": 0,
+       "error": 0
+      },
+      "counts": {
+       "good": 3,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "rates": {
+       "good": 1,
+       "checksFailed": 0,
+       "timeout": 0,
+       "error": 0,
+       "infraError": 0,
+       "modelMismatch": 0
+      },
+      "successRate": 1,
+      "timeoutRate": 0,
+      "askedUserRate": null,
+      "flagCounts": {},
+      "checkPassRate": 1,
+      "hidden": null,
+      "regression": null,
+      "contamination": null,
+      "minReplicates": 3,
+      "lowReplicates": false,
+      "notJudged": 0,
+      "efficiencyRuns": 3,
+      "cost": {
+       "unit": "usd",
+       "total": 0.6000000000000001,
+       "observedTotal": 0.6000000000000001,
+       "missing": 0,
+       "censoredRuns": 0,
+       "isLowerBound": false,
+       "successfulRuns": 3,
+       "perSuccessfulRun": 0.20000000000000004
+      },
+      "rubric": null,
+      "pairwise": null,
+      "efficiency": {
+       "costUsd": {
+        "n": 3,
+        "median": 0.2,
+        "ciLow": 0.1,
+        "ciHigh": 0.30000000000000004
+       },
+       "tokens": {
+        "n": 3,
+        "median": 2000,
+        "ciLow": 1000,
+        "ciHigh": 3000
+       },
+       "modelCalls": {
+        "n": 3,
+        "median": 2,
+        "ciLow": 2,
+        "ciHigh": 2
+       },
+       "toolCalls": {
+        "n": 3,
+        "median": 3,
+        "ciLow": 3,
+        "ciHigh": 3
+       },
+       "subagentCalls": {
+        "n": 3,
+        "median": 0,
+        "ciLow": 0,
+        "ciHigh": 0
+       },
+       "wallClockMs": {
+        "n": 3,
+        "median": 1000,
+        "ciLow": 1000,
+        "ciHigh": 1000
+       }
+      },
+      "flags": []
+     }
+    }
+   },
+   "judging": null,
+   "checksRecheck": null
+  },
+  "md": "# Benchmark report\n\nRun: <DIR>  \nSuite: lite, model global.anthropic.claude-sonnet-5-5, effort high, 1 task(s), opencode 1.19.5  \nBaseline: oc-vanilla. Judges: none (run the judge command for rubric and pairwise results)\n\nHow to read: efficiency cells (USD, tokens, calls, wall clock) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median; they are shown as rates beside every cost figure. \"success\" is the share of runs that finished cleanly; \"pass\" also needs every check to pass. \"USD per successful run\" is the total charged over all executed runs divided by clean passes, so failures raise it. USD is list price computed by opencode from token counts (input, output, cache read, cache write); it is not a bill. Tokens and calls are summed over the parent session and every subagent session read from the session database. Prompt-cache reads depend on whether a run started within about 5 minutes of another, so cache read and cost carry run-order noise. A timed-out run is charged the rows present at the kill or the arm median, whichever is larger. \"asked user\" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.\n\n## Flags\n\nNone.\n\n## Results\n\n### overall\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs oc-vanilla | USD per successful run |\n|---|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.030<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| oc-k | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.200<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | USD (list price) | tokens (input + output + cache read + cache write) | modelCalls | toolCalls | subagentCalls | wallClock s |\n|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 of 3 | 0.030 [0.030, 0.030]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n| oc-k | 3 of 3 | 0.200 [0.100, 0.300]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n\n### simple\n| arm | n | ok/timeout/error | success | pass | asked user | rubric score, scored (raw judge verdicts) | win/tie/loss vs oc-vanilla | USD per successful run |\n|---|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.030<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n| oc-k | 3 | 3/0/0 | 100% | 100% | n/a | n/a | - | 0.200<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% |\n\n| arm | clean passes in medians | USD (list price) | tokens (input + output + cache read + cache write) | modelCalls | toolCalls | subagentCalls | wallClock s |\n|---|---|---|---|---|---|---|---|\n| oc-vanilla | 3 of 3 | 0.030 [0.030, 0.030]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n| oc-k | 3 of 3 | 0.200 [0.100, 0.300]<br>timeout 0%; error 0%, infra 0%, model mismatch 0%, checks failed 0% | 2000 [1000, 3000] | 2.0 [2.0, 2.0] | 3.0 [3.0, 3.0] | 0.0 [0.0, 0.0] | 1.0 [1.0, 1.0] |\n"
+ },
+ "results": {
+  "kiro": {
+   "armId": "v1",
+   "armLabel": "v1",
+   "ref": "v1.2.0",
+   "commitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "source": null,
+   "refResolved": null,
+   "dirty": null,
+   "contentHash": null,
+   "baseSha": null,
+   "mergeBase": null,
+   "commitsAhead": null,
+   "filesChanged": null,
+   "changedSkills": null,
+   "harness": "kiro-cli",
+   "installHarness": "kiro-v3",
+   "harnessVersion": "kiro-cli 2.35.1",
+   "model": "claude-sonnet-5.5",
+   "effort": "high",
+   "taskId": "t1",
+   "replicate": 1,
+   "status": "success",
+   "exitCode": 0,
+   "runFinishedStatus": "success",
+   "stopReason": "end_turn",
+   "runStartedAt": "2026-01-01T00:00:00.000Z",
+   "wallClockMs": 1000,
+   "turnDurationMs": 900,
+   "credits": 1.5,
+   "creditsCensored": false,
+   "creditsLowerBound": null,
+   "creditsCharged": null,
+   "creditsSessionTotal": null,
+   "modelCalls": {
+    "meteringEntries": 2,
+    "totalRequestCount": 2
+   },
+   "tokens": null,
+   "costUsd": null,
+   "costCensored": null,
+   "costUsdCharged": null,
+   "sessionsRolledUp": null,
+   "region": null,
+   "toolCalls": 4,
+   "workToolCalls": 3,
+   "toolNames": {
+    "read": 3,
+    "subagent": 1
+   },
+   "subagentCalls": 1,
+   "orch": null,
+   "contextUsagePercentage": 3,
+   "transcriptBytes": 400,
+   "transcriptPartial": false,
+   "estTokens": {
+    "value": 100,
+    "isEstimate": true
+   },
+   "finalText": "done",
+   "finalTextTruncated": false,
+   "askedUser": false,
+   "skillsMcpOk": true,
+   "checks": [],
+   "hiddenTests": null,
+   "regressionTests": null,
+   "contamination": null,
+   "kiroCliVersion": "kiro-cli 2.35.1",
+   "modelListSnapshotPath": null,
+   "sessionModel": "claude-sonnet-5.5",
+   "sessionId": "s1",
+   "agent": "konductor",
+   "agentEngine": "v3",
+   "modelNormalized": false,
+   "rewrittenAgents": [],
+   "mcpSha256": null,
+   "isolation": "none",
+   "comparable": false,
+   "homeTripwireHits": null,
+   "inFlightAtStart": null,
+   "flags": [],
+   "infraError": null,
+   "error": null,
+   "skillsLoaded": null,
+   "skillQueries": null,
+   "sopsLoaded": null,
+   "skillBytesLoaded": null,
+   "skillCallsFailed": null,
+   "findSkillsCalls": null,
+   "findSkillsEmpty": null,
+   "startupResourceCount": null,
+   "targetLoaded": null,
+   "targetAttempted": null,
+   "targetReachable": null,
+   "sopNameSource": null,
+   "skillsScope": null,
+   "capInvocation": {
+    "delegatedTo": [],
+    "findSkillsBytes": 0,
+    "requested": [],
+    "firstDecision": {
+     "kind": "none",
+     "name": null
+    },
+    "identified": []
+   },
+   "triggerQuery": null,
+   "variant": null,
+   "armPrefix": null,
+   "armConfig": null
+  },
+  "oc": {
+   "armId": "oc-v1",
+   "armLabel": "oc-v1",
+   "ref": "v1.2.0",
+   "commitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "source": null,
+   "refResolved": null,
+   "dirty": null,
+   "contentHash": null,
+   "baseSha": null,
+   "mergeBase": null,
+   "commitsAhead": null,
+   "filesChanged": null,
+   "changedSkills": null,
+   "harness": "opencode",
+   "installHarness": "claude",
+   "harnessVersion": "1.19.5",
+   "model": "global.anthropic.claude-sonnet-5-5",
+   "effort": "high",
+   "taskId": "t1",
+   "replicate": 1,
+   "status": "timeout",
+   "exitCode": null,
+   "runFinishedStatus": null,
+   "stopReason": "end_turn",
+   "runStartedAt": "2026-01-01T00:00:00.000Z",
+   "wallClockMs": 1000,
+   "turnDurationMs": 900,
+   "credits": null,
+   "creditsCensored": false,
+   "creditsLowerBound": null,
+   "creditsCharged": null,
+   "creditsSessionTotal": null,
+   "modelCalls": {
+    "meteringEntries": 2,
+    "totalRequestCount": 2
+   },
+   "tokens": {
+    "input": 1,
+    "output": 2,
+    "reasoning": 0,
+    "cacheRead": 3,
+    "cacheWrite": 4,
+    "total": 10
+   },
+   "costUsd": 0.5,
+   "costCensored": true,
+   "costUsdCharged": null,
+   "sessionsRolledUp": 2,
+   "region": "us-east-1",
+   "toolCalls": 4,
+   "workToolCalls": 3,
+   "toolNames": {
+    "read": 3,
+    "subagent": 1
+   },
+   "subagentCalls": 1,
+   "orch": null,
+   "contextUsagePercentage": 3,
+   "transcriptBytes": 400,
+   "transcriptPartial": false,
+   "estTokens": {
+    "value": 10,
+    "isEstimate": false
+   },
+   "finalText": "done",
+   "finalTextTruncated": false,
+   "askedUser": false,
+   "skillsMcpOk": true,
+   "checks": [],
+   "hiddenTests": null,
+   "regressionTests": null,
+   "contamination": null,
+   "kiroCliVersion": null,
+   "modelListSnapshotPath": null,
+   "sessionModel": "global.anthropic.claude-sonnet-5-5",
+   "sessionId": "s1",
+   "agent": "konductor",
+   "agentEngine": null,
+   "modelNormalized": false,
+   "rewrittenAgents": [],
+   "mcpSha256": null,
+   "isolation": "none",
+   "comparable": false,
+   "homeTripwireHits": null,
+   "inFlightAtStart": null,
+   "flags": [],
+   "infraError": null,
+   "error": null,
+   "skillsLoaded": null,
+   "skillQueries": null,
+   "sopsLoaded": null,
+   "skillBytesLoaded": null,
+   "skillCallsFailed": null,
+   "findSkillsCalls": null,
+   "findSkillsEmpty": null,
+   "startupResourceCount": null,
+   "targetLoaded": null,
+   "targetAttempted": null,
+   "targetReachable": null,
+   "sopNameSource": null,
+   "skillsScope": null,
+   "capInvocation": {
+    "delegatedTo": [],
+    "findSkillsBytes": 0,
+    "requested": [],
+    "firstDecision": {
+     "kind": "none",
+     "name": null
+    },
+    "identified": []
+   },
+   "triggerQuery": null,
+   "variant": null,
+   "armPrefix": null,
+   "armConfig": null
+  }
+ }
+}

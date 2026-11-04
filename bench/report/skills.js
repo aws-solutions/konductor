@@ -162,7 +162,7 @@ function collectRows(runDir, { tasks = new Map(), repoRoot = null } = {}) {
         if (!fs.existsSync(streamFile)) continue;
         const result = readJson(path.join(runPath, 'result.json'));
         const rec = (config.arms ?? []).find((a) => a.id === armId);
-        const runtime = result ? runtimeOf(result) : armId.startsWith('oc-') ? 'opencode' : 'kiro-cli';
+        const runtime = result ? runtimeOf(result) : armId.startsWith('oc-') ? 'opencode' : armId.startsWith('cc-') ? 'claude-code' : 'kiro-cli';
         const vanilla = rec ? rec.ref == null : /(^|-)vanilla$/.test(armId);
         ctxCache.v ??= armContext({ runDir: dir, armId, config, repoRoot, runtime, vanilla });
         const task = tasks.get(taskId) ?? { target: null, class: 'unknown' };

@@ -108,8 +108,11 @@ function autonomySection(report) {
   return out.join('\n');
 }
 
+// opencode and Claude Code report tokens and list-price USD; kiro-cli reports credits.
+const isUsdHarness = (harness) => harness === 'opencode' || harness === 'claude-code';
+
 function scopeSection(report, scope) {
-  if (report.harness === 'opencode') return scopeSectionOpencode(report, scope);
+  if (isUsdHarness(report.harness)) return scopeSectionOpencode(report, scope);
   const arms = Object.keys(report.arms).filter((a) => report.arms[a][scope]);
   const quality = arms.map((a) => {
     const c = report.arms[a][scope];
@@ -160,10 +163,10 @@ function renderMarkdown(report) {
     '# Benchmark report',
     '',
     `Run: ${r.dir}  `,
-    `Suite: ${r.suite ?? 'n/a'}, model ${r.model}, effort ${r.effort}, ${r.taskIds.length} task(s), ${report.harness === 'opencode' ? `opencode ${r.harnessVersion ?? 'n/a'}` : `kiro-cli ${r.kiroCliVersion ?? 'n/a'}`}  `,
+    `Suite: ${r.suite ?? 'n/a'}, model ${r.model}, effort ${r.effort}, ${r.taskIds.length} task(s), ${isUsdHarness(report.harness) ? `${report.harness} ${r.harnessVersion ?? 'n/a'}` : `kiro-cli ${r.kiroCliVersion ?? 'n/a'}`}  `,
     `Baseline: ${report.baseline}. Judges: ${report.judges.join(', ') || 'none (run the judge command for rubric and pairwise results)'}`,
     '',
-    report.harness === 'opencode' ? HOW_TO_READ_OPENCODE : 'How to read: efficiency cells (credits, calls, wall clock, tokens) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median, so they cannot make an arm look cheap; they are shown as rates beside every cost figure (timeout, error, infra, model mismatch, checks failed, budget-skipped). "success" is the share of runs that finished cleanly; "pass" also needs every check to pass. "credits per successful run" is the total charged over all executed runs divided by clean passes, so failures raise it; a run killed before its final metering event is charged the runner\'s ledger value, not its partial figure. Tokens are not exposed by kiro-cli, so credits are the cost measure and estTokens is transcript characters / 4, an estimate. "asked user" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.',
+    isUsdHarness(report.harness) ? HOW_TO_READ_OPENCODE : 'How to read: efficiency cells (credits, calls, wall clock, tokens) are `median [95% bootstrap CI of the median]` over clean passes only, meaning status success, no infrastructure error, no model mismatch and every deterministic check passed. Failed runs never enter a median, so they cannot make an arm look cheap; they are shown as rates beside every cost figure (timeout, error, infra, model mismatch, checks failed, budget-skipped). "success" is the share of runs that finished cleanly; "pass" also needs every check to pass. "credits per successful run" is the total charged over all executed runs divided by clean passes, so failures raise it; a run killed before its final metering event is charged the runner\'s ledger value, not its partial figure. Tokens are not exposed by kiro-cli, so credits are the cost measure and estTokens is transcript characters / 4, an estimate. "asked user" is the share of runs whose final message ended with a question or an approval request. Win/tie/loss counts pairwise verdicts of the arm against the baseline, pooled over judges.',
     '',
   ];
   const flags = [];

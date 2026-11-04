@@ -10,8 +10,8 @@ const { execFileSync } = require('node:child_process');
 const { resolveArm } = require('./arms.js');
 const { applyArmOptions, attachVariant } = require('./arm-opts.js');
 const { STOP_ON } = require('./stop-watch.js');
-const { harnessFor, opencode: oc } = require('./harness/index.js');
-const { AGENT_ENGINES, DEFAULT_ENGINE } = require('./harness/runtime.js');
+const { harnessFor, opencode: oc, claudeCode: cc } = require('./harness/index.js');
+const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime } = require('./harness/runtime.js');
 const { readProfile } = require('./harness/opencode-creds.js');
 const { loadTasks, loadSuite, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
@@ -40,11 +40,12 @@ function intOpt(v, name, min = 1) {
   return n;
 }
 
-// --agent-engine picks the kiro-cli engine and the matching install (v2: kiro-cli-v2, v3: kiro-v3). opencode has no engine.
+// --agent-engine picks the kiro-cli engine and the matching install (v2: kiro-cli-v2, v3: kiro-v3). opencode and Claude Code have no engine.
 function engineOpt(opts, runtimes) {
   const v = opts['agent-engine'];
   if (v === undefined) return DEFAULT_ENGINE;
-  if (runtimes.includes('opencode')) throw new Error('--agent-engine applies to kiro-cli arms only; opencode arms have no agent engine');
+  const other = runtimes.find((r) => r !== 'kiro-cli');
+  if (other) throw new Error(`--agent-engine applies to kiro-cli arms only; ${other} arms have no agent engine`);
   if (!AGENT_ENGINES.includes(v)) throw new Error(`--agent-engine must be ${AGENT_ENGINES.join(' or ')}`);
   return v;
 }
@@ -74,7 +75,7 @@ function listModels(kiroBin, authDb, scratchDir, envKeep, agentEngine) {
 }
 
 function summarize(runConfig, state, extra) {
-  const usd = runConfig.harness === 'opencode';
+  const usd = isUsdRuntime(runConfig.harness);
   return {
     ...runConfig,
     finishedAt: new Date().toISOString(),
@@ -89,7 +90,7 @@ function summarize(runConfig, state, extra) {
 // Builds and trial-installs every arm exactly as `run` does before it launches an agent, prints the preflight table
 // and stops. It needs no kiro-cli login, creates no run directory and starts no agent, so it spends no credits.
 function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
-  if (runtimes.includes('opencode')) throw new Error('--prepare-only covers kiro-cli arms; opencode arms need their binary and AWS profile, so check them with a normal run');
+  if (runtimes.some((r) => r !== 'kiro-cli')) throw new Error('--prepare-only covers kiro-cli arms; opencode and Claude Code arms need their binary and AWS credentials, so check them with a normal run');
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
   fs.mkdirSync(cacheDir, { recursive: true });
@@ -156,21 +157,29 @@ async function cmdRun(opts) {
   const variants = arms.map(attachVariant).filter(Boolean);
   const runtimes = [...new Set(arms.map((a) => harnessFor(a).id))];
   const agentEngine = engineOpt(opts, runtimes);
+  if (!runtimes.includes('claude-code')) for (const flag of ['claude-bin', 'run-budget-usd']) if (opts[flag] !== undefined) throw new Error(`--${flag} applies to Claude Code (cc-) arms only`);
   if (prepareOnly) return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, agentEngine, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
   if (runtimes.length > 1) throw new Error(`arms from different harnesses cannot share one run (${arms.map((a) => `${a.id}: ${harnessFor(a).id}`).join(', ')}); run them separately with different --out`);
   const isOc = runtimes[0] === 'opencode';
-  const unit = isOc ? 'usd' : 'credits';
-  const budgetFlag = isOc ? 'budget-usd' : 'budget-credits';
-  if (opts[isOc ? 'budget-credits' : 'budget-usd'] !== undefined) throw new Error(`--${isOc ? 'budget-credits' : 'budget-usd'} does not apply here: ${isOc ? 'opencode runs are costed in USD, use --budget-usd' : 'kiro-cli runs are costed in credits, use --budget-credits'}`);
+  const isCc = runtimes[0] === 'claude-code';
+  const isUsd = isOc || isCc;
+  const unit = isUsd ? 'usd' : 'credits';
+  const budgetFlag = isUsd ? 'budget-usd' : 'budget-credits';
+  if (opts[isUsd ? 'budget-credits' : 'budget-usd'] !== undefined) throw new Error(`--${isUsd ? 'budget-credits' : 'budget-usd'} does not apply here: ${isUsd ? `${runtimes[0]} runs are costed in USD, use --budget-usd` : 'kiro-cli runs are costed in credits, use --budget-credits'}`);
+  if (isCc) {
+    for (const flag of ['effort', 'stop-on', 'max-tool-calls', 'aws-creds-file', 'aws-profile']) {
+      if (opts[flag] !== undefined) throw new Error(`--${flag} does not apply to Claude Code arms (${{ effort: 'the effort level is not passed to claude, so a value would be recorded but not applied', 'stop-on': 'the early-stop watcher reads kiro-cli and opencode events only', 'max-tool-calls': 'the early-stop watcher reads kiro-cli and opencode events only', 'aws-creds-file': 'credentials come from the AWS_* variables in the environment that starts the bench', 'aws-profile': 'credentials come from the AWS_* variables in the environment that starts the bench' }[flag]})`);
+    }
+  }
   const budgetCredits = opts[budgetFlag] ? Number(opts[budgetFlag]) : null;
   if (budgetCredits !== null && !(budgetCredits > 0)) throw new Error(`--${budgetFlag} must be a positive number`);
-  const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isOc ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;
+  const censoredFloor = opts['censored-floor'] ? Number(opts['censored-floor']) : isUsd ? DEFAULT_CENSORED_FLOOR_USD : DEFAULT_CENSORED_FLOOR;
   if (!(censoredFloor >= 0)) throw new Error('--censored-floor must be a non-negative number');
   let runCreditLimit = null;
   if (opts['run-credit-limit'] !== undefined) {
     runCreditLimit = Number(opts['run-credit-limit']);
     if (opts['run-credit-limit'] === true || !(runCreditLimit > 0)) throw new Error('--run-credit-limit must be a positive number');
-    if (isOc) throw new Error('--run-credit-limit applies to kiro-cli arms only; opencode runs are costed in USD');
+    if (isUsd) throw new Error(`--run-credit-limit applies to kiro-cli arms only; ${runtimes[0]} runs are costed in USD${isCc ? ' (use --run-budget-usd for a per-run cap)' : ''}`);
   }
   let stopOn = null;
   if (opts['stop-on'] !== undefined) {
@@ -204,7 +213,7 @@ async function cmdRun(opts) {
   const outDir = path.resolve(opts.out || path.join(REPO, 'bench', 'results', new Date().toISOString().replace(/[:.]/g, '-')));
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
-  const authDb = isOc ? null : opts['auth-db'] && opts['auth-db'] !== true ? path.resolve(opts['auth-db']) : sandbox.defaultAuthDb();
+  const authDb = isUsd ? null : opts['auth-db'] && opts['auth-db'] !== true ? path.resolve(opts['auth-db']) : sandbox.defaultAuthDb();
   if (authDb && !fs.existsSync(authDb)) throw new Error(`kiro-cli auth database not found: ${authDb} (log in with kiro-cli first)`);
   const awsCredsFile = isOc ? path.resolve(need(opts, 'aws-creds-file')) : null;
   const awsProfile = isOc ? (opts['aws-profile'] && opts['aws-profile'] !== true ? opts['aws-profile'] : 'bench') : null;
@@ -215,7 +224,23 @@ async function cmdRun(opts) {
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
 
-  const config = isOc
+  let runBudgetUsd = null;
+  let ccRegion = null;
+  if (isCc) {
+    if (opts['run-budget-usd'] !== undefined) {
+      runBudgetUsd = Number(opts['run-budget-usd']);
+      if (opts['run-budget-usd'] === true || !(runBudgetUsd > 0)) throw new Error('--run-budget-usd must be a positive number');
+    }
+    ccRegion = opts['aws-region'] && opts['aws-region'] !== true ? opts['aws-region'] : cc.REGION;
+    cc.checkCredentials(process.env);
+  } else if (opts['aws-region'] !== undefined) {
+    throw new Error('--aws-region applies to Claude Code (cc-) arms only; judge commands take it separately');
+  }
+  const ccModel = isCc ? opts.model || cc.DEFAULT_MODEL : null;
+  if (isCc && !cc.canonicalModel(ccModel)) throw new Error('--model needs a Bedrock model id, for example us.anthropic.claude-sonnet-5-5');
+  const config = isCc
+    ? { model: ccModel, canonicalModel: cc.canonicalModel(ccModel), effort: 'default' }
+    : isOc
     ? { model: opts.model || oc.DEFAULT_MODEL, effort: oc.variantOf(opts.effort || DEFAULT_EFFORT) }
     : { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine };
   const state = { results: [], spent: 0, charged: 0 };
@@ -226,7 +251,7 @@ async function cmdRun(opts) {
   const removeHandlers = procs.installSignalHandlers({ flush, log });
 
   try {
-    const kiro = isOc ? null : opts['kiro-bin'] ? { bin: path.resolve(opts['kiro-bin']), shim: null } : sandbox.resolveKiroCli();
+    const kiro = isUsd ? null : opts['kiro-bin'] ? { bin: path.resolve(opts['kiro-bin']), shim: null } : sandbox.resolveKiroCli();
     if (kiro) log(`kiro-cli: ${kiro.bin}${kiro.shim ? ` (bypassing the shim at ${kiro.shim})` : ''}`);
     const ctx = {
       kiroBin: kiro?.bin, repo: REPO, cacheDir, realCache, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb, config, envKeep,
@@ -241,6 +266,13 @@ async function cmdRun(opts) {
       if (!ctx.rgBin) throw new Error('ripgrep (rg) not found on PATH; install it or pass --rg-bin PATH (opencode would otherwise download it at run time)');
       Object.assign(ctx, { awsCredsFile, awsProfile });
       log(`opencode ${ctx.opencode.version} (${ctx.opencode.bin}), sha256 ${ctx.opencode.sha256.slice(0, 12)}, model ${oc.PROVIDER}/${config.model}, variant ${config.effort}, region ${oc.REGION}`);
+    }
+    if (isCc) {
+      ctx.claude = cc.resolveClaude({ binOverride: opts['claude-bin'] && opts['claude-bin'] !== true ? opts['claude-bin'] : null });
+      Object.assign(ctx, { region: ccRegion, runBudgetUsd });
+      log(`claude ${ctx.claude.version} (${ctx.claude.bin}), sha256 ${ctx.claude.sha256.slice(0, 12)}, model ${config.model} (canonical ${config.canonicalModel}), region ${ccRegion}, permission mode ${cc.PERMISSION_MODE}, per-run budget $${runBudgetUsd ?? cc.DEFAULT_RUN_BUDGET_USD}, credentials from the environment (${cc.credentialNames().join(', ')})`);
+      const shadow = cc.PROFILE_VARS.filter((k) => process.env[k]);
+      if (shadow.length) log(`note: ${shadow.join(', ')} ${shadow.length === 1 ? 'is' : 'are'} set here and is not passed to claude (the SDK would skip the exported keys)`);
     }
     const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
     log(`arms:\n${preflightTable(arms, prepared, errors)}`);
@@ -266,6 +298,8 @@ async function cmdRun(opts) {
 
     if (isOc) {
       ctx.envInfo = { kiroCliVersion: null, harnessVersion: ctx.opencode.version, modelListSnapshotPath: null, region: oc.REGION };
+    } else if (isCc) {
+      ctx.envInfo = { kiroCliVersion: null, harnessVersion: ctx.claude.version, modelListSnapshotPath: null, region: ccRegion };
     } else {
       const modelListPath = path.join(outDir, 'model-list.json');
       fs.writeFileSync(modelListPath, listModels(ctx.kiroBin, authDb, scratchDir, envKeep, config.agentEngine));
@@ -276,9 +310,9 @@ async function cmdRun(opts) {
     const toolchainCheck = toolchain.checkPins(toolchain.loadPins(benchDir), interpreters, tasks.map((t) => t.id));
     for (const m of toolchainCheck.mismatches) log(`warning: toolchain: ${toolchain.describeMismatch(m)}. Results may differ from the validated ones.`);
 
-    const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main');
+    const mainArm = arms.find((a) => a.id === 'main' || a.id === 'oc-main' || a.id === 'cc-main');
     runConfig = {
-      suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, [isOc ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
+      suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
       profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
       runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig,
       isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
@@ -298,6 +332,10 @@ async function cmdRun(opts) {
           awsProfile, ripgrep: ctx.rgBin,
           promptCache: 'Bedrock prompt cache lives about 5 minutes; back-to-back runs can read cache written by the previous run, so cache read and write vary with run order (seeded shuffle kept)',
         },
+        env: rc.envPolicy(process.env, []),
+      } : isCc ? {
+        harnessVersion: ctx.claude.version,
+        claudeCode: cc.runConfigRecord({ ctx, config, region: ccRegion, runBudgetUsd, arms }),
         env: rc.envPolicy(process.env, []),
       } : {
         requireMcpStartup: true,
@@ -327,7 +365,9 @@ async function cmdRun(opts) {
       fs.mkdirSync(path.join(outDir, 'variants'), { recursive: true });
       for (const v of variants) fs.writeFileSync(path.join(outDir, 'variants', `${v.variantId}.json`), JSON.stringify(v, null, 2) + '\n');
     }
-    const envFor = (konductor) => (isOc
+    const envFor = (konductor) => (isCc
+      ? cc.envSetup({ arm: { vanilla: !konductor }, ctx, home: '<run-home>', baseEnv: { ...process.env, ...Object.fromEntries(cc.CREDENTIAL_VARS.map((k) => [k, '<set>'])) } })
+      : isOc
       ? oc.envSetup({ arm: { vanilla: !konductor }, config, ctx, home: '<run-home>' })
       : buildChildEnv(process.env, { home: '<run-home>', agentEngine: config.agentEngine, keep: envKeep, konductor }));
     fs.writeFileSync(path.join(outDir, 'env.json'), JSON.stringify({
@@ -339,7 +379,7 @@ async function cmdRun(opts) {
     log(`out=${outDir}`);
     const { results, observed, charged, studyLine, guard } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
-      costOf: isOc ? USD : CREDITS, unit,
+      costOf: isUsd ? USD : CREDITS, unit,
     });
     const gate = batchWindow.end();
     fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate }), null, 2) + '\n');
