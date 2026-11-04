@@ -98,21 +98,32 @@ function makeCmdCaller(cmd, { timeoutMs }) {
 
 // Keyed by hash of (model, prompt). The prompt is stored so a leak scan can run later. `salt(model)` adds more to the key
 // (backend, system prompt, Bedrock model id); without it the key is the original one, so earlier cached kiro answers still hit.
+// A call may pass `accept(text)`. A reply it rejects is returned to the caller but never written, and a stored reply it
+// rejects (or one that is not readable JSON) counts as a miss and is asked for again. The rejected file is kept next to the
+// new one as <key>.rejected.json before a valid reply replaces it.
 function withCache(caller, dir, { salt = null } = {}) {
-  return async ({ model, prompt }) => {
+  return async ({ model, prompt, accept = null }) => {
     const extra = salt ? salt(model) : null;
     const sha = crypto.createHash('sha256').update(extra === null ? `${model}\n${prompt}` : `${extra}\n${model}\n${prompt}`).digest('hex');
     const file = path.join(dir, `${sha}.json`);
+    let stale = false;
     if (fs.existsSync(file)) {
-      const e = JSON.parse(fs.readFileSync(file, 'utf8'));
-      return {
-        text: e.response, credits: 0, originalCredits: e.credits, latencyMs: e.latencyMs, cached: true,
-        ...(e.usd !== undefined ? { usd: 0, originalUsd: e.usd, tokens: e.tokens ?? null } : {}),
-      };
+      let e = null;
+      try { e = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { e = null; }
+      if (e && typeof e.response === 'string' && (!accept || accept(e.response))) {
+        return {
+          text: e.response, credits: 0, originalCredits: e.credits, latencyMs: e.latencyMs, cached: true,
+          ...(e.usd !== undefined ? { usd: 0, originalUsd: e.usd, tokens: e.tokens ?? null } : {}),
+        };
+      }
+      stale = true;
     }
     const r = await caller({ model, prompt });
-    if (!r.error && r.text) {
+    if (!r.error && r.text && (!accept || accept(r.text))) {
       fs.mkdirSync(dir, { recursive: true });
+      if (stale) {
+        try { fs.copyFileSync(file, path.join(dir, `${sha}.rejected.json`), fs.constants.COPYFILE_EXCL); } catch { /* an earlier rejected copy stays */ }
+      }
       fs.writeFileSync(file, JSON.stringify({
         model, promptSha: sha, prompt, response: r.text, credits: r.credits, latencyMs: r.latencyMs,
         ...(r.usd !== undefined ? { backend: 'opencode', bedrockModelId: r.bedrockModelId ?? null, usd: r.usd, tokens: r.tokens ?? null } : {}),

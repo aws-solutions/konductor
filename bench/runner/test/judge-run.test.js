@@ -5,6 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { tmp, makeBench, makeRun } = require('./helpers.js');
 const { runJudging } = require('../../judge/run.js');
 const { makeCmdCaller, withCache } = require('../../judge/model.js');
@@ -249,4 +250,106 @@ test('withCache keys on model and prompt and skips failed calls', async () => {
 test('a judge panel needs one judge per model family', () => {
   assert.doesNotThrow(() => checkPanel(['gpt-5.6-luna', 'deepseek-3.2', 'glm-5', 'qwen3-coder-next']));
   assert.throws(() => checkPanel(['gpt-5.6-luna', 'gpt-5.6-sol']), /one judge per family/);
+});
+
+// ---- replies that are not usable are never cached or replayed ----
+
+const keyOf = (model, prompt) => crypto.createHash('sha256').update(`${model}\n${prompt}`).digest('hex');
+const isJson = (t) => { try { JSON.parse(t); return true; } catch { return false; } };
+
+test('withCache does not store a reply that accept rejects, and asks again next time', async () => {
+  const dir = tmp();
+  try {
+    let n = 0;
+    const cached = withCache(async () => ({ text: n++ === 0 ? 'not json {' : '{"ok":1}', credits: 0.2, latencyMs: 5 }), dir);
+    const first = await cached({ model: 'm', prompt: 'p', accept: isJson });
+    assert.equal(first.text, 'not json {', 'the caller still sees the reply, so its retry logic runs');
+    assert.equal(fs.existsSync(dir) ? fs.readdirSync(dir).length : 0, 0, 'nothing was written');
+    const second = await cached({ model: 'm', prompt: 'p', accept: isJson });
+    assert.deepEqual([second.text, second.cached], ['{"ok":1}', undefined]);
+    const third = await cached({ model: 'm', prompt: 'p', accept: isJson });
+    assert.deepEqual([third.text, third.cached, n], ['{"ok":1}', true, 2]);
+  } finally { cleanup(dir); }
+});
+
+test('withCache ignores a stored reply that fails accept or cannot be read, keeps the old file and replaces it with a valid one', async () => {
+  const dir = tmp();
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const bad = path.join(dir, `${keyOf('m', 'p')}.json`);
+    fs.writeFileSync(bad, JSON.stringify({ model: 'm', response: 'Expecting , delimiter', credits: 0.1, latencyMs: 3 }));
+    const torn = path.join(dir, `${keyOf('m', 'q')}.json`);
+    fs.writeFileSync(torn, '{"model": "m", "resp');
+    let live = 0;
+    const cached = withCache(async () => { live++; return { text: '{"ok":1}', credits: 0.2, latencyMs: 5 }; }, dir);
+    const r = await cached({ model: 'm', prompt: 'p', accept: isJson });
+    assert.deepEqual([r.text, r.cached, live], ['{"ok":1}', undefined, 1], 'the bad stored reply is not replayed');
+    assert.equal(JSON.parse(fs.readFileSync(bad, 'utf8')).response, '{"ok":1}');
+    const kept = path.join(dir, `${keyOf('m', 'p')}.rejected.json`);
+    assert.equal(JSON.parse(fs.readFileSync(kept, 'utf8')).response, 'Expecting , delimiter', 'the rejected reply stays on disk');
+    assert.equal((await cached({ model: 'm', prompt: 'q', accept: isJson })).text, '{"ok":1}', 'an unreadable cache file is a miss');
+    assert.equal(live, 2);
+    assert.equal((await cached({ model: 'm', prompt: 'p', accept: isJson })).cached, true);
+  } finally { cleanup(dir); }
+});
+
+test('withCache without accept behaves as before: any non-empty reply is stored and replayed', async () => {
+  const dir = tmp();
+  try {
+    let n = 0;
+    const cached = withCache(async () => ({ text: `r${n++}`, credits: 0, latencyMs: 1 }), dir);
+    await cached({ model: 'm', prompt: 'p' });
+    assert.equal((await cached({ model: 'm', prompt: 'p' })).text, 'r0');
+  } finally { cleanup(dir); }
+});
+
+test('a judge reply that is not valid JSON is not cached; a rerun asks the judge again instead of replaying it', async () => {
+  const { root, runDir, common } = fixture(['vanilla']);
+  try {
+    const bad = stub(() => 'The answer is /[\\s-]+/g, "quoted" and not JSON');
+    const j1 = await runJudging({ ...common, modes: ['rubric'], caller: bad });
+    assert.equal(j1.rubric[0].parseFailures, 2);
+    assert.match(j1.rubric[0].judgeError, /unusable after retry: not valid JSON/);
+    const cacheDir = path.join(runDir, 'judge', 'cache');
+    assert.equal(fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir).length : 0, 0, 'no bad reply was written as a success');
+    const good = stub();
+    const j2 = await runJudging({ ...common, modes: ['rubric'], caller: good });
+    assert.equal(good.calls.length, 1, 'the judge was asked again');
+    assert.equal(j2.rubric[0].judgeError, null);
+    assert.equal(j2.rubric[0].calls[0].cached, false);
+    assert.equal(j2.rubric[0].score, 1);
+  } finally { cleanup(root); }
+});
+
+test('bad replies already cached by an earlier run are not replayed and are not deleted', async () => {
+  const { root, runDir, common } = fixture(['vanilla']);
+  try {
+    const probe = stub();
+    await runJudging({ ...common, modes: ['rubric'], caller: probe });
+    const prompt = probe.calls[0].prompt;
+    fs.rmSync(path.join(runDir, 'judgments.json'), { force: true });
+    const cacheDir = path.join(runDir, 'judge', 'cache');
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+    fs.mkdirSync(cacheDir, { recursive: true });
+    const file = path.join(cacheDir, `${keyOf('gpt-test', prompt)}.json`);
+    fs.writeFileSync(file, JSON.stringify({ model: 'gpt-test', response: '{"criteria": [{"id": "a", "verdict": "pass", "evidence": "x" "y"}]}', credits: 0.1, latencyMs: 1 }));
+    const good = stub();
+    const j = await runJudging({ ...common, modes: ['rubric'], caller: good });
+    assert.equal(good.calls.length, 1, 'the cached bad reply was skipped and the judge asked');
+    assert.equal(j.rubric[0].judgeError, null);
+    assert.equal(j.rubric[0].calls[0].cached, false);
+    assert.ok(fs.existsSync(path.join(cacheDir, `${keyOf('gpt-test', prompt)}.rejected.json`)), 'the bad cache entry is kept');
+    assert.equal(fs.readdirSync(cacheDir).length, 2);
+  } finally { cleanup(root); }
+});
+
+test('a valid reply is cached and a rerun replays it for free', async () => {
+  const { root, common } = fixture(['vanilla']);
+  try {
+    await runJudging({ ...common, modes: ['rubric'], caller: stub() });
+    const again = stub();
+    const j = await runJudging({ ...common, modes: ['rubric'], caller: again });
+    assert.equal(again.calls.length, 0);
+    assert.equal(j.rubric[0].calls[0].cached, true);
+  } finally { cleanup(root); }
 });

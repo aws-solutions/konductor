@@ -38,7 +38,7 @@ async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = MAX_PR
   let reason = '';
   for (let attempt = 0; attempt < 2; attempt++) {
     if (Buffer.byteLength(p) > maxPromptBytes) return { error: 'prompt too large for one argument; lower the bundle limits', calls, parseFailures };
-    const r = await caller({ model, prompt: p });
+    const r = await caller({ model, prompt: p, accept: (text) => { const parsed = parseJsonStrict(text); return parsed.ok && check(parsed.value).ok; } });
     calls.push({
       credits: r.credits === undefined ? 0 : r.credits, latencyMs: r.latencyMs ?? null, cached: Boolean(r.cached), ...(r.cached ? { originalCredits: r.originalCredits ?? null } : {}),
       ...(r.usd !== undefined ? { usd: r.usd, ...(r.cached ? { originalUsd: r.originalUsd ?? null } : {}), tokens: r.tokens ?? null, ...(r.retries ? { retries: r.retries } : {}) } : {}),
