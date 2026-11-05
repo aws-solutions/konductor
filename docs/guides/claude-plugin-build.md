@@ -29,6 +29,14 @@ temporary directory and removes it when it exits. `make claude-plugin` runs
 the generator into `dist/claude-plugin/`, which is gitignored, so you can
 inspect the output.
 
+The generator replaces `<dir>` as a whole, so it refuses a `<dir>` that is
+the repository root or one of its ancestors, any path inside the repository
+outside `dist/`, and a non-empty directory without the
+`.konductor-claude-plugin-out` marker it leaves in every output. It builds
+into a staging directory next to `<dir>` and moves it into place only when
+the build succeeds. A `dist/claude-plugin/` from an older build has no
+marker; delete it once.
+
 ## Generate and validate
 
 ```bash
