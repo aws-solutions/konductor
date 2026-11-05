@@ -8,6 +8,31 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
+  toolchain; builds and tests stay on stable.
+- The four phase-gated SOPs, such as `k-full-sdlc`, now carry an
+  `Orchestration: strict (phase-gated SOP)` line and a sentence saying what strict means.
+  `cli/gate-config/sop-orchestration.yml` lists every SOP as gated or not gated, and
+  `make sop-orchestration-check` (run in PR validation) fails when a new SOP is unlisted, a
+  gated SOP lacks the marker, or a gated basis cites a step heading that no longer exists.
+- Gated SOPs can list their phases and gate boundaries, and `make sop-orchestration-check`
+  checks them against each SOP's phase list.
+- `severity-schema.yml` maps the words checkers write for finding severities (IMPORTANT,
+  WARNING, WARNINGS, SUGGESTION, MINOR) to severity ids. Matching ignores case and reads the
+  leading word of labels such as `Warning Gap`. Any other word, an empty label, and risk,
+  priority or confidence scales such as `High Risk` rank as CRITICAL.
+- Groundwork for judging a SOP session file against its gates: an internal evaluator.
+  Phase-gated SOPs treat an open HIGH finding as unresolved, even when the threshold is
+  CRITICAL.
+- New `konductor verify-run --session <path>` checks a SOP session file and exits through the
+  existing exit-code contract. `--root <dir>` sets the directory the session and its evidence
+  must resolve under (default: the current directory). It writes nothing.
+- `make version-check` fails a PR or release when a crate, a lockfile entry for a Konductor
+  product crate (manifest under `cli/`, `mcp/` or `shared/`) or the CHANGELOG heading disagrees
+  with `VERSION`. Independently versioned path crates elsewhere are not checked.
+
 ### Changed
 
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
@@ -25,13 +50,23 @@ not per individual commit.
   `constraints` skill and the routing rules.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
+- Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
+  non-trivial work; orchestrators route skill work to the owning specialist.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
-  and is never written via a symlink. The memory validator rejects a new or edited line without
+  and is never read or written through a symlink. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept.
   Orchestrators never bypass denials or read unnamed secrets.
+- `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
+  check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
+  The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
+  unattended run stops and reports, and a later attended resume can resolve or override.
 
 ### Fixed
 
+- Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
+  (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
+- Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
+  and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
   skills; it used to serve every installed skill.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
@@ -51,6 +86,21 @@ not per individual commit.
   MCP server is session-wide; the plugin release PR says to tag by hand.
 - Claude Code agents and benchmarks use the Claude Code model ID (`claude-sonnet-5-5`), and the
   plugin ships `NOTICE.txt` with README links pinned to its release.
+- `update --no-telemetry` now keeps a project opted out on later updates, and the new
+  `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
+- The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
+  agents no longer carry an `mcpServers` block that Claude Code ignores.
+- `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
+  such as a `telemetry:` opt-out. It now changes only the named key.
+  The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
+  anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
+- `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
+
+### Security
+
+- `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
+  GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
+  GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
 
 ## [1.2.0] - 2026-10-26
 

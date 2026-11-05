@@ -97,8 +97,7 @@ If the orchestrator *is* editing files directly, the context file did not load �
 
 Because `2` is taken by something more important.
 
-`64` is `EX_USAGE` from BSD `sysexits.h`, and it means *you typed something wrong*. The exit-code
-contract reserves `2` for "unresolved CRITICAL gate" — the signal that a quality gate failed and
+`64` is `EX_USAGE` from BSD `sysexits.h`, and it means *you typed something wrong*. `verify-run` exits `2` for an unresolved gating finding — the signal that a quality gate failed and
 CI should fail with it. Both argument parsers in use default usage errors to `2`, so both
 implementations explicitly intercept and remap them to `64`.
 
