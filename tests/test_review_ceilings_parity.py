@@ -11,6 +11,7 @@ ORCHESTRATORS = ["konductor", "konductor-mux-orchestrator", "konductor-cmux-orch
 ITEM_6_RE = re.compile(r"^6\. Review ceilings\..*$", re.MULTILINE)
 STOP_WORDING = "carried over or new"
 PREEXISTING_WORDING = "pre-existing"
+SOP_LIMIT_WORDING = "a finding that blocks done under this rule still blocks it after the SOP's last re-review"
 RULE_5_ENDING = "no partial completion, except the stop Review ceilings requires."
 BREAKER_SENTENCE = (
     "For review findings the breaker applies only after the user chooses to continue "
@@ -80,3 +81,8 @@ def test_product_manager_step_5_is_bounded():
     spec = (ROOT / "agents" / "k-product-manager.agent-spec.json").read_text()
     assert "iterate until quality gate passes" not in spec
     assert "fix CRITICAL and IMPORTANT ones once" in spec
+
+
+def test_sop_round_limit_does_not_block_on_pre_existing_findings():
+    assert SOP_LIMIT_WORDING in _item_6("konductor")
+    assert "finding in its last re-review" not in _item_6("konductor")

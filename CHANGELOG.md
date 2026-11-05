@@ -79,7 +79,7 @@ not per individual commit.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
 - Orchestrator review fixes CRITICAL and IMPORTANT findings once and re-reviews the fix. A finding
-  carried over or new on the fix stops the run; a pre-existing finding in unchanged code is listed.
+  carried over or new on the fix or caused by it in dependents stops the run; pre-existing ones are listed.
 
 ### Fixed
 
