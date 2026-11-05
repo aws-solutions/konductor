@@ -1,0 +1,201 @@
+{
+  "id": "rc-smithy-api",
+  "class": "design",
+  "target": "k-architect",
+  "prompt": "docs/api-requirements.md lists the requirements for a book-lending REST API. Write the API model in Smithy at model/main.smithy: the service, resources, operations with their HTTP bindings, shapes with constraints, and the errors. Then write docs/api-notes.md with your design choices and a list of open questions or assumptions where the requirements are silent or unclear. Do not write server code and do not change the inputs. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-library-api",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "model/main.smithy"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/api-notes.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' model/main.smithy)\" -ge 60 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' model/main.smithy)\" -le 800 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "model/main.smithy",
+      "pattern": "^\\s*\\$version\\s*:\\s*\"2(?:\\.\\d+)?\""
+    },
+    {
+      "type": "contains",
+      "path": "model/main.smithy",
+      "pattern": "^\\s*namespace\\s+[\\w.]+"
+    },
+    {
+      "type": "contains",
+      "path": "model/main.smithy",
+      "pattern": "^\\s*service\\s+\\w+\\s*\\{"
+    },
+    {
+      "type": "min_matches",
+      "path": "model/main.smithy",
+      "pattern": "^\\s*operation\\s+\\w+",
+      "min": 8
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"model/main.smithy\",\"utf8\").replace(/\"(?:[^\"\\\\]|\\\\.)*\"/g,\"\\\"\\\"\").replace(/\\/\\/.*$/gm,\"\");const cnt=(c)=>t.split(c).length-1;if(cnt(\"{\")!==cnt(\"}\")||cnt(\"[\")!==cnt(\"]\")||cnt(\"(\")!==cnt(\")\"))process.exit(1);const decl=new Set();for(const m of t.matchAll(/\\b(?:operation|structure|resource|service|string|integer|list|map|union|enum|intEnum|document|timestamp|boolean|long|short|byte|float|double|blob|bigInteger|bigDecimal)\\s+(\\w+)/g))decl.add(m[1]);const builtin=new Set([\"Unit\",\"String\",\"Integer\",\"Long\",\"Boolean\",\"Timestamp\",\"Blob\",\"Document\",\"Float\",\"Double\",\"Short\",\"Byte\",\"PrimitiveInteger\",\"PrimitiveBoolean\"]);const refs=[];for(const m of t.matchAll(/\\b(?:create|read|update|delete|list|put|input|output)\\s*:\\s*(\\w+)/g))refs.push(m[1]);for(const m of t.matchAll(/\\b(?:operations|errors|resources|collectionOperations)\\s*:\\s*\\[([^\\]]*)\\]/g))for(const n of m[1].split(\",\").map((x)=>x.trim()).filter(Boolean))refs.push(n);const bad=refs.filter((r)=>!decl.has(r)&&!builtin.has(r));process.exit(bad.length?1:0)'",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "model/main.smithy",
+      "pattern": "^\\s*resource\\s+\\w*Book\\w*\\s*\\{"
+    },
+    {
+      "type": "contains",
+      "path": "model/main.smithy",
+      "pattern": "\\bidentifiers\\s*:"
+    },
+    {
+      "type": "min_matches",
+      "path": "model/main.smithy",
+      "pattern": "@paginated\\b",
+      "min": 2
+    },
+    {
+      "type": "contains",
+      "path": "model/main.smithy",
+      "pattern": "@idempotencyToken|(?:client|idempotency)[ _-]?(?:request[ _-]?)?token|@idempotent\\b[\\s\\S]{0,160}operation\\s+\\w*(?:Loan|Borrow|Lend)\\w*"
+    },
+    {
+      "type": "min_matches",
+      "path": "model/main.smithy",
+      "pattern": "@error\\(\\s*\"client\"\\s*\\)",
+      "min": 3
+    },
+    {
+      "type": "min_matches",
+      "path": "model/main.smithy",
+      "pattern": "@httpError\\(\\s*(?:400|404|409|429)\\s*\\)",
+      "min": 4
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"model/main.smithy\",\"utf8\");process.exit([404,409,429].every((c)=>new RegExp(\"@httpError\\\\(\\\\s*\"+c+\"\\\\s*\\\\)\").test(t))?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "model/main.smithy",
+      "pattern": "@(?:length|pattern|range)\\b",
+      "min": 3
+    },
+    {
+      "type": "min_matches",
+      "path": "model/main.smithy",
+      "pattern": "@required\\b",
+      "min": 6
+    },
+    {
+      "type": "min_matches",
+      "path": "model/main.smithy",
+      "pattern": "@readonly\\b",
+      "min": 2
+    },
+    {
+      "type": "min_matches",
+      "path": "model/main.smithy",
+      "pattern": "@http\\(",
+      "min": 7
+    },
+    {
+      "type": "min_matches",
+      "path": "model/main.smithy",
+      "pattern": "@httpLabel\\b",
+      "min": 3
+    },
+    {
+      "type": "contains",
+      "path": "model/main.smithy",
+      "pattern": "code\\s*:\\s*201"
+    },
+    {
+      "type": "contains",
+      "path": "model/main.smithy",
+      "pattern": "code\\s*:\\s*204"
+    },
+    {
+      "type": "contains",
+      "path": "model/main.smithy",
+      "pattern": "@httpBearerAuth\\b"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/api-notes.md)\" -ge 8 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/api-notes.md)\" -le 120 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/api-notes.md",
+      "pattern": "^[ \\t]*(?:[-*+]|\\d+[.)])[ \\t]+\\S",
+      "min": 5
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/api-notes.md\",\"utf8\");/*SM9*/const A=new RegExp(\"renew\",\"gi\"),R=[new RegExp(\"open|question|assum|unclear|not (?:specified|modeled|modelled|included)|missing|no operation|decision|gap|later|follow-?up\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/api-requirements.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ -s model/main.smithy ] && [ \"$(find . -type f \\( -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' -o -name '*.go' \\) | wc -l)\" -eq 0 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "resource-model",
+      "criterion": "Models Book and Loan as resources with an identifier and the lifecycle operations bound to them, and declares at least 8 operations with HTTP bindings that follow REST conventions (SM1, SM7): creates answer 201, delete answers 204, path members use httpLabel.",
+      "weight": 3
+    },
+    {
+      "id": "pagination-idempotency",
+      "criterion": "Pages both list operations (SM2) and makes the borrow operation safe to retry with a client token or an equivalent mechanism (SM3).",
+      "weight": 3
+    },
+    {
+      "id": "errors-and-constraints",
+      "criterion": "Declares the 400, 404, 409 and 429 errors as client error structures bound to the operations that raise them (SM4), and encodes the stated field limits with length, pattern, range and required traits (SM5).",
+      "weight": 2
+    },
+    {
+      "id": "read-and-auth",
+      "criterion": "Marks reads as readonly (SM6) and requires bearer authentication on the service (SM8).",
+      "weight": 1
+    },
+    {
+      "id": "gaps-and-no-false-claims",
+      "criterion": "The notes raise the renewal rule that has no operation (SM9) and at least two other real gaps as questions or assumptions, and do not claim that the model was compiled or validated by a tool, or that renewals are modeled when they are not.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

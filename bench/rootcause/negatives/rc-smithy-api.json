@@ -1,0 +1,304 @@
+{
+  "loosened": [
+    8,
+    9,
+    11,
+    12,
+    14,
+    15,
+    18,
+    21,
+    23,
+    27
+  ],
+  "cases": [
+    {
+      "name": "SM2 two paginated",
+      "check": 11,
+      "type": "min_matches",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "@paginated(inputToken: \"t\")\noperation A {}\n@paginated\noperation B {}\n"
+      }
+    },
+    {
+      "name": "SM2 one paginated",
+      "check": 11,
+      "type": "min_matches",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@paginated\noperation A {}\n"
+      }
+    },
+    {
+      "name": "SM2 word in a comment",
+      "check": 11,
+      "type": "min_matches",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "// results are paginated by token\noperation A {}\n"
+      }
+    },
+    {
+      "name": "SM3 idempotency token member",
+      "check": 12,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "structure CreateLoanInput { @idempotencyToken clientToken: String }\n"
+      }
+    },
+    {
+      "name": "SM3 idempotent borrow",
+      "check": 12,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "@idempotent\n@http(method: \"POST\", uri: \"/loans\")\noperation CreateLoan {}\n"
+      }
+    },
+    {
+      "name": "SM3 idempotent only on delete",
+      "check": 12,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@idempotent\n@http(method: \"DELETE\", uri: \"/books/{id}\")\noperation DeleteBook {}\n"
+      }
+    },
+    {
+      "name": "SM3 no retry safety",
+      "check": 12,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "operation CreateLoan { input: X }\n"
+      }
+    },
+    {
+      "name": "SM4b four codes",
+      "check": 14,
+      "type": "min_matches",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "@httpError(404)\nstructure A {}\n@httpError(409)\nstructure B {}\n@httpError(429)\nstructure C {}\n@httpError(400)\nstructure D {}\n"
+      }
+    },
+    {
+      "name": "SM4b two codes",
+      "check": 14,
+      "type": "min_matches",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@httpError(404)\nstructure A {}\n@httpError(409)\nstructure B {}\n"
+      }
+    },
+    {
+      "name": "SM4b server codes",
+      "check": 14,
+      "type": "min_matches",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@httpError(500)\nstructure A {}\n@httpError(502)\nstructure B {}\n@httpError(503)\nstructure C {}\n@httpError(504)\nstructure D {}\n"
+      }
+    },
+    {
+      "name": "SM4c all required codes",
+      "check": 15,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "@httpError(404)\nstructure A {}\n@httpError(409)\nstructure B {}\n@httpError(429)\nstructure C {}\n"
+      }
+    },
+    {
+      "name": "SM4c no conflict code",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@httpError(404)\nstructure A {}\n@httpError(400)\nstructure B {}\n@httpError(429)\nstructure C {}\n"
+      }
+    },
+    {
+      "name": "SM4c no throttling code",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@httpError(404)\nstructure A {}\n@httpError(409)\nstructure B {}\n"
+      }
+    },
+    {
+      "name": "SM6 two readonly",
+      "check": 18,
+      "type": "min_matches",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "@readonly\noperation A {}\n@readonly\noperation B {}\n"
+      }
+    },
+    {
+      "name": "SM6 one readonly",
+      "check": 18,
+      "type": "min_matches",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@readonly\noperation A {}\n"
+      }
+    },
+    {
+      "name": "SM6 word in a comment",
+      "check": 18,
+      "type": "min_matches",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "// reads are readonly by convention\noperation A {}\n"
+      }
+    },
+    {
+      "name": "SM7c code 201",
+      "check": 21,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "@http(method: \"POST\", uri: \"/a\", code: 201)\noperation A {}\n"
+      }
+    },
+    {
+      "name": "SM7c code 200 only",
+      "check": 21,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@http(method: \"POST\", uri: \"/a\", code: 200)\noperation A {}\n"
+      }
+    },
+    {
+      "name": "SM7c no code",
+      "check": 21,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@http(method: \"POST\", uri: \"/a\")\noperation A {}\n"
+      }
+    },
+    {
+      "name": "SM1res Book resource",
+      "check": 9,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "resource Book {\n identifiers: { id: Id }\n}\n"
+      }
+    },
+    {
+      "name": "SM1res structure not resource",
+      "check": 9,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "structure Book {}\n"
+      }
+    },
+    {
+      "name": "SM1res other resource",
+      "check": 9,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "resource Member {\n identifiers: { id: Id }\n}\n"
+      }
+    },
+    {
+      "name": "integrity valid small model",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "$version: \"2\"\nnamespace x\nservice S { version: \"1\", resources: [Book], errors: [E] }\nresource Book { identifiers: { id: Id }, read: GetBook }\n@readonly\noperation GetBook { input: GI, output: GO }\nstructure GI {}\nstructure GO {}\n@error(\"client\")\nstructure E {}\nstring Id\n"
+      }
+    },
+    {
+      "name": "integrity unbalanced brace",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "$version: \"2\"\nnamespace x\nservice S { version: \"1\", resources: [Book], errors: [E] }\nresource Book { identifiers: { id: Id }, read: GetBook }\n@readonly\noperation GetBook { input: GI, output: GO }\nstructure GI {}\nstructure GO {}\n@error(\"client\")\nstructure E {}\nstring Id\n}\n"
+      }
+    },
+    {
+      "name": "integrity undeclared operation",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "$version: \"2\"\nnamespace x\nservice S { version: \"1\", resources: [Book], errors: [E] }\nresource Book { identifiers: { id: Id }, read: GetBookMissing }\n@readonly\noperation GetBook { input: GI, output: GO }\nstructure GI {}\nstructure GO {}\n@error(\"client\")\nstructure E {}\nstring Id\n"
+      }
+    },
+    {
+      "name": "integrity undeclared error",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "$version: \"2\"\nnamespace x\nservice S { version: \"1\", resources: [Book], errors: [Missing] }\nresource Book { identifiers: { id: Id }, read: GetBook }\n@readonly\noperation GetBook { input: GI, output: GO }\nstructure GI {}\nstructure GO {}\n@error(\"client\")\nstructure E {}\nstring Id\n"
+      }
+    },
+    {
+      "name": "SM8 bearer",
+      "check": 23,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "model/main.smithy": "@httpBearerAuth\nservice S {}\n"
+      }
+    },
+    {
+      "name": "SM8 api key only",
+      "check": 23,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "@httpApiKeyAuth(name: \"k\", in: \"header\")\nservice S {}\n"
+      }
+    },
+    {
+      "name": "SM8 no auth",
+      "check": 23,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "model/main.smithy": "service S {}\n"
+      }
+    },
+    {
+      "name": "SM9 renewal raised",
+      "check": 27,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/api-notes.md": "Open question: renewals have no operation in the requirements; assumed later.\n"
+      }
+    },
+    {
+      "name": "SM9 renewal claimed without a gap",
+      "check": 27,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/api-notes.md": "Renewals are supported.\n"
+      }
+    },
+    {
+      "name": "SM9 other question only",
+      "check": 27,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/api-notes.md": "Open questions: page size.\n"
+      }
+    }
+  ]
+}
