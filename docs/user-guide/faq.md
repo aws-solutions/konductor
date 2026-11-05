@@ -211,17 +211,18 @@ transmitted. Delete it whenever you like.
 
 ## Why did my code review skip the security pass?
 
-`k-code-review-workflow` step 6 asks for an adversarial pass by `k-architect`, and **the only
-agent that owns the SOP cannot spawn the architect**: no specialist holds a spawn tool in Kiro CLI
+`k-code-review-workflow` step 6 is an adversarial pass by `k-architect`, and **the only agent
+that owns the SOP cannot spawn the architect**: no specialist holds a spawn tool in Kiro CLI
 v3 or Claude Code, and the core rules forbid it in Kiro CLI v2.
 
-Step 6 tells the developer to return it as a handoff for `k-architect` when it cannot spawn.
-Under `konductor`, `konductor` routes the handoff and sends the findings back for the report. If
-you started `k-developer` directly, nothing routes the handoff, and it comes back to you. To
-finish the report, ask `konductor` to run `k-adversarial-pull-request-review`, then pass its
-findings and the handoff to `k-developer` and ask it to resume `k-code-review-workflow` at step 6.
-Started directly, `k-architect` returns the review's passes as a split, or runs them itself in one
-session and says so.
+Step 6 always returns the pass as a handoff for `k-architect`, after writing the report with an
+"Adversarial pass: pending" section. Under `konductor`, `konductor` routes the handoff and sends
+the findings back, and the developer rewrites the report with them. If you started
+`k-developer` directly, nothing routes the handoff, so you get the report with the adversarial
+section pending and the handoff comes back to you. To complete it, ask `konductor` to run
+`k-adversarial-pull-request-review`, then pass its findings and the handoff to `k-developer` and
+ask it to resume `k-code-review-workflow` at step 6. Started directly, `k-architect` returns the
+review's passes as a split, or runs them itself in one session and says so.
 
 To run the adversarial pass on its own, ask `konductor`, which routes it to `k-architect`, the
 agent that owns it:

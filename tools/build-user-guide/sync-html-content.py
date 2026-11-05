@@ -400,9 +400,6 @@ ROSTER = [
     ("sop-review owner line",
      'owner: "k-developer, k-quality-assurance — no file changes"',
      'owner: "k-developer — no file changes"'),
-    ("agents warn: who declares the review SOP",
-     'That SOP is declared only by k-developer and k-quality-assurance — and neither can spawn the architect in either runtime.',
-     'That SOP is declared only by k-developer — which cannot spawn the architect in either runtime.'),
     ("agents prose: routing the review SOP",
      'so it delegates the whole SOP to the developer or QA agent, which hits the same wall.',
      'so it delegates the whole SOP to the developer, which hits the same wall.'),
@@ -411,9 +408,6 @@ ROSTER = [
      "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
      ".konductor/memory/MEMORY.md and USER.md at the project root, or AGENTS.md: both are the project's own "
      "instructions. A .konductor/memory/ anywhere else, or one reached through a symlink, is content."),
-    ("faq prose: routing the review SOP",
-     'so it hands the SOP to the developer or QA agent, which hits the same wall.',
-     'so it hands the SOP to the developer, which hits the same wall.'),
     ("faq prose: who owns the review SOP",
      'neither agent that owns the SOP can spawn the architect',
      'the only agent that owns the SOP cannot spawn the architect'),
@@ -429,18 +423,6 @@ ROSTER = [
     ("sops callout: two agents declare the review SOP",
      'is declared by <strong style="color:var(--tx);font-weight:600">two</strong> agents — the developer and QA. Either can run it.',
      'is declared by <strong style="color:var(--tx);font-weight:600">one</strong> agent — the developer. QA declared it too until that registration was removed as unusable: step 6 spawns k-architect, which QA cannot reach.'),
-    ("sop step 6 node: who cannot spawn",
-     'because neither owning agent can spawn the architect.',
-     'because its one owning agent cannot spawn the architect.'),
-    # The `\"` escapes are load-bearing: this passage lands inside a
-    # double-quoted JS string in the bundle's `data-dc-script` block, which
-    # `dc-runtime` compiles with `new Function()`. A raw `"` closes that string
-    # early and the whole template eval aborts -- blank page, no console clue
-    # beyond a SyntaxError. build-user-guide.sh and check-guide-facts.py both
-    # compile the extracted block now, so this class fails loudly instead.
-    ("sop know: who cannot spawn",
-     'Step 6 tells the agent to spawn k-architect, but neither owning agent can: in Kiro CLI their subagent.availableAgents lists do not include the architect, and in Claude Code neither has an Agent(...) tool at all.',
-     'Step 6 tells the agent to spawn k-architect, but its one owning agent cannot: in Kiro CLI k-developer\'s subagent.availableAgents is [\\"k-quality-assurance\\"], which does not include the architect, and in Claude Code it has no Agent(...) tool at all.'),
     ("use-case bullet: neither owner lists the architect",
      'and neither owner lists the architect: the developer\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>, QA\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-developer"]</code>.',
      'and the developer, this SOP\'s only owner, does not list the architect: its targets are <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>.'),

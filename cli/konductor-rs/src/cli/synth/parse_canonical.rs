@@ -15,13 +15,12 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::cli::synth::claude::is_spawn_tool;
-use crate::cli::synth::kiro_cli_v3::{is_subagent_tag, map_tool_tag, SUBAGENT_CAPABILITY};
-use crate::cli::synth::model::{
-    is_specialist, AuxiliaryFile, CanonicalModel, ContextDef, SkillDef, SopDef,
-};
+use crate::cli::synth::model::{AuxiliaryFile, CanonicalModel, ContextDef, SkillDef, SopDef};
 use crate::cli::synth::parser::{self, ParseError};
 use crate::cli::synth::path_safety::case_insensitive_fold_key;
+use crate::cli::synth::spawn_policy::{
+    is_claude_spawn_tool, is_kiro_spawn_tool, is_specialist, SUBAGENT_CAPABILITY,
+};
 
 /// Auxiliary files above this size are rejected before being read into memory.
 const MAX_AUXILIARY_FILE_BYTES: u64 = 1024 * 1024;
@@ -329,12 +328,16 @@ fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
     for agent in agents.iter().filter(|agent| is_specialist(&agent.name)) {
         let mut grants = Vec::new();
         if let Some(kiro) = &agent.client_config.kiro_cli {
-            let is_kiro_spawn = |id: &String| is_subagent_tag(&map_tool_tag(id));
-            grants.extend(kiro.tools.iter().filter(|id| is_kiro_spawn(id)).cloned());
+            grants.extend(
+                kiro.tools
+                    .iter()
+                    .filter(|id| is_kiro_spawn_tool(id))
+                    .cloned(),
+            );
             grants.extend(
                 kiro.allowed_tools
                     .iter()
-                    .filter(|id| is_kiro_spawn(id))
+                    .filter(|id| is_kiro_spawn_tool(id))
                     .cloned(),
             );
             if kiro.tools_settings.get(SUBAGENT_CAPABILITY).is_some() {
@@ -343,7 +346,7 @@ fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
         }
         if let Some(claude) = &agent.client_config.claude_cli {
             let tools = claude.tools.iter().flatten();
-            grants.extend(tools.filter(|tool| is_spawn_tool(tool)).cloned());
+            grants.extend(tools.filter(|tool| is_claude_spawn_tool(tool)).cloned());
         }
         if !grants.is_empty() {
             warnings.push(format!(

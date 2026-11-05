@@ -81,13 +81,13 @@ flowchart TD
     S4 --> S5["5. Critique findings<br/>when in doubt, reject"]
 
     S5 --> S6{"6. Adversarial capability available<br/>AND review_type is not<br/>'frontend' only?"}
-    S6 -->|No| Skip["Skip step 6"]
-    S6 -->|Yes| Adv["Spawn k-architect in adversarial mode<br/>pass the same diff as diff_input<br/>forward cr_url as the adversarial SOP's pr_url<br/>apply step 5's filters to its findings<br/>merge new CRITICAL / IMPORTANT only"]
+    S6 -->|No| S7
+    S6 -->|Yes| Pending["Write the report with an<br/>'Adversarial pass: pending' section"]
+    Pending --> Hand["Return step 6 as a handoff for k-architect<br/>diff as diff_input, cr_url as the adversarial SOP's pr_url"]
+    Hand -.->|"resumed with findings"| Merge["Apply step 5's filters to its findings<br/>merge new CRITICAL / IMPORTANT only"]
+    Merge --> S7
 
-    Skip --> S7
-    Adv --> S7
-
-    S7["7. Write report to output_file<br/>state verdict: READY FOR CR / NEEDS FIXES<br/>never print the full report inline"]
+    S7["7. Write report to output_file<br/>state verdict: READY FOR CR / NEEDS FIXES<br/>overwrite a pending report on resume<br/>never print the full report inline"]
 
     class Ask,S5 gate
     class S7 focus
@@ -134,9 +134,11 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
   list is derived from them.
 - **The adversarial step runs only through `konductor`.** Step 6 asks for `k-architect`, but its
   one owning agent cannot spawn: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code,
-  and the core rules forbid it in Kiro CLI v2. Step 6 has `k-developer` return it as a handoff
-  instead. Under `konductor`, `konductor` routes it to `k-architect`, and the findings come back
-  for the report. When `k-developer` is started directly, the handoff comes back to you: ask
+  and the core rules forbid it in Kiro CLI v2. Step 6 has `k-developer` write the report with an
+  "Adversarial pass: pending" section, then return the pass as a handoff. Under `konductor`,
+  `konductor` routes it to `k-architect`, and the findings come back to replace the pending
+  section. When `k-developer` is started directly, you get the pending report and the handoff
+  comes back to you: ask
   `konductor` to run [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review),
   then pass its findings and the handoff to `k-developer` and ask it to resume
   `k-code-review-workflow` at step 6 to finish the report. Started directly, `k-architect` returns

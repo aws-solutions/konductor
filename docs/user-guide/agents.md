@@ -199,17 +199,18 @@ a handoff note, and resumes at Step 4. Starting from `konductor` routes each hop
 
 ### Why this matters: a real consequence
 
-`k-code-review-workflow` step 6 says to *"spawn `k-architect` in adversarial mode"*. That SOP
+`k-code-review-workflow` step 6 is an adversarial pass by `k-architect`. That SOP
 is declared only by `k-developer`, which **cannot spawn `k-architect`** in Kiro CLI v3 or Claude
 Code:
 
 - Specialists hold no spawn tool there (see above; Kiro CLI v2 relies on the prompt rule).
 - The core rules tell a specialist to do such steps itself or return them to its caller.
 
-Step 6 has `k-developer` return it as a handoff for `k-architect` when it cannot spawn, naming
-the SOP and the step to resume at. Under `konductor`, `konductor` routes it to the architect and
-sends the findings back to the developer to finish steps 6 and 7. When `k-developer` is started
-directly, nothing routes the handoff, and it comes back to you. To finish the report, ask
+Step 6 has `k-developer` write the report with an "Adversarial pass: pending" section, then
+return the pass as a handoff for `k-architect`, naming the SOP and the step to resume at. Under
+`konductor`, `konductor` routes it to the architect and sends the findings back, and the
+developer rewrites the report. When `k-developer` is started directly, you get the report with
+the section pending and the handoff comes back to you. To complete it, ask
 `konductor` to run `k-adversarial-pull-request-review`, then pass its findings and the handoff
 to `k-developer` and ask it to resume `k-code-review-workflow` at step 6. Started directly,
 `k-architect` returns the review's passes as a split, or runs them itself in one session and

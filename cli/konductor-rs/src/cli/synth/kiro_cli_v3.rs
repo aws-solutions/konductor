@@ -81,11 +81,14 @@ use super::kiro_cli_v2::{
     AGENTS_CONTENT_TYPE_DIR, CONTEXT_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR,
     SOPS_CONTENT_TYPE_DIR,
 };
-use super::model::{is_specialist, CanonicalModel};
+use super::model::CanonicalModel;
 use super::parse_canonical::skill_names_from_dependencies;
 use super::parser::KiroCliConfig;
 use super::path_safety::reject_unsafe_agent_name;
 use super::skill_index;
+use super::spawn_policy::{
+    is_kiro_spawn_tool, is_specialist, KIRO_V3_SPECIALIST_EXCLUDED_TOOLS, SUBAGENT_CAPABILITY,
+};
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
 
@@ -106,7 +109,7 @@ use super::HarnessTransformer;
 /// addition here, not a fabricated default.
 ///
 /// `excludedTools` is emitted for specialists only, with the fixed
-/// `SPECIALIST_EXCLUDED_TOOLS` list (see that constant).
+/// `KIRO_V3_SPECIALIST_EXCLUDED_TOOLS` list (see `spawn_policy`).
 ///
 /// `welcomeMessage` is emitted when the source spec's `clientConfig.kiroCli`
 /// supplies it (`KiroCliConfig::welcome_message`), and omitted when absent.
@@ -421,7 +424,7 @@ impl HarnessTransformer for KiroCliV3Transformer {
 /// collective markers (`@builtin`, `*`), and any server-scoped
 /// `@<server-name>` entry, none of which this module's four source
 /// pages confirm a rename for.
-pub(crate) fn map_tool_tag(id: &str) -> String {
+fn map_tool_tag(id: &str) -> String {
     TOOL_ID_TO_TAG
         .iter()
         .find(|(old, _)| *old == id)
@@ -1171,18 +1174,6 @@ fn convert_hook_entry(
     Some(serde_json::Value::Object(doc))
 }
 
-pub(crate) const SUBAGENT_CAPABILITY: &str = "subagent";
-
-/// Dropping the `subagent` tag is not enough: `@builtin` also carries
-/// `run_workflow`, which runs any agent via `agent://<name>`, and no
-/// permission rule gates it. `excludedTools` removes both and holds under
-/// `--trust-all-tools` (checked against kiro-cli 2.35.0, engine v3).
-const SPECIALIST_EXCLUDED_TOOLS: [&str; 2] = ["invoke_sub_agent", "run_workflow"];
-
-pub(crate) fn is_subagent_tag(tag: &str) -> bool {
-    tag == SUBAGENT_CAPABILITY || tag.starts_with("subagent/")
-}
-
 /// Builds the on-disk JSON shape for one V3 agent from its config and
 /// `KiroCliConfig`. `tools`/`permissions`/`hooks` are the three fields
 /// that differ from `kiro_cli_v2.rs::render_agent_file` (see
@@ -1246,9 +1237,9 @@ fn render_agent_file<'a>(
     let mut rules = derive_permission_rules(&kiro.tools_settings, &kiro.allowed_tools);
     let mut excluded_tools = Vec::new();
     if is_specialist(name) {
-        tools.retain(|tag| !is_subagent_tag(tag));
+        tools.retain(|tag| !is_kiro_spawn_tool(tag));
         rules.retain(|rule| rule.capability != SUBAGENT_CAPABILITY);
-        excluded_tools = SPECIALIST_EXCLUDED_TOOLS.to_vec();
+        excluded_tools = KIRO_V3_SPECIALIST_EXCLUDED_TOOLS.to_vec();
     }
 
     Ok(KiroV3AgentFile {
@@ -1358,6 +1349,7 @@ mod tests {
     use crate::cli::synth::parser::{
         AgentConfig, AgentDependencies, ClientConfig, ParsedAgentSpec,
     };
+    use crate::cli::synth::spawn_policy::KIRO_SPAWN_TOOL_IDS;
 
     fn agent_with_kiro(name: &str, kiro: KiroCliConfig) -> ParsedAgentSpec {
         ParsedAgentSpec {
@@ -1442,6 +1434,18 @@ mod tests {
     /// server-scoped MCP tags, and the unconfirmed `agentCrew` camelCase
     /// spelling) must pass through unchanged rather than being invented
     /// -- see `map_tool_tag`'s docstring.
+    #[test]
+    fn spawn_policy_ids_and_rename_table_agree() {
+        for (id, tag) in TOOL_ID_TO_TAG {
+            if *tag == SUBAGENT_CAPABILITY {
+                assert!(is_kiro_spawn_tool(id), "{id} renames to the subagent tag");
+            }
+        }
+        for id in KIRO_SPAWN_TOOL_IDS {
+            assert_eq!(map_tool_tag(id), SUBAGENT_CAPABILITY, "{id}");
+        }
+    }
+
     #[test]
     fn map_tool_tag_passes_through_unconfirmed_entries() {
         assert_eq!(map_tool_tag("@builtin"), "@builtin");
