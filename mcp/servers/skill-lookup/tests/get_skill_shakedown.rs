@@ -799,7 +799,11 @@ async fn get_skill_returns_not_found_for_installed_skill_excluded_by_name_filter
     .await;
     let (code, message) = expect_error(&dropped);
     assert_eq!(code, INVALID_PARAMS, "{message:?}");
-    assert_eq!(message, "skill not found: drop-me");
+    assert_eq!(
+        message,
+        "skill not found: drop-me (the skill exists but is not available to this agent: \
+         the server's --skill-name-filter excludes it)"
+    );
 
     let kept = call_get_skill(
         &mut stdin,
