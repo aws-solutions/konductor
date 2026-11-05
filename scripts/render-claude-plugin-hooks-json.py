@@ -5,8 +5,9 @@
 SessionStart (startup|clear) reports agent_invocation and SubagentStart
 reports subagent_invocation, the same events the CLI wires into Claude
 Code settings. A second, synchronous SessionStart entry copies the
-plugin's dispatch_permission_mode option into the session environment. The SubagentStart matcher is built from the assembled
-agents/*.md, so a new agent can't be left out. It matches only the
+plugin's dispatch_permission_mode option into the session environment.
+The SubagentStart matcher is built from the assembled agents/*.md, so a
+new agent can't be left out. It matches only the
 `<plugin>:<agent>` names Claude Code gives plugin agents; a bare name
 belongs to a CLI install, whose own hook reports it.
 

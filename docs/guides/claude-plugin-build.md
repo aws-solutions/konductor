@@ -82,6 +82,7 @@ agents/
 skills/
 hooks/hooks.json
 hooks/konductor-telemetry.js
+hooks/konductor-dispatch-env.sh
 docs/telemetry-schema.json
 README.md
 LICENSE.txt
@@ -158,6 +159,35 @@ Users opt out with the plugin's `telemetry_enabled` option,
 and the root README's [Data Collection](../../README.md#data-collection)
 section. Tests: `node --test tests/scripts/claude-plugin-telemetry-hook.test.js`,
 also run by `make claude-plugin-check`.
+
+## Dispatch permission mode
+
+The plugin's `dispatch_permission_mode` option (`userConfig`, type `string`,
+default `interactive`) sets how the mux and cmux orchestrators start each
+child Claude Code session: `interactive`, `headless`, or `bypass`. The value
+is case-sensitive. The template declares no `options` list, because that
+field breaks plugin loading on older Claude Code releases; the scripts check
+the value instead.
+
+- `scripts/claude-plugin-dispatch-env-hook.sh` is copied to
+  `hooks/konductor-dispatch-env.sh`. `hooks/hooks.json` runs it as a second,
+  synchronous `SessionStart` entry with matcher
+  `startup|resume|clear|compact`, so the environment file is written before
+  the session can dispatch.
+- It appends `export KONDUCTOR_DISPATCH_PERMISSION_MODE=<value>` to
+  `$CLAUDE_ENV_FILE` for a valid value, and the fixed word `invalid` for
+  any other non-empty value, so a typo makes dispatch fail instead of
+  quietly running `interactive`. It never writes the user's own text.
+- A `KONDUCTOR_DISPATCH_PERMISSION_MODE` the user already exported wins: the
+  hook then writes nothing. It also does nothing without `CLAUDE_ENV_FILE`.
+- It prints nothing and always exits 0.
+- A changed option takes effect in a new session, not a resumed one. In a
+  check with Claude Code 2.1.318, a hook's export reached the Bash tool, and
+  on `--resume` the hook ran again but did not see the earlier export, while
+  the Bash tool kept the value written at startup.
+- Tests: `tests/test_claude_plugin_dispatch_env_hook.py`, and the hooks.json
+  checks in `tests/scripts/claude-plugin-telemetry-hook.test.js` and
+  `tests/test_assemble_claude_plugin_branch_mcp_rewrite.py`.
 
 ## Kiro CLI
 

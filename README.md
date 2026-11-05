@@ -472,15 +472,19 @@ own; servers such as Playwright MCP are yours to configure.
 
   | Mode | Child command | Effect |
   | --- | --- | --- |
-  | `interactive` (default) | `claude --agent <agent> "<task>"` | A normal session in the pane that asks you before using a tool that needs permission |
-  | `headless` | `claude --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<task>"` | Runs once without prompts. It can edit files; Bash, network and other calls that would prompt are denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows them, so `acceptEdits` alone does not allow build or test commands |
-  | `bypass` | `claude --agent <agent> --dangerously-skip-permissions -p "<task>"` | Opt-in. Skips every permission check, AWS API calls included. Use it only in an isolated environment |
+  | `interactive` (default) | `claude --add-dir <registry dir> --agent <agent> "<task>"` | A normal session in the pane that asks you before using a tool that needs permission. It stays open after the task, so type `/exit` in the pane when it reports done |
+  | `headless` | `claude --add-dir <registry dir> --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<task>"` | Runs once without prompts and skips the workspace trust dialog, because of `-p`. It can edit files in its working directory and the registry dir; Bash, network and other calls that would prompt are denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows them, so `acceptEdits` alone does not allow build or test commands |
+  | `bypass` | `claude --add-dir <registry dir> --agent <agent> --dangerously-skip-permissions -p "<task>"` | Opt-in. Skips every permission check, AWS API calls included. Use it only in an isolated environment |
+
+  `<registry dir>` is `/tmp/konductor-mux` or `/tmp/konductor-cmux`, where the child reads its brief
+  and writes its result.
 
   Set the mode with the plugin's `dispatch_permission_mode` option, or export
   `KONDUCTOR_DISPATCH_PERMISSION_MODE` in the shell that starts Claude Code; the variable wins.
   A third hook, `bash ${CLAUDE_PLUGIN_ROOT}/hooks/konductor-dispatch-env.sh`, runs synchronously on
   every `SessionStart` and copies the option into the session environment. It prints nothing and
-  writes only to the environment file Claude Code gives it. The scripts write each task and its
+  writes only to the environment file Claude Code gives it. A mistyped option value is written as
+  `invalid`, so dispatch stops with an error instead of quietly running `interactive`. The scripts write each task and its
   `.done` status file under `/tmp/konductor-mux` or `/tmp/konductor-cmux`. The `konductor`
   orchestrator does not dispatch this way; its specialists follow your Claude Code permission
   settings.
@@ -542,15 +546,16 @@ on by default through the plugin's `telemetry_enabled` option (`userConfig.telem
 default `true`).
 
 Each event is one HTTPS `POST` of JSON to `https://metrics.awssolutionsbuilder.com/generic`, with a
-3-second timeout. The plugin always uses that endpoint and ignores `KONDUCTOR_METRICS_ENDPOINT` and
-`telemetry.endpoint`. The payload has these fields:
+3-second timeout. As with any HTTPS request, the endpoint sees the sender's IP address. The plugin
+always uses that endpoint and ignores `KONDUCTOR_METRICS_ENDPOINT` and `telemetry.endpoint`. The
+payload has these fields:
 
 - `Solution` (`SO0370`), `Version` (the plugin version), `UUID` (the machine identifier) and
   `TimeStamp`.
 - `Data.eventType`, `Data.targetName` (the Konductor agent's name), `Data.parentAgentName` (the
   delegating Konductor agent, when Claude Code exposes it), `Data.sessionId` and
-  `Data.parentSessionId` (both hashed), `Data.harness` (`claude-plugin`), `Data.eventId` (a random
-  hash), `Data.TimeStamp`, and `Data.errorCode` and `Data.agentVersion`, which the plugin always
+  `Data.parentSessionId` (both hashed), `Data.harness` (`claude-plugin`), `Data.eventId` (a hash of
+  the send time and process ID), `Data.TimeStamp`, and `Data.errorCode` and `Data.agentVersion`, which the plugin always
   sends as `null`.
 
 To turn off telemetry for the Claude Code plugin, do any one of these:

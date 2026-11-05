@@ -64,8 +64,8 @@ not per individual commit.
   sends and fetches, including the telemetry endpoint and payload, that telemetry is on by default,
   and how to turn it off, and adds example prompts and a support link. The plugin ships the brand
   logo as its listing icon and drops the `kiro` keyword, the mux and cmux orchestrators describe
-  `.done` completion on both runtimes, and plugin build output is staged outside the repository
-  (`make claude-plugin` writes `dist/claude-plugin/`).
+  `.done` completion on both runtimes, release assembly stages generator output in a temporary
+  directory, and `make claude-plugin` writes the gitignored `dist/claude-plugin/`.
 - On Claude Code, the mux and cmux orchestrators start each child in the mode set by
   `KONDUCTOR_DISPATCH_PERMISSION_MODE` or the plugin's `dispatch_permission_mode` option:
   `interactive` (the default, which prompts in the pane), `headless` (no prompts, edits only unless
