@@ -80,11 +80,8 @@ not per individual commit.
   unattended run stops and reports, and a later attended resume can resolve or override.
 - Orchestrator review fixes CRITICAL and IMPORTANT findings once and re-reviews the fix. A finding
   carried over or new on the fix or caused by it in dependents stops the run; pre-existing ones are listed.
-- Core rules now rank the user's request, recorded rulings, project instruction files,
-  user-written memory and the codebase's conventions, including a tracked style guide, above
-  konductor's format and workflow defaults. A file an instruction file names speaks only for those
-  categories. When these do not settle a collision, the agent asks once and saves the answer as a
-  `Ruling:` memory entry.
+- Core rules rank the request, rulings, instruction files, user-written memory and codebase
+  conventions above konductor defaults; when a collision stays open, ask once and save a `Ruling:` entry.
 
 ### Fixed
 
