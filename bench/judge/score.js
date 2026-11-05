@@ -3,6 +3,9 @@
 
 const { VERDICT_VALUE } = require('./config.js');
 
+// A verdict whose evidence quote is not found in the output drops one level.
+const DOWNGRADE = { pass: 'partial', partial: 'fail', fail: 'fail' };
+
 // Weighted sum of pass=1, partial=0.5, fail=0, divided by the total weight.
 function rubricScore(rubric, criteria) {
   const verdicts = new Map(criteria.map((c) => [c.id, c.verdict]));
@@ -46,4 +49,4 @@ function combineGraded(first, second) {
   };
 }
 
-module.exports = { rubricScore, pairOutcome, combineOrderings, combineGraded };
+module.exports = { DOWNGRADE, rubricScore, pairOutcome, combineOrderings, combineGraded };

@@ -10,18 +10,17 @@ const { checkJudgeModel, checkPanel, families, effectiveLimits } = require('./co
 const { buildBundle } = require('./bundle.js');
 const { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix } = require('./prompts.js');
 const { parseJsonStrict, validateRubricReply, validatePairReply, validateGradedReply } = require('./validate.js');
-const { rubricScore, pairOutcome, combineOrderings, combineGraded } = require('./score.js');
+const { rubricScore, pairOutcome, combineOrderings, combineGraded, DOWNGRADE } = require('./score.js');
 const { withCache } = require('./model.js');
 const { makeQuoteMatcher } = require('./quote.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
+const { mergeRecords, addSpend } = require('./merge.js');
 
 const MAX_PROMPT_BYTES = 120000; // one argv string is capped near 128 KiB on Linux; the opencode backend reads the prompt from stdin
 
 const runKey = (r) => `${r.armId}|${r.taskId}|${r.replicate}`;
-// A quote that is not in the bundle weakens the verdict one level. The judge's own verdict is kept as verdictRaw.
-const DOWNGRADE = { pass: 'partial', partial: 'fail', fail: 'fail' };
 
 // Runs whose output is not a fair basis for scoring: setup or post-run infrastructure failed, or no workspace was kept.
 function notJudgedReason(r) {
@@ -231,24 +230,10 @@ async function runJudging(o) {
 function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJudge, backend, backendInfo, spentUsd, spentUsdByJudge, rubric, pairwise, graded = [], notJudged, calls, smallPanel }) {
   const file = path.join(run.dir, 'judgments.json');
   const prev = run.judgments || { rubric: [], pairwise: [], graded: [], judges: [], modes: [] };
-  // A unit skipped by the budget has nothing to say; it must not replace an earlier record that has a result.
-  const skippedByBudget = (r) => /^budget reached/.test(r.judgeError || '');
-  const merge = (old, fresh) => {
-    const m = new Map(old.map((r) => [`${r.judge}|${r.armId}|${r.taskId}|${r.replicate}`, r]));
-    for (const r of fresh) {
-      const key = `${r.judge}|${r.armId}|${r.taskId}|${r.replicate}`;
-      const kept = m.get(key);
-      if (skippedByBudget(r) && kept && !kept.judgeError) continue;
-      m.set(key, r);
-    }
-    return [...m.values()];
-  };
-  const byJudge = { ...(prev.spentByJudge || {}) };
-  for (const [j, v] of Object.entries(spentByJudge)) byJudge[j] = (byJudge[j] || 0) + v;
+  const byJudge = addSpend(prev.spentByJudge, spentByJudge);
   const allJudges = [...new Set([...prev.judges, ...judges])].sort();
   const usd = backend === 'opencode';
-  const byJudgeUsd = { ...(prev.spentUsdByJudge || {}) };
-  for (const [j, v] of Object.entries(spentUsdByJudge)) byJudgeUsd[j] = (byJudgeUsd[j] || 0) + v;
+  const byJudgeUsd = addSpend(prev.spentUsdByJudge, spentUsdByJudge);
   const out = {
     schemaVersion: 1,
     createdAt: new Date().toISOString(),
@@ -265,12 +250,12 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
     ...(usd ? { spentUsd: (prev.spentUsd || 0) + spentUsd, spentUsdByJudge: byJudgeUsd } : {}),
     invocations: [...(prev.invocations || []), { at: new Date().toISOString(), judges, modes, spentCredits: spent, ...(usd ? { spentUsd } : {}), calls: calls.length, cachedCalls: calls.filter((c) => c.cached).length }],
     notJudged,
-    rubric: merge(prev.rubric, rubric),
-    pairwise: merge(prev.pairwise, pairwise),
-    graded: merge(prev.graded || [], graded),
+    rubric: mergeRecords(prev.rubric, rubric),
+    pairwise: mergeRecords(prev.pairwise, pairwise),
+    graded: mergeRecords(prev.graded || [], graded),
   };
   fs.writeFileSync(file, JSON.stringify(out, null, 2) + '\n');
   return out;
 }
 
-module.exports = { runJudging, judgeOnce };
+module.exports = { runJudging, judgeOnce, notJudgedReason, runKey, MAX_PROMPT_BYTES };

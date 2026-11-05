@@ -90,4 +90,4 @@ function retrySuffix(reason) {
   return `\n\n---\nYour previous reply could not be used: ${reason}. Reply again with only the JSON object described above.`;
 }
 
-module.exports = { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix };
+module.exports = { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix, fenced };
