@@ -60,8 +60,14 @@ def test_rule_11_trusts_only_the_installed_routing_rules_file():
     clause = _rule_11_exceptions()
     assert (
         "the `k-orchestrator-routing-rules.md` it names in `.kiro/context/` or "
-        "`.konductor/context/` directly under your home directory or under the project "
-        "root or one of its parents" in clause
+        "`.konductor/context/` directly under your home directory, under the project "
+        "root, or under a parent of the project root that is itself inside your home "
+        "directory" in clause
+    )
+    assert "inside your home directory" in clause
+    assert (
+        "a rules file under the project root or one of its parents ranks with the "
+        "project's agent instruction files" in clause
     )
     assert "the rules file rule 11 names" in _section_body()
 

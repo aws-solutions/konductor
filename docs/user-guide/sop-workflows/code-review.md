@@ -80,14 +80,14 @@ flowchart TD
     S4["4. Consolidate<br/>sort CRITICAL → IMPORTANT → SUGGESTION<br/>deduplicate across skills<br/>attach file:line to each finding"]
     S4 --> S5["5. Critique findings<br/>when in doubt, reject"]
 
-    S5 --> S6{"6. Adversarial capability available<br/>AND review_type is not<br/>'frontend' only?"}
-    S6 -->|No| Skip["Skip step 6"]
-    S6 -->|Yes| Adv["Spawn k-architect in adversarial mode<br/>pass the same diff as diff_input<br/>forward cr_url as the adversarial SOP's pr_url<br/>apply step 5's filters to its findings<br/>merge new CRITICAL / IMPORTANT only"]
+    S5 --> S6{"6. review_type is not<br/>'frontend' only?"}
+    S6 -->|No| S7
+    S6 -->|Yes| Pending["Write the report with an<br/>'Adversarial pass: pending' section"]
+    Pending --> Hand["Return step 6 as a handoff for k-architect<br/>diff as diff_input, cr_url as the adversarial SOP's pr_url"]
+    Hand -.->|"resumed with findings"| Merge["Apply step 5's filters to its findings<br/>merge new CRITICAL / IMPORTANT only"]
+    Merge --> S7
 
-    Skip --> S7
-    Adv --> S7
-
-    S7["7. Write report to output_file<br/>state verdict: READY FOR CR / NEEDS FIXES<br/>never print the full report inline"]
+    S7["7. Write report to output_file<br/>state verdict: READY FOR CR / NEEDS FIXES<br/>overwrite a pending report on resume<br/>never print the full report inline"]
 
     class Ask,S5 gate
     class S7 focus
@@ -134,9 +134,11 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
   list is derived from them.
 - **The adversarial step runs only through `konductor`.** Step 6 asks for `k-architect`, but its
   one owning agent cannot spawn: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code,
-  and the core rules forbid it in Kiro CLI v2. Step 6 has `k-developer` return it as a handoff
-  instead. Under `konductor`, `konductor` routes it to `k-architect`, and the findings come back
-  for the report. When `k-developer` is started directly, the handoff comes back to you: ask
+  and the core rules forbid it in Kiro CLI v2. Step 6 has `k-developer` write the report with an
+  "Adversarial pass: pending" section, then return the pass as a handoff. Under `konductor`,
+  the handoff goes to `k-architect`, and the findings come back to replace the pending
+  section. When `k-developer` is started directly, you get the pending report and the handoff
+  comes back to you: ask
   `konductor` to run [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review),
   then pass its findings and the handoff to `k-developer` and ask it to resume
   `k-code-review-workflow` at step 6 to finish the report. Started directly, `k-architect` returns
@@ -279,9 +281,9 @@ replacement for standard review — it catches what style and quality reviewers 
 disclosure, data integrity failures, and schema/validation gaps.
 
 **Only `k-architect` declares this SOP** — `k-developer` and the three orchestrators do not, so
-none of them invokes it directly. `k-architect` acts as the coordinator: it spawns the generator
-subagents and then runs the checker phase itself, which is what keeps generator and checker
-independent.
+none of them invokes it directly. `k-architect` acts as the coordinator: it returns the generator
+passes to its caller as a split and a handoff note, resumes to run the checker phase itself, and
+never runs a generator pass, which is what keeps generator and checker independent.
 
 ### How to invoke it
 
@@ -323,14 +325,14 @@ flowchart TD
     Empty -->|Yes| Stop["Inform the user and STOP"]
     Empty -->|No| Passes
 
-    subgraph Passes["2. Parallel review passes — three k-developer subagents, run concurrently, findings never shared between them"]
+    subgraph Passes["2. Parallel review passes, returned as a split of three k-developer parts, run concurrently, findings never shared between them; resume at step 3"]
         direction TB
         S2a["security pass<br/>adversarial-code-review-pass-security<br/>info disclosure · authorization<br/>injection · secrets"]
         S2b["integrity pass<br/>adversarial-code-review-pass-integrity<br/>multi-item mutations · atomicity<br/>ordering · idempotency"]
         S2c["schema pass<br/>adversarial-code-review-pass-schema<br/>API / schema / type changes<br/>backward compatibility · validation"]
     end
 
-    Passes --> S3["3. Reuse pass — a FOURTH k-developer spawn<br/>cross-pass reuse only: an existing utility the diff<br/>reimplements, or one that would resolve 2+ findings<br/>tagged pass origin 'reuse'"]
+    Passes --> S3["3. Reuse pass, returned as a handoff note for a FOURTH k-developer session; resume at step 4<br/>cross-pass reuse only: an existing utility the diff<br/>reimplements, or one that would resolve 2+ findings<br/>tagged pass origin 'reuse'"]
 
     S3 --> S4["4. Checker phase — k-architect, Validator Mode<br/>runs adversarial-code-review over the consolidated list<br/>tags each finding KEEP or REJECT with a reason<br/>drops every REJECT · proposes nothing new"]
 
@@ -361,8 +363,9 @@ flowchart TD
     classDef focus fill:#dbe7f5,stroke:#2a5d8f,stroke-width:2px,color:#0f172a;
 ```
 
-*`k-adversarial-pull-request-review`: a coordinator, three parallel generator subagents, a fourth
-for reuse, then a checker phase the coordinator runs itself. Two steps are permanent no-ops here.*
+*`k-adversarial-pull-request-review`: a coordinator, three parallel generator parts returned as a
+split, a fourth returned as a handoff note for reuse, then a checker phase the coordinator runs
+itself. Two steps are permanent no-ops here.*
 
 ### The quality gate
 
@@ -380,10 +383,11 @@ counts.
 - **Validation issues in test files are not flagged.**
 - **Context ramp-up is bounded.** Max 3 linked issues, max 3 referenced design docs, one pass per
   source, no recursive link following — and missing context never blocks the review.
-- **Generator and checker are different agents, deliberately.** Steps 2 and 3 spawn `k-developer`
-  four times; step 4 is `k-architect` running `adversarial-code-review` in Validator Mode on the
-  result. The coordinator never generates a finding, which is what lets it judge them — and it is
-  why the SOP forbids the checker from proposing anything new. It is a filter, not a second review.
+- **Generator and checker are different agents, deliberately.** Steps 2 and 3 are returned as a split
+  and a handoff note for `k-developer` (four sessions in all), and the SOP resumes at steps 3 and
+  4; step 4 is `k-architect` running `adversarial-code-review` in Validator Mode on the result. The
+  coordinator never generates a finding, which is what lets it judge them. That is also why the SOP
+  forbids the checker from proposing anything new. It is a filter, not a second review.
 - **Two steps never run here.** Step 0.5 (load prior review state) and step 5 (historical filter)
   are **permanent no-ops on this package** — `historical-issues-registry` is abstract and
   `k-architect` has no tool that can read a pull request's prior comment threads. The SOP is

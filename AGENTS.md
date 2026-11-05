@@ -95,8 +95,9 @@ and diagnosing a Konductor-managed repository, covering an 8-command surface.
 
 Non-negotiable conventions:
 
-- **Usage errors exit `64` (`EX_USAGE`)**; exit code `2` is reserved for the "unresolved
-  CRITICAL gate" signal and must never be emitted for a bad CLI invocation.
+- **Usage errors exit `64` (`EX_USAGE`)**; exit code `2` is reserved for an unresolved
+  finding at or above the effective gate threshold (CRITICAL by preset, HIGH under the strict
+  floor for phase-gated SOPs) and must never be emitted for a bad CLI invocation.
 - When changing the command surface, keep `cli/README.md`'s command list in sync.
 
 ## Authoring Agents & Skills

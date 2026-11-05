@@ -248,6 +248,35 @@ fn only_a_konductor_session_in_coordinator_mode_gets_the_persona() {
     std::fs::remove_dir_all(&home).ok();
 }
 
+#[cfg(unix)]
+#[test]
+fn the_pointer_keeps_a_symlinked_home_as_the_session_knows_it() {
+    let physical_home = scratch_dir("home-physical");
+    install_into(&physical_home, &physical_home, &["konductor"]);
+    set_mode(&physical_home, "orchestration:\n  mode: coordinator\n");
+    let links = scratch_dir("home-links");
+    let logical_home = links.join("home-link");
+    std::os::unix::fs::symlink(&physical_home, &logical_home).unwrap();
+    let outside_project = scratch_dir("outside-project");
+
+    let stdout = fire(
+        &logical_home,
+        &outside_project,
+        &[],
+        &[],
+        &claude_payload(Some("konductor"), "startup"),
+    );
+
+    let logical_rules = logical_home.join(".kiro/context/k-orchestrator-routing-rules.md");
+    assert!(
+        stdout.contains(&format!("read {} in full.", logical_rules.display())),
+        "{stdout}"
+    );
+    for dir in [&physical_home, &links, &outside_project] {
+        std::fs::remove_dir_all(dir).ok();
+    }
+}
+
 #[test]
 fn kiro_v3_identity_comes_from_the_kiro_home_session_store() {
     let home = scratch_dir("v3-home");

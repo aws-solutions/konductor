@@ -4,7 +4,7 @@
 
 Runs an adversarial review of code changes. Not a replacement for standard code review — runs after standard review to catch what style and quality reviewers miss: information disclosure, data integrity failures, and schema/validation gaps.
 
-Structure: one coordinator (this SOP), three parallel pass subagents (security, integrity, schema), a validator (checker) phase the coordinator runs itself, and a historical-issues filter. Persona independence between generator and checker is what keeps false positives out of the CR.
+Structure: one coordinator (this SOP), three parallel `k-developer` generator passes (security, integrity, schema) and a fourth reuse pass, each returned to the caller as a split or handoff note rather than spawned, a validator (checker) phase the coordinator runs itself, and a historical-issues filter. Persona independence between generator and checker is what keeps false positives out of the CR.
 
 ## Parameters
 
@@ -24,8 +24,8 @@ Structure: one coordinator (this SOP), three parallel pass subagents (security, 
 
 ## Roles
 
-- **Generator** (per-pass subagent) — `k-developer` invoked with one of `adversarial-code-review-pass-security`, `-integrity`, or `-schema`, or (in Step 3) as a fresh reuse-pass subagent. Native code-diff lens, produces candidate findings.
-- **Validator / Checker** — `k-architect`, running `adversarial-code-review` in Validator Mode. `k-architect` is also this SOP's coordinator, and only `k-architect` registers this SOP (`k-developer`/`konductor`/`konductor-mux-orchestrator`/`konductor-cmux-orchestrator` do not invoke it directly), so there is no separate agent that could spawn a checker named `k-architect` as a subagent without a self-reference — an agent has no mechanism to launch a fresh instance of its own name via the `subagent` tool. Independence instead comes from persona: the coordinator never ran as a generator pass (that role is `k-developer`, spawned separately in Step 2/3), so the coordinator's own context is already untainted by having generated any of the findings it is about to filter. See Step 4.
+- **Generator** (per-pass session): `k-developer` running one of `adversarial-code-review-pass-security`, `-integrity`, or `-schema` (Step 2), or the reuse pass (Step 3), in a session the orchestrator or the user opens from the split or handoff note this SOP returns. Native code-diff lens, produces candidate findings.
+- **Validator / Checker**: `k-architect`, running `adversarial-code-review` in Validator Mode. `k-architect` is also this SOP's coordinator, and only `k-architect` registers this SOP (`k-developer`/`konductor`/`konductor-mux-orchestrator`/`konductor-cmux-orchestrator` do not invoke it directly), so the checker is the coordinator itself: an agent cannot return a split naming its own name for a fresh instance of itself. Independence instead comes from persona: the coordinator never ran as a generator pass (that role is `k-developer`, run from the split and handoff note in Steps 2 and 3), so the coordinator's own context is already untainted by having generated any of the findings it is about to filter. See Step 4.
 - **Historical filter** — this SOP invokes `historical-issues-registry` in load and filter phases. **Currently unavailable on ASDLC:** `historical-issues-registry` is an abstract skill — per its own Usage section, it is "Not run standalone... provide the concrete mapping for your platform in a delta layer that extends this skill." No such delta exists for ASDLC today. `k-architect`'s own toolset is `@builtin`, `subagent`, and `@aws-mcp` only (see `k-architect.agent-spec.json`) — none of these expose an API for reading a pull request's prior review comment threads, and no other tooling capable of providing one is available to this agent in this package. This is why Steps 0.5 and 5 below are documented as no-ops rather than silently returning empty results. The same absence of a pull-request-reading tool also means `k-architect` cannot resolve an arbitrary `pr_url` to its diff content either — see the Parameters section's `pr_url` note and Step 0 for how that separate gap is handled.
 
 Independence rests on three properties held together: different persona per role (generator is `k-developer`, checker is `k-architect` — never the same agent grading its own findings), no context inherited from a generator pass, and the mechanical literal-diff-verification rule inside the checker skill.
@@ -76,47 +76,49 @@ Resolve `diff_input` to reviewable content.
 
 **Expected Output:** List of changed files with content, total file count, approximate lines changed
 
-### 2. Parallel Review Passes
+### 2. Parallel Review Passes (return a split)
 
-Spawn three subagents in parallel, one per pass. Send them in a single message with three tool uses so they run concurrently.
+Specialists never spawn other agents, and these passes need independence from the checker, so you MUST NOT run them yourself. Return the three passes as a proposed split, then stop. The orchestrator (or the user, when no orchestrator is running) runs the parts concurrently and resumes you at Step 3 with the three findings lists.
 
 **Constraints:**
 
-- You MUST spawn `k-developer` (generator role) three times, each loading exactly one pass skill:
+- You MUST return a split of three parts, each naming `k-developer` (generator role) and loading exactly one pass skill:
   - Security pass → `adversarial-code-review-pass-security`
   - Data integrity pass → `adversarial-code-review-pass-integrity`
   - Schema/contract pass → `adversarial-code-review-pass-schema`
-- Each subagent MUST receive the ingested diff and the Step 0 context summary
-- Each subagent MUST be framed neutrally — the prompt says "review through the lens of X", never "check if X is weak"
-- You MUST NOT share findings between the three passes — they run independently
-- You MUST wait for all three passes to return before proceeding
+- Each part MUST carry the ingested diff and the Step 0 context summary
+- Each part MUST be framed neutrally: the prompt says "review through the lens of X", never "check if X is weak"
+- You MUST NOT share findings between the three parts; they run independently
+- The split MUST name this SOP and Step 3 as the step to resume at, and carry `diff_input`, `pr_url` if given, `output_file`, and the Step 0 context summary. If that payload is long, write it to `.konductor/handoff/k-architect-adversarial-review.md` and name the path
+- You MUST NOT run a generator pass yourself. If you cannot return a split (the user asked for an in-session run), say in the report that the generator passes ran in-session and that the checker step is not independent
+- Resumed at Step 3 with the three lists, you MUST NOT run or re-run a pass yourself
 
-**Expected Output:** Three findings lists — one per pass, each with severity, file:line, problem, and fix per entry
+**Expected Output:** A proposed split of three `k-developer` parts, with the resume step named. The three findings lists (each with severity, file:line, problem, and fix per entry) arrive when you are resumed at Step 3.
 
-### 3. Reuse Pass (Generator Phase)
+### 3. Reuse Pass (Generator Phase, return a handoff note)
 
-Merge the three findings lists, then check for missed reuse opportunities not surfaced within any single pass — as a fourth generator-persona pass, not as coordinator commentary.
+You are resumed here with the three Step 2 findings lists. Merge them, then return a handoff note for the reuse pass, a fourth generator-persona pass, and stop. Check for missed reuse opportunities not surfaced within any single pass; the coordinator does not do this itself.
 
 **Constraints:**
 
 - You MUST concatenate the three Step 2 findings lists preserving each finding's pass origin
-- You MUST spawn `k-developer` (generator role) once more, as a fresh subagent, to look for cross-pass reuse — framed neutrally ("review through the lens of cross-pattern reuse: identify any existing utility, pattern, or helper that the diff reimplements or bypasses, or that would resolve two or more of the findings below")
-- This reuse-pass subagent MUST receive: the ingested diff, the Step 0 context summary, and the three Step 2 findings lists
-- Any findings this pass produces MUST be tagged with pass origin `reuse` and appended to the consolidated list. They are ordinary candidate findings like the other three passes' output — they get no exemption from Step 4's checker rules
+- You MUST return a handoff note naming `k-developer` (generator role) for the reuse pass, framed neutrally ("review through the lens of cross-pattern reuse: identify any existing utility, pattern, or helper that the diff reimplements or bypasses, or that would resolve two or more of the findings below")
+- The note MUST carry: the ingested diff, the Step 0 context summary, and the consolidated findings list; it MUST name this SOP and Step 4 as the step to resume at, plus `output_file` and `pr_url` if given
+- Resumed at Step 4 with the reuse findings, you MUST tag them with pass origin `reuse` and append them to the consolidated list. They are ordinary candidate findings like the other three passes' output. They get no exemption from Step 4's checker rules
 - You MUST assign IMPORTANT to a reuse finding that flags inline reimplementation or bypass of an existing shared utility, transaction/batch helper, validation middleware, error-mapping layer, or pagination token utility. For a reuse finding outside that list, apply the severity guidance from whichever of `adversarial-code-review-pass-security`/`-integrity`/`-schema` most closely matches the concern it raises
-- You MUST NOT have the coordinator itself originate reuse findings — sourcing findings from the coordinator, rather than from a generator-persona subagent, breaks the generator/checker independence invariant this SOP relies on
+- You MUST NOT have the coordinator itself originate reuse findings: sourcing findings from the coordinator, rather than from a `k-developer` generator session, breaks the generator/checker independence invariant this SOP relies on
 - You MUST NOT re-run the individual Step 2 passes' own checks — this step only adds cross-pass reuse findings
 
-**Expected Output:** Consolidated findings list (security, integrity, schema, and reuse pass origins)
+**Expected Output:** A handoff note for the reuse pass. The consolidated findings list (security, integrity, schema, and reuse pass origins) is complete when you are resumed at Step 4.
 
 ### 4. Checker Phase — Validate Findings
 
-You (the coordinator, `k-architect`) now switch roles and run `adversarial-code-review` in Validator Mode yourself, filtering the consolidated findings. No subagent spawn is needed or possible here — the checker persona is `k-architect`, which is your own name, and an agent has no mechanism to spawn a fresh instance of itself via the `subagent` tool. Independence holds because you never ran a generator pass (Step 2/3 spawned `k-developer`, not you) — your context is already free of having generated any of these findings.
+You (the coordinator, `k-architect`) now switch roles and run `adversarial-code-review` in Validator Mode yourself, filtering the consolidated findings. No split or handoff is needed here. The checker persona is `k-architect`, which is your own name. Independence holds because you never ran a generator pass (Steps 2 and 3 were run by `k-developer` sessions, not you), so your context is already free of having generated any of these findings.
 
 **Constraints:**
 
-- You MUST run `adversarial-code-review` in Validator Mode directly (no subagent spawn) — this is a different persona from the `k-developer` generators, not a self-check of your own output
-- You MUST NOT reuse or reference the Step 2/3 subagents' internal reasoning beyond the findings list and context summary they returned — evaluate each finding on its own terms
+- You MUST run `adversarial-code-review` in Validator Mode directly (no split or handoff). This is a different persona from the `k-developer` generators, not a self-check of your own output
+- You MUST NOT reuse or reference the Step 2 and 3 generator sessions' internal reasoning beyond the findings lists and context summary they returned. Evaluate each finding on its own terms
 - You MUST provide yourself, as the checker, with: the ingested diff, the Step 0 context summary, and the consolidated findings list. The context summary lets the checker verify Step 3's reuse-pass findings against the existing utility or pattern they cite, without exempting any finding from the checker's ordinary verification rules
 - The checker step MUST tag each finding `KEEP` or `REJECT` with a one-line reason for each REJECT
 - You MUST drop every `REJECT` finding from the list before proceeding
@@ -181,7 +183,7 @@ Consolidate the surviving findings and produce a verdict.
 **Independence invariants MUST hold:**
 
 - Generator persona (`k-developer`) MUST differ from checker persona (`k-architect`) — the checker is the coordinator itself switching roles in Step 4, never a `k-developer` self-check
-- The checker MUST NOT have run a generator pass earlier in this same review — Step 2/3's generator role is always `k-developer`, spawned fresh, never the coordinator
-- The three review passes MUST run in parallel with no shared context between them
-- Step 3's reuse-pass findings MUST originate from a generator-persona subagent (`k-developer`), never from the coordinator itself
+- The checker MUST NOT have run a generator pass earlier in this same review. Step 2 and 3's generator role is always `k-developer`, run from the returned split or note, never the coordinator
+- The three review passes MUST run in parallel, in separate `k-developer` sessions, with no shared context between them
+- Step 3's reuse-pass findings MUST originate from a generator-persona `k-developer` session, never from the coordinator itself
 - The checker MUST NOT propose new findings — Validator Mode is filter-only
