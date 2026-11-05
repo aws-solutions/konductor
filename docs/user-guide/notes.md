@@ -77,8 +77,8 @@ removing the file too would leave both of those pointing at something the guide 
 `check-guide-facts.py` records this in `WITHDRAWN_COMMANDS` rather than dropping its
 command-coverage check. That section asserts three things: every other command in
 `cli/README.md` is documented, every withdrawn command is **absent** from `reference.md`,
-`concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still exists in
-`cli/README.md`. So a second withdrawal nobody recorded, or a `config` command that gets deleted
+`concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still exists as a command in
+`cli.rs`, hidden or not. So a second withdrawal nobody recorded, or a `config` command that gets deleted
 outright, both fail loudly instead of quietly widening the carve-out.
 
 **Adding a name to `WITHDRAWN_COMMANDS` is a product decision, not a way to quiet the checker.**
