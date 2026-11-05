@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# mux-cleanup-dispatch.sh — Remove one dispatch's directory from the mux registry.
+# mux-cleanup-dispatch.sh: remove one dispatch's directory from the mux registry.
 # Usage: bash mux-cleanup-dispatch.sh --id <workspace-id>
 #
 # The orchestrator's only way to remove a dispatch directory. It takes the

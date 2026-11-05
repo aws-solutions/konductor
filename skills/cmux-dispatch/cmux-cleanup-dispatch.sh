@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# cmux-cleanup-dispatch.sh — Remove one dispatch's directory from the cmux registry.
+# cmux-cleanup-dispatch.sh: remove one dispatch's directory from the cmux registry.
 # Usage: bash cmux-cleanup-dispatch.sh --id <done-key>
 #
 # The orchestrator's only way to remove a dispatch directory. It takes the
