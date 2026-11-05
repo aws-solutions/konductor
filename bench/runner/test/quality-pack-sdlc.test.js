@@ -474,3 +474,22 @@ test('the request fixtures are public-safe: no internal names, no dashes, no cur
     assert.doesNotMatch(text, INTERNAL);
   }
 });
+
+test('the pack judging spend is counted once per judgments file, not once per arm', () => {
+  const { root, tasks, run } = packRun([
+    { criteria: [crit('chg-scoped', 'pass')] },
+    { armId: 'other', criteria: [crit('chg-scoped', 'pass')] },
+  ]);
+  try {
+    const file = path.join(run.dir, 'judgments-quality.json');
+    const q = JSON.parse(fs.readFileSync(file, 'utf8'));
+    fs.writeFileSync(file, JSON.stringify({ ...q, spentCredits: 1.5, spentUsd: 2.25 }));
+    const groups = [{ id: 'vanilla', label: 'vanilla', run: loadRun(run.dir), arm: 'vanilla' }, { id: 'other', label: 'other', run: loadRun(run.dir), arm: 'other' }];
+    const s = summarizeQuality({ groups, tasks, pack });
+    assert.equal(s.spend.credits, 1.5);
+    assert.equal(s.spend.usd, 2.25);
+    assert.match(toMarkdown(qualityBlocks(s)), /Pack judging spend: \$2\.2500 USD/);
+    const three = summarizeQuality({ groups: [...groups, { id: 'third', label: 'third', run: loadRun(run.dir), arm: 'third' }], tasks, pack });
+    assert.equal(three.spend.usd, 2.25);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

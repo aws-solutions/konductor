@@ -35,6 +35,16 @@ function recordsOf(run) {
   return { records: out, files };
 }
 
+/** Judging spend, counted once per judgments file. Several groups (one per arm) can read the same run directory. */
+function spendOf(loaded) {
+  const files = [...new Map(loaded.flatMap((l) => l.files).map((f) => [path.resolve(f.dir), f])).values()];
+  const hasUsd = files.some((f) => f.q.spentUsd !== undefined);
+  return {
+    credits: files.reduce((n, f) => n + (f.q.spentCredits || 0), 0),
+    usd: hasUsd ? files.reduce((n, f) => n + (f.q.spentUsd || 0), 0) : null,
+  };
+}
+
 /**
  * groups: [{ id, label, run, arm? }]. Each group is a loaded run (loadRun or loadRuns); `arm` limits it to one arm.
  * Throws when a group has no quality file or the groups were judged by different panels, backends or pack revisions.
@@ -93,7 +103,7 @@ function summarizeQuality({ groups, tasks, pack, disagreeScore = DEFAULTS.disagr
     pack: { id: pack.id, revision: pack.revision }, indicative: true, disagreeScore,
     dimensions: pack.dimensions.map((d) => ({ id: d.id, label: d.label })), groups: out,
     judges: uniq(loaded.flatMap((l) => l.files.flatMap((f) => f.q.judges))).sort(), backend: loaded[0].files[0].q.backend ?? 'kiro',
-    spend: { credits: loaded.reduce((n, l) => n + l.files.reduce((m, f) => m + (f.q.spentCredits || 0), 0), 0), usd: loaded.some((l) => l.files.some((f) => f.q.spentUsd !== undefined)) ? loaded.reduce((n, l) => n + l.files.reduce((m, f) => m + (f.q.spentUsd || 0), 0), 0) : null },
+    spend: spendOf(loaded),
     process: summarizeProcess({ groups, tasks }),
     stale: stale.pack + stale.task, staleBy: stale, staleRevisions: [...staleRevisions].sort(), usable: out.reduce((n, g) => n + g.runs, 0), errors, ...(scoredWeight > 0 ? { scoredWeight } : {}), note: scoredWeight > 0 ? scoredNote(scoredWeight) : NOTE,
   };
