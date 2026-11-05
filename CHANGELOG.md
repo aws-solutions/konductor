@@ -80,8 +80,9 @@ not per individual commit.
   unattended run stops and reports, and a later attended resume can resolve or override.
 - Orchestrator review fixes CRITICAL and IMPORTANT findings once, reruns the build and tests
   for code, re-reviews that fix and what depends on it, and lists suggestions for you. Any
-  CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done: the
-  orchestrator stops and reports it to you. An SOP may set its own fix-round limit.
+  CRITICAL or IMPORTANT finding the re-review reports on the fix, or that the fix caused,
+  carried over or new, blocks done: the orchestrator stops and reports it to you; a
+  pre-existing finding in unchanged code is listed. An SOP may set its own fix-round limit.
 
 ### Fixed
 
