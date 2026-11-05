@@ -483,6 +483,34 @@ mod tests {
         assert_eq!(get_skill_tool_search_id(), "konductor-skills::get_skill");
     }
 
+    // delegation-protocol carries its own copy of each engine's load step
+    // for subagents; it must name the same ids the index does.
+    #[test]
+    fn delegation_protocol_names_the_same_load_ids_as_the_index() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../skills/delegation-protocol/SKILL.md");
+        let skill = std::fs::read_to_string(&path).unwrap();
+        let v3 = format!(
+            "call load_resource with id {}, then call {GET_SKILL_TOOL} through tool_call",
+            get_skill_resource_id()
+        );
+        let v2 = format!(
+            "call tool_search with tool_id {} first, then call {GET_SKILL_TOOL}",
+            get_skill_tool_search_id()
+        );
+        assert!(
+            skill.contains("Kiro CLI V3:") && skill.contains(&v3),
+            "{}",
+            path.display()
+        );
+        assert!(
+            skill.contains("Kiro CLI V2:") && skill.contains(&v2),
+            "{}",
+            path.display()
+        );
+        assert!(!skill.contains("tool_load"), "{}", path.display());
+    }
+
     #[test]
     fn get_skill_resource_id_uses_the_installed_server_and_tool() {
         assert_eq!(
