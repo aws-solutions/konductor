@@ -61,3 +61,24 @@ def test_every_skill_direct_work_names_is_declared_by_konductor():
     claude = set(spec["clientConfig"]["claudeCli"]["skills"])
     assert named <= kiro, sorted(named - kiro)
     assert named <= claude, sorted(named - claude)
+
+
+def _direct_work():
+    return (ROOT / "context" / "k-direct-work.md").read_text(encoding="utf-8")
+
+
+def test_stack_skills_load_only_when_the_project_uses_the_stack():
+    text = _direct_work()
+    assert "when the project uses the skill's stack" in text
+    assert "under the same stack condition" in text
+    assert "review against the codebase's conventions" in text
+
+
+def test_posture_bearing_documents_always_get_the_gate_review():
+    assert "always gets the gate review" in _direct_work()
+
+
+def test_spawned_writer_worktrees_are_merged_before_the_gate():
+    assert "integrated tree" in _direct_work()
+    protocol = (ROOT / "skills" / "delegation-protocol" / "SKILL.md").read_text(encoding="utf-8")
+    assert "integration tree" in protocol

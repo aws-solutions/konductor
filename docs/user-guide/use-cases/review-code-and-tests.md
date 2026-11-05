@@ -99,7 +99,7 @@ Run the k-code-review-workflow SOP against my current branch.
 5. **Critique findings** — actively rejects false positives: praise, speculation about unseen code,
    style-only nits, linter duplicates, vague suggestions with no concrete fix. *"When in doubt,
    reject — false positives erode trust."*
-6. **Adversarial review** — writes the report with the adversarial section pending, then returns
+6. **Adversarial review**: writes the report with the adversarial section pending, then returns
    the pass as a handoff for `k-architect`. Skipped by design when `review_type` is `frontend`
    only.
 7. **Generate report** — writes `code-review-report.md` with a verdict: **READY FOR CR** or **NEEDS
