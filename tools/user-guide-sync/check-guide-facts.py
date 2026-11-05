@@ -644,10 +644,8 @@ def main() -> int:
     keys = re.findall(r"^([a-z][a-z0-9_]*):", cfg, re.MULTILINE)
     if not keys:
         fail("could not parse any top-level keys from cli/gate-config/config.yml")
-    # reference.md is the only page documenting the schema now. The task page that
-    # used to carry it went with the `konductor config` command -- see the
-    # WITHDRAWN_COMMANDS note above. The FILE is still documented, because
-    # `init` writes it and `doctor` validates it.
+    # reference.md is the only page documenting the schema. The file is documented
+    # because `init` writes it and `doctor` validates it.
     for page in ("reference.md",):
         text = read(guide / page)
         missing = [k for k in keys if f"`{k}`" not in text]
