@@ -17,9 +17,9 @@ const { makeOpencodeCaller } = require('../judge/opencode.js');
 const { BACKENDS, DEFAULT_BACKEND, checkOpencodeJudges } = require('../judge/backends.js');
 const oc = require('./lib/harness/opencode.js');
 const { readProfile } = require('./lib/harness/opencode-creds.js');
-const { runJudging } = require('../judge/run.js');
+const { runJudging, planJudging } = require('../judge/run.js');
 const { loadPack } = require('../judge/pack/index.js');
-const { runPackJudging, planPack, FILE } = require('../judge/packrun.js');
+const { runPackJudging, describePackPlan, FILE } = require('../judge/packrun.js');
 const { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration } = require('../judge/calibrate.js');
 const { loadRun, loadRuns } = require('../report/load.js');
 const { generateRunReport, generateContrast } = require('../report/generate.js');
@@ -136,9 +136,8 @@ function judgePanelFor(opts) {
   return { runDir, benchDir, run, judges, small };
 }
 
-// The model caller for a judge command: opencode on Bedrock, a --judge-cmd, or kiro-cli. Checks the backend flags first.
-function judgeCallerFor(opts, { runDir, judges }) {
-  const timeoutMs = numOpt(opts, 'judge-timeout-sec', DEFAULTS.timeoutSec) * 1000;
+// The backend a judge command uses, after checking the flags that go with it. Builds no caller and reads no credentials.
+function judgeBackendOf(opts, judges) {
   const backend = opts['judge-backend'] === undefined ? DEFAULT_BACKEND : opts['judge-backend'];
   if (!BACKENDS.includes(backend)) throw new Error(`--judge-backend takes ${BACKENDS.join(' or ')}`);
   const viaOpencode = backend === 'opencode';
@@ -146,8 +145,23 @@ function judgeCallerFor(opts, { runDir, judges }) {
   if (viaOpencode && opts['budget-credits'] !== undefined) throw new Error('--budget-credits does not apply to the opencode backend; use --budget-usd');
   if (!viaOpencode && opts['budget-usd'] !== undefined) throw new Error('--budget-usd applies to the opencode backend only; use --budget-credits');
   if (viaOpencode) checkOpencodeJudges(judges);
+  return { backend, viaOpencode };
+}
+
+// One line naming where the calls go and who answers them, printed before any call (and in a plan).
+function backendLine(opts, { backend, viaOpencode }, judges) {
+  const how = viaOpencode ? 'opencode on Bedrock, spend in USD' : (opts['judge-cmd'] || process.env.BENCH_JUDGE_CMD) ? 'a --judge-cmd command, spend as the command reports it' : 'kiro-cli, spend in credits';
+  return `backend: ${backend} (${how}); panel: ${judges.join(', ')} (${families(judges).length} model families)`;
+}
+
+// The model caller for a judge command: opencode on Bedrock, a --judge-cmd, or kiro-cli. Checks the backend flags first.
+function judgeCallerFor(opts, { runDir, judges }) {
+  const timeoutMs = numOpt(opts, 'judge-timeout-sec', DEFAULTS.timeoutSec) * 1000;
+  const { backend, viaOpencode } = judgeBackendOf(opts, judges);
   const judgeCmd = opts['judge-cmd'] || (viaOpencode ? undefined : process.env.BENCH_JUDGE_CMD);
+  if (opts.plan) throw new Error('--plan was given but this judge path would make model calls; nothing was run (this is a bench bug, please report it)');
   const log = (m) => console.error(`[judge ${new Date().toISOString().slice(11, 19)}] ${m}`);
+  log(backendLine(opts, { backend, viaOpencode }, judges));
   let caller;
   if (viaOpencode) {
     caller = makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir: path.join(runDir, 'judge', 'raw') });
@@ -181,6 +195,7 @@ async function cmdJudge(opts) {
   const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : defaultBaseline(run);
   const arms = [...new Set(run.runs.map((r) => r.armId))];
   if ((modes.includes('pairwise') || modes.includes('graded')) && !arms.includes(baseline)) throw new Error(`baseline arm "${baseline}" has no runs in ${runDir} (arms present: ${arms.join(', ')}); pass --baseline ARM or --mode rubric`);
+  if (opts.plan) return printJudgePlan(opts, { runDir, benchDir, judges, modes, baseline });
   const { caller, backend, viaOpencode, log } = judgeCallerFor(opts, { runDir, judges });
   // Calls that finished are cached on disk, so an interrupted judge phase loses only the calls in flight.
   const removeHandlers = procs.installSignalHandlers({ flush: () => {}, log });
@@ -215,6 +230,36 @@ async function cmdJudge(opts) {
 }
 
 // `judge --criteria-pack NAME`: the quality-dimensions pass. It reads the run and writes judgments-quality.json only.
+const money = (e, v) => (e.unit === 'usd' ? `$${v.toFixed(4)} USD` : `${v.toFixed(2)} credits`);
+
+// The last lines of every plan: cache hits, the estimate and the statement that nothing ran.
+function planTail(d) {
+  const lines = [];
+  lines.push(`already cached: ${d.cached} of ${d.calls} (free); live calls: ${d.live}${d.tooLarge ? `; ${d.tooLarge} prompt(s) too large to send (they would be recorded as errors)` : ''}`);
+  const e = d.estimate;
+  lines.push(e.total === null ? `estimated spend: ${e.basis}` : `estimated spend: about ${money(e, e.total)} for ${d.live} live call(s) at ${money(e, e.perCall)} each, from ${e.basis}; a reply that fails validation is asked once more`);
+  lines.push('nothing was called and nothing was written');
+  return lines.join('\n');
+}
+
+// judge --plan for the rubric, pairwise and graded modes: the same preparation as the pass, no caller.
+function printJudgePlan(opts, { runDir, benchDir, judges, modes, baseline }) {
+  const chosen = judgeBackendOf(opts, judges);
+  const d = planJudging({
+    runDir, benchDir, extraDirs: extraDirsOf(opts), judges, modes, baseline, backend: chosen.backend,
+    limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']),
+    budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
+    budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
+  });
+  console.log(`judge plan for ${runDir}`);
+  console.log(backendLine(opts, chosen, judges));
+  console.log(`modes: ${modes.join(', ')}${modes.some((m) => m !== 'rubric') ? `; baseline arm: ${baseline}` : ''}`);
+  console.log(`runs: ${d.runs} to judge, ${d.notJudged.length} not judged${d.notJudged.length ? ` (${d.notJudged.map((n) => `${n.armId}|${n.taskId}|${n.replicate}: ${n.reason}`).join('; ')})` : ''}`);
+  if (d.unpaired) console.log(`${d.unpaired} comparison(s) have no baseline run and would be recorded as errors`);
+  console.log(`calls: ${d.calls} (rubric ${d.byMode.rubric}, pairwise ${d.byMode.pairwise}, graded ${d.byMode.graded}) = ${judges.length} judge(s) x the runs and modes above`);
+  console.log(planTail(d));
+}
+
 async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
   for (const f of ['mode', 'baseline', 'profile']) if (opts[f] !== undefined) throw new Error(`--${f} does not apply with --criteria-pack: the pack pass has its own prompt and no pairwise or graded mode`);
   const thePack = loadPack(opts['criteria-pack']);
@@ -222,10 +267,14 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
   const explicitLimits = explicitLimitsOf(opts);
   const redactions = loadRedactions(opts['redact-file']);
   if (opts.plan) {
-    const { plan, notJudged, calls } = planPack({ run, tasks: loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir, limits, explicitLimits, redactions, thePack, judges });
-    for (const p of plan) console.log(`${p.run.armId}|${p.run.taskId}|${p.run.replicate}: ${p.judged} judged, ${p.auto} counted by program, ${p.absent} scored fail (artifact not produced), ${p.na} n/a`);
-    for (const n of notJudged) console.log(`${n.armId}|${n.taskId}|${n.replicate}: not judged (${n.reason})`);
-    console.log(`pack ${thePack.id} revision ${thePack.revision}: ${calls} judge call(s) for ${plan.filter((p) => p.calls).length} run(s) x ${judges.length} judge(s) (${judges.join(', ')}); nothing was called`);
+    const chosen = judgeBackendOf(opts, judges);
+    const d = describePackPlan({ run, tasks: loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir, limits, explicitLimits, redactions, thePack, judges, backend: chosen.backend });
+    console.log(`judge plan for ${runDir}: quality pack ${thePack.id}, revision ${thePack.revision}`);
+    console.log(backendLine(opts, chosen, judges));
+    for (const p of d.plan) console.log(`${p.run.armId}|${p.run.taskId}|${p.run.replicate}: ${p.judged} judged, ${p.auto} counted by program, ${p.absent} scored fail (artifact not produced), ${p.na} n/a`);
+    for (const n of d.notJudged) console.log(`${n.armId}|${n.taskId}|${n.replicate}: not judged (${n.reason})`);
+    console.log(`pack ${thePack.id} revision ${thePack.revision}: ${d.calls} judge call(s) for ${d.plan.filter((p) => p.calls).length} run(s) x ${judges.length} judge(s) (${judges.join(', ')})`);
+    console.log(planTail(d));
     return;
   }
   const { caller, backend, viaOpencode, log } = judgeCallerFor(opts, { runDir, judges });

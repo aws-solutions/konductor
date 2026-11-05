@@ -618,6 +618,7 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
 - Other flags: `--mode rubric,pairwise,graded`, `--profile`, `--concurrency 2`, `--budget-credits X` (per invocation; stops new calls at 90%), `--max-file-chars`,
   `--max-bundle-chars`, `--judge-cmd CMD` (test double: prompt on stdin, reply on stdout), `--auth-db`.
   `--judge-backend kiro|opencode` picks the program that asks the models (see "Judge backends" below).
+- Plan first. `judge --run DIR ... --plan` works in every mode (rubric, pairwise, graded, and `--criteria-pack`). It prints the backend, the panel, the number of calls per mode, how many the cache already holds, and an estimated spend, then stops: no model is called, no login or credentials file is read, and nothing is written. The estimate uses the mean live cost per call from the earlier judging in that directory, else 0.19 credits per call on kiro (unknown in USD on opencode). A real pass prints the backend and the panel on stderr before its first call. Without `--plan`, `--mode` and the other flags decide what runs, so check the plan's call count before a pass on the default backend.
 
 ### Judge backends
 `--judge-backend kiro` (the default) asks the panel through kiro-cli. `--judge-backend opencode` asks the same panel through `opencode run` on Amazon Bedrock.
@@ -657,7 +658,7 @@ node bench/runner/bench.js report --run V/claude --profile detailed
 ## Quality dimensions pack
 The task rubrics check that a run did what its task asked. The quality pack adds anchored criteria for how well it did it. Code: modularity, maintainability, inline documentation, test quality and change discipline (any change, of any size). Documents: written content, scenario coverage, threat model completeness and design structure. Deliverables: requirements clarity, non-functional requirements from request to design, design scalability and resilience, and task breakdown. The criteria, their three anchors per level and the sources are in [QUALITY-PACK.md](QUALITY-PACK.md).
 
-- It is a separate pass over finished runs. `judge --run DIR --criteria-pack quality` writes `judgments-quality.json` and does not read or change `judgments.json`, so `qualityOfRun` and every existing report stay as they are. `--plan` prints the number of judge calls and calls nothing. `--mode`, `--baseline` and `--profile` do not apply to it.
+- It is a separate pass over finished runs. `judge --run DIR --criteria-pack quality` writes `judgments-quality.json` and does not read or change `judgments.json`, so `qualityOfRun` and every existing report stay as they are. `--plan` prints the number of judge calls and calls nothing (see below). `--mode`, `--baseline` and `--profile` do not apply to it.
 - A criterion applies only when the task asked for the artifact. A dimension the task did not ask for is n/a with the reason, never a fail. An artifact the task asked for and the agent did not produce scores fail without a judge call.
 - The judge grades only what the agent changed, quotes the evidence, and a quote that is not in the output drops the verdict one level, as in the rubric pass.
 - Em dashes, en dashes, curly quotes, stock filler words and sentences over 35 words are counted by a program, not judged.

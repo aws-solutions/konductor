@@ -96,6 +96,22 @@ function makeCmdCaller(cmd, { timeoutMs }) {
   });
 }
 
+function cacheFileOf(dir, { model, prompt, salt = null }) {
+  const extra = salt ? salt(model) : null;
+  const sha = crypto.createHash('sha256').update(extra === null ? `${model}\n${prompt}` : `${extra}\n${model}\n${prompt}`).digest('hex');
+  return { sha, file: path.join(dir, `${sha}.json`) };
+}
+
+/** True when a stored reply would be served for this call. Reads only; used to plan a pass without calling anything. */
+function hasCachedReply(dir, { model, prompt, salt = null, accept = null }) {
+  const { file } = cacheFileOf(dir, { model, prompt, salt });
+  if (!fs.existsSync(file)) return false;
+  try {
+    const e = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return typeof e.response === 'string' && (!accept || Boolean(accept(e.response)));
+  } catch { return false; }
+}
+
 // Keyed by hash of (model, prompt). The prompt is stored so a leak scan can run later. `salt(model)` adds more to the key
 // (backend, system prompt, Bedrock model id); without it the key is the original one, so earlier cached kiro answers still hit.
 // A call may pass `accept(text)`. A reply it rejects is returned to the caller but never written, and a stored reply it
@@ -103,9 +119,7 @@ function makeCmdCaller(cmd, { timeoutMs }) {
 // new one as <key>.rejected.json before a valid reply replaces it.
 function withCache(caller, dir, { salt = null } = {}) {
   return async ({ model, prompt, accept = null }) => {
-    const extra = salt ? salt(model) : null;
-    const sha = crypto.createHash('sha256').update(extra === null ? `${model}\n${prompt}` : `${extra}\n${model}\n${prompt}`).digest('hex');
-    const file = path.join(dir, `${sha}.json`);
+    const { sha, file } = cacheFileOf(dir, { model, prompt, salt });
     let stale = false;
     if (fs.existsSync(file)) {
       let e = null;
@@ -133,4 +147,4 @@ function withCache(caller, dir, { salt = null } = {}) {
   };
 }
 
-module.exports = { makeKiroCaller, makeCmdCaller, withCache };
+module.exports = { makeKiroCaller, makeCmdCaller, withCache, hasCachedReply };

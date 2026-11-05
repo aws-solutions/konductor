@@ -45,6 +45,12 @@ function readSessions(bin, env) {
   });
 }
 
+// Part of the cache key: an answer is reused only for the same system prompt, Bedrock model and temperature setting.
+function cacheSaltOf(model) {
+  const m = opencodeModel(model);
+  return `opencode\n${systemPromptSha256()}\n${m.bedrockId}\n${m.temperature === null ? 'no-temperature' : `temperature-${m.temperature}`}`;
+}
+
 function makeOpencodeCaller({
   bin, credsFile, awsProfile = 'bench', region = 'us-east-1', timeoutMs, version = null, sha256 = null, scratchRoot = os.tmpdir(), rawDir = null,
   maxAttempts = 6, backoffMs = 2000, maxBackoffMs = 60000, sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
@@ -141,12 +147,8 @@ function makeOpencodeCaller({
       return [j, { bedrockModelId: m.bedrockId, agent: m.agent, temperature: m.temperature, temperatureApplied: m.temperature !== null }];
     })),
   };
-  // Part of the cache key: an answer is reused only for the same system prompt, Bedrock model and temperature setting.
-  caller.cacheSalt = (model) => {
-    const m = opencodeModel(model);
-    return `opencode\n${systemPromptSha256()}\n${m.bedrockId}\n${m.temperature === null ? 'no-temperature' : `temperature-${m.temperature}`}`;
-  };
+  caller.cacheSalt = cacheSaltOf;
   return caller;
 }
 
-module.exports = { makeOpencodeCaller, configJson };
+module.exports = { makeOpencodeCaller, configJson, cacheSaltOf };

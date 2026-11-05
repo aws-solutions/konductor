@@ -11,12 +11,13 @@ const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
 const { checkJudgeModel, checkPanel, families, effectiveLimits } = require('./config.js');
 const { buildBundle } = require('./bundle.js');
-const { validateRubricReply } = require('./validate.js');
-const { withCache } = require('./model.js');
+const { validateRubricReply, parseJsonStrict } = require('./validate.js');
+const { withCache, hasCachedReply } = require('./model.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
-const { judgeOnce, notJudgedReason, runKey, MAX_PROMPT_BYTES } = require('./run.js');
+const { judgeOnce, notJudgedReason, runKey, MAX_PROMPT_BYTES, estimateSpend } = require('./run.js');
+const { cacheSaltOf } = require('./opencode.js');
 const { mergeRecords, addSpend } = require('./merge.js');
 const pack = require('./pack/index.js');
 
@@ -47,7 +48,39 @@ function planPack({ run, tasks, benchDir, limits, explicitLimits = {}, redaction
   return { plan, notJudged, calls: plan.reduce((n, p) => n + p.calls, 0) };
 }
 
+const judgedItemsOf = (p) => p.app.criteria.filter((c) => c.status === 'judged').map((c) => c.criterion);
+
+function packPromptOf(p, redactions) {
+  return pack.packPrompt({ task: p.task, answerKey: readAnswerKey(p.task.fixtureDir), bundleText: p.bundle.text, changesText: pack.redactedChanges(p.app.stats, redactions), criteria: judgedItemsOf(p) });
+}
+
+/** planPack plus what the CLI needs to show before a pass: backend, calls served by the cache, and the estimated spend. */
+function describePackPlan(o) {
+  const { run, judges, redactions, thePack } = o;
+  const backend = o.backend ?? DEFAULT_BACKEND;
+  if (!BACKENDS.includes(backend)) throw new Error(`unknown judge backend "${backend}" (${BACKENDS.join(' or ')})`);
+  const usdMode = backend === 'opencode';
+  const base = planPack(o);
+  const salt = o.cacheSalt ?? (usdMode ? cacheSaltOf : null);
+  const cacheDir = path.join(run.dir, 'judge', 'cache');
+  const maxPromptBytes = usdMode ? Infinity : MAX_PROMPT_BYTES;
+  let cached = 0;
+  let tooLarge = 0;
+  for (const p of base.plan.filter((x) => x.calls)) {
+    const items = judgedItemsOf(p);
+    const prompt = packPromptOf(p, redactions);
+    const accept = (text) => { const parsed = parseJsonStrict(text); return parsed.ok && validateRubricReply(parsed.value, items).ok; };
+    for (const judge of judges) {
+      if (Buffer.byteLength(prompt) > maxPromptBytes) tooLarge++;
+      else if (hasCachedReply(cacheDir, { model: judge, prompt, salt, accept })) cached++;
+    }
+  }
+  const live = base.calls - cached - tooLarge;
+  return { ...base, backend, thePack, judges, cached, tooLarge, live, estimate: estimateSpend({ judgments: readQuality(run.dir), usdMode, liveCalls: live }) };
+}
+
 async function runPackJudging(o) {
+  if (o.plan) throw new Error('runPackJudging makes model calls and cannot honor --plan; call describePackPlan instead');
   const { runDir, benchDir, extraDirs = [], judges, concurrency, budgetCredits, budgetUsd = null, limits, explicitLimits = {}, redactions, log = () => {} } = o;
   const thePack = o.pack;
   const backend = o.backend ?? DEFAULT_BACKEND;
@@ -83,10 +116,9 @@ async function runPackJudging(o) {
   const spentUsdByJudge = {};
 
   const worker = async ({ judge, p }) => {
-    const judgedItems = p.app.criteria.filter((c) => c.status === 'judged').map((c) => c.criterion);
+    const judgedItems = judgedItemsOf(p);
     if (!judgedItems.length) return { skipped: true, calls: [], parseFailures: 0 };
-    const answerKey = readAnswerKey(p.task.fixtureDir);
-    const prompt = pack.packPrompt({ task: p.task, answerKey, bundleText: p.bundle.text, changesText: pack.redactedChanges(p.app.stats, redactions), criteria: judgedItems });
+    const prompt = packPromptOf(p, redactions);
     const out = await judgeOnce({ caller, model: judge, prompt, maxPromptBytes, check: (v) => validateRubricReply(v, judgedItems) });
     const live = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.credits ?? 0), 0);
     const liveUsd = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.usd || 0), 0);
@@ -149,4 +181,4 @@ function mergeAndWrite(run, prev, { thePack, judges, backend, limits, spent, spe
   return out;
 }
 
-module.exports = { runPackJudging, planPack, readQuality, FILE };
+module.exports = { runPackJudging, planPack, describePackPlan, readQuality, FILE };

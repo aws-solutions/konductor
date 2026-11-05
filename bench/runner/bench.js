@@ -62,7 +62,9 @@ const USAGE = `Usage:
        [--judge-backend kiro|opencode] [--budget-usd X] [--aws-creds-file FILE] [--aws-profile bench] [--aws-region us-east-1] [--opencode-bin PATH] [--cache DIR]
        [--criteria-pack quality] [--plan]
        (--criteria-pack quality runs only the quality-dimensions pass over the finished runs and writes judgments-quality.json beside judgments.json; judgments.json is not read or changed.
-       Criteria that do not apply to a run are skipped and reported as n/a. --plan prints the number of judge calls the pass would make and calls nothing. See bench/QUALITY-PACK.md)
+       Criteria that do not apply to a run are skipped and reported as n/a. See bench/QUALITY-PACK.md)
+       (--plan works in every mode: it prints the backend, the panel, the call count per mode, the calls the cache already holds and an estimated spend, calls no model and writes nothing.
+       A real pass prints the backend and the panel before its first call)
        (--judge-backend opencode asks the panel through opencode run on Amazon Bedrock (tools off, a one-line system prompt, temperature 0 where the model takes one)
        instead of kiro-cli. It needs --aws-creds-file, costs USD (--budget-usd, not --budget-credits) and cannot be combined with --judge-cmd. Panel ids stay the same
        (gpt-5.6-luna, deepseek-3.2, glm-5, qwen3-coder-next, minimax-m2.5) and are mapped to Bedrock ids. One results directory keeps one backend; kiro is the default)

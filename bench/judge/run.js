@@ -11,7 +11,8 @@ const { buildBundle } = require('./bundle.js');
 const { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix } = require('./prompts.js');
 const { parseJsonStrict, validateRubricReply, validatePairReply, validateGradedReply } = require('./validate.js');
 const { rubricScore, pairOutcome, combineOrderings, combineGraded, DOWNGRADE } = require('./score.js');
-const { withCache } = require('./model.js');
+const { withCache, hasCachedReply } = require('./model.js');
+const { cacheSaltOf } = require('./opencode.js');
 const { makeQuoteMatcher } = require('./quote.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
@@ -55,10 +56,13 @@ async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = MAX_PR
   return { error: `unusable after retry: ${reason}`, calls, parseFailures };
 }
 
-async function runJudging(o) {
-  const { runDir, benchDir, extraDirs = [], judges, modes, baseline, concurrency, budgetCredits, budgetUsd = null, limits, explicitLimits = {}, redactions, log = () => {} } = o;
+/**
+ * Everything a judging pass decides before it calls anything: the checks on the backend and panel, the bundles, and the
+ * list of calls. `judge --plan` stops here; runJudging goes on to make the calls.
+ */
+function prepareJudging(o) {
+  const { runDir, benchDir, extraDirs = [], judges, modes, baseline, budgetCredits, budgetUsd = null, limits, explicitLimits = {}, redactions, log = () => {} } = o;
   const backend = o.backend ?? DEFAULT_BACKEND;
-  const backendInfo = o.backendInfo ?? null;
   if (!BACKENDS.includes(backend)) throw new Error(`unknown judge backend "${backend}" (${BACKENDS.join(' or ')})`);
   const usdMode = backend === 'opencode';
   if (usdMode && budgetCredits != null) throw new Error('--budget-credits does not apply to the opencode backend; use --budget-usd');
@@ -73,11 +77,6 @@ async function runJudging(o) {
   const subject = o.subjectModel ?? run.config.model ?? run.runs[0].result.model;
   judges.forEach((j) => checkJudgeModel(j, subject));
   checkPanel(judges);
-  // Kiro keeps the original cache key. Any other backend adds itself (and what its caller says matters) to the key.
-  const salt = o.cacheSalt ?? (usdMode ? (model) => `${backend}\n${model}` : null);
-  const caller = withCache(o.caller, path.join(run.dir, 'judge', 'cache'), { salt });
-  // Every call is a ledger line. A budget turns the ledger into a guard that stops new calls at 90% of it.
-  const study = o.ledger ?? openLedger({ dir: run.dir, budget: usdMode ? budgetUsd : budgetCredits, budgetUnit: usdMode ? 'usd' : 'credits' });
 
   const candidates = run.runs.filter((r) => r.result.status !== 'budget_skipped');
   const notJudged = candidates.map((r) => ({ armId: r.armId, taskId: r.taskId, replicate: r.replicate, reason: notJudgedReason(r) })).filter((r) => r.reason);
@@ -115,32 +114,93 @@ async function runJudging(o) {
   // Under a budget cap the rubric calls come first so every judge covers every run before any pairwise call is spent.
   units.sort((a, b) => (a.kind === 'rubric' ? 0 : 1) - (b.kind === 'rubric' ? 0 : 1));
 
+  // The prompt of a call and the check its reply must pass. The pass and its plan build them the same way.
+  const specOf = (u) => {
+    const task = tasks.get(u.run.taskId);
+    const answerKey = readAnswerKey(task.fixtureDir);
+    if (u.kind === 'rubric') {
+      return { prompt: rubricPrompt({ task, answerKey, bundleText: bundles.get(runKey(u.run)).text }), check: (v) => validateRubricReply(v, task.rubric) };
+    }
+    // Order 1 puts the baseline in position A; order 2 swaps. Pairwise and graded modes share the layout.
+    const mine = bundles.get(runKey(u.run)).text;
+    const theirs = bundles.get(runKey(u.base)).text;
+    const [bundleA, bundleB] = u.order === 1 ? [theirs, mine] : [mine, theirs];
+    if (u.kind === 'graded') return { prompt: gradedPrompt({ task, answerKey, bundleA, bundleB }), check: validateGradedReply };
+    return { prompt: pairPrompt({ task, answerKey, bundleA, bundleB }), check: validatePairReply };
+  };
+  return { run, tasks, backend, usdMode, judged, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf };
+}
+
+// Credits a live kiro call cost when the run directory has no earlier judging to learn from (23 calls cost 4.42 in the pilot).
+const FALLBACK_CREDITS_PER_CALL = 0.19;
+
+/** Mean live cost of one call over the earlier invocations recorded in a judgments file, or null when none are usable. */
+function observedCostPerCall(judgments, usdMode) {
+  let live = 0;
+  let spend = 0;
+  for (const inv of judgments?.invocations || []) {
+    live += (inv.calls || 0) - (inv.cachedCalls || 0);
+    spend += usdMode ? (inv.spentUsd || 0) : (inv.spentCredits || 0);
+  }
+  return live > 0 && spend > 0 ? spend / live : null;
+}
+
+/** The estimate for `liveCalls` calls, with where the per-call figure came from. */
+function estimateSpend({ judgments, usdMode, liveCalls }) {
+  const observed = observedCostPerCall(judgments, usdMode);
+  if (observed !== null) return { unit: usdMode ? 'usd' : 'credits', perCall: observed, total: observed * liveCalls, basis: 'the mean live call cost in this directory\'s earlier judging' };
+  if (usdMode) return { unit: 'usd', perCall: null, total: null, basis: 'unknown: no earlier opencode judging in this directory' };
+  return { unit: 'credits', perCall: FALLBACK_CREDITS_PER_CALL, total: FALLBACK_CREDITS_PER_CALL * liveCalls, basis: 'the default of 0.19 credits per call (no earlier judging in this directory)' };
+}
+
+/**
+ * What runJudging would do, computed without a model caller: calls per mode, calls already served by the cache, the
+ * estimated spend and the prompts too large to send. It writes nothing.
+ */
+function planJudging(o) {
+  const p = prepareJudging(o);
+  const { usdMode, run } = p;
+  const salt = o.cacheSalt ?? (usdMode ? cacheSaltOf : null);
+  const cacheDir = path.join(run.dir, 'judge', 'cache');
+  const maxPromptBytes = usdMode ? Infinity : MAX_PROMPT_BYTES;
+  const byMode = { rubric: 0, pairwise: 0, graded: 0 };
+  let cached = 0;
+  let tooLarge = 0;
+  for (const u of p.units) {
+    byMode[u.kind === 'pair' ? 'pairwise' : u.kind]++;
+    const { prompt, check } = p.specOf(u);
+    if (Buffer.byteLength(prompt) > maxPromptBytes) { tooLarge++; continue; }
+    const accept = (text) => { const parsed = parseJsonStrict(text); return parsed.ok && check(parsed.value).ok; };
+    if (hasCachedReply(cacheDir, { model: u.judge, prompt, salt, accept })) cached++;
+  }
+  const calls = p.units.length;
+  return {
+    backend: p.backend, judges: o.judges, modes: o.modes, baseline: o.baseline, runs: p.judged.length, notJudged: p.notJudged,
+    calls, byMode, cached, live: calls - cached - tooLarge, tooLarge,
+    unpaired: p.pairErrors.length + p.gradedErrors.length,
+    estimate: estimateSpend({ judgments: run.judgments, usdMode, liveCalls: calls - cached - tooLarge }),
+  };
+}
+
+async function runJudging(o) {
+  if (o.plan) throw new Error('runJudging makes model calls and cannot honor --plan; call planJudging instead');
+  const { concurrency, budgetCredits, budgetUsd = null, judges, modes, baseline, limits, redactions, log = () => {} } = o;
+  const backendInfo = o.backendInfo ?? null;
+  const { run, tasks, backend, usdMode, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf } = prepareJudging(o);
+  // Kiro keeps the original cache key. Any other backend adds itself (and what its caller says matters) to the key.
+  const salt = o.cacheSalt ?? (usdMode ? (model) => `${backend}\n${model}` : null);
+  const caller = withCache(o.caller, path.join(run.dir, 'judge', 'cache'), { salt });
+  // Every call is a ledger line. A budget turns the ledger into a guard that stops new calls at 90% of it.
+  const study = o.ledger ?? openLedger({ dir: run.dir, budget: usdMode ? budgetUsd : budgetCredits, budgetUnit: usdMode ? 'usd' : 'credits' });
+
   let spent = 0;
   let spentUsd = 0;
   const spentByJudge = {};
   const spentUsdByJudge = {};
   const maxPromptBytes = usdMode ? Infinity : MAX_PROMPT_BYTES;
   const worker = async (u) => {
-    const task = tasks.get(u.run.taskId);
-    const answerKey = readAnswerKey(task.fixtureDir);
-    let out;
-    if (u.kind === 'rubric') {
-      const b = bundles.get(runKey(u.run));
-      const prompt = rubricPrompt({ task, answerKey, bundleText: b.text });
-      out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check: (v) => validateRubricReply(v, task.rubric) });
-    } else {
-      // Order 1 puts the baseline in position A; order 2 swaps. Pairwise and graded modes share the layout.
-      const mine = bundles.get(runKey(u.run)).text;
-      const theirs = bundles.get(runKey(u.base)).text;
-      const [bundleA, bundleB] = u.order === 1 ? [theirs, mine] : [mine, theirs];
-      if (u.kind === 'graded') {
-        const prompt = gradedPrompt({ task, answerKey, bundleA, bundleB });
-        out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check: validateGradedReply });
-      } else {
-        const prompt = pairPrompt({ task, answerKey, bundleA, bundleB });
-        out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check: validatePairReply });
-      }
-    }
+    const { prompt, check } = specOf(u);
+    const out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check });
     const live = out.calls.filter((c) => !c.cached).reduce((s, c) => s + (c.credits ?? 0), 0);
     spent += live;
     spentByJudge[u.judge] = (spentByJudge[u.judge] || 0) + live;
@@ -258,4 +318,4 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
   return out;
 }
 
-module.exports = { runJudging, judgeOnce, notJudgedReason, runKey, MAX_PROMPT_BYTES };
+module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, runKey, MAX_PROMPT_BYTES, FALLBACK_CREDITS_PER_CALL };
