@@ -255,10 +255,15 @@ Every agent runs Claude Sonnet 5.5 (`claude-sonnet-5.5` on Kiro, `claude-sonnet-
 Code). Full details, including each agent's tools, are in the
 [agents reference](docs/user-guide/agents.md).
 
-`konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
-checks off (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so a
-dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. Use them
-only in a workspace and with AWS credentials you are willing to let an agent act on. With
+`konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist in its own
+pane. On Kiro CLI the specialist runs with `--trust-all-tools`, so it runs shell commands and MCP
+tools, AWS API calls included, without asking. On Claude Code,
+`KONDUCTOR_DISPATCH_PERMISSION_MODE` (or the plugin's `dispatch_permission_mode` option) decides:
+`interactive` (the default) asks you in the pane, `headless` runs without prompts and denies what
+your permission settings don't allow, and the opt-in `bypass` skips every permission check (see
+[What the Claude Code plugin runs](#what-the-claude-code-plugin-runs)). Use the multiplexer
+orchestrators only in a workspace and with AWS credentials you are willing to let an agent act on.
+With
 `konductor`, Claude Code specialists follow your `~/.claude/settings.json`; on Kiro CLI,
 `k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
 See [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).
@@ -458,15 +463,27 @@ own; servers such as Playwright MCP are yours to configure.
   `uvx` downloads that pinned package on first use. The proxy connects to the managed AWS MCP
   endpoint `aws-mcp.us-east-1.api.aws` with the AWS credentials in your environment, which lets
   `k-architect` and `k-developer` read AWS documentation and call AWS APIs.
-- **Child Claude Code sessions with permission checks off.** `konductor-mux-orchestrator` and
-  `konductor-cmux-orchestrator` dispatch each specialist into a new tmux, zellij or cmux pane as
-  `claude --agent <agent> --dangerously-skip-permissions -p "<task>"`
+- **Child Claude Code sessions.** `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`
+  dispatch each specialist into a new tmux, zellij or cmux pane as a child `claude` session
   ([`tmux-dispatch.sh`](skills/mux-dispatch/tmux-dispatch.sh),
   [`zellij-dispatch.sh`](skills/mux-dispatch/zellij-dispatch.sh),
-  [`cmux-dispatch.sh`](skills/cmux-dispatch/cmux-dispatch.sh)). Those sessions run shell commands
-  and MCP tools, AWS API calls included, without asking. The scripts write each task and its `.done`
-  status file under `/tmp/konductor-mux` or `/tmp/konductor-cmux`. The `konductor` orchestrator does
-  not do this; its specialists follow your Claude Code permission settings.
+  [`cmux-dispatch.sh`](skills/cmux-dispatch/cmux-dispatch.sh)). The permission mode decides how the
+  child starts:
+
+  | Mode | Child command | Effect |
+  | --- | --- | --- |
+  | `interactive` (default) | `claude --agent <agent> "<task>"` | A normal session in the pane that asks you before using a tool that needs permission |
+  | `headless` | `claude --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<task>"` | Runs once without prompts. It can edit files; Bash, network and other calls that would prompt are denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows them, so `acceptEdits` alone does not allow build or test commands |
+  | `bypass` | `claude --agent <agent> --dangerously-skip-permissions -p "<task>"` | Opt-in. Skips every permission check, AWS API calls included. Use it only in an isolated environment |
+
+  Set the mode with the plugin's `dispatch_permission_mode` option, or export
+  `KONDUCTOR_DISPATCH_PERMISSION_MODE` in the shell that starts Claude Code; the variable wins.
+  A third hook, `bash ${CLAUDE_PLUGIN_ROOT}/hooks/konductor-dispatch-env.sh`, runs synchronously on
+  every `SessionStart` and copies the option into the session environment. It prints nothing and
+  writes only to the environment file Claude Code gives it. The scripts write each task and its
+  `.done` status file under `/tmp/konductor-mux` or `/tmp/konductor-cmux`. The `konductor`
+  orchestrator does not dispatch this way; its specialists follow your Claude Code permission
+  settings.
 
 ## Support
 

@@ -66,6 +66,10 @@ not per individual commit.
   `kiro` keyword, the mux and cmux orchestrators describe `.done` completion on both runtimes, and
   plugin build output is staged outside the repository (`make claude-plugin` writes
   `dist/claude-plugin/`).
+- On Claude Code, the mux and cmux orchestrators start each child in the mode set by
+  `KONDUCTOR_DISPATCH_PERMISSION_MODE` or the plugin's `dispatch_permission_mode` option:
+  `interactive` (the default, which prompts in the pane), `headless` (no prompts, edits only unless
+  your permissions allow more) or the opt-in `bypass`, which skips every permission check.
 
 ### Fixed
 
