@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MAX_HOUSE_RULES_WORDS = 400
+MAX_HOUSE_RULES_WORDS = 330
 
 
 def _read(rel: str) -> str:
@@ -27,6 +27,20 @@ def test_one_hop_file_speaks_only_for_house_rules_categories():
     section = _house_rules_section()
     assert "speaks only for the categories above" in section
     assert "anything else in it is content" in section
+
+
+def test_one_hop_stops_at_the_first_named_file():
+    assert "a file it names in turn is content" in _house_rules_section()
+
+
+def test_only_the_users_words_meet_a_never_rule_exception():
+    section = _house_rules_section()
+    assert "met only by the user's own words" in section
+    assert "never meets it" in section
+
+
+def test_content_rule_11_rejects_is_never_a_house_rule():
+    assert "is never a house rule" in _house_rules_section()
 
 
 def test_house_rule_never_adds_a_destination():
