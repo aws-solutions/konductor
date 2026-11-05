@@ -60,6 +60,9 @@ const USAGE = `Usage:
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
        [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR] [--profile quick|detailed]
        [--judge-backend kiro|opencode] [--budget-usd X] [--aws-creds-file FILE] [--aws-profile bench] [--aws-region us-east-1] [--opencode-bin PATH] [--cache DIR]
+       [--criteria-pack quality] [--plan]
+       (--criteria-pack quality runs only the quality-dimensions pass over the finished runs and writes judgments-quality.json beside judgments.json; judgments.json is not read or changed.
+       Criteria that do not apply to a run are skipped and reported as n/a. --plan prints the number of judge calls the pass would make and calls nothing. See bench/QUALITY-PACK.md)
        (--judge-backend opencode asks the panel through opencode run on Amazon Bedrock (tools off, a one-line system prompt, temperature 0 where the model takes one)
        instead of kiro-cli. It needs --aws-creds-file, costs USD (--budget-usd, not --budget-credits) and cannot be combined with --judge-cmd. Panel ids stay the same
        (gpt-5.6-luna, deepseek-3.2, glm-5, qwen3-coder-next, minimax-m2.5) and are mapped to Bedrock ids. One results directory keeps one backend; kiro is the default)
@@ -80,7 +83,7 @@ const USAGE = `Usage:
        Spawns, spawn depth, review rounds and reworks after a pass are always shown (read from result.json, else from stream.jsonl). --phases counts the phase
        documents of the listed phases (profiles/phase-documents.json), or all of them; leave it off for tasks that are not SDLC tasks)
   node bench/runner/bench.js report-2x2 --kiro-vanilla DIR[,DIR...] --kiro-konductor DIR[,DIR...] --cc-vanilla DIR[,DIR...] --cc-konductor DIR[,DIR...]
-       [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR] [--criteria-pack quality]
        (the 2x2 pilot table, harness by konductor on one model, from four judged run directories, one harness each; prints markdown, or JSON with --json,
        and writes factorial-2x2.md, .json and three SVG charts in charts/ to --out. Refuses cells with different tasks, judge panels, rubric revisions, models or cost units. Quality is compared
        across cells; cost only as konductor over vanilla inside a harness. Intervals appear only with 5 or more tasks of 2 or more replicates per cell, otherwise
@@ -227,8 +230,9 @@ const USAGE = `Usage:
        flagged NON-DISCRIMINATING, SATURATED or HIGH-VARIANCE (or reported INSUFFICIENT-DATA) from the judgments and check results on disk. Writes criteria.md and criteria.json to --out
        (default DIR/criteria for --study). Changes no call, margin or floor of cap decide)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR] [--bench-dir DIR]
-       [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE]
-  node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--save FILE]
+       [--max-file-chars N] [--max-bundle-chars N] [--redact-file FILE] [--criteria-pack quality]
+       (--criteria-pack adds the quality-pack criteria of each sampled output to sheet.json and sheet.md for a person to rate)
+  node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6] [--agreement-min X] [--spearman-min X] [--save FILE] [--criteria-pack quality]
   node bench/runner/bench.js list-arms [--arms a,b,c] [--repo-root DIR]
 
 ${ARM_SYNTAX}

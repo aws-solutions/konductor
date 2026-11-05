@@ -18,7 +18,9 @@ const { BACKENDS, DEFAULT_BACKEND, checkOpencodeJudges } = require('../judge/bac
 const oc = require('./lib/harness/opencode.js');
 const { readProfile } = require('./lib/harness/opencode-creds.js');
 const { runJudging } = require('../judge/run.js');
-const { exportSheet, scoreLabels, formatCalibration } = require('../judge/calibrate.js');
+const { loadPack } = require('../judge/pack/index.js');
+const { runPackJudging, planPack, FILE } = require('../judge/packrun.js');
+const { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration } = require('../judge/calibrate.js');
 const { loadRun, loadRuns } = require('../report/load.js');
 const { generateRunReport, generateContrast } = require('../report/generate.js');
 const { generateVerdict, KINDS } = require('../report/verdictgen.js');
@@ -122,7 +124,8 @@ function makeOpencodeJudgeCaller(opts, { timeoutMs, rawDir }) {
   return makeOpencodeCaller({ bin: resolved.bin, version: resolved.version, sha256: resolved.sha256, credsFile, awsProfile, region, timeoutMs, rawDir });
 }
 
-async function cmdJudge(opts) {
+// The run and the judge panel for a judge command (rubric pass or quality pack).
+function judgePanelFor(opts) {
   const runDir = path.resolve(need(opts, 'run'));
   const benchDir = benchDirOf(opts);
   const run = loadRun(runDir);
@@ -130,12 +133,11 @@ async function cmdJudge(opts) {
   try { suiteJudges = loadSuite(run.config.suite, loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir).judges; } catch { /* run without a known suite */ }
   const { judges, small, substituted } = resolveJudges({ cliJudges: opts.judges, suiteJudges, subjectModel: run.config.model ?? null, allowSmallPanel: Boolean(opts['allow-small-panel']) });
   if (substituted) console.log(`subject ${run.config.model}: judge panel dropped ${substituted.dropped.join(', ')}, added ${substituted.added.join(', ') || 'nothing'} (a judge from the subject's own family is not used)`);
-  const profile = optionalProfile(opts.profile);
-  const modes = String(opts.mode || (profile ? profile.judging.modes.join(',') : 'rubric,pairwise')).split(',');
-  if (modes.some((m) => !JUDGE_MODES.includes(m))) throw new Error(`--mode takes ${JUDGE_MODES.join(', ')}`);
-  const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : defaultBaseline(run);
-  const arms = [...new Set(run.runs.map((r) => r.armId))];
-  if ((modes.includes('pairwise') || modes.includes('graded')) && !arms.includes(baseline)) throw new Error(`baseline arm "${baseline}" has no runs in ${runDir} (arms present: ${arms.join(', ')}); pass --baseline ARM or --mode rubric`);
+  return { runDir, benchDir, run, judges, small };
+}
+
+// The model caller for a judge command: opencode on Bedrock, a --judge-cmd, or kiro-cli. Checks the backend flags first.
+function judgeCallerFor(opts, { runDir, judges }) {
   const timeoutMs = numOpt(opts, 'judge-timeout-sec', DEFAULTS.timeoutSec) * 1000;
   const backend = opts['judge-backend'] === undefined ? DEFAULT_BACKEND : opts['judge-backend'];
   if (!BACKENDS.includes(backend)) throw new Error(`--judge-backend takes ${BACKENDS.join(' or ')}`);
@@ -163,6 +165,23 @@ async function cmdJudge(opts) {
       ...(opts['kiro-bin'] ? { kiroBin: path.resolve(opts['kiro-bin']) } : {}),
     });
   }
+  return { caller, backend, viaOpencode, log };
+}
+
+// The pack named by --criteria-pack, or null when the flag is absent.
+const packOf = (opts) => (opts['criteria-pack'] === undefined ? null : loadPack(opts['criteria-pack']));
+
+async function cmdJudge(opts) {
+  const { runDir, benchDir, run, judges, small } = judgePanelFor(opts);
+  const packName = opts['criteria-pack'];
+  if (packName !== undefined) return cmdJudgePack(opts, { runDir, benchDir, run, judges, small });
+  const profile = optionalProfile(opts.profile);
+  const modes = String(opts.mode || (profile ? profile.judging.modes.join(',') : 'rubric,pairwise')).split(',');
+  if (modes.some((m) => !JUDGE_MODES.includes(m))) throw new Error(`--mode takes ${JUDGE_MODES.join(', ')}`);
+  const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : defaultBaseline(run);
+  const arms = [...new Set(run.runs.map((r) => r.armId))];
+  if ((modes.includes('pairwise') || modes.includes('graded')) && !arms.includes(baseline)) throw new Error(`baseline arm "${baseline}" has no runs in ${runDir} (arms present: ${arms.join(', ')}); pass --baseline ARM or --mode rubric`);
+  const { caller, backend, viaOpencode, log } = judgeCallerFor(opts, { runDir, judges });
   // Calls that finished are cached on disk, so an interrupted judge phase loses only the calls in flight.
   const removeHandlers = procs.installSignalHandlers({ flush: () => {}, log });
   let j;
@@ -193,6 +212,48 @@ async function cmdJudge(opts) {
     process.exitCode = 3;
   }
   console.log(`wrote ${path.join(runDir, 'judgments.json')}`);
+}
+
+// `judge --criteria-pack NAME`: the quality-dimensions pass. It reads the run and writes judgments-quality.json only.
+async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
+  for (const f of ['mode', 'baseline', 'profile']) if (opts[f] !== undefined) throw new Error(`--${f} does not apply with --criteria-pack: the pack pass has its own prompt and no pairwise or graded mode`);
+  const thePack = loadPack(opts['criteria-pack']);
+  const limits = limitsOf(opts);
+  const explicitLimits = explicitLimitsOf(opts);
+  const redactions = loadRedactions(opts['redact-file']);
+  if (opts.plan) {
+    const { plan, notJudged, calls } = planPack({ run, tasks: loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir, limits, explicitLimits, redactions, thePack, judges });
+    for (const p of plan) console.log(`${p.run.armId}|${p.run.taskId}|${p.run.replicate}: ${p.judged} judged, ${p.auto} counted by program, ${p.absent} scored fail (artifact not produced), ${p.na} n/a`);
+    for (const n of notJudged) console.log(`${n.armId}|${n.taskId}|${n.replicate}: not judged (${n.reason})`);
+    console.log(`pack ${thePack.id} revision ${thePack.revision}: ${calls} judge call(s) for ${plan.filter((p) => p.calls).length} run(s) x ${judges.length} judge(s) (${judges.join(', ')}); nothing was called`);
+    return;
+  }
+  const { caller, backend, viaOpencode, log } = judgeCallerFor(opts, { runDir, judges });
+  const removeHandlers = procs.installSignalHandlers({ flush: () => {}, log });
+  let j;
+  try {
+    j = await runPackJudging({
+      runDir, benchDir, extraDirs: extraDirsOf(opts), judges, caller, pack: thePack,
+      concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
+      budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
+      budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
+      backend, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
+      limits, explicitLimits, redactions, log,
+    });
+  } finally {
+    removeHandlers();
+    procs.removeAllScratch();
+  }
+  const last = j.invocations[j.invocations.length - 1];
+  const spend = viaOpencode ? `live spend $${last.spentUsd.toFixed(4)} USD (all invocations: $${j.spentUsd.toFixed(4)}), 0 credits` : `live spend ${last.spentCredits.toFixed(3)} credits (all invocations: ${j.spentCredits.toFixed(3)})`;
+  console.log(`quality pack ${thePack.id}: ${j.records.length} record(s), ${j.records.filter((r) => r.judgeError).length} with judgeError; ${spend}; ${j.notJudged.length} run(s) not judged`);
+  if (small) console.log(`warning: panel has fewer than ${MIN_PANEL_FAMILIES} model families (--allow-small-panel)`);
+  console.log(j.ledgerLine);
+  if (j.guardState === 'hard') {
+    console.error(viaOpencode ? 'usd guard: HARD STOP, this command spent past 100% of --budget-usd; no further call started' : 'credit guard: HARD STOP, this command spent past 100% of --budget-credits; no further call started');
+    process.exitCode = 3;
+  }
+  console.log(`wrote ${path.join(runDir, FILE)}`);
 }
 
 function cmdRecheck(opts) {
@@ -313,7 +374,7 @@ function cmdReport(opts) {
   if (!run.runs.some((r) => r.armId === baseline)) console.error(`warning: baseline arm "${baseline}" has no runs; pairwise columns will be empty`);
   const profile = optionalProfile(opts.profile);
   const res = generateRunReport({
-    run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline, out: opts.out, detail: opts.detail ?? profile?.report.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0], profile, phases: phasesOf(opts),
+    run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline, out: opts.out, detail: opts.detail ?? profile?.report.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0], profile, phases: phasesOf(opts), qualityPack: packOf(opts),
   });
   printWritten(res.written);
   if (profile?.calibrationSample) {
@@ -385,19 +446,20 @@ function cmdCalibrate(opts) {
     const r = exportSheet({
       runDir: path.resolve(need(opts, 'run')), benchDir: benchDirOf(opts),
       n: numOpt(opts, 'n', 25, { int: true }), seed: seedOf(opts),
-      limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), outDir: opts.out,
+      limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), outDir: opts.out, criteriaPack: packOf(opts),
     });
     console.log(`wrote ${r.n} item(s) to ${r.dir} (sheet.json, sheet.md, key.json). Label sheet.json, then run: calibrate score --labels ${r.sheetPath}`);
   } else if (sub === 'score') {
     const t = DEFAULTS.thresholds;
-    const res = scoreLabels({
+    const score = opts['criteria-pack'] === undefined ? scoreLabels : scorePackLabels;
+    const res = score({
       labelsFile: path.resolve(need(opts, 'labels')), keyFile: opts.key && path.resolve(opts.key),
       thresholds: {
         kappaMin: numOpt(opts, 'kappa-min', t.kappaMin), agreementMin: numOpt(opts, 'agreement-min', t.agreementMin),
         spearmanMin: numOpt(opts, 'spearman-min', t.spearmanMin),
       },
     });
-    console.log(formatCalibration(res));
+    console.log(opts['criteria-pack'] === undefined ? formatCalibration(res) : formatPackCalibration(res));
     if (opts.save && opts.save !== true) {
       fs.mkdirSync(path.dirname(path.resolve(opts.save)), { recursive: true });
       fs.writeFileSync(path.resolve(opts.save), `${JSON.stringify(res, null, 2)}\n`);
@@ -417,7 +479,7 @@ function cmdReport2x2(opts) {
       if (!v || v === true) throw new Error(`--${c.flag} is required (one or more judged run directories, comma separated)`);
       dirs[c.id] = String(v).split(',').filter(Boolean);
     }
-    const res = buildFactorial({ dirs, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), scoringFile: scoringOf(opts) });
+    const res = buildFactorial({ dirs, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), scoringFile: scoringOf(opts), qualityPack: packOf(opts) });
     const writing = Boolean(opts.out && opts.out !== true);
     const charts = writing ? factorialCharts(res) : null;
     const md = toMarkdown(renderFactorial(res, { charts }));
