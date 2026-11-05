@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Fragment, type ReactNode } from 'react';
-import type { WorkflowView } from '../api/types';
+import type { Harness, WorkflowView } from '../api/types';
 import type { LoadResult } from './load-workflow';
 import { EmptyState, ErrorState, LoadingState } from './states';
 import { useChangeCount } from './use-change-count';
@@ -8,7 +8,7 @@ import { useChangeCount } from './use-change-count';
 /** A workflow that can be drawn, with the harness that runs its stages. */
 export interface DrawableWorkflow {
   view: WorkflowView;
-  harness: string;
+  harness: Harness;
 }
 
 /**

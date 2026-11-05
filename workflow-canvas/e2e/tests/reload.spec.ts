@@ -64,14 +64,12 @@ test('shows the workflow of a pasted launch code once its session is open', asyn
 }) => {
   await canvas.expectWorkflowDrawn();
   await page.route('**/api/session', (route) =>
-    route.fulfill({ json: { ...sharedSession(), harness: 'other-harness' } }),
+    route.fulfill({ json: { ...sharedSession(), harness: 'claude' } }),
   );
 
   await page.evaluate((code) => (window.location.hash = code), NEW_CODE);
 
-  await expect(page.getByTestId('node-stage-draft')).toContainText(
-    'other-harness',
-  );
+  await expect(page.getByTestId('node-stage-draft')).toContainText('claude');
 });
 
 // The launch code works once and the page removes it from the address. A
@@ -210,7 +208,7 @@ test('resumes after a reload when a fresh address opens over a dead session and 
   await page.evaluate(() =>
     window.sessionStorage.setItem(
       'konductor-workflow-canvas-session',
-      JSON.stringify({ token: 'dead-token', harness: 'old-harness' }),
+      JSON.stringify({ token: 'dead-token', harness: 'claude' }),
     ),
   );
   await page.route('**/api/session', (route) =>

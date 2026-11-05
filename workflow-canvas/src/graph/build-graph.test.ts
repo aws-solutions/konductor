@@ -50,6 +50,20 @@ describe('buildGraph', () => {
     ]);
   });
 
+  it.each(['claude', 'fake', 'future-harness'])(
+    'shows the harness %s as it is, in the node and its name',
+    (harness) => {
+      const [draft] = buildGraph(HELLO, harness).nodes.filter(
+        (node) => node.type === 'stage',
+      );
+
+      expect(draft?.data).toMatchObject({ harness });
+      expect(draft?.ariaLabel).toBe(
+        `Stage draft, agent k-developer, harness ${harness}`,
+      );
+    },
+  );
+
   it('names each node for a screen reader', () => {
     const { nodes } = buildGraph(HELLO, 'kiro-cli');
 
