@@ -474,7 +474,7 @@ pub(super) fn apply_claude_settings_grant(
 /// argument), never by exe path, so a reinstall replaces a stale block
 /// (moved binary, changed agent set) instead of adding another.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum HookId {
+pub(super) enum HookId {
     Telemetry(&'static str),
     OrchestrationMode,
 }
@@ -651,7 +651,7 @@ pub(super) fn stable_hook_command_suffix(command: &str) -> Option<&str> {
 }
 
 /// Whether `command` is the Konductor hook `id`.
-fn command_is_hook(command: &str, id: HookId) -> bool {
+pub(super) fn command_is_hook(command: &str, id: HookId) -> bool {
     match id {
         HookId::Telemetry(event) => telemetry_hook_event(command) == Some(event),
         HookId::OrchestrationMode => stable_hook_command_suffix(command)

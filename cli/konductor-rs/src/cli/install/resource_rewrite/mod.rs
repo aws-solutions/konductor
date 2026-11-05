@@ -31,6 +31,7 @@ use std::path::Path;
 use super::manifest::ManifestFile;
 
 mod claude_settings;
+mod hook_locator;
 mod mcp_server;
 mod telemetry_hook_pass;
 
@@ -41,6 +42,7 @@ pub(crate) use claude_settings::{
     claude_hooks_settings_relative_path, hook_command_exe, hook_command_install_root,
     is_claude_settings_path, remove_claude_konductor_hooks, ORCHESTRATION_HOOK_MARKER,
 };
+pub(crate) use hook_locator::{orchestration_hook_wiring, HookWiring};
 pub(super) use mcp_server::{
     installed_server_supports_install_info, McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME,
 };

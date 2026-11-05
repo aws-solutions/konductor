@@ -64,9 +64,12 @@ pub(crate) const CLAUDE_DESTINATION_ROOT: &str = ".claude";
 /// writes `.konductor/manifest`.
 pub struct ClaudeInstallStrategy;
 
+/// The strategy name recorded in the manifest slot.
+pub(crate) const STRATEGY_NAME: &str = "claude";
+
 impl InstallStrategy for ClaudeInstallStrategy {
     fn name(&self) -> &'static str {
-        "claude"
+        STRATEGY_NAME
     }
 
     fn harness_dir(&self) -> &'static str {

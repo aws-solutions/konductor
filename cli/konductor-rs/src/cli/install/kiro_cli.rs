@@ -52,10 +52,13 @@ pub(crate) const KONDUCTOR_DESTINATION_ROOT: &str = ".konductor";
 /// writes `.konductor/manifest`.
 pub struct KiroCliInstallStrategy;
 
+/// The strategy name recorded in the manifest slot.
+pub(crate) const STRATEGY_NAME: &str = "kiro-cli-v2";
+
 impl InstallStrategy for KiroCliInstallStrategy {
     /// Matches `KiroCliV2Transformer::name()` exactly.
     fn name(&self) -> &'static str {
-        "kiro-cli-v2"
+        STRATEGY_NAME
     }
 
     fn harness_dir(&self) -> &'static str {

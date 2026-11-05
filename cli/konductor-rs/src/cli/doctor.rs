@@ -1665,7 +1665,7 @@ fn check_orchestration(
 
     let mut headline = orchestration_value_finding(&resolution);
     let mut findings = Vec::new();
-    if let Some(ignored) = ignored_project_values(destination, resolved_source) {
+    if let Some(ignored) = ignored_project_values(destination, resolved_source, home_dir) {
         if headline.status == CheckStatus::Ok {
             headline = ignored_project_finding(&resolution, ignored);
         } else {
@@ -1749,10 +1749,15 @@ fn orchestration_value_finding(
 /// Project `.konductor/config.yml` files under `destination` and
 /// `resolved_source` (once when they are the same directory) that set
 /// `orchestration.mode`, with the value each sets. `None` when none do.
+/// The user config is never one: a default install has `destination`
+/// (and often the cwd) at `$HOME`, where `.konductor/config.yml` is the
+/// file that is read, not an ignored project file.
 fn ignored_project_values(
     destination: &Path,
     resolved_source: &Path,
+    home_dir: Option<&Path>,
 ) -> Option<Vec<(PathBuf, String)>> {
+    let user_file = home_dir.map(config::user_config_path);
     let mut roots = vec![resolved_source];
     if !crate::cli::telemetry_hook::same_dir(resolved_source, destination) {
         roots.push(destination);
@@ -1763,10 +1768,16 @@ fn ignored_project_values(
             let path = root
                 .join(config::KONDUCTOR_DIR_NAME)
                 .join(config::CONFIG_FILE_NAME);
-            if !path.is_file() {
+            let is_user_file = user_file
+                .as_deref()
+                .is_some_and(|user| crate::cli::telemetry_hook::same_dir(&path, user));
+            if is_user_file || !path.is_file() {
                 return None;
             }
-            let mode = config::load_raw_config(&path).ok()?.orchestration?.mode?;
+            let mode = crate::cli::orchestration_mode::read_section(&path)
+                .ok()
+                .flatten()?
+                .mode?;
             Some((path, mode))
         })
         .collect();
@@ -1847,7 +1858,9 @@ fn orchestration_install_findings(
 
     let mut findings = Vec::new();
     for slot in &manifest.strategies {
-        let Some(wiring) = orchestration_hook_wiring(destination, slot) else {
+        let Some(wiring) =
+            crate::cli::install::resource_rewrite::orchestration_hook_wiring(destination, slot)
+        else {
             continue;
         };
         findings.extend(wiring_findings(
@@ -1863,99 +1876,9 @@ fn orchestration_install_findings(
     findings
 }
 
-/// Where a strategy slot's orchestration hook lives, and the hook
-/// commands found there (or why none could be read). `None` for a
-/// strategy that wires no orchestration hook.
-struct HookWiring {
-    file: PathBuf,
-    commands: Result<Vec<String>, String>,
-}
-
-fn orchestration_hook_wiring(destination: &Path, slot: &StrategyManifest) -> Option<HookWiring> {
-    use crate::cli::install::resource_rewrite::{
-        claude_hooks_settings_relative_path, V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
-    };
-
-    let (relative, commands): (&str, fn(&serde_json::Value) -> Vec<String>) =
-        match slot.strategy.as_str() {
-            "kiro-v3" => (
-                V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
-                v3_session_start_commands,
-            ),
-            "kiro-cli-v2" => (".kiro/agents/konductor.json", v2_agent_spawn_commands),
-            "claude" => (
-                claude_hooks_settings_relative_path(destination),
-                claude_session_start_commands,
-            ),
-            _ => return None,
-        };
-    let file = destination.join(relative);
-    // A v3 document the slot does not list is a leftover or hand-placed
-    // file, not one this install wrote.
-    let unlisted = slot.strategy == "kiro-v3" && !slot.files.iter().any(|f| f.path == relative);
-    let commands = if unlisted {
-        Err("the file is not listed in the install manifest".to_string())
-    } else {
-        read_hook_json(&file).map(|value| commands(&value))
-    };
-    Some(HookWiring { file, commands })
-}
-
-fn read_hook_json(path: &Path) -> Result<serde_json::Value, String> {
-    let text = std::fs::read_to_string(path).map_err(|err| match err.kind() {
-        std::io::ErrorKind::NotFound => "the file does not exist".to_string(),
-        _ => format!("the file could not be read ({err})"),
-    })?;
-    serde_json::from_str(&text).map_err(|err| format!("the file is not valid JSON ({err})"))
-}
-
-fn string_commands<'a>(entries: impl Iterator<Item = &'a serde_json::Value>) -> Vec<String> {
-    entries
-        .filter_map(|command| command.as_str())
-        .map(str::to_string)
-        .collect()
-}
-
-fn json_array(value: Option<&serde_json::Value>) -> impl Iterator<Item = &serde_json::Value> {
-    value
-        .and_then(|value| value.as_array())
-        .into_iter()
-        .flatten()
-}
-
-/// `hooks[]` entries with `trigger: SessionStart`, their `action.command`.
-fn v3_session_start_commands(document: &serde_json::Value) -> Vec<String> {
-    string_commands(
-        json_array(document.get("hooks"))
-            .filter(|hook| hook.get("trigger").and_then(|t| t.as_str()) == Some("SessionStart"))
-            .filter_map(|hook| hook.get("action").and_then(|action| action.get("command"))),
-    )
-}
-
-/// `hooks.agentSpawn[].command` in the v2 `konductor` agent file.
-fn v2_agent_spawn_commands(agent: &serde_json::Value) -> Vec<String> {
-    string_commands(
-        json_array(agent.get("hooks").and_then(|hooks| hooks.get("agentSpawn")))
-            .filter_map(|entry| entry.get("command")),
-    )
-}
-
-/// `hooks.SessionStart[].hooks[].command` in a Claude settings file.
-fn claude_session_start_commands(settings: &serde_json::Value) -> Vec<String> {
-    string_commands(
-        json_array(
-            settings
-                .get("hooks")
-                .and_then(|hooks| hooks.get("SessionStart")),
-        )
-        .flat_map(|block| json_array(block.get("hooks")))
-        .filter_map(|hook| hook.get("command")),
-    )
-}
-
 fn wiring_findings(
     strategy: &str,
-    wiring: HookWiring,
+    wiring: crate::cli::install::resource_rewrite::HookWiring,
     destination: &Path,
     missing_status: CheckStatus,
 ) -> Vec<OrchestrationFinding> {
@@ -6365,6 +6288,70 @@ mod tests {
             &home,
             &exe.parent().unwrap().to_path_buf(),
         ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    /// With no `--target` the destination is `$HOME`, so the user config is
+    /// also `<destination>/.konductor/config.yml`. It is the file that is
+    /// read, never an ignored project file.
+    #[test]
+    fn check_orchestration_on_a_default_home_install_is_ok() {
+        let exe = fake_konductor_binary("orch-home-install-exe");
+        let home = healthy_v3_target("orch-home-install", &exe);
+        let dir = home.join(config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join(config::CONFIG_FILE_NAME),
+            "orchestration:\n  mode: coordinator\n",
+        )
+        .unwrap();
+
+        let result = check_orchestration(&home, &home, Some(&home));
+        assert_eq!(result.status, CheckStatus::Ok, "{}", result.summary);
+        assert_eq!(
+            result.summary,
+            "orchestration.mode is `coordinator` (from ~/.konductor/config.yml)"
+        );
+        assert!(
+            !result.detail.iter().any(|line| line.contains("ignored")),
+            "{:?}",
+            result.detail
+        );
+        for dir in [&home, &exe.parent().unwrap().to_path_buf()] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    /// A project under `$HOME` with its own config is still reported; the
+    /// user file at `$HOME` is not.
+    #[test]
+    fn check_orchestration_reports_a_project_file_under_home_but_not_the_user_file() {
+        let exe = fake_konductor_binary("orch-home-project-exe");
+        let home = healthy_v3_target("orch-home-project", &exe);
+        let project = home.join("work/app");
+        for (root, mode) in [(&home, "coordinator"), (&project, "auto")] {
+            let dir = root.join(config::KONDUCTOR_DIR_NAME);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(
+                dir.join(config::CONFIG_FILE_NAME),
+                format!("orchestration:\n  mode: {mode}\n"),
+            )
+            .unwrap();
+        }
+
+        let result = check_orchestration(&home, &project, Some(&home));
+        let project_file = project.join(".konductor/config.yml");
+        assert_eq!(result.status, CheckStatus::Info);
+        assert_eq!(
+            result.summary,
+            format!(
+                "orchestration.mode is `coordinator`; {} also sets it, but only \
+                 ~/.konductor/config.yml is read",
+                project_file.display()
+            )
+        );
+        for dir in [&home, &exe.parent().unwrap().to_path_buf()] {
             fs::remove_dir_all(dir).ok();
         }
     }

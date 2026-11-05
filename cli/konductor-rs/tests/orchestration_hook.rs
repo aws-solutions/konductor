@@ -484,3 +484,45 @@ fn kiro_v2_wires_the_hook_on_konductor_only() {
         std::fs::remove_dir_all(&project).ok();
     }
 }
+
+/// A default install (no `--target`) puts the destination at `$HOME`, where
+/// `.konductor/config.yml` is the user config. Doctor must read it as the
+/// mode source and not report it as an ignored project file.
+#[test]
+fn doctor_reads_the_user_config_on_a_default_home_install() {
+    let home = scratch_dir("doctor-home");
+    let repo = seed_repo(&["konductor"]);
+    let repo_arg = repo.display().to_string();
+    let sink = TelemetrySink::start();
+    let synth = konductor(&home, &repo, &sink)
+        .args(["synth", "--from", &repo_arg])
+        .output()
+        .unwrap();
+    assert!(synth.status.success());
+    let install = konductor(&home, &home, &sink)
+        .args(["install", "--from", &repo_arg, "--harness", "kiro-v3"])
+        .arg("--no-telemetry")
+        .output()
+        .unwrap();
+    assert!(
+        install.status.success(),
+        "install: {}",
+        String::from_utf8_lossy(&install.stderr)
+    );
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+
+    let doctor = konductor(&home, &home, &sink)
+        .args(["doctor", "--from", &repo_arg])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&doctor.stdout);
+    let row = stdout
+        .lines()
+        .find(|line| line.contains(": orchestration - "))
+        .unwrap_or_else(|| panic!("no orchestration row in:\n{stdout}"));
+    assert!(!stdout.contains("also sets it"), "{stdout}");
+    assert!(row.contains("ok:"), "{row}");
+    assert!(row.contains("`coordinator`"), "{row}");
+    std::fs::remove_dir_all(&home).ok();
+    std::fs::remove_dir_all(&repo).ok();
+}
