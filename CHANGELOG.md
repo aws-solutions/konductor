@@ -78,11 +78,8 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
-- Orchestrator review fixes CRITICAL and IMPORTANT findings once, reruns the build and tests
-  for code, re-reviews that fix and what depends on it, and lists suggestions for you. Any
-  CRITICAL or IMPORTANT finding the re-review reports on the fix, or that the fix caused,
-  carried over or new, blocks done: the orchestrator stops and reports it to you; a
-  pre-existing finding in unchanged code is listed. An SOP may set its own fix-round limit.
+- Orchestrator review fixes CRITICAL and IMPORTANT findings once and re-reviews the fix. A finding
+  carried over or new on the fix stops the run; a pre-existing finding in unchanged code is listed.
 
 ### Fixed
 
