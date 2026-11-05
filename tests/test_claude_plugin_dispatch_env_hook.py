@@ -16,11 +16,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 HOOK = REPO_ROOT / "scripts" / "claude-plugin-dispatch-env-hook.sh"
 
 
-def run_hook(env, stdin='{"hook_event_name": "SessionStart"}'):
+def run_hook(env, cwd=None, stdin='{"hook_event_name": "SessionStart"}'):
     base = {"PATH": os.environ.get("PATH", "/usr/bin:/bin")}
     base.update(env)
     return subprocess.run(
-        ["bash", str(HOOK)], env=base, input=stdin, capture_output=True, text=True, check=False
+        ["bash", str(HOOK)],
+        env=base,
+        cwd=cwd,
+        input=stdin,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
@@ -39,15 +45,28 @@ def test_valid_option_is_appended_to_the_env_file(tmp_path, mode):
     )
 
 
-@pytest.mark.parametrize("value", ["", "yolo", "headless; touch pwned", "Bypass"])
-def test_unknown_or_empty_option_writes_nothing(tmp_path, value):
+def test_empty_option_writes_nothing(tmp_path):
     env_file = tmp_path / "env"
     result = run_hook(
-        {"CLAUDE_ENV_FILE": str(env_file), "CLAUDE_PLUGIN_OPTION_DISPATCH_PERMISSION_MODE": value}
+        {"CLAUDE_ENV_FILE": str(env_file), "CLAUDE_PLUGIN_OPTION_DISPATCH_PERMISSION_MODE": ""}
     )
     assert result.returncode == 0
     assert result.stdout == ""
     assert not env_file.exists()
+
+
+@pytest.mark.parametrize(
+    "value", ["yolo", "Bypass", "headless; touch pwned", "x\nexport EVIL=1", "$(touch pwned)"]
+)
+def test_unknown_option_writes_the_fixed_invalid_word(tmp_path, value):
+    env_file = tmp_path / "env"
+    result = run_hook(
+        {"CLAUDE_ENV_FILE": str(env_file), "CLAUDE_PLUGIN_OPTION_DISPATCH_PERMISSION_MODE": value},
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert env_file.read_text(encoding="utf-8") == "export KONDUCTOR_DISPATCH_PERMISSION_MODE=invalid\n"
     assert not (tmp_path / "pwned").exists()
 
 

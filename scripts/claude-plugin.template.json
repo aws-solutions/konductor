@@ -33,7 +33,7 @@
     "dispatch_permission_mode": {
       "type": "string",
       "title": "Permission mode for dispatched agents",
-      "description": "How the mux and cmux orchestrators start each child Claude Code session. interactive (default): the child runs in its pane and asks you before using tools. headless: the child runs with -p, accepts file edits, and denies anything else your permissions.allow settings do not allow. bypass: the child skips every permission check; use it only in an isolated environment. The KONDUCTOR_DISPATCH_PERMISSION_MODE environment variable overrides this option.",
+      "description": "How the mux and cmux orchestrators start each child Claude Code session. interactive (default): the child runs in its pane and asks you before using tools. headless: the child runs with -p, accepts file edits, and denies anything else your permissions.allow settings do not allow. bypass: the child skips every permission check; use it only in an isolated environment. The value is case-sensitive; any other value makes dispatch fail with an error. The KONDUCTOR_DISPATCH_PERMISSION_MODE environment variable overrides this option.",
       "default": "interactive"
     }
   },
