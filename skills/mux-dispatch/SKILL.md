@@ -26,6 +26,8 @@ Any other value makes the dispatch script exit with an error before it opens a p
 
 `<dispatch dir>` is `<registry>/<id>/`, where `<registry>` is `/tmp/konductor-mux` (or `$KONDUCTOR_MUX_REGISTRY_DIR` when set) and `<id>` is the dispatch's own id. The script creates it with mode 0700 and prints it as `dispatch_dir=`. It holds that dispatch's brief (`task.md`), result (`result.md`) and `.done`, and it is the only directory `--add-dir` grants: the shared `dispatched.json`, the launchers and every other dispatch's directory stay outside it. Without the grant, `headless` denies reading the brief and writing the result. `--add-dir` comes before `--agent` because it takes a list and would otherwise swallow the prompt.
 
+The registry must be private to you. The dispatch script creates it with mode 700, and it refuses to dispatch, as the cleanup helper refuses to remove, when the registry is a symlink, is not owned by you, or is group- or world-writable. Fix an older registry with `chmod 700`, or point `KONDUCTOR_MUX_REGISTRY_DIR` at a private directory.
+
 ## Overview
 
 Spawn agent sessions in tmux or zellij panes so delegated work is visible, interactive, and course-correctable in real time. Auto-detects the active multiplexer via `$TMUX` (tmux) or `$ZELLIJ` (zellij).
@@ -146,7 +148,8 @@ Every dispatch has one `.done` file:
 - The child writes it as its last step: the script's prompt tells it to. That is the completion signal, so an interactive Claude Code child completes without `/exit`; `/exit` only closes the pane.
 - On Kiro CLI the `mux-completion-hook.sh` stop hook may also write it, to `KONDUCTOR_DONE_FILE`.
 - When the child's session ends, the launcher keeps any `.done` already there and adds `exit_code`, or writes one with summary `"shell fallback"` if nothing did. A non-zero exit sets `status` to `"error"`, so a `.done` the child wrote early never hides a crash.
-- Remove `<dispatch dir>` only once its `.done` has an `exit_code`.
+- A `.done` the child wrote can turn into `"status": "error"` after you first read it, once the launcher records a non-zero exit. Check it again once it has an `exit_code`.
+- Remove `<dispatch dir>` only once its `.done` has an `exit_code`, and only with `bash "<MUX_DISPATCH_DIR>/mux-cleanup-dispatch.sh" --id <workspace-id>`. It takes the id, never a path: it refuses an id that doesn't match the dispatch format, a symlinked directory, and a registry that fails the checks below, and removes nothing outside `<registry>/<id>`.
 
 Poll (glob-free — an unmatched `*.done` glob is a hard error under zsh, which
 aborts the whole compound command before `2>/dev/null` can apply):

@@ -481,7 +481,10 @@ own; servers such as Playwright MCP are yours to configure.
   the child is granted; the shared registry and other dispatches' files stay outside it. `<prompt>`
   is a fixed instruction naming those files: the child writes its result there and, as its last
   step, its `.done` (`$KONDUCTOR_DONE_FILE`). That `.done` is the completion signal, and the launcher
-  adds the exit code when the session ends, so a later crash still shows as `"error"`.
+  adds the exit code when the session ends, so a later crash still shows as `"error"`: a `.done` the
+  child wrote can turn into `error` after it is first read. The registry must be private to you; the
+  scripts refuse one that is a symlink, owned by someone else, or writable by others. Dispatch
+  directories are removed only through the skills' cleanup helpers.
 
   **Behavior change:** Claude Code children used to start with every permission check skipped (what
   is now `bypass`). The default is now `interactive`. For unattended runs, set

@@ -35,6 +35,7 @@ if [[ -n "$TASK" && -n "$BRIEF" ]]; then
 fi
 if [[ -n "$BRIEF" ]]; then
   [[ -f "$BRIEF" && -r "$BRIEF" ]] || { echo "ERROR: --brief file not found or unreadable: $BRIEF" >&2; exit 1; }
+  [[ "$(wc -c < "$BRIEF")" -le 1048576 ]] || { echo "ERROR: --brief file is over 1 MB: $BRIEF" >&2; exit 1; }
   TASK_TEXT="$(head -c 100 "$BRIEF")"
 else
   [[ -z "$TASK" ]] && { echo "ERROR: --task or --brief required" >&2; exit 1; }
@@ -77,23 +78,37 @@ fi
 # Run by the launcher after the child exits. It keeps a .done the child
 # wrote itself (the completion signal) and adds the exit code, so an early
 # .done can't hide a crash: a non-zero exit always ends as status "error".
-RECORD_DONE_PY='import json, os, sys
+# It reads only a regular file of at most 64 KiB, never through a symlink and
+# never blocking on a FIFO, and replaces it through a fresh temp file.
+RECORD_DONE_PY='import json, os, stat, sys, tempfile
 path, ws, code, default = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+data = None
 try:
-    with open(path) as f:
-        data = json.load(f)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        st = os.fstat(fd)
+        if stat.S_ISREG(st.st_mode) and st.st_size <= 65536:
+            data = json.loads(os.read(fd, 65537).decode("utf-8"))
+    finally:
+        os.close(fd)
 except (OSError, ValueError):
     data = None
 if not isinstance(data, dict):
-    data = {"workspace_id": ws, "status": "done" if code == 0 else "error", "summary": default}
+    data = {"workspace_id": ws, "summary": default}
 data.setdefault("workspace_id", ws)
+if data.get("status") not in ("done", "error"):
+    data["status"] = "done" if code == 0 else "error"
 data["exit_code"] = code
 if code != 0:
     data["status"] = "error"
-tmp = path + ".tmp"
-with open(tmp, "w") as f:
-    json.dump(data, f)
-os.replace(tmp, path)'
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".done-")
+try:
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f)
+    os.replace(tmp, path)
+except BaseException:
+    os.unlink(tmp)
+    raise'
 
 # In a Claude Code plugin this skill sits at <plugin root>/skills/mux-dispatch/,
 # and Claude Code names the plugin's agents <plugin>:<agent>.
@@ -119,7 +134,34 @@ REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"
 # path (flock creates it on demand; the lock is released when the wrapped
 # process exits).
 REGISTRY_LOCK="$REGISTRY_FILE.lock"
-mkdir -p "$REGISTRY_DIR"
+# The registry holds every dispatch's files, so it must be a real directory
+# owned by this user that no one else can write to. Prints the problem and
+# fails when it isn't. KONDUCTOR_REGISTRY_OWNER_UID names the owner to expect
+# (default: this user); it cannot turn the check off.
+registry_problem() {
+  python3 - "$1" "${KONDUCTOR_REGISTRY_OWNER_UID:-$(id -u)}" <<'PY'
+import os, stat, sys
+path, uid = sys.argv[1], int(sys.argv[2])
+try:
+    st = os.lstat(path)
+except OSError as e:
+    sys.exit(f"cannot be read ({e.strerror})")
+if stat.S_ISLNK(st.st_mode):
+    sys.exit("is a symlink")
+if not stat.S_ISDIR(st.st_mode):
+    sys.exit("is not a directory")
+if st.st_uid != uid:
+    sys.exit(f"is owned by uid {st.st_uid}, not {uid}")
+if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+    sys.exit("is group- or world-writable")
+PY
+}
+
+[[ -e "$REGISTRY_DIR" || -L "$REGISTRY_DIR" ]] || { mkdir -p "$(dirname "$REGISTRY_DIR")" && mkdir -m 700 "$REGISTRY_DIR"; }
+if ! problem="$(registry_problem "$REGISTRY_DIR" 2>&1)"; then
+  echo "ERROR: dispatch registry $REGISTRY_DIR $problem; it must be a directory you own that no one else can write to (chmod 700 it, or set KONDUCTOR_MUX_REGISTRY_DIR to a private directory)" >&2
+  exit 1
+fi
 
 # Write launcher script — task stored in separate file to avoid all quoting issues
 LAUNCHER="$REGISTRY_DIR/launcher-${WS_ID}.sh"

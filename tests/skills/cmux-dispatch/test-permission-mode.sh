@@ -39,7 +39,7 @@ DONE_RECORD="$WORKDIR/done-file.txt"
 cat > "$MOCK_BIN/cmux" <<MOCKEOF
 #!/usr/bin/env bash
 case "\$1" in
-  new-split) touch "${SURFACE_OPENED}"; echo "surface:1" ;;
+  new-split) [ -n "\${MOCK_NO_SURFACE:-}" ] && exit 0; touch "${SURFACE_OPENED}"; echo "surface:1" ;;
   read-screen) echo "ready" ;;
   send) printf '%s' "\${!#}" > "${PANE_CMD_FILE}" ;;
   *) exit 0 ;;
@@ -51,6 +51,13 @@ for bin in claude kiro-cli; do
 #!/usr/bin/env bash
 printf '%s\n' "\$@" > "${ARGS_RECORD}"
 printf '%s' "\${KONDUCTOR_DONE_FILE:-__UNSET__}" > "${DONE_RECORD}"
+case "\${MOCK_PLANT:-}" in
+  tmp-symlink) ln -s "${WORKDIR}/victim" "\$KONDUCTOR_DONE_FILE.tmp" ;;
+  done-symlink) ln -s "${WORKDIR}/victim" "\$KONDUCTOR_DONE_FILE" ;;
+  big) head -c 70000 /dev/zero | tr '\\0' x > "\$KONDUCTOR_DONE_FILE" ;;
+  fifo) mkfifo "\$KONDUCTOR_DONE_FILE" ;;
+  no-status) printf '{"summary": "no status here"}' > "\$KONDUCTOR_DONE_FILE" ;;
+esac
 if [[ -n "\${MOCK_CHILD_WRITES_DONE:-}" && -n "\${KONDUCTOR_DONE_FILE:-}" ]]; then
   printf '{"status": "done", "summary": "child wrote this"}' > "\$KONDUCTOR_DONE_FILE"
 fi
@@ -223,6 +230,85 @@ dispatch --task "do it"
 check "child exits 3 without .done: the fallback records the error" \
   '[[ "$(done_field status)" == error && "$(done_field exit_code)" == 3 ]]'
 unset MOCK_EXIT
+
+# Hardened .done recording: never follows a symlink, never blocks on a
+# FIFO, ignores an oversized .done, and fills in a missing status.
+echo victim > "$WORKDIR/victim"
+export MOCK_PLANT=tmp-symlink
+dispatch --task "do it"
+check "a planted .tmp symlink is not followed" \
+  '[[ "$(cat "$WORKDIR/victim")" == victim && -f "$DONE" && ! -L "$DONE" && "$(done_field exit_code)" == 0 ]]'
+export MOCK_PLANT=done-symlink
+dispatch --task "do it"
+check "a .done symlink is replaced, not followed" \
+  '[[ "$(cat "$WORKDIR/victim")" == victim && -f "$DONE" && ! -L "$DONE" && "$(done_field exit_code)" == 0 ]]'
+export MOCK_PLANT=big
+dispatch --task "do it"
+check "an oversized .done gets the fallback" \
+  '[[ "$(done_field exit_code)" == 0 && "$(wc -c < "$DONE")" -lt 1000 && "$(done_field summary)" != x* ]]'
+export MOCK_PLANT=no-status
+dispatch --task "do it"
+check "a .done without status gets done on exit 0" '[[ "$(done_field status)" == done && "$(done_field summary)" == "no status here" ]]'
+export MOCK_EXIT=3
+dispatch --task "do it"
+check "a .done without status gets error on exit 3" '[[ "$(done_field status)" == error && "$(done_field exit_code)" == 3 ]]'
+unset MOCK_EXIT
+export MOCK_PLANT=fifo
+dispatch --task "do it" &
+bg=$!
+for _ in $(seq 1 100); do kill -0 "$bg" 2>/dev/null || break; sleep 0.2; done
+if kill -0 "$bg" 2>/dev/null; then
+  kill "$bg"; wait "$bg" 2>/dev/null
+  log_fail "a FIFO .done blocked the launcher"
+else
+  wait "$bg"
+  DONE="$(grep -o 'done_file=[^ ]*' "$WORKDIR/out" | cut -d= -f2)"
+  check "a FIFO .done gets the fallback without blocking" '[[ -f "$DONE" && "$(done_field exit_code)" == 0 ]]'
+fi
+unset MOCK_PLANT
+
+# --brief size cap.
+head -c 1048577 /dev/zero > "$WORKDIR/big-brief.md"
+dispatch --brief "$WORKDIR/big-brief.md"
+check "a --brief over 1 MB is refused before a surface opens" \
+  '[[ "$RC" -ne 0 && ! -e "$$SURFACE_OPENED" ]] && grep -q "over 1 MB" "$WORKDIR/err"'
+
+# The shared registry must be private to this user.
+export KONDUCTOR_CMUX_REGISTRY_DIR="$WORKDIR/fresh/registry"
+dispatch --task "do it"
+check "a new registry is created with mode 700" \
+  '[[ "$RC" -eq 0 && "$(python3 -c "import os, stat, sys; print(oct(stat.S_IMODE(os.lstat(sys.argv[1]).st_mode)))" "$WORKDIR/fresh/registry")" == 0o700 ]]'
+rm -rf "$WORKDIR/fresh" "$WORKDIR/reg-link"
+ln -s "$REG" "$WORKDIR/reg-link"
+export KONDUCTOR_CMUX_REGISTRY_DIR="$WORKDIR/reg-link"
+dispatch --task "do it"
+check "a symlinked registry is refused before a surface opens" \
+  '[[ "$RC" -ne 0 && ! -e "$$SURFACE_OPENED" ]] && grep -q "is a symlink" "$WORKDIR/err"'
+export KONDUCTOR_CMUX_REGISTRY_DIR="$REG"
+chmod 777 "$REG"
+dispatch --task "do it"
+check "a world-writable registry is refused" \
+  '[[ "$RC" -ne 0 && ! -e "$$SURFACE_OPENED" ]] && grep -q "group- or world-writable" "$WORKDIR/err"'
+chmod 700 "$REG"
+export KONDUCTOR_REGISTRY_OWNER_UID=$(( $(id -u) + 1 ))
+dispatch --task "do it"
+check "a registry owned by someone else is refused" \
+  '[[ "$RC" -ne 0 && ! -e "$$SURFACE_OPENED" ]] && grep -q "is owned by uid" "$WORKDIR/err"'
+unset KONDUCTOR_REGISTRY_OWNER_UID
+dispatch --task "do it"
+check "an owned 700 registry passes" '[[ "$RC" -eq 0 ]]'
+
+# The dispatch directory exists before the surface opens: a failure to
+# create it leaves no surface behind, and a failed surface leaves no
+# directory behind.
+chmod 500 "$REG"
+dispatch --task "do it"
+check "a dispatch directory that can't be created opens no surface" '[[ "$RC" -ne 0 && ! -e "$SURFACE_OPENED" ]]'
+chmod 700 "$REG"
+export MOCK_NO_SURFACE=1
+dispatch --task "do it"
+check "a surface that fails to open leaves no pending directory" '[[ "$RC" -ne 0 ]] && ! ls -A "$REG" | grep -q "^\.pending-"'
+unset MOCK_NO_SURFACE
 
 # Kiro CLI ignores the mode, even an invalid one, and gets the same files.
 unset CLAUDECODE

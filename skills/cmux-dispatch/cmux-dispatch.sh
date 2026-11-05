@@ -76,6 +76,7 @@ if [[ -n "$TASK" && -n "$BRIEF" ]]; then
 fi
 if [[ -n "$BRIEF" ]]; then
   [[ -f "$BRIEF" && -r "$BRIEF" ]] || { echo "ERROR: --brief file not found or unreadable: $BRIEF" >&2; exit 1; }
+  [[ "$(wc -c < "$BRIEF")" -le 1048576 ]] || { echo "ERROR: --brief file is over 1 MB: $BRIEF" >&2; exit 1; }
   TASK_TEXT="$(head -c 100 "$BRIEF")"
 else
   [[ -z "$TASK" ]] && { echo "ERROR: --task or --brief required" >&2; exit 1; }
@@ -115,23 +116,37 @@ fi
 # Run by the launcher after the child exits. It keeps a .done the child
 # wrote itself (the completion signal) and adds the exit code, so an early
 # .done can't hide a crash: a non-zero exit always ends as status "error".
-RECORD_DONE_PY='import json, os, sys
+# It reads only a regular file of at most 64 KiB, never through a symlink and
+# never blocking on a FIFO, and replaces it through a fresh temp file.
+RECORD_DONE_PY='import json, os, stat, sys, tempfile
 path, ws, code, default = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+data = None
 try:
-    with open(path) as f:
-        data = json.load(f)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        st = os.fstat(fd)
+        if stat.S_ISREG(st.st_mode) and st.st_size <= 65536:
+            data = json.loads(os.read(fd, 65537).decode("utf-8"))
+    finally:
+        os.close(fd)
 except (OSError, ValueError):
     data = None
 if not isinstance(data, dict):
-    data = {"workspace_id": ws, "status": "done" if code == 0 else "error", "summary": default}
+    data = {"workspace_id": ws, "summary": default}
 data.setdefault("workspace_id", ws)
+if data.get("status") not in ("done", "error"):
+    data["status"] = "done" if code == 0 else "error"
 data["exit_code"] = code
 if code != 0:
     data["status"] = "error"
-tmp = path + ".tmp"
-with open(tmp, "w") as f:
-    json.dump(data, f)
-os.replace(tmp, path)'
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".done-")
+try:
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f)
+    os.replace(tmp, path)
+except BaseException:
+    os.unlink(tmp)
+    raise'
 CMUX_BIN="${CMUX_BIN:-/Applications/cmux.app/Contents/MacOS/cmux}"
 [[ -x "$CMUX_BIN" ]] || { echo "ERROR: cmux binary not found or not executable (set CMUX_BIN to override)" >&2; exit 1; }
 cmux() { "$CMUX_BIN" "$@"; }
@@ -148,6 +163,42 @@ REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"
 # the shared registry (flock creates it on demand; the lock is released when
 # the wrapped process exits).
 REGISTRY_LOCK="$REGISTRY_FILE.lock"
+# The registry holds every dispatch's files, so it must be a real directory
+# owned by this user that no one else can write to. Prints the problem and
+# fails when it isn't. KONDUCTOR_REGISTRY_OWNER_UID names the owner to expect
+# (default: this user); it cannot turn the check off.
+registry_problem() {
+  python3 - "$1" "${KONDUCTOR_REGISTRY_OWNER_UID:-$(id -u)}" <<'PY'
+import os, stat, sys
+path, uid = sys.argv[1], int(sys.argv[2])
+try:
+    st = os.lstat(path)
+except OSError as e:
+    sys.exit(f"cannot be read ({e.strerror})")
+if stat.S_ISLNK(st.st_mode):
+    sys.exit("is a symlink")
+if not stat.S_ISDIR(st.st_mode):
+    sys.exit("is not a directory")
+if st.st_uid != uid:
+    sys.exit(f"is owned by uid {st.st_uid}, not {uid}")
+if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+    sys.exit("is group- or world-writable")
+PY
+}
+
+[[ -e "$REGISTRY_DIR" || -L "$REGISTRY_DIR" ]] || { mkdir -p "$(dirname "$REGISTRY_DIR")" && mkdir -m 700 "$REGISTRY_DIR"; }
+if ! problem="$(registry_problem "$REGISTRY_DIR" 2>&1)"; then
+  echo "ERROR: dispatch registry $REGISTRY_DIR $problem; it must be a directory you own that no one else can write to (chmod 700 it, or set KONDUCTOR_CMUX_REGISTRY_DIR to a private directory)" >&2
+  exit 1
+fi
+
+# The dispatch directory is created before the surface opens, so a failure
+# here leaves no surface behind. It gets its final name once the surface id
+# is known.
+DISPATCH_SUFFIX="$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")"
+PENDING_DIR="$REGISTRY_DIR/.pending-$DISPATCH_SUFFIX"
+mkdir -m 700 "$PENDING_DIR"
+trap '[ -z "$PENDING_DIR" ] || rm -rf "$PENDING_DIR"' EXIT
 
 # --- Readiness polling ---
 wait_for_shell() {
@@ -186,14 +237,18 @@ esac
 
 # Per-dispatch key: the surface id (surface:3 -> surface_3) plus a random
 # suffix, since surface numbers repeat across cmux sessions.
-DONE_KEY="$(printf '%s' "$SURFACE_ID" | tr -c 'A-Za-z0-9._-' '_')-$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")"
+DONE_KEY="$(printf '%s' "$SURFACE_ID" | tr -c 'A-Za-z0-9._-' '_')-$DISPATCH_SUFFIX"
 
 # Each dispatch gets its own 0700 directory holding its brief, its result and
 # its .done. It is the only directory the child is granted; the shared
 # registry and other dispatches stay outside that grant.
-mkdir -p "$REGISTRY_DIR"
 DISPATCH_DIR="$REGISTRY_DIR/$DONE_KEY"
-mkdir -m 700 "$DISPATCH_DIR"
+if ! mv "$PENDING_DIR" "$DISPATCH_DIR"; then
+  echo "ERROR: cannot create the dispatch directory $DISPATCH_DIR; not dispatching" >&2
+  cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
+  exit 1
+fi
+PENDING_DIR=""
 TASK_FILE="$DISPATCH_DIR/task.md"
 RESULT_FILE="$DISPATCH_DIR/result.md"
 DONE_FILE="$DISPATCH_DIR/$DONE_KEY.done"
