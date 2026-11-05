@@ -3,6 +3,7 @@ import { ApiError } from './api';
 import type {
   CheckResult,
   DiagnosticView,
+  Harness,
   RunStageView,
   RunStatus,
   RunView,
@@ -114,6 +115,19 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T {
   return allowed.find((candidate) => candidate === value) ?? fail();
 }
 
+/**
+ * Whether a value can be a harness: any string that is not empty. The page
+ * only shows the harness, so a value the contract does not name yet is shown
+ * as it is rather than refused.
+ */
+export function isHarness(value: unknown): value is Harness {
+  return typeof value === 'string' && value !== '';
+}
+
+function harnessOf(value: unknown): Harness {
+  return isHarness(value) ? value : fail();
+}
+
 // The stages in `order`, each with its status from `stages`. The contract
 // lists each stage once, so a name that repeats is a bad reply.
 function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
@@ -173,6 +187,7 @@ export function parseRunStatus(body: unknown): RunView {
   const run = objectOf(objectOf(body).run);
   const view: RunView = {
     runId: runIdOf(run.run_id),
+    harness: harnessOf(run.harness),
     status: oneOf(run.status, RUN_STATUSES),
     exitCode: exitCodeOf(run.exit_code),
     stages: parseRunStages(run.order, run.stages),
@@ -187,7 +202,7 @@ export function parseSession(body: unknown): Session {
   return {
     token: stringOf(session.token),
     root: stringOf(session.root),
-    harness: stringOf(session.harness),
+    harness: harnessOf(session.harness),
     apiVersion: typeof version === 'number' ? version : fail(),
   };
 }

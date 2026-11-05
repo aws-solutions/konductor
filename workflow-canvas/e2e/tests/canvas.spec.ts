@@ -212,6 +212,21 @@ test('fits the nodes of a bigger workflow that replaces the one on the page', as
   await expectEveryNodeInCanvas(canvas);
 });
 
+test('shows the harness of the session as it is, fake included, with no way to pick it', async ({
+  page,
+}) => {
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: { ...sharedSession(), harness: 'fake' } }),
+  );
+  const canvas = new WorkflowCanvasPage(page);
+  await canvas.open(STUB_LAUNCH_CODE);
+
+  await expect(canvas.node('node-stage-draft')).toContainText(
+    'k-developer · fake',
+  );
+  await expect(page.getByText(/harness/i)).toHaveCount(0);
+});
+
 test('shows in full the Japanese text that a node cuts short', async ({
   page,
 }) => {

@@ -125,6 +125,15 @@ describe('createHttpApi', () => {
     });
   });
 
+  it.each(['kiro-cli', 'claude', 'fake', 'future-harness'])(
+    'reads a session of the harness %s, as it is',
+    async (harness) => {
+      const { api } = apiFor(reply({ ...SESSION_BODY, harness }));
+
+      expect((await api.createSession('c')).harness).toBe(harness);
+    },
+  );
+
   it('gets /api/workflow with the bearer token', async () => {
     const { api, fetchFn } = apiFor(reply(DOCUMENT_BODY));
 
@@ -287,6 +296,12 @@ describe('createHttpApi', () => {
     [
       'a session with no version',
       { token: 't', root: 'hello', harness: 'kiro-cli' },
+    ],
+    ['a session with no harness', { ...SESSION_BODY, harness: undefined }],
+    ['a session with an empty harness', { ...SESSION_BODY, harness: '' }],
+    [
+      'a session whose harness is not a string',
+      { ...SESSION_BODY, harness: 1 },
     ],
   ])('fails on %s', async (_, body) => {
     const { api } = apiFor(reply(body));
@@ -607,6 +622,7 @@ describe('createHttpApi', () => {
 
     expect(await api.getRun('t', 'r')).toEqual({
       runId: '20261024-0412-a7b3c',
+      harness: 'kiro-cli',
       status: 'running',
       exitCode: null,
       stages: [
@@ -615,6 +631,15 @@ describe('createHttpApi', () => {
       ],
     });
   });
+
+  it.each(['kiro-cli', 'claude', 'fake', 'future-harness'])(
+    'reads a run of the harness %s, as it is',
+    async (harness) => {
+      const { api } = apiFor(reply(run({ harness })));
+
+      expect((await api.getRun('t', 'r')).harness).toBe(harness);
+    },
+  );
 
   it('reads a run that halted, with the stage that was blocked', async () => {
     const halted = {
@@ -668,6 +693,9 @@ describe('createHttpApi', () => {
   it.each([
     ['a body with no run', {}],
     ['a run with an unknown status', run({ status: 'paused' })],
+    ['a run with no harness', run({ harness: undefined })],
+    ['a run with an empty harness', run({ harness: '' })],
+    ['a run whose harness is not a string', run({ harness: ['claude'] })],
     ['a run with no run id', run({ run_id: undefined })],
     ['an order that is not a list', run({ order: 'write' })],
     ['a stage in `order` that `stages` lacks', run({ order: ['nope'] })],
