@@ -169,9 +169,8 @@ access could still start a new agent session by running `kiro-cli` or `claude` f
 `k-architect`, `k-developer` and `k-quality-assurance` have shell pre-approved in Kiro CLI, and
 every specialist except `k-researcher` is granted `Bash` in Claude Code.
 
-The edges below are the orchestrator's tool grants. Specialists hold none in Kiro CLI v3 or
-Claude Code. Kiro CLI v2 is not covered, so there only the core rules stop a specialist from
-spawning. A specialist does its own part, then returns a handoff note or a proposed parallel
+The edges below are the orchestrator's tool grants. Specialists hold none in any runtime.
+A specialist does its own part, then returns a handoff note or a proposed parallel
 split to its caller.
 
 ```mermaid

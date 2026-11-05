@@ -1101,16 +1101,16 @@ SOP_EDITS += [
      r'''warn: "Why this matters: k-code-review-workflow step 6 is an adversarial pass by k-architect. That SOP is declared only by k-developer, which cannot spawn the architect in either runtime. Step 6 writes the report with an 'Adversarial pass: pending' section, then returns the pass as a handoff. Under konductor, the handoff is routed to k-architect and the findings come back to finish the report. Started directly, you get the pending report and the handoff: ask konductor to run k-adversarial-pull-request-review, then resume k-code-review-workflow at step 6 with its findings."'''),
 ]
 
-# Specialists hold no spawn tool in Kiro CLI v3 or Claude Code. Each `old` is the
-# bundle sentence as published after the handoff-routing edits; the pre-existing
+# Specialists hold no spawn tool in any runtime. Each `old` is the bundle sentence
+# as published by the stack below this branch; the pre-existing
 # claims that specialists spawn each other are replaced, not appended to.
 SOP_EDITS += [
     ("concepts: hub is exclusive",
-     "is a hub — though not an exclusive one. In Kiro CLI four specialists can also spawn each other directly (k-architect → developer and QA; k-developer → QA; k-quality-assurance → developer and browser; k-tpm → developer and researcher), and in Claude Code k-architect and k-quality-assurance carry Agent(...) tools of their own. In the common case, though, work routes through the orchestrator, which decides who owns it, hands it over, and checks the result. The core rules tell specialists not to use those grants: a specialist does its own part,",
-     "is a hub. Specialists never talk to each other and hold no spawn tool in Kiro CLI v3 or Claude Code (Kiro CLI v2 is not covered, so there only the core rules stop a spawn), so every piece of work routes through the orchestrator, which decides who owns it, hands it over, and checks the result. A specialist does its own part,"),
+     "is a hub. Specialists never talk to each other and hold no spawn tool in Kiro CLI v3 or Claude Code (Kiro CLI v2 is not covered, so there only the core rules stop a spawn), so every piece of work routes through the orchestrator, which decides who owns it, hands it over, and checks the result. A specialist does its own part,",
+     "is a hub. Specialists never talk to each other and hold no spawn tool in any runtime, so every piece of work routes through the orchestrator, which decides who owns it, hands it over, and checks the result. A specialist does its own part,"),
     ("agents: delegation edges are the orchestrator's",
-     "Delegation is not open, and the edges below are tool grants that the core rules tell specialists not to use: a specialist returns a handoff note or a proposed split to its caller, and the grants are still in the agent specs.",
-     "Only the orchestrators delegate. The edges below are the orchestrator's tool grants: specialists hold none in Kiro CLI v3 or Claude Code, and Kiro CLI v2 is not covered, so there only the core rules stop a specialist from spawning. A specialist returns a handoff note or a proposed split to its caller."),
+     "Only the orchestrators delegate. The edges below are the orchestrator's tool grants: specialists hold none in Kiro CLI v3 or Claude Code, and Kiro CLI v2 is not covered, so there only the core rules stop a specialist from spawning. A specialist returns a handoff note or a proposed split to its caller.",
+     "Only the orchestrators delegate. The edges below are the orchestrator's tool grants: specialists hold none in any runtime. A specialist returns a handoff note or a proposed split to its caller."),
     ("agents: delegation governance sentence",
      " In Kiro CLI it is governed by each agent's toolsSettings.subagent.availableAgents; in Claude Code by whether the agent has an Agent(...) tool at all. In Claude Code, k-architect and k-quality-assurance carry Agent(...) tools too, so delegation there is not konductor-only.",
      " In Kiro CLI, konductor's toolsSettings.subagent.availableAgents names the eight specialists; in Claude Code only konductor has an Agent(...) tool."),
@@ -1133,14 +1133,14 @@ SOP_EDITS += [
      '{ k: "k-researcher", v: "has the tool, zero targets · nothing" }',
      '{ k: "k-researcher", v: "nothing · nothing" }'),
     ("delegation: glossary",
-     "An empty list means the agent holds the subagent tool but can spawn nothing. konductor's list is the widest, naming all eight specialists.",
-     "Specialists carry no spawn tool in Kiro CLI v3 or Claude Code; only the orchestrators spawn, and konductor's list names all eight specialists."),
+     "Specialists carry no spawn tool in Kiro CLI v3 or Claude Code; only the orchestrators spawn, and konductor's list names all eight specialists.",
+     "Specialists carry no spawn tool in any runtime; only the orchestrators spawn, and konductor's list names all eight specialists."),
     ("use-case: claude spawn claim",
      "cannot reach the architect there: k-developer has no Agent(...) tool at all, and k-quality-assurance's names k-developer and k-browser. (k-architect and k-quality-assurance do hold Agent(...) tools, so delegation in Claude Code is not orchestrator-only.)",
      "cannot reach the architect there: no specialist has an Agent(...) tool."),
     ("use-case: kiro spawn claim",
-     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI</strong>, delegation goes through <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">toolsSettings.subagent.availableAgents</code>, and the developer, this SOP's only owner, does not list the architect: its targets are <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">[\"k-quality-assurance\"]</code>.",
-     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI v3</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool; only konductor does. In Kiro CLI v2, <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">@builtin</code> still carries it, and only the core rules stop the spawn."),
+     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI v3</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool; only konductor does. In Kiro CLI v2, <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">@builtin</code> still carries it, and only the core rules stop the spawn.",
+     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool; only konductor does."),
     ("roster row: architect delegation",
      "Can delegate to developer and QA in both runtimes.",
      "Delegates to nothing; it returns to its caller."),

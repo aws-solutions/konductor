@@ -155,6 +155,8 @@ def test_stale_delegation_phrases_stay_forbidden():
         "adversarial handoff never fires",
         "step 6 silently no-ops",
         "Its step-6 adversarial pass never fires",
+        "Kiro CLI v2 is not covered",
+        "only the core rules stop",
     }
 
 
@@ -173,3 +175,21 @@ def test_stale_delegation_phrase_in_a_bundle_fails_the_guide_check(repo_copy):
     finally:
         page.write_text(original, encoding="utf-8")
     assert "specialists hold no spawn tool" in result.stdout
+
+
+def test_v2_spawn_caveat_in_the_guide_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "agents.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nKiro CLI v2 is not covered, so there only the core rules stop a spawn.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert result.returncode != 0
+    assert "specialists hold no spawn tool in any runtime" in result.stdout

@@ -62,6 +62,8 @@ STALE_DELEGATION_PHRASES = (
     "adversarial handoff never fires",
     "step 6 silently no-ops",
     "Its step-6 adversarial pass never fires",
+    "Kiro CLI v2 is not covered",
+    "only the core rules stop",
 )
 KONDUCTOR_SPAWN_CELL = "the same 8 via Agent(...)"
 
@@ -463,7 +465,7 @@ def main() -> int:
             if phrase in text.replace(KONDUCTOR_SPAWN_CELL, ""):
                 perm_fails.append(
                     f"{rel}: says {phrase!r}: specialists hold no spawn tool "
-                    f"in Kiro CLI v3 or Claude Code"
+                    f"in any runtime"
                 )
         low = text.lower()
         for phrase in FORBIDDEN_PERMISSION_CLAIMS:
