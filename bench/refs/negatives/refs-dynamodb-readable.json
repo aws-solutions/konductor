@@ -1,0 +1,342 @@
+{
+  "loosened": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "cases": [
+    {
+      "name": "RD1 phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "AP2 reads a global secondary index keyed by customerId, newest first by createdAt.\n"
+      }
+    },
+    {
+      "name": "RD1 near miss 1",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Customers are important to the business.\n"
+      }
+    },
+    {
+      "name": "RD1 near miss 2",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The customer index is slow.\n"
+      }
+    },
+    {
+      "name": "RD2 phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "Events sit in the order item collection under the same partition key, sorted by eventTime.\n"
+      }
+    },
+    {
+      "name": "RD2 near miss 1",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Events arrive all day.\n"
+      }
+    },
+    {
+      "name": "RD2 near miss 2",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Each event has a type and a detail.\n"
+      }
+    },
+    {
+      "name": "RD3 phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "To avoid a hot partition at 2,400 writes a second the day key gets a salt suffix.\n"
+      }
+    },
+    {
+      "name": "RD3 near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The day key is the date.\n"
+      }
+    },
+    {
+      "name": "RD3 near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Shard is a nice word.\n"
+      }
+    },
+    {
+      "name": "RD4 phrased differently",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "The shard suffix range is 1 to 64.\n"
+      }
+    },
+    {
+      "name": "RD4 near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "We add a shard suffix to the key.\n"
+      }
+    },
+    {
+      "name": "RD4 near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "There are 90 million orders.\n"
+      }
+    },
+    {
+      "name": "RD4p phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "Events are spread with hash(eventId) % 200.\n"
+      }
+    },
+    {
+      "name": "RD4p near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Events are spread with hash(eventId) % 64.\n"
+      }
+    },
+    {
+      "name": "RD4p near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The API returns 200 for a good request.\n"
+      }
+    },
+    {
+      "name": "RD5 phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "We keep to a maximum of 4 GSIs on the table.\n"
+      }
+    },
+    {
+      "name": "RD5 near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The table has indexes.\n"
+      }
+    },
+    {
+      "name": "RD5 near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "GSI reads are eventually consistent.\n"
+      }
+    },
+    {
+      "name": "RD5p phrased differently",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "The standard allows five GSIs per table; we use four.\n"
+      }
+    },
+    {
+      "name": "RD5p near miss 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The standard allows at most 20 GSIs per table.\n"
+      }
+    },
+    {
+      "name": "RD5p near miss 2",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "We use four GSIs.\n"
+      }
+    },
+    {
+      "name": "RD6 phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "Coupon search runs 5 times a day, so it gets no GSI; a scheduled export serves it.\n"
+      }
+    },
+    {
+      "name": "RD6 near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Coupons give customers a discount.\n"
+      }
+    },
+    {
+      "name": "RD6 near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "AP9 finds orders that used a coupon code.\n"
+      }
+    },
+    {
+      "name": "RD7 phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "A sparse index on warehouse holds only picked orders.\n"
+      }
+    },
+    {
+      "name": "RD7 near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "There are about 40 warehouses.\n"
+      }
+    },
+    {
+      "name": "RD7 near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Each order has a warehouse.\n"
+      }
+    },
+    {
+      "name": "RD7b phrased differently",
+      "check": 15,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "Tracking numbers are unique, enforced by a conditional write on a lookup item.\n"
+      }
+    },
+    {
+      "name": "RD7b near miss 1",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Parcels move along the carrier network.\n"
+      }
+    },
+    {
+      "name": "RD7b near miss 2",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The order has a status.\n"
+      }
+    },
+    {
+      "name": "RD8 phrased differently",
+      "check": 16,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "On-demand mode fits because traffic is spiky.\n"
+      }
+    },
+    {
+      "name": "RD8 near miss 1",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Capacity matters.\n"
+      }
+    },
+    {
+      "name": "RD8 near miss 2",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The mode is on-demand.\n"
+      }
+    },
+    {
+      "name": "RD9 phrased differently",
+      "check": 17,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "Rejected: one table per entity, because AP3 would need two reads.\n"
+      }
+    },
+    {
+      "name": "RD9 near miss 1",
+      "check": 17,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Other designs exist.\n"
+      }
+    },
+    {
+      "name": "RD9 near miss 2",
+      "check": 17,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Alternatives were considered.\n"
+      }
+    }
+  ]
+}

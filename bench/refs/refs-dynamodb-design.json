@@ -1,0 +1,149 @@
+{
+  "id": "refs-dynamodb-design",
+  "class": "design",
+  "target": "k-architect",
+  "prompt": "docs/requirements.md describes how an order tracking service reads and writes its data and how much traffic it carries. Design the DynamoDB table and indexes for it and write the design to docs/data-model.md: the key schema of the table and each index, the shape of each item type, how each access pattern is served (name the table or index and the key condition), the capacity mode with the reason, and the risks and trade-offs including alternatives you rejected. Apply our DynamoDB standards for write sharding and for the number of GSIs, and state the shard suffix range and the GSI maximum you applied. Do not write code and do not change the input. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "refs-order-store",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/data-model.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/data-model.md)\" -ge 25 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/data-model.md)\" -le 300 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/data-model.md",
+      "pattern": "\\b(?:partition key|PK|HASH)\\b",
+      "min": 3
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/data-model.md",
+      "pattern": "\\b(?:sort key|SK|RANGE)\\b",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD0*/const G=[\"AP\\\\s?1\\\\b|by order ?id|GetItem\",\"AP\\\\s?2\\\\b|customer\",\"AP\\\\s?3\\\\b|events? in time order|order with its events\",\"AP\\\\s?4\\\\b|append\",\"AP\\\\s?5\\\\b|calendar day|events of (?:a|one) day\",\"AP\\\\s?6\\\\b|warehouse\",\"AP\\\\s?7\\\\b|tracking\",\"AP\\\\s?8\\\\b|carrier\",\"AP\\\\s?9\\\\b|coupon\"];let c=0;for(const g of G)if(new RegExp(g,\"i\").test(t))c++;process.exit(c>=8?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD1*/const A=new RegExp(\"customerId|customer index|per customer|CUST#|customer\",\"gi\"),R=[new RegExp(\"index|GSI\",\"i\"),new RegExp(\"createdAt|sort key|newest|descending|ScanIndexForward|time\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD2*/const A=new RegExp(\"events?\",\"gi\"),R=[new RegExp(\"same partition|item collection|ORDER#|orderId|order partition|partition key|PK\",\"i\"),new RegExp(\"sort key|SK|time order|eventTime|EVT\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD3*/const A=new RegExp(\"shard|suffix|bucket|salt\",\"gi\"),R=[new RegExp(\"hot|1,?000|partition|throttl|2,?400|writes?|spread|distribut\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD4*/const A=new RegExp(\"shard|suffix|bucket|salt\",\"gi\"),R=[new RegExp(\"\\\\b\\\\d{2,4}\\\\b\",\"i\"),new RegExp(\"range|count|number|between|%|modulo|mod\\\\b|hash|1 to|1-|1 and\",\"i\")],W=160;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD4p*/const A=new RegExp(\"\\\\b200\\\\b\",\"gi\"),R=[new RegExp(\"shard|suffix|bucket|salt|hash|modulo|%|range\",\"i\")],W=120;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD5*/const A=new RegExp(\"GSIs?|global secondary|indexes\",\"gi\"),R=[new RegExp(\"(?:at most|max(?:imum)?|no more than|up to|limit(?: of)?|cap(?:ped)?|within|inside|under|\\\\u2264|<=)[^.\\\\n]{0,30}\\\\b(?:\\\\d+|one|two|three|four|five|six|seven|eight|nine|ten)\\\\b|\\\\b(?:\\\\d+|five|four|six|ten)\\\\b[^.\\\\n]{0,30}(?:GSIs?|indexes)\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD5p*/const A=new RegExp(\"GSIs?|global secondary|indexes\",\"gi\"),R=[new RegExp(\"(?:at most|max(?:imum)?|no more than|up to|limit(?: of)?|cap(?:ped)?(?: at)?|within|inside|under|\\\\u2264|<=)[^.\\\\n]{0,30}\\\\b(?:5|five)\\\\b|\\\\b(?:5|five)\\\\b[^.\\\\n]{0,30}(?:GSIs?|indexes)\\\\b\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD6*/const A=new RegExp(\"coupon\",\"gi\"),R=[new RegExp(\"no (?:dedicated |separate |own )?(?:GSI|index)|not (?:worth|justif|add|need)|without (?:a |an )?(?:GSI|index)|athena|export|filter|scheduled|rare|infrequent|per day|a day|too (?:rare|few)|does not justify|no index\",\"i\"),new RegExp(\"GSI|index|scan|query|export|job\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD7*/const A=new RegExp(\"warehouse\",\"gi\"),R=[new RegExp(\"index|GSI\",\"i\"),new RegExp(\"sparse|picked|status|only\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD7b*/const A=new RegExp(\"tracking\",\"gi\"),R=[new RegExp(\"unique|conditional|attribute_not_exists|transaction|lookup item|lookup|GSI|index\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD8*/const A=new RegExp(\"on-demand|provisioned|capacity mode|auto ?scaling\",\"gi\"),R=[new RegExp(\"because|since|reason|spiky|bursty|steady|peak|rates?|no history|traffic\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*RD9*/const A=new RegExp(\"rejected|alternatives?|trade-?offs?|considered\",\"gi\"),R=[new RegExp(\"one table per|per entity|date-only|status|scan|relational|GSI per|hot|multiple tables|separate tables\",\"i\"),new RegExp(\"because|since|reason|but|hot|limit|cost|breaks|two reads\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/data-model.md",
+      "pattern": "^\\s*```\\s*(?:js|javascript|ts|typescript|python|py|java|go|sh|bash)\\b"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/requirements.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ -s docs/data-model.md ] && [ \"$(find . -type f \\( -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' \\) | wc -l)\" -eq 0 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "keys-and-collections",
+      "criterion": "Keys the table by order, keeps events in the order item collection with a time-ordered sort key, serves AP1 and AP3 with strongly consistent reads, and names the table or index and key condition for every pattern (RD1).",
+      "weight": 3
+    },
+    {
+      "id": "write-sharding",
+      "criterion": "Recognises the hot day key at 2,400 writes a second, spreads events over shard suffixes, states the shard suffix range and the fan-out cost of reading all shards (RD3). Uses the standard range of 200 (RD4).",
+      "weight": 3
+    },
+    {
+      "id": "index-budget",
+      "criterion": "States a GSI maximum, uses the standard of 5 per table or fewer, keeps AP6 sparse and AP7 unique through a lookup item, and gives the rare coupon search no GSI of its own (RD5, RD6, RD7).",
+      "weight": 3
+    },
+    {
+      "id": "capacity-and-tradeoffs",
+      "criterion": "Chooses a capacity mode with a reason that uses the stated rates, notes the doubled write cost of indexed events, and names at least one rejected alternative with a reason (RD8, RD9).",
+      "weight": 2
+    },
+    {
+      "id": "no-false-claims",
+      "criterion": "Makes no false claim: a GSI enforcing uniqueness, a strongly consistent GSI read, a Scan for a frequent pattern, one key for all events of a day without sharding.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "id": "refs-sprint-capacity",
+  "class": "sop",
+  "target": "k-product-manager",
+  "prompt": "docs/sprint-14.md lists the tasks still open when sprint 14 closes, and docs/sprint-15.md gives the team, the leave and the work already planned for sprint 15. Plan the rollover of the open tasks into sprint 15 using our Asana integration, and write the plan to docs/rollover-plan.md: the capacity of sprint 15, the new due date and the points of each carried task, the load the board will show for sprint 15 once the rollover has run, the real load, whether it fits, what the team loses in the move and what to do about it. Do not change the input documents. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "refs-sprint-board",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/rollover-plan.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/rollover-plan.md)\" -ge 12 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/rollover-plan.md)\" -le 200 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/rollover-plan.md",
+      "pattern": "\\bT-10[123]\\b",
+      "min": 4
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS1*/const A=new RegExp(\"capacity\",\"gi\"),R=[new RegExp(\"\\\\b27\\\\b\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS1b*/const A=new RegExp(\"leave|away|time off|out of office|vacation|absen\",\"gi\"),R=[new RegExp(\"\\\\b(?:3|three)\\\\b\",\"i\"),new RegExp(\"27|minus|-|subtract|less|reduc|fewer|remov|lower\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS2a*/const A=new RegExp(\"T-101|pagination\",\"gi\"),R=[new RegExp(\"2026-03-27|27 mar|mar(?:ch)? 27|03/27|27/03|27\\\\.03\",\"i\")],W=200;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS2b*/const A=new RegExp(\"T-102|billing\",\"gi\"),R=[new RegExp(\"2026-03-26|26 mar|mar(?:ch)? 26|03/26|26/03|26\\\\.03\",\"i\")],W=200;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS3*/const A=new RegExp(\"board|asana|shows?|showing|display|visible|appear|look\",\"gi\"),R=[new RegExp(\"\\\\b22\\\\b\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS4*/const A=new RegExp(\"real|actual|true|correct|in fact|total\",\"gi\"),R=[new RegExp(\"\\\\b27\\\\b\",\"i\"),new RegExp(\"100\\\\s?%|full|exactly|no (?:headroom|slack|spare|room|buffer|margin)|at capacity|27\\\\s*(?:/|of|out of)\\\\s*27|zero\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS5*/const A=new RegExp(\"subtasks?|T-103a|T-103b\",\"gi\"),R=[new RegExp(\"lost|lose|loses|losing|dropped|not (?:carried|copied|moved|kept|preserved)|do(?:es)? not (?:come|carry|move|keep|survive)|gone|disappear|missing|recreat|re-?creat|without (?:its |the )?subtasks|no subtasks\",\"i\")],W=250;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS5b*/const A=new RegExp(\"T-103|audit\",\"gi\"),R=[new RegExp(\"\\\\b5\\\\b\",\"i\"),new RegExp(\"no points|0 (?:pts|points)|zero|lost|missing|vanish|disappear|not shown|none|without\",\"i\")],W=250;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS6*/const A=new RegExp(\"subtasks?|T-103\",\"gi\"),R=[new RegExp(\"re-?creat|re-?enter|re-?add|add (?:them|the subtasks)|manual|by hand|copy|restore|put the 5|reconcile\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS6b*/const A=new RegExp(\"warn|confirm|approval|approve|before (?:running|you run|the rollover|starting|proceeding)|get a yes|sign.?off\",\"gi\"),R=[new RegExp(\"data loss|lost|lose|subtasks|comments|attachments\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/rollover-plan.md\",\"utf8\");/*RS7*/const A=new RegExp(\"fits?\\\\b|fully|full\\\\b|exactly|over capacity|overcommit|headroom|slack|no room\",\"gi\"),R=[new RegExp(\"\\\\b27\\\\b|100\\\\s?%|capacity\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/sprint-14.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/sprint-15.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "capacity",
+      "criterion": "Computes the sprint 15 capacity as 27 points from three people at 10 points each minus 3 days of leave (RS1) and gives the new due dates by adding the sprint length (RS2).",
+      "weight": 2
+    },
+    {
+      "id": "board-load",
+      "criterion": "States that the board will show 22 of 27 points after the rollover, because the recreated T-103 has no points (RS3).",
+      "weight": 3
+    },
+    {
+      "id": "real-load",
+      "criterion": "States that the real load is 27 of 27 points, so the sprint is exactly full (RS4, RS7).",
+      "weight": 2
+    },
+    {
+      "id": "data-loss",
+      "criterion": "Says that the rollover recreates the tasks and loses the subtasks of T-103 and the 5 points on them, and also comments, attachments, followers and tags (RS5).",
+      "weight": 3
+    },
+    {
+      "id": "remedy",
+      "criterion": "Tells the team to get confirmation before the rollover and to recreate the subtasks or move their points to the new task afterwards (RS6). Makes no false claim that the subtasks come along.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}
