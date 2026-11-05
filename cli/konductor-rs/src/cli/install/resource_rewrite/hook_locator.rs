@@ -3,9 +3,9 @@
 // install/resource_rewrite/hook_locator.rs - where each install strategy
 // writes the orchestration session-start hook, and how `doctor` reads its
 // commands back. The writers live in `telemetry_hook_pass.rs` and
-// `claude_settings.rs`; this module shares their path and trigger constants
-// and `command_is_hook`, and the round-trip tests below pin that it reads
-// what they write.
+// `claude_settings.rs`; this module shares their path constants, the v2 and
+// v3 trigger names and `command_is_hook`. The Claude event key is a literal
+// here, pinned by `claude_writer_output_reads_back`.
 
 use std::path::{Path, PathBuf};
 
