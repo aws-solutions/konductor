@@ -33,4 +33,5 @@ export {
   type Scheduler,
 } from './ports';
 export { stageDrift, type StageDrift } from './stage-drift';
+export { blockedStageOf, reasonSentence } from './stage-reason';
 export { statusKind, statusText, type StatusKind } from './status-text';

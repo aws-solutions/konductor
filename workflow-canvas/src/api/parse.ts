@@ -128,6 +128,15 @@ function harnessOf(value: unknown): Harness {
   return isHarness(value) ? value : fail();
 }
 
+// The reason of a blocked stage. A missing or empty one leaves the stage
+// blocked with no reason, as the contract has a client treat a reason it does
+// not know like any other blocked stage; a value that is not a string is a bad
+// reply.
+function reasonOf(value: unknown): string | undefined {
+  if (value === undefined || value === '') return undefined;
+  return typeof value === 'string' ? value : fail();
+}
+
 // The stages in `order`, each with its status from `stages`. The contract
 // lists each stage once, so a name that repeats is a bad reply.
 function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
@@ -137,11 +146,13 @@ function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
     const name = stringOf(entry);
     if (seen.has(name)) fail();
     seen.add(name);
-    const stage = Object.hasOwn(byName, name) ? byName[name] : fail();
-    return {
-      name,
-      status: oneOf(objectOf(stage).status, STAGE_STATUSES),
-    };
+    const stage = objectOf(Object.hasOwn(byName, name) ? byName[name] : fail());
+    const status = oneOf(stage.status, STAGE_STATUSES);
+    // The contract gives a blocked stage a reason, and no other stage one. A
+    // reason this page does not know is still a reason, shown as it is.
+    if (status !== 'blocked') return { name, status };
+    const reason = reasonOf(stage.reason);
+    return reason === undefined ? { name, status } : { name, status, reason };
   });
   // `order` holds the keys of `stages`: a stage that is not listed is a bad reply.
   return Object.keys(byName).length === listed.length ? listed : fail();

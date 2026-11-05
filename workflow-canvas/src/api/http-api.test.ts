@@ -648,7 +648,10 @@ describe('createHttpApi', () => {
         status: 'halted',
         finished_at: '2026-10-24T04:12:49Z',
         exit_code: 1,
-        stages: { write: { status: 'blocked' }, review: { status: 'pending' } },
+        stages: {
+          write: { status: 'blocked', reason: 'RESULT_MISSING' },
+          review: { status: 'pending' },
+        },
       },
     };
     const { api } = apiFor(reply(halted));
@@ -657,10 +660,75 @@ describe('createHttpApi', () => {
       status: 'halted',
       exitCode: 1,
       stages: [
-        { name: 'write', status: 'blocked' },
+        { name: 'write', status: 'blocked', reason: 'RESULT_MISSING' },
         { name: 'review', status: 'pending' },
       ],
     });
+  });
+
+  // A halted run whose blocked stage has the reason given.
+  const haltedWith = (write: Record<string, unknown>) =>
+    run({
+      status: 'halted',
+      finished_at: '2026-10-24T04:12:49Z',
+      exit_code: 1,
+      stages: {
+        write: { status: 'blocked', ...write },
+        review: { status: 'pending' },
+      },
+    });
+
+  it('reads a reason that this page does not know, as it is', async () => {
+    const { api } = apiFor(reply(haltedWith({ reason: 'OUT_OF_CREDIT' })));
+
+    expect((await api.getRun('t', 'r')).stages[0]).toEqual({
+      name: 'write',
+      status: 'blocked',
+      reason: 'OUT_OF_CREDIT',
+    });
+  });
+
+  it('keeps no reason on a stage that is not blocked', async () => {
+    const { api } = apiFor(
+      reply(
+        run({
+          stages: {
+            write: { status: 'passed', reason: 'RESULT_MISSING' },
+            review: { status: 'running' },
+          },
+        }),
+      ),
+    );
+
+    expect((await api.getRun('t', 'r')).stages[0]).toEqual({
+      name: 'write',
+      status: 'passed',
+    });
+  });
+
+  it.each([
+    ['no reason', {}],
+    ['an empty reason', { reason: '' }],
+  ])(
+    'reads a blocked stage with %s as blocked, with no reason',
+    async (_, write) => {
+      const { api } = apiFor(reply(haltedWith(write)));
+
+      const view = await api.getRun('t', 'r');
+
+      expect(view.status).toBe('halted');
+      expect(view.stages[0]).toEqual({ name: 'write', status: 'blocked' });
+    },
+  );
+
+  it.each([
+    ['a number', 1],
+    ['null', null],
+    ['an object', { code: 'TIMEOUT' }],
+  ])('refuses a blocked stage whose reason is %s', async (_, reason) => {
+    const { api } = apiFor(reply(haltedWith({ reason })));
+
+    await expect(api.getRun('t', 'r')).rejects.toBeInstanceOf(ApiError);
   });
 
   it('takes the order from `order`, not from the keys of `stages`', async () => {

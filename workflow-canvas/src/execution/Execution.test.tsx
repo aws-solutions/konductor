@@ -262,6 +262,79 @@ describe('a run', () => {
     expect(isOff(runButton())).toBe(false);
   });
 
+  it.each([
+    ['RESULT_MISSING', 'The final message of the session has no result line.'],
+    ['RESULT_INVALID', 'The result line of the session is not valid.'],
+    ['RESULT_FAILURE', 'The agent reported that it could not do the work.'],
+    [
+      'SESSION_FAILED',
+      'The session could not start, its agent was not found, or it ended with an error.',
+    ],
+    ['TIMEOUT', 'The stage, or one of its checks, ran out of time.'],
+    [
+      'OUTPUT_MISSING',
+      'A file that the stage must leave behind does not exist.',
+    ],
+    [
+      'OUTPUT_UNCHANGED',
+      'A file that the stage must leave behind was not created or changed by the stage.',
+    ],
+    ['CHECK_FAILED', 'A check that the stage must pass failed.'],
+  ])(
+    'shows the blocked stage with the reason %s and what it means',
+    async (reason, sentence) => {
+      await openExecution(serverShowing(helloRun(0, { blockedAt: 1, reason })));
+
+      await press(runButton());
+
+      const blocked = await screen.findByTestId('blocked-stage');
+      expect(blocked.textContent).toBe(
+        `Blocked stagereviewReason${reason}${sentence}`,
+      );
+    },
+  );
+
+  it('shows a reason that the page does not know as it is, with no sentence', async () => {
+    await openExecution(
+      serverShowing(helloRun(0, { blockedAt: 0, reason: 'OUT_OF_CREDIT' })),
+    );
+
+    await press(runButton());
+
+    const blocked = await screen.findByTestId('blocked-stage');
+    expect(blocked.textContent).toBe('Blocked stagedraftReasonOUT_OF_CREDIT');
+  });
+
+  it('shows a blocked stage with no reason in the reply, with no reason block', async () => {
+    const run = helloRun(0, { blockedAt: 1 });
+    await openExecution(
+      serverShowing({
+        ...run,
+        stages: run.stages.map(({ name, status }) => ({ name, status })),
+      }),
+    );
+
+    await press(runButton());
+
+    const blocked = await screen.findByTestId('blocked-stage');
+    expect(blocked.textContent).toBe('Blocked stagereview');
+    expect(statusLine().textContent).toContain('review');
+    expect(screen.queryByTestId('run-error')).toBeNull();
+  });
+
+  it('shows no blocked stage while the run goes on, or after it passed', async () => {
+    const scheduler = await openExecution(
+      serverShowing(helloRun(0), helloRun(2)),
+    );
+
+    await press(runButton());
+    expect(screen.queryByTestId('blocked-stage')).toBeNull();
+    await tick(scheduler);
+
+    expect(statusLine().textContent).toContain('Run passed.');
+    expect(screen.queryByTestId('blocked-stage')).toBeNull();
+  });
+
   it('shows no error alert when a stage fails: the failure is a result, not an error', async () => {
     await openExecution(serverShowing(helloRun(0, { blockedAt: 1 })));
 
@@ -745,6 +818,56 @@ describe('the live regions', () => {
 
     expect(statusLive().textContent).toBe(
       'Run passed. 2 of 2 stages done. Exit code 0.',
+    );
+  });
+
+  it('say why the stage of a halted run stopped, in the sentence of its reason', async () => {
+    await openExecution(serverShowing(helloRun(0, { blockedAt: 1 })));
+
+    await press(runButton());
+
+    await waitFor(() =>
+      expect(statusLive().textContent).toBe(
+        'Run halted at review. 1 of 2 stages done. Exit code 1. The final message of the session has no result line.',
+      ),
+    );
+    expect(statusLive().textContent).not.toContain('`');
+  });
+
+  it('say the code of a reason that the page does not know', async () => {
+    await openExecution(
+      serverShowing(helloRun(0, { blockedAt: 0, reason: 'OUT_OF_CREDIT' })),
+    );
+
+    await press(runButton());
+
+    await waitFor(() =>
+      expect(statusLive().textContent).toBe(
+        'Run halted at draft. 0 of 2 stages done. Exit code 1. OUT_OF_CREDIT',
+      ),
+    );
+  });
+
+  it.each([
+    ['no reason', undefined],
+    ['an empty reason', ''],
+  ])('say no reason for a blocked stage with %s', async (_, reason) => {
+    const run = helloRun(0, { blockedAt: 1 });
+    await openExecution(
+      serverShowing({
+        ...run,
+        stages: run.stages.map(({ name, status }) =>
+          reason === undefined ? { name, status } : { name, status, reason },
+        ),
+      }),
+    );
+
+    await press(runButton());
+
+    await waitFor(() =>
+      expect(statusLive().textContent).toBe(
+        'Run halted at review. 1 of 2 stages done. Exit code 1.',
+      ),
     );
   });
 
