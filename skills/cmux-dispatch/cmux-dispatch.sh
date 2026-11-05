@@ -267,10 +267,14 @@ if [ -n "${CLAUDECODE:-}" ]; then
   # hardcoded /tmp/konductor-cmux literal, so a test pointed at an
   # isolated registry dir never leaks a .done file into the real one.
   DONE_FILE="${REGISTRY_DIR}/${DONE_KEY}.done"
-  PANE_CMD="${CMD_PREFIX}export KONDUCTOR_DONE_FILE=$(printf '%q' "$DONE_FILE") && claude --agent \"${PREFIX}${AGENT}\"${CLAUDE_PERMISSION_ARGS} \"\$(cat '${TASK_FILE}')\""
+  # --add-dir lets the child read its brief and write its result under the
+  # registry dir, outside its working directory. It takes a list, so it goes
+  # before --agent and can never swallow the prompt.
+  PANE_CMD="${CMD_PREFIX}export KONDUCTOR_DONE_FILE=$(printf '%q' "$DONE_FILE") && claude --add-dir $(printf '%q' "$REGISTRY_DIR") --agent \"${PREFIX}${AGENT}\"${CLAUDE_PERMISSION_ARGS} \"\$(cat '${TASK_FILE}')\""
   # Fix 2: capture claude exit code; set status done/error to mirror tmux/zellij
   PANE_CMD="${PANE_CMD} ; ec=\$? ; st=done ; [ \"\$ec\" != 0 ] && st=error"
-  PANE_CMD="${PANE_CMD} ; mkdir -p '${REGISTRY_DIR}' && python3 -c \"import json; f=open('${DONE_FILE}','w'); json.dump({'workspace_id':'${RECORDED_WS_ID}','status':'\$st','summary':'claude exit'},f)\""
+  # Skip the fallback when the child already wrote its own .done.
+  PANE_CMD="${PANE_CMD} ; [ ! -f '${DONE_FILE}' ] && mkdir -p '${REGISTRY_DIR}' && python3 -c \"import json; f=open('${DONE_FILE}','w'); json.dump({'workspace_id':'${RECORDED_WS_ID}','status':'\$st','summary':'claude exit'},f)\""
 else
   # kiro-cli: no filesystem resolution needed -- kiro-cli resolves --agent
   # against its own registry and warns on collisions itself. Unlike Claude

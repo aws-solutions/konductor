@@ -198,7 +198,10 @@ fi
     printf '  EXIT_CODE=1\n'
     printf 'else\n'
     printf '  export KONDUCTOR_DONE_FILE=%q\n' "${REGISTRY_DIR}/${WS_ID}.done"
-    printf '  claude --agent "${PREFIX}%s"%s "$TASK"\n' "$AGENT" "$CLAUDE_PERMISSION_ARGS"
+    # --add-dir lets the child read its brief and write its result under the
+    # registry dir, outside its working directory. It takes a list, so it goes
+    # before --agent and can never swallow the prompt.
+    printf '  claude --add-dir %q --agent "${PREFIX}%s"%s "$TASK"\n' "$REGISTRY_DIR" "$AGENT" "$CLAUDE_PERMISSION_ARGS"
     echo '  EXIT_CODE=$?'
     printf 'fi\n'
   else
