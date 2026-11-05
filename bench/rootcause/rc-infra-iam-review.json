@@ -1,0 +1,162 @@
+{
+  "id": "rc-infra-iam-review",
+  "class": "review",
+  "target": "k-developer",
+  "prompt": "Review template.yaml and policies/support-role.json against the requirements in README.md. Report every security or reliability problem in review/infra-review.md with the file and line, a severity (critical, important or minor), the requirement it breaks and a corrected snippet. Also write a least-privilege replacement for the support role policy to review/support-role.fixed.json. Do not change the original files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-infra",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "review/infra-review.md"
+    },
+    {
+      "type": "file_exists",
+      "path": "review/support-role.fixed.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review/infra-review.md)\" -ge 14 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review/infra-review.md)\" -le 400 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "labelled_findings",
+      "path": "review/infra-review.md",
+      "min": 6
+    },
+    {
+      "type": "min_matches",
+      "path": "review/infra-review.md",
+      "pattern": "\\.(?:yaml|json)\\b\\s*(?:[:#(,]|line)\\s*L?\\d+",
+      "min": 6
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");const S=[[\"template.yaml\",14],[\"template.yaml\",77],[\"template.yaml\",46],[\"template.yaml\",36],[\"template.yaml\",61],[\"template.yaml\",90],[\"template.yaml\",67],[\"template.yaml\",5],[\"support-role.json\",13],[\"support-role.json\",19]];const re=/([\\w./-]+\\.[a-z]{1,5})(?:\\s*[:#(,]\\s*|\\s+)(?:L|lines?\\s+)?(\\d+)(?:\\s*(?:-|\\u2013|to)\\s*L?(\\d+))?/gi;const hit=new Set();for(const m of t.matchAll(re)){const base=m[1].split(\"/\").pop().toLowerCase();const a=+m[2],b=m[3]?+m[3]:a;for(const [f,l] of S){if(f.toLowerCase()===base&&l>=a-3&&l<=b+3)hit.add(f+\":\"+l)}}process.exit(hit.size>=6?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN1*/const A=new RegExp(\"PublicRead|public (?:read|bucket|access)|publicly|public-?access-?block\",\"gi\"),R=[new RegExp(\"bucket|UploadBucket|S3|s3\",\"i\"),new RegExp(\"private|block|public|remove|should|must|anyone|world\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN2*/const A=new RegExp(\"encrypt|versioning|\\\\bsse\\\\b|kms\",\"gi\"),R=[new RegExp(\"bucket|S3|UploadBucket\",\"i\"),new RegExp(\"missing|no |not |without|lacks?|should|must|enable|add\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN3*/const A=new RegExp(\"point[- ]in[- ]time|PITR|deletion ?(?:protection|policy)|DeletionPolicy|retain|encrypt|\\\\bsse\\\\b\",\"gi\"),R=[new RegExp(\"Orders ?Table|DynamoDB|dynamodb|table\",\"i\"),new RegExp(\"missing|no |not |without|lacks?|should|must|enable|add|accident\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN4*/const A=new RegExp(\"0\\\\.0\\\\.0\\\\.0/0|ssh|port 22|security group|open to the (?:world|internet)\",\"gi\"),R=[new RegExp(\"ssh|22|security ?group|OpsSecurityGroup|ingress\",\"i\"),new RegExp(\"world|internet|0\\\\.0\\\\.0\\\\.0|10\\\\.20|office|restrict|narrow|should|must|open\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN5*/const A=new RegExp(\"dynamodb:\\\\*|s3:\\\\*|wildcards?|least[- ]privilege|over-?(?:broad|permissive)\",\"gi\"),R=[new RegExp(\"FunctionRole|function role|template\\\\.yaml|Lambda|function\",\"i\"),new RegExp(\"resource|scope|specific|arn|least|narrow|only|should|must|replace\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN6*/const A=new RegExp(\"trust (?:policy|relationship)|AssumeRolePolicy|Principal|assume ?role|sts:AssumeRole\",\"gi\"),R=[new RegExp(\"FunctionRole|template|function\",\"i\"),new RegExp(\"\\\\*|any|anyone|wildcard|account|lambda\\\\.amazonaws|service principal|should|must|restrict\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN7*/const A=new RegExp(\"password|secrets? ?manager|\\\\bssm\\\\b|parameter store|DbPassword|DB_PASSWORD|\\\\bsecret\",\"gi\"),R=[new RegExp(\"DbPassword|DB_PASSWORD|template|parameter|environment|env\",\"i\"),new RegExp(\"plain|default|hard|environment|secrets manager|ssm|parameter store|NoEcho|should|must|move|store\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN8*/const A=new RegExp(\"AuthorizationType|authoriz|authenticat|\\\\bNONE\\\\b|unauthenticated|no auth\",\"gi\"),R=[new RegExp(\"CreateOrderMethod|API ?Gateway|POST|method|\\\\bapi\\\\b\",\"i\"),new RegExp(\"none|no auth|unauthenticated|anyone|without|missing|should|must|require|cognito|iam|authorizer\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN9*/const A=new RegExp(\"retention|RetentionInDays|log ?group|\\\\blogs?\\\\b\",\"gi\"),R=[new RegExp(\"OrdersFunctionLogs|log ?group|LogGroup\",\"i\"),new RegExp(\"retention|90|days|never expire|indefinite|should|must|set|missing|no \",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/infra-review.md\",\"utf8\");/*IN10*/const A=new RegExp(\"s3:\\\\*|iam:\\\\*|support[- ]?role|identit|manage users\",\"gi\"),R=[new RegExp(\"support-role|support role|SupportFullBucket|SupportManageUsers\",\"i\"),new RegExp(\"iam|identity|identities|s3:\\\\*|read[- ]only|least|should|must|remove|scope|narrow|exceed\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "review/infra-review.md",
+      "pattern": "\\b(?:critical|high)\\b",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const j=JSON.parse(require(\"fs\").readFileSync(\"review/support-role.fixed.json\",\"utf8\"));const S=[].concat(j.Statement||[]);const acts=(s)=>[].concat(s.Action||[]).map(String);const res=(s)=>[].concat(s.Resource||[]).map(String);process.exit(S.length>=1&&S.every(s=>s.Effect)?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const j=JSON.parse(require(\"fs\").readFileSync(\"review/support-role.fixed.json\",\"utf8\"));const S=[].concat(j.Statement||[]);const acts=(s)=>[].concat(s.Action||[]).map(String);const res=(s)=>[].concat(s.Resource||[]).map(String);const bad=S.some(s=>s.Effect===\"Allow\"&&acts(s).some(a=>/^\\*$|^iam:|^s3:\\*$|^dynamodb:\\*$|^\\w+:\\*$/i.test(a)));process.exit(bad?1:0)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const j=JSON.parse(require(\"fs\").readFileSync(\"review/support-role.fixed.json\",\"utf8\"));const S=[].concat(j.Statement||[]);const acts=(s)=>[].concat(s.Action||[]).map(String);const res=(s)=>[].concat(s.Resource||[]).map(String);const all=S.filter(s=>s.Effect===\"Allow\").flatMap(acts);process.exit(all.some(a=>/dynamodb:(GetItem|Query|BatchGetItem)/i.test(a))&&all.some(a=>/s3:GetObject/i.test(a))?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const j=JSON.parse(require(\"fs\").readFileSync(\"review/support-role.fixed.json\",\"utf8\"));const S=[].concat(j.Statement||[]);const acts=(s)=>[].concat(s.Action||[]).map(String);const res=(s)=>[].concat(s.Resource||[]).map(String);const all=S.filter(s=>s.Effect===\"Allow\").flatMap(acts);const w=all.some(a=>/(Put|Delete|Update|Create|Attach|Write)/i.test(a));const star=S.some(s=>s.Effect===\"Allow\"&&acts(s).some(a=>/^(s3|dynamodb):/i.test(a))&&res(s).some(r=>r===\"*\"));process.exit(w||star?1:0)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "template.yaml"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "policies"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "public-exposure",
+      "criterion": "Finds the world-readable bucket (IN1), the SSH rule open to 0.0.0.0/0 (IN4) and the unauthenticated POST method (IN8), each tied to the README requirement it breaks. Partial credit for two of three.",
+      "weight": 3
+    },
+    {
+      "id": "iam-wildcards",
+      "criterion": "Finds the wildcard function role permissions (IN5), the trust policy with Principal AWS * (IN6) and the support policy with s3:* and iam:* (IN10), and explains who could abuse each.",
+      "weight": 3
+    },
+    {
+      "id": "data-protection",
+      "criterion": "Finds the missing bucket encryption and versioning (IN2), the missing table recovery, encryption and deletion safeguards (IN3) and the plain-text database password (IN7).",
+      "weight": 2
+    },
+    {
+      "id": "fixed-policy",
+      "criterion": "The replacement support policy gives read access to the Orders table and to objects under uploads/ only, names specific resource ARNs, and has no write, delete or identity action.",
+      "weight": 2
+    },
+    {
+      "id": "no-false-claims",
+      "criterion": "Does not claim any control exists that the template lacks (encryption, recovery, a secret store, a private bucket), invents no resource, and leaves the original files unchanged.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}
