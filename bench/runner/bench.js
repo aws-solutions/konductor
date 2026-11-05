@@ -60,9 +60,14 @@ const USAGE = `Usage:
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
        [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR] [--profile quick|detailed]
        [--judge-backend kiro|opencode] [--budget-usd X] [--aws-creds-file FILE] [--aws-profile bench] [--aws-region us-east-1] [--opencode-bin PATH] [--cache DIR]
-       [--criteria-pack quality] [--plan]
+       [--criteria-pack quality] [--plan] [--rescore-quotes [--quote-match lenient|strict]]
        (--criteria-pack quality runs only the quality-dimensions pass over the finished runs and writes judgments-quality.json beside judgments.json; judgments.json is not read or changed.
        Criteria that do not apply to a run are skipped and reported as n/a. See bench/QUALITY-PACK.md)
+       (--rescore-quotes matches the stored evidence quotes of --run again with no model call and writes judgments-lenient.json beside judgments.json (judgments.json is untouched),
+       then prints the share of verdicts downgraded per judge before and after and the mean rubric per arm. The lenient rule ignores table pipes, list markers and escapes, accepts
+       fragments joined by spaces, new lines or ellipses when every fragment of 20 or more letters is found in order, and accepts a verbatim quoted sentence of 40 or more letters
+       inside the judge's prose; a quote with a fragment the output does not hold is still lowered one level. --quote-match strict only checks that the default rule reproduces the stored values.
+       A report reads the new file when its scoring file sets "quotes": "lenient")
        (--plan works in every mode: it prints the backend, the panel, the call count per mode, the calls the cache already holds and an estimated spend, calls no model and writes nothing.
        A real pass prints the backend and the panel before its first call)
        (--judge-backend opencode asks the panel through opencode run on Amazon Bedrock (tools off, a one-line system prompt, temperature 0 where the model takes one)

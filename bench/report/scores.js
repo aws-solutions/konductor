@@ -20,6 +20,11 @@ const PACK_COMPONENT = 'pack';
 // passed / total. The loaded weights carry `checksMode` only when it is 'fraction', so default weights are unchanged.
 const CHECKS_MODES = ['all', 'fraction'];
 const CHECKS_MODE_KEY = 'checksMode';
+// How the judge's evidence quotes are matched. 'strict' (the default) uses the stored judgments.json. 'lenient' reads
+// judgments-lenient.json, made by `judge --rescore-quotes`. The loaded weights carry `quoteMode` only when it is 'lenient'.
+const QUOTE_MODES = ['strict', 'lenient'];
+const QUOTE_MODE_KEY = 'quoteMode';
+const LENIENT_QUOTES = 'lenient';
 const FRACTIONAL_CHECKS = 'fraction';
 const componentsOf = (weights) => (weights[PACK_COMPONENT] > 0 ? [...COMPONENTS, PACK_COMPONENT] : COMPONENTS);
 const DEFAULT_PROFILE = path.join(__dirname, '..', 'profiles', 'scoring.json');
@@ -51,7 +56,7 @@ const PACK_FORMULA = ' Pack quality (opt-in, set by a weight for "pack" in the s
  * cannot never drops the component quietly. "checks" names how the checks component is scored (default "all"); the returned object
  * gets `checksMode: "fraction"` only when the file asks for it.
  */
-function loadScoring(file = DEFAULT_PROFILE, { allowPack = false } = {}) {
+function loadScoring(file = DEFAULT_PROFILE, { allowPack = false, allowQuotes = false } = {}) {
   let data;
   try { data = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { throw new Error(`scoring profile ${file}: ${e.code === 'ENOENT' ? 'file not found' : e.message}`); }
   const w = data?.weights;
@@ -69,6 +74,12 @@ function loadScoring(file = DEFAULT_PROFILE, { allowPack = false } = {}) {
   const mode = data.checks ?? 'all';
   if (!CHECKS_MODES.includes(mode)) throw new Error(`scoring profile ${file}: "checks" must be one of ${CHECKS_MODES.map((m) => `"${m}"`).join(', ')}`);
   if (mode === FRACTIONAL_CHECKS) out[CHECKS_MODE_KEY] = mode;
+  const quotes = data.quotes ?? 'strict';
+  if (!QUOTE_MODES.includes(quotes)) throw new Error(`scoring profile ${file}: "quotes" must be one of ${QUOTE_MODES.map((m) => `"${m}"`).join(', ')}`);
+  if (quotes === LENIENT_QUOTES) {
+    if (!allowQuotes) throw new Error(`scoring profile ${file}: "quotes": "lenient" is read by report only; other commands cannot use the lenient judgments`);
+    out[QUOTE_MODE_KEY] = quotes;
+  }
   return out;
 }
 

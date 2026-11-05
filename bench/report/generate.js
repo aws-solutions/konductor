@@ -12,6 +12,7 @@ const { collectFacts, scorecard } = require('./diligence.js');
 const { buildRunDocument } = require('./build.js');
 const { toMarkdown, toHtml } = require('./doc.js');
 const { readJson } = require('./load.js');
+const { readLenientJudgments } = require('../judge/rescore.js');
 const { enrichOrch, summarize: summarizeOrch } = require('./orch.js');
 const { profileCheck } = require('../runner/lib/profiles.js');
 
@@ -58,8 +59,13 @@ function readSpend(run) {
 /** Everything a run report needs, without writing a file. */
 function analyze({ run, tasks, baseline, scoringFile, qualityPack = null }) {
   const base = baseline ?? defaultBaseline(run);
+  const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack), allowQuotes: true });
+  // A scoring file with "quotes": "lenient" swaps in the rescored judgments before anything reads them.
+  if (weights.quoteMode === 'lenient') {
+    if ((run.dirs || [run.dir]).length > 1) throw new Error('"quotes": "lenient" needs one run directory; rescore and report each directory on its own');
+    run.judgments = readLenientJudgments(run.dir);
+  }
   const built = buildReport({ run, tasks, baseline: base });
-  const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
   // Only a scoring file that weights the pack reads the pack judgments; otherwise rows and scores are exactly as before.
   const ctx = { ...built.ctx, scoring: weights, ...(weights.pack > 0 ? { packScoreOf: require('./packscore.js').packScores({ run, tasks, pack: qualityPack }).scoreOf } : {}) };
   const rows = buildRows(run, tasks, ctx);

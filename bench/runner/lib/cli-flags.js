@@ -15,7 +15,7 @@ const FLAGS = {
   judge: [
     'run', 'judges', 'mode', 'baseline', 'concurrency', 'budget-credits', 'judge-cmd', 'max-file-chars', 'max-bundle-chars', 'redact-file',
     'judge-timeout-sec', 'bench-dir', 'allow-small-panel', 'kiro-bin', 'isolate', 'hide', 'auth-db', 'extra-tasks', 'profile',
-    'judge-backend', 'budget-usd', 'opencode-bin', 'aws-creds-file', 'aws-profile', 'aws-region', 'cache', 'criteria-pack', 'plan',
+    'judge-backend', 'budget-usd', 'opencode-bin', 'aws-creds-file', 'aws-profile', 'aws-region', 'cache', 'criteria-pack', 'plan', 'rescore-quotes', 'quote-match',
   ],
   explain: ['run', 'arm', 'task', 'rep', 'brief', 'scoring', 'bench-dir', 'extra-tasks'],
   trace: ['run', 'arm', 'task', 'rep', 'format', 'full', 'instructions', 'repo-root'],
@@ -68,7 +68,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'va
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'allow-unisolated', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes',
 ]);
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];

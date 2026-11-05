@@ -189,6 +189,7 @@ function renderMarkdown(report) {
     out.push('## Judging', '', judgeBackendLine(jg), '', table(['judge', 'records', 'errors', 'calls (cached)', 'parse failures', 'credits (all invocations)', ...(usd ? ['usd (all invocations)'] : []), 'median latency s', 'quote not found', 'downgraded (quote missing)'],
       Object.entries(jg.byJudge).map(([j, s]) => [j, s.records, s.errors, `${s.calls} (${s.cachedCalls})`, s.parseFailures, f(s.credits, 3), ...(usd ? [s.usd === undefined ? 'n/a' : f(s.usd, 4)] : []), f(s.medianLatencyMs === null ? null : s.medianLatencyMs / 1000, 1), pct(s.unverifiedQuoteRate), s.evidenceDowngraded])));
     const spend = [usd && !jg.spentCredits ? null : `${f(jg.spentCredits, 3)} credits`, usd ? `$${jg.spentUsd.toFixed(4)} USD` : null].filter(Boolean).join(' and ');
+    if (jg.quoteMatch) out.push('', lenientQuoteBlock(jg.quoteMatch));
     out.push('', `Total judge spend over all invocations: ${spend}. Cached calls cost 0 and show the latency measured when they ran. Pairwise results where the two orderings disagreed: ${jg.positionInconsistent}`, '');
     out.push('Rubric score: "scored" lowers a verdict one level when the judge\'s evidence quote is not found in the output (ellipsis, case, whitespace and markdown emphasis are ignored when matching); "raw" is the judge\'s own verdicts. "quote not found" is the share of quoted criteria whose quote was not found.', '');
     if (report.judging.stale?.length) {
@@ -200,6 +201,19 @@ function renderMarkdown(report) {
   }
   if (report.skills) out.push(renderSkillsMarkdown(report.skills), '');
   return out.join('\n');
+}
+
+// Present only when the report was built from rescored judgments ("quotes": "lenient" in the scoring file).
+function lenientQuoteBlock(q) {
+  const pct = (v) => (typeof v === 'number' ? `${(100 * v).toFixed(1)}%` : 'n/a');
+  const rows = Object.keys(q.before).map((judge) => `| ${judge} | ${q.before[judge].criteria} | ${q.before[judge].downgraded} (${pct(q.before[judge].downgradeRate)}) | ${q.after[judge].downgraded} (${pct(q.after[judge].downgradeRate)}) |`);
+  return [
+    `Quote matching: lenient. The verdicts below were rescored from judgments.json on ${q.createdAt} without a model call (table pipes, list markers and escapes ignored; fragments joined by spaces, new lines or ellipses accepted when each fragment of 20 or more letters is found in order; a verbatim quoted sentence of 40 or more letters inside the judge's prose accepted). Verdicts whose fragments are not found are still lowered one level.`,
+    '',
+    '| judge | criteria | downgraded, strict matching | downgraded, lenient matching |',
+    '| --- | --- | --- | --- |',
+    ...rows,
+  ].join('\n');
 }
 
 // States which program asked the judge models: kiro, or opencode with the settings that shaped the replies.

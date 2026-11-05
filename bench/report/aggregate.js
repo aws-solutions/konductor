@@ -370,6 +370,7 @@ function judgingSummary(j, isStale, stale) {
   const out = {
     byJudge: {}, positionInconsistent: 0, spentCredits: j.spentCredits ?? null, spentUsd: j.spentUsd ?? null, panel: j.panel ?? null, notJudged: j.notJudged || [], stale,
     backend: backends.length > 1 ? 'mixed' : backends[0], backends, backendInfo: j.backendInfo ?? null,
+    ...(j.quoteMatch ? { quoteMatch: j.quoteMatch } : {}),
   };
   for (const judge of j.judges) {
     const recs = [...j.rubric, ...j.pairwise].filter((r) => r.judge === judge && !isStale(r));

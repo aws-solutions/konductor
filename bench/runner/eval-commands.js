@@ -18,6 +18,7 @@ const { BACKENDS, DEFAULT_BACKEND, checkOpencodeJudges } = require('../judge/bac
 const oc = require('./lib/harness/opencode.js');
 const { readProfile } = require('./lib/harness/opencode-creds.js');
 const { runJudging, planJudging } = require('../judge/run.js');
+const { rescoreQuotes, formatRescore } = require('../judge/rescore.js');
 const { loadPack } = require('../judge/pack/index.js');
 const { runPackJudging, describePackPlan, FILE } = require('../judge/packrun.js');
 const { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration } = require('../judge/calibrate.js');
@@ -188,6 +189,8 @@ function judgeCallerFor(opts, { runDir, judges }) {
 const packOf = (opts) => (opts['criteria-pack'] === undefined ? null : loadPack(opts['criteria-pack']));
 
 async function cmdJudge(opts) {
+  if (opts['rescore-quotes']) return cmdRescoreQuotes(opts);
+  if (opts['quote-match'] !== undefined) throw new Error('--quote-match goes with --rescore-quotes');
   const { runDir, benchDir, run, judges, small } = judgePanelFor(opts);
   const packName = opts['criteria-pack'];
   if (packName !== undefined) return cmdJudgePack(opts, { runDir, benchDir, run, judges, small });
@@ -242,6 +245,20 @@ function planTail(d) {
   lines.push(e.total === null ? `estimated spend: ${e.basis}` : `estimated spend: about ${money(e, e.total)} for ${d.live} live call(s) at ${money(e, e.perCall)} each, from ${e.basis}; a reply that fails validation is asked once more`);
   lines.push('nothing was called and nothing was written');
   return lines.join('\n');
+}
+
+// judge --rescore-quotes: the evidence check of stored rubric verdicts, matched again with no model call.
+async function cmdRescoreQuotes(opts) {
+  const mode = flagValue(opts, 'quote-match') ?? 'lenient';
+  for (const f of ['plan', 'judges', 'mode', 'baseline', 'profile', 'criteria-pack', 'judge-backend', 'judge-cmd', 'budget-credits', 'budget-usd']) {
+    if (opts[f] !== undefined) throw new Error(`--${f} does not apply with --rescore-quotes: it calls no model and writes judgments-lenient.json only`);
+  }
+  const runDir = path.resolve(need(opts, 'run'));
+  const r = rescoreQuotes({ runDir, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), redactions: loadRedactions(opts['redact-file']), mode });
+  console.log(formatRescore(r));
+  console.log('');
+  console.log(`${r.changed} rubric record(s) changed under ${mode} matching${r.skipped.length ? `; ${r.skipped.length} record(s) kept as stored (run or task not found)` : ''}`);
+  console.log(r.file ? `wrote ${r.file}; judgments.json was not changed. Report with a scoring file that sets "quotes": "lenient" (profiles/scoring-lenient-quotes.json)` : 'strict check only: nothing written');
 }
 
 // judge --plan for the rubric, pairwise and graded modes: the same preparation as the pass, no caller.
