@@ -1,30 +1,49 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// flow.rs: `konductor flow check <name>` and `konductor flow show <name>`.
+// flow.rs: `konductor flow check <name>`, `konductor flow show <name>` and `konductor flow run <name>`.
 //
-// The format, its checks and the JSON they print live in the `workflow-core` crate, which does no IO. The file
-// source and lookup live in `workflow-adapters`. This module only wires them to the command line and decides the
-// output and the exit code.
+// The format, its checks, the stage prompt, the runner and the JSON they print live in the `workflow-core` crate,
+// which does no IO. The file source, lookup, run store, lock and the `fake` harness live in `workflow-adapters`. This
+// module only wires them to the command line and decides the output and the exit code.
 //
-// Exit codes: 0 when the workflow has no errors, 64 for a usage error (a bad name, `library/<name>`, or a name that
-// matches no file), 65 when the workflow has errors. Never 2, which the CLI reserves.
+// Exit codes: 0 when the workflow has no errors (and, for `run`, the run passed), 1 when a run halted, 64 for a usage
+// error (a bad name, `library/<name>`, a name that matches no file, or a bad `run` input), 65 when the workflow has
+// errors, 75 when the workspace lock refuses the run. Never 2, which the CLI reserves.
 //
-// A bare name is looked up in `<project>/.konductor/workflows/` and then in `~/.konductor/workflows/`. The project is
-// the current directory, as for `init` and `config`. `library/<name>` names a shipped workflow, and none exist yet.
+// A bare name is looked up in `<project>/.konductor/workflows/` and then in `~/.konductor/workflows/`. For `flow run`,
+// the project root is resolved by `find_project_root` (D-001): it walks upward from the current directory and stops at
+// the git top folder (the folder that holds `.git`). `flow check` and `flow show` still use the current directory as
+// in 1c. `library/<name>` names a shipped workflow, and none exist yet.
 
+use std::collections::BTreeMap;
+use std::ffi::OsString;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
-use workflow_adapters::{Located, Lookup, Scope, Skip, Skipped};
+use workflow_adapters::process::current_owner;
+use workflow_adapters::{
+    choose_harness, FakeHarness, FileRunLock, FileRunStore, HarnessChoice, Located, Lookup, Scope,
+    Script, SimulatedClock, Skip, Skipped, FAKE_SCRIPT_ENV,
+};
 use workflow_core::json::Json;
+use workflow_core::ports::RunLock;
+use workflow_core::run::{Run, RunStatus, StageState, StageStatus};
+use workflow_core::runner::{execute, prepare, start, StartError};
 use workflow_core::{check_text, parse_reference, Checked, Reference, ReferenceError};
 
 use crate::cli::output::{self, status, ColorMode};
 use crate::cli::FlowAction;
 
+/// A run halted: a stage was blocked. Also any failure while a run is under way, such as a state file that cannot be
+/// written, which is the CLI's "halted (runtime error)".
+const EXIT_HALTED: u8 = 1;
 const EXIT_USAGE_ERROR: u8 = 64;
 /// The workflow has errors. Same number as the CLI's other state or verification failures.
 const EXIT_WORKFLOW_ERRORS: u8 = 65;
+/// The workspace lock refuses the run (`EX_TEMPFAIL`): another process holds it. The `--json` envelope's `code` says
+/// whether its run is known.
+const EXIT_ALREADY_RUNNING: u8 = 75;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Command {
@@ -41,27 +60,104 @@ struct Context<'a> {
     color: ColorMode,
 }
 
-/// `cwd` is the project root. The caller resolves it through the shared helper, so a failure to find it is reported the
-/// way it is for the other commands, with telemetry and the command-agnostic `--json` envelope.
+/// The inputs of `flow run` besides the name.
+struct RunArgs {
+    goal: Option<String>,
+    harness: String,
+    fake_script: Option<PathBuf>,
+    /// The value of `KONDUCTOR_FAKE_SCRIPT`.
+    fake_script_env: Option<OsString>,
+}
+
+/// `cwd` is the current directory. The caller resolves it through the shared helper, so a failure to find it is
+/// reported the way it is for the other commands, with telemetry and the command-agnostic `--json` envelope.
+///
+/// `flow run` resolves its project root with [`find_project_root`] (D-001). `flow check` and `flow show` keep using
+/// `cwd` directly for now; widening them to the upward search is a follow-up.
 pub(crate) fn dispatch_flow(action: FlowAction, cwd: &Path, json: bool, color: ColorMode) -> u8 {
-    let (command, name) = match action {
-        FlowAction::Check { name } => (Command::Check, name),
-        FlowAction::Show { name } => (Command::Show, name),
-    };
     let home = crate::cli::install::index::env_home_dir();
-    let context = Context {
-        project_root: cwd,
-        home: home.as_deref(),
-        json,
-        color,
+    let (out, err) = (&mut std::io::stdout(), &mut std::io::stderr());
+    match action {
+        FlowAction::Check { name } => {
+            let context = Context {
+                project_root: cwd,
+                home: home.as_deref(),
+                json,
+                color,
+            };
+            run(Command::Check, &context, &name, out, err)
+        }
+        FlowAction::Show { name } => {
+            let context = Context {
+                project_root: cwd,
+                home: home.as_deref(),
+                json,
+                color,
+            };
+            run(Command::Show, &context, &name, out, err)
+        }
+        FlowAction::Run {
+            name,
+            goal,
+            harness,
+            fake_script,
+        } => {
+            let project_root = find_project_root(cwd);
+            let context = Context {
+                project_root: &project_root,
+                home: home.as_deref(),
+                json,
+                color,
+            };
+            let args = RunArgs {
+                goal,
+                harness,
+                fake_script,
+                fake_script_env: std::env::var_os(FAKE_SCRIPT_ENV),
+            };
+            run_workflow(&context, &name, &args, out, err)
+        }
+    }
+}
+
+/// Resolves the project root for `flow run`, per D-001: walks upward from `start` and stops at the git top folder (the
+/// folder that holds `.git`). Returns the first ancestor at or below the git top folder that has a `.konductor/`
+/// subfolder. If none is found, or if there is no git top folder at all, returns `start`. The home folder is never
+/// read: no `$HOME`, no `~`.
+///
+/// `.git` can be a regular file in a git worktree, so the check only asks whether it exists.
+fn find_project_root(start: &Path) -> PathBuf {
+    // The git top folder bounds the upward search. Without one, no upward search.
+    let git_top = {
+        let mut cur = start;
+        loop {
+            if cur.join(".git").exists() {
+                break Some(cur.to_path_buf());
+            }
+            match cur.parent() {
+                Some(parent) => cur = parent,
+                None => break None,
+            }
+        }
     };
-    run(
-        command,
-        &context,
-        &name,
-        &mut std::io::stdout(),
-        &mut std::io::stderr(),
-    )
+    let Some(git_top) = git_top else {
+        return start.to_path_buf();
+    };
+    // The first ancestor at or below the git top folder that has `.konductor/` wins.
+    let mut cur = start.to_path_buf();
+    loop {
+        if cur.join(".konductor").is_dir() {
+            return cur;
+        }
+        if cur == git_top {
+            break;
+        }
+        match cur.parent() {
+            Some(parent) => cur = parent.to_path_buf(),
+            None => break,
+        }
+    }
+    start.to_path_buf()
 }
 
 fn scope_name(scope: Scope) -> &'static str {
@@ -115,23 +211,22 @@ fn skipped_sentences(skipped: &[Skipped], name: &str) -> Vec<String> {
         .collect()
 }
 
-/// Runs one `flow` command.
-fn run(
-    command: Command,
+/// The workflow a name refers to, or the exit code of the usage error that was reported.
+fn find(
     context: &Context,
     name: &str,
     out: &mut dyn Write,
     err: &mut dyn Write,
-) -> u8 {
+) -> Result<(String, workflow_adapters::Found, Vec<Skipped>), u8> {
     let name = match parse_reference(name) {
         Ok(Reference::Local(name)) => name,
         Ok(Reference::Shipped(_)) => {
             let message = "Shipped workflows (`library/<name>`) are not available yet.";
-            return usage_error(message, context, out, err);
+            return Err(usage_error(message, context, out, err));
         }
         Err(ReferenceError::InvalidName) => {
             let message = format!("A workflow name {}.", workflow_core::rules::NAME_RULE);
-            return usage_error(&message, context, out, err);
+            return Err(usage_error(&message, context, out, err));
         }
     };
     let Located { found, skipped } = Lookup::new(context.project_root, context.home).find(&name);
@@ -148,14 +243,29 @@ fn run(
             message.push(' ');
             message.push_str(&sentence);
         }
-        return usage_error(&message, context, out, err);
+        return Err(usage_error(&message, context, out, err));
     };
-    // The user can only tell which file was checked if they are told, and told what was passed over to reach it.
+    // The user can only tell which file was used if they are told, and told what was passed over to reach it.
     if !context.json {
         for sentence in skipped_sentences(&skipped, &name) {
             let _ = writeln!(err, "note: {sentence}");
         }
     }
+    Ok((name, found, skipped))
+}
+
+/// Runs `flow check` or `flow show`.
+fn run(
+    command: Command,
+    context: &Context,
+    name: &str,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> u8 {
+    let (name, found, skipped) = match find(context, name, out, err) {
+        Ok(found) => found,
+        Err(code) => return code,
+    };
     let checked = check_text(&name, &found.text, &found.source);
     let code = if checked.is_valid() {
         0
@@ -167,6 +277,188 @@ fn run(
         Command::Show => print_show(&checked, found.scope, &skipped, context.json, out, err),
     }
     code
+}
+
+/// Runs `flow run`. The checks that can refuse the run come first, and nothing is written until they pass: the name,
+/// the harness, the workflow, the goal and the prompts, and the fake script.
+fn run_workflow(
+    context: &Context,
+    name: &str,
+    args: &RunArgs,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> u8 {
+    let choice = match choose_harness(
+        &args.harness,
+        args.fake_script.as_deref(),
+        args.fake_script_env.as_deref(),
+    ) {
+        Ok(choice) => choice,
+        Err(refusal) => return usage_error(&refusal.to_string(), context, out, err),
+    };
+    let (name, found, skipped) = match find(context, name, out, err) {
+        Ok(found) => found,
+        Err(code) => return code,
+    };
+    let checked = check_text(&name, &found.text, &found.source);
+    let Some(workflow) = checked.workflow.clone() else {
+        print_show(&checked, found.scope, &skipped, context.json, out, err);
+        return EXIT_WORKFLOW_ERRORS;
+    };
+    // Slice 1 has no params other than `goal`.
+    let prepared = match prepare(workflow, args.goal.as_deref(), &BTreeMap::new()) {
+        Ok(prepared) => prepared,
+        Err(error) => return usage_error(&error.message(), context, out, err),
+    };
+    let HarnessChoice::Fake { script } = &choice;
+    let script = match Script::load(script) {
+        Ok(script) => script,
+        Err(why) => {
+            let message = format!("The fake script cannot be used: {why}.");
+            return usage_error(&message, context, out, err);
+        }
+    };
+
+    let mut store = match FileRunStore::open(context.project_root) {
+        Ok(store) => store,
+        Err(error) => return runtime_error(&error.0, context, out, err),
+    };
+    let mut lock = FileRunLock::new(context.project_root);
+    let owner = current_owner();
+    let clock = Rc::new(SimulatedClock::default());
+    let started = match start(
+        &prepared,
+        choice.name(),
+        owner,
+        &mut store,
+        &mut lock,
+        &*clock,
+    ) {
+        Ok(started) => started,
+        Err(error) => return refused(&error, &lock, context, out, err),
+    };
+    if !context.json {
+        for ended in &started.recovered {
+            let _ = writeln!(
+                err,
+                "note: Run {} was left running by process {}, which is gone. It now reads as {}.",
+                ended.run_id,
+                ended.owner.pid,
+                ended.status.as_str()
+            );
+        }
+    }
+    // Shown under `--json` too, since stdout carries only the run state and the run is still marked `running`.
+    for stuck in &started.unrecovered {
+        let _ = writeln!(
+            err,
+            "warning: Run {} was left running by a process that is gone, but it could not be ended, so it still reads \
+             as running: {}",
+            stuck.run_id, stuck.error.0
+        );
+    }
+    let mut run = started.run;
+    let mut harness = FakeHarness::new(script, Rc::clone(&clock));
+    let json = context.json;
+    let mut report = |stage: &StageState| {
+        if !json {
+            let _ = writeln!(out, "{}", stage_line(stage));
+        }
+    };
+    let executed = execute(
+        &mut run,
+        &prepared,
+        &mut harness,
+        &*clock,
+        &mut store,
+        &mut report,
+    );
+    lock.release();
+    if let Err(error) = executed {
+        return runtime_error(&error.0, context, out, err);
+    }
+    print_run(&run, context, out);
+    match run.status {
+        RunStatus::Passed => 0,
+        _ => EXIT_HALTED,
+    }
+}
+
+/// `stage plan: passed`, or `stage plan: blocked (RESULT_MISSING)`.
+fn stage_line(stage: &StageState) -> String {
+    match stage.status {
+        StageStatus::Blocked(reason) => {
+            format!("stage {}: blocked ({})", stage.name, reason.as_str())
+        }
+        status => format!("stage {}: {}", stage.name, status.as_str()),
+    }
+}
+
+fn print_run(run: &Run, context: &Context, out: &mut dyn Write) {
+    if context.json {
+        let _ = writeln!(out, "{}", run.to_json().compact());
+        return;
+    }
+    let word = run.status.as_str();
+    let label = match run.status {
+        RunStatus::Passed => status::ok(context.color, word),
+        _ => status::error(context.color, word),
+    };
+    let _ = writeln!(out, "run {}: {label}", run.run_id);
+}
+
+/// A run that did not start because of the lock (exit 75), or because a file could not be written (exit 1).
+fn refused(
+    error: &StartError,
+    lock: &FileRunLock,
+    context: &Context,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> u8 {
+    // Both codes mean that another process holds the lock. Only `already_running` names its run.
+    let (code, message) = match error {
+        StartError::AlreadyRunning(holder) => (
+            "already_running",
+            format!(
+                "Another run is active in this workspace: run {}, owned by process {}. Try again when it ends.",
+                holder.run_id, holder.owner.pid
+            ),
+        ),
+        StartError::UnreadableLock => (
+            "lock_unreadable",
+            format!(
+                "The workspace lock {} is held but its record cannot be read, or another start is taking it at this \
+                 moment. Which run is active is not known. Try again in a moment.",
+                lock.path().display()
+            ),
+        ),
+        StartError::Port(error) => return runtime_error(&error.0, context, out, err),
+    };
+    if context.json {
+        let mut extra = vec![("code", serde_json::Value::from(code))];
+        if let StartError::AlreadyRunning(holder) = error {
+            extra.push(("run_id", serde_json::Value::from(holder.run_id.as_str())));
+            extra.push(("pid", serde_json::Value::from(holder.owner.pid)));
+        }
+        let envelope = crate::cli::report::build_error_json("flow", &message, extra);
+        let _ = writeln!(out, "{envelope}");
+    } else {
+        let prefix = output::error_prefix(context.color, "konductor flow:");
+        let _ = writeln!(err, "{prefix} {message}");
+    }
+    EXIT_ALREADY_RUNNING
+}
+
+/// A failure to read or write the run state, exit 1.
+fn runtime_error(message: &str, context: &Context, out: &mut dyn Write, err: &mut dyn Write) -> u8 {
+    if context.json {
+        let envelope = crate::cli::report::build_error_json("flow", message, Vec::new());
+        let _ = writeln!(out, "{envelope}");
+    } else {
+        let prefix = output::error_prefix(context.color, "konductor flow:");
+        let _ = writeln!(err, "{prefix} {message}");
+    }
+    EXIT_HALTED
 }
 
 fn usage_error(message: &str, context: &Context, out: &mut dyn Write, err: &mut dyn Write) -> u8 {
@@ -561,5 +853,66 @@ mod tests {
         let (code, out, err) = run_with(&scratch, None, Command::Check, "ghost", false);
         assert_eq!((code, out.as_str()), (EXIT_USAGE_ERROR, ""));
         assert!(err.contains("No workflow named `ghost`"), "{err}");
+    }
+
+    // D-001: tests for `find_project_root`. Each test owns a scratch folder and passes it in; the process cwd is not
+    // touched.
+
+    /// A scratch folder tree that is removed when the value is dropped.
+    struct ScratchTree(PathBuf);
+
+    impl ScratchTree {
+        fn new(label: &str) -> ScratchTree {
+            let dir = std::env::temp_dir().join(format!(
+                "konductor-flow-root-{label}-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            fs::create_dir_all(&dir).unwrap();
+            ScratchTree(dir)
+        }
+
+        fn mkdir(&self, relative: &str) -> PathBuf {
+            let target = self.0.join(relative);
+            fs::create_dir_all(&target).unwrap();
+            target
+        }
+    }
+
+    impl Drop for ScratchTree {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn find_project_root_climbs_to_the_git_top_folder_with_a_konductor_folder() {
+        let tree = ScratchTree::new("inside-git");
+        let top = tree.mkdir("repo");
+        tree.mkdir("repo/.git");
+        tree.mkdir("repo/.konductor");
+        let nested = tree.mkdir("repo/pkg/src");
+        assert_eq!(find_project_root(&nested), top);
+    }
+
+    #[test]
+    fn find_project_root_falls_back_to_the_starting_folder_without_a_git_top_folder() {
+        let tree = ScratchTree::new("no-git");
+        let start = tree.mkdir("here");
+        // A `.konductor/` higher up must not pull the resolver up without a `.git` on the walk.
+        tree.mkdir(".konductor");
+        assert_eq!(find_project_root(&start), start);
+    }
+
+    #[test]
+    fn find_project_root_falls_back_to_the_starting_folder_when_no_konductor_is_found() {
+        let tree = ScratchTree::new("no-konductor");
+        tree.mkdir("repo");
+        tree.mkdir("repo/.git");
+        let nested = tree.mkdir("repo/pkg/src");
+        assert_eq!(find_project_root(&nested), nested);
     }
 }
