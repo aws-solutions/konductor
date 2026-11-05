@@ -37,3 +37,14 @@ def test_html_bundle_points_concepts_at_faq_entry():
         text = bundle.read_text()
         assert "see Orchestration shapes" not in text
         assert "see the FAQ entry Coordinator mode" in text
+
+
+def test_html_faq_qualifies_konductor_editing_by_mode():
+    sentence = (
+        "konductor loads k-direct-work.md instead and edits files itself in the default auto mode. "
+        "In coordinator mode it hands every change to a specialist"
+    )
+    for bundle in [ROOT / "docs" / "index.html", ROOT / "docs" / "site" / "user-guide.html"]:
+        text = bundle.read_text()
+        assert sentence in text, bundle.name
+        assert '\\", \\"konductor edits' not in text, bundle.name

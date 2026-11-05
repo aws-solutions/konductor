@@ -448,9 +448,6 @@ ROSTER = [
     ('mode clause: agents dispatcher paragraph',
      'The mux and cmux orchestrators load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. konductor loads',
      'konductor does the work itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators. The mux and cmux orchestrators load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. konductor loads'),
-    ('mode clause: faq read-only scope',
-     'the context file did not load — see Troubleshooting.',
-     'the context file did not load — see Troubleshooting.\\", \\"konductor edits files itself only in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators.'),
 ]
 
 
