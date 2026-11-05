@@ -973,6 +973,14 @@ fn apply_claude_settings_hooks(
     target_dir: &Path,
     no_telemetry: bool,
 ) -> Result<(String, String), ClaudeGrantError> {
+    apply_claude_settings_hooks_with_exe(target_dir, no_telemetry, &resolve_konductor_exe_path())
+}
+
+pub(super) fn apply_claude_settings_hooks_with_exe(
+    target_dir: &Path,
+    no_telemetry: bool,
+    exe: &str,
+) -> Result<(String, String), ClaudeGrantError> {
     let relative = claude_hooks_settings_relative_path(target_dir);
     let agent_names = crate::cli::telemetry_hook::installed_agent_names(target_dir);
     let bytes = merge_claude_settings_hooks_with_exe(
@@ -980,7 +988,7 @@ fn apply_claude_settings_hooks(
         relative,
         KONDUCTOR_HOOK_ENTRIES,
         no_telemetry,
-        &resolve_konductor_exe_path(),
+        exe,
         &agent_names,
     )?;
     if relative == CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH {

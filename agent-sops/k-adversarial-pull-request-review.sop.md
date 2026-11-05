@@ -89,15 +89,15 @@ Specialists never spawn other agents, and these passes need independence from th
 - Each part MUST carry the ingested diff and the Step 0 context summary
 - Each part MUST be framed neutrally: the prompt says "review through the lens of X", never "check if X is weak"
 - You MUST NOT share findings between the three parts; they run independently
-- The split MUST name this SOP and Step 3 as the step to resume at, and carry `diff_input`, `pr_url` if given, `output_file`, and the Step 0 context summary. If that payload is long, write it to `.konductor/handoff/k-architect-adversarial-review.md` and name the path
-- You MUST NOT run a generator pass yourself. If you cannot return a split (the user asked for an in-session run), say in the report that the generator passes ran in-session and that the checker step is not independent
+- The split MUST name this SOP and Step 3 as the step to resume at, and carry `diff_input`, `pr_url` if given, `output_file`, and the Step 0 context summary. If that payload is long, write it to `.konductor/handoff/k-architect-adversarial-review-<output_file stem>.md` and name the path
+- Unless the user explicitly asks for an in-session run, you MUST NOT run a generator pass yourself. In that mode say in the report that the generator passes ran in-session and that the checker step is not independent
 - Resumed at Step 3 with the three lists, you MUST NOT run or re-run a pass yourself
 
 **Expected Output:** A proposed split of three `k-developer` parts, with the resume step named. The three findings lists (each with severity, file:line, problem, and fix per entry) arrive when you are resumed at Step 3.
 
 ### 3. Reuse Pass (Generator Phase, return a handoff note)
 
-You are resumed here with the three Step 2 findings lists. Merge them, then return a handoff note for the reuse pass, a fourth generator-persona pass, and stop. Check for missed reuse opportunities not surfaced within any single pass; the coordinator does not do this itself.
+You are resumed here with the three Step 2 findings lists. Merge them, then return a handoff note for the reuse pass, a fourth generator-persona pass, and stop. Check for missed reuse opportunities not surfaced within any single pass; the coordinator does not do this itself unless the user asked for an in-session run in Step 2.
 
 **Constraints:**
 
@@ -106,7 +106,7 @@ You are resumed here with the three Step 2 findings lists. Merge them, then retu
 - The note MUST carry: the ingested diff, the Step 0 context summary, and the consolidated findings list; it MUST name this SOP and Step 4 as the step to resume at, plus `output_file` and `pr_url` if given
 - Resumed at Step 4 with the reuse findings, you MUST tag them with pass origin `reuse` and append them to the consolidated list. They are ordinary candidate findings like the other three passes' output. They get no exemption from Step 4's checker rules
 - You MUST assign IMPORTANT to a reuse finding that flags inline reimplementation or bypass of an existing shared utility, transaction/batch helper, validation middleware, error-mapping layer, or pagination token utility. For a reuse finding outside that list, apply the severity guidance from whichever of `adversarial-code-review-pass-security`/`-integrity`/`-schema` most closely matches the concern it raises
-- You MUST NOT have the coordinator itself originate reuse findings: sourcing findings from the coordinator, rather than from a `k-developer` generator session, breaks the generator/checker independence invariant this SOP relies on
+- You MUST NOT have the coordinator itself originate reuse findings, except in the user-requested in-session mode of Step 2, where the reuse pass also runs in-session. Otherwise, sourcing findings from the coordinator, rather than from a `k-developer` generator session, breaks the generator/checker independence invariant this SOP relies on
 - You MUST NOT re-run the individual Step 2 passes' own checks — this step only adds cross-pass reuse findings
 
 **Expected Output:** A handoff note for the reuse pass. The consolidated findings list (security, integrity, schema, and reuse pass origins) is complete when you are resumed at Step 4.
@@ -180,7 +180,7 @@ Consolidate the surviving findings and produce a verdict.
 
 **CRITICAL findings block approval** — the verdict MUST be REQUEST CHANGES if any CRITICAL finding survives Steps 4 and 5.
 
-**Independence invariants MUST hold:**
+**Independence invariants MUST hold:** The invariants are waived only in the user-requested in-session mode of Step 2; the report header MUST then record `Checker independence: not held (in-session run requested by user)`.
 
 - Generator persona (`k-developer`) MUST differ from checker persona (`k-architect`) — the checker is the coordinator itself switching roles in Step 4, never a `k-developer` self-check
 - The checker MUST NOT have run a generator pass earlier in this same review. Step 2 and 3's generator role is always `k-developer`, run from the returned split or note, never the coordinator

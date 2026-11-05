@@ -24,7 +24,7 @@ Use this skill when:
 
 ### Persona Agents
 
-Each agent covers an SDLC role or supporting capability, with domain skills that activate on demand. Agents spawn each other as subagents for cross-role work.
+Each agent covers an SDLC role or supporting capability, with domain skills that activate on demand. The orchestrator routes cross-role work between them; specialists return a handoff instead of spawning.
 
 ### Phase Flow
 

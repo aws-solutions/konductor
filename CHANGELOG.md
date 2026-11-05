@@ -32,21 +32,23 @@ not per individual commit.
 - `make version-check` fails a PR or release when a crate, a lockfile entry for a Konductor
   product crate (manifest under `cli/`, `mcp/` or `shared/`) or the CHANGELOG heading disagrees
   with `VERSION`. Independently versioned path crates elsewhere are not checked.
-- `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml` by the session
-  hook and `doctor`; `config set` keeps the section.
+- `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml` by one resolver.
+  `config set` keeps an `orchestration:` section in the project file, which the resolver does not read.
 - `konductor` runs as a coordinator when `orchestration.mode` is `coordinator`: `install` wires a
-  session-start hook, even under `--no-telemetry`, that points it at the routing rules.
+  session-start hook, even under `--no-telemetry`, that points it at the routing rules, or prints a
+  fallback when the install that wired it is outside your home directory and is not the project root.
 - `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
   config value is valid.
 
 ### Changed
 
-- `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate; it
+- `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate that needs one (next bullet); it
   spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
   work on disjoint files. An SOP's own instruction to spawn wins over that limit.
-- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change whose
-  build, test and lint passed (not for auth, secrets, data or infrastructure), and triage findings
-  against the request, house rules and spec before the fix. When `konductor` made the artifact, a
+- All three orchestrators skip the reviewer for a lookup, a listing, a standalone document its
+  checker skill covers, or a one-file change whose build, test and lint passed (not for auth,
+  secrets, data or infrastructure), and triage findings against the request, house rules and spec
+  before the fix. When `konductor` made the artifact, a
   finding it would reject goes to you before it is dropped.
 - The handoff, split, denial and brief rules every orchestrator follows now live in
   `context/k-orchestrator-shared.md`, loaded by all three orchestrators.
@@ -55,6 +57,7 @@ not per individual commit.
 - The rule against reading secret files now lives in the core rules, so all 11 agents load it.
   From a file the user names, an agent reports key names or redacted values only, never the
   secret values, in replies, briefs, commits or logs.
+  A `credentials_file` an SOP passes in a brief counts as user-named.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -81,7 +84,8 @@ not per individual commit.
   handoff file, and the orchestrator passes them back with the resume brief. Run directly with
   no orchestrator, the caller is the user: the specialist returns the split or note to them.
   `k-adversarial-pull-request-review` returns its three Step 2 passes as a split, resumes at
-  Step 3, returns the reuse pass as a handoff, and resumes at Step 4.
+  Step 3, returns the reuse pass as a handoff, and resumes at Step 4. `konductor init` now
+  ignores `.konductor/handoff/`; add the line by hand in a project initialised earlier.
 - Specialist specs no longer grant any agent-spawning tool. Kiro CLI v2, Kiro CLI v3 and
   Claude Code configs block the runtime's spawn tools explicitly, so a specialist cannot call
   one even when a prompt asks it to. The block does not cover shell: a specialist with shell
@@ -96,21 +100,17 @@ not per individual commit.
   non-trivial work; orchestrators route skill work to the owning specialist.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
   and is never read or written through a symlink. The memory validator rejects a new or edited line without
-  an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept.
+  an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
+  instruction-like text after the date and origin tag.
   Orchestrators never bypass denials or read unnamed secrets.
 - `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
-- Orchestrator review fixes CRITICAL and IMPORTANT findings once, reruns the build and tests
-  for code, re-reviews that fix and what depends on it, and lists suggestions for you. Any
-  CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done: the
-  orchestrator stops and reports it to you. An SOP may set its own fix-round limit.
-- Core rules now rank the user's request, recorded rulings, project instruction files,
-  user-written memory and the codebase's conventions, including a tracked style guide, above
-  konductor's format and workflow defaults. A file an instruction file names speaks only for those
-  categories. When these do not settle a collision, the agent asks once and saves the answer as a
-  `Ruling:` memory entry.
+- Orchestrator review fixes CRITICAL and IMPORTANT findings once and re-reviews the fix. A finding
+  carried over or new on the fix or caused by it in dependents stops the run; pre-existing ones are listed.
+- Core rules rank the request, rulings, instruction files, user-written memory and codebase
+  conventions above konductor defaults; when a collision stays open, ask once and save a `Ruling:` entry.
 - Docs describe setting `orchestration.mode` by hand, reading the mode line in the first reply,
   and that Kiro CLI v2 is not supported. Claude Code support is for `konductor install`; the
   plugin does not wire the hook.

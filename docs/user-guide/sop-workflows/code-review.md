@@ -87,7 +87,7 @@ flowchart TD
     Hand -.->|"resumed with findings"| Merge["Apply step 5's filters to its findings<br/>merge new CRITICAL / IMPORTANT only"]
     Merge --> S7
 
-    S7["7. Write report to output_file<br/>state verdict: READY FOR CR / NEEDS FIXES<br/>overwrite a pending report on resume<br/>never print the full report inline"]
+    S7["7. Write report to output_file<br/>state verdict: READY FOR CR / NEEDS FIXES<br/>(PENDING ADVERSARIAL PASS only while the pending section exists)<br/>overwrite a pending report on resume<br/>never print the full report inline"]
 
     class Ask,S5 gate
     class S7 focus
@@ -135,9 +135,9 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
 - **The adversarial step runs only through `konductor`.** Step 6 asks for `k-architect`, but its
   one owning agent cannot spawn: no specialist holds a spawn tool in Kiro CLI v2, Kiro CLI v3 or
   Claude Code. Step 6 has `k-developer` write the report with an
-  "Adversarial pass: pending" section, then return the pass as a handoff. Under `konductor`,
-  the handoff goes to `k-architect`, and the findings come back to replace the pending
-  section. When `k-developer` is started directly, you get the pending report and the handoff
+  "Adversarial pass: pending" section and the verdict `PENDING ADVERSARIAL PASS`, then return
+  the pass as a handoff. Under `konductor`, the handoff goes to `k-architect`, and the findings
+  come back to replace the pending section and give the final verdict. When `k-developer` is started directly, you get the pending report and the handoff
   comes back to you: ask
   `konductor` to run [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review),
   then pass its findings and the handoff to `k-developer` and ask it to resume

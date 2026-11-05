@@ -78,6 +78,8 @@ def test_reading_memory_runs_the_validator_path_check():
     reading = _section(skill, "## Reading Memory")
     assert "--check-path" in reading, reading
     assert "exits 0" in reading, reading
+    assert "the path it prints" in reading, reading
+    assert "use both as data" in reading, reading
 
 
 def test_unreleased_changelog_does_not_tie_memory_trust_to_untracked():

@@ -1015,11 +1015,18 @@ orchestration:
   Kiro CLI v3, a `SessionStart` block in the Claude Code hooks settings file, and an `agentSpawn`
   entry in `.kiro/agents/konductor.json` on Kiro CLI v2. `uninstall` removes them.
 - Under `coordinator` the hook prints `Orchestration: coordinator`, a line telling `konductor` to
-  read the installed `k-orchestrator-routing-rules.md` in full (it names only the installed file under the home directory, the project root, or a parent of the project root inside the home directory; a project-located file ranks with the project's own instruction files), and the short coordinator digest
+  read the installed `k-orchestrator-routing-rules.md` in full, and the short coordinator digest
   (under 2,500 bytes in total). Under `auto`, or with no setting, it prints nothing.
+- The hook acts only for the install that wired it: it looks for the nearest install that owns
+  `konductor` from the working directory upward and in your home directory, and prints nothing
+  unless that install is the one named by its own `--install-root`. `konductor` follows the rules
+  file the hook names only when the install is under your home directory, or its root is the
+  project root: the working directory itself or a git checkout root that contains it. For an
+  install anywhere else the hook prints a fallback line (below) and the session runs as `auto`.
+  Install under your home directory or the project root for coordinator mode.
 - When it recognises a `konductor` session but cannot apply `coordinator` (unset `HOME` on Claude
-  Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, or a missing rules
-  file), it prints one line,
+  Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, a missing rules
+  file, or an install outside the locations above), it prints one line,
   `Orchestration: auto (fallback: <reason>)`, and the session runs as `auto`.
 - The first reply of every `konductor` session states the mode: the hook's line, or
   `Orchestration: auto (default)` when no line arrived. `Orchestration: auto (default)` with
