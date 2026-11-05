@@ -188,10 +188,10 @@ A bench run of the earlier tasks never loaded 68 of the 82 skills. Four causes s
 ### Where the files are
 
 - `suites/rootcause.json` lists 16 tasks: 8 that already exist and 8 new ones. `suites/rootcause.manifest.json` holds what the task schema cannot: the entry agent of each task, the skills it should load (`expectedSkills`) and may load (`possibleSkills`), seeded items, check and rubric counts, a credit estimate, the run commands per entry agent and a coverage map of all 82 skills.
-- The 8 new tasks live in `rootcause/` (an extra tasks directory), with `rootcause/fixtures`, `solutions`, `stubs`, `negatives`, `hidden` and `partials` laid out like `tasks/`. They are not in `tasks/` because the task schema is closed and the validator makes every task in `tasks/` a member of the `full` suite. Run them with `--extra-tasks bench/rootcause`.
+- The 8 new tasks live in `rootcause/` (an extra tasks directory), with `rootcause/fixtures`, `solutions`, `stubs`, `negatives`, `hidden` and `partials` laid out like `tasks/`. They are not in `tasks/` because the task schema is closed and the validator makes every task in `tasks/` a member of the `full` suite. `--suite rootcause` adds the directory by itself (`extraTasks` in `suites/rootcause.json`); `--extra-tasks bench/rootcause` gives the same result and may also be passed.
 - `rootcause/scenarios/` holds draft trigger sets (see Competition scenarios below).
 
-Validate the new tasks alone in seconds with `node bench/tasks/validate-tasks.js --extra-tasks bench/rootcause --only-extra`, or with the rest of the bench by dropping `--only-extra`. The suite name `rootcause` is not yet registered in the runner (`SUITE_DEFAULTS` in `runner/lib/tasks.js`), so until it is, pass `--suite requirements` together with `--tasks`: the task list then overrides the suite and only its defaults apply.
+Validate the new tasks alone in seconds with `node bench/tasks/validate-tasks.js --extra-tasks bench/rootcause --only-extra`, or with the rest of the bench by dropping `--only-extra`. A plain `node bench/tasks/validate-tasks.js` also checks `bench/rootcause`, because the suite file names it. The suite is registered in `SUITE_DEFAULTS` (`runner/lib/tasks.js`): 3 arms, 2 replicates, `--parallel 1`. Pass `--tasks` to run one entry agent's share.
 
 ### Tasks, entry agents and expected skills
 
@@ -228,14 +228,14 @@ An entry agent is chosen per arm with `--arm-agent`, so each entry agent is one 
 
 ```sh
 OUT=/var/tmp/rootcause-run
-node bench/runner/bench.js run --suite requirements --extra-tasks bench/rootcause \
+node bench/runner/bench.js run --suite rootcause \
   --tasks plan-multipart-feature,sop-plan,rc-tpm-status \
   --arms vanilla,v1.2.0,mainsha=<main-sha>,stack149=<stack-sha> \
   --arm-agent v1.2.0=k-tpm,mainsha=k-tpm,stack149=k-tpm \
   --replicates 2 --parallel 1 --budget-credits 162 --out "$OUT/k-tpm"
 ```
 
-Repeat for k-product-manager, k-quality-assurance, k-developer, k-architect and konductor with the task lists in the manifest. Two tasks run through two agents (`rc-infra-iam-review`, `rc-agents-md`), so their vanilla cell is run twice. Every agent must be installed by every konductor arm; the run stops at once if an arm lacks it. The runner needs the `--extra-tasks` directory on every call.
+Repeat for k-product-manager, k-quality-assurance, k-developer, k-architect and konductor with the task lists in the manifest. Two tasks run through two agents (`rc-infra-iam-review`, `rc-agents-md`), so their vanilla cell is run twice. Every agent must be installed by every konductor arm; the run stops at once if an arm lacks it.
 
 ### Reading the expected-versus-actual load matrix
 
