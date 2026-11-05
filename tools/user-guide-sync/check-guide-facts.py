@@ -46,13 +46,10 @@ _DIAGRAM_DIR = {"agents": "agents", "skills": "skills", "SOPs": "agent-sops"}
 # for agents ("11 agent specs"), which is why this needs its own map.
 _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 
-# Commands the CLI accepts but the guide deliberately does not document, with the
-# decision recorded so the carve-out is auditable rather than folklore. `config`
-# is withheld from the v1 customer-visible surface (reviewer decision on
-# reviewer decision); `.konductor/config.yml` itself stays documented, since `init`
-# writes it and `doctor` validates it. Adding a name here is a product decision,
-# not a way to silence this script -- see docs/user-guide/notes.md.
-WITHDRAWN_COMMANDS = {"config"}
+# Commands the CLI accepts but the guide deliberately does not document. Empty:
+# the hidden `config` command (`#[command(hide = true)]` in cli/konductor-rs/src/cli.rs)
+# is not in cli/README.md's command list, so there is nothing to withhold.
+WITHDRAWN_COMMANDS: set[str] = set()
 
 
 def html_pages_for_flags(root: Path):
@@ -649,7 +646,7 @@ def main() -> int:
         fail("could not parse any top-level keys from cli/gate-config/config.yml")
     # reference.md is the only page documenting the schema now. The task page that
     # used to carry it went with the `konductor config` command -- see the
-    # WITHDRAWN_COMMANDS note below. The FILE is still documented, because
+    # WITHDRAWN_COMMANDS note above. The FILE is still documented, because
     # `init` writes it and `doctor` validates it.
     for page in ("reference.md",):
         text = read(guide / page)
