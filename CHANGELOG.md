@@ -61,9 +61,8 @@ not per individual commit.
   `k-adversarial-pull-request-review` returns its three Step 2 passes as a split, resumes at
   Step 3, returns the reuse pass as a handoff, and resumes at Step 4. `konductor init` now
   ignores `.konductor/handoff/`; add the line by hand in a project initialised earlier.
-- Specialist specs grant no agent-spawning tool, and Kiro CLI v3 and Claude Code configs block
-  the runtime's spawn tools (shell is not covered; Kiro CLI v2 is not covered yet).
-  `k-code-review-workflow` step 6 writes a `PENDING ADVERSARIAL PASS` report, then hands off to `k-architect`.
+- Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it (not shell
+  or Kiro CLI v2). `k-code-review-workflow` step 6 writes a `PENDING ADVERSARIAL PASS` report, then hands off.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
