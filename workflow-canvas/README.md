@@ -7,12 +7,14 @@ of the agent package or the CLI.
 The page has Designer and Execution tabs. The Designer tab loads the workflow
 from the API and draws it: the intent, each stage in list order (name, agent
 and harness) and the end, joined by run-order edges. You can pick the agent of
-a stage, rename it, add a stage, delete one and save the file. It shows a
+a stage, rename it, add a stage, delete one and save the file. A save changes
+only the values it edits and keeps every other key of the file. It shows a
 loading message, an error message or an empty message when there is nothing to
 draw. The Execution tab draws the saved workflow and runs it: a Run button
-starts a run, and each node shows its live state until the run ends. The
-contract, the stub that serves it and the tests around both are in this
-folder.
+starts a run, and each node shows its live state until the run ends. A blocked
+stage shows its reason, and a Run of a workflow that is not trusted opens a
+dialog with the command that trusts it. The contract, the stub that serves it
+and the tests around both are in this folder.
 
 ## Layout
 
@@ -139,8 +141,9 @@ npm run stub
 ```
 
 The launch code is new each time and works once, within 60 seconds of the
-moment the stub starts listening. A used address is dead: get a fresh launch
-address from the server (the stub prints one each time it starts).
+moment the stub starts listening. A used address is dead: start `flow view`
+again and open the address it prints (the stub stands in for `flow view` and
+prints one each time it starts).
 `POST /api/session` trades the code for the token that the other calls send as
 `Authorization: Bearer <token>`. `STUB_PORT` sets the port (a whole number from 1 to 65535; anything else stops the command
 with a one-line error). `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
@@ -286,12 +289,19 @@ The rest wraps the core, so the rules can be tested without a browser:
   adapter over `fetch`. It ignores fields it does not know, refuses a reply
   that breaks the contract, and turns a failed call into an `ApiError` with a
   message fit to show.
+  The harness of a session and of a run is a string that is not empty. The
+  contract names `kiro-cli`, `claude` and `fake` (tests only) and lets a
+  response enum gain values, so the page reads any other name too; an empty or
+  missing harness is a bad reply. The page shows it on each stage as it is and
+  has no control to pick one.
   `messageOf` (`api/message-of.ts`) is how every alert words a failure, and it
   adds what to do next: for no answer, or a 5xx that is not the API's (the
-  answer of a proxy whose server is down), "If it stopped, start it again and
-  get a fresh launch address from the server."; for the API's 401 (the session
-  is gone, as after the server started again), "Get a fresh launch address from
-  the server."
+  answer of a proxy whose server is down), "If it stopped, start `flow view`
+  again and open the address it prints."; for the API's 401 (the session is
+  gone, as after the server started again), "Start `flow view` again and open
+  the address it prints." An address with no launch code gets the same
+  instruction. With the stub, which stands in for `flow view`, start the stub
+  again.
 - `launch/launch-code.ts` and `workflow/` take the launch code from the
   address and load the workflow. `loadWorkflow` never rejects: it returns
   `{ ok: true, workflow }` or `{ ok: false, message }`. `createWorkflowSource`
@@ -313,8 +323,8 @@ The rest wraps the core, so the rules can be tested without a browser:
   session of a code in the address is kept as soon as the code opens it, in
   place of a kept one unless a newer one was kept meanwhile, so a first load
   that fails can be retried by a reload. A 401 on the kept token, on any call
-  (the server was started again), clears it and asks for a fresh launch address
-  (an address works once). A pasted code replaces the kept session only once
+  (the server was started again), clears it and tells the user to start
+  `flow view` again (an address works once). A pasted code replaces the kept session only once
   the workflow of that code is on the page. Until then its session waits under
   a second key as the pending one, and a reload tries it before the kept
   session, so a pasted address whose first load failed is not lost. A session
@@ -365,9 +375,11 @@ The rest wraps the core, so the rules can be tested without a browser:
 The tab has the graph on the left, with **Add stage** above it and the save
 line and **Save** in its header, and **Properties** on the right. Properties
 shows the selected stage (the first one when the page opens): its `name` and
-its `agent`, and **Delete stage**. A stage is only a `name` and an `agent`, and
-the stages run in the order they are listed, so there is no other field and no
-way to link or reorder them yet.
+its `agent`, and **Delete stage**. These are the two keys of a stage that the
+Designer edits. A stage may also have a `prompt` or a `prompt_file`, which the
+page does not show or edit and which a save keeps. The stages run in the order
+they are listed, and there is no way to link or reorder them yet. There is no
+raw YAML editor.
 
 - **Add stage** adds a stage at the end, named `agent-1` (the first free
   `agent-N`) with the agent `k-developer`, selects it and moves focus to its
@@ -395,13 +407,33 @@ Nothing is written until **Save**. The line beside it says **No changes**,
 **Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
 sends the whole text with `PUT /api/workflow` and the `hash` of the file as it
 was loaded (`base_hash`), and takes the hash of the answer for the next save.
-Only the block of stages changes: the `name`, `intent`, `version` and the
-comments outside the block stay as they were. A stage that is unchanged keeps
-its own lines and the comments in front of it; the comments written inside a
-stage that is changed or deleted go with it. If the stages are not a block at the top level of the file (for
-example `stages: [...]`), the whole file is written from the view, in the plain
-layout, which drops its comments and `version`; an info note above the graph
-says so before you save.
+The writer (`stage-text.ts`) changes only the bytes of the values it edits. A
+stage whose `name` or `agent` changed keeps every other byte of its item: its
+other keys, such as `prompt` and `prompt_file`, its comments and its layout. A
+deleted stage takes its item and the comments in front of it, and a new stage
+is written after the others, with its dashes where theirs are. Every byte
+outside the block of stages stays as it was, so `format`, `version`, `params`,
+the comments and the line endings are kept. The writer knows which stage of the
+file each stage of the draft was, also after a save, so a rename is an edit of
+that stage and not a new one.
+
+The page never rewrites a file whole. It refuses a change it cannot write in
+place, says why, and keeps Save off with the reason in its tooltip:
+
+- When the stages are not a list of items under a top-level `stages:` key, as
+  in `stages: [...]`, or the page cannot tell where each stage starts, no
+  change can be saved, and a note above the graph says so before any change.
+- When a stage that changed is not written with one key to a line under its
+  dash, as in `- {name: a, agent: b}`, a warning says that this change cannot
+  be saved. A change to another stage of the same file is saved.
+- When the `name` or `agent` that changed is not one value on the line of its
+  key (a value on the next line, a block scalar, a tag or an anchor, a quoted
+  value that goes on to the next line, a double-quoted value with an escape
+  that JSON does not read), or does not read as the value the server gave, the
+  same warning says so.
+
+A double-quoted value with a YAML escape that JSON cannot read, such as `\x41`
+or `\e`, is refused for an in-place edit, since the page cannot tell its text.
 
 - **Checking.** A moment (400 ms) after the last change, the text is checked
   with `POST /api/validate`. What it finds shows under the field it is about,
@@ -499,8 +531,8 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   already in progress.
 - Resume works after a reload, though the launch code works once: the page
   resumes from the session it kept (see above). If the server was started
-  again, the kept token is refused and the page asks for a fresh launch
-  address; the run goes on unseen. The tab keeps the id of the latest run in
+  again, the kept token is refused and the page tells the user to start
+  `flow view` again; the run goes on unseen. The tab keeps the id of the latest run in
   the storage of the browser tab (`sessionStorage`; the id is no secret) and
   drops it once the run has ended or turns out to be gone. When the page
   opens again with a session it reads that run, trying again like any read. If the run is still running, the
@@ -527,6 +559,20 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   only Queued and Not run also differ in shape. The intent is Done once the run
   has it. After a halt, the stages behind the failed one say **Not run**. The end
   shows the result: **Passed** or **Halted**.
+- The stage that stopped a run shows under the status line, with the code of
+  its `reason` (such as `RESULT_MISSING`) and one sentence for each code that
+  the contract lists. A code the page does not know is shown as it is.
+- A Run that the server answers with 409 `trust_required` opens a dialog. It
+  shows the `fix` of the answer and its command, such as
+  `konductor flow trust hello`, with **Copy**, which copies the command, and
+  **Run again**, which asks for the same run with the same goal. The command
+  and **Copy** show only when the command is `konductor flow trust` and a
+  workflow name, since the text comes from the server and is meant for a
+  terminal; for any other `fix` the dialog shows the sentence alone. The page
+  never grants trust: the person runs the command in a terminal. A save that
+  changes the file ends its trust, so the next Run asks again. **Close** leaves
+  the error under the Run button, and a Run again that meets another error
+  shows it as any error is shown.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
   done."). A screen reader hears each change from a polite live region that
   `App` keeps outside the tabs, so it is announced while the Designer tab is
@@ -556,7 +602,8 @@ The code follows the ports-and-adapters split of the graph:
 
 - `src/execution/core/` is the core and does no IO: the state of the tab and
   its reducer, the loop that starts a run and reads it (`startAndFollow`), the
-  node states and the status sentences. Its ports are `RunPort` (start and
+  node states, the status sentences, the sentences of the reasons of a blocked
+  stage and the command of a `trust_required` answer. Its ports are `RunPort` (start and
   read a run) and `Scheduler` (wait for some milliseconds), so a test moves
   time by hand and nothing sleeps. A test (`test-support/execution-purity.test.ts`)
   fails if the core imports anything but its own modules, the graph core and the
@@ -661,18 +708,25 @@ a refused call). The editing tests also cover saves that go wrong: a refusal
 with findings and one with none, a lost session, an answer that is lost or
 cannot be read (the file holds the text, or does not), and a conflict whose
 draft can be copied, and a graph that grows by added stages and is fitted again.
+They edit the `hello-plan` example of the workflow engine
+(`workflow-engine/examples/hello-plan.yml`, named `hello`, the root of the
+stub) and check that no other byte changes, keep Save off for a file whose
+stages are in brackets, and run after a save, which the stub answers with
+`trust_required`, so the dialog opens.
 A test that says a save "writes nothing" counts the `PUT` requests that the page
 sent; the file is checked only where a request reaches the stub. The HTML report
 is written to `playwright-report/`; open it with `npx playwright show-report`.
 Accessibility is checked with axe-core on each tab, on the error state, on the
 Execution tab with a stage running, a failed stage, a passed run, the error of
-the API and a goal that cannot be run, on the Designer tab while editing, with
-problems shown and with a conflict shown, and in both theme modes.
+the API, a goal that cannot be run and the trust dialog, on the Designer tab
+while editing, with problems shown and with a conflict shown, and in both theme
+modes.
 
-The stub runs one run at a time and never fails a stage. So the one test that
-starts a real run on it (`execution.spec.ts`, the first run test) waits for the
-end of the run, and the tests of a failed stage, a refused run, a joined run
-and a dropped read answer the run calls themselves (`e2e/support/run-routes.ts`).
+The stub runs one run at a time and never fails a stage. So the tests that
+start a real run on it (the first run test of `execution.spec.ts`, and the run
+of the sample in `editing.spec.ts`) wait for the end of the run, and the tests
+of a failed stage, a refused run, a joined run and a dropped read answer the
+run calls themselves (`e2e/support/run-routes.ts`).
 A test that starts another run on the stub must also wait for its end, or the
 next test gets a 409. For the same reason, if that one test fails and Playwright
 retries it, the retry gets a 409 and follows the run still going.
@@ -697,8 +751,11 @@ stage runs in the dark theme (`execution-tab-dark.png`). The Designer tab is
 also saved with unsaved edits (`designer-editing.png`, and
 `designer-editing-dark.png` in the dark theme), after a save
 (`designer-saved.png`), with a problem the server found
-(`designer-problems.png`) and when the file changed on disk
-(`designer-conflict.png`). Pull request
+(`designer-problems.png`), when the file changed on disk
+(`designer-conflict.png`) and with a change it cannot write in place
+(`designer-not-in-place.png`). The Execution tab is also saved after a stage was
+blocked (`execution-tab-blocked.png`) and with the trust dialog open
+(`execution-trust-required.png`). Pull request
 descriptions embed these files, so regenerate and commit them when the UI
 changes.
 
@@ -711,6 +768,12 @@ and turns off text hinting and LCD smoothing, so the PNGs come out
 byte-identical on different machines and in CI. CI regenerates them, uploads
 that set as the `screenshots` artifact, and fails when it differs from the
 committed files.
+
+`execution-trust-required.png` is the one exception. With the dialog open, an
+arm64 host draws the dimmed page in the tiles next to the dialog one level of
+colour off from CI, which runs on x86-64. The committed file is the one CI
+draws, so on an arm64 host take it from the `screenshots` artifact of a CI run
+instead of committing your own.
 
 The comparison is byte-exact, so CI fails if a committed screenshot differs by
 even one byte. After a toolchain bump (Playwright, Chromium, fonts or Node), run
