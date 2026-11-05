@@ -12,7 +12,7 @@ const { spawnSync } = require('node:child_process');
 const { tmp, write, makeBench, makeRun, addTask } = require('./helpers.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { taskRevision } = require('../../judge/revision.js');
-const { buildFactorial, renderFactorial, canonicalModel } = require('../../report/factorial.js');
+const { buildFactorial, renderFactorial, factorialCharts, canonicalModel } = require('../../report/factorial.js');
 const { toMarkdown } = require('../../report/doc.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
@@ -257,7 +257,7 @@ function cli(args) {
 }
 const flags = (bench, d) => ['--kiro-vanilla', d.kiroVanilla.join(','), '--kiro-konductor', d.kiroKonductor.join(','), '--cc-vanilla', d.ccVanilla.join(','), '--cc-konductor', d.ccKonductor.join(','), '--bench-dir', bench];
 
-test('report-2x2 prints markdown, prints JSON with --json, and writes both files to --out', () => {
+test('report-2x2 prints markdown, prints JSON with --json, and writes the files and charts to --out', () => {
   const root = tmp();
   const bench = benchWith(root);
   const d = four(root, bench);
@@ -270,8 +270,8 @@ test('report-2x2 prints markdown, prints JSON with --json, and writes both files
   const out = path.join(root, 'out');
   const w = cli([...flags(bench, d), '--out', out]);
   assert.equal(w.status, 0, w.stderr);
-  assert.deepEqual(fs.readdirSync(out).sort(), ['factorial-2x2.json', 'factorial-2x2.md']);
-  assert.equal(fs.readFileSync(path.join(out, 'factorial-2x2.md'), 'utf8'), `${md.stdout.trimEnd()}\n`);
+  assert.deepEqual(fs.readdirSync(out).sort(), ['charts', 'factorial-2x2.json', 'factorial-2x2.md']);
+  assert.equal(fs.readFileSync(path.join(out, 'factorial-2x2.md'), 'utf8'), `${w.stdout.trimEnd()}\n`);
 });
 
 test('report-2x2 exits 2 with a clear message for a missing flag, a refused input and an unknown flag', () => {
@@ -287,4 +287,78 @@ test('report-2x2 exits 2 with a clear message for a missing flag, a refused inpu
   const typo = cli([...flags(bench, d), '--kiro-vanila', 'x']);
   assert.equal(typo.status, 2);
   assert.match(typo.stderr, /unknown flag --kiro-vanila/);
+});
+
+const CHARTS = ['quality-by-cell', 'konductor-effect', 'cost-ratio'];
+const count = (svg, re) => (svg.match(re) ?? []).length;
+
+test('report-2x2 --out writes three valid SVG charts and the markdown links them', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const out = path.join(root, 'out');
+  const w = cli([...flags(bench, four(root, bench)), '--out', out]);
+  assert.equal(w.status, 0, w.stderr);
+  assert.deepEqual(fs.readdirSync(path.join(out, 'charts')).sort(), CHARTS.map((n) => `${n}.svg`).sort());
+  for (const name of CHARTS) {
+    const svg = fs.readFileSync(path.join(out, 'charts', `${name}.svg`), 'utf8');
+    assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+    assert.match(svg, /<\/svg>\n$/);
+    assert.doesNotMatch(svg, /NaN|undefined|<script|href=/);
+    assert.match(w.stdout, new RegExp(`\\(charts/${name}\\.svg\\)`));
+  }
+  const md = fs.readFileSync(path.join(out, 'factorial-2x2.md'), 'utf8');
+  assert.match(md, /!\[Quality by cell[^\]]*\]\(charts\/quality-by-cell\.svg\)/);
+  const bare = cli(flags(bench, four(root, bench)));
+  assert.doesNotMatch(bare.stdout, /charts\//);
+});
+
+test('at n=1 the charts say descriptive only and draw no interval whiskers', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const charts = factorialCharts(build(bench, four(root, bench)));
+  assert.deepEqual([...charts.keys()], CHARTS);
+  for (const svg of charts.values()) assert.equal(count(svg, /data-role="ci"/g), 0);
+  assert.match(charts.get('quality-by-cell'), /descriptive only: n=1 per task/);
+  assert.match(charts.get('konductor-effect'), /descriptive only: n=1 per task/);
+  assert.match(charts.get('cost-ratio'), /descriptive only: n=1 per task/);
+  assert.equal(count(charts.get('quality-by-cell'), /data-role="bar"/g), 4);
+  assert.equal(count(charts.get('quality-by-cell'), /data-role="dot"/g), 4 * TASKS.length);
+  assert.equal(count(charts.get('konductor-effect'), /data-role="bar"/g), 2);
+});
+
+test('with intervals on, only the effect chart draws whiskers and the subtitle drops the warning', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const charts = factorialCharts(build(bench, four(root, bench, { all: { reps: 2 } })));
+  assert.equal(count(charts.get('konductor-effect'), /data-role="ci"/g), 2);
+  assert.equal(count(charts.get('quality-by-cell'), /data-role="ci"/g), 0);
+  assert.equal(count(charts.get('cost-ratio'), /data-role="ci"/g), 0);
+  for (const svg of charts.values()) assert.doesNotMatch(svg, /descriptive only/);
+  assert.match(charts.get('konductor-effect'), /95% interval, paired by task/);
+});
+
+test('credits and USD never share an axis: cost is plotted only as a ratio, with each unit in its own label', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const svg = factorialCharts(build(bench, four(root, bench))).get('cost-ratio');
+  assert.match(svg, />Kiro CLI \(credits\)</);
+  assert.match(svg, />Claude Code \(USD\)</);
+  assert.match(svg, />ratio per run \(1 = same cost\)</);
+  const axis = (svg.match(/<text[^>]*transform="rotate\(-90[^>]*>([^<]*)</) ?? [])[1];
+  assert.doesNotMatch(axis, /credits|USD/);
+  const labels = (svg.match(/<text[^>]*font-size="9"[^>]*>([^<]*)</g) ?? []).join(' ');
+  assert.match(labels, />3</);
+  assert.match(labels, />5</);
+  assert.doesNotMatch(labels, /0\.02|0\.1</);
+});
+
+test('a missing cost ratio or contrast is left off the chart instead of drawn as zero', () => {
+  const root = tmp();
+  const bench = benchWith(root);
+  const res = build(bench, four(root, bench));
+  res.costRatios.cc.perRun = null;
+  res.contrasts.kiroEffect.delta = null;
+  const charts = factorialCharts(res);
+  assert.equal(count(charts.get('cost-ratio'), /data-role="bar"/g), 1);
+  assert.equal(count(charts.get('konductor-effect'), /data-role="bar"/g), 1);
 });

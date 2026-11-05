@@ -50,7 +50,7 @@ Credits are Kiro credits; the opencode and Claude Code harnesses and the opencod
 | Is the skill needed against vanilla, and which sections can go? | `cap skill-plan --base main --only NAME --runs $RUNS --out $OUT/plan`, then `cap skill-study`, then `cap decide --study DIR` | kiro-cli login and AWS credentials for the opencode judge | plan and decide: free. Study: hundreds of credits per skill | `decisions/decisions.md`: DELETE, PRUNE (line ranges and a patch), KEEP or NEEDS DATA, with the reason |
 | Do the rubric items and checks of a study tell the arms apart? | `cap criteria --study DIR` | a finished study | free | `criteria.md`: items flagged NON-DISCRIMINATING, SATURATED or HIGH-VARIANCE |
 | Is konductor better than the bare agent overall? | `run --suite lite\|full\|hard\|real\|autonomy\|pilot`, then `judge --run`, then `report --run` | kiro-cli login; judge credentials | lite: tens of credits. The others: see the next table | `report.md`: the diligence scorecard first, then quality /100, reliability, cost ratio and the noise band. `report --verdict platform` gives keep, discard or not enough evidence per arm |
-| Does the answer depend on the harness (Kiro CLI against Claude Code)? | `bash bench/scripts/pilot-2x2.sh`, then `report-2x2` | both harnesses and Bedrock credentials | credits on Kiro, USD on Claude Code and the judge | `factorial-2x2.md`: quality per cell, the konductor effect per harness, cost ratios inside each harness |
+| Does the answer depend on the harness (Kiro CLI against Claude Code)? | `bash bench/scripts/pilot-2x2.sh`, then `report-2x2` | both harnesses and Bedrock credentials | credits on Kiro, USD on Claude Code and the judge | `factorial-2x2.md` and `charts/`: quality per cell, the konductor effect per harness, cost ratios inside each harness |
 
 ### Start each process
 
@@ -435,11 +435,11 @@ bash bench/scripts/pilot-2x2.sh --cells report --out /var/tmp/pilot-2x2
   Judging gets a mode 0600 credentials file in the scratch directory, removed when judging ends or the script exits. Nothing
   is printed, put on a command line or written under `OUT`. Kiro runs get no AWS keys.
 - Table: `bench.js report-2x2 --kiro-vanilla DIR --kiro-konductor DIR --cc-vanilla DIR --cc-konductor DIR [--out DIR] [--json]`
-  (each flag takes one or more comma-separated judged run directories). It refuses cells with different tasks, judge panel,
+  (each flag takes one or more comma-separated judged run directories; `--out` also writes `charts/quality-by-cell.svg`, `konductor-effect.svg` and `cost-ratio.svg`, linked from the markdown, described in [PILOT-2X2.md](PILOT-2X2.md#charts)). It refuses cells with different tasks, judge panel,
   rubric revision, model, konductor commit (a mismatch, a missing commit, or more than one in a cell), a run judged by only part of the panel, or cost unit. It prints quality per task and cell, the five contrasts, the
   konductor over vanilla cost ratio inside each harness, success, timeouts, delegation and model identity. Intervals appear
   only with 5 or more tasks of 2 or more replicates per cell (`--reps 2` or more).
-- Paste back: `OUT/report/factorial-2x2.md`, the spend table the script prints at the end, and the `NOT DONE` list if there is one.
+- Paste back: `OUT/report/factorial-2x2.md` (its charts are in `OUT/report/charts/`), the spend table the script prints at the end, and the `NOT DONE` list if there is one.
   `OUT/logs/` holds the runner output; it carries no credentials.
 - Not covered: autonomy tasks (Claude Code refuses them), the pairwise judge mode, and any statistics at n=1.
 

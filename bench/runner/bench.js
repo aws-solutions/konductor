@@ -82,9 +82,9 @@ const USAGE = `Usage:
   node bench/runner/bench.js report-2x2 --kiro-vanilla DIR[,DIR...] --kiro-konductor DIR[,DIR...] --cc-vanilla DIR[,DIR...] --cc-konductor DIR[,DIR...]
        [--out DIR] [--json] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (the 2x2 pilot table, harness by konductor on one model, from four judged run directories, one harness each; prints markdown, or JSON with --json,
-       and writes factorial-2x2.md and .json to --out. Refuses cells with different tasks, judge panels, rubric revisions, models or cost units. Quality is compared
+       and writes factorial-2x2.md, .json and three SVG charts in charts/ to --out. Refuses cells with different tasks, judge panels, rubric revisions, models or cost units. Quality is compared
        across cells; cost only as konductor over vanilla inside a harness. Intervals appear only with 5 or more tasks of 2 or more replicates per cell, otherwise
-       the table says "descriptive only". Reads run directories and writes nothing but --out)
+       the table says "descriptive only" and the charts carry no whiskers. Reads run directories and writes nothing but --out)
   node bench/runner/bench.js contrast --run DIR[,DIR...] [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--by class|task] [--phases ID,ID|all]
        [--detail quick|full] [--format md|html|both] [--out DIR] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        (each head arm against the base arm, overall and per task class (--by task: per task); writes contrast.md, contrast.json, contrast.html

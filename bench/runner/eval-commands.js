@@ -31,7 +31,7 @@ const { collectRows, summarizeSkills, renderSkillsMarkdown } = require('../repor
 const { compareRuns, formatCompare } = require('../report/compare.js');
 const { contrastRun, renderContrast } = require('../report/contrast.js');
 const { optionalProfile, profileCheck, writeCalibrationSample } = require('./lib/profiles.js');
-const { buildFactorial, renderFactorial, SPECS: FACTORIAL_CELLS } = require('../report/factorial.js');
+const { buildFactorial, renderFactorial, factorialCharts, SPECS: FACTORIAL_CELLS } = require('../report/factorial.js');
 const { toMarkdown } = require('../report/doc.js');
 const { MODES: JUDGE_MODES } = require('../judge/config.js');
 
@@ -418,15 +418,18 @@ function cmdReport2x2(opts) {
       dirs[c.id] = String(v).split(',').filter(Boolean);
     }
     const res = buildFactorial({ dirs, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), scoringFile: scoringOf(opts) });
-    const md = toMarkdown(renderFactorial(res));
+    const writing = Boolean(opts.out && opts.out !== true);
+    const charts = writing ? factorialCharts(res) : null;
+    const md = toMarkdown(renderFactorial(res, { charts }));
     if (opts.json) console.log(JSON.stringify(res, null, 2));
     else console.log(md);
-    if (opts.out && opts.out !== true) {
+    if (writing) {
       const dir = path.resolve(opts.out);
-      fs.mkdirSync(dir, { recursive: true });
+      fs.mkdirSync(path.join(dir, 'charts'), { recursive: true });
       fs.writeFileSync(path.join(dir, 'factorial-2x2.md'), md);
       fs.writeFileSync(path.join(dir, 'factorial-2x2.json'), `${JSON.stringify(res, null, 2)}\n`);
-      console.error(`wrote ${path.join(dir, 'factorial-2x2.md')}\nwrote ${path.join(dir, 'factorial-2x2.json')}`);
+      for (const [name, svg] of charts) fs.writeFileSync(path.join(dir, 'charts', `${name}.svg`), `${svg}\n`);
+      console.error(`wrote ${path.join(dir, 'factorial-2x2.md')}\nwrote ${path.join(dir, 'factorial-2x2.json')}\nwrote ${charts.size} chart(s) in ${path.join(dir, 'charts')}`);
     }
   } catch (e) {
     console.error(`report-2x2: ${e.message}`);

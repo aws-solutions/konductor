@@ -189,14 +189,15 @@ function scatter({ title, id, points = [], xLabel = '', yLabel = '', xMin, xMax,
 
 /**
  * Vertical grouped bars with CI whiskers: one group per category, one bar per series.
- * series: [{name, values: [{v, lo, hi} | null per category]}].
+ * series: [{name, values: [{v, lo, hi, dots} | null per category]}]. dots is an optional list of values drawn over the bar.
  */
 function groupedBarsCI({ title, id, unit = '', categories = [], series = [], subtitle, width = WIDTH, height = 340 }) {
   const cell = (s, i) => { const v = s.values[i]; return v && fin(v.v) ? v : null; };
   const all = series.flatMap((s) => categories.map((_, i) => cell(s, i))).filter(Boolean);
   if (!categories.length || !series.length || !all.length) return noData(title, id, 'No data');
-  const tops = all.flatMap((v) => [v.v, fin(v.hi) ? v.hi : v.v]);
-  const sc = niceScale(Math.min(0, ...all.map((v) => v.v)), Math.max(...tops), 5);
+  const dotsOf = (v) => (v.dots || []).filter(fin);
+  const tops = all.flatMap((v) => [v.v, fin(v.hi) ? v.hi : v.v, ...dotsOf(v)]);
+  const sc = niceScale(Math.min(0, ...all.map((v) => v.v), ...all.flatMap(dotsOf)), Math.max(...tops), 5);
   const lg = legend(series.map((s, i) => ({ name: s.name, color: color(i) })), 16, 52, width - 32);
   const m = { l: 62, r: 20, t: 62 + lg.height, b: 56 };
   const y0 = m.t; const y1 = height - m.b; const x0 = m.l; const x1 = width - m.r;
@@ -217,7 +218,12 @@ function groupedBarsCI({ title, id, unit = '', categories = [], series = [], sub
         const a = sy(Math.min(v.lo, v.hi)); const b = sy(Math.max(v.lo, v.hi));
         body += L(cx, a, cx, b, { role: 'ci', width: 1.5 }) + L(cx - 3, a, cx + 3, a) + L(cx - 3, b, cx + 3, b);
       }
-      if (bw >= 14) body += T(bx + (bw - 2) / 2, Math.min(top, fin(v.hi) ? sy(v.hi) : top) - 4, fmt(v.v), { anchor: 'middle', size: 9 });
+      const ds = dotsOf(v);
+      ds.forEach((d, di) => {
+        const step = Math.min(6, (bw - 8) / Math.max(1, ds.length - 1));
+        body += marker('circle', bx + (bw - 2) / 2 + (di - (ds.length - 1) / 2) * step, sy(d), 2.8, INK, { role: 'dot' });
+      });
+      if (bw >= 14) body += T(bx + (bw - 2) / 2, Math.min(top, fin(v.hi) ? sy(v.hi) : top, ...ds.map((d) => sy(d) - 3)) - 4, fmt(v.v), { anchor: 'middle', size: 9 });
     });
     body += T(x0 + ci * gw + gw / 2, y1 + 14, clip(cat, Math.max(6, Math.floor(gw / 6))), { anchor: 'middle', size: 10 });
   });

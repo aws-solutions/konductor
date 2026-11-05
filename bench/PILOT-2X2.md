@@ -56,6 +56,21 @@ From the per-task mean quality of each cell, paired by task:
 The table also shows success rate, timeouts, errors, delegation (spawns per run and the share of runs that delegated) and the
 model identity check (Claude Code canonical-model rule; Kiro session model where the harness records it).
 
+## Charts
+
+With `--out`, `report-2x2` also writes three SVG charts to `charts/` and links them from `factorial-2x2.md`, in the style of the
+`report` charts:
+
+| File | Shows | Unit |
+| --- | --- | --- |
+| `quality-by-cell.svg` | the four cells as bars (mean over tasks) with one dot per task | quality, 0 to 100, one axis for all four |
+| `konductor-effect.svg` | konductor minus vanilla, one bar per harness | quality points |
+| `cost-ratio.svg` | konductor cost over vanilla cost per run, one bar per harness | a ratio; the label names the unit, credits for Kiro and USD for Claude Code |
+
+Credits and USD never share an axis: cost is drawn only as the ratio inside a harness. While the table is descriptive, every chart
+carries the subtitle `descriptive only: n=1 per task` (or the other reason the table gives) and no whiskers. Whiskers on the effect
+chart appear only when the table has intervals. The quality chart has no interval at any size, since the table gives none for a cell mean.
+
 ## Limits
 
 - **n=1 per task is descriptive.** With one repetition the table prints the numbers and says `descriptive only: n=1 per task`.

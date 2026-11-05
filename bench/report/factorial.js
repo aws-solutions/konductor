@@ -18,6 +18,7 @@ const { loadScoring, qualityOfRun } = require('./scores.js');
 const { normalize } = require('./verdict.js');
 const { pairedCellCI, MIN_CELLS } = require('./stats.js');
 const D = require('./doc.js');
+const C = require('./charts.js');
 
 const SPECS = [
   { id: 'kiroVanilla', harness: 'kiro-cli', role: 'vanilla', unit: 'credits', flag: 'kiro-vanilla' },
@@ -233,6 +234,58 @@ function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile } = {}) {
   };
 }
 
+// ---- charts ----
+
+const HARNESSES = ['kiro-cli', 'claude-code'];
+const COST_BOUND = { lower: 'lower bound', upper: 'upper bound', both: 'approximate' };
+const effectOf = { 'kiro-cli': 'kiroEffect', 'claude-code': 'ccEffect' };
+const costOf = { 'kiro-cli': 'kiro', 'claude-code': 'cc' };
+
+/**
+ * Three SVG charts as a Map(name -> svg), drawn with the same helpers as `report`. Quality is one 0..100 axis for all
+ * four cells. Cost is drawn only as the konductor / vanilla ratio inside a harness, so credits and USD never share an axis;
+ * the unit is named in each category label. Interval whiskers appear only when the table has intervals.
+ */
+function factorialCharts(res) {
+  const cellOf = (harness, role) => res.cells.find((c) => c.harness === harness && c.role === role);
+  const reason = res.descriptive ? res.descriptiveReason : null;
+  const names = (h) => HARNESS_NAME[h];
+  const quality = C.groupedBarsCI({
+    id: 'factorial-quality-by-cell', title: 'Quality by cell', unit: 'quality (0 to 100)',
+    subtitle: reason ?? `bars: mean over ${res.tasks.length} tasks; dots: one task each; no interval`,
+    categories: HARNESSES.map(names),
+    series: ['vanilla', 'konductor'].map((role) => ({
+      name: role,
+      values: HARNESSES.map((h) => {
+        const c = cellOf(h, role);
+        return { v: c.quality, dots: res.tasks.map((t) => c.byTask[t].quality).filter(fin) };
+      }),
+    })),
+  });
+  const effect = C.groupedBarsCI({
+    id: 'factorial-konductor-effect', title: 'Konductor effect on quality, per harness', unit: 'quality points, konductor minus vanilla',
+    subtitle: reason ?? `95% interval, paired by task, over ${res.tasks.length} tasks`,
+    categories: HARNESSES.map(names),
+    series: [{
+      name: 'konductor minus vanilla',
+      values: HARNESSES.map((h) => {
+        const k = res.contrasts[effectOf[h]];
+        return { v: k.delta, ...(k.interval ? { lo: k.interval.low, hi: k.interval.high } : {}) };
+      }),
+    }],
+  });
+  const cost = C.groupedBarsCI({
+    id: 'factorial-cost-ratio', title: 'Cost ratio, konductor over vanilla, per harness', unit: 'ratio per run (1 = same cost)',
+    subtitle: `${reason ? `${reason}. ` : ''}Each ratio is inside one harness; credits and USD are never compared`,
+    categories: HARNESSES.map((h) => {
+      const r = res.costRatios[costOf[h]];
+      return `${names(h)} (${r.unit})${r.bound ? `, ${COST_BOUND[r.bound]}` : ''}`;
+    }),
+    series: [{ name: 'konductor cost / vanilla cost', values: HARNESSES.map((h) => ({ v: res.costRatios[costOf[h]].perRun })) }],
+  });
+  return new Map([['quality-by-cell', quality], ['konductor-effect', effect], ['cost-ratio', cost]]);
+}
+
 // ---- rendering ----
 
 const f1 = (v) => (fin(v) ? v.toFixed(1) : 'n/a');
@@ -247,10 +300,12 @@ function ratioText(r, key) {
   return `${BOUND[r.bound] ?? ''}${v.toFixed(2)}x`;
 }
 
-function renderFactorial(res) {
+/** charts: the Map from factorialCharts when the SVG files are being written, so the markdown can link them. */
+function renderFactorial(res, { charts = null } = {}) {
   const [kv, kk, cv, ck] = SPECS.map((s) => res.cells.find((c) => c.id === s.id));
   const cols = [kv, kk, cv, ck];
   const head = ['task', ...cols.map((c) => `${HARNESS_NAME[c.harness]} ${c.role}`)];
+  const chart = (name, alt) => (charts?.has(name) ? [D.chart(name, charts.get(name), alt)] : []);
   const taskRows = res.tasks.map((t) => [t, ...cols.map((c) => {
     const x = c.byTask[t];
     const flags = [x.timeouts ? `${x.timeouts} timeout${x.timeouts > 1 ? 's' : ''}` : '', x.excluded ? `${x.excluded} excluded` : ''].filter(Boolean).join(', ');
@@ -266,16 +321,19 @@ function renderFactorial(res) {
     D.table(head, [...taskRows,
       ['**mean over tasks**', ...cols.map((c) => `**${f1(c.quality)}**`)],
       ['mean excluding timed-out runs', ...cols.map((c) => f1(c.qualityExclTimeouts))]]),
+    ...chart('quality-by-cell', 'Quality by cell: bars are the mean over tasks, dots are single tasks'),
     D.h(2, 'Effects on quality (points)'),
     D.table(['contrast', 'estimate', 'per task', 'interval'], Object.values(res.contrasts).map((c) => [
       c.label, signed(c.delta), c.perTask.map((x) => `${x.task} ${signed(x.value)}`).join('; ') || 'n/a',
       c.interval ? `[${signed(c.interval.low)}, ${signed(c.interval.high)}] at ${Math.round(c.interval.level * 100)}%` : res.descriptive ? 'none (descriptive)' : 'n/a',
     ])),
+    ...chart('konductor-effect', 'Konductor effect on quality in each harness'),
     D.h(2, 'Cost: konductor over vanilla, inside each harness'),
     D.table(['harness', 'unit', 'vanilla per run', 'konductor per run', 'ratio per run', 'ratio per successful run'], [
       ['Kiro CLI', res.costRatios.kiro.unit, f2(res.costRatios.kiro.vanillaPerRun), f2(res.costRatios.kiro.konductorPerRun), ratioText(res.costRatios.kiro, 'perRun'), ratioText(res.costRatios.kiro, 'perSuccess')],
       ['Claude Code', res.costRatios.cc.unit, f2(res.costRatios.cc.vanillaPerRun), f2(res.costRatios.cc.konductorPerRun), ratioText(res.costRatios.cc, 'perRun'), ratioText(res.costRatios.cc, 'perSuccess')],
     ]),
+    ...chart('cost-ratio', 'Cost ratio, konductor over vanilla, in each harness'),
     D.note('Credits and USD are different units. Only the ratio inside a harness is meaningful; the raw figures of the two harnesses are never compared. ">=" marks a ratio whose konductor side has runs with no metered cost, "<=" a vanilla side with such runs, "~" both.'),
     D.h(2, 'Reliability, delegation and model identity'),
     D.table(['cell', 'arm', 'runs', 'finished', 'all checks passed', 'timeouts', 'errors', 'excluded', 'spawns per run', 'runs that delegated', 'mean seconds', 'model identity'], cols.map((c) => [
@@ -289,4 +347,4 @@ function renderFactorial(res) {
   return blocks;
 }
 
-module.exports = { buildFactorial, renderFactorial, canonicalModel, SPECS, CONTRASTS, MIN_REPS };
+module.exports = { buildFactorial, renderFactorial, factorialCharts, canonicalModel, SPECS, CONTRASTS, MIN_REPS };
