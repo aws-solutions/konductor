@@ -115,11 +115,9 @@ close_pane() {
     rm -f "$REGISTRY_DIR/launcher-${ws_id}.sh" \
            "$REGISTRY_DIR/task-text-${ws_id}.txt" \
            "$REGISTRY_DIR/${ws_id}.done" 2>/dev/null || true
-    # The dispatch's own directory (brief, result, .done). Only a well-formed
-    # workspace id is removed recursively, never a name taken as is.
-    if [[ "$ws_id" =~ ^(tmux|zellij)-[0-9a-f]{8}$ && -d "$REGISTRY_DIR/$ws_id" && ! -L "$REGISTRY_DIR/$ws_id" ]]; then
-      rm -rf "${REGISTRY_DIR:?}/$ws_id"
-    fi
+    # The dispatch's own directory (brief, result, .done), through the same
+    # helper the orchestrator uses, which validates the id and the registry.
+    bash "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)/mux-cleanup-dispatch.sh" --id "$ws_id" >/dev/null || true
   fi
 
   # Remove entry from registry (only when we have a workspace_id)
