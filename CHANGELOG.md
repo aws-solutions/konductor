@@ -95,6 +95,12 @@ not per individual commit.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
+- Kiro CLI V3 agents' skills index now tells every agent and subagent to call `load_resource`
+  with id `tool::konductor-skills::get_skill` before its first `get_skill` call, and says skills
+  are not `skill::` resources. It used to say to load the tool with `tool_load` only if it was
+  deferred. `delegation-protocol` gives the same step for a subagent's REQUIRED SKILLS.
+- When `get_skill` can't find a skill, its error says if `--skill-name-filter` hides an existing
+  skill from the agent, and lists up to three close skill names.
 
 ### Security
 
