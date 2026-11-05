@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// doctor.rs — `konductor doctor` diagnostics (Rust implementation).
+// doctor.rs - `konductor doctor` diagnostics (Rust implementation).
 //
 // Inspects a Konductor installation/checkout for problems and prints
 // actionable remediation guidance. Every check is reuse-only: it calls
@@ -36,7 +36,7 @@
 //      summary/detail always states that a fallback occurred and why.
 //
 // Output: one summary line per check (`ok: <check>`,
-// `info/warn/stale/failed: <check> — <detail>`), each non-`ok` line
+// `info/warn/stale/failed: <check> - <detail>`), each non-`ok` line
 // followed by an indented remediation hint. `-v` appends full detail.
 // `--json` emits one compact object mirroring install/synth's JSON
 // shape, with a per-check `status` and, on non-ok checks, a `detail`
@@ -1515,12 +1515,15 @@ fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResul
 /// closed to the same "reporting is off, no record" wording as a
 /// missing `telemetry.json`.
 ///
-/// Five cases: no install-info record at all (`Info`, names both
+/// Six cases: no install-info record at all (`Info`, names both
 /// possible causes); a record present but fails validation (`Warn`,
-/// not a choice the user made); no machine record at all (`Info`,
+/// not a choice the user made); the record validates but `HOME` could
+/// not be resolved, leaving no anchor to read a machine consent record
+/// from (`Info`, fails closed to the same off-with-no-record wording as
+/// a missing machine record); no machine record at all (`Info`,
 /// nothing has reported yet); the machine record declines while this
-/// target opted in (`Warn`, the case a design review flagged as
-/// silent); machine consent allows and this target opted in (`Ok`).
+/// target opted in (`Warn`, a silent mismatch between the two consent
+/// signals); machine consent allows and this target opted in (`Ok`).
 fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckResult {
     use crate::cli::telemetry::InstallInfoAbsence;
 
@@ -1529,15 +1532,18 @@ fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckRe
             return CheckResult::info(
                 "telemetry_state",
                 format!(
-                    "telemetry reporting is off for {} (either opted out at install, or {} \
-                     was never installed)",
+                    "telemetry reporting is off for {} (opted out at install or a later \
+                     update, or {} was never installed)",
                     destination.display(),
                     destination.display()
                 ),
-                "if this was opted out, re-run `konductor install` without --no-telemetry to \
-                 opt back in; if it was never installed, run `konductor install` to install \
-                 it -- see the index check's own result to tell which"
-                    .to_string(),
+                format!(
+                    "if this was opted out, run `konductor update --target {} \
+                     --enable-telemetry` to opt back in; if it was never installed, run \
+                     `konductor install` to install it -- see the index check's own result to \
+                     tell which",
+                    destination.display()
+                ),
             );
         }
         Err(InstallInfoAbsence::Broken) => {
@@ -1659,7 +1665,7 @@ fn check_orchestration(
 
     let mut headline = orchestration_value_finding(&resolution);
     let mut findings = Vec::new();
-    if let Some(ignored) = ignored_project_values(destination, resolved_source) {
+    if let Some(ignored) = ignored_project_values(destination, resolved_source, home_dir) {
         if headline.status == CheckStatus::Ok {
             headline = ignored_project_finding(&resolution, ignored);
         } else {
@@ -1743,10 +1749,15 @@ fn orchestration_value_finding(
 /// Project `.konductor/config.yml` files under `destination` and
 /// `resolved_source` (once when they are the same directory) that set
 /// `orchestration.mode`, with the value each sets. `None` when none do.
+/// The user config is never one: a default install has `destination`
+/// (and often the cwd) at `$HOME`, where `.konductor/config.yml` is the
+/// file that is read, not an ignored project file.
 fn ignored_project_values(
     destination: &Path,
     resolved_source: &Path,
+    home_dir: Option<&Path>,
 ) -> Option<Vec<(PathBuf, String)>> {
+    let user_file = home_dir.map(config::user_config_path);
     let mut roots = vec![resolved_source];
     if !crate::cli::telemetry_hook::same_dir(resolved_source, destination) {
         roots.push(destination);
@@ -1757,10 +1768,16 @@ fn ignored_project_values(
             let path = root
                 .join(config::KONDUCTOR_DIR_NAME)
                 .join(config::CONFIG_FILE_NAME);
-            if !path.is_file() {
+            let is_user_file = user_file
+                .as_deref()
+                .is_some_and(|user| crate::cli::telemetry_hook::same_dir(&path, user));
+            if is_user_file || !path.is_file() {
                 return None;
             }
-            let mode = config::load_raw_config(&path).ok()?.orchestration?.mode?;
+            let mode = crate::cli::orchestration_mode::read_section(&path)
+                .ok()
+                .flatten()?
+                .mode?;
             Some((path, mode))
         })
         .collect();
@@ -1841,7 +1858,9 @@ fn orchestration_install_findings(
 
     let mut findings = Vec::new();
     for slot in &manifest.strategies {
-        let Some(wiring) = orchestration_hook_wiring(destination, slot) else {
+        let Some(wiring) =
+            crate::cli::install::resource_rewrite::orchestration_hook_wiring(destination, slot)
+        else {
             continue;
         };
         findings.extend(wiring_findings(
@@ -1857,99 +1876,9 @@ fn orchestration_install_findings(
     findings
 }
 
-/// Where a strategy slot's orchestration hook lives, and the hook
-/// commands found there (or why none could be read). `None` for a
-/// strategy that wires no orchestration hook.
-struct HookWiring {
-    file: PathBuf,
-    commands: Result<Vec<String>, String>,
-}
-
-fn orchestration_hook_wiring(destination: &Path, slot: &StrategyManifest) -> Option<HookWiring> {
-    use crate::cli::install::resource_rewrite::{
-        claude_hooks_settings_relative_path, V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
-    };
-
-    let (relative, commands): (&str, fn(&serde_json::Value) -> Vec<String>) =
-        match slot.strategy.as_str() {
-            "kiro-v3" => (
-                V3_ORCHESTRATION_HOOKS_RELATIVE_PATH,
-                v3_session_start_commands,
-            ),
-            "kiro-cli-v2" => (".kiro/agents/konductor.json", v2_agent_spawn_commands),
-            "claude" => (
-                claude_hooks_settings_relative_path(destination),
-                claude_session_start_commands,
-            ),
-            _ => return None,
-        };
-    let file = destination.join(relative);
-    // A v3 document the slot does not list is a leftover or hand-placed
-    // file, not one this install wrote.
-    let unlisted = slot.strategy == "kiro-v3" && !slot.files.iter().any(|f| f.path == relative);
-    let commands = if unlisted {
-        Err("the file is not listed in the install manifest".to_string())
-    } else {
-        read_hook_json(&file).map(|value| commands(&value))
-    };
-    Some(HookWiring { file, commands })
-}
-
-fn read_hook_json(path: &Path) -> Result<serde_json::Value, String> {
-    let text = std::fs::read_to_string(path).map_err(|err| match err.kind() {
-        std::io::ErrorKind::NotFound => "the file does not exist".to_string(),
-        _ => format!("the file could not be read ({err})"),
-    })?;
-    serde_json::from_str(&text).map_err(|err| format!("the file is not valid JSON ({err})"))
-}
-
-fn string_commands<'a>(entries: impl Iterator<Item = &'a serde_json::Value>) -> Vec<String> {
-    entries
-        .filter_map(|command| command.as_str())
-        .map(str::to_string)
-        .collect()
-}
-
-fn json_array(value: Option<&serde_json::Value>) -> impl Iterator<Item = &serde_json::Value> {
-    value
-        .and_then(|value| value.as_array())
-        .into_iter()
-        .flatten()
-}
-
-/// `hooks[]` entries with `trigger: SessionStart`, their `action.command`.
-fn v3_session_start_commands(document: &serde_json::Value) -> Vec<String> {
-    string_commands(
-        json_array(document.get("hooks"))
-            .filter(|hook| hook.get("trigger").and_then(|t| t.as_str()) == Some("SessionStart"))
-            .filter_map(|hook| hook.get("action").and_then(|action| action.get("command"))),
-    )
-}
-
-/// `hooks.agentSpawn[].command` in the v2 `konductor` agent file.
-fn v2_agent_spawn_commands(agent: &serde_json::Value) -> Vec<String> {
-    string_commands(
-        json_array(agent.get("hooks").and_then(|hooks| hooks.get("agentSpawn")))
-            .filter_map(|entry| entry.get("command")),
-    )
-}
-
-/// `hooks.SessionStart[].hooks[].command` in a Claude settings file.
-fn claude_session_start_commands(settings: &serde_json::Value) -> Vec<String> {
-    string_commands(
-        json_array(
-            settings
-                .get("hooks")
-                .and_then(|hooks| hooks.get("SessionStart")),
-        )
-        .flat_map(|block| json_array(block.get("hooks")))
-        .filter_map(|hook| hook.get("command")),
-    )
-}
-
 fn wiring_findings(
     strategy: &str,
-    wiring: HookWiring,
+    wiring: crate::cli::install::resource_rewrite::HookWiring,
     destination: &Path,
     missing_status: CheckStatus,
 ) -> Vec<OrchestrationFinding> {
@@ -2369,8 +2298,7 @@ fn check_role_allowlists() -> CheckResult {
     CheckResult::info(
         "role_allowlists",
         "role-scoped allowlist validation is not yet implemented -- this is a planned \
-         post-launch feature (design doc Task 4.11, milestone M6) and is not present in this \
-         build",
+         post-launch feature and is not present in this build",
         "no action needed".to_string(),
     )
 }
@@ -2396,7 +2324,7 @@ fn format_report(results: &[CheckResult], verbose: bool, color: ColorMode) -> St
         };
         let _ = writeln!(
             out,
-            "{icon} {colored_label}: {} — {}",
+            "{icon} {colored_label}: {} - {}",
             result.name, result.summary
         );
         if let Some(remediation) = &result.remediation {
@@ -2596,7 +2524,10 @@ mod tests {
         );
 
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
@@ -2643,7 +2574,10 @@ mod tests {
             code, EXIT_HALTED,
             "a nonexistent --from path must not report all-clear (0)"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         let result = check_source(&ResolvedSource {
             path: nonexistent_source.clone(),
@@ -2729,7 +2663,10 @@ mod tests {
         );
 
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
@@ -2776,7 +2713,10 @@ mod tests {
         );
 
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         let result = check_source(&ResolvedSource {
             path: source.clone(),
@@ -2870,7 +2810,10 @@ mod tests {
         );
 
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3194,7 +3137,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_HALTED);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3374,7 +3320,10 @@ mod tests {
             "doctor must resolve source/config against the manifest's recorded (well-formed) \
              path, not the malformed cwd"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         let resolved = resolve_source_for_checks(&cwd, None, &destination);
         assert_eq!(resolved.path, real_source);
@@ -3469,7 +3418,10 @@ mod tests {
             "a healthy fallback tree must not surface as EXIT_HALTED just because the \
              manifest's recorded source is stale"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3530,7 +3482,10 @@ mod tests {
             code, 0,
             "an info-level fallback must not fail the overall run"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3609,7 +3564,10 @@ mod tests {
             "the manifest check surfaces the unreadable manifest itself as a real failure, \
              so the overall run must be EXIT_HALTED even though source/config are only Warn"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3660,7 +3618,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, 0);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&explicit_from).ok();
@@ -3753,7 +3714,10 @@ mod tests {
         );
         // Warn (like Info) never fails the overall run on its own.
         assert_eq!(code, 0);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -3945,7 +3909,10 @@ mod tests {
             "a healthy install must not fail the overall run just because an unrelated \
              fallback tree is malformed"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -4004,7 +3971,10 @@ mod tests {
             "check_manifest already reports the unreadable manifest as its own independent \
              Failed, so the overall run must correctly stay EXIT_HALTED"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&destination).ok();
@@ -4584,7 +4554,10 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, 0);
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         // Pin against the real dispatch path: call `run_checks`
         // itself rather than re-deriving its contents.
@@ -4686,7 +4659,10 @@ mod tests {
             code, EXIT_HALTED,
             "a malformed $HOME-tier config reached through the override seam must halt the run"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         // A second, unrelated run against a genuinely healthy scratch
         // home dir must be completely unaffected by the broken run
@@ -5006,7 +4982,10 @@ mod tests {
             false, /* no_version_check */
             ColorMode::disabled(),
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
@@ -5074,6 +5053,18 @@ mod tests {
             "remediation must stay conditional on which cause applies rather than assuming \
              one, got: {:?}",
             result.remediation
+        );
+        let remediation = result.remediation.as_deref().unwrap_or_default();
+        assert!(
+            remediation.contains(&format!(
+                "run `konductor update --target {} --enable-telemetry` to opt back in",
+                destination.display()
+            )),
+            "remediation must name the destination in the opt-in command, got: {remediation}"
+        );
+        assert!(
+            !remediation.contains("without --no-telemetry"),
+            "a plain install keeps the opt-out, so it must not be offered, got: {remediation}"
         );
 
         fs::remove_dir_all(&destination).ok();
@@ -5623,7 +5614,10 @@ mod tests {
             code, EXIT_HALTED,
             "a failing check on ANY tracked target under --all must fail the overall run"
         );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_ne!(
+            code, 2,
+            "must never emit the reserved unresolved-finding code"
+        );
 
         fs::remove_dir_all(&cwd).ok();
         fs::remove_dir_all(&healthy_dest).ok();
@@ -6294,6 +6288,70 @@ mod tests {
             &home,
             &exe.parent().unwrap().to_path_buf(),
         ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    /// With no `--target` the destination is `$HOME`, so the user config is
+    /// also `<destination>/.konductor/config.yml`. It is the file that is
+    /// read, never an ignored project file.
+    #[test]
+    fn check_orchestration_on_a_default_home_install_is_ok() {
+        let exe = fake_konductor_binary("orch-home-install-exe");
+        let home = healthy_v3_target("orch-home-install", &exe);
+        let dir = home.join(config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join(config::CONFIG_FILE_NAME),
+            "orchestration:\n  mode: coordinator\n",
+        )
+        .unwrap();
+
+        let result = check_orchestration(&home, &home, Some(&home));
+        assert_eq!(result.status, CheckStatus::Ok, "{}", result.summary);
+        assert_eq!(
+            result.summary,
+            "orchestration.mode is `coordinator` (from ~/.konductor/config.yml)"
+        );
+        assert!(
+            !result.detail.iter().any(|line| line.contains("ignored")),
+            "{:?}",
+            result.detail
+        );
+        for dir in [&home, &exe.parent().unwrap().to_path_buf()] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    /// A project under `$HOME` with its own config is still reported; the
+    /// user file at `$HOME` is not.
+    #[test]
+    fn check_orchestration_reports_a_project_file_under_home_but_not_the_user_file() {
+        let exe = fake_konductor_binary("orch-home-project-exe");
+        let home = healthy_v3_target("orch-home-project", &exe);
+        let project = home.join("work/app");
+        for (root, mode) in [(&home, "coordinator"), (&project, "auto")] {
+            let dir = root.join(config::KONDUCTOR_DIR_NAME);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(
+                dir.join(config::CONFIG_FILE_NAME),
+                format!("orchestration:\n  mode: {mode}\n"),
+            )
+            .unwrap();
+        }
+
+        let result = check_orchestration(&home, &project, Some(&home));
+        let project_file = project.join(".konductor/config.yml");
+        assert_eq!(result.status, CheckStatus::Info);
+        assert_eq!(
+            result.summary,
+            format!(
+                "orchestration.mode is `coordinator`; {} also sets it, but only \
+                 ~/.konductor/config.yml is read",
+                project_file.display()
+            )
+        );
+        for dir in [&home, &exe.parent().unwrap().to_path_buf()] {
             fs::remove_dir_all(dir).ok();
         }
     }

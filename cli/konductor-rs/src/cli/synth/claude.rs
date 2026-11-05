@@ -21,11 +21,12 @@ use super::content_writers::{write_all_context, write_all_skills, write_all_sops
 use super::kiro_cli_v2::write_sop_scopes_sidecar;
 #[cfg(test)]
 use super::kiro_cli_v2::SOP_SCOPES_SIDECAR_FILE;
-use super::model::{is_specialist, CanonicalModel};
+use super::model::CanonicalModel;
 #[cfg(test)]
 use super::model::{AuxiliaryFile, ContextDef, SkillDef, SopDef};
 use super::parser::{ClaudeCliConfig, McpServerDef};
 use super::path_safety::reject_unsafe_agent_name;
+use super::spawn_policy::{is_claude_spawn_tool, is_specialist, CLAUDE_SPAWN_TOOLS};
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
 
@@ -341,16 +342,6 @@ impl HarnessTransformer for ClaudeTransformer {
     }
 }
 
-/// Claude Code tools that start another agent. `Task` is the older name
-/// of `Agent`.
-const SPAWN_TOOLS: [&str; 3] = ["Agent", "Task", "Workflow"];
-
-/// Matches a bare spawn tool or its scoped form, e.g. `Agent(k-developer)`.
-pub(crate) fn is_spawn_tool(tool: &str) -> bool {
-    let base = tool.split('(').next().unwrap_or(tool).trim();
-    SPAWN_TOOLS.contains(&base)
-}
-
 const CLAUDE_MODEL_FAMILIES: &[&str] = &["opus", "sonnet", "haiku", "fable"];
 const CLAUDE_CODE_MODEL_ALIASES: &[&str] = &["inherit", "sonnet", "opus", "haiku"];
 
@@ -500,14 +491,14 @@ fn render_agent_md(
     let tools: Option<Vec<String>> = claude.tools.as_ref().map(|tools| {
         tools
             .iter()
-            .filter(|tool| !(specialist && is_spawn_tool(tool)))
+            .filter(|tool| !(specialist && is_claude_spawn_tool(tool)))
             .cloned()
             .collect()
     });
     // A specialist with no `tools` list inherits every default tool,
     // spawn tools included, so it needs an explicit deny instead.
     let disallowed_tools: &[&str] = if specialist && tools.is_none() {
-        &SPAWN_TOOLS
+        &CLAUDE_SPAWN_TOOLS
     } else {
         &[]
     };

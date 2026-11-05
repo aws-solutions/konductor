@@ -37,7 +37,7 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
 - 🎼 **One request, the whole lifecycle.** Requirements, design, code, tests and docs, without
   hand-carrying artifacts between chats.
 - ✅ **Every phase gets checked.** Each phase's work passes one review gate, and failed checks
-  go back for up to two fix cycles.
+  get one fix and one re-review.
 - 🧠 **Expertise built in.** 82 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
 - 🪶 **No infrastructure.** Agents are configuration (prompts, skills, SOPs) that your Kiro or
@@ -79,7 +79,9 @@ at the end. Piping a script to `bash` runs code you haven't read; to check it fi
 [what the install script does](#what-the-install-script-does) below.
 Using the Claude Code plugin marketplace instead? Run `/plugin marketplace add aws-solutions/konductor`,
 then `/plugin install konductor@konductor`
-([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
+([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)). Plugin agents and SOPs use
+the `konductor:` prefix. Either Claude Code install needs agent-teams mode and tool permissions
+([setup](docs/user-guide/tasks/install-claude-code.md#2-enable-agent-teams-mode)).
 Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 
 **2. Start the orchestrator:**
@@ -87,6 +89,7 @@ Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 ```bash
 kiro-cli chat --agent konductor     # Kiro CLI
 claude --agent konductor            # Claude Code
+claude --agent konductor:konductor  # Claude Code plugin
 ```
 
 **3. Ask for something real:**
@@ -233,7 +236,7 @@ for the full fallback chain.
 
 `konductor` is where you start. It does the work in your session and brings in one fresh specialist
 reviewer at each phase gate; it spawns a specialist to do work only for a tool it lacks or for parallel
-work on disjoint files. A failed review gets up to two fix cycles. On Kiro CLI it trusts only reads, so
+work on disjoint files. A failed review gets one fix and one re-review; a CRITICAL or IMPORTANT finding still open after that is reported to you. On Kiro CLI it trusts only reads, so
 each write and shell command asks you first; widen `allowedTools` in your agent config if you want
 fewer prompts.
 
@@ -283,7 +286,7 @@ Only this file is read. A value in a project's `.konductor/config.yml` is ignore
 
 `install` wires a session-start hook for `konductor`, also under `--no-telemetry`. Under
 `coordinator` the hook tells `konductor` to read the installed coordinator routing rules
-(`k-orchestrator-routing-rules.md`) before it does anything else. Under `auto`, or with no setting,
+(`k-orchestrator-routing-rules.md`) before it does anything else. It names only the installed rules file under your home directory, the project root, or a parent of the project root inside your home directory; a rules file located in the project ranks with the project's own instruction files. Under `auto`, or with no setting,
 the hook injects nothing and the session costs nothing extra. The hook never fails a session: if
 it recognises a `konductor` session but cannot apply `coordinator`, it prints one fallback line
 and the session runs as `auto`.
@@ -303,7 +306,8 @@ explicit `auto` injects nothing, so it cannot serve as the test.
 | Harness | Coordinator mode |
 | --- | --- |
 | Kiro CLI v3 | Supported. It may not re-inject the rules after `/compact`: if a `coordinator` session starts writing files itself after a compaction, start a new session |
-| Claude Code | Supported. The hook is wired to run again on `/clear`, `/compact` and resume, so the rules come back (tested on resume only) |
+| Claude Code (`konductor install`) | Supported. The hook is wired to run again on `/clear`, `/compact` and resume, so the rules come back (tested on resume only) |
+| Claude Code plugin (marketplace) | Not available. The plugin does not wire the hook, so a plugin session always runs as `auto` and its first reply reads `Orchestration: auto (default)` |
 | Kiro CLI v2 | Not supported. `install` wires the hook into `konductor`'s `agentSpawn` hooks, as it does for telemetry, but delivery on v2 is untested. The first reply shows whether it arrived: if not, it reads `Orchestration: auto (default)` and the session runs as `auto` |
 
 ---
@@ -351,7 +355,7 @@ doesn't work, and `/prompts` lists what's available.
 | `skip_phases`         | no       | none              | Comma-separated: `elicitation`, `codebase-analysis`, `requirements`, `design`, `design-review`, `feature-splitting`, `specs`, `implementation`, `code-review`, `testing`, `documentation` |
 | `output_dir`          | no       | `.konductor/`     | |
 | `elicitation_depth`   | no       | `standard`        | `quick`, `standard` or `deep` |
-| `max_fix_cycles`      | no       | `2`               | |
+| `max_fix_cycles`      | no       | `2`               | Stored when the session starts; on resume a different value asks you to keep the stored one or approve the change |
 | `deployed_url`        | no       | none              | Used only by the UI/functional test phase |
 | `credentials_file`    | no       | none              | Same phase |
 | `feature_isolation`   | no       | `branch`          | `branch` or `worktree` |
@@ -388,8 +392,8 @@ Browse them all in the [skills catalog](docs/user-guide/skills.md).
 
 ### 📜 19 SOPs
 
-SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI or
-`/sop-<name>` in Claude Code.
+SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI,
+`/sop-<name>` in Claude Code, or `/konductor:sop-<name>` from the Claude Code plugin.
 
 | Plan & verify | Design | Build & review | Test |
 | --- | --- | --- | --- |
@@ -406,8 +410,11 @@ Each one is explained, with a flowchart, in [SOP workflows](docs/user-guide/sop-
 
 Agents with the `persistent-memory` skill keep a small scratchpad across sessions, with no setup.
 The directory is created on first write and added to `.gitignore` by default; remove the ignore
-to share memory with your team. Agents treat these files like AGENTS.md, so review committed
-memory the same way.
+to share memory with your team. Agents treat these files like AGENTS.md, and shared memory
+carries agent-written entries to every clone, so review memory diffs as you would AGENTS.md
+changes. The validator requires an `[origin:agent]` or `[origin:user]` tag on each new line;
+agents follow only untagged and `[origin:user]` entries, which were written by hand or at your
+request.
 
 | File | Holds |
 | --- | --- |
@@ -451,8 +458,8 @@ Everything else is bring-your-own:
 ## Project layout
 
 The [source repository](https://github.com/aws-solutions/konductor) has the layout below. The Claude
-Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/`, its manifests, the README,
-`LICENSE.txt` and `NOTICE.txt`.
+Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/telemetry-schema.json`, its manifests,
+the README, `LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/
@@ -523,7 +530,11 @@ shares the machine identifier in `$HOME/.konductor/telemetry.json` with the CLI.
 | The Claude Code plugin | Turn off the plugin's `telemetry_enabled` option. The variable, `config.yml` and machine settings above also apply; `--no-telemetry` doesn't |
 
 - `--no-telemetry` also removes an opt-in record left by an earlier install, and stops a global
-  install's hooks from reporting in that project.
+  install's hooks from reporting in that project. The global install's skill-lookup server still
+  follows the record in `$HOME/.konductor`.
+- To opt a project back in, run `konductor update --enable-telemetry`. It recreates the
+  project-wide record. Skill-lookup servers launched with `--install-info` follow it at once;
+  another harness's telemetry hooks return on that harness's next `update`.
 - `telemetry.json` exists only after the first event is reported; a `--no-telemetry` install never
   creates it. Konductor never resets a consent value you set.
 - Reporting needs both the project and the machine setting to allow it. `konductor doctor` shows

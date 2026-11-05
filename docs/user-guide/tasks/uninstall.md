@@ -46,6 +46,8 @@ konductor uninstall
 Removed. Project files under .konductor/ were left in place.
 ```
 
+The removal includes the session-start hook that install wired for `konductor`: the Kiro CLI v3 hooks document, the `agentSpawn` entry in the Kiro CLI v2 agent file, or the `SessionStart` block in the Claude Code hooks settings file. Your `orchestration` setting in `~/.konductor/config.yml` stays.
+
 Exit code `0`. `uninstall` removes every path listed in that target's `.konductor/manifest`,
 the manifest itself, any now-empty directories under the managed destinations, and the
 target's entry in `~/.konductor/installs`. `~/.konductor/installs` itself is never deleted,

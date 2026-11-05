@@ -3,7 +3,8 @@
 
 Project memory at `.konductor/memory/` ranks with the project's agent
 instruction files whether or not git tracks it, so no rule may carry a git,
-`ls` or name check for it, and no brief may carry a memory line.
+`ls` or name check for it, and no brief may carry a memory line. The one read
+check is the validator's `--check-path`, which refuses symlinked or misplaced paths.
 """
 
 import re
@@ -30,6 +31,7 @@ RULE_FILES = (
     "context/k-orchestrator-routing-rules.md",
     "skills/persistent-memory/SKILL.md",
     "context/k-direct-work.md",
+    "context/k-orchestrator-shared.md",
 )
 
 
@@ -63,10 +65,19 @@ def test_rule_11_ranks_memory_with_instruction_files_tracked_or_not():
         ".konductor/memory/MEMORY.md",
         ".konductor/memory/USER.md",
         "tracked or not",
+        "symlink",
+        "--check-path",
         "[origin:agent]",
         "agent instruction files",
     ):
         assert needle in rule, f"rule 11 is missing {needle!r}"
+
+
+def test_reading_memory_runs_the_validator_path_check():
+    skill = (REPO_ROOT / "skills/persistent-memory/SKILL.md").read_text()
+    reading = _section(skill, "## Reading Memory")
+    assert "--check-path" in reading, reading
+    assert "exits 0" in reading, reading
 
 
 def test_unreleased_changelog_does_not_tie_memory_trust_to_untracked():
@@ -79,7 +90,8 @@ def test_unreleased_changelog_does_not_tie_memory_trust_to_untracked():
 
 def test_agents_md_memory_section_says_tracking_does_not_matter():
     memory = _section((REPO_ROOT / "AGENTS.md").read_text(), "## Memory")
-    assert re.search(r"\btrack(s|ed)\b", memory), memory
+    assert "whether or not git tracks" in memory, memory
+    assert "untracked" not in memory, memory
 
 
 def _tracked_synth_outputs():

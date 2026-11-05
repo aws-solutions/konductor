@@ -45,10 +45,9 @@ drop the footnote.
 
 It prints "not yet implemented". The guide says so rather than describing what it will report.
 
-### Exit code `2` is reserved
+### Exit code `2` is an unresolved gating finding
 
-`2` signals an unresolved CRITICAL gate and is owned by the run-engine, which is not yet
-started. Usage errors are `64`. The guide must never show `2` for a bad invocation.
+`2` signals an unresolved gating finding and is emitted by `verify-run`. Usage errors are `64`. The guide must never show `2` for a bad invocation.
 
 ### No published release exists, and the repository is not public
 

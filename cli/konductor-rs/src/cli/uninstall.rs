@@ -26,6 +26,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
+use super::config_lock;
 use super::harness_select;
 use super::install::artifact::sha256_hex;
 use super::install::bin_link;
@@ -1018,6 +1019,40 @@ fn uninstall_one_for_batch(
     uninstall_one_impl(target_dir, true, harness, false, false)
 }
 
+/// Takes the same lock `install` holds, so an install and an uninstall of
+/// one target run as one serial order. Returns `None` when `.konductor` is
+/// absent (stale target): nothing can be installing there, and acquiring
+/// would create the directory.
+fn acquire_install_lock(
+    target_dir: &str,
+    konductor_dir: &Path,
+) -> Result<Option<config_lock::ConfigLockGuard>, UninstallError> {
+    if !konductor_dir.is_dir() {
+        return Ok(None);
+    }
+    config_lock::acquire_named(konductor_dir, crate::cli::install::INSTALL_LOCK_FILE_NAME)
+        .map(Some)
+        .map_err(|err| {
+            UninstallError::usage(format!("could not lock install target {target_dir}: {err}"))
+        })
+}
+
+/// Unlinks the held install lock. Returns the warning text on failure; the
+/// caller must not change the uninstall result because of it.
+fn remove_install_lock(
+    lock: &config_lock::ConfigLockGuard,
+    konductor_dir: &Path,
+) -> Option<String> {
+    lock.remove_file_while_held().err().map(|err| {
+        format!(
+            "could not remove {}: {err}",
+            konductor_dir
+                .join(crate::cli::install::INSTALL_LOCK_FILE_NAME)
+                .display()
+        )
+    })
+}
+
 fn uninstall_one_impl(
     target_dir: &str,
     uncached_identity: bool,
@@ -1026,6 +1061,9 @@ fn uninstall_one_impl(
     json: bool,
 ) -> Result<UninstallCounts, UninstallError> {
     let target_path = Path::new(target_dir);
+
+    let konductor_dir = target_path.join(crate::cli::config::KONDUCTOR_DIR_NAME);
+    let mut install_lock = acquire_install_lock(target_dir, &konductor_dir)?;
 
     let manifest = manifest::read_manifest(target_path)
         .map_err(|err| UninstallError::from_manifest(target_dir, err))?;
@@ -1083,6 +1121,10 @@ fn uninstall_one_impl(
             counts.stale = true;
         }
         Some(full_manifest) => {
+            // The picker can wait on stdin; do not make a concurrent install
+            // time out behind it. The locked removal below re-reads the
+            // manifest, so nothing decided here depends on the lock.
+            drop(install_lock.take());
             let selected_name = harness_select::select_harness(
                 target_dir,
                 &full_manifest.strategies,
@@ -1105,6 +1147,7 @@ fn uninstall_one_impl(
             })?
             .strategy
             .clone();
+            install_lock = acquire_install_lock(target_dir, &konductor_dir)?;
 
             // `full_manifest` above is read unlocked -- it exists only
             // to drive harness selection (picking a name, never file
@@ -1292,6 +1335,17 @@ fn uninstall_one_impl(
         let (_, hook_errors) = remove_claude_konductor_hooks(target_path);
         for err in hook_errors {
             eprintln!("konductor uninstall: warning: could not remove a Konductor hook: {err}");
+        }
+    }
+
+    // Unlinked while still held; `acquire_named` re-checks the inode, so a
+    // racing install ends up on a fresh file. Non-fatal, like the record
+    // removals above.
+    if target_fully_removed {
+        if let Some(lock) = &install_lock {
+            if let Some(warning) = remove_install_lock(lock, &konductor_dir) {
+                eprintln!("konductor uninstall: warning: {warning}");
+            }
         }
     }
 
@@ -1672,6 +1726,36 @@ mod tests {
     use std::sync::MutexGuard;
 
     use crate::cli::test_home_lock::lock_home;
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_install_lock_removal_returns_a_warning_and_keeps_the_guard_usable() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = scratch_home("lock-removal-fails").join(".konductor");
+        let lock =
+            config_lock::acquire_named(&dir, crate::cli::install::INSTALL_LOCK_FILE_NAME).unwrap();
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
+        let probe = fs::File::create(dir.join("probe"));
+        let warning = remove_install_lock(&lock, &dir);
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).unwrap();
+        if probe.is_ok() {
+            return; // running as root: permissions are not enforced
+        }
+        let warning = warning.expect("unlink must fail in a read-only directory");
+        assert!(warning.contains("could not remove"), "{warning}");
+        assert!(dir
+            .join(crate::cli::install::INSTALL_LOCK_FILE_NAME)
+            .is_file());
+    }
+
+    #[test]
+    fn install_lock_removal_of_an_already_missing_file_is_silent() {
+        let dir = scratch_home("lock-removal-missing").join(".konductor");
+        let lock =
+            config_lock::acquire_named(&dir, crate::cli::install::INSTALL_LOCK_FILE_NAME).unwrap();
+        assert!(remove_install_lock(&lock, &dir).is_none());
+        assert!(remove_install_lock(&lock, &dir).is_none());
+    }
 
     fn scratch_home(name: &str) -> PathBuf {
         static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);

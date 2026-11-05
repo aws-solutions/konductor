@@ -165,7 +165,7 @@ table in that file allows them. Editing files, building, or running tests is not
 konductor doctor
 ```
 
-Look at the `context files` line — it should report `2 registered`.
+Look at the `context files` line — it should report `4 registered`.
 
 2. If it reports `0`, reinstall and start a **new** session. Context files are read at session start,
    so an in-flight session keeps the old state.
@@ -368,10 +368,11 @@ konductor doctor
 
 - The value must be exactly `auto` or `coordinator`, in `~/.konductor/config.yml`. A project
   `.konductor/config.yml` value is ignored; `doctor` reports it as `info`.
+- Installed as the Claude Code plugin? The plugin does not wire the hook, so coordinator mode is not available there. `konductor doctor` and `konductor update` apply to CLI installs only.
 - A missing hook or rules file: run `konductor update`.
 - `doctor` passes but the line still does not arrive: check that the session runs the `konductor`
   agent of the install `doctor` checked, then check the harness. Kiro CLI v3 and Claude Code
-  are supported. Kiro CLI v2 is not; its hook is wired but untested, so use v3 or Claude Code for
+  installed with `konductor install` are supported. Kiro CLI v2 is not; its hook is wired but untested, so use v3 or Claude Code for
   `coordinator` sessions.
 - On Kiro CLI v3 the rules may not come back after `/compact`. A `coordinator` session that starts
   writing files itself after a compaction has lost them; start a new session.

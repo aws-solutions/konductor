@@ -153,10 +153,11 @@ A **context file** is Markdown loaded into an agent's memory *at session start* 
 active for the whole session — unlike a skill, which loads on demand. Context files are for
 rules that must never be missed.
 
-There are three today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
+There are four today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
 rule, and the engineering practices, and all 11 agents load it. `context/k-direct-work.md` is loaded by `konductor`;
 `context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators, and read by
-`konductor` in the `coordinator` mode (see Orchestration shapes). The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
+`konductor` in the `coordinator` mode (see Orchestration shapes); `context/k-orchestrator-shared.md` holds the
+handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
 rules, including this one:
 
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You NEVER
@@ -164,6 +165,8 @@ rules, including this one:
 
 That is why the mux and cmux orchestrators hand file edits and shell commands to `k-developer`
 rather than doing them themselves.
+
+`context/k-coordinator-digest.md` also lives in `context/`, but no agent loads it: the session-start hook prints it into a `coordinator` session (see Orchestration shapes).
 
 ## Orchestration shapes
 
@@ -190,7 +193,7 @@ The first reply of every `konductor` session states the mode: `Orchestration: co
 not apply `coordinator`. `Orchestration: auto (default)` with `coordinator` set means no hook
 output arrived; run `konductor doctor`, then see
 [Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
-Kiro CLI v3 and Claude Code are supported. Kiro CLI v2 is not: the hook is wired there but untested,
+Kiro CLI v3 and Claude Code installed with `konductor install` are supported; the Claude Code plugin does not wire the hook, so coordinator mode is not available there. The hook names only the installed rules file under your home directory, the project root, or a parent of the project root inside your home directory. Kiro CLI v2 is not: the hook is wired there but untested,
 and a v2 session the hook does not reach runs as `auto`.
 
 ## Orchestrator and delegation
@@ -216,7 +219,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; a CRITICAL or IMPORTANT finding that survives blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; a surviving CRITICAL or IMPORTANT still blocks done. An artifact that passed review is not reviewed again unless it changes.
+fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; any CRITICAL or IMPORTANT finding in its last re-review still blocks done. An artifact that passed review is not reviewed again unless it changes. When `konductor` made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.
 
 ## Maker-checker
 
@@ -233,7 +236,7 @@ SUGGESTION**, followed by: `Fix these issues? [y/n]`.
 
 The **Konductor CLI** is a separate command-line program named `konductor`. It handles setup, content
 build, lifecycle, and diagnostics for a Konductor-managed repository: `install`, `update`,
-`uninstall`, `doctor`, `init`, `synth`, and `metrics`.
+`uninstall`, `doctor`, `init`, `synth`, `verify-run`, and `metrics`.
 
 It does **not** run SDLC workflows. Running a workflow means talking to an agent, not typing a
 `konductor` subcommand.
