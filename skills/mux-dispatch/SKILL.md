@@ -9,7 +9,7 @@ description: Delegate tasks to parallel agent sessions via tmux or zellij. Auto-
 
 The orchestrator always dispatches via panes. The dispatch script selects the CLI automatically:
 
-- **Claude Code** (`$CLAUDECODE` is set): runs `claude --add-dir <registry dir> --agent <PREFIX><agent-name> <mode flags> "<prompt>"` in the pane, with the flags set by the permission mode (see [Permission modes](#permission-modes-claude-code)), where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`). The script never strips a prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. If `~/.claude/agents/` has no match and the skill ships inside a Claude Code plugin whose `agents/` has that agent, the bare name is launched and Claude resolves it to `<plugin>:<agent>`. A qualified `--agent` (`konductor:k-developer`) is launched only if the prefix is this plugin's name (from its `.claude-plugin/plugin.json`) and the plugin ships that agent; anything else is refused as not installed. **`--agent` must be a fully-qualified name.** If it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+`, optionally prefixed with `<plugin>:`, before any of this runs. The launcher exports `KONDUCTOR_DONE_FILE`, the path of this dispatch's `.done` marker, before `claude` runs. A child may write its own `.done` there before it exits; otherwise the launcher writes it after `claude` exits, and it never replaces a `.done` that already exists. No hook writes it for a Claude Code child.
+- **Claude Code** (`$CLAUDECODE` is set): runs `claude --add-dir <dispatch dir> --agent <PREFIX><agent-name> <mode flags> "<prompt>"` in the pane, with the flags set by the permission mode (see [Permission modes](#permission-modes-claude-code)), where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`). The script never strips a prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. If `~/.claude/agents/` has no match and the skill ships inside a Claude Code plugin whose `agents/` has that agent, the bare name is launched and Claude resolves it to `<plugin>:<agent>`. A qualified `--agent` (`konductor:k-developer`) is launched only if the prefix is this plugin's name (from its `.claude-plugin/plugin.json`) and the plugin ships that agent; anything else is refused as not installed. **`--agent` must be a fully-qualified name.** If it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+`, optionally prefixed with `<plugin>:`, before any of this runs. Completion follows the `.done` contract in [Completion Detection](#completion-detection).
 - **kiro-cli** (default): runs `kiro-cli chat --agent <agent-name> ...` in the pane, using the exact `--agent` value passed in — no prefix is added or stripped. Completion is detected via the kiro-cli `stop` hook writing the `.done` file.
 
 ## Permission modes (Claude Code)
@@ -18,13 +18,13 @@ The orchestrator always dispatches via panes. The dispatch script selects the CL
 
 | Mode | Child command | What the child can do |
 | --- | --- | --- |
-| `interactive` (default) | `claude --add-dir <registry dir> --agent <agent> "<prompt>"` | Runs as a normal session in the pane and asks you there before it uses a tool that needs permission. Its `.done` file appears only after you exit that session. |
-| `headless` | `claude --add-dir <registry dir> --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<prompt>"` | Runs once and exits. It can edit files in its working directory and the registry dir. `-p` also skips the workspace trust dialog. Any other call that would prompt, Bash and network calls included, is denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows it. `acceptEdits` alone does not allow build or test commands. |
-| `bypass` | `claude --add-dir <registry dir> --agent <agent> --dangerously-skip-permissions -p "<prompt>"` | Skips every permission check. It is opt-in and meant only for an isolated environment, such as a disposable container or VM. The dispatch script prints a warning. |
+| `interactive` (default) | `claude --add-dir <dispatch dir> --agent <agent> "<prompt>"` | Runs as a normal session in the pane and asks you there before it uses a tool that needs permission. Its task is complete when it writes its `.done`; the session stays open until you type `/exit`. |
+| `headless` | `claude --add-dir <dispatch dir> --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<prompt>"` | Runs once and exits. It can edit files in its working directory and its dispatch dir. `-p` also skips the workspace trust dialog. Any other call that would prompt, Bash and network calls included, is denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows it. `acceptEdits` alone does not allow build or test commands. |
+| `bypass` | `claude --add-dir <dispatch dir> --agent <agent> --dangerously-skip-permissions -p "<prompt>"` | Skips every permission check. It is opt-in and meant only for an isolated environment, such as a disposable container or VM. The dispatch script prints a warning. |
 
-Any other value makes the dispatch script exit with an error before it opens a pane. Set the mode by exporting the variable in the shell that starts Claude Code, or, in the Claude Code plugin, with the plugin's `dispatch_permission_mode` option. An exported variable wins over the option. A prompt that starts with `-` is passed with a leading space, so `claude` reads it as the prompt and not as an option.
+Any other value makes the dispatch script exit with an error before it opens a pane. Set the mode by exporting the variable in the shell that starts Claude Code, or, in the Claude Code plugin, with the plugin's `dispatch_permission_mode` option. An exported variable wins over the option. The child's prompt is always the same fixed instruction naming its files, so task text never reaches the command line.
 
-`<registry dir>` is `/tmp/konductor-mux` (or `$KONDUCTOR_MUX_REGISTRY_DIR` when set). `--add-dir` lets the child read a brief and write a `result-<slug>.md` there, outside its working directory; without it, `headless` denies both. It comes before `--agent` because it takes a list and would otherwise swallow the prompt. It exposes the whole registry dir, not one dispatch's files, so every child can see the other children's briefs, results and `.done` files, and a `headless` child auto-accepts edits anywhere in it.
+`<dispatch dir>` is `<registry>/<id>/`, where `<registry>` is `/tmp/konductor-mux` (or `$KONDUCTOR_MUX_REGISTRY_DIR` when set) and `<id>` is the dispatch's own id. The script creates it with mode 0700 and prints it as `dispatch_dir=`. It holds that dispatch's brief (`task.md`), result (`result.md`) and `.done`, and it is the only directory `--add-dir` grants: the shared `dispatched.json`, the launchers and every other dispatch's directory stay outside it. Without the grant, `headless` denies reading the brief and writing the result. `--add-dir` comes before `--agent` because it takes a list and would otherwise swallow the prompt.
 
 ## Overview
 
@@ -92,7 +92,7 @@ unchanged when calling them through `dispatch.sh`.
 | Flag                  | Required | Description                                                                                                       |
 | --------------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
 | `--agent`             | Yes      | Agent name (e.g. `k-developer`) or a plugin-qualified name (`konductor:k-developer`). On Claude Code the install prefix is resolved as described above |
-| `--task`              | Yes      | Task prompt to send to the agent                                                                                  |
+| `--task` or `--brief` | Yes      | Task text, or a file holding it; the script copies either to `<dispatch dir>/task.md`                                                                                  |
 | `--cwd`               | Yes      | Absolute path to project root                                                                                     |
 | `--name`              | No       | Pane/window title                                                                                                 |
 | `--split right\|down` | No       | Split direction (default: right)                                                                                  |
@@ -139,14 +139,18 @@ bash "<MUX_DISPATCH_DIR>/zellij-dispatch.sh" \
 
 ## Completion Detection
 
-Each agent's kiro-cli `stop` hook writes a done file via `mux-completion-hook.sh`. On Claude Code the launcher writes it after `claude` exits:
+Every dispatch has one `.done` file:
 
-- Path: `/tmp/konductor-mux/<workspace-id>.done`
-- Format: `{"workspace_id": "...", "status": "done|error", "summary": "..."}`
+- Path: `/tmp/konductor-mux/<id>/<id>.done`, inside the dispatch's own directory. The script prints it as `done_file=` and exports it to the child as `KONDUCTOR_DONE_FILE`.
+- Format: `{"workspace_id": "...", "status": "done|error", "summary": "..."}`, plus `"exit_code"` once the session has ended.
+- The child writes it as its last step: the script's prompt tells it to. That is the completion signal, so an interactive Claude Code child completes without `/exit`; `/exit` only closes the pane.
+- On Kiro CLI the `mux-completion-hook.sh` stop hook may also write it, to `KONDUCTOR_DONE_FILE`.
+- When the child's session ends, the launcher keeps any `.done` already there and adds `exit_code`, or writes one with summary `"shell fallback"` if nothing did. A non-zero exit sets `status` to `"error"`, so a `.done` the child wrote early never hides a crash.
+- Remove `<dispatch dir>` only once its `.done` has an `exit_code`.
 
 Poll (glob-free — an unmatched `*.done` glob is a hard error under zsh, which
 aborts the whole compound command before `2>/dev/null` can apply):
-`find /tmp/konductor-mux -maxdepth 1 -name '*.done' 2>/dev/null`
+`find /tmp/konductor-mux -mindepth 2 -maxdepth 2 -name '*.done' 2>/dev/null`
 
 Running the dispatch script, polling, and reading result files are orchestrator direct work, as defined in the Orchestrator Direct Work table of `k-orchestrator-routing-rules.md`. Run them yourself; never dispatch them to another pane.
 
@@ -155,11 +159,10 @@ The `MUX_WORKSPACE_ID` env var is set per pane by the dispatch script and read b
 ### Results — write to a file, don't rely on the `.done` summary
 
 The `.done` payload's `summary` field is a short, often-truncated status string
-(and is literally `"shell fallback"` when the hook didn't run and the launcher's
-fallback wrote the file instead) — it is not a substitute for the deliverable.
-**Dispatch prompts SHOULD instruct the child agent to write its full deliverable
-to a file**, e.g. `/tmp/konductor-mux/result-<slug>.md`, and the orchestrator
-should read that file once `.done` appears. Use a pane-content dump (see below)
+(and is literally `"shell fallback"` when the launcher's fallback wrote the file) —
+it is not a substitute for the deliverable. The script tells every child to write
+its full deliverable to `<dispatch dir>/result.md`; the orchestrator reads that
+file once `.done` appears. Use a pane-content dump (see below)
 only as a fallback when no result file was written or the pane exited before
 producing one.
 

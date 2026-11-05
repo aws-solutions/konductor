@@ -109,8 +109,8 @@ These rows describe agents started by `konductor`. `konductor-mux-orchestrator` 
 denies any other call that would prompt unless your `permissions.allow` allows it; and the opt-in
 `bypass` runs with `--dangerously-skip-permissions`, for isolated environments only. In `headless`
 and `bypass`, deny rules in your `settings.json` still block, and in `headless` an ask rule denies
-the call. An `interactive` Claude Code child stays open after it finishes, so type `/exit` in its
-pane once it reports done. A mistyped `dispatch_permission_mode` value makes the dispatch stop with
+the call. An `interactive` Claude Code child completes when it writes its `.done` file
+(`$KONDUCTOR_DONE_FILE`), but its session stays open until you type `/exit` in its pane. A mistyped `dispatch_permission_mode` value makes the dispatch stop with
 an error rather than fall back to `interactive`. Add deny rules for anything a dispatched agent must
 never do.
 

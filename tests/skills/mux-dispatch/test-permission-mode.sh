@@ -2,12 +2,18 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # test-permission-mode.sh: how tmux-dispatch.sh and zellij-dispatch.sh launch
-# a Claude Code child for each KONDUCTOR_DISPATCH_PERMISSION_MODE value, that
-# an unknown value is refused before any pane opens, that a task starting
-# with '-' or carrying shell metacharacters reaches claude as exactly one
-# prompt argument and runs nothing, that the child gets --add-dir for the
-# registry dir and sees KONDUCTOR_DONE_FILE, that a .done the child writes
-# itself is kept, and that the Kiro CLI branch ignores the mode.
+# a child, for both runtimes:
+#   - each KONDUCTOR_DISPATCH_PERMISSION_MODE value gives the expected claude
+#     argv, an unknown value is refused before any pane opens, and Kiro CLI
+#     ignores the mode;
+#   - every dispatch gets its own 0700 directory holding its brief, and the
+#     child's --add-dir grant is that directory only, never the shared
+#     registry or a sibling dispatch's directory;
+#   - a hostile task lands verbatim in the brief and runs nothing, and
+#     --brief copies a file in;
+#   - the .done contract: a .done the child writes is kept and gains the exit
+#     code, a non-zero exit after it still ends as "error", and a child that
+#     never writes one gets the fallback.
 #
 # Usage: bash test-permission-mode.sh
 # Exit code: 0 = all assertions passed, 1 = a regression was detected.
@@ -29,8 +35,8 @@ trap 'rm -rf "$WORKDIR"' EXIT
 MOCK_BIN="$WORKDIR/bin"
 mkdir -p "$MOCK_BIN"
 # The claude and kiro-cli mocks write one argument per line, then the
-# KONDUCTOR_DONE_FILE they saw. With MOCK_CHILD_WRITES_DONE set they also
-# write that .done file themselves, as a child may.
+# KONDUCTOR_DONE_FILE they saw. MOCK_CHILD_WRITES_DONE makes them write that
+# .done themselves, as a child should; MOCK_EXIT sets their exit code.
 ARGS_RECORD="$WORKDIR/args.txt"
 DONE_RECORD="$WORKDIR/done-file.txt"
 PANE_OPENED="$WORKDIR/pane-opened"
@@ -41,9 +47,9 @@ for bin in claude kiro-cli; do
 printf '%s\n' "\$@" > "${ARGS_RECORD}"
 printf '%s' "\${KONDUCTOR_DONE_FILE:-__UNSET__}" > "${DONE_RECORD}"
 if [[ -n "\${MOCK_CHILD_WRITES_DONE:-}" && -n "\${KONDUCTOR_DONE_FILE:-}" ]]; then
-  printf '{"summary": "child wrote this"}' > "\$KONDUCTOR_DONE_FILE"
+  printf '{"status": "done", "summary": "child wrote this"}' > "\$KONDUCTOR_DONE_FILE"
 fi
-exit 0
+exit "\${MOCK_EXIT:-0}"
 MOCKEOF
 done
 
@@ -75,20 +81,28 @@ mkdir -p "$HOME/.claude/agents"
 touch "$HOME/.claude/agents/k-developer.md"
 REG="$KONDUCTOR_MUX_REGISTRY_DIR"
 
-# dispatch <backend> <task>: runs one dispatch with the current environment.
-# Leaves stderr in $WORKDIR/err and the exit code in $RC.
-RC=0
+# dispatch <backend> [dispatch args...]: runs one dispatch with the current
+# environment and --agent k-developer --cwd $WORKDIR. Leaves stderr in
+# $WORKDIR/err, the exit code in $RC, and the printed paths in $DIR / $DONE.
+RC=0 DIR="" DONE=""
 dispatch() {
-  local backend="$1" task="$2"
-  rm -rf "$REG" "$ARGS_RECORD" "$DONE_RECORD" "$PANE_OPENED"
+  local backend="$1"; shift
+  rm -f "$ARGS_RECORD" "$DONE_RECORD" "$PANE_OPENED"
   if [[ "$backend" == tmux ]]; then
     TMUX=fake bash "$SKILL_DIR/tmux-dispatch.sh" \
-      --agent k-developer --task "$task" --cwd "$WORKDIR" >"$WORKDIR/out" 2>"$WORKDIR/err"
+      --agent k-developer --cwd "$WORKDIR" "$@" >"$WORKDIR/out" 2>"$WORKDIR/err"
   else
     ZELLIJ=fake ZELLIJ_SESSION_NAME=test-session bash "$SKILL_DIR/zellij-dispatch.sh" \
-      --agent k-developer --task "$task" --cwd "$WORKDIR" >"$WORKDIR/out" 2>"$WORKDIR/err"
+      --agent k-developer --cwd "$WORKDIR" "$@" >"$WORKDIR/out" 2>"$WORKDIR/err"
   fi
   RC=$?
+  DIR="$(grep -o 'dispatch_dir=[^ ]*' "$WORKDIR/out" | cut -d= -f2)"
+  DONE="$(grep -o 'done_file=[^ ]*' "$WORKDIR/out" | cut -d= -f2)"
+}
+
+prompt_for() {
+  printf 'Read and execute the task in %s/task.md. Write your full result to %s/result.md. As your last step, write {"status": "done", "summary": "<one line>"} to %s, with "error" as the status if you could not finish.' \
+    "$1" "$1" "$2"
 }
 
 # expect_args <label>: compares the recorded argv, one argument per line,
@@ -108,39 +122,62 @@ expect_args() {
   fi
 }
 
+check() { if eval "$2"; then log_pass "$1"; else log_fail "$1"; fi; }
+
+done_field() { python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], "<missing>"))' "$DONE" "$1" 2>/dev/null; }
+
 # A leading '-', both quote kinds, a $(...) and a backtick substitution.
 HOSTILE='-x "it'\''s" $(touch PWN1) `touch PWN2` end'
 HOSTILE="${HOSTILE//PWN1/$WORKDIR/pwned1}"
 HOSTILE="${HOSTILE//PWN2/$WORKDIR/pwned2}"
 
 for backend in tmux zellij; do
-  unset KONDUCTOR_DISPATCH_PERMISSION_MODE MOCK_CHILD_WRITES_DONE
+  rm -rf "$REG"
+  unset KONDUCTOR_DISPATCH_PERMISSION_MODE MOCK_CHILD_WRITES_DONE MOCK_EXIT
   export CLAUDECODE=1
 
-  dispatch "$backend" "do it"
+  dispatch "$backend" --task "do it"
   expect_args "$backend unset mode runs interactive" <<ARGS
 --add-dir
-$REG
+$DIR
 --agent
 k-developer
-do it
+$(prompt_for "$DIR" "$DONE")
 ARGS
+  check "$backend: the dispatch dir is a 0700 directory under the registry" \
+    '[[ "$DIR" == "$REG/$backend-"* && -d "$DIR" && "$(stat -c %a "$DIR" 2>/dev/null || stat -f %Lp "$DIR")" == 700 ]]'
+  check "$backend: the brief holds the task text" '[[ "$(cat "$DIR/task.md")" == "do it" ]]'
+  check "$backend: the .done path is inside the dispatch dir" '[[ "$DONE" == "$DIR/"*.done ]]'
+  check "$backend: the registry and launchers stay outside the grant" \
+    '[[ -f "$REG/dispatched.json" && ! -e "$DIR/dispatched.json" ]] && ! ls "$DIR"/launcher-* >/dev/null 2>&1'
+  check "$backend: the registry records the dispatch dir" "grep -q '\"dispatch_dir\": \"$DIR\"' '$REG/dispatched.json'"
+
+  # A second dispatch: its grant must not reach the first one's directory.
+  # shellcheck disable=SC2034  # read inside check's eval
+  FIRST="$DIR"
+  dispatch "$backend" --task "do it"
+  check "$backend: a second dispatch gets a different, sibling directory" \
+    '[[ -n "$DIR" && "$DIR" != "$FIRST" && "$(dirname "$DIR")" == "$REG" ]]'
+  # shellcheck disable=SC2034  # read inside check's eval
+  GRANT="$(sed -n 2p "$ARGS_RECORD")"
+  check "$backend: the child's grant is its own directory, not a sibling's or the registry" \
+    '[[ "$GRANT" == "$DIR" && "$FIRST/" != "$GRANT"/* && "$GRANT" != "$REG" ]]'
 
   export KONDUCTOR_DISPATCH_PERMISSION_MODE=interactive
-  dispatch "$backend" "do it"
+  dispatch "$backend" --task "do it"
   expect_args "$backend interactive" <<ARGS
 --add-dir
-$REG
+$DIR
 --agent
 k-developer
-do it
+$(prompt_for "$DIR" "$DONE")
 ARGS
 
   export KONDUCTOR_DISPATCH_PERMISSION_MODE=headless
-  dispatch "$backend" "do it"
+  dispatch "$backend" --task "do it"
   expect_args "$backend headless" <<ARGS
 --add-dir
-$REG
+$DIR
 --agent
 k-developer
 -p
@@ -148,102 +185,83 @@ k-developer
 acceptEdits
 --permission-prompts
 none
-do it
+$(prompt_for "$DIR" "$DONE")
 ARGS
 
   export KONDUCTOR_DISPATCH_PERMISSION_MODE=bypass
-  dispatch "$backend" "do it"
+  dispatch "$backend" --task "do it"
   expect_args "$backend bypass" <<ARGS
 --add-dir
-$REG
+$DIR
 --agent
 k-developer
 --dangerously-skip-permissions
 -p
-do it
+$(prompt_for "$DIR" "$DONE")
 ARGS
-  if grep -q "WARNING: KONDUCTOR_DISPATCH_PERMISSION_MODE=bypass" "$WORKDIR/err"; then
-    log_pass "$backend bypass: prints a warning"
-  else
-    log_fail "$backend bypass: no warning on stderr"
-  fi
+  check "$backend bypass: prints a warning" 'grep -q "WARNING: KONDUCTOR_DISPATCH_PERMISSION_MODE=bypass" "$WORKDIR/err"'
 
   # "invalid" is the value the plugin's env hook writes for a mistyped option.
   for bad in yolo invalid Headless; do
     export KONDUCTOR_DISPATCH_PERMISSION_MODE="$bad"
-    dispatch "$backend" "do it"
-    if [[ "$RC" -ne 0 && ! -e "$PANE_OPENED" ]] && grep -q "must be interactive, headless or bypass" "$WORKDIR/err"; then
-      log_pass "$backend mode '$bad': refused before a pane opens"
-    else
-      log_fail "$backend mode '$bad': expected a non-zero exit and no pane (exit $RC)"
-      sed 's/^/    /' "$WORKDIR/err"
+    dispatch "$backend" --task "do it"
+    check "$backend mode '$bad': refused before a pane opens" \
+      '[[ "$RC" -ne 0 && ! -e "$PANE_OPENED" ]] && grep -q "must be interactive, headless or bypass" "$WORKDIR/err"'
+    if [[ "$bad" == invalid ]]; then
+      check "$backend mode 'invalid': points at the plugin option" \
+        "grep -q \"check the Claude Code plugin's dispatch_permission_mode option\" '$WORKDIR/err'"
     fi
   done
 
-  export KONDUCTOR_DISPATCH_PERMISSION_MODE=invalid
-  dispatch "$backend" "do it"
-  if grep -q "check the Claude Code plugin's dispatch_permission_mode option" "$WORKDIR/err"; then
-    log_pass "$backend mode 'invalid': points at the plugin option"
-  else
-    log_fail "$backend mode 'invalid': no hint about the plugin option"
-  fi
-
   export KONDUCTOR_DISPATCH_PERMISSION_MODE=headless
-  dispatch "$backend" "$HOSTILE"
-  expect_args "$backend hostile task arrives as one prompt argument" <<ARGS
---add-dir
-$REG
---agent
-k-developer
--p
---permission-mode
-acceptEdits
---permission-prompts
-none
- $HOSTILE
-ARGS
-  if [[ -e "$WORKDIR/pwned1" || -e "$WORKDIR/pwned2" ]]; then
-    log_fail "$backend hostile task: a substitution ran"
-  else
-    log_pass "$backend hostile task: nothing ran"
-  fi
-  rm -f "$WORKDIR/pwned1" "$WORKDIR/pwned2"
+  dispatch "$backend" --task "$HOSTILE"
+  check "$backend hostile task: lands verbatim in the brief" '[[ "$RC" -eq 0 && "$(cat "$DIR/task.md")" == "$HOSTILE" ]]'
+  check "$backend hostile task: the prompt argument is the fixed instruction" \
+    '[[ "$(tail -n 1 "$ARGS_RECORD")" == "$(prompt_for "$DIR" "$DONE")" ]]'
+  check "$backend hostile task: nothing ran" '[[ ! -e "$WORKDIR/pwned1" && ! -e "$WORKDIR/pwned2" ]]'
 
-  dispatch "$backend" "do it"
-  done_seen="$(cat "$DONE_RECORD" 2>/dev/null)"
-  if [[ "$done_seen" == "$REG/$backend-"*.done ]]; then
-    log_pass "$backend: the child sees KONDUCTOR_DONE_FILE"
-  else
-    log_fail "$backend: KONDUCTOR_DONE_FILE in the child was '${done_seen:-<none>}'"
-  fi
-  if grep -q '"summary": "shell fallback"' "$done_seen" 2>/dev/null; then
-    log_pass "$backend: the launcher writes .done after claude exits"
-  else
-    log_fail "$backend: no fallback .done file after claude exited"
-  fi
+  printf 'a brief\nwith "quotes" and $(no expansion)\n' > "$WORKDIR/brief.md"
+  dispatch "$backend" --brief "$WORKDIR/brief.md"
+  check "$backend --brief: the file is copied into the dispatch dir" 'cmp -s "$WORKDIR/brief.md" "$DIR/task.md"'
+  dispatch "$backend" --brief "$WORKDIR/brief.md" --task "x"
+  check "$backend: --brief and --task together are refused" '[[ "$RC" -ne 0 && ! -e "$PANE_OPENED" ]]'
+  dispatch "$backend" --brief "$WORKDIR/no-such-brief.md"
+  check "$backend: a missing --brief file is refused" '[[ "$RC" -ne 0 && ! -e "$PANE_OPENED" ]]'
+
+  # The .done contract.
+  dispatch "$backend" --task "do it"
+  check "$backend: the child sees KONDUCTOR_DONE_FILE" '[[ "$(cat "$DONE_RECORD")" == "$DONE" ]]'
+  check "$backend child never writes .done: the fallback records done and exit 0" \
+    '[[ "$(done_field status)" == done && "$(done_field summary)" == "shell fallback" && "$(done_field exit_code)" == 0 ]]'
 
   export MOCK_CHILD_WRITES_DONE=1
-  dispatch "$backend" "do it"
-  done_seen="$(cat "$DONE_RECORD" 2>/dev/null)"
-  if grep -q '"summary": "child wrote this"' "$done_seen" 2>/dev/null; then
-    log_pass "$backend: a .done the child wrote is kept"
-  else
-    log_fail "$backend: the fallback replaced the child's .done ($(cat "$done_seen" 2>/dev/null))"
-  fi
-  unset MOCK_CHILD_WRITES_DONE
+  dispatch "$backend" --task "do it"
+  check "$backend child writes .done then exits 0: its .done is kept and gains exit_code 0" \
+    '[[ "$(done_field status)" == done && "$(done_field summary)" == "child wrote this" && "$(done_field exit_code)" == 0 ]]'
 
-  # Kiro CLI ignores the mode, even an invalid one.
+  export MOCK_EXIT=3
+  dispatch "$backend" --task "do it"
+  check "$backend child writes .done then exits 3: the failure is recorded" \
+    '[[ "$(done_field status)" == error && "$(done_field summary)" == "child wrote this" && "$(done_field exit_code)" == 3 ]]'
+  unset MOCK_CHILD_WRITES_DONE
+  dispatch "$backend" --task "do it"
+  check "$backend child exits 3 without .done: the fallback records the error" \
+    '[[ "$(done_field status)" == error && "$(done_field exit_code)" == 3 ]]'
+  unset MOCK_EXIT
+
+  # Kiro CLI ignores the mode, even an invalid one, and gets the same files.
   unset CLAUDECODE
   export KONDUCTOR_DISPATCH_PERMISSION_MODE=yolo
-  dispatch "$backend" "do it"
+  dispatch "$backend" --task "do it"
   expect_args "$backend Kiro CLI ignores an invalid mode" <<ARGS
 chat
 --agent
 k-developer
 --no-interactive
 --trust-all-tools
-do it
+$(prompt_for "$DIR" "$DONE")
 ARGS
+  check "$backend Kiro CLI: the child sees KONDUCTOR_DONE_FILE, for its stop hook" '[[ "$(cat "$DONE_RECORD")" == "$DONE" ]]'
 done
 
 unset KONDUCTOR_DISPATCH_PERMISSION_MODE

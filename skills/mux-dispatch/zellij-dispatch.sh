@@ -4,17 +4,18 @@
 # Usage: bash zellij-dispatch.sh --agent <name> --task "description" [options]
 #
 # Modes: split right (default), --split down, --split stacked, --tab (new tab)
-# Flags: --name, --cwd, --close, --interactive
+# Flags: --name, --cwd, --close, --interactive, --brief <file> (instead of --task)
 #
 # Note: zellij does not support --env on new-pane (issue #3856).
 # MUX_WORKSPACE_ID is passed via the launcher script instead.
 set -euo pipefail
 
-AGENT="" TASK="" CWD="" NAME="" MODE="split" SPLIT_DIR="right" CLOSE=false INTERACTIVE=false
+AGENT="" TASK="" BRIEF="" CWD="" NAME="" MODE="split" SPLIT_DIR="right" CLOSE=false INTERACTIVE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --agent)       AGENT="$2"; shift 2 ;;
     --task)        TASK="$2"; shift 2 ;;
+    --brief)       BRIEF="$2"; shift 2 ;;
     --name)        NAME="$2"; shift 2 ;;
     --cwd)         CWD="$2"; shift 2 ;;
     --tab)         MODE="tab"; shift ;;
@@ -32,7 +33,16 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "$AGENT" ]]  && { echo "ERROR: --agent required" >&2; exit 1; }
-[[ -z "$TASK" ]]   && { echo "ERROR: --task required" >&2; exit 1; }
+if [[ -n "$TASK" && -n "$BRIEF" ]]; then
+  echo "ERROR: pass --task or --brief, not both" >&2; exit 1
+fi
+if [[ -n "$BRIEF" ]]; then
+  [[ -f "$BRIEF" && -r "$BRIEF" ]] || { echo "ERROR: --brief file not found or unreadable: $BRIEF" >&2; exit 1; }
+  TASK_TEXT="$(head -c 100 "$BRIEF")"
+else
+  [[ -z "$TASK" ]] && { echo "ERROR: --task or --brief required" >&2; exit 1; }
+  TASK_TEXT="$TASK"
+fi
 [[ -z "$CWD" ]]   && { echo "ERROR: --cwd required" >&2; exit 1; }
 [[ -z "${ZELLIJ:-}" ]] && { echo "ERROR: Not running inside a zellij session" >&2; exit 1; }
 # AGENT is the name from the orchestrator routing table (e.g. 'k-developer'),
@@ -64,10 +74,28 @@ if [[ -n "${CLAUDECODE:-}" ]]; then
       exit 1
       ;;
   esac
-  # claude reads a prompt that starts with '-' as an option; a leading space
-  # keeps it a prompt.
-  [[ "$TASK" == -* ]] && TASK=" $TASK"
 fi
+
+# Run by the launcher after the child exits. It keeps a .done the child
+# wrote itself (the completion signal) and adds the exit code, so an early
+# .done can't hide a crash: a non-zero exit always ends as status "error".
+RECORD_DONE_PY='import json, os, sys
+path, ws, code, default = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except (OSError, ValueError):
+    data = None
+if not isinstance(data, dict):
+    data = {"workspace_id": ws, "status": "done" if code == 0 else "error", "summary": default}
+data.setdefault("workspace_id", ws)
+data["exit_code"] = code
+if code != 0:
+    data["status"] = "error"
+tmp = path + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(data, f)
+os.replace(tmp, path)'
 
 # In a Claude Code plugin this skill sits at <plugin root>/skills/mux-dispatch/,
 # and Claude Code names the plugin's agents <plugin>:<agent>.
@@ -90,7 +118,7 @@ if [[ -z "$SESSION" ]]; then
 fi
 [[ -z "$SESSION" ]] && { echo "ERROR: no live zellij session found" >&2; exit 1; }
 
-LABEL="${NAME:-$AGENT: $(printf '%s' "$TASK" | head -c 40)}"
+LABEL="${NAME:-$AGENT: $(printf '%s' "$TASK_TEXT" | head -c 40 | tr '\n' ' ')}"
 # Fix: python3 uuid is portable across macOS and Linux (date +%s%N and md5sum are GNU-only)
 WS_ID="zellij-$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")"
 # KONDUCTOR_MUX_REGISTRY_DIR lets tests point at an isolated directory
@@ -108,7 +136,14 @@ mkdir -p "$REGISTRY_DIR"
 
 # Write launcher script — task stored in separate file to avoid all quoting issues
 LAUNCHER="$REGISTRY_DIR/launcher-${WS_ID}.sh"
-TASK_FILE="$REGISTRY_DIR/task-text-${WS_ID}.txt"
+# Each dispatch gets its own 0700 directory holding its brief, its result and
+# its .done. It is the only directory the child is granted; the shared
+# registry, the launchers and other dispatches stay outside that grant.
+DISPATCH_DIR="$REGISTRY_DIR/$WS_ID"
+mkdir -m 700 "$DISPATCH_DIR"
+TASK_FILE="$DISPATCH_DIR/task.md"
+RESULT_FILE="$DISPATCH_DIR/result.md"
+DONE_FILE="$DISPATCH_DIR/$WS_ID.done"
 
 if [[ "$INTERACTIVE" == true ]]; then
   FLAGS="--trust-all-tools"
@@ -116,8 +151,15 @@ else
   FLAGS="--no-interactive --trust-all-tools"
 fi
 
-# Write task text to its own file — no escaping needed
-printf '%s' "$TASK" > "$TASK_FILE"
+# The brief goes in its own file, so its text never passes through a shell.
+if [[ -n "$BRIEF" ]]; then
+  cp "$BRIEF" "$TASK_FILE"
+else
+  printf '%s' "$TASK" > "$TASK_FILE"
+fi
+# The child's prompt names its files by literal path: a headless child can't
+# run a shell to read them from the environment.
+PROMPT="Read and execute the task in $TASK_FILE. Write your full result to $RESULT_FILE. As your last step, write {\"status\": \"done\", \"summary\": \"<one line>\"} to $DONE_FILE, with \"error\" as the status if you could not finish."
 
 # Detect runtime at dispatch time (parent has the env var; child pane won't)
 if [[ -n "${CLAUDECODE:-}" ]]; then
@@ -137,7 +179,8 @@ fi
   # into the new pane/tab; the launcher script is the only forwarding path.
   [[ -n "${WORKTREE_PROVISION_CMD:-}" ]] && printf 'export WORKTREE_PROVISION_CMD=%q\n' "$WORKTREE_PROVISION_CMD"
   [[ -n "$CWD" ]] && printf 'cd %q || exit 1\n' "$CWD"
-  echo "TASK=\$(cat \"${TASK_FILE}\")"
+  printf 'TASK=%q\n' "$PROMPT"
+  printf 'export KONDUCTOR_DONE_FILE=%q\n' "$DONE_FILE"
   if [[ "$RUNTIME" == "claude" ]]; then
     # Claude Code: resolve agent prefix and invoke claude CLI. No package name
     # is hardcoded -- search for any locally-installed agent file ending in
@@ -201,11 +244,10 @@ fi
     printf '  echo "ERROR: claude agent %s not installed under ~/.claude/agents or in this plugin; not dispatching"\n' "$AGENT"
     printf '  EXIT_CODE=1\n'
     printf 'else\n'
-    printf '  export KONDUCTOR_DONE_FILE=%q\n' "${REGISTRY_DIR}/${WS_ID}.done"
-    # --add-dir lets the child read its brief and write its result under the
-    # registry dir, outside its working directory. It takes a list, so it goes
-    # before --agent and can never swallow the prompt.
-    printf '  claude --add-dir %q --agent "${PREFIX}%s"%s "$TASK"\n' "$REGISTRY_DIR" "$AGENT" "$CLAUDE_PERMISSION_ARGS"
+    # --add-dir grants this dispatch's own directory, outside the child's
+    # working directory. It takes a list, so it goes before --agent and can
+    # never swallow the prompt.
+    printf '  claude --add-dir %q --agent "${PREFIX}%s"%s "$TASK"\n' "$DISPATCH_DIR" "$AGENT" "$CLAUDE_PERMISSION_ARGS"
     echo '  EXIT_CODE=$?'
     printf 'fi\n'
   else
@@ -216,15 +258,11 @@ fi
     printf 'kiro-cli chat --agent %s %s "$TASK"\n' "$AGENT" "$FLAGS"
     echo "EXIT_CODE=\$?"
   fi
-  # Write .done only if hook hasn't already written it. Derived from
-  # $REGISTRY_DIR (already resolved from KONDUCTOR_MUX_REGISTRY_DIR at
-  # generation time above) so a test pointed at an isolated registry dir
-  # never leaks a .done file into the real /tmp/konductor-mux.
-  echo "DONE_FILE=\"${REGISTRY_DIR}/${WS_ID}.done\""
-  echo "if [ ! -f \"\$DONE_FILE\" ]; then"
-  printf '  mkdir -p %q\n' "$REGISTRY_DIR"
-  echo "  python3 -c \"import json; json.dump({'workspace_id': '${WS_ID}', 'status': 'done' if \$EXIT_CODE == 0 else 'error', 'summary': 'shell fallback'}, open('\$DONE_FILE', 'w'))\""
-  echo "fi"
+  # Record the exit: keep a .done the child or its hook wrote and add the exit
+  # code, or write a fallback .done. The path derives from $REGISTRY_DIR, so a
+  # test pointed at an isolated registry dir never touches /tmp/konductor-mux.
+  printf 'mkdir -p -m 700 %q\n' "$DISPATCH_DIR"
+  printf 'python3 -c %q %q %q "$EXIT_CODE" %q || true\n' "$RECORD_DONE_PY" "$DONE_FILE" "$WS_ID" "shell fallback"
   if [[ "$CLOSE" == true ]]; then
     echo "zellij action close-pane 2>/dev/null || true"
   fi
@@ -267,11 +305,11 @@ esac
 # read-modify-write below against concurrent dispatches from this script,
 # tmux-dispatch.sh, and mux-close-pane.sh -- all three read, mutate, and
 # rewrite the same $REGISTRY_FILE with no other coordination.
-TASK_SUMMARY=$(printf '%s' "$TASK" | head -c 100)
+TASK_SUMMARY=$(printf '%s' "$TASK_TEXT" | head -c 100)
 WS_ID="$WS_ID" PANE_ID="${PANE_ID:-unknown}" AGENT="$AGENT" \
 TASK_SUMMARY="$TASK_SUMMARY" MODE="$MODE" CWD="${CWD:-}" CLOSE="$CLOSE" \
 SESSION="$SESSION" \
-REGISTRY_FILE="$REGISTRY_FILE" REGISTRY_LOCK="$REGISTRY_LOCK" \
+REGISTRY_FILE="$REGISTRY_FILE" REGISTRY_LOCK="$REGISTRY_LOCK" DISPATCH_DIR="$DISPATCH_DIR" \
 DISPATCHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 python3 -c "
 import json, os, sys, fcntl, tempfile
@@ -284,6 +322,7 @@ entry = {
     'mode': os.environ['MODE'],
     'cwd': os.environ['CWD'],
     'backend': 'zellij',
+    'dispatch_dir': os.environ['DISPATCH_DIR'],
     'dispatched_at': os.environ['DISPATCHED_AT'],
     'close': os.environ.get('CLOSE', 'false') == 'true',
 }
@@ -343,4 +382,4 @@ elif [[ "$reg_write_rc" -ne 0 ]]; then
   echo "WARNING: Failed to record dispatch in registry" >&2
 fi
 
-echo "DISPATCHED workspace=$WS_ID pane=${PANE_ID:-unknown} session=$SESSION agent=$AGENT mode=$MODE backend=zellij"
+echo "DISPATCHED workspace=$WS_ID pane=${PANE_ID:-unknown} session=$SESSION agent=$AGENT mode=$MODE backend=zellij dispatch_dir=$DISPATCH_DIR done_file=$DONE_FILE"
