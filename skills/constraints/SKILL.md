@@ -59,7 +59,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (fix before proceeding; a review finding gets one fix, and one that survives the re-review blocks done until the user decides):**
+**IMPORTANT (fix before proceeding; a review finding gets one fix, and any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done until the user decides; when you made the artifact, a CRITICAL or IMPORTANT finding you would reject in triage also blocks done until the user rules on it):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts
@@ -69,3 +69,9 @@ See Engineering practices in the core rules: for an unverified claim that matter
 
 - Could improve comment coverage on complex logic
 - Could strengthen logging with additional context fields
+
+### House rules and review findings
+
+When a house rule (see the core rules' House rules section) and a konductor default ask for the same kind of review of the same artifact, run it once, through the mechanism the project names. A project's required code review replaces konductor's general code review only. Design review and security or adversarial review are separate kinds, and a project mechanism replaces the adversarial review only when it states that it covers security.
+
+When a reviewer enforces a konductor default that a house rule overrides, do not rework the finding. List each skipped finding in your result with the house rule that overrides it (its file and line, or its memory entry), so the user sees every finding that was not fixed. A skipped finding does not count against a review's pass and never goes into a fix brief.

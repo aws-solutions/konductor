@@ -55,8 +55,9 @@ pub(crate) enum HookOutput {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PersonaError {
     NotInstalled { install_root: PathBuf },
-    Unreadable { path: PathBuf },
-    TooLarge { path: PathBuf },
+    RulesUnreadable { path: PathBuf },
+    DigestUnreadable { path: PathBuf },
+    DigestTooLarge { path: PathBuf },
     PathTooLong { install_root: PathBuf },
 }
 
@@ -136,8 +137,17 @@ fn persona_reason(error: &PersonaError) -> String {
             "the coordinator rules file is not installed under {}; run konductor update",
             display_path(install_root, home.as_deref())
         ),
-        PersonaError::Unreadable { path } | PersonaError::TooLarge { path } => format!(
+        PersonaError::RulesUnreadable { path } => format!(
             "the coordinator rules file at {} could not be read; run konductor update",
+            display_path(path, home.as_deref())
+        ),
+        PersonaError::DigestUnreadable { path } => format!(
+            "the coordinator digest at {} could not be read; run konductor update",
+            display_path(path, home.as_deref())
+        ),
+        PersonaError::DigestTooLarge { path } => format!(
+            "the coordinator digest at {} is larger than the session-start hook budget; run \
+             konductor update",
             display_path(path, home.as_deref())
         ),
         PersonaError::PathTooLong { install_root } => format!(
@@ -253,21 +263,18 @@ fn load_persona(root: &Path) -> Result<String, PersonaError> {
     let digest =
         root.join(installed_file(&manifest, root, DIGEST_FILE_NAME).ok_or_else(not_installed)?);
     if !root.join(&rules).is_file() {
-        return Err(PersonaError::Unreadable {
+        return Err(PersonaError::RulesUnreadable {
             path: root.join(rules),
         });
     }
     let digest_text = with_trailing_newline(read_digest(&digest)?);
     if HEADER.len() + pointer_line(Path::new("")).len() + digest_text.len() > MAX_PERSONA_BYTES {
-        return Err(PersonaError::TooLarge { path: digest });
+        return Err(PersonaError::DigestTooLarge { path: digest });
     }
-    // Only the root is canonicalized, so the printed path keeps the
-    // `.kiro/context/` or `.konductor/context/` part rule 11 trusts.
-    let shown_root = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
-    let body = format!("{}{digest_text}", pointer_line(&shown_root.join(rules)));
+    let body = format!("{}{digest_text}", pointer_line(&root.join(rules)));
     if HEADER.len() + body.len() > MAX_PERSONA_BYTES {
         return Err(PersonaError::PathTooLong {
-            install_root: shown_root,
+            install_root: root.to_path_buf(),
         });
     }
     Ok(body)
@@ -285,7 +292,7 @@ fn pointer_line(rules: &Path) -> String {
 }
 
 fn read_digest(path: &Path) -> Result<String, PersonaError> {
-    let unreadable = || PersonaError::Unreadable {
+    let unreadable = || PersonaError::DigestUnreadable {
         path: path.to_path_buf(),
     };
     let file = std::fs::File::open(path).map_err(|_| unreadable())?;
@@ -294,7 +301,7 @@ fn read_digest(path: &Path) -> Result<String, PersonaError> {
         .read_to_string(&mut text)
         .map_err(|_| unreadable())?;
     if text.len() as u64 > MAX_DIGEST_FILE_BYTES {
-        return Err(PersonaError::TooLarge {
+        return Err(PersonaError::DigestTooLarge {
             path: path.to_path_buf(),
         });
     }
@@ -526,21 +533,32 @@ mod tests {
                     .to_string()
             )
         );
-        for error in [
-            PersonaError::Unreadable {
-                path: PathBuf::from("/srv/p/rules.md"),
-            },
-            PersonaError::TooLarge {
-                path: PathBuf::from("/srv/p/rules.md"),
-            },
+        for (error, expected) in [
+            (
+                PersonaError::RulesUnreadable {
+                    path: PathBuf::from("/srv/p/rules.md"),
+                },
+                "the coordinator rules file at /srv/p/rules.md could not be read; run \
+                 konductor update",
+            ),
+            (
+                PersonaError::DigestUnreadable {
+                    path: PathBuf::from("/srv/p/digest.md"),
+                },
+                "the coordinator digest at /srv/p/digest.md could not be read; run \
+                 konductor update",
+            ),
+            (
+                PersonaError::DigestTooLarge {
+                    path: PathBuf::from("/srv/p/digest.md"),
+                },
+                "the coordinator digest at /srv/p/digest.md is larger than the session-start \
+                 hook budget; run konductor update",
+            ),
         ] {
             assert_eq!(
                 decide(&coordinator, || Err(error.clone())),
-                HookOutput::Line(
-                    "Orchestration: auto (fallback: the coordinator rules file at \
-                     /srv/p/rules.md could not be read; run konductor update)"
-                        .to_string()
-                )
+                HookOutput::Line(format!("Orchestration: auto (fallback: {expected})"))
             );
         }
     }
@@ -654,9 +672,7 @@ mod tests {
             ],
         );
         let body = load_persona(&root).unwrap();
-        let rules =
-            std::fs::canonicalize(root.join(".kiro/context/k-orchestrator-routing-rules.md"))
-                .unwrap();
+        let rules = root.join(".kiro/context/k-orchestrator-routing-rules.md");
         assert!(body.starts_with(&format!(
             "Step 1, before any other action: read {} in full.",
             rules.display()
@@ -694,12 +710,18 @@ mod tests {
         );
         assert!(matches!(
             load_persona(&root),
-            Err(PersonaError::TooLarge { .. })
+            Err(PersonaError::DigestTooLarge { .. })
+        ));
+        std::fs::remove_file(root.join(".kiro/context/k-coordinator-digest.md")).unwrap();
+        std::fs::create_dir(root.join(".kiro/context/k-coordinator-digest.md")).unwrap();
+        assert!(matches!(
+            load_persona(&root),
+            Err(PersonaError::DigestUnreadable { .. })
         ));
         std::fs::remove_file(root.join(".kiro/context/k-orchestrator-routing-rules.md")).unwrap();
         assert!(matches!(
             load_persona(&root),
-            Err(PersonaError::Unreadable { .. })
+            Err(PersonaError::RulesUnreadable { .. })
         ));
         std::fs::remove_dir_all(&root).ok();
     }
@@ -767,7 +789,7 @@ mod tests {
         assert_eq!(
             error,
             PersonaError::PathTooLong {
-                install_root: std::fs::canonicalize(&root).unwrap()
+                install_root: root.clone()
             }
         );
         assert!(persona_reason(&error).starts_with("the install path is too long"));

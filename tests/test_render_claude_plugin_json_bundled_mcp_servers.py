@@ -236,3 +236,39 @@ def test_shipped_bundled_aws_proxy_is_exactly_pinned():
     assert (
         spec["dependencies"]["mcpRegistry"]["aws-mcp"]["args"][0] == "mcp-proxy-for-aws-cli==1.7.0"
     )
+
+
+def _render_with_template(tmp_path: Path, extra: dict) -> subprocess.CompletedProcess:
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "k-example.md").write_text("---\nname: k-example\n---\n", encoding="utf-8")
+    template = tmp_path / "template.json"
+    template.write_text(json.dumps({**json.loads(TEMPLATE.read_text(encoding="utf-8")), **extra}), encoding="utf-8")
+    version_file = tmp_path / "VERSION"
+    version_file.write_text("9.9.9\n", encoding="utf-8")
+    out = tmp_path / "plugin.json"
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--template",
+            str(template),
+            "--version-file",
+            str(version_file),
+            "--agents-dir",
+            str(agents_dir),
+            "--output",
+            str(out),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_template_with_agents_or_skills_is_rejected(tmp_path):
+    for key, value in (("agents", ["./agents/k-example.md"]), ("skills", ["./skills/"])):
+        case = tmp_path / key
+        case.mkdir()
+        result = _render_with_template(case, {key: value})
+        assert result.returncode == 1
+        assert f"sets `{key}`" in result.stderr
