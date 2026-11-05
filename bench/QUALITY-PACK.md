@@ -16,8 +16,13 @@ The pack never touches the default numbers. `qualityOfRun` (hidden tests, checks
 | Scenario coverage | tests, design docs | one end-to-end scenario with the requirement it traces to |
 | Threat model completeness | reviews, threat models | the sentence naming an asset, the most generic mitigation |
 | Design doc structure and accuracy | design docs | an API line and a data model line that disagree |
+| Change discipline | any code change, of any size | the added debug line, the skipped test, the hunk the task did not ask for |
+| Requirements clarity | requirements documents | a requirement with no check that can pass or fail, a vague term with no number |
+| Non-functional requirements across milestones | requirements, design documents | a performance target with no unit, a capacity target with no design mechanism |
+| Scalability and resilience of design | design documents | what limits the system first at 10 times the load, what happens when a dependency fails |
+| Task breakdown | plans | a task that uses an output no listed dependency provides, a task with no done check |
 
-`bench/criteria/quality-pack.json` holds 42 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
+`bench/criteria/quality-pack.json` holds 66 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
 
 ### Criteria
 
@@ -36,7 +41,7 @@ The pack never touches the default numbers. `qualityOfRun` (hidden tests, checks
 | doc-accuracy | Inline documentation | comments, readme | 3 | judge | Does every checkable statement in a comment or README match the code? |
 | doc-no-stale-or-noise | Inline documentation | comments | 1 | judge | Is any comment stale or a log of the edit? |
 | doc-concise | Inline documentation | comments | 1 | judge | Is each comment as short as its reason allows? |
-| cq-plain-typography | Documentation content quality | readme, guide, design, review, threat-model | 2 | program | Does the prose avoid em dashes, en dashes and curly quotation marks? |
+| cq-plain-typography | Documentation content quality | readme, guide, design, review, threat-model, requirements, plan | 2 | program | Does the prose avoid em dashes, en dashes and curly quotation marks? |
 | cq-no-filler-terms | Documentation content quality | same | 2 | program | Does the prose avoid the stock filler terms listed in the pack? |
 | cq-sentence-length | Documentation content quality | same | 1 | program | Are sentences short enough to read in one pass? |
 | cq-lead-with-point | Documentation content quality | same | 2 | judge | Does the document say what it is for before anything else? |
@@ -65,6 +70,38 @@ The pack never touches the default numbers. `qualityOfRun` (hidden tests, checks
 | des-conflicts-surfaced | Design doc structure and accuracy | design | 2 | judge | Are conflicts and gaps in the requirements named? |
 | des-technical-accuracy | Design doc structure and accuracy | design | 3 | judge | Are the technical claims true, and can the mechanisms work as written? |
 | des-testable-acceptance | Design doc structure and accuracy | design | 2 | judge | Can the stated checks be run and pass or fail? |
+| chg-no-leftovers | Change discipline | change | 2 | program | Does the change leave out debug output, focus markers, TODO notes and commented-out code? |
+| chg-tests-intact | Change discipline | change | 3 | program | Does the change keep every existing test running? |
+| chg-scoped | Change discipline | change | 2 | judge | Does the change touch only what the task asks for? |
+| req-unambiguous | Requirements clarity | requirements | 2 | program | Do the requirement statements avoid unquantified vague terms? |
+| req-testable | Requirements clarity | requirements | 3 | judge | Does each requirement come with a check that can pass or fail? |
+| req-failure-and-edge-cases | Requirements clarity | requirements | 2 | judge | Do the requirements say what happens on invalid input, a failed dependency and a boundary value? |
+| req-no-solution-leak | Requirements clarity | requirements | 2 | judge | Do the requirements say what the system does and leave out how? |
+| req-conflicts-and-gaps | Requirements clarity | requirements | 3 | judge | Are the conflicts, gaps and undefined terms in the request named? |
+| req-assumptions-and-questions | Requirements clarity | requirements | 2 | judge | Are assumptions and open questions stated with the effect of being wrong? |
+| req-prioritized | Requirements clarity | requirements | 1 | judge | Does each requirement carry a priority? |
+| req-traceable | Requirements clarity | requirements | 1 | judge | Does each requirement have an id and name the request statement it comes from? |
+| req-nfr-coverage | Non-functional requirements across milestones | requirements | 3 | judge | Is there a requirement for each non-functional need the request implies? |
+| req-nfr-measurable | Non-functional requirements across milestones | requirements | 3 | judge | Does each non-functional requirement state a number, a unit and the operation it applies to? |
+| des-nfr-addressed | Non-functional requirements across milestones | design | 3 | judge | Is each throughput, latency, availability or capacity target tied to a design mechanism? |
+| des-scale-bottleneck | Scalability and resilience of design | design | 2 | judge | Does the design say what limits it first when load or data grows? |
+| des-failure-modes | Scalability and resilience of design | design | 2 | judge | Does the design say what happens when a component or dependency fails? |
+| plan-independent-tasks | Task breakdown | plan | 3 | judge | Can each task be done without an output that no listed dependency provides? |
+| plan-done-criteria | Task breakdown | plan | 3 | judge | Does each task have a done check that can pass or fail? |
+| plan-dependencies-order | Task breakdown | plan | 3 | judge | Are the dependencies listed, the order consistent with them, and independent tasks marked parallel? |
+| plan-coverage | Task breakdown | plan | 3 | judge | Does every required part of the request map to a task, and every task to a part? |
+| plan-sizing | Task breakdown | plan | 2 | judge | Does each task cover one concern? |
+| plan-risks | Task breakdown | plan | 2 | judge | Are the main risks and unknowns listed with a mitigation or a spike? |
+| plan-test-tasks | Task breakdown | plan | 2 | judge | Does the plan schedule tests for the functional parts and for the non-functional requirements? |
+| plan-delegation-fit | Task breakdown | delegation | 2 | judge | Does each task name an owner whose type matches the work? |
+
+The change discipline, requirements, non-functional, design scalability and task breakdown groups follow the deliverables of the SDLC skills in this repository, so a run is rated at the milestones it produced.
+
+- Change discipline applies to a code change of any size, so a one-line fix is rated too. The leftovers and skipped-test checks are counted by a program; `chg-scoped` is judged against the task text.
+- Requirements clarity follows the requirements quality gates (EARS keywords, a check that can pass or fail, error cases, no implementation detail, a source for each requirement).
+- Non-functional requirements across milestones follows the non-functional requirements skill and the design review dimensions. `req-nfr-coverage` and `req-nfr-measurable` read the requirements document, and `des-nfr-addressed` reads the design: each throughput, latency, availability or capacity target needs a number and a mechanism that meets it. Test work for these requirements is rated in the plan (`plan-test-tasks`).
+- Scalability and resilience of design follows the scalability, performance and failure handling review areas: what limits the design first at 10 times the load, and what each dependency does when it fails.
+- Task breakdown follows the task decomposition and plan review skills. It rates independent tasks, a done check for each, explicit dependencies, coverage of the request, sizing and risks. It also rates tests for functional and non-functional parts, and owners that fit the work.
 
 A review document uses the threat model criteria that make sense for a code review (scope, mitigations, residual risk, grounding). `tm-stride` applies only to a document the task asked to be a threat model.
 
@@ -76,7 +113,9 @@ Documents, READMEs and guides are judged for content, not only for presence. Thr
 - `cq-no-filler-terms` counts whole-word matches of the `fillerTerms` list in the pack (words and phrases such as "delve", "seamless", "it is worth noting"). The list is data in the pack, so it can be reviewed and changed with a revision bump.
 - `cq-sentence-length` counts sentences over 35 words.
 
-Fenced code, inline code, tables and URLs are left out of the count. Only added lines count, so an existing README is not penalized for text the agent did not write. The evidence for a counted criterion is the list of hits, so a person can audit it. A term used as a literal feature name is a known false positive; read the evidence before acting on a low score.
+Three more criteria are counted from other text. `req-unambiguous` counts terms from the `vagueTerms` list ("fast", "as needed", "etc" and similar) in requirement sentences that hold no number. It reads table rows too. It skips sections about assumptions, questions, conflicts and the request itself, and lines that flag the term as vague. `chg-no-leftovers` counts added debug output, test focus markers, TODO and FIXME notes and commented-out code, using the `leftoverPatterns` groups. `chg-tests-intact` counts skip markers added to tests, test declarations removed with no replacement, and deleted test files, using `weakenedTestPatterns`. The three lists are data in the pack, so they can be reviewed and changed with a revision bump.
+
+For the prose counts, fenced code, inline code, tables and URLs are left out of the count. Only added lines count, so an existing README is not penalized for text the agent did not write. The evidence for a counted criterion is the list of hits, so a person can audit it. A term used as a literal feature name is a known false positive; read the evidence before acting on a low score.
 
 The other `cq-` criteria need reading and go to the judges. Does the document lead with its purpose? Does each instruction carry a command or example? Does it repeat itself? Are steps in order and instructions direct? Does the prose avoid formulaic patterns: a negative contrast, a padded list of three, a question the text answers itself, a chatbot phrase, or a closing paragraph that restates the opening?
 
@@ -86,12 +125,12 @@ One tell alone is weak evidence of machine-written text. The anchors therefore u
 
 The pack decides per run, from the task and from what the run produced.
 
-1. **Declared artifacts.** The task asks for some artifact types: code, tests, readme, guide, review, design, threat-model. `taskArtifacts` in the pack declares them for the lite tasks. For any other task they are inferred from the task class and prompt (a design task declares `design`, a prompt that says "add tests" declares `tests`, and so on).
+1. **Declared artifacts.** The task asks for some artifact types: code, tests, readme, guide, review, design, threat-model, requirements, plan. Two more are derived. `change` is declared by any task that declares `code`. `delegation` (the owner named for each plan task) is declared only by a task that lists it in `taskArtifacts`, so `plan-delegation-fit` applies to a task that asks for assignments and to no other. `taskArtifacts` in the pack declares them for the lite tasks. For any other task they are inferred from the task class and prompt (a design task declares `design`, a prompt that says "add tests" declares `tests`, and so on).
 2. **Present, absent or not judgeable.**
    - Declared and produced: the criteria for that type are judged.
    - Not declared: n/a with the reason "the task does not ask for X". Nothing is credited, even if the agent wrote it.
    - Declared and not produced (for example the task asks for tests and none were written): the criteria score fail without a model call, with the reason recorded. Leaving the artifact out is not rewarded with n/a. A missing README or missing comments is the exception, because the task's own checks cover a missing README and a run with no comments has nothing to be wrong.
-   - Code changes under 8 added lines are n/a ("too small to judge"), because a one-line fix has no structure to rate.
+   - Code changes under 8 added lines are n/a for the structure criteria ("too small to judge"), because a one-line fix has no structure to rate. The change discipline criteria have no size floor.
    - `comments` applies only when the agent added comments to changed code.
 3. **Only the agent's changes are graded.** The judge sees the usual bundle plus a diff of what the agent added (`+`) and removed (`-`). The prompt tells it to grade changed lines and treat the rest as context.
 
@@ -99,11 +138,20 @@ For the lite suite this gives:
 
 | Task | Declared | Pack criteria that apply |
 |---|---|---|
-| simple-fix-failing-test | code | code criteria only if the fix is 8 or more added lines; usually n/a |
+| simple-fix-failing-test | code | change discipline; the structure criteria only if the fix is 8 or more added lines |
 | simple-explain-file | guide | documentation content quality |
-| orch-input-validation | code, tests, readme | modularity, maintainability, inline docs (if comments), test quality, scenario coverage, documentation content quality for the README diff |
+| orch-input-validation | code, tests, readme | change discipline, modularity, maintainability, inline docs (if comments), test quality, scenario coverage, documentation content quality for the README diff |
 | review-inventory-security | review | threat model scope, mitigations, residual risk, grounding; documentation content quality |
-| design-hold-service | design | design doc criteria, scenario coverage, documentation content quality |
+| design-hold-service | design | design doc criteria, non-functional requirements (`des-nfr-addressed`), design scalability, scenario coverage, documentation content quality |
+
+The `requirements` suite (see `README-tasks.md`) adds two tasks:
+
+| Task | Declared | Pack criteria that apply |
+|---|---|---|
+| req-vague-request | requirements | requirements clarity, non-functional requirements (`req-nfr-coverage`, `req-nfr-measurable`), documentation content quality |
+| plan-multipart-feature | plan | task breakdown, documentation content quality |
+
+A declared type with no produced file scores fail on its criteria without a model call, as for the other types.
 
 ## How a criterion is judged
 
@@ -151,6 +199,8 @@ The wording of the criteria follows these public references.
 - Test smell research (tsDetect and the study of smells in LLM-generated unit tests): assertion roulette (many assertions in one test), tests with no assertion, magic numbers. Shapes `test-asserts-behavior`, `test-one-scenario`.
 - Wikipedia, "Signs of AI writing", and its caution that one tell proves nothing and a cluster is stronger. Shapes the written-content criteria and their count thresholds.
 - RULERS (locked rubrics and evidence-anchored scoring) and the AWS blog post on the rubric-based Nova judge. Both use fixed, versioned rubrics, a justification tied to each criterion, weights that sum to one, and scores mapped to 0 to 1. RULERS also checks evidence in code instead of trusting the judge. They shape the revision hash, the quote rule and the weighted dimension score.
+- INCOSE, "Guide to Writing Requirements", and the EARS syntax papers: the list of vague terms, one measurable statement per requirement, a check for each. Shapes `req-unambiguous`, `req-testable` and `req-traceable`.
+- The repository's own SDLC skills: requirements generation, non-functional requirements, design evaluation, task decomposition, plan review and test coverage analysis. Their quality gates are the source of the requirements, non-functional, design scalability and task breakdown criteria.
 - Anchored scales from rubric practice: a level is defined by what an observer can see, with counts where possible.
 
 ## Known limits

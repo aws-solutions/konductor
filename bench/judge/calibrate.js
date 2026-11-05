@@ -97,7 +97,7 @@ function exportSheet({ runDir, benchDir, n, seed, limits, explicitLimits = {}, r
 
 // The pack part of a sheet item: the criteria a person rates (the ones a judge is asked), with labels left empty.
 function packItem(thePack, task, built, redactions) {
-  const app = packLib.applicability(thePack, task, built.files);
+  const app = packLib.applicability(thePack, task, built.files, { deleted: built.deleted });
   const asked = app.criteria.filter((c) => c.status === 'judged').map((c) => c.criterion);
   return {
     id: thePack.id, revision: thePack.revision,

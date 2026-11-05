@@ -40,7 +40,7 @@ function planPack({ run, tasks, benchDir, limits, explicitLimits = {}, redaction
     const task = tasks.get(r.taskId);
     if (!task) throw new Error(`task "${r.taskId}" is not in ${benchDir}/tasks`);
     const bundle = buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions });
-    const app = pack.applicability(thePack, task, bundle.files);
+    const app = pack.applicability(thePack, task, bundle.files, { deleted: bundle.deleted });
     const count = (st) => app.criteria.filter((c) => c.status === st).length;
     plan.push({ run: r, task, bundle, app, judged: count('judged'), auto: count('auto'), absent: count('absent'), na: count('na'), calls: count('judged') ? judges.length : 0 });
   }

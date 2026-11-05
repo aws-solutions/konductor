@@ -6,7 +6,7 @@
 
 const path = require('node:path');
 const { changeStats } = require('./changes.js');
-const { proseOf } = require('./detect.js');
+const { proseOf, addedCodeOf, testDiffOf, DETECTOR_SOURCE } = require('./detect.js');
 
 const CODE_EXT = new Set(['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.py', '.java', '.go', '.rs', '.rb', '.sh', '.c', '.cc', '.cpp', '.h', '.cs', '.kt', '.swift', '.php']);
 // A missing README or missing comments is not a failure of the pack: the task's own checks cover a missing README.
@@ -41,8 +41,10 @@ function declaredArtifacts(pack, task) {
  * for it and nothing was produced), undeclared (the task did not ask), or unjudgeable with the reason (too small, no comments).
  * Nothing is credited for an undeclared type, whatever the agent wrote.
  */
-function artifactStates(pack, task, files) {
+function artifactStates(pack, task, files, { deleted = [] } = {}) {
   const declared = new Set(declaredArtifacts(pack, task));
+  // Any task that asks for code also asks for a change that keeps to the task, whatever its size.
+  if (declared.has('code')) declared.add('change');
   const stats = changeStats(files);
   const byRel = new Map(stats.map((s) => [s.rel, s]));
   const pick = (pred) => files.filter((f) => !f.binary && pred(f.rel));
@@ -55,7 +57,8 @@ function artifactStates(pack, task, files) {
   const addedComments = sum(codeFiles, 'addedComments');
   const min = pack.minAddedCodeLines ?? 0;
   const types = Object.keys(pack.artifactTypes);
-  const haveOf = { code: codeFiles, tests: testFiles, readme: readmeFiles, review: mdFiles, design: mdFiles, 'threat-model': mdFiles, guide: mdFiles };
+  const changed = [...codeFiles, ...testFiles].filter((f) => (byRel.get(f.rel)?.added ?? 0) + (byRel.get(f.rel)?.removed ?? 0) > 0);
+  const haveOf = { code: codeFiles, tests: testFiles, readme: readmeFiles, review: mdFiles, design: mdFiles, 'threat-model': mdFiles, guide: mdFiles, requirements: mdFiles, plan: mdFiles, delegation: mdFiles, change: changed };
   const state = {};
   for (const t of types) {
     if (t === 'comments') {
@@ -70,12 +73,12 @@ function artifactStates(pack, task, files) {
     else if (t === 'code' && addedCode < min) state[t] = { s: 'none', reason: `the code change is too small to judge (${addedCode} added code line(s), minimum ${min})` };
     else state[t] = { s: 'present' };
   }
-  return { declared: [...declared], state, stats, haveOf };
+  return { declared: [...declared], state, stats, haveOf, deletedTests: deleted.filter(isTestPath) };
 }
 
 /** Per criterion: judged (some applicable artifact is present), absent (asked for and not produced: scored fail) or na with a reason. */
-function applicability(pack, task, files) {
-  const art = artifactStates(pack, task, files);
+function applicability(pack, task, files, extra = {}) {
+  const art = artifactStates(pack, task, files, extra);
   const decide = (c) => {
     const states = c.appliesTo.map((t) => art.state[t]);
     if (states.some((x) => x.s === 'present')) return { status: c.auto ? 'auto' : 'judged' };
@@ -87,14 +90,17 @@ function applicability(pack, task, files) {
     const asked = undeclared.length ? [`the task does not ask for ${list}`] : [];
     return { status: 'na', reason: [...asked, ...other].join('; ') };
   };
-  return { ...art, criteria: pack.criteria.map((c) => ({ criterion: c, ...decide(c), ...(c.auto ? { prose: proseFor(art, c) } : {}) })) };
+  return { ...art, criteria: pack.criteria.map((c) => ({ criterion: c, ...decide(c), ...(c.auto ? { text: autoTextFor(art, c) } : {}) })) };
 }
 
-// Files whose prose a criterion reads: those of every artifact type it applies to that is present.
-function proseFor(art, criterion) {
+// The text a counted criterion reads, built from the files of every artifact type it applies to that is present.
+function autoTextFor(art, criterion) {
   const rels = new Set();
   for (const t of criterion.appliesTo) if (art.state[t]?.s === 'present') for (const f of art.haveOf[t] ?? []) rels.add(f.rel);
-  return proseOf(art.stats, [...rels]);
+  const source = DETECTOR_SOURCE[criterion.auto.detector];
+  if (source === 'added-code') return addedCodeOf(art.stats, [...rels]);
+  if (source === 'test-diff') return testDiffOf(art.stats, [...rels].filter(isTestPath), art.deletedTests);
+  return proseOf(art.stats, [...rels], { tables: source === 'prose-tables' });
 }
 
 module.exports = { isTestPath, isCode, isReadme, declaredArtifacts, artifactStates, applicability };

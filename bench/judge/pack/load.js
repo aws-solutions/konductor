@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { validate } = require('../../runner/lib/schema.js');
+const { DETECTOR_DATA } = require('./detect.js');
 
 const PACK_DIR = path.join(__dirname, '..', '..', 'criteria');
 const LEVELS = ['fail', 'partial', 'pass'];
@@ -37,7 +38,7 @@ const PACK_SCHEMA = {
           question: { type: 'string', minLength: 1 },
           levels: { type: 'object', required: LEVELS, properties: { fail: { type: 'string' }, partial: { type: 'string' }, pass: { type: 'string' } } },
           evidence: { type: 'object', required: ['minQuotes', 'quote'], properties: { minQuotes: { enum: [1, 2] }, quote: { type: 'string', minLength: 1 } } },
-          auto: { type: 'object', required: ['detector', 'partialAt', 'failAt'], properties: { detector: { enum: ['typography', 'filler', 'long-sentences'] }, partialAt: { type: 'integer', minimum: 1 }, failAt: { type: 'integer', minimum: 1 } } },
+          auto: { type: 'object', required: ['detector', 'partialAt', 'failAt'], properties: { detector: { enum: ['typography', 'filler', 'long-sentences', 'vague-terms', 'leftovers', 'weakened-tests'] }, partialAt: { type: 'integer', minimum: 1 }, failAt: { type: 'integer', minimum: 1 } } },
         },
       },
     },
@@ -47,6 +48,20 @@ const PACK_SCHEMA = {
 const sentences = (s) => (String(s).match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g) || []).map((x) => x.trim()).filter(Boolean);
 // "e.g." style stops are not used in anchors, so a plain sentence count is enough; text in quotes may hold a full stop.
 const sentenceCount = (s) => sentences(String(s).replace(/'[^']*'/g, 'Q')).length;
+
+const isTerms = (v) => Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === 'string' && x);
+const isRegexList = (v) => isTerms(v) && v.every((x) => { try { new RegExp(x, 'i'); return true; } catch { return false; } });
+
+// The list a detector reads must exist and compile: term lists are plain strings, pattern groups are lists of regular expressions.
+function dataProblems(detector, key, value) {
+  const at = `${key} (read by the ${detector} detector)`;
+  if (key === 'fillerTerms' || key === 'vagueTerms') return isTerms(value) ? [] : [`${at} must be a non-empty list of strings`];
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [`${at} must be an object of pattern lists`];
+  const groups = Object.entries(value);
+  if (!groups.length || groups.some(([, list]) => !isRegexList(list))) return [`${at}: every group must be a non-empty list of valid regular expressions`];
+  if (key === 'weakenedTestPatterns' && !(value.declaration && value.skip)) return [`${at} needs the groups declaration and skip`];
+  return [];
+}
 
 /** Every problem with a pack as messages; empty means it is usable. Includes the anchor lint. */
 function validatePack(pack) {
@@ -78,7 +93,10 @@ function validatePack(pack) {
       for (const [lv, n] of [['partial', c.auto.partialAt], ['fail', c.auto.failAt]]) if (!new RegExp(`\\b${n}\\b`).test(c.levels[lv])) out.push(`${at}: the ${lv} anchor does not state the threshold ${n} that the detector uses`);
     }
   }
-  if (pack.criteria.some((c) => c.auto?.detector === 'filler') && !(Array.isArray(pack.fillerTerms) && pack.fillerTerms.length)) out.push('fillerTerms is required by a filler detector');
+  for (const detector of new Set(pack.criteria.map((c) => c.auto?.detector).filter(Boolean))) {
+    const key = DETECTOR_DATA[detector];
+    if (key) out.push(...dataProblems(detector, key, pack[key]));
+  }
   for (const d of dims) if (!pack.criteria.some((c) => c.dimension === d)) out.push(`dimension ${d} has no criterion`);
   for (const [task, list] of Object.entries(pack.taskArtifacts || {})) {
     if (!Array.isArray(list)) out.push(`taskArtifacts.${task} must be an array`);

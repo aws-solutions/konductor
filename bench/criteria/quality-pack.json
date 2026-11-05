@@ -10,7 +10,11 @@
     "review": "A written code review or findings document.",
     "design": "A design document.",
     "threat-model": "A threat model document.",
-    "guide": "A user guide, technical guide, explanation or other prose document the agent wrote for a reader (a README is its own type)."
+    "guide": "A user guide, technical guide, explanation or other prose document the agent wrote for a reader (a README is its own type).",
+    "requirements": "A requirements document: numbered requirements with acceptance checks, non-functional requirements, assumptions and open questions.",
+    "plan": "A work breakdown or implementation plan: tasks, dependencies, done checks and risks. It is a plan, not an implementation.",
+    "delegation": "The owner (role or agent) named for each task of a plan. Declared only by a task that asks for assignments.",
+    "change": "Any change to product or test code, of any size. Judged for discipline, not for structure."
   },
   "minAddedCodeLines": 8,
   "taskArtifacts": {
@@ -64,6 +68,26 @@
     {
       "id": "design-doc",
       "label": "Design doc structure and accuracy"
+    },
+    {
+      "id": "change-discipline",
+      "label": "Change discipline"
+    },
+    {
+      "id": "requirements-clarity",
+      "label": "Requirements clarity"
+    },
+    {
+      "id": "nfr-chain",
+      "label": "Non-functional requirements across milestones"
+    },
+    {
+      "id": "design-scalability",
+      "label": "Scalability and resilience of design"
+    },
+    {
+      "id": "task-breakdown",
+      "label": "Task breakdown"
     }
   ],
   "criteria": [
@@ -310,7 +334,9 @@
         "guide",
         "design",
         "review",
-        "threat-model"
+        "threat-model",
+        "requirements",
+        "plan"
       ],
       "weight": 2,
       "question": "Does the prose avoid em dashes, en dashes and curly quotation marks?",
@@ -333,7 +359,9 @@
         "guide",
         "design",
         "review",
-        "threat-model"
+        "threat-model",
+        "requirements",
+        "plan"
       ],
       "weight": 2,
       "question": "Does the prose avoid the stock filler terms listed in the pack?",
@@ -356,7 +384,9 @@
         "guide",
         "design",
         "review",
-        "threat-model"
+        "threat-model",
+        "requirements",
+        "plan"
       ],
       "weight": 1,
       "question": "Are sentences short enough to read in one pass?",
@@ -379,7 +409,9 @@
         "guide",
         "design",
         "review",
-        "threat-model"
+        "threat-model",
+        "requirements",
+        "plan"
       ],
       "weight": 2,
       "question": "Does the document say what it is for before anything else?",
@@ -401,7 +433,9 @@
         "guide",
         "design",
         "review",
-        "threat-model"
+        "threat-model",
+        "requirements",
+        "plan"
       ],
       "weight": 2,
       "question": "Does each instruction or claim carry a command, path, value or example?",
@@ -423,7 +457,9 @@
         "guide",
         "design",
         "review",
-        "threat-model"
+        "threat-model",
+        "requirements",
+        "plan"
       ],
       "weight": 3,
       "question": "Does the prose read like a person wrote it, without formulaic patterns?",
@@ -445,7 +481,9 @@
         "guide",
         "design",
         "review",
-        "threat-model"
+        "threat-model",
+        "requirements",
+        "plan"
       ],
       "weight": 2,
       "question": "Does any sentence or section repeat something already said?",
@@ -861,6 +899,441 @@
         "minQuotes": 1,
         "quote": "One check with its expected outcome (pass), or the vaguest check (partial), or the test section heading (fail)."
       }
+    },
+    {
+      "id": "chg-no-leftovers",
+      "dimension": "change-discipline",
+      "appliesTo": [
+        "change"
+      ],
+      "weight": 2,
+      "question": "Does the change leave out debug output, focus markers, TODO notes and commented-out code?",
+      "levels": {
+        "fail": "3 or more added lines are debug output, test focus markers, TODO or FIXME notes, or commented-out code.",
+        "partial": "1 or 2 added lines are debug output, test focus markers, TODO or FIXME notes, or commented-out code.",
+        "pass": "No added line is debug output, a test focus marker, a TODO or FIXME note, or commented-out code."
+      },
+      "auto": {
+        "detector": "leftovers",
+        "partialAt": 1,
+        "failAt": 3
+      }
+    },
+    {
+      "id": "chg-tests-intact",
+      "dimension": "change-discipline",
+      "appliesTo": [
+        "change"
+      ],
+      "weight": 3,
+      "question": "Does the change keep every existing test running?",
+      "levels": {
+        "fail": "2 or more existing tests are skipped, deleted or removed from a test file.",
+        "partial": "1 existing test is skipped, deleted or removed from a test file.",
+        "pass": "No existing test is skipped, deleted or removed from a test file."
+      },
+      "auto": {
+        "detector": "weakened-tests",
+        "partialAt": 1,
+        "failAt": 2
+      }
+    },
+    {
+      "id": "chg-scoped",
+      "dimension": "change-discipline",
+      "appliesTo": [
+        "change"
+      ],
+      "weight": 2,
+      "question": "Does the change touch only what the task asks for?",
+      "levels": {
+        "fail": "3 or more changed files or hunks serve nothing in the task text, such as a rename, a reformat or an extra feature.",
+        "partial": "1 or 2 changed files or hunks serve nothing in the task text.",
+        "pass": "Every changed file and hunk serves a statement in the task text."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The hunk or file header that serves the task least (fail or partial), or the hunk that carries the main change (pass)."
+      }
+    },
+    {
+      "id": "req-unambiguous",
+      "dimension": "requirements-clarity",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 2,
+      "question": "Do the requirement statements avoid unquantified vague terms?",
+      "levels": {
+        "fail": "3 or more uses of a term from the vague-term list in the pack, in requirement sentences that hold no number.",
+        "partial": "1 or 2 uses of a term from the vague-term list in the pack, in requirement sentences that hold no number.",
+        "pass": "No requirement sentence uses a term from the vague-term list in the pack without a number in the same sentence."
+      },
+      "auto": {
+        "detector": "vague-terms",
+        "partialAt": 1,
+        "failAt": 3
+      }
+    },
+    {
+      "id": "req-testable",
+      "dimension": "requirements-clarity",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 3,
+      "question": "Does each requirement come with a check that can pass or fail?",
+      "levels": {
+        "fail": "More than half of the requirements have no check that can pass or fail, or the document has no acceptance criteria.",
+        "partial": "At least 1 requirement, and at most half of them, has no check that can pass or fail.",
+        "pass": "Every requirement has a check written as WHEN/THEN/SHALL, Given/When/Then or a measurable threshold."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The requirement with the weakest or missing check (fail or partial), or one requirement with its check (pass)."
+      }
+    },
+    {
+      "id": "req-failure-and-edge-cases",
+      "dimension": "requirements-clarity",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 2,
+      "question": "Do the requirements say what happens on invalid input, a failed dependency and a boundary value?",
+      "levels": {
+        "fail": "No requirement states a response to invalid input, a failed dependency or a boundary value.",
+        "partial": "1 or 2 requirements state a response to invalid input, a failed dependency or a boundary value.",
+        "pass": "At least 3 requirements state a response to invalid input, a failed dependency or a boundary value, for example IF the file is empty THEN reject it with an error."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One failure or boundary requirement (pass or partial), or the heading where error handling would be (fail)."
+      }
+    },
+    {
+      "id": "req-no-solution-leak",
+      "dimension": "requirements-clarity",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 2,
+      "question": "Do the requirements say what the system does and leave out how?",
+      "levels": {
+        "fail": "3 or more requirements prescribe a named library, table, class, file or algorithm.",
+        "partial": "1 or 2 requirements prescribe a named library, table, class, file or algorithm.",
+        "pass": "Every requirement states observable behavior or a limit, with no named library, table, class, file or algorithm."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The requirement that names an implementation (fail or partial), or the longest requirement (pass)."
+      }
+    },
+    {
+      "id": "req-conflicts-and-gaps",
+      "dimension": "requirements-clarity",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 3,
+      "question": "Are the conflicts, gaps and undefined terms in the request named?",
+      "levels": {
+        "fail": "A conflict that the answer key lists is resolved silently, or fewer than half of the key items are named.",
+        "partial": "At least half of the key items are named, but a named conflict has no stated resolution and no open decision.",
+        "pass": "Every key item is named with the request words it comes from, and each conflict states both statements and the resolution chosen or the decision needed."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The sentence that names a conflict (pass or partial), or the sentence that silently picks one side (fail)."
+      }
+    },
+    {
+      "id": "req-assumptions-and-questions",
+      "dimension": "requirements-clarity",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 2,
+      "question": "Are assumptions and open questions stated with the effect of being wrong?",
+      "levels": {
+        "fail": "The document states no assumptions and no open questions.",
+        "partial": "Assumptions or open questions are listed, and fewer than half of them name the effect on the requirements if the assumption is wrong.",
+        "pass": "At least 3 assumptions or open questions are listed, and each names the effect if it is wrong or the decision it blocks."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One assumption with its effect (pass), one with no effect (partial), or the heading where assumptions would be (fail)."
+      }
+    },
+    {
+      "id": "req-prioritized",
+      "dimension": "requirements-clarity",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 1,
+      "question": "Does each requirement carry a priority?",
+      "levels": {
+        "fail": "No requirement carries a priority.",
+        "partial": "At least 1 requirement carries a priority and at least 1 does not.",
+        "pass": "Every requirement carries a priority from one scheme used throughout, such as MUST/SHOULD/COULD or P0 to P3."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One requirement with its priority (pass or partial), or the first requirement (fail)."
+      }
+    },
+    {
+      "id": "req-traceable",
+      "dimension": "requirements-clarity",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 1,
+      "question": "Does each requirement have an id and name the request statement it comes from?",
+      "levels": {
+        "fail": "At least half of the requirements have no unique id.",
+        "partial": "Fewer than half of the requirements have no unique id, or at least 1 requirement names no source statement in the request.",
+        "pass": "Every requirement has a unique id and names the request statement it comes from."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One requirement with its id and source (pass), or a requirement with no id or no source (fail or partial)."
+      }
+    },
+    {
+      "id": "req-nfr-coverage",
+      "dimension": "nfr-chain",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 3,
+      "question": "Is there a requirement for each non-functional need the request implies?",
+      "levels": {
+        "fail": "None of the non-functional needs that the answer key lists or the request implies (performance, capacity, availability, security, observability) has a requirement.",
+        "partial": "At least 1 listed non-functional need has a requirement and at least 1 does not.",
+        "pass": "Every listed non-functional need has its own requirement, placed under a non-functional heading or marked as non-functional."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The non-functional requirement for a listed need (pass or partial), or the heading where it would be (fail)."
+      }
+    },
+    {
+      "id": "req-nfr-measurable",
+      "dimension": "nfr-chain",
+      "appliesTo": [
+        "requirements"
+      ],
+      "weight": 3,
+      "question": "Does each non-functional requirement state a number, a unit and the operation it applies to?",
+      "levels": {
+        "fail": "At least half of the non-functional requirements state no number with a unit, or the document has none.",
+        "partial": "Fewer than half of the non-functional requirements state no number with a unit, or at least 1 names no operation or scope.",
+        "pass": "Every non-functional requirement states a number with a unit and the operation or scope it applies to, for example p95 under 300 ms for an upload at 40 stores in 15 minutes."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The weakest non-functional requirement (fail or partial), or the strongest one (pass)."
+      }
+    },
+    {
+      "id": "des-nfr-addressed",
+      "dimension": "nfr-chain",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 3,
+      "question": "Is each throughput, latency, availability or capacity target tied to a design mechanism?",
+      "levels": {
+        "fail": "No throughput, latency, availability or capacity target is tied to a design mechanism.",
+        "partial": "At least 1 such target is tied to a mechanism and at least 1 target in the requirements or answer key has none.",
+        "pass": "Every such target in the requirements or answer key is tied to a named mechanism (index, queue, lock, cache, limit or replica) with a reason or estimate that it meets the number. A target the requirements leave undefined is named as undefined and given a proposed value."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The sentence that ties a target to a mechanism (pass or partial), or the target with no mechanism (fail)."
+      }
+    },
+    {
+      "id": "des-scale-bottleneck",
+      "dimension": "design-scalability",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 2,
+      "question": "Does the design say what limits it first when load or data grows?",
+      "levels": {
+        "fail": "The document does not say what happens when load or data grows beyond the stated figures.",
+        "partial": "The document names a limit or bottleneck, and gives no mitigation, no number or no signal that shows the limit is reached.",
+        "pass": "The document names the component that limits the system first at 10 times the stated load or at the stated limit, the number at which it limits, and the mitigation or the accepted limit."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The sentence that names the first bottleneck (pass or partial), or the sentence that assumes unlimited growth (fail)."
+      }
+    },
+    {
+      "id": "des-failure-modes",
+      "dimension": "design-scalability",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 2,
+      "question": "Does the design say what happens when a component or dependency fails?",
+      "levels": {
+        "fail": "The document does not say what happens when any component or external dependency fails.",
+        "partial": "Failure behavior is stated for some dependencies and at least 1 dependency in the design has none.",
+        "pass": "Every dependency in the design (store, queue, notifier, external call) has a stated failure behavior such as retry, timeout, fallback, degraded mode or fail closed, and what the caller sees."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One dependency with its failure behavior (pass or partial), or the dependency with none (fail)."
+      }
+    },
+    {
+      "id": "plan-independent-tasks",
+      "dimension": "task-breakdown",
+      "appliesTo": [
+        "plan"
+      ],
+      "weight": 3,
+      "question": "Can each task be done without an output that no listed dependency provides?",
+      "levels": {
+        "fail": "3 or more tasks use an output of another task that is not listed among their dependencies.",
+        "partial": "1 or 2 tasks use an output of another task that is not listed among their dependencies.",
+        "pass": "No task uses an output of another task that is not listed among its dependencies."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The task text that uses an unlisted output (fail or partial), or one task with its dependencies (pass)."
+      }
+    },
+    {
+      "id": "plan-done-criteria",
+      "dimension": "task-breakdown",
+      "appliesTo": [
+        "plan"
+      ],
+      "weight": 3,
+      "question": "Does each task have a done check that can pass or fail?",
+      "levels": {
+        "fail": "More than half of the tasks have no done check that can pass or fail.",
+        "partial": "At least 1 task, and at most half of them, has no done check that can pass or fail.",
+        "pass": "Every task has a done check that can pass or fail, such as a command, a test name or an observable result."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The task with the weakest or missing check (fail or partial), or one task with its check (pass)."
+      }
+    },
+    {
+      "id": "plan-dependencies-order",
+      "dimension": "task-breakdown",
+      "appliesTo": [
+        "plan"
+      ],
+      "weight": 3,
+      "question": "Are the dependencies listed, the order consistent with them, and independent tasks marked parallel?",
+      "levels": {
+        "fail": "Dependencies are not listed, or the task order contradicts a dependency that the answer key lists.",
+        "partial": "Dependencies are listed, and at least 1 edge from the answer key is missing or no independent task is marked parallel.",
+        "pass": "Every dependency edge from the answer key is listed, the task order follows them, and each independent task is marked parallel or grouped in one phase."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One dependency line (pass or partial), or the task order line that contradicts an edge (fail)."
+      }
+    },
+    {
+      "id": "plan-coverage",
+      "dimension": "task-breakdown",
+      "appliesTo": [
+        "plan"
+      ],
+      "weight": 3,
+      "question": "Does every required part of the request map to a task, and every task to a part?",
+      "levels": {
+        "fail": "2 or more required parts from the answer key are covered by no task.",
+        "partial": "1 required part is covered by no task, or 2 or more tasks serve no required part.",
+        "pass": "Every required part is covered by at least 1 task and at most 1 task serves no required part."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The task that covers a required part (pass or partial), or the task that serves no part (partial or fail)."
+      }
+    },
+    {
+      "id": "plan-sizing",
+      "dimension": "task-breakdown",
+      "appliesTo": [
+        "plan"
+      ],
+      "weight": 2,
+      "question": "Does each task cover one concern?",
+      "levels": {
+        "fail": "3 or more tasks are described in one line and span several concerns, such as build the API, add validation and update the docs.",
+        "partial": "1 or 2 tasks are described in one line and span several concerns.",
+        "pass": "No task is described in one line while spanning several concerns, or a task that spans several concerns is split into listed subtasks."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The task line that spans the most concerns (fail or partial), or the longest task line (pass)."
+      }
+    },
+    {
+      "id": "plan-risks",
+      "dimension": "task-breakdown",
+      "appliesTo": [
+        "plan"
+      ],
+      "weight": 2,
+      "question": "Are the main risks and unknowns listed with a mitigation or a spike?",
+      "levels": {
+        "fail": "The plan lists no risks and no unknowns.",
+        "partial": "Risks or unknowns are listed, and fewer than half have a mitigation or a spike task, or a risk from the answer key is missing.",
+        "pass": "At least 2 risks or unknowns are listed, each with a mitigation or a spike task, and every risk from the answer key is among them."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "One risk with its mitigation (pass or partial), or the heading where risks would be (fail)."
+      }
+    },
+    {
+      "id": "plan-test-tasks",
+      "dimension": "task-breakdown",
+      "appliesTo": [
+        "plan"
+      ],
+      "weight": 2,
+      "question": "Does the plan schedule tests for the functional parts and for the non-functional requirements?",
+      "levels": {
+        "fail": "No task and no done check in the plan runs a test.",
+        "partial": "Tests are planned for some functional parts, or for all of them with no test for a non-functional requirement that the answer key lists.",
+        "pass": "Tests are planned for every functional part, and each non-functional requirement that the answer key lists has a task or done check that tests it."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The test task or done check for a non-functional requirement (pass), the functional test task (partial), or the first done check (fail)."
+      }
+    },
+    {
+      "id": "plan-delegation-fit",
+      "dimension": "task-breakdown",
+      "appliesTo": [
+        "delegation"
+      ],
+      "weight": 2,
+      "question": "Does each task name an owner whose type matches the work?",
+      "levels": {
+        "fail": "2 or more tasks name an owner whose type does not match the work, such as a documentation role given a schema migration.",
+        "partial": "1 task names an owner whose type does not match the work, or at least 1 task names no owner.",
+        "pass": "Every task names an owner (a role or an agent), and the type of each owner matches the work."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The task line with its owner (pass), or the mismatched or ownerless task (fail or partial)."
+      }
     }
   ],
   "fillerTerms": [
@@ -909,5 +1382,111 @@
     "feel free to",
     "in conclusion",
     "key takeaway"
-  ]
+  ],
+  "vagueTerms": [
+    "fast",
+    "faster",
+    "quick",
+    "quickly",
+    "slow",
+    "responsive",
+    "real-time",
+    "realtime",
+    "instant",
+    "instantly",
+    "immediately",
+    "soon",
+    "promptly",
+    "timely",
+    "easy",
+    "easily",
+    "simple",
+    "simply",
+    "intuitive",
+    "user-friendly",
+    "friendly",
+    "seamless",
+    "seamlessly",
+    "flexible",
+    "scalable",
+    "robust",
+    "reliable",
+    "secure",
+    "efficient",
+    "efficiently",
+    "effective",
+    "effectively",
+    "modern",
+    "appropriate",
+    "appropriately",
+    "adequate",
+    "adequately",
+    "reasonable",
+    "reasonably",
+    "sufficient",
+    "sufficiently",
+    "as needed",
+    "as necessary",
+    "as required",
+    "as appropriate",
+    "if needed",
+    "where possible",
+    "when possible",
+    "if possible",
+    "etc",
+    "and so on",
+    "and more",
+    "and others",
+    "but not limited to",
+    "minimal",
+    "minimum",
+    "normal",
+    "normally",
+    "typical",
+    "typically",
+    "recent",
+    "recently",
+    "frequent",
+    "frequently",
+    "regularly",
+    "several",
+    "various"
+  ],
+  "leftoverPatterns": {
+    "debug": [
+      "console\\.(?:log|debug|trace)\\s*\\(",
+      "\\bdebugger\\b",
+      "\\bprint\\s*\\(\\s*[\"']DEBUG",
+      "\\bpdb\\.set_trace\\s*\\(",
+      "\\bbreakpoint\\s*\\("
+    ],
+    "focus": [
+      "\\b(?:it|test|describe)\\.only\\s*\\("
+    ],
+    "notes": [
+      "(?:\\/\\/|#|\\/\\*|\\*)\\s*(?:TODO|FIXME|XXX|HACK)\\b"
+    ],
+    "commentedCode": [
+      "^\\s*(?:\\/\\/|#)\\s*(?:const|let|var|if|for|while|return|function|import|require|await|def|class)\\b",
+      "^\\s*\\/\\/.*[;{}]\\s*$"
+    ]
+  },
+  "weakenedTestPatterns": {
+    "declaration": [
+      "^\\s*(?:it|test)\\s*\\(",
+      "^\\s*def\\s+test_",
+      "^\\s*@Test\\b",
+      "^\\s*func\\s+Test"
+    ],
+    "skip": [
+      "\\b(?:it|test|describe)\\.(?:skip|todo)\\s*\\(",
+      "\\b(?:xit|xtest|xdescribe)\\s*\\(",
+      "\\bt\\.skip\\s*\\(",
+      "\\{\\s*skip\\s*:",
+      "@pytest\\.mark\\.skip",
+      "@Ignore\\b",
+      "@Disabled\\b",
+      "unittest\\.skip"
+    ]
+  }
 }
