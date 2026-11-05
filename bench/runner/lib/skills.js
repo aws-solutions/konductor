@@ -6,7 +6,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { SUBAGENT_TOOL, subagentTargets, toolNameOf, isV3Call, skillsCallOf, mcpInputOf } = require('./stream.js');
+const { SUBAGENT_TOOL, subagentTargets, toolNameOf, isV3Call, skillsCallOf, skillResourceCallOf, mcpInputOf } = require('./stream.js');
 const { frontmatter, fmValue } = require('./frontmatter.js');
 const claudeParse = require('./harness/claude-code-parse.js');
 
@@ -39,7 +39,12 @@ function kiroErrored(call) {
   return call.status === 'failed' || (call.output?.items ?? []).some((i) => i?.Json?.isError === true);
 }
 
-// Skills-server calls in a kiro stream, keyed by tool call id. The stream carries every session, subagents included.
+// Name a failed skill call is listed under when the stream recorded no arguments for it, as for a bare deferred
+// v3 get_skill call. The model may have passed a name; the stream just does not say.
+const ARGS_NOT_RECORDED = '(args not recorded)';
+
+// Skills-server calls in a kiro stream, keyed by tool call id, plus v3 load_resource calls with a skill:: id (tool
+// 'load_resource', the skill name as input.name). The stream carries every session, subagents included.
 function kiroCalls(events) {
   const calls = new Map();
   let anon = 0;
@@ -47,6 +52,12 @@ function kiroCalls(events) {
     const u = ev?.type === 'sessionUpdate' ? ev.data?.update : null;
     if (!u) continue;
     if (u.sessionUpdate === 'tool_call') {
+      const rc = skillResourceCallOf(u);
+      if (rc) {
+        const id = u.toolCallId ?? `anon-${anon++}`;
+        calls.set(id, { ...(calls.get(id) ?? { output: null, status: null }), tool: 'load_resource', input: { name: rc.name } });
+        continue;
+      }
       const sc = skillsCallOf(u);
       if (!sc) continue;
       const id = u.toolCallId ?? `anon-${anon++}`;
@@ -56,7 +67,7 @@ function kiroCalls(events) {
     } else if (u.sessionUpdate === 'tool_call_update') {
       const c = calls.get(u.toolCallId);
       if (!c) continue;
-      if (u.rawInput && typeof u.rawInput === 'object') c.input = { ...c.input, ...mcpInputOf(u.rawInput) };
+      if (c.tool !== 'load_resource' && u.rawInput && typeof u.rawInput === 'object') c.input = { ...c.input, ...mcpInputOf(u.rawInput) };
       if (u.rawOutput !== undefined) c.output = u.rawOutput;
       if (u.status) c.status = u.status;
     }
@@ -135,11 +146,15 @@ function firstDecisionOf(events, runtime) {
  * What a run loaded, from its event stream. `runtime` is 'kiro-cli' or 'opencode'.
  * A load counts only when the call returned text; errors, empty results and calls with no answer are failures.
  * An empty find_skills result is an answer, counted in findSkillsEmpty, not a failure.
+ * A v3 load_resource call with a skill:: id that the engine refused is a failed skill call too, and names the skill
+ * as requested. One that succeeded loaded a native resource (an SOP), not a server skill, and is not counted.
+ * `failedCalls` lists each failed get_skill or load_resource call as { tool, name }, with ARGS_NOT_RECORDED as the
+ * name when the stream recorded no arguments.
  */
 function extractSkills(events, runtime) {
   // Both report a loaded skill's text on the call and a status; the kiro-cli path reads a skills-server answer instead.
   const oc = runtime === 'opencode' || runtime === 'claude-code';
-  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, bytesByName: {}, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], firstDecision: firstDecisionOf(events, runtime) };
+  const out = { runtime, skillsLoaded: [], skillQueries: [], skillBytesLoaded: 0, bytesByName: {}, skillCallsFailed: 0, findSkillsCalls: 0, findSkillsEmpty: 0, findSkillsBytes: 0, requested: [], failedCalls: [], firstDecision: firstDecisionOf(events, runtime) };
   const byName = new Map();
   const requested = new Set();
   const load = (rawName, via, bytes) => {
@@ -162,14 +177,25 @@ function extractSkills(events, runtime) {
       if (!texts.length || (Array.isArray(parsed) && parsed.length === 0)) out.findSkillsEmpty++;
       continue;
     }
+    if (c.tool === 'load_resource') {
+      if (c.status === 'failed' || kiroErrored(c)) {
+        out.skillCallsFailed++;
+        out.failedCalls.push({ tool: 'load_resource', name: c.input.name });
+        requested.add(c.input.name);
+      }
+      continue;
+    }
     const raw = c.input?.name ?? c.input?.skill_name;
     const name = typeof raw === 'string' && raw.trim() ? raw.trim() : null;
     if (name) requested.add(name);
     const texts = oc ? (c.text ? [c.text] : []) : textsOf(c.output);
     const bytes = bytesOfTexts(texts);
     const failed = !name || bytes === 0 || (oc ? c.status === 'error' : c.output == null || kiroErrored(c));
-    if (failed) out.skillCallsFailed++;
-    else load(name, c.via ?? (oc ? 'skill-tool' : 'get_skill'), bytes);
+    if (failed) {
+      out.skillCallsFailed++;
+      const recorded = Object.keys(c.input ?? {}).some((k) => !k.startsWith('_'));
+      out.failedCalls.push({ tool: c.tool, name: name ?? (recorded ? null : ARGS_NOT_RECORDED) });
+    } else load(name, c.via ?? (oc ? 'skill-tool' : 'get_skill'), bytes);
   }
   out.skillsLoaded = [...byName.values()];
   out.requested = [...requested];
@@ -407,7 +433,7 @@ function resultFields({ extraction, info, task, arm }) {
 }
 
 module.exports = {
-  SKILL_FIELDS, extractSkills, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
+  ARGS_NOT_RECORDED, SKILL_FIELDS, extractSkills, catalogFrom, catalogFromListing, catalogFromAgentJson, isSopName, listCatalogDir, targetOutcome,
   startupKiro, startupOpencode, builtinStartup, kiroSkillInfo, opencodeSkillInfo, claudeSkillInfo, captureSkills, resultFields, normalizeUri, has,
   firstDecisionOf, identifiedSops, capInvocationOf,
 };

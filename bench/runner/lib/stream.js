@@ -85,6 +85,18 @@ function skillsCallOf(update) {
   return typeof update?.title === 'string' && SKILL_TOOLS.has(update.title) ? { tool: update.title, deferred: true } : null;
 }
 
+// Engine v3's load_resource takes an id. Skills on the konductor server are not resources, so a call with a
+// skill::<name> id is a misdirected attempt to load that skill. SOPs are real skill:: resources and load fine.
+// A skill::<server>::<tool> id is a misnamed tool schema load, not a skill attempt.
+const SKILL_RESOURCE_ID = /^skill::([^:\s]+)$/;
+
+/** { name } of a v3 load_resource call whose id is skill::<name>, else null. v2 has no load_resource. */
+function skillResourceCallOf(update) {
+  if (!isV3Call(update) || toolNameOf(update) !== 'load_resource') return null;
+  const id = typeof update?.rawInput?.id === 'string' ? SKILL_RESOURCE_ID.exec(update.rawInput.id) : null;
+  return id ? { name: id[1] } : null;
+}
+
 // The arguments of an MCP tool call. v3 nests them under rawInput.arguments next to the tool id; v2 sends them flat.
 function mcpInputOf(rawInput) {
   if (!rawInput || typeof rawInput !== 'object' || typeof rawInput.tool_id !== 'string') return rawInput;
@@ -368,4 +380,4 @@ function sessionModels(session) {
   return (session?.session_state?.conversation_metadata?.user_turn_metadatas || []).map((t) => t.model ?? null);
 }
 
-module.exports = { toolNameOf, isV3Call, mcpToolNameOf, skillsCallOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
+module.exports = { toolNameOf, isV3Call, mcpToolNameOf, skillsCallOf, skillResourceCallOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };

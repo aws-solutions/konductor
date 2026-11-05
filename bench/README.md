@@ -604,7 +604,10 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
     budget skip or an opencode run is skipped. `--bench-dir` and `--repo-root` work as for `skills`. A run whose copy exists and differs is refused.
 - Skill loads on engine v3: a loaded skills-server call is titled `@konductor-skills/get_skill` with the name in `rawInput.arguments.name`. A call
   made before the tool was loaded is refused (`Tool Call` failed, or a bare `get_skill` title with no input) and counts in `skillCallsFailed`, never as a
-  load; the model then loads the tool and retries. `--stop-on` ignores refused calls too. The skill fields in `result.json` are written when the run
+  load; the model then loads the tool and retries. A refused `load_resource` call with a `skill::<name>` id, the model treating a server skill as a
+  native resource, also counts in `skillCallsFailed` and names the skill as requested; one that succeeds (an SOP resource) is not counted. The
+  extraction's `failedCalls` lists each failed `get_skill` or `load_resource` call, and names a bare call the stream recorded no arguments for
+  `(args not recorded)`. `--stop-on` ignores refused calls too. The skill fields in `result.json` are written when the run
   ends, so runs saved by an older runner keep empty `skillsLoaded`; `bench.js skills` recomputes from `stream.jsonl` without writing, `backfill --skills` writes the recomputed fields, and `report` reads `result.json`.
 - `workToolCalls` leaves out the `subagent` call and the subagent `summary` pseudo-tool. Transcript
   size sums the parent and subagent sessions (`transcriptPartial` if one is missing). Session files are copied to `<run>/session/`
