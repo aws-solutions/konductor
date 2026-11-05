@@ -5,7 +5,7 @@ import { END_ID, INTENT_ID, stageNodeId, type NodeStatus } from '../../graph';
 const QUEUED: NodeStatus = { state: 'queued', label: 'Queued' };
 const RUNNING: NodeStatus = { state: 'running', label: 'Running' };
 const DONE: NodeStatus = { state: 'done', label: 'Done' };
-const FAILED: NodeStatus = { state: 'failed', label: 'Failed' };
+const BLOCKED: NodeStatus = { state: 'failed', label: 'Blocked' };
 const NOT_RUN: NodeStatus = { state: 'queued', label: 'Not run' };
 
 function stageStatus(stage: RunStageView, run: RunView): NodeStatus {
@@ -18,7 +18,7 @@ function stageStatus(stage: RunStageView, run: RunView): NodeStatus {
     case 'passed':
       return DONE;
     case 'blocked':
-      return FAILED;
+      return BLOCKED;
   }
 }
 
