@@ -59,7 +59,8 @@ not per individual commit.
   handoff file, and the orchestrator passes them back with the resume brief. Run directly with
   no orchestrator, the caller is the user: the specialist returns the split or note to them.
   `k-adversarial-pull-request-review` returns its three Step 2 passes as a split, resumes at
-  Step 3, returns the reuse pass as a handoff, and resumes at Step 4.
+  Step 3, returns the reuse pass as a handoff, and resumes at Step 4. `konductor init` now
+  ignores `.konductor/handoff/`; add the line by hand in a project initialised earlier.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before

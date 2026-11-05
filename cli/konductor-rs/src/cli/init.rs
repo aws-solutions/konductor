@@ -37,13 +37,19 @@ use super::config;
 pub(crate) const GITIGNORE_FILE_NAME: &str = ".gitignore";
 
 /// Patterns `run_init` writes into `.konductor/.gitignore`: `konductor
-/// init` writes a `.gitignore` excluding `runs/`, `overrides.yml`,
-/// `*.key`, `*.pem`, `.env`, and `konductor doctor` validates these
+/// init` writes a `.gitignore` excluding `runs/`, `handoff/`,
+/// `overrides.yml`, `*.key`, `*.pem`, `.env`, and `konductor doctor` validates these
 /// paths are git-ignored.
 /// Single source of truth -- `doctor.rs`'s `check_gitignore` reuses this
 /// same list rather than duplicating it.
-pub(crate) const GITIGNORE_PATTERNS: &[&str] =
-    &["runs/", "overrides.yml", "*.key", "*.pem", ".env"];
+pub(crate) const GITIGNORE_PATTERNS: &[&str] = &[
+    "runs/",
+    "handoff/",
+    "overrides.yml",
+    "*.key",
+    "*.pem",
+    ".env",
+];
 
 /// All the ways `konductor init` can fail. Every variant maps to exit
 /// code 64 (EX_USAGE) at the dispatch site -- never exit code 2.
@@ -277,6 +283,18 @@ mod tests {
                 "gitignore must contain documented pattern {pattern}, got: {contents}"
             );
         }
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn fresh_init_gitignore_ignores_handoff_directory() {
+        let root = scratch_dir("gitignore-handoff");
+        let result = run_init(&root, false).expect("init must succeed on an empty target");
+        let contents = fs::read_to_string(&result.gitignore_path).unwrap();
+        assert!(
+            contents.lines().any(|line| line == "handoff/"),
+            "gitignore must list handoff/, got: {contents}"
+        );
         fs::remove_dir_all(&root).ok();
     }
 

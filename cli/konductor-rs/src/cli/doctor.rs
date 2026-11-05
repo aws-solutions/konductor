@@ -1759,7 +1759,7 @@ fn is_executable_file(path: &Path) -> std::io::Result<bool> {
 /// `Warn`, not `Failed`: a missing/incomplete `.gitignore` is a
 /// hygiene issue, not a broken install.
 ///
-/// Intentionally dormant: two of `GITIGNORE_PATTERNS`'s five patterns
+/// Intentionally dormant: two of `GITIGNORE_PATTERNS`'s six patterns
 /// (`runs/`, `overrides.yml`) guard paths this codebase cannot yet
 /// create, so today this check would only ever produce a
 /// false-positive-style nag. Kept fully implemented and unit-tested so
