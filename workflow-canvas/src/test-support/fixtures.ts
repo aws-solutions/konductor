@@ -27,9 +27,32 @@ export const HELLO_SESSION: Session = {
   apiVersion: 1,
 };
 
-/** The text of the file behind the workflow above. */
-export const HELLO_TEXT =
-  'name: hello\nintent: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n  - name: review\n    agent: k-quality-assurance\n';
+/**
+ * The text of the file behind the workflow above, in the first-release format:
+ * every slice 1 key, and stages with a `prompt` and a `prompt_file`.
+ */
+export const HELLO_TEXT = [
+  'format: konductor/1',
+  'name: hello',
+  'version: 0.1.0',
+  'intent:',
+  '  outcome: Add a greeting to the README',
+  '  accept:',
+  '    - id: readme-exists',
+  '      file: README.md',
+  'params:',
+  '  goal:',
+  '    description: What the workflow should accomplish.',
+  '    default: Add a greeting to the README',
+  'stages:',
+  '  - name: draft',
+  '    agent: k-developer',
+  '    prompt: Write the greeting to README.md.',
+  '  - name: review',
+  '    agent: k-quality-assurance',
+  '    prompt_file: review.md',
+  '',
+].join('\n');
 
 /** The hash that the server gives that text; a test only needs it to differ. */
 export const HELLO_HASH = 'a'.repeat(64);
