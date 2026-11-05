@@ -37,7 +37,7 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
 - 🎼 **One request, the whole lifecycle.** Requirements, design, code, tests and docs, without
   hand-carrying artifacts between chats.
 - ✅ **Every phase gets checked.** Each phase's work passes one review gate, and failed checks
-  go back for up to two fix cycles.
+  get one fix and one re-review.
 - 🧠 **Expertise built in.** 82 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
 - 🪶 **No infrastructure.** Agents are configuration (prompts, skills, SOPs) that your Kiro or
@@ -236,7 +236,7 @@ for the full fallback chain.
 
 `konductor` is where you start. It does the work in your session and brings in one fresh specialist
 reviewer at each phase gate; it spawns a specialist to do work only for a tool it lacks or for parallel
-work on disjoint files. A failed review gets up to two fix cycles. On Kiro CLI it trusts only reads, so
+work on disjoint files. A failed review gets one fix and one re-review; a CRITICAL or IMPORTANT finding still open after that is reported to you. On Kiro CLI it trusts only reads, so
 each write and shell command asks you first; widen `allowedTools` in your agent config if you want
 fewer prompts.
 

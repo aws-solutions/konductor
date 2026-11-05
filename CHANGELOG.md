@@ -36,7 +36,14 @@ not per individual commit.
 ### Changed
 
 - `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate; it
-  spawns a specialist to do work only for a tool it lacks or for parallel work on disjoint files.
+  spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
+  work on disjoint files. An SOP's own instruction to spawn wins over that limit.
+- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change whose
+  build, test and lint passed (not for auth, secrets, data or infrastructure), and triage findings
+  against the request, house rules and spec before the fix. When `konductor` made the artifact, a
+  finding it would reject goes to you before it is dropped.
+- The handoff, split, denial and brief rules every orchestrator follows now live in
+  `context/k-orchestrator-shared.md`, loaded by all three orchestrators.
 - A specialist treats a quoted user decision in its brief as approval only for the action it
   names, never for a NEVER-rule confirmation or an irreversible action.
 - The rule against reading secret files now lives in the core rules, so all 11 agents load it.

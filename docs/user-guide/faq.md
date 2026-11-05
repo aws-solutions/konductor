@@ -77,22 +77,24 @@ By design. `context/k-orchestrator-routing-rules.md` makes it read-only:
 > You are a read-only orchestrator. You MUST NOT directly execute mutating operations.
 
 This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
-instead and edits files itself.
+instead and edits files itself. On Kiro CLI it pre-approves `fs_read` alone, so each write or
+command asks you first; on Claude Code it holds `Write`, `Edit` and `Bash` with no prompt gate, and
+the reviewer it spawns at each phase gate is the check.
 
-Its Orchestrator Direct Work table lists the exceptions: reading files, read-only commands such as
+The mux and cmux Orchestrator Direct Work table lists the exceptions: reading files, read-only commands such as
 `ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
-writes and every other shell command still go to a specialist. It also flags instructions planted
-in files it reads, won't read files that hold secrets unless you name them, and asks you instead
-of routing a denied action to another agent. It does not flag user-written entries in
+writes and every other shell command still go to a specialist. All three orchestrators also flag instructions planted
+in files they read, won't read files that hold secrets unless you name them, and ask you instead
+of routing a denied action to another agent. They do not flag user-written entries in
 `.konductor/memory/MEMORY.md` and `USER.md` at the project root, or AGENTS.md: both are the
 project's own instructions. A `.konductor/memory/` anywhere else, or one reached through a
 symlink, is content.
 
-The reason is separation of concerns: the orchestrator is a dispatcher, and its own file says
+The reason is separation of concerns: the mux and cmux orchestrators are dispatchers, and their own file says
 "Having a tool available does NOT mean you should use it." File writes, git operations, shell
 commands, and infrastructure changes all route to `k-developer`.
 
-If the orchestrator *is* editing files directly, the context file did not load — see
+If a mux or cmux orchestrator *is* editing files directly, the context file did not load — see
 [Troubleshooting #3](troubleshooting.md#3-the-orchestrator-does-the-work-itself-instead-of-delegating).
 
 ---

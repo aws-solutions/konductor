@@ -327,7 +327,9 @@ konductor/
 ├── skills/                       82 skills (<name>/SKILL.md, plus optional helper files)
 ├── context/                      Loaded at agent startup
 │   ├── k-core-rules.md
-│   └── k-orchestrator-routing-rules.md
+│   ├── k-direct-work.md
+│   ├── k-orchestrator-routing-rules.md
+│   └── k-orchestrator-shared.md
 ├── cli/                          The Konductor CLI
 │   ├── README.md                 CLI-specific docs
 │   └── gate-config/              Declarative policy; the CLI embeds config.yml only
@@ -382,7 +384,7 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 
 | Agent | Model | SOPs declared | Skills | MCP registry |
 | --- | --- | --- | --- | --- |
-| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 18 | — |
+| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 22 | — |
 | `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
 | `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
 | `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | `aws-mcp` |
@@ -405,7 +407,8 @@ The list differs from `dependencies.skills.skillNames` in two places. `konductor
 `humanize-writing` in `skillNames` only, so no runtime preloads it for them. Every skill is catalogued in the
 [Skills catalog](skills.md).
 
-Every agent declares `context/k-core-rules.md`. Only the mux and cmux orchestrators also declare
+Every agent declares `context/k-core-rules.md`. The three orchestrators also declare
+`context/k-orchestrator-shared.md`. Only the mux and cmux orchestrators also declare
 `context/k-orchestrator-routing-rules.md`; `konductor` declares `context/k-direct-work.md`.
 
 ### MCP registry entries

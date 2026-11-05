@@ -58,8 +58,10 @@ surfaces. See [github.com/manaflow-ai/cmux](https://github.com/manaflow-ai/cmux)
 ### Context file
 
 Markdown loaded into an **agent**'s memory at session start and kept active for the whole session,
-unlike a **skill**, which loads on demand. Two exist: `context/k-core-rules.md`, loaded by all 11
-**agents**, and `context/k-orchestrator-routing-rules.md`, loaded by all three **orchestrators**.
+unlike a **skill**, which loads on demand. Four exist: `context/k-core-rules.md`, loaded by all 11
+**agents**; `context/k-orchestrator-shared.md`, loaded by all three **orchestrators**;
+`context/k-direct-work.md`, loaded by `konductor`; and `context/k-orchestrator-routing-rules.md`,
+loaded by the mux and cmux **orchestrators**.
 
 ### CRITICAL / IMPORTANT / SUGGESTION
 

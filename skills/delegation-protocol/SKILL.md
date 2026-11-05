@@ -202,7 +202,7 @@ Before a phase closes, run the review your Verification Protocol calls for (for 
 
 1. Collect the phase's artifacts: the git diff for code, paths for documents and design artifacts.
 2. Spawn the reviewers your Verification Protocol names (for `konductor`, one per phase; for the mux and cmux orchestrators, one per artifact), for example `k-developer` with `backend-review` or `frontend-review`, `k-architect` with `design-evaluation` and `threat-modeling`. Each reviewer brief lists every artifact that reviewer covers and the checker skill for each.
-3. Address all CRITICAL and IMPORTANT findings (Review ceilings in the Verification Protocol). Never put SUGGESTIONs in a fix brief. Before the fix, triage the findings against the user's request, the project's house rules and the spec; rework CRITICAL and IMPORTANT findings that survive triage, and list the findings triage rejects and any SUGGESTIONs.
+3. Address all CRITICAL and IMPORTANT findings (Review ceilings in the Verification Protocol). Never put SUGGESTIONs in a fix brief. Before the fix, triage the findings against the user's request, the project's house rules and the spec. A finding a house rule overrides is listed with the rule, as the core rules say. Rework the rest once, and list the findings triage rejects and any SUGGESTIONs.
 4. Run the build and tests again for code, then re-review what the fix changed plus what calls, uses or depends on it, once (an SOP's own limit on fix rounds wins). Any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done: stop and report it to the user as unresolved instead of proceeding; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix.
 
 ## Failure Recovery

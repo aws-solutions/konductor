@@ -57,15 +57,15 @@ def test_rule_11_limits_one_hop_files_to_house_rules_categories():
     assert "for the House rules categories only" in core
 
 
-def test_routing_rules_briefs_keeps_the_named_collision_qualifier():
-    routing = _read("context/k-orchestrator-routing-rules.md")
-    assert "## Briefs" in routing
-    assert "decides the same named collision" in routing
+def test_shared_rules_briefs_keeps_the_named_collision_qualifier():
+    shared = _read("context/k-orchestrator-shared.md")
+    assert "## Briefs" in shared
+    assert "decides the same named collision" in shared
 
 
 def test_template_defaults_backed_by_never_rules_are_not_dropped_by_house_rules():
     assert "NEVER rules 6 and 7" in _read("skills/delegation-protocol/SKILL.md")
-    assert "NEVER rules 6 and 7" in _read("context/k-orchestrator-routing-rules.md")
+    assert "NEVER rules 6 and 7" in _read("context/k-orchestrator-shared.md")
 
 
 def test_review_dedup_lives_in_constraints_skill():

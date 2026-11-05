@@ -58,3 +58,41 @@ def test_product_manager_step_5_is_bounded():
     spec = (ROOT / "agents" / "k-product-manager.agent-spec.json").read_text()
     assert "iterate until quality gate passes" not in spec
     assert "fix CRITICAL and IMPORTANT ones once" in spec
+
+
+TRIAGE_RE = re.compile(r"Before the fix, triage the findings .*? any SUGGESTIONs\.")
+AUTHOR_CLAUSE = "goes to the user first"
+
+
+def _prompt(name):
+    spec = json.loads((ROOT / "agents" / f"{name}.agent-spec.json").read_text())
+    return spec["config"]["systemPrompt"]
+
+
+def _triage_sentences(name):
+    matches = TRIAGE_RE.findall(_prompt(name))
+    assert len(matches) == 1, f"{name}: expected one triage passage, found {len(matches)}"
+    return matches[0]
+
+
+def test_triage_sentences_are_identical_in_all_orchestrators():
+    texts = {name: _triage_sentences(name) for name in ORCHESTRATORS}
+    assert len(set(texts.values())) == 1, "triage wording differs between orchestrators"
+
+
+def test_author_clause_is_in_konductor_only():
+    assert AUTHOR_CLAUSE in _prompt("konductor")
+    for name in ORCHESTRATORS[1:]:
+        assert AUTHOR_CLAUSE not in _prompt(name), name
+
+
+def test_author_clause_is_mirrored_in_direct_work_and_constraints():
+    for rel in ("context/k-direct-work.md", "skills/constraints/SKILL.md"):
+        text = (ROOT / rel).read_text()
+        assert "you would reject" in text, rel
+    assert AUTHOR_CLAUSE in (ROOT / "context/k-direct-work.md").read_text()
+
+
+def test_delegation_protocol_step_3_carries_the_triage_sentences():
+    text = (ROOT / "skills/delegation-protocol/SKILL.md").read_text()
+    assert _triage_sentences("konductor") in text

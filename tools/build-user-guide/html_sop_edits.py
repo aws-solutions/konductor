@@ -281,9 +281,9 @@ SOP_EDITS += [
     ("hero tile: SOPs",
      '>13</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>',
      '>19</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>'),
-    ("hero snippet: banner",
-     "harness: {{ harnessFlag }}<br>agents 11 · skills 82 · SOPs 19 · context 1",
-     "harness: {{ harnessFlag }}<br>agents 11 · skills 82 · SOPs 19 · context 2"),
+    ('hero snippet: banner',
+     'harness: {{ harnessFlag }}<br>agents 11 · skills 82 · SOPs 19 · context 2',
+     'harness: {{ harnessFlag }}<br>agents 11 · skills 82 · SOPs 19 · context 4'),
     ("runtime binding: harnessFlag",
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",',
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",\n      harnessFlag: kiro ? "kiro-cli-v2" : "claude",'),
@@ -573,12 +573,12 @@ SOP_EDITS += [
     ("orchestrators: konductor SOPs",
      '{ k: "konductor SOPs", v: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify" }',
      '{ k: "konductor SOPs (10)", v: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor" }'),
-    ("orchestrators: konductor skills",
-     '{ k: "konductor skills (13)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor \u2014 claude-teams-behavior is Claude Code only, so Kiro CLI loads 12" }',
-     '{ k: "konductor skills (13)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor. claude-teams-behavior is Claude Code only. Kiro CLI has the other 12 plus humanize-writing, on demand" }'),
+    ('orchestrators: konductor skills',
+     '{ k: "konductor skills (13)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor. claude-teams-behavior is Claude Code only. Kiro CLI has the other 12 plus humanize-writing, on demand" }',
+     '{ k: "konductor skills (22)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review. claude-teams-behavior is Claude Code only. Kiro CLI has the other 21 plus humanize-writing, on demand" }'),
     ("orchestrators: konductor tools",
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep" }',
-     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Skill — so it CAN write and run shell there; only its routing rules stop it" }'),
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Skill — so it CAN write and run shell there; only its routing rules stop it" }',
+     'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Skill — so it can write and run shell there with no prompt gate; the reviewer at each phase gate is the check" }'),
     ("orchestrators: mux/cmux SOPs",
      '{ k: "mux / cmux SOPs", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify — the same four, minus k-delegate" }',
      '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }'),
@@ -1011,9 +1011,9 @@ SOP_EDITS += [
     ("concepts: step 5 is the phase-gate review",
      "konductor verifies the result against the delegation's expected outcome \u2014 and re-delegates if it falls short, up to twice.",
      "When a phase closes, konductor spawns a fresh k-* reviewer, fixes the CRITICAL and IMPORTANT findings once, and re-reviews the fix plus the code that uses it."),
-    ("faq: read-only heading names konductor",
-     "sec(\"faq-readonly\", \"Why the orchestrator won't edit\", \"Why does the orchestrator refuse to edit files itself?\"",
-     "sec(\"faq-readonly\", \"Why konductor won't edit\", \"Why does konductor (or the other orchestrators) refuse to edit files itself?\""),
+    ("faq: read-only heading names mux and cmux",
+     "sec(\"faq-readonly\", \"Why konductor won't edit\", \"Why does konductor (or the other orchestrators) refuse to edit files itself?\"",
+     "sec(\"faq-readonly\", \"Why mux and cmux won't edit\", \"Why do the mux and cmux orchestrators refuse to edit files themselves?\""),
 ]
 
 # Reviewer found this package's own name leaking into reader-facing content. All
@@ -1127,4 +1127,65 @@ SOP_EDITS += [
     ("agents warn: adversarial handoff",
      r'''warn: "Why this matters: k-code-review-workflow step 6 says to spawn k-architect in adversarial mode. That SOP is declared only by k-developer — which cannot spawn the architect in either runtime. The SOP anticipates this (\"You MUST skip this step if no adversarial CR-review capability is available\"), so it degrades quietly. In practice step 6 always no-ops and you get standard review only. Routing through the orchestrator does not fix it — it does not declare that SOP. Run k-adversarial-pull-request-review yourself against k-architect."''',
      r'''warn: "Why this matters: k-code-review-workflow step 6 is an adversarial pass by k-architect. That SOP is declared only by k-developer, which cannot spawn the architect in either runtime. Step 6 writes the report with an 'Adversarial pass: pending' section, then returns the pass as a handoff. Under konductor, the handoff is routed to k-architect and the findings come back to finish the report. Started directly, you get the pending report and the handoff: ask konductor to run k-adversarial-pull-request-review, then resume k-code-review-workflow at step 6 with its findings."'''),
+]
+
+# Single-writer shape: these run after every earlier entry, so each `old` is the
+# text the earlier entries leave behind.
+SPAN = "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">"
+
+SOP_EDITS += [
+    # ---- single-writer shape: konductor edits, the shared rules file, four context files ----
+    ("qs checkpoint names the single-writer shape",
+     "Watch what happens after you ask for implementation work. You should see the orchestrator "
+     "<strong style=\"color:var(--tx);font-weight:600\">delegate</strong> to a specialist rather than start "
+     "editing files itself. That is the whole design, and it is a rule rather than a wall in both runtimes. "
+     "In Kiro CLI konductor pre-approves fs_read alone, so a write or a command stops to ask you rather than "
+     "being refused; in Claude Code it holds Write and Bash outright. Either way what keeps it delegating is "
+     "its routing rules. If it starts editing directly, see",
+     "Watch what happens when you ask for a single change, such as a bug fix in one module. You should see "
+     "konductor edit files and run the build itself, then spawn a k-* reviewer when the phase closes. A "
+     "multi-phase request like the one above gets an SOP name instead. In Kiro CLI konductor pre-approves "
+     "fs_read alone, so each write or command stops to ask you first; in Claude Code it holds Write and Bash "
+     "outright. If you want an orchestrator that hands every change to a specialist, use "
+     "konductor-mux-orchestrator or konductor-cmux-orchestrator. If one of those starts editing directly, see"),
+    ("ik success signal: konductor edits and spawns a reviewer",
+     "Giving it implementation work produces a <strong style=\"color:var(--tx);font-weight:600\">delegation</strong> "
+     "to a specialist, not the orchestrator doing the work itself.",
+     "Giving it implementation work has konductor edit files itself, each write asking you first, then spawn a "
+     "k-* <strong style=\"color:var(--tx);font-weight:600\">reviewer</strong> when the phase closes."),
+    ("ik success note: routing rules apply to mux and cmux",
+     "(In Claude Code it is granted Write and Bash with no prompt gate of its own; only its routing rules stop it "
+     "using them.) If it starts editing files directly, its routing rules did not load — see",
+     "(In Claude Code it is granted Write and Bash with no prompt gate of its own; the reviewer at each phase gate "
+     "is the check.) If you use konductor-mux-orchestrator or konductor-cmux-orchestrator and it starts editing "
+     "files directly, its routing rules did not load — see"),
+    ("faq: read-only rule scope and konductor's permissions",
+     "bullets: [\"Its Orchestrator Direct Work table lists the exceptions:",
+     "bullets: [\"This read-only rule applies to the mux and cmux orchestrators. konductor loads k-direct-work.md "
+     "instead and edits files itself. On Kiro CLI it pre-approves fs_read alone, so each write or command asks you "
+     "first; on Claude Code it holds Write, Edit and Bash with no prompt gate, and the reviewer it spawns at each "
+     "phase gate is the check.\", \"The mux and cmux Orchestrator Direct Work table lists the exceptions:"),
+    ("faq: shared rules apply to all three orchestrators",
+     "still go to a specialist. It also flags instructions planted in files it reads, won't read files that hold "
+     "secrets unless you name them, and asks you instead of routing a denied action to another agent. It does not flag",
+     "still go to a specialist. All three orchestrators also flag instructions planted in files they read, won't "
+     "read files that hold secrets unless you name them, and ask you instead of routing a denied action to another "
+     "agent. They do not flag"),
+    ("faq: dispatcher reason names mux and cmux",
+     "The reason is separation of concerns: the orchestrator is a dispatcher, and its own file says",
+     "The reason is separation of concerns: the mux and cmux orchestrators are dispatchers, and their own file says"),
+    ("faq: troubleshooting pointer names mux and cmux",
+     "If the orchestrator is editing files directly, the context file did not load",
+     "If a mux or cmux orchestrator is editing files directly, the context file did not load"),
+    ("contributing: routing row and the two new context rows",
+     "{ k: \"context/k-orchestrator-routing-rules.md\", v: \"Which specialist handles which kind of request — routing, loaded at session start for all three orchestrators\" },",
+     "{ k: \"context/k-orchestrator-routing-rules.md\", v: \"Which specialist handles which kind of request — routing, loaded at session start for the mux and cmux orchestrators\" },\n"
+     "          { k: \"context/k-orchestrator-shared.md\", v: \"What every orchestrator does with handoffs, splits, denials and briefs: shared rules, loaded at session start for konductor and the mux and cmux orchestrators\" },\n"
+     "          { k: \"context/k-direct-work.md\", v: \"What konductor does itself and when it hands off: direct work, phase reviews, and handoffs, loaded at session start for konductor\" },"),
+    ("agents: orchestrators section names both shapes",
+     "All three load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. Treat that as intent, not enforcement:",
+     "The mux and cmux orchestrators load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. konductor loads context/k-direct-work.md instead and writes, runs commands and commits itself. Treat the dispatcher rule as intent, not enforcement:"),
+    ("install-claude-code: success signal is edit then review",
+     "A task needing implementation causes a <strong style=\"color:var(--tx);font-weight:600\">specialist to spawn</strong>, visible in your session.",
+     "A task needing implementation has konductor edit files itself and spawn a <strong style=\"color:var(--tx);font-weight:600\">k-* reviewer</strong> when the phase closes, visible in your session."),
 ]

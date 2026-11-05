@@ -86,7 +86,7 @@ Coordination across people and time rather than within one codebase.
 | `program-decision-docs` | Program-level decision documents with options analysis, trade-offs, and a recommendation. | A cross-team decision needs to be written down formally. | `k-tpm` |
 | `status-reporting` | Program status reports for stakeholders. | Weekly updates, executive summaries, milestone reviews. | `k-tpm` |
 | `risk-management` | Identifies, assesses, and tracks program risks with mitigation plans and RAID logs. | Starting a risk assessment, or a risk register has gone stale. | `k-tpm` |
-| `plan-review` | Critically reviews a work plan against clarity, verifiability, context completeness, and big picture. Gives a 1-5 rating and a BLOCKED / OKAY / SHIP IT verdict. | You have a plan and want it torn apart before anyone executes it. | `k-tpm` |
+| `plan-review` | Critically reviews a work plan against clarity, verifiability, context completeness, and big picture. Gives a 1-5 rating and a BLOCKED / OKAY / SHIP IT verdict. | You have a plan and want it torn apart before anyone executes it. | `k-tpm`, `konductor` |
 | `legacy-to-agentic-estimate` 📎 | Converts all-human effort estimates into agentic-SDLC estimates accounting for AI toolchains. Ships `convert_estimates.py` plus evals. | Re-baselining a legacy estimate for AI-assisted delivery. Note the tier presets are uncalibrated defaults. | `k-product-manager`, `k-tpm` |
 | `progress-tracking` | Validates feature plans and tracks implementation against requirements traceability, in three modes: initial, progress, final. | Mid-implementation, and you want to know what is genuinely done. | `k-developer` |
 
@@ -121,7 +121,7 @@ Checking a design before anyone builds it.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `design-evaluation` | Evaluates a complete design package for production readiness across 10 dimensions. | The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM. | `k-architect` |
+| `design-evaluation` | Evaluates a complete design package for production readiness across 10 dimensions. | The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM. | `k-architect`, `konductor` |
 | `design-quality-check` | Scores a design doc for writing quality, structural completeness, and KISS/YAGNI compliance. Detects filler, hedging, unsupported claims, passive voice, circular reasoning. | The doc is complete but reads badly, or you suspect padding. | `k-architect` |
 | `doc-accuracy-analyzer` | Six-step verification of a technical document against primary sources: extracts claims, investigates each, classifies, reports. | You need to know which claims in a document are actually true. | `k-architect` |
 | `aws-service-validator` | Validates AWS service and feature claims against live AWS documentation. Catches hallucinated AWS assertions. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
@@ -163,9 +163,9 @@ Writing and reviewing code.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `backend-development` | Implements backend changes — Lambda handlers, service layers, DynamoDB operations. KISS/YAGNI/DRY, minimal surgical changes. | Implementing or fixing backend logic. | `k-developer` |
+| `backend-development` | Implements backend changes — Lambda handlers, service layers, DynamoDB operations. KISS/YAGNI/DRY, minimal surgical changes. | Implementing or fixing backend logic. | `k-developer`, `konductor` |
 | `backend-review` | Reviews backend changes for pattern compliance, type safety, DynamoDB correctness, and test quality. Produces CRITICAL / IMPORTANT / SUGGESTION findings. | After backend changes, before opening a review. | `k-developer`, `konductor` |
-| `frontend-development` | Implements React/TypeScript frontend using AWS Cloudscape. Cloudscape-only components, no native HTML. | Implementing UI in a Cloudscape app. | `k-developer` |
+| `frontend-development` | Implements React/TypeScript frontend using AWS Cloudscape. Cloudscape-only components, no native HTML. | Implementing UI in a Cloudscape app. | `k-developer`, `konductor` |
 | `frontend-review` | Reviews frontend changes for Cloudscape compliance, React Hook Form patterns, type safety, and test quality. | After frontend changes, before opening a review. | `k-developer`, `konductor` |
 | `infra-validation` | Validates CDK and CloudFormation against AWS best practice, security standards, and Well-Architected principles. | Before deploying any infrastructure change. | `k-developer` |
 | `code-review` | Standard pull-request review workflow — creating PRs, reviewing diffs, addressing feedback, post-implementation cycles. | Ordinary code review, using git and the GitHub CLI. | `k-developer` |
@@ -250,7 +250,7 @@ Useful when deciding which agent to talk to directly.
 | --- | --- |
 | `k-architect` | 38 |
 | `k-developer` | 27 |
-| `konductor` | 18 |
+| `konductor` | 22 |
 | `k-product-manager` | 16 |
 | `k-tpm` | 14 |
 | `k-quality-assurance` | 12 |

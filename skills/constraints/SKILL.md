@@ -59,7 +59,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (fix before proceeding; a review finding gets one fix, and any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done until the user decides):**
+**IMPORTANT (fix before proceeding; a review finding gets one fix, and any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done until the user decides; when you made the artifact, a CRITICAL or IMPORTANT finding you would reject in triage also blocks done until the user rules on it):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts
