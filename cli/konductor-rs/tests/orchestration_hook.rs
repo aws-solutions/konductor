@@ -248,6 +248,35 @@ fn only_a_konductor_session_in_coordinator_mode_gets_the_persona() {
     std::fs::remove_dir_all(&home).ok();
 }
 
+#[cfg(unix)]
+#[test]
+fn the_pointer_keeps_a_symlinked_home_as_the_session_knows_it() {
+    let physical_home = scratch_dir("home-physical");
+    install_into(&physical_home, &physical_home, &["konductor"]);
+    set_mode(&physical_home, "orchestration:\n  mode: coordinator\n");
+    let links = scratch_dir("home-links");
+    let logical_home = links.join("home-link");
+    std::os::unix::fs::symlink(&physical_home, &logical_home).unwrap();
+    let outside_project = scratch_dir("outside-project");
+
+    let stdout = fire(
+        &logical_home,
+        &outside_project,
+        &[],
+        &[],
+        &claude_payload(Some("konductor"), "startup"),
+    );
+
+    let logical_rules = logical_home.join(".kiro/context/k-orchestrator-routing-rules.md");
+    assert!(
+        stdout.contains(&format!("read {} in full.", logical_rules.display())),
+        "{stdout}"
+    );
+    for dir in [&physical_home, &links, &outside_project] {
+        std::fs::remove_dir_all(dir).ok();
+    }
+}
+
 #[test]
 fn kiro_v3_identity_comes_from_the_kiro_home_session_store() {
     let home = scratch_dir("v3-home");
@@ -454,4 +483,46 @@ fn kiro_v2_wires_the_hook_on_konductor_only() {
         std::fs::remove_dir_all(&home).ok();
         std::fs::remove_dir_all(&project).ok();
     }
+}
+
+/// A default install (no `--target`) puts the destination at `$HOME`, where
+/// `.konductor/config.yml` is the user config. Doctor must read it as the
+/// mode source and not report it as an ignored project file.
+#[test]
+fn doctor_reads_the_user_config_on_a_default_home_install() {
+    let home = scratch_dir("doctor-home");
+    let repo = seed_repo(&["konductor"]);
+    let repo_arg = repo.display().to_string();
+    let sink = TelemetrySink::start();
+    let synth = konductor(&home, &repo, &sink)
+        .args(["synth", "--from", &repo_arg])
+        .output()
+        .unwrap();
+    assert!(synth.status.success());
+    let install = konductor(&home, &home, &sink)
+        .args(["install", "--from", &repo_arg, "--harness", "kiro-v3"])
+        .arg("--no-telemetry")
+        .output()
+        .unwrap();
+    assert!(
+        install.status.success(),
+        "install: {}",
+        String::from_utf8_lossy(&install.stderr)
+    );
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+
+    let doctor = konductor(&home, &home, &sink)
+        .args(["doctor", "--from", &repo_arg])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&doctor.stdout);
+    let row = stdout
+        .lines()
+        .find(|line| line.contains(": orchestration - "))
+        .unwrap_or_else(|| panic!("no orchestration row in:\n{stdout}"));
+    assert!(!stdout.contains("also sets it"), "{stdout}");
+    assert!(row.contains("ok:"), "{row}");
+    assert!(row.contains("`coordinator`"), "{row}");
+    std::fs::remove_dir_all(&home).ok();
+    std::fs::remove_dir_all(&repo).ok();
 }

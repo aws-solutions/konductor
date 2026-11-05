@@ -31,6 +31,8 @@ konductor install --harness kiro-cli-v2
 On success it reports a per-content-type count — agents, skills, SOPs and context files — and
 the command to start a session with. Exit code `0`.
 
+Install also wires a session-start hook for `konductor`: `.kiro/hooks/konductor-orchestration-hooks.json` on Kiro CLI v3, an `agentSpawn` entry in `.kiro/agents/konductor.json` on Kiro CLI v2. `orchestration.mode: coordinator` relies on it, and `uninstall` removes it.
+
 `--harness` is **required**. There is no default and no auto-detection from the destination:
 every `install` says explicitly which synthed harness output it means. `--target` is the
 **destination**, and defaults to `$HOME`.
@@ -92,13 +94,14 @@ The orchestrator routes this to `k-developer`, which is the agent that declares 
 - [ ] `konductor doctor` reports all checks ok and exits `0`.
 - [ ] `kiro-cli chat --agent konductor` starts a session without an "agent not found" error.
 - [ ] Asking "what agents do you have available?" lists `k-*` specialists.
-- [ ] Giving it implementation work produces a **delegation** to a specialist, not the orchestrator
-      doing the work itself.
+- [ ] Giving it implementation work has `konductor` edit files itself, each write asking you first,
+      then spawn a `k-*` **reviewer** when the phase closes.
 
 That last point is the real signal. In Kiro CLI the orchestrator pre-approves `fs_read` alone, so
 a write or a shell command surfaces a permission prompt instead of happening quietly — it is not
 refused, because `@builtin` grants both. (In Claude Code it is granted `Write` and `Bash` with no
-prompt gate of its own; only its routing rules stop it using them.) If it starts editing files
+prompt gate of its own; the reviewer at each phase gate is the check.) If you use
+`konductor-mux-orchestrator` or `konductor-cmux-orchestrator` and it starts editing files
 directly, its routing rules did not load — see
 [Troubleshooting](../troubleshooting.md#3-the-orchestrator-does-the-work-itself-instead-of-delegating).
 

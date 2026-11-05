@@ -20,25 +20,22 @@ it generates.
 
 ---
 
-## Known limitation: the adversarial handoff never fires
+## Known limitation: the adversarial pass needs an orchestrator
 
-`k-code-review-workflow` step 6 says:
-
-> If an adversarial CR-review step is available, spawn `k-architect` in adversarial mode with it,
-> passing the same diff used in Step 1 as `diff_input`, to surface gaps missed by standard review.
-
-**`k-developer`, the SOP's only owner, cannot do that spawn**, verified against the agent specs:
+`k-code-review-workflow` step 6 is an adversarial pass by `k-architect` over the same diff, to
+surface gaps missed by standard review. **`k-developer`, the SOP's only owner, cannot spawn
+the architect**, verified against the agent specs:
 
 - In **Claude Code**, no specialist has an `Agent(...)` tool; only `konductor` does.
 - In **Kiro CLI**, no specialist has the `subagent` tool; only `konductor` does.
 
-**Through `konductor`, step 6 still runs.** Step 6 tells `k-developer` to return it as a
-handoff for `k-architect`, naming the SOP and the step to resume at, when it cannot spawn the
-architect. `konductor` routes it to the architect and sends the findings back to the developer
-to finish the report.
+**Through `konductor`, step 6 runs.** Step 6 has `k-developer` write the report with an
+"Adversarial pass: pending" section, then return the pass as a handoff for `k-architect`, naming
+the SOP and the step to resume at. `konductor` routes it to the architect and sends the findings
+back, and the developer rewrites the report with them.
 
-**Started directly, the handoff comes back to you.** Nothing routes it, so the report waits on
-step 6 until the adversarial pass runs. To finish the report, ask `konductor` to run
+**Started directly, the handoff comes back to you.** Nothing routes it, so you get the report
+with the adversarial section pending. To complete it, ask `konductor` to run
 `k-adversarial-pull-request-review`, then pass its findings and the handoff to `k-developer` and
 ask it to resume `k-code-review-workflow` at step 6. Started directly, `k-architect` returns the
 review's passes as a split, or runs them itself in one session and says so.
@@ -101,8 +98,9 @@ Run the k-code-review-workflow SOP against my current branch.
 5. **Critique findings** — actively rejects false positives: praise, speculation about unseen code,
    style-only nits, linter duplicates, vague suggestions with no concrete fix. *"When in doubt,
    reject — false positives erode trust."*
-6. **Adversarial review** — attempts the architect spawn. **Always no-ops today** (see above), and is
-   skipped by design when `review_type` is `frontend` only.
+6. **Adversarial review** — writes the report with the adversarial section pending, then returns
+   the pass as a handoff for `k-architect`. Skipped by design when `review_type` is `frontend`
+   only.
 7. **Generate report** — writes `code-review-report.md` with a verdict: **READY FOR CR** or **NEEDS
    FIXES**.
 
@@ -181,9 +179,9 @@ Run k-adversarial-pull-request-review against my current diff.
    per source, no recursive link-following, never blocks on missing context.
 1. **Ingest diff** — accepts git diff output, file paths, or raw diff content; excludes binaries,
    lock files, build artifacts. Stops if the diff is empty.
-2. **Parallel review passes** — spawns `k-developer` **three times concurrently**, each loading
-   exactly one pass skill and receiving the diff plus the step 0 summary. Findings are never shared
-   between them.
+2. **Parallel review passes**: returns a split of three `k-developer` parts to run
+   **concurrently**, each loading exactly one pass skill and carrying the diff plus the step 0
+   summary, and names step 3 as the step to resume at. Findings are never shared between them.
    - *Security* (`adversarial-code-review-pass-security`) — information disclosure, authorization,
      injection, secrets. CRITICAL if stack traces, internal IDs, or raw exception messages reach a
      caller, or unvalidated input reaches a query.
@@ -193,7 +191,8 @@ Run k-adversarial-pull-request-review against my current diff.
    - *Schema / contract* (`adversarial-code-review-pass-schema`) — API, schema and type changes,
      backward compatibility, validation completeness. IMPORTANT for ordering violations and wiring
      gaps. Test files are not flagged.
-3. **Reuse pass** — a **fourth** `k-developer` spawn, looking only for cross-pass reuse: an
+3. **Reuse pass**: resumed at step 3 with the three lists, the SOP returns a handoff note for a
+   **fourth** `k-developer` session and resumes at step 4. It looks only for cross-pass reuse: an
    existing utility the diff reimplements or bypasses, or one that would resolve two or more of the
    findings above. IMPORTANT when it flags a bypassed shared utility, transaction helper,
    validation middleware, error-mapping layer, or pagination utility.

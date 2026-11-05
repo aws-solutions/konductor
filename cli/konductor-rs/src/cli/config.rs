@@ -10,7 +10,7 @@
 //
 // ── Exit-code contract (IMPORTANT) ─────────────────────────────────────────
 // A malformed or invalid config on user invocation is a USAGE ERROR, not
-// the run-engine's "unresolved CRITICAL gate" signal. Per cli.rs's
+// the gate evaluator's "unresolved finding" signal. Per cli.rs's
 // EXIT_USAGE_ERROR (64) / EXIT_CRITICAL_GATE (2) constants: this module
 // never emits or reasons about exit code 2. Callers (cli/dispatch.rs) are
 // responsible for mapping a `ConfigError` returned from this module to
@@ -40,11 +40,10 @@ use crate::cli::install::index;
 const SUPPORTED_CONFIG_VERSION: u64 = 1;
 
 /// Severity ids valid at this milestone. Mirrors
-/// cli/gate-config/severity-schema.yml's `severities[].id` list. Not
-/// loaded dynamically from that YAML file at runtime (that file is
-/// human/gate-author-facing reference data, not itself parsed by this
-/// loader) -- kept as a small enum here and validated against by name,
-/// since the set is fixed for this milestone.
+/// cli/gate-config/severity-schema.yml's `severities[].id` list and
+/// ranks; the enum is checked against the file by `gate_config`'s parity
+/// test. The config loader validates by name against this enum and does
+/// not read the file.
 ///
 /// `Config`'s own `default_severity`/`fail_on_severity_at_or_above`
 /// fields stay `String` (the on-disk YAML representation, and the
@@ -60,6 +59,29 @@ pub(crate) enum Severity {
     Medium,
     Low,
     Info,
+}
+
+impl Severity {
+    /// Every severity, highest rank first, in severity-schema.yml's order.
+    #[cfg(test)]
+    pub(crate) const ALL: [Severity; 5] = [
+        Severity::Critical,
+        Severity::High,
+        Severity::Medium,
+        Severity::Low,
+        Severity::Info,
+    ];
+
+    /// The severity's rank in severity-schema.yml; higher is more severe.
+    pub(crate) fn rank(self) -> u8 {
+        match self {
+            Severity::Critical => 4,
+            Severity::High => 3,
+            Severity::Medium => 2,
+            Severity::Low => 1,
+            Severity::Info => 0,
+        }
+    }
 }
 
 impl std::str::FromStr for Severity {
@@ -131,7 +153,7 @@ pub struct Config {
 /// stays a fully-populated, already-merged-and-validated type everywhere
 /// else in the codebase uses it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct RawConfig {
+struct RawConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     version: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -144,26 +166,10 @@ pub(crate) struct RawConfig {
     default_severity: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fail_on_severity_at_or_above: Option<String>,
-    /// Read only from the user layer by `orchestration_mode`; kept here so
-    /// `config set` writes an `orchestration:` section back instead of
-    /// dropping it. Never merged (see `merge`).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) orchestration: Option<OrchestrationSection>,
 }
 
-/// The `orchestration:` mapping of a config file.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct OrchestrationSection {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) mode: Option<String>,
-    /// Keys this CLI does not know, such as a misspelled `mdoe`. Kept, not
-    /// rejected, so a newer sibling key does not break `config` on an older
-    /// CLI; `orchestration_mode` reports them instead of silently using auto.
-    #[serde(flatten)]
-    pub(crate) unknown_keys: std::collections::BTreeMap<String, serde_yaml::Value>,
-}
-
-/// `<home>/.konductor/config.yml`, the user layer.
+/// `<home>/.konductor/config.yml`, the user layer. The gate loader and
+/// `orchestration_mode` both resolve it here so they cannot disagree.
 pub(crate) fn user_config_path(home: &Path) -> PathBuf {
     home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME)
 }
@@ -197,6 +203,10 @@ pub enum ConfigError {
         path: PathBuf,
         source: serde_yaml::Error,
     },
+    /// `config set` found a project `.konductor/config.yml` that parses
+    /// as YAML but is not a mapping (for example a list or a scalar), so
+    /// there is no key to set.
+    ProjectConfigNotMapping { path: PathBuf },
     /// The merged config's `version` field is not one this loader
     /// understands.
     UnsupportedVersion { found: u64, supported: u64 },
@@ -221,8 +231,8 @@ pub enum ConfigError {
         reason: String,
     },
     /// The updated project config could not be serialized back to YAML
-    /// (a packaging/programmer-error case -- `RawConfig` values built
-    /// from validated input should always serialize).
+    /// (a programmer-error case -- a mapping parsed from YAML and edited
+    /// with validated input should always serialize).
     SerializeFailed { source: serde_yaml::Error },
     /// The updated project config could not be written to
     /// `.konductor/config.yml` (permissions, read-only filesystem, disk
@@ -259,6 +269,11 @@ impl std::fmt::Display for ConfigError {
             ConfigError::ProjectConfigMalformed { path, source } => write!(
                 f,
                 "config file {} is not valid YAML: {source}",
+                path.display()
+            ),
+            ConfigError::ProjectConfigNotMapping { path } => write!(
+                f,
+                "config file {} must be a YAML mapping of keys to values",
                 path.display()
             ),
             ConfigError::UnsupportedVersion { found, supported } => write!(
@@ -300,6 +315,7 @@ impl ConfigError {
             ConfigError::PresetMalformed { .. } => "config.preset_malformed",
             ConfigError::ProjectConfigNotReadable { .. } => "config.project_config_not_readable",
             ConfigError::ProjectConfigMalformed { .. } => "config.project_config_malformed",
+            ConfigError::ProjectConfigNotMapping { .. } => "config.project_config_not_mapping",
             ConfigError::UnsupportedVersion { .. } => "config.unsupported_version",
             ConfigError::UnknownSeverity { .. } => "config.unknown_severity",
             ConfigError::UnknownTier { .. } => "config.unknown_tier",
@@ -422,14 +438,24 @@ fn dirs_home_dir() -> Option<PathBuf> {
 
 /// `config set <key> <value>`: validates `key` against the known config
 /// field set (`_CONFIG_FIELDS`), parses/validates `value` against that
-/// field's expected type, merges the result into the project's existing
-/// `.konductor/config.yml` (or the preset defaults if no project config
-/// exists yet), and writes it back atomically via `atomic_write`.
+/// field's expected type, sets that one key on the parsed YAML mapping
+/// of the project's `.konductor/config.yml` (an empty mapping if the
+/// file does not exist yet), and writes it back atomically via
+/// `atomic_write`.
 ///
-/// Reuses `load_config`'s "load raw config, merge with preset defaults"
-/// pipeline: the updated project `RawConfig` is re-merged with the
-/// preset and re-validated via `validate` before writing, so a `set`
-/// can never persist a config that would fail to load afterward.
+/// Every other key and block in the file (for example `telemetry:`) is
+/// kept, in its original order. A key not yet in the file is appended.
+/// The file is re-serialized, so comments (including the field reference
+/// `init` writes), YAML tags, anchors and merge keys, quoting and number
+/// spelling (`0x1F` becomes `31`, `3.10` becomes `3.1`) are not kept. A file that is not a YAML mapping
+/// is refused with `ConfigError::ProjectConfigNotMapping`, and one with
+/// duplicate keys with `ConfigError::ProjectConfigMalformed`. Either way
+/// it is left untouched.
+///
+/// The serialized text is parsed back with the same parser `load_config`
+/// uses, merged over the preset and re-validated via `validate` before
+/// writing, so a `set` can never persist a config that would fail to
+/// load afterward.
 ///
 /// ── Concurrency (lost-update race fix) ──────────────────────────────────
 /// The read, merge, and write are a single critical section: two
@@ -468,26 +494,32 @@ pub fn set_config_value(
         .map_err(|source| ConfigError::LockFailed { source })?;
 
     let project_config_path = konductor_dir.join(CONFIG_FILE_NAME);
-    let mut raw_project = if project_config_path.is_file() {
-        load_raw_config(&project_config_path)?
-    } else {
-        RawConfig::default()
-    };
+    let (mut mapping, original_text) = load_project_mapping(&project_config_path)?;
 
-    apply_field(&mut raw_project, key, value)?;
+    let parsed = parse_field_value(key, value)?;
+    mapping.insert(serde_yaml::Value::String(key.to_string()), parsed);
 
     // Re-validate the FULL effective config (project merged over preset)
     // before writing anything, so a `set` can never persist a value that
-    // would leave the project unloadable.
+    // would leave the project unloadable. Parse the serialized text rather
+    // than converting the `Value`: `from_value` rejects an unquoted number
+    // in a string field that `load_config` accepts.
+    let serialized = serde_yaml::to_string(&mapping)
+        .map_err(|source| ConfigError::SerializeFailed { source })?;
+    let raw_project: Option<RawConfig> =
+        serde_yaml::from_str(&serialized).map_err(|buffer_error| {
+            ConfigError::ProjectConfigMalformed {
+                path: project_config_path.clone(),
+                source: reported_parse_error(&original_text, key, buffer_error),
+            }
+        })?;
     let preset = load_preset_defaults()?;
-    let effective = validate(&merge(preset, raw_project.clone()))?;
+    let effective = validate(&merge(preset, raw_project.unwrap_or_default()))?;
 
     std::fs::create_dir_all(&konductor_dir).map_err(|source| ConfigError::WriteFailed {
         path: konductor_dir.clone(),
         source,
     })?;
-    let serialized = serde_yaml::to_string(&raw_project)
-        .map_err(|source| ConfigError::SerializeFailed { source })?;
     crate::cli::atomic_write::write_atomic(&project_config_path, serialized.as_bytes()).map_err(
         |source| ConfigError::WriteFailed {
             path: project_config_path.clone(),
@@ -498,57 +530,92 @@ pub fn set_config_value(
     Ok(effective)
 }
 
-/// Parses `value` against `key`'s expected type and writes it into
-/// `raw_project`'s matching field. Mirrors `get_field`/`list_fields`'
-/// (dispatch.rs) field set and stringification rules in reverse.
+/// Picks the parse error to show when the edited buffer fails to
+/// re-parse, so its line refers to the file on disk. The original file's
+/// own error is used when it is a different fault than the key being set.
+/// Otherwise the buffer's error is used, with its line looked up from the
+/// failing field's key in the original text.
+fn reported_parse_error(
+    original_text: &str,
+    key: &str,
+    buffer_error: serde_yaml::Error,
+) -> serde_yaml::Error {
+    let lines: Vec<&str> = original_text.lines().collect();
+    if let Some(original_error) = serde_yaml::from_str::<Option<RawConfig>>(original_text).err() {
+        let fault_is_the_key_being_set = original_error
+            .location()
+            .and_then(|location| top_level_key_owning_line(&lines, location.line()))
+            .is_some_and(|owner| owner == key);
+        if !fault_is_the_key_being_set {
+            return original_error;
+        }
+    }
+    let message = buffer_error.to_string();
+    let message = message
+        .rsplit_once(" at line ")
+        .map_or(message.as_str(), |(head, _)| head);
+    let failing_field = message.split_once(": ").map(|(field, _)| field);
+    let line = failing_field
+        .filter(|field| _CONFIG_FIELDS.contains(field))
+        .and_then(|field| {
+            lines
+                .iter()
+                .position(|text| top_level_key(text) == Some(field))
+        });
+    match line {
+        Some(index) => serde::de::Error::custom(format!("{message} at line {}", index + 1)),
+        None => buffer_error,
+    }
+}
+
+/// Key of the top-level mapping entry that the 1-based `line` belongs to.
+fn top_level_key_owning_line<'a>(lines: &[&'a str], line: usize) -> Option<&'a str> {
+    lines
+        .iter()
+        .take(line)
+        .rev()
+        .find_map(|text| top_level_key(text))
+}
+
+fn top_level_key(line: &str) -> Option<&str> {
+    if line.starts_with(|c: char| c.is_whitespace() || c == '#' || c == '-') {
+        return None;
+    }
+    line.split_once(':').map(|(key, _)| key.trim_end())
+}
+
+/// Parses `value` against `key`'s expected type and returns it as the
+/// YAML value to store: a number for `version`, a string otherwise.
+/// Mirrors `get_field`/`list_fields`' (dispatch.rs) field set and
+/// stringification rules in reverse.
 /// `default_severity` / `fail_on_severity_at_or_above` are validated
 /// against `VALID_SEVERITIES`, and `tier` against `VALID_TIERS`, up
 /// front (rather than deferring entirely to the post-merge `validate`
 /// call) so an invalid value is reported against the specific key/value
 /// the user passed, not a generic merged-config error.
-fn apply_field(raw_project: &mut RawConfig, key: &str, value: &str) -> Result<(), ConfigError> {
+fn parse_field_value(key: &str, value: &str) -> Result<serde_yaml::Value, ConfigError> {
+    let invalid = |reason: String| ConfigError::InvalidValue {
+        key: key.to_string(),
+        value: value.to_string(),
+        reason,
+    };
     match key {
         "version" => {
             let parsed = value
                 .parse::<u64>()
-                .map_err(|_| ConfigError::InvalidValue {
-                    key: key.to_string(),
-                    value: value.to_string(),
-                    reason: "expected a non-negative integer".to_string(),
-                })?;
-            raw_project.version = Some(parsed);
+                .map_err(|_| invalid("expected a non-negative integer".to_string()))?;
+            return Ok(serde_yaml::Value::Number(parsed.into()));
         }
-        "severities_source" => raw_project.severities_source = Some(value.to_string()),
-        "tiers_source" => raw_project.tiers_source = Some(value.to_string()),
+        "severities_source" | "tiers_source" => {}
         "tier" => {
             if !VALID_TIERS.contains(&value) {
-                return Err(ConfigError::InvalidValue {
-                    key: key.to_string(),
-                    value: value.to_string(),
-                    reason: format!("expected one of {VALID_TIERS:?}"),
-                });
+                return Err(invalid(format!("expected one of {VALID_TIERS:?}")));
             }
-            raw_project.tier = Some(value.to_string());
         }
-        "default_severity" => {
-            require_severity(Some(value), "default_severity").map_err(|_| {
-                ConfigError::InvalidValue {
-                    key: key.to_string(),
-                    value: value.to_string(),
-                    reason: format!("expected one of {VALID_SEVERITIES:?}"),
-                }
-            })?;
-            raw_project.default_severity = Some(value.to_string());
-        }
-        "fail_on_severity_at_or_above" => {
-            require_severity(Some(value), "fail_on_severity_at_or_above").map_err(|_| {
-                ConfigError::InvalidValue {
-                    key: key.to_string(),
-                    value: value.to_string(),
-                    reason: format!("expected one of {VALID_SEVERITIES:?}"),
-                }
-            })?;
-            raw_project.fail_on_severity_at_or_above = Some(value.to_string());
+        "default_severity" | "fail_on_severity_at_or_above" => {
+            if value.parse::<Severity>().is_err() {
+                return Err(invalid(format!("expected one of {VALID_SEVERITIES:?}")));
+            }
         }
         _ => {
             return Err(ConfigError::UnknownKey {
@@ -556,7 +623,36 @@ fn apply_field(raw_project: &mut RawConfig, key: &str, value: &str) -> Result<()
             })
         }
     }
-    Ok(())
+    Ok(serde_yaml::Value::String(value.to_string()))
+}
+
+/// Loads a project's `.konductor/config.yml` as a raw YAML mapping, for
+/// `config set` to edit one key while keeping every other key and block.
+/// A missing file, an empty file, or a `---`-only file (YAML `null`) is
+/// an empty mapping, matching `load_raw_config`. Any other non-mapping
+/// document is `ProjectConfigNotMapping`. Also returns the file text
+/// (empty when the file is missing) so callers can report errors against it.
+fn load_project_mapping(path: &Path) -> Result<(serde_yaml::Mapping, String), ConfigError> {
+    if !path.is_file() {
+        return Ok((serde_yaml::Mapping::new(), String::new()));
+    }
+    let contents =
+        std::fs::read_to_string(path).map_err(|source| ConfigError::ProjectConfigNotReadable {
+            path: path.to_path_buf(),
+            source,
+        })?;
+    let document: serde_yaml::Value =
+        serde_yaml::from_str(&contents).map_err(|source| ConfigError::ProjectConfigMalformed {
+            path: path.to_path_buf(),
+            source,
+        })?;
+    match document {
+        serde_yaml::Value::Null => Ok((serde_yaml::Mapping::new(), contents)),
+        serde_yaml::Value::Mapping(mapping) => Ok((mapping, contents)),
+        _ => Err(ConfigError::ProjectConfigNotMapping {
+            path: path.to_path_buf(),
+        }),
+    }
 }
 
 /// The full set of config field names `config get`/`config set`/`config
@@ -606,7 +702,7 @@ fn load_preset_defaults() -> Result<RawConfig, ConfigError> {
 /// file would incorrectly raise `ProjectConfigMalformed` instead of
 /// falling back to the preset defaults for a legitimate, non-malformed
 /// input.
-pub(crate) fn load_raw_config(path: &Path) -> Result<RawConfig, ConfigError> {
+fn load_raw_config(path: &Path) -> Result<RawConfig, ConfigError> {
     let contents =
         std::fs::read_to_string(path).map_err(|source| ConfigError::ProjectConfigNotReadable {
             path: path.to_path_buf(),
@@ -636,9 +732,6 @@ fn merge(base: RawConfig, override_cfg: RawConfig) -> RawConfig {
         fail_on_severity_at_or_above: override_cfg
             .fail_on_severity_at_or_above
             .or(base.fail_on_severity_at_or_above),
-        // The mode is not a gate setting and no layer may override another's;
-        // `orchestration_mode` reads it from the user file directly.
-        orchestration: None,
     }
 }
 
@@ -1023,84 +1116,329 @@ mod tests {
         assert_eq!(serialized_keys, declared_keys);
     }
 
-    #[test]
-    fn merge_drops_orchestration_section_from_override() {
-        let override_cfg = RawConfig {
-            orchestration: Some(OrchestrationSection {
-                mode: Some("coordinator".to_string()),
-                ..OrchestrationSection::default()
-            }),
-            ..RawConfig::default()
-        };
-        let merged = merge(load_preset_defaults().unwrap(), override_cfg);
-        assert!(merged.orchestration.is_none());
-    }
-
-    #[test]
-    fn set_config_value_keeps_orchestration_section() {
-        let root = scratch_dir("set-keeps-orchestration");
+    fn project_with_config(name: &str, contents: &str) -> (PathBuf, PathBuf) {
+        let root = scratch_dir(name);
         let konductor_dir = root.join(KONDUCTOR_DIR_NAME);
         fs::create_dir_all(&konductor_dir).unwrap();
-        let path = konductor_dir.join(CONFIG_FILE_NAME);
-        fs::write(&path, "orchestration:\n  mode: coordinator\ntier: minor\n").unwrap();
+        let config_path = konductor_dir.join(CONFIG_FILE_NAME);
+        fs::write(&config_path, contents).unwrap();
+        (root, config_path)
+    }
 
-        set_config_value(&root, "tier", "full").expect("set tier must succeed");
+    fn read_mapping(path: &Path) -> serde_yaml::Mapping {
+        let value: serde_yaml::Value =
+            serde_yaml::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+        value
+            .as_mapping()
+            .expect("config must be a mapping")
+            .clone()
+    }
 
-        let raw = load_raw_config(&path).unwrap();
-        assert_eq!(raw.tier.as_deref(), Some("full"));
-        assert_eq!(
-            raw.orchestration
-                .and_then(|section| section.mode)
-                .as_deref(),
-            Some("coordinator")
+    fn mapping_keys(mapping: &serde_yaml::Mapping) -> Vec<String> {
+        mapping
+            .keys()
+            .map(|k| k.as_str().expect("string key").to_string())
+            .collect()
+    }
+
+    #[test]
+    fn set_preserves_unknown_top_level_block() {
+        let (root, config_path) = project_with_config(
+            "set-keeps-unknown-block",
+            "tier: minor\ntelemetry:\n  enabled: false\n  endpoint: https://telemetry.example.com\ncustom_key: 42\n",
         );
+
+        set_config_value(&root, "default_severity", "HIGH").expect("set must succeed");
+
+        let mapping = read_mapping(&config_path);
+        assert_eq!(
+            mapping["telemetry"]["enabled"],
+            serde_yaml::Value::Bool(false)
+        );
+        assert_eq!(
+            mapping["telemetry"]["endpoint"].as_str(),
+            Some("https://telemetry.example.com")
+        );
+        assert_eq!(mapping["custom_key"].as_u64(), Some(42));
+        assert_eq!(mapping["tier"].as_str(), Some("minor"));
+        assert_eq!(mapping["default_severity"].as_str(), Some("HIGH"));
         fs::remove_dir_all(&root).ok();
     }
 
-    /// Design 3.4 accepts that a shape-malformed user `orchestration:` fails
-    /// the gate loader; the session hook reports the same file as
-    /// `Fallback(Malformed)`, so the two readers agree.
     #[test]
-    fn malformed_user_orchestration_section_fails_load_config() {
-        use crate::cli::orchestration_mode::{resolve_user_mode, FallbackReason, ModeResolution};
-        let root = scratch_dir("malformed-orchestration-root");
-        let home = scratch_dir("malformed-orchestration-home");
-        fs::create_dir_all(home.join(KONDUCTOR_DIR_NAME)).unwrap();
-        fs::write(user_config_path(&home), "orchestration: 3\n").unwrap();
-
-        let loaded = load_config_with_home(&root, Some(&home));
-        let resolution = resolve_user_mode(Some(&home));
-        fs::remove_dir_all(&root).ok();
-        fs::remove_dir_all(&home).ok();
-
-        assert!(
-            matches!(loaded, Err(ConfigError::ProjectConfigMalformed { .. })),
-            "{loaded:?}"
+    fn set_preserves_key_order() {
+        let (root, config_path) = project_with_config(
+            "set-keeps-key-order",
+            "custom_first: 1\ntier: minor\ntelemetry:\n  enabled: true\ndefault_severity: LOW\n",
         );
+        let original_order = ["custom_first", "tier", "telemetry", "default_severity"];
+
+        set_config_value(&root, "tier", "major").expect("set must succeed");
+        let mapping = read_mapping(&config_path);
+        assert_eq!(mapping_keys(&mapping), original_order);
+        assert_eq!(mapping["tier"].as_str(), Some("major"));
+
+        set_config_value(&root, "fail_on_severity_at_or_above", "HIGH").expect("set must succeed");
+        let mapping = read_mapping(&config_path);
+        let mut expected: Vec<&str> = original_order.to_vec();
+        expected.push("fail_on_severity_at_or_above");
+        assert_eq!(mapping_keys(&mapping), expected);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_refuses_non_mapping_and_leaves_file_untouched() {
+        for (case, contents) in [("sequence", "- a\n- b\n"), ("scalar", "just-a-string\n")] {
+            let (root, config_path) =
+                project_with_config(&format!("set-refuses-non-mapping-{case}"), contents);
+            let before = fs::read(&config_path).unwrap();
+
+            let err = set_config_value(&root, "tier", "major")
+                .expect_err("a non-mapping config must be refused");
+            assert!(
+                matches!(err, ConfigError::ProjectConfigNotMapping { .. }),
+                "{case}: unexpected error {err:?}"
+            );
+            assert_eq!(err.error_code(), "config.project_config_not_mapping");
+            assert_eq!(
+                fs::read(&config_path).unwrap(),
+                before,
+                "{case}: file changed"
+            );
+            fs::remove_dir_all(&root).ok();
+        }
+    }
+
+    #[test]
+    fn set_on_empty_file_writes_only_that_key() {
+        for (case, contents) in [("empty", ""), ("marker-only", "---\n")] {
+            let (root, config_path) =
+                project_with_config(&format!("set-on-empty-file-{case}"), contents);
+
+            set_config_value(&root, "tier", "bugfix").expect("set must succeed");
+
+            let mapping = read_mapping(&config_path);
+            assert_eq!(mapping_keys(&mapping), ["tier"], "{case}");
+            assert_eq!(mapping["tier"].as_str(), Some("bugfix"), "{case}");
+            fs::remove_dir_all(&root).ok();
+        }
+    }
+
+    #[test]
+    fn set_refuses_malformed_yaml_and_leaves_file_untouched() {
+        for (case, contents) in [
+            ("unclosed", "tier: [unclosed\n"),
+            ("duplicate-key", "tier: minor\ntier: major\n"),
+        ] {
+            let (root, config_path) =
+                project_with_config(&format!("set-refuses-malformed-{case}"), contents);
+            let before = fs::read(&config_path).unwrap();
+
+            let err = set_config_value(&root, "default_severity", "HIGH")
+                .expect_err("a malformed config must be refused");
+            assert!(
+                matches!(err, ConfigError::ProjectConfigMalformed { .. }),
+                "{case}: unexpected error {err:?}"
+            );
+            assert_eq!(
+                fs::read(&config_path).unwrap(),
+                before,
+                "{case}: file changed"
+            );
+            fs::remove_dir_all(&root).ok();
+        }
+    }
+
+    #[test]
+    fn set_accepts_non_string_scalar_in_string_field() {
+        let (root, config_path) =
+            project_with_config("set-accepts-number-in-string-field", "tiers_source: 2\n");
+        load_config(&root).expect("the file must load before the set");
+
+        set_config_value(&root, "tier", "minor").expect("set must succeed");
+
+        let mapping = read_mapping(&config_path);
+        assert_eq!(mapping["tiers_source"].as_u64(), Some(2));
+        assert_eq!(mapping["tier"].as_str(), Some("minor"));
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_repairs_wrong_type_known_field() {
+        let contents = "version: abc\n";
+
+        let (root, config_path) = project_with_config("set-other-key-on-wrong-type", contents);
+        let err = set_config_value(&root, "tier", "major")
+            .expect_err("setting another key must not hide the broken field");
+        assert!(
+            matches!(err, ConfigError::ProjectConfigMalformed { .. }),
+            "unexpected error {err:?}"
+        );
+        assert_eq!(fs::read(&config_path).unwrap(), contents.as_bytes());
+        fs::remove_dir_all(&root).ok();
+
+        let (root, config_path) = project_with_config("set-repairs-wrong-type", contents);
+        set_config_value(&root, "version", "1").expect("setting the broken field must repair it");
+        assert_eq!(read_mapping(&config_path)["version"].as_u64(), Some(1));
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_invalid_value_keeps_unknown_block_and_file_bytes() {
+        let (root, config_path) = project_with_config(
+            "set-invalid-keeps-bytes",
+            "tier: minor\ntelemetry:\n  enabled: false\n",
+        );
+        let before = fs::read(&config_path).unwrap();
+
+        let err = set_config_value(&root, "tier", "not-a-tier")
+            .expect_err("an invalid tier must be refused");
+        assert!(
+            matches!(err, ConfigError::InvalidValue { .. }),
+            "unexpected error {err:?}"
+        );
+        assert_eq!(fs::read(&config_path).unwrap(), before);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_reparse_error_reports_line_of_original_file() {
+        let (root, config_path) = project_with_config(
+            "set-reparse-line",
+            "# one\n# two\n# three\nversion: abc\ntier: minor\n",
+        );
+        let before = fs::read(&config_path).unwrap();
+
+        let err = set_config_value(&root, "tier", "trivial")
+            .expect_err("a wrong-typed version must fail the re-parse");
+        match err {
+            ConfigError::ProjectConfigMalformed { source, .. } => {
+                assert_eq!(source.location().map(|l| l.line()), Some(4));
+            }
+            other => panic!("unexpected error {other:?}"),
+        }
+        assert_eq!(fs::read(&config_path).unwrap(), before);
+
+        set_config_value(&root, "version", "1").expect("set version 1 must repair the file");
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_reports_the_remaining_broken_field_when_the_set_repairs_another() {
+        let (root, config_path) =
+            project_with_config("set-two-broken", "version: abc\ntier: [1]\n");
+        let before = fs::read(&config_path).unwrap();
+
+        let err = set_config_value(&root, "version", "1")
+            .expect_err("tier is still broken after the set");
+        match &err {
+            ConfigError::ProjectConfigMalformed { source, .. } => {
+                assert!(source.to_string().contains("tier"), "{source}");
+                assert!(source.to_string().ends_with("at line 2"), "{source}");
+            }
+            other => panic!("unexpected error {other:?}"),
+        }
+        assert_eq!(fs::read(&config_path).unwrap(), before);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_reports_the_buffer_error_at_the_failing_key_line_of_the_original() {
+        let (root, config_path) = project_with_config(
+            "set-buffer-error-line",
+            "# note\nversion: abc\n\n\ntier: [1]\n",
+        );
+        let before = fs::read(&config_path).unwrap();
+
+        let err = set_config_value(&root, "version", "1").expect_err("tier is broken");
+        match &err {
+            ConfigError::ProjectConfigMalformed { source, .. } => {
+                assert!(source.to_string().contains("tier"), "{source}");
+                assert!(source.to_string().ends_with("at line 5"), "{source}");
+            }
+            other => panic!("unexpected error {other:?}"),
+        }
+        assert_eq!(fs::read(&config_path).unwrap(), before);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_repairs_a_file_broken_only_in_the_key_being_set() {
+        let (root, config_path) = project_with_config("set-repairs-only", "version: abc\n");
+
+        set_config_value(&root, "version", "1").expect("the set repairs the only fault");
+
+        assert_eq!(read_mapping(&config_path)["version"].as_u64(), Some(1));
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_rewrites_file_and_drops_formatting_documented_in_changelog() {
+        let (root, config_path) = project_with_config(
+            "set-drops-formatting",
+            "# my comment\nn: 3.10\nb: 0x1F\nq: \"quoted\"\nx: !!binary aGk=\n",
+        );
+
+        set_config_value(&root, "tier", "major").unwrap();
+
+        let text = fs::read_to_string(&config_path).unwrap();
+        assert!(!text.contains("my comment"), "{text}");
+        assert!(text.contains("n: 3.1\n"), "{text}");
+        assert!(text.contains("b: 31\n"), "{text}");
+        assert!(text.contains("q: quoted\n"), "{text}");
+        assert!(!text.contains("!!binary"), "{text}");
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn set_unsupported_version_is_refused_and_file_bytes_unchanged() {
+        let (root, config_path) = project_with_config(
+            "set-unsupported-version",
+            "tier: minor\ntelemetry:\n  enabled: false\n",
+        );
+        let before = fs::read(&config_path).unwrap();
+
+        let err = set_config_value(&root, "version", "2").expect_err("version 2 must be refused");
         assert!(
             matches!(
-                resolution,
-                ModeResolution::Fallback(FallbackReason::Malformed { .. })
+                err,
+                ConfigError::UnsupportedVersion {
+                    found: 2,
+                    supported: 1
+                }
             ),
-            "{resolution:?}"
+            "unexpected error {err:?}"
         );
+        assert_eq!(fs::read(&config_path).unwrap(), before);
+        fs::remove_dir_all(&root).ok();
     }
 
     #[test]
-    fn set_config_value_keeps_unknown_orchestration_keys() {
-        let root = scratch_dir("set-keeps-unknown-orchestration");
-        let konductor_dir = root.join(KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&konductor_dir).unwrap();
-        let path = konductor_dir.join(CONFIG_FILE_NAME);
-        fs::write(&path, "orchestration:\n  mdoe: coordinator\n").unwrap();
-
-        set_config_value(&root, "tier", "full").expect("set tier must succeed");
-
-        let section = load_raw_config(&path).unwrap().orchestration.unwrap();
-        fs::remove_dir_all(&root).ok();
-        assert_eq!(
-            section.unknown_keys.get("mdoe"),
-            Some(&serde_yaml::Value::String("coordinator".to_string()))
-        );
+    fn project_mapping_and_raw_config_agree_on_edge_case_files() {
+        for (name, contents) in [
+            ("empty", ""),
+            ("doc-marker", "---\n"),
+            ("comments", "# only a comment\n"),
+            ("null", "null\n"),
+            ("tilde", "~\n"),
+        ] {
+            let (root, path) = project_with_config(&format!("agree-{name}"), contents);
+            let (mapping, _) = load_project_mapping(&path)
+                .unwrap_or_else(|e| panic!("{name}: mapping reader failed: {e:?}"));
+            assert!(mapping.is_empty(), "{name}");
+            let raw = load_raw_config(&path)
+                .unwrap_or_else(|e| panic!("{name}: raw reader failed: {e:?}"));
+            assert!(raw.version.is_none() && raw.tier.is_none(), "{name}");
+            fs::remove_dir_all(&root).ok();
+        }
+        for (name, contents) in [("sequence", "- a\n- b\n"), ("scalar", "just text\n")] {
+            let (root, path) = project_with_config(&format!("agree-{name}"), contents);
+            assert!(load_project_mapping(&path).is_err(), "{name}");
+            assert!(load_raw_config(&path).is_err(), "{name}");
+            fs::remove_dir_all(&root).ok();
+        }
+        let missing = scratch_dir("agree-missing").join("config.yml");
+        let (mapping, text) = load_project_mapping(&missing).unwrap();
+        assert!(mapping.is_empty() && text.is_empty());
     }
 }

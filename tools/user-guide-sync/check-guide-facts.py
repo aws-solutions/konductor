@@ -46,13 +46,10 @@ _DIAGRAM_DIR = {"agents": "agents", "skills": "skills", "SOPs": "agent-sops"}
 # for agents ("11 agent specs"), which is why this needs its own map.
 _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 
-# Commands the CLI accepts but the guide deliberately does not document, with the
-# decision recorded so the carve-out is auditable rather than folklore. `config`
-# is withheld from the v1 customer-visible surface (reviewer decision on
-# reviewer decision); `.konductor/config.yml` itself stays documented, since `init`
-# writes it and `doctor` validates it. Adding a name here is a product decision,
-# not a way to silence this script -- see docs/user-guide/notes.md.
-WITHDRAWN_COMMANDS = {"config"}
+# Commands the CLI accepts but the guide deliberately does not document. Empty:
+# the hidden `config` command (`#[command(hide = true)]` in cli/konductor-rs/src/cli.rs)
+# is not in cli/README.md's command list, so there is nothing to withhold.
+WITHDRAWN_COMMANDS: set[str] = set()
 
 
 def html_pages_for_flags(root: Path):
@@ -85,6 +82,25 @@ def section(title: str) -> None:
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def find_lint_toolchain_pin(workflow: Path):
+    """Return (version, None) for the RUST_LINT_TOOLCHAIN pin, or (None, problem).
+
+    The pin is required, so a missing file, key, or non-literal value is a
+    problem rather than a skip. The guide comparison only understands X.Y.Z.
+    """
+    name = "validate-pr.yml"
+    if not workflow.is_file():
+        return None, f"{name} not found at {workflow.parent}; expected a RUST_LINT_TOOLCHAIN pin"
+    key = re.search(r"RUST_LINT_TOOLCHAIN:\s*(\S*)", read(workflow))
+    if key is None:
+        return None, f"{name} has no RUST_LINT_TOOLCHAIN key; the lint toolchain pin is required"
+    value = re.fullmatch(r"([\"']?)([0-9]+\.[0-9]+\.[0-9]+)\1", key.group(1))
+    if value is None:
+        return None, (f"RUST_LINT_TOOLCHAIN in {name} is {key.group(1)!r}; "
+                      "it must be a literal X.Y.Z version, optionally quoted")
+    return value.group(2), None
 
 
 def strip_md(cell: str) -> str:
@@ -628,10 +644,8 @@ def main() -> int:
     keys = re.findall(r"^([a-z][a-z0-9_]*):", cfg, re.MULTILINE)
     if not keys:
         fail("could not parse any top-level keys from cli/gate-config/config.yml")
-    # reference.md is the only page documenting the schema now. The task page that
-    # used to carry it went with the `konductor config` command -- see the
-    # WITHDRAWN_COMMANDS note below. The FILE is still documented, because
-    # `init` writes it and `doctor` validates it.
+    # reference.md is the only page documenting the schema. The file is documented
+    # because `init` writes it and `doctor` validates it.
     for page in ("reference.md",):
         text = read(guide / page)
         missing = [k for k in keys if f"`{k}`" not in text]
@@ -992,6 +1006,25 @@ def main() -> int:
     else:
         for version, where in sorted(seen.items()):
             fail(f"version {version} appears in {sorted(set(where))}")
+
+    section("the pre-PR lint toolchain matches validate-pr.yml")
+    pin, pin_problem = find_lint_toolchain_pin(root / ".github" / "workflows" / "validate-pr.yml")
+    if pin_problem:
+        fail(pin_problem)
+    else:
+        lint_re = re.compile(r"(?:toolchain install|cargo \+|TOOLCHAIN=)\s*\"?([0-9]+\.[0-9]+\.[0-9]+)")
+        sources = [(str(md.relative_to(guide)), read(md)) for md in sorted(guide.rglob("*.md"))]
+        for page in html_pages_for_flags(root):
+            try:
+                sources.append((str(page.relative_to(root)), load_template(page)))
+            except (ValueError, json.JSONDecodeError):
+                continue
+        stale = sorted({where for where, text in sources
+                        for m in lint_re.finditer(text) if m.group(1) != pin})
+        if stale:
+            fail(f"lint toolchain differs from RUST_LINT_TOOLCHAIN={pin} in {stale}")
+        else:
+            ok(f"every lint toolchain mention says {pin}")
 
     # ---- 16. The toolchain's own prompts use shipped names --------------------
     # The rename sweep and every check above cover docs/user-guide/. The two
