@@ -138,8 +138,14 @@ pub(crate) enum KiroEngine {
 
 /// The id Kiro CLI V3 gives the `get_skill` tool's deferred schema, in the
 /// `tool::<server>::<tool>` form its `load_resource` tool takes.
-fn get_skill_resource_id() -> String {
+pub(crate) fn get_skill_resource_id() -> String {
     format!("tool::{MCP_SERVER_NAME}::{GET_SKILL_TOOL}")
+}
+
+/// The id Kiro CLI V2's `tool_search` tool takes to load a deferred tool,
+/// in its `<server>::<tool>` form.
+pub(crate) fn get_skill_tool_search_id() -> String {
+    format!("{MCP_SERVER_NAME}::{GET_SKILL_TOOL}")
 }
 
 fn kiro_load_rule(engine: KiroEngine) -> String {
@@ -148,8 +154,15 @@ fn kiro_load_rule(engine: KiroEngine) -> String {
          server."
     );
     match engine {
+        // V2 defers MCP tools only when Tool Search is active, so its step
+        // stays conditional. It loads a deferred tool with `tool_search`,
+        // then the tool is called by its plain name.
         KiroEngine::V2 => {
-            format!("{lead} If the tool is deferred, load it with `tool_load` first.")
+            let id = get_skill_tool_search_id();
+            format!(
+                "{lead} If `{GET_SKILL_TOOL}` is not in your tool list, call `tool_search` with \
+                 tool_id `{id}` first, then call `{GET_SKILL_TOOL}`."
+            )
         }
         // V3 defers MCP tool schemas, and a schema one agent loads is not
         // loaded for the subagents it spawns, so the step is unconditional
@@ -453,14 +466,21 @@ mod tests {
     }
 
     #[test]
-    fn v2_load_rule_is_unchanged() {
+    fn v2_load_rule_names_tool_search_and_its_id() {
         let skills = vec![skill("a", "Use for a.")];
         let block = kiro_skill_block("k-developer", &["a"], &skills, KiroEngine::V2).unwrap();
         assert!(
-            block.contains("If the tool is deferred, load it with `tool_load` first."),
+            block.contains(
+                "If `get_skill` is not in your tool list, call `tool_search` with tool_id \
+                 `konductor-skills::get_skill` first"
+            ),
             "{block}"
         );
-        assert!(!block.contains("load_resource"), "{block}");
+        assert!(
+            !block.contains("load_resource") && !block.contains("tool_load"),
+            "{block}"
+        );
+        assert_eq!(get_skill_tool_search_id(), "konductor-skills::get_skill");
     }
 
     #[test]

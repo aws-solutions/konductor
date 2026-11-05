@@ -170,7 +170,9 @@ fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
                 );
             } else {
                 assert!(
-                    block.contains("`tool_load`") && !block.contains(v3_rule),
+                    block.contains("call `tool_search` with tool_id `konductor-skills::get_skill`")
+                        && !block.contains(v3_rule)
+                        && !block.contains("tool_load"),
                     "{harness}/{name}: load rule"
                 );
             }
