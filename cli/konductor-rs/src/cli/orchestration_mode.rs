@@ -470,6 +470,22 @@ mod tests {
     }
 
     #[test]
+    fn project_only_mode_is_not_read_by_the_resolver() {
+        let home = scratch_home("project-only-home");
+        let project = scratch_home("project-only-project");
+        let project_file = project.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
+        fs::write(&project_file, "orchestration:\n  mode: coordinator\n").unwrap();
+
+        let resolution = resolve_user_mode(Some(&home));
+        let project_section = read_section(&project_file).unwrap().expect("section kept");
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&project).ok();
+
+        assert_eq!(resolution, ModeResolution::Default);
+        assert_eq!(project_section.mode.as_deref(), Some("coordinator"));
+    }
+
+    #[test]
     fn config_set_keeps_orchestration_section_and_unknown_keys() {
         let root = scratch_home("set-keeps-section");
         let path = root.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);

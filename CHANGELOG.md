@@ -32,8 +32,8 @@ not per individual commit.
 - `make version-check` fails a PR or release when a crate, a lockfile entry for a Konductor
   product crate (manifest under `cli/`, `mcp/` or `shared/`) or the CHANGELOG heading disagrees
   with `VERSION`. Independently versioned path crates elsewhere are not checked.
-- `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml` by the session
-  hook and `doctor`; `config set` keeps the section.
+- `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml` by one resolver.
+  `config set` keeps an `orchestration:` section in the project file, which the resolver does not read.
 
 ### Changed
 
