@@ -38,9 +38,10 @@ not per individual commit.
 - `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate that needs one (next bullet); it
   spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
   work on disjoint files. An SOP's own instruction to spawn wins over that limit.
-- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change whose
-  build, test and lint passed (not for auth, secrets, data or infrastructure), and triage findings
-  against the request, house rules and spec before the fix. When `konductor` made the artifact, a
+- All three orchestrators skip the reviewer for a lookup, a listing, a standalone document its
+  checker skill covers, or a one-file change whose build, test and lint passed (not for auth,
+  secrets, data or infrastructure), and triage findings against the request, house rules and spec
+  before the fix. When `konductor` made the artifact, a
   finding it would reject goes to you before it is dropped.
 - The handoff, split, denial and brief rules every orchestrator follows now live in
   `context/k-orchestrator-shared.md`, loaded by all three orchestrators.

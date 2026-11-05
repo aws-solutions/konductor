@@ -61,3 +61,9 @@ def test_orchestrator_files_point_to_rule_12_without_copying_the_carve_out():
         text = _read(rel)
         assert "Core rule 12" in text, rel
         assert "counts as named by the user" not in text, rel
+
+
+def test_rule_12_carve_out_names_the_two_browser_sops():
+    line = _rule_12_lines()[0]
+    assert "`k-light-ui-testing` or `k-e2e-test-generation` passes to you in its brief" in line
+    assert "an SOP passes to you" not in line
