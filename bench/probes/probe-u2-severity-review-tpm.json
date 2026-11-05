@@ -1,0 +1,90 @@
+{
+  "id": "probe-u2-severity-review-tpm",
+  "class": "simple",
+  "target": "k-tpm",
+  "fixture": "probe-tpm-program",
+  "timeoutSec": 600,
+  "prompt": "Review docs/program-plan.md for problems that could put the program at risk or mislead its readers. Write your review to review/plan-review.md: list each problem, give each one a severity rating, say where it is, and say what to do about it. Do not change any existing file. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "rubric": [
+    {
+      "id": "top-finding",
+      "criterion": "Names the go-live date being earlier than the security sign-off it depends on as the most serious problem.",
+      "weight": 3
+    },
+    {
+      "id": "other-issues",
+      "criterion": "Reports the undated, unowned vendor dependency with no mitigation, and the budget lines (410,000) that do not match the stated total (380,000).",
+      "weight": 2
+    },
+    {
+      "id": "accuracy",
+      "criterion": "Every finding is true and points to a place in the plan, with an action. No invented problems.",
+      "weight": 2
+    }
+  ],
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "review/plan-review.md"
+    },
+    {
+      "type": "labelled_findings",
+      "path": "review/plan-review.md",
+      "min": 4,
+      "labels": [
+        "critical",
+        "high",
+        "important",
+        "major",
+        "medium",
+        "moderate",
+        "minor",
+        "low",
+        "suggestion",
+        "nit",
+        "info"
+      ]
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");const A=new RegExp(\"M4|go-live|go live|2025-07-01|1 July\",\"gi\"),R=[new RegExp(\"M3|security|sign-off|15 July|2025-07-15\",\"i\"),new RegExp(\"before|earlier|precede|depends|after|contradict|cannot|conflict\",\"i\")],W=500;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");const A=new RegExp(\"M4|go-live|go live|2025-07-01|1 July\",\"gi\"),R=[new RegExp(\"critical|high|blocker|severe|major|p0|p1|sev ?1|urgent|must fix|must be fixed\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");const A=new RegExp(\"vendor|API v2|R1\",\"gi\"),R=[new RegExp(\"owner|no date|second quarter|mitigation|none yet|undated|no one|nobody|date\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");const A=new RegExp(\"budget|380|410|total\",\"gi\"),R=[new RegExp(\"410|380|sum|add up|adds up|mismatch|does not match|not match|inconsisten|differs\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");const A=new RegExp(\"format|2025-06-20|15 July|ISO\",\"gi\"),R=[new RegExp(\"date|inconsisten|mix|format|style\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");const A=new RegExp(\"status colou?rs?|G, A|G/A/R|legend|RAG\",\"gi\"),R=[new RegExp(\"defin|meaning|explain|undefined|not defined|threshold|means\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

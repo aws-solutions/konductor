@@ -1,0 +1,202 @@
+{
+  "loosened": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "cases": [
+    {
+      "name": "overall not green phrased differently",
+      "check": 2,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/status-report.md": "Overall health: amber, down from green.\n"
+      }
+    },
+    {
+      "name": "overall not green near miss",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "Overall status: Green. All workstreams are on track.\n"
+      }
+    },
+    {
+      "name": "overall not green unrelated text",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "change from last week phrased differently",
+      "check": 3,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/status-report.md": "Status moved from green last week to red this week.\n"
+      }
+    },
+    {
+      "name": "change from last week near miss",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "Last week status was green and this week is green.\n"
+      }
+    },
+    {
+      "name": "change from last week unrelated text",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "go-live conflict phrased differently",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/status-report.md": "Go-live is planned for 2025-07-01 but the security sign-off runs until 15 July, so they conflict.\n"
+      }
+    },
+    {
+      "name": "go-live conflict near miss",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "Go-live is planned for 2025-07-01.\n"
+      }
+    },
+    {
+      "name": "go-live conflict unrelated text",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "budget figures phrased differently",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/status-report.md": "Budget: 236,000 of 380,000 spent, 62 percent, at 42 percent complete.\n"
+      }
+    },
+    {
+      "name": "budget figures near miss",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "Budget is being tracked by finance.\n"
+      }
+    },
+    {
+      "name": "budget figures unrelated text",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "decision with options phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/status-report.md": "Decision needed: move go-live to after the sign-off, or add a second reviewer.\n"
+      }
+    },
+    {
+      "name": "decision with options near miss",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "No decision is needed this week.\n"
+      }
+    },
+    {
+      "name": "decision with options unrelated text",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "vendor risk phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/status-report.md": "Risk: the vendor has not confirmed a date for API v2, which blocks the cutover.\n"
+      }
+    },
+    {
+      "name": "vendor risk near miss",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "The vendor is named in the plan.\n"
+      }
+    },
+    {
+      "name": "vendor risk unrelated text",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "migration accounts phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/status-report.md": "Migration: 14 unmapped accounts found, 9 fixed, 5 remain.\n"
+      }
+    },
+    {
+      "name": "migration accounts near miss",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "Migration is going well.\n"
+      }
+    },
+    {
+      "name": "migration accounts unrelated text",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/status-report.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    }
+  ]
+}

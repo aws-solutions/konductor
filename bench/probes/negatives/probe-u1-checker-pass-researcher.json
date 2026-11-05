@@ -1,0 +1,118 @@
+{
+  "loosened": [
+    2,
+    4,
+    6,
+    7
+  ],
+  "cases": [
+    {
+      "name": "recommendation phrased differently",
+      "check": 2,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/brief.md": "We recommend Queue B for its headroom.\n"
+      }
+    },
+    {
+      "name": "recommendation near miss",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/brief.md": "There is a recommendation section below.\n"
+      }
+    },
+    {
+      "name": "recommendation unrelated text",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/brief.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "cost figures phrased differently",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/brief.md": "Cost: about 80 a month for Queue A, 1,200 fixed for Queue B.\n"
+      }
+    },
+    {
+      "name": "cost figures near miss",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/brief.md": "Cost matters a lot to the team.\n"
+      }
+    },
+    {
+      "name": "cost figures unrelated text",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/brief.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "stale source phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/brief.md": "The Queue B note from 2023 is superseded by the 2025 benchmark, so its latency is not used.\n"
+      }
+    },
+    {
+      "name": "stale source near miss",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/brief.md": "The notes were collected over two years.\n"
+      }
+    },
+    {
+      "name": "stale source unrelated text",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/brief.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "ordering phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/brief.md": "Ordering: Queue A is per key, Queue B is global.\n"
+      }
+    },
+    {
+      "name": "ordering near miss",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/brief.md": "The order of the sections is arbitrary.\n"
+      }
+    },
+    {
+      "name": "ordering unrelated text",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/brief.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    }
+  ]
+}

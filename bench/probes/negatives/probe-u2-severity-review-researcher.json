@@ -1,0 +1,174 @@
+{
+  "loosened": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "cases": [
+    {
+      "name": "throughput misquote phrased differently",
+      "check": 2,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/fact-check.md": "The memo says Queue A does 500 a second but the source says 5,000, a ten-fold error.\n"
+      }
+    },
+    {
+      "name": "throughput misquote near miss",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The memo discusses Queue A throughput in the second paragraph.\n"
+      }
+    },
+    {
+      "name": "throughput misquote unrelated text",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "top severity for throughput phrased differently",
+      "check": 3,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/fact-check.md": "Critical: the throughput of Queue A is quoted as 500 instead of 5,000.\n"
+      }
+    },
+    {
+      "name": "top severity for throughput near miss",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "Minor: the throughput sentence is long.\n"
+      }
+    },
+    {
+      "name": "top severity for throughput unrelated text",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "cost claim phrased differently",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/fact-check.md": "The claim that Queue B is cheaper has no source and the benchmark shows 1,200 against about 80.\n"
+      }
+    },
+    {
+      "name": "cost claim near miss",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The memo mentions that Queue B is cheaper.\n"
+      }
+    },
+    {
+      "name": "cost claim unrelated text",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "stale latency phrased differently",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/fact-check.md": "The 60 ms latency is from the 2023 note, which is superseded; the 2025 benchmark says 25 ms.\n"
+      }
+    },
+    {
+      "name": "stale latency near miss",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The memo quotes a latency in the Why section.\n"
+      }
+    },
+    {
+      "name": "stale latency unrelated text",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "naming phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/fact-check.md": "The memo uses Option A, Queue A and the managed queue for the same thing; use one name.\n"
+      }
+    },
+    {
+      "name": "naming near miss",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The options are described in the memo.\n"
+      }
+    },
+    {
+      "name": "naming unrelated text",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "structure and dates phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/fact-check.md": "The Why section is one dense paragraph and the sources carry no dates; split it and date the sources.\n"
+      }
+    },
+    {
+      "name": "structure and dates near miss",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The memo has three sections.\n"
+      }
+    },
+    {
+      "name": "structure and dates unrelated text",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/fact-check.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    }
+  ]
+}
