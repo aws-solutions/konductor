@@ -267,7 +267,7 @@ Each SOP has its own default output location. Most accept an override.
 | `k-test-coverage-review` | `test-coverage-review/` — four files |
 | `k-codebase-analysis` | `codebase-analysis.md` |
 | `kiro-spec-workflow` | `.kiro/specs/<feature-name>/` — three files |
-| `k-context-gathering` | `.konductor/handoff/<name>.md`, only when findings exceed ~100 lines |
+| `k-context-gathering`, `k-comprehensive-search` | `.konductor/handoff/<name>.md`, only when findings exceed ~100 lines |
 
 Nearly all of these SOPs are required to reference the file path rather than print the report
 inline, so if you get a one-paragraph summary and a path, that is correct behavior — the file is

@@ -369,7 +369,7 @@ JSON or Markdown you can read and change — see
 | `dist/` | `konductor synth` | **Yes** |
 | `~/.konductor/logs/konductor.log` | Every CLI invocation | Outside the repo |
 | `~/.konductor/config.yml` | You, by hand | Outside the repo |
-| `.konductor/handoff/<name>.md` | The `k-context-gathering` SOP, for large findings | No |
+| `.konductor/handoff/<name>.md` | Any specialist returning a split or handoff note (core rules), the `k-context-gathering` and `k-comprehensive-search` SOPs, and subagents under the `delegation-protocol` handoff pattern | By `.konductor/.gitignore` when `konductor init` created it; otherwise no |
 | `.agents/scratchpad/critique-NNN.md` | The `k-pre-cr-critique` SOP | No |
 | `.kiro/specs/<feature>/` | The `kiro-spec-workflow` SOP | No |
 

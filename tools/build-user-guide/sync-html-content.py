@@ -84,7 +84,7 @@ EDITS = [
      "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains"),
     ("concepts: no repeat review",
      "k-delegate</span> step 8).</p>",
-     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; any CRITICAL or IMPORTANT finding in its last re-review still blocks done. An artifact that passed review is not reviewed again unless it changes.</p>"),
+     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, or that the fix caused in what depends on it, blocks done, and the orchestrator stops and reports it to you; a pre-existing finding in unchanged code is listed for you. An SOP can set its own limit on fix rounds; a finding that blocks done under this rule still blocks it after the SOP's last re-review. An artifact that passed review is not reviewed again unless it changes.</p>"),
     ("concepts: re-delegate sentence without a dash",
      "it re-delegates — <strong",
      "it re-delegates, <strong"),
@@ -345,20 +345,6 @@ EDITS = [
     ("ik which agent: konductor first",
      ">kiro-cli chat --agent k-architect</pre>", ">kiro-cli chat --agent konductor</pre>"),
     # ---- specialists return handoffs instead of spawning ---------------------
-    ("concepts: specialists do not use spawn grants",
-     "which decides who owns it, hands it over, and checks the result.</p>",
-     "which decides who owns it, hands it over, and checks the result. The core rules tell "
-     "specialists not to use those grants: a specialist does its own part, then returns a note "
-     "naming the next role, or a proposed parallel split that gives each part's agent, inputs "
-     "and files, and konductor routes it.</p>"),
-    ("agents: delegation edges are tool grants",
-     "Delegation is not open. In Kiro CLI it is governed",
-     "Delegation is not open, and the edges below are tool grants that the core rules tell "
-     "specialists not to use: a specialist returns a handoff note or a proposed split to its "
-     "caller, and the grants are still in the agent specs. Run directly with no orchestrator, "
-     "the caller is you: k-adversarial-pull-request-review returns its three Step 2 passes as "
-     "a proposed split, resumes at Step 3, returns the reuse pass as a handoff note, and "
-     "resumes at Step 4. In Kiro CLI it is governed"),
     ("test coverage review: handoff to k-developer",
      "it may offer to spawn k-developer to implement the missing tests.",
      "it may return a note naming k-developer to implement the missing tests."),
@@ -406,9 +392,6 @@ ROSTER = [
     ("sop-review owner line",
      'owner: "k-developer, k-quality-assurance — no file changes"',
      'owner: "k-developer — no file changes"'),
-    ("agents prose: routing the review SOP",
-     'so it delegates the whole SOP to the developer or QA agent, which hits the same wall.',
-     'so it delegates the whole SOP to the developer, which hits the same wall.'),
     ("faq: memory and AGENTS.md are the project's instructions",
      'asks you instead of routing a denied action to another agent.',
      "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
@@ -432,12 +415,6 @@ ROSTER = [
     ("agents card: k-media-analyzer skills",
      "No SOPs. 1 skill \u2014 constraints only.",
      "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand."),
-    ("sops callout: two agents declare the review SOP",
-     'is declared by <strong style="color:var(--tx);font-weight:600">two</strong> agents — the developer and QA. Either can run it.',
-     'is declared by <strong style="color:var(--tx);font-weight:600">one</strong> agent — the developer. QA declared it too until that registration was removed as unusable: step 6 spawns k-architect, which QA cannot reach.'),
-    ("use-case bullet: neither owner lists the architect",
-     'and neither owner lists the architect: the developer\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>, QA\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-developer"]</code>.',
-     'and the developer, this SOP\'s only owner, does not list the architect: its targets are <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>.'),
     ("skills-per-agent table",
      '"rows":[{"k":"k-architect","v":"32"},{"k":"k-developer","v":"20"},{"k":"k-product-manager","v":"14"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"12"},{"k":"konductor-cmux-orchestrator","v":"11"},{"k":"konductor-mux-orchestrator","v":"11"},{"k":"k-quality-assurance","v":"10"},{"k":"k-researcher","v":"7"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
      '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"13"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
