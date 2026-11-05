@@ -471,3 +471,12 @@ test('judge --criteria-pack runs through --judge-cmd, writes the quality file on
     assert.equal(readQuality(s.runDir).records.length, 6);
   } finally { cleanup(s.root); }
 });
+
+test('report --verdict with --criteria-pack is refused instead of ignoring the pack', () => {
+  const s = setup();
+  try {
+    const r = cli(['report', '--run', s.runDir, '--bench-dir', s.bench, '--verdict', 'platform', '--criteria-pack', 'quality']);
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /--criteria-pack does not apply with --verdict/);
+  } finally { cleanup(s.root); }
+});

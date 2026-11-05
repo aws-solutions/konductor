@@ -365,7 +365,10 @@ function cmdVerdict(opts) {
 }
 
 function cmdReport(opts) {
-  if (opts.verdict !== undefined) return cmdVerdict(opts);
+  if (opts.verdict !== undefined) {
+    if (opts['criteria-pack'] !== undefined) throw new Error('--criteria-pack does not apply with --verdict: the verdict page has its own evidence');
+    return cmdVerdict(opts);
+  }
   const dirs = runDirsOf(opts);
   const given = opts.out && opts.out !== true;
   if (dirs.length > 1 && !given) throw new Error('several run directories are merged read-only; pass --out to say where the report goes');
