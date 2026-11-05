@@ -86,8 +86,13 @@ impl HarnessTransformer for KiroCliV2Transformer {
                 };
                 let declared: Vec<&str> =
                     skill_names_from_dependencies(&agent.dependencies.skills).collect();
-                let prompt = skill_index::kiro_skill_block(&agent.name, &declared, &model.skills)
-                    .map(|block| skill_index::append_block(&agent.config.system_prompt, &block));
+                let prompt = skill_index::kiro_skill_block(
+                    &agent.name,
+                    &declared,
+                    &model.skills,
+                    skill_index::KiroEngine::V2,
+                )
+                .map(|block| skill_index::append_block(&agent.config.system_prompt, &block));
                 let mut file = render_agent_file(
                     &agent.name,
                     &agent.config,

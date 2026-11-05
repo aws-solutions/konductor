@@ -161,7 +161,19 @@ fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
                     "{harness}/{name}: {skill} must not be named in the block"
                 );
             }
-            assert!(block.contains("`get_skill`") && block.contains("`tool_load`"));
+            assert!(block.contains("`get_skill`"), "{harness}/{name}");
+            let v3_rule = "call `load_resource` with id `tool::konductor-skills::get_skill`";
+            if harness == "kiro-v3" {
+                assert!(
+                    block.contains(v3_rule) && !block.contains("tool_load"),
+                    "{harness}/{name}: load rule"
+                );
+            } else {
+                assert!(
+                    block.contains("`tool_load`") && !block.contains(v3_rule),
+                    "{harness}/{name}: load rule"
+                );
+            }
             assert_eq!(
                 block.contains(ORCHESTRATOR_MARKER),
                 name.starts_with("konductor"),
