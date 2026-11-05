@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review-pass-schema
-description: 'Reviews a diff through the lens of schema and contract — API/schema/type changes, backward compatibility, validation completeness. Use only when a split from the adversarial-code-review coordinator names it, alongside the security and integrity passes.'
+description: 'Reviews a diff through the lens of schema and contract: API/schema/type changes, backward compatibility, validation completeness. Use only when a split from the adversarial-code-review coordinator names it, alongside the security and integrity passes.'
 version: 1.0.0
 tags: [skill, schema, code-review, adversarial, pass]
 ---
@@ -9,7 +9,7 @@ tags: [skill, schema, code-review, adversarial, pass]
 
 ## Overview
 
-Reviews a diff through the lens of schema and contract stability — API shapes, type changes, validation completeness, and backward compatibility. This is one of three parallel review passes that an adversarial-review coordinator SOP returns as a split for `k-developer` sessions to run. The framing is neutral by design: review through the lens of contract, do not assume any specific issue exists.
+Reviews a diff through the lens of schema and contract stability: API shapes, type changes, validation completeness, and backward compatibility. This is one of three parallel review passes that an adversarial-review coordinator SOP returns as a split for `k-developer` sessions to run. The framing is neutral by design: review through the lens of contract, do not assume any specific issue exists.
 
 ## Usage
 
