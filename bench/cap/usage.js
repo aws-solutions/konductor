@@ -54,6 +54,7 @@ function scanRunDirs(dirs, { harnesses = ['kiro-cli', 'opencode'] } = {}) {
   const runs = [];
   const skipped = { vanilla: 0, noStream: 0, noResult: 0, infraError: 0, duplicate: 0, otherHarness: 0 };
   const seen = new Set();
+  let staleInstalled = 0;
   const dirInfo = [];
   for (const dir of dirs) {
     const config = readJson(path.join(dir, 'run-config.json')) ?? {};
@@ -83,11 +84,16 @@ function scanRunDirs(dirs, { harnesses = ['kiro-cli', 'opencode'] } = {}) {
           for (const s of ex.skillsLoaded) loads[s.name.toLowerCase()] = { name: s.name, count: s.count, bytes: ex.bytesByName[s.name.toLowerCase()] ?? 0 };
           const agg = harness === 'kiro-cli' ? aggregateStream(events) : null;
           const delegatedTo = agg?.delegatedTo ?? {};
-          const installed = harness === 'kiro-cli' ? readJson(path.join(runPath, 'installed-agent.json')) : null;
+          const entryAgent = result.agent ?? readJson(path.join(runPath, 'installed-agent.json'))?.name ?? 'konductor';
+          const installedFile = harness === 'kiro-cli' ? readJson(path.join(runPath, 'installed-agent.json')) : null;
+          // Runs recorded before the entry agent's own file was saved hold konductor.json whatever agent started the run. Its filter says nothing about another entry agent.
+          const stale = Boolean(installedFile && installedFile.name && installedFile.name !== entryAgent);
+          const installed = stale ? null : installedFile;
+          if (stale) staleInstalled++;
           const r = refOf({ ref: rec?.ref ?? result.ref, sha: rec?.commitSha ?? result.commitSha, label: rec?.label ?? result.armLabel ?? arm });
           runs.push({
             dir: runPath, runDir: dir, arm, task, replicate: Number(rep), harness, refKey: r.key, variant: r.variant,
-            entryAgent: result.agent ?? installed?.name ?? 'konductor', entryFilter: skillFilterOf(installed),
+            entryAgent, entryFilter: skillFilterOf(installed),
             delegated: Object.keys(delegatedTo).filter((n) => n !== UNNAMED), delegationUnnamed: (delegatedTo[UNNAMED] ?? 0) > 0,
             loads, status: result.status ?? null, credits: typeof result.credits === 'number' ? result.credits : null, wallClockMs: typeof result.wallClockMs === 'number' ? result.wallClockMs : null,
             model: result.model ?? null, armConfig: result.armConfig ?? null,
@@ -98,7 +104,7 @@ function scanRunDirs(dirs, { harnesses = ['kiro-cli', 'opencode'] } = {}) {
     }
     dirInfo.push(info);
   }
-  return { runs, skipped, dirs: dirInfo };
+  return { runs, skipped, dirs: dirInfo, staleInstalled };
 }
 
 /**

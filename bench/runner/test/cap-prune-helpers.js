@@ -90,7 +90,8 @@ const jsonl = (events) => `${events.map((e) => JSON.stringify(e)).join('\n')}\n`
 /**
  * Writes a run directory. arms: [{ id, ref, sha, label }] (ref null is vanilla).
  * runs: [{ arm, task, rep, agent, loads, delegate, unnamedDelegate, filter, infraError, noStream, noResult, harness, credits, wallClockMs, model, armConfig, status }].
- * filter: the installed agent's --skill-name-filter list; undefined writes no installed-agent.json.
+ * filter: the installed agent's --skill-name-filter list; undefined writes no installed-agent.json. installedAs names the agent that file
+ * claims to be (default: the entry agent); runs saved before the entry agent's own file was kept hold konductor's whatever agent started them.
  */
 function makeRunDir(dir, { arms, runs, config = true }) {
   if (config) {
@@ -113,7 +114,7 @@ function makeRunDir(dir, { arms, runs, config = true }) {
       write(path.join(rd, 'stream.jsonl'), jsonl(harness === 'opencode' ? opencodeEvents({ loads: r.loads, tag }) : kiroEvents({ ...r, tag })));
     }
     if (r.filter !== undefined) {
-      write(path.join(rd, 'installed-agent.json'), JSON.stringify({ name: agent, mcpServers: { 'konductor-skills': { command: 'x', args: ['--skill-name-filter', r.filter.join(','), '--agent-sop-filter', 'k-plan'] } } }));
+      write(path.join(rd, 'installed-agent.json'), JSON.stringify({ name: r.installedAs ?? agent, mcpServers: { 'konductor-skills': { command: 'x', args: ['--skill-name-filter', r.filter.join(','), '--agent-sop-filter', 'k-plan'] } } }));
     }
   });
   return dir;

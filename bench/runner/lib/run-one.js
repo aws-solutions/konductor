@@ -157,7 +157,7 @@ function postProcess({ acc, task, arm, ctx, outDir, runRoot, home, cwd, iso, tri
     }
   }
   try {
-    harness.collectArtifacts(home, outDir);
+    harness.collectArtifacts(home, outDir, { arm });
   } catch {
     acc.meta.flags.push('artifactCopyFailed');
   }

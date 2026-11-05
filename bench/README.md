@@ -811,6 +811,7 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - `cap prune-report --base REF --runs-glob 'DIR/*' [--evidence FILE]` recomputes skill loads from the streams of every finished, non-vanilla run and writes one
   recommendation per skill and harness: HARMS, RELOCATE, PRUNE, FIX, KEEP or NEEDS DATA, plus a TRIM flag. Free, read-only, never a deletion.
   How to evaluate skills and decide keep, fix, trim, relocate or prune: [CAP-PLAYBOOK.md](CAP-PLAYBOOK.md).
+  A skill counts as exposed in a run when the agent that started the run lists it (its own installed skill filter, else the base tree's listing for that agent), or an agent the stream shows the run spawning lists it, or the run loaded it. Each run keeps the entry agent's own `installed-agent.json` (`--arm-agent k-developer` saves k-developer's, not konductor's). Runs saved before that fix hold konductor's file for every entry agent; `prune-report` ignores that file when its name differs from the entry agent, uses the base tree's listing instead, and counts those runs in `usage.runs.staleInstalledAgent` with a warning.
 - `cap variant --scratch DIR --drop ID | --replace ID=FILE | --add ID=FILE --to-agent A | --preset skills-only|bare` builds a `dir:`
   arm from `git archive` of the base ref (never the working tree) and prints the `--arms name=dir:PATH` string. `--verify` builds it with
   the offline cargo cache and trial-installs it in a scratch HOME, then compares the installed skill, SOP and context lists with the ops.

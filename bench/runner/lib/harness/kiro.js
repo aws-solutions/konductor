@@ -201,8 +201,9 @@ function orchMetrics(outDir) {
   return orchMetricsOfRunDir(outDir);
 }
 
-function collectArtifacts(home, outDir) {
-  const agentJson = path.join(home, '.kiro/agents/konductor.json');
+// The file saved is the entry agent's own: its skill filter is what the skill load-rate math counts as offered to the run.
+function collectArtifacts(home, outDir, { arm } = {}) {
+  const agentJson = path.join(home, '.kiro/agents', `${arm?.agent ?? 'konductor'}.json`);
   if (fs.existsSync(agentJson)) fs.copyFileSync(agentJson, path.join(outDir, 'installed-agent.json'));
 }
 

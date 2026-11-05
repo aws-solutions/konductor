@@ -167,6 +167,7 @@ function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = []
   const usage = tallyUsage(scan.runs, skills.map((c) => ({ id: c.id, name: c.name })), listedBy, harnesses);
   if (!runDirs.length) warnings.push('no run directories were given (--runs, --runs-glob), so no usage was read; classes come from reach and size alone');
 
+  if (scan.staleInstalled) warnings.push(`${scan.staleInstalled} run(s) kept the installed file of a different agent than the one that started them (older runs saved konductor.json for every entry agent); their skill filter was ignored and the base tree's listing for the entry agent was used`);
   const knownAgents = new Set(audit.matrix.agents);
   const unknownDelegates = new Set(scan.runs.flatMap((r) => r.delegated).filter((a) => !knownAgents.has(a)));
   if (unknownDelegates.size) warnings.push(`runs delegated to agents that are not in the base tree and were not counted as exposure: ${[...unknownDelegates].sort().join(', ')}`);
@@ -255,7 +256,7 @@ function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = []
   const notes = [
     'Every class is a recommendation based on the inputs listed above, never a deletion. A person decides.',
     'Only skills are classified. SOPs are prompts on kiro-cli, and agents and context files are not assessed here.',
-    `Exposure counts non-vanilla runs that offered the skill: kiro-cli by the entry agent's installed skill filter (else the agents listing it at ${audit.base.label}) plus any agent the stream shows the run delegating to; opencode by every run. Runs with an unnamed delegation are labelled coarse.`,
+    `Exposure counts non-vanilla runs that offered the skill: kiro-cli by the entry agent's own installed skill filter (else the agents listing it at ${audit.base.label}) plus any agent the stream shows the run delegating to; opencode by every run. Runs with an unnamed delegation are labelled coarse.`,
     'Exposed means an agent in the run could load the skill, not that the task needed it. The runs were not built around each skill, so FIX is a prompt to check discovery, not proof of a discovery problem.',
     'A load rate shows the agent picks a skill up. It is not evidence the skill improves a result; only the evidence file or a controlled run is.',
     'The evidence file is maintained by hand.',
@@ -272,7 +273,7 @@ function buildPruneReport({ repo, base, harness = 'both', benchDir, runDirs = []
       loadRateMin: LOAD_RATE_MIN, nearDuplicateMin: NEAR_DUPLICATE_MIN, sizeP90Bytes: p90,
     },
     usage: {
-      runs: { counted: scan.runs.length, coarse: scan.runs.filter((r) => r.delegationUnnamed).length, byHarness: Object.fromEntries(harnesses.map((h) => [h, scan.runs.filter((r) => r.harness === h).length])) },
+      runs: { counted: scan.runs.length, staleInstalledAgent: scan.staleInstalled, coarse: scan.runs.filter((r) => r.delegationUnnamed).length, byHarness: Object.fromEntries(harnesses.map((h) => [h, scan.runs.filter((r) => r.harness === h).length])) },
       skipped: scan.skipped, refs,
     },
     costContext,
