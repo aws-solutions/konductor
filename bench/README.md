@@ -66,6 +66,7 @@ Run these from the repository root. Add `--budget-credits N` to any `run` to sto
 | real | `node bench/real/fetch.js` once, then `node bench/runner/bench.js run --suite real --budget-credits N --out $OUT/real` | pinned public projects scored by their own tests; the fetch is the only networked step. About 121 credits or more per pass |
 | autonomy | `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT/autonomy` | a scripted user answers questions; see [Autonomy tier](#autonomy-tier) |
 | pilot | `node bench/runner/bench.js pr-plan --ref opt-a=REF --suite pilot --budget-credits 150`, then the `run --suite pilot` line it prints | 8 tasks, 1 replicate, for trying one option arm against a release |
+| requirements | `node bench/runner/bench.js pr-plan --ref opt-a=REF --suite requirements --budget-credits 150`, then the `run --suite requirements` line it prints | 2 document tasks (a requirements document, a work breakdown), 3 replicates. Not in `full`. See [Suites and arms](#suites-and-arms) |
 | cap | no command of its own | `--suite cap` is the fallback the `cap` commands use; start that work with `cap` |
 | scoring and report | `node bench/runner/bench.js judge --run $OUT/lite`, then `node bench/runner/bench.js report --run $OUT/lite` | `judge` spends credits (or USD with `--judge-backend opencode`); `report` is free and writes `report.md`, `report.html`, `report.json` and `charts/` |
 | 2x2 | `bash bench/scripts/pilot-2x2.sh --dry-run ...`, then without `--dry-run` | see [2x2 pilot](#2x2-pilot) |
@@ -237,7 +238,7 @@ Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--b
 `--isolate auto|unshare|sandbox-exec|none`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
 `--hide PATH,..`, `--no-default-hide`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
-`--suite lite|full|hard|real|autonomy|pilot|cap` (`cap` is the fallback the `cap` commands use; they name their arms).
+`--suite lite|full|hard|real|autonomy|pilot|cap|requirements` (`cap` is the fallback the `cap` commands use; they name their arms).
 No credit cap is the default: every run is a line in `credit-ledger.jsonl` in the results directory and `run` prints the running total. `--budget-credits X` is an optional guard
 that stops new runs at 90% of X; a run that carries the command past 100% ends it with exit code 3. `run` prints the worst-case wall clock first. See "Profiles, credit ledger and platform verdict".
 The unit tests for the real-task track run a fake project's pytest suite. Without `python3 -m pytest`
@@ -266,6 +267,17 @@ starting an agent). The engine is recorded as `agentEngine` in `run-config.json`
   network, the fix is public and the model may remember it, so the report has a separate contamination row
   (externalFetch, fixRecall). Host copies of the projects and the package caches are masked per run. Proofs:
   `node bench/real/validate-real.js` and `node bench/real/prove-mask.js`. Details in `bench/README-tasks.md`.
+- requirements: two document tasks on copies of the inventory service. `req-vague-request` turns a vague stakeholder
+  request into `docs/requirements.md` (nine seeded items: three vague terms, two conflicts, one impossible constraint,
+  one missing non-functional requirement, two unstated assumptions). `plan-multipart-feature` writes a work breakdown at
+  `docs/plan.md` for a five-part feature and implements nothing (three dependency edges, one parallel part, a
+  migration-order trap, a concurrency requirement). Three arms, 3 replicates, `--parallel 1`; the `full` suite does not
+  include them and `lite` and `pilot` are unchanged, so earlier runs stay comparable. Plan first, with no model call:
+  `pr-plan --ref NAME=REF --suite requirements --budget-credits N`. Then
+  `run --suite requirements --out $OUT/req --budget-credits N` (`--prepare-only` builds the arms and spends nothing), or
+  pass `--tasks req-vague-request,plan-multipart-feature` to `pilot-2x2.sh` for the four cells. The checks only find out
+  whether an item was named; the rubric and the quality pack (`requirements`, `plan`, `change` artifact types) judge how
+  well it was handled. Details in `bench/README-tasks.md`.
 - `main` is the remote-tracking ref `origin/main` as last fetched (the runner never fetches), labelled
   `main-unreleased@<sha>`; run-config records origin and local SHAs and `behindOrigin`. Without it,
   local main is used with a warning.

@@ -1,0 +1,140 @@
+{
+  "id": "plan-multipart-feature",
+  "class": "sop",
+  "target": "k-plan",
+  "prompt": "docs/feature-request.md describes a reservation feature for the inventory API. Do not implement it. Write a work breakdown at docs/plan.md: split the work into tasks, and for each task give an id, what it covers, how we will know it is done, and which tasks it depends on. Say which tasks can run in parallel, and list the main risks with what you would do about each. Do not change any other file. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "plan-inventory",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/plan.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/plan.md)\" -ge 25 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/plan.md)\" -le 250 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");const ids=new Set();for(const m of t.matchAll(/\\b(?:task|T|P|WP)[ -]?(\\d+)\\b/gi)) if(Number(m[1])<=30) ids.add(m[1]);process.exit(ids.size>=5&&ids.size<=12?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const L=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\").split(\"\\n\");const start=/^\\s*(?:#{1,6}\\s*|[-*]\\s*|\\|\\s*|\\*\\*)?(?:task|T|P|WP)[ -]?(\\d+)\\b/i;const by={};let cur=null;for(const l of L){const m=start.exec(l);if(m&&Number(m[1])<=30)cur=m[1];if(cur)by[cur]=(by[cur]||\"\")+l+\"\\n\"}const done=/\\b(?:done when|done:|done if|acceptance|accept(?:ed)? when|verif(?:y|ied|ication)|exit criteri|definition of done|passes|is done)\\b/i;const ids=Object.keys(by);process.exit(ids.length>=5&&ids.filter((i)=>done.test(by[i])).length/ids.length>=0.8?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");/*DE1*/const A=/migrat|schema|backfill/,R=[/service|reserv\\w* logic|availab/i,/depends? on|after|blocked by|requires?|before|prerequisite|needs|once|first|precedes|must (?:come|run|be)|because/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");/*DE2*/const A=/service/,R=[/route|endpoint|handler|api|POST|DELETE/i,/depends? on|after|blocked by|requires?|before|prerequisite|needs|once|first|precedes|must (?:come|run|be)|because/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");/*DE3*/const A=/service/,R=[/read path|report|GET/i,/depends? on|after|blocked by|requires?|before|prerequisite|needs|once|first|precedes|must (?:come|run|be)|because/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");/*PA1*/const A=/readme|documentation|docs\\b/,R=[/parallel|concurrent|independent|any time|immediately|alongside|no dependenc|can start/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");/*TR1*/const A=/migrat/,R=[/backfill|existing (?:rows|items)|default|null|zero/i,/before|prior|first|precede|ahead/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");/*NF1*/const A=/\\b50\\b|concurren|oversell|race condition|atomic|simultaneous/,R=[/test|verif|load/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "docs/plan.md",
+      "pattern": "^#{1,6}\\s*.*\\brisks?\\b"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/plan.md",
+      "pattern": "mitigat|spike|fallback|rollback|rehears",
+      "min": 2
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/plan.md",
+      "pattern": "^\\s*```\\s*(?:js|javascript|ts|typescript)\\b"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/feature-request.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(find . -path ./node_modules -prune -o -type f \\( -name '*.js' -o -name '*.mjs' -o -name '*.ts' -o -name '*.py' -o -name '*.sh' -o -name '*.sql' \\) -print | wc -l)\" -eq 9 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "parts-coverage",
+      "criterion": "Every required part has a task: PT1 migration and backfill, PT2 reservation service, PT3 routes, PT4 read paths (item view and reorder report), PT5 documentation. PT1 is not in the numbered list of the request, so a plan that omits it misses a part.",
+      "weight": 3
+    },
+    {
+      "id": "dependency-order",
+      "criterion": "Shows DE1 (PT1 before PT2), DE2 (PT2 before PT3) and DE3 (PT2 before PT4), orders the tasks to match, and marks PA1 (the documentation, PT5) as able to run in parallel. A plan that chains the documentation last does not mark it parallel.",
+      "weight": 3
+    },
+    {
+      "id": "done-criteria",
+      "criterion": "Each task has a done check that can pass or fail (a command, a test or an observable result), and the service task or its own task includes the concurrency test for NF1: 50 reserve calls on one item never reserve more than the stock.",
+      "weight": 2
+    },
+    {
+      "id": "trap-spotted",
+      "criterion": "Spots TR1: the migration and the backfill of existing items must be applied before the version that reads the new data is deployed. The plan makes the migration the first task and says so in the release order or the risks.",
+      "weight": 3
+    },
+    {
+      "id": "sizing",
+      "criterion": "Each task is one concern that one person can finish and check on its own. A single task that covers the migration, service, routes and documentation together, or one task per line of code, is a fail.",
+      "weight": 2
+    },
+    {
+      "id": "no-gold-plating",
+      "criterion": "Adds no task for work the request did not ask for: customer accounts, notifications, a history screen, per-customer limits, a queue service or a cache layer. Naming one as out of scope is fine.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "requirements"
+  ]
+}

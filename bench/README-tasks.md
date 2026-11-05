@@ -6,7 +6,7 @@ This document covers the task suite: tasks, fixtures, checks, rubrics, answer ke
 
 - `tasks/<id>.json`: one task. A prompt, the fixture it runs on, deterministic checks and a judge rubric.
 - `fixtures/<name>/`: a small synthetic project. The runner copies it into a scratch directory, and the agent works there.
-- `suites/lite.json`, `suites/full.json`, `suites/hard.json`: which tasks run, on which arms, with how many replicates, and which judges.
+- `suites/lite.json`, `suites/full.json`, `suites/hard.json`, `suites/requirements.json`: which tasks run, on which arms, with how many replicates, and which judges.
 - `tasks/solutions/<id>/`: a reference solution, as files overlaid on the fixture. Only the validator and unit tests use it.
 - `tasks/stubs/<id>/`: a keyword-only imitation of the report, overlaid on the solution (see Mutation proof).
 - `tasks/validate-tasks.js`: offline validator. Run `node bench/tasks/validate-tasks.js`.
@@ -72,6 +72,8 @@ Each fixture has `.bench-answer-key.md` listing the seeded defects, expected out
 - `textkit`: a tiny Node module. 15 tests, 2 fail on a seeded `slugify` bug. Also has CSV defects found only by review.
 - `inventory-api`: a small multi-module Node service with seeded security and logic defects. 8 tests pass.
 - `product-spec`: requirements, user stories and a design stub for a library hold feature, with seeded conflicts and gaps. No code.
+- `req-inventory`: the inventory service plus a short stakeholder request (`docs/stakeholder-request.md`) with nine seeded items: three vague terms, two conflicts, one impossible constraint, one missing non-functional requirement and two unstated assumptions.
+- `plan-inventory`: the inventory service plus a reservation feature request (`docs/feature-request.md`) with five required parts, three dependency edges, one part that can run in parallel, a migration-order trap and a concurrency requirement.
 
 Fixtures have at most 15 files (40 for fixtures used only by `hard` tasks, at least 15), need no install or network, and contain no real secrets.
 
@@ -90,7 +92,16 @@ Both suites list `"judges": ["gpt-5.6-luna", "deepseek-3.2", "glm-5"]`: three mo
 3. Add checks, at least one failing on the untouched fixture, plus substance checks for reports.
 4. Add 3 to 6 rubric criteria tied to the answer key.
 5. Add `tasks/solutions/<id>/` that passes every check, and `tasks/stubs/<id>/` for reports.
-6. Add the id to `suites/full.json` (and `lite.json` if tagged `lite`), then run the validator.
+6. Add the id to `suites/full.json` (and `lite.json` if tagged `lite`; a task tagged `requirements` goes to `suites/requirements.json` only), then run the validator.
+
+## Requirements tasks
+
+Tier `requirements`, suite `suites/requirements.json` (the `full` suite does not include them), `timeoutSec` 600. Two tasks whose output is a document, not code:
+- `req-vague-request` (class `design`): turn a vague stakeholder request into `docs/requirements.md`. The fixture's answer key lists nine seeded items with ids (R-A1 to R-U2).
+- `plan-multipart-feature` (class `sop`): write a work breakdown at `docs/plan.md` for a multipart feature and implement nothing. The key lists five parts (PT1 to PT5), three dependency edges (DE1 to DE3), the parallel part (PA1), the trap (TR1) and the concurrency requirement (NF1).
+- Each seeded id is checked by a `cmd` check that finds the topic and a word that marks it as unclear or needing a decision within 400 characters, and is named in a rubric item. A test keeps that mapping complete: an id in an answer key that no check or rubric item names fails it.
+- The checks accept a document that names an item. The rubric and the quality pack (`requirements`, `plan` artifact types) judge how well it was handled. `tasks/negatives/` holds near misses that each keyword check must reject.
+- Both tasks declare their artifact type in `criteria/quality-pack.json` (`taskArtifacts`), so the pack scores them without inference.
 
 ## Hard tasks
 

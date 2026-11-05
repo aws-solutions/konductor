@@ -67,7 +67,7 @@ const extraRoots = (dir) => ({
 let R = DEFAULT_ROOTS;
 
 const CLASSES = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'real', 'autonomy', 'trigger'];
-const TIERS = ['lite', 'full', 'hard', 'real', 'autonomy', 'pilot', 'cap'];
+const TIERS = ['lite', 'full', 'hard', 'real', 'autonomy', 'requirements', 'pilot', 'cap'];
 const REAL_RUBRIC_SIZE = 3;
 const REAL_MIN_TASKS = 6;
 const REAL_MAX_TASKS = 8;
@@ -122,6 +122,9 @@ const FIXTURE_BASELINE = {
   'auto-league': { cmd: 'node --test', exit: 0 },
   'auto-units': { cmd: 'node --test', exit: 0 },
   'auto-storage': { cmd: 'node --test', exit: 0 },
+  // Requirements-suite fixtures: a copy of the inventory service and one request document; the tests pass before and after.
+  'req-inventory': { cmd: 'node --test', exit: 0 },
+  'plan-inventory': { cmd: 'node --test', exit: 0 },
 };
 
 // Prompts must not name konductor procedures.
@@ -234,6 +237,7 @@ function validateShape(file, t) {
     else if (hard && !R.extra) need(ownTiers.length === 1 && ownTiers[0] === 'hard', 'hard tasks must have tiers ["hard"] (and optionally "pilot") only');
     else if (real) need(ownTiers.length === 1 && ownTiers[0] === 'real', 'real tasks must have tiers ["real"] (and optionally "pilot") only; the full tier does not include them');
     else if (R.extra) need(!t.tiers.includes('hard') && !t.tiers.includes('real'), 'an extra task may not be tagged hard or real (those tiers are the bench suites)');
+    else if (ownTiers.includes('requirements')) need(ownTiers.length === 1, 'requirements tasks must have tiers ["requirements"] (and optionally "pilot") only; the full tier does not include them');
     else need(t.tiers.includes('full') && !t.tiers.includes('hard') && !t.tiers.includes('real'), 'every task must include the full tier (and only hard tasks the hard tier, only real tasks the real tier)');
   }
   if (hard) {
@@ -640,7 +644,7 @@ function main() {
   const suites = {};
   if (!onlyExtra) {
     if (manifest) realReport.push(validateRealSet(tasks, manifest));
-    for (const name of ['lite', 'full', 'hard', 'real', 'autonomy', 'pilot']) {
+    for (const name of ['lite', 'full', 'hard', 'real', 'autonomy', 'requirements', 'pilot']) {
       const file = path.join(SUITES_DIR, `${name}.json`);
       const s = fs.existsSync(file) ? readJson(file, `suites/${name}.json`) : null;
       if (!s) { err(`suites/${name}.json`, 'missing or unreadable'); continue; }

@@ -1,0 +1,10 @@
+{
+  "name": "req-inventory",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Tiny in-memory inventory service used as a requirements fixture",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

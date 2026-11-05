@@ -1,0 +1,258 @@
+{
+  "loosened": [
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+  ],
+  "cases": [
+    {
+      "name": "R-A1 named and flagged",
+      "check": 15,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "The upload result must come back quickly, which is unclear and needs a number.\n"
+      }
+    },
+    {
+      "name": "R-A1 near miss 1",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "The upload applies counts. Nothing else is said here.\n"
+      }
+    },
+    {
+      "name": "R-A1 near miss 2",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "Quickly is the only word. Stores upload files.\n"
+      }
+    },
+    {
+      "name": "R-A2 named and flagged",
+      "check": 16,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "Staff use it without training. That is vague and needs a testable rule.\n"
+      }
+    },
+    {
+      "name": "R-A2 near miss 1",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "The upload has three steps for staff.\n"
+      }
+    },
+    {
+      "name": "R-A2 near miss 2",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "Training is offered to staff on request.\n"
+      }
+    },
+    {
+      "name": "R-A3 named and flagged",
+      "check": 17,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "The most recent count wins, but which time decides is unclear. Needs a decision.\n"
+      }
+    },
+    {
+      "name": "R-A3 near miss 1",
+      "check": 17,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "The latest count is stored for each item.\n"
+      }
+    },
+    {
+      "name": "R-A3 near miss 2",
+      "check": 17,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "It is unclear. Please confirm. Nothing about counts.\n"
+      }
+    },
+    {
+      "name": "R-C1 named and flagged",
+      "check": 18,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "Reject the whole file against keep the good rows is a conflict. A decision is needed.\n"
+      }
+    },
+    {
+      "name": "R-C1 near miss 1",
+      "check": 18,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "A bad row is reported with its row number.\n"
+      }
+    },
+    {
+      "name": "R-C1 near miss 2",
+      "check": 18,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "This is a conflict. A decision is needed. Nothing else.\n"
+      }
+    },
+    {
+      "name": "R-C2 named and flagged",
+      "check": 19,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "The store manager against any staff on the shared tablet is a conflict to confirm.\n"
+      }
+    },
+    {
+      "name": "R-C2 near miss 1",
+      "check": 19,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "Only the store manager signs in on the shared tablet.\n"
+      }
+    },
+    {
+      "name": "R-C2 near miss 2",
+      "check": 19,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "This needs a decision to confirm. Nothing about uploads.\n"
+      }
+    },
+    {
+      "name": "R-X1 named and flagged",
+      "check": 20,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "Applied exactly as sent against rejected when it differs from the expected count is a contradiction.\n"
+      }
+    },
+    {
+      "name": "R-X1 near miss 1",
+      "check": 20,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "Each count is applied exactly as sent by the store.\n"
+      }
+    },
+    {
+      "name": "R-X1 near miss 2",
+      "check": 20,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "This is a contradiction that needs a decision. Nothing about counts.\n"
+      }
+    },
+    {
+      "name": "R-N1 named and flagged",
+      "check": 21,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "At peak, 40 stores upload within 15 minutes, so concurrent uploads shall succeed.\n"
+      }
+    },
+    {
+      "name": "R-N1 near miss 1",
+      "check": 21,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "Stores upload their counts every morning.\n"
+      }
+    },
+    {
+      "name": "R-N1 near miss 2",
+      "check": 21,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "The system shall be fast. Nothing about load.\n"
+      }
+    },
+    {
+      "name": "R-U1 named and flagged",
+      "check": 22,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "Each store has its own numbers, so the single quantity per item is an assumption to confirm.\n"
+      }
+    },
+    {
+      "name": "R-U1 near miss 1",
+      "check": 22,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "Each store sees its numbers.\n"
+      }
+    },
+    {
+      "name": "R-U1 near miss 2",
+      "check": 22,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "It is an assumption to confirm. Nothing about stores.\n"
+      }
+    },
+    {
+      "name": "R-U2 named and flagged",
+      "check": 23,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "The file format is an open question: csv columns, item id and replace or adjust are unclear.\n"
+      }
+    },
+    {
+      "name": "R-U2 near miss 1",
+      "check": 23,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "The file has an item id and a count.\n"
+      }
+    },
+    {
+      "name": "R-U2 near miss 2",
+      "check": 23,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/requirements.md": "It is an open question. Nothing about files.\n"
+      }
+    }
+  ]
+}

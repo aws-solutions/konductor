@@ -1,0 +1,161 @@
+{
+  "id": "req-vague-request",
+  "class": "design",
+  "target": "k-product-manager",
+  "prompt": "docs/stakeholder-request.md is a request from the operations team for the inventory service. Turn it into a requirements document at docs/requirements.md that engineers could build and test from. Number each requirement and give it an acceptance check. Record anything in the request that is unclear, in conflict or missing, and say what you assumed. Do not write code and do not change any other file. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "req-inventory",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/requirements.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/requirements.md)\" -ge 30 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/requirements.md)\" -le 250 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");const ids=new Set((t.match(/\\b(?:REQ|FR|NFR|R)-?\\d+\\b|requirement\\s+\\d+/gi)||[]).map((s)=>s.toUpperCase()));process.exit(ids.size>=8?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const L=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\").split(\"\\n\").filter((l)=>/\\bshall\\b/i.test(l)&&/^\\s*(\\||[-*]|\\d+[.)])/.test(l));const withId=L.filter((l)=>/\\b(?:REQ|FR|NFR|R)-?\\d+\\b|requirement\\s+\\d+/i.test(l));process.exit(L.length>=6&&withId.length/L.length>=0.8?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/requirements.md",
+      "pattern": "\\b(?:when|if|while|where|given)\\b[^\\n.]{3,200}\\b(?:shall|must|should|then)\\b",
+      "min": 6
+    },
+    {
+      "type": "contains",
+      "path": "docs/requirements.md",
+      "pattern": "^#{1,6}\\s*.*(?:assumptions?|open questions?|questions)"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/requirements.md",
+      "pattern": "\\b\\d+ ?(?:ms|milliseconds?|seconds?|s|minutes?|rows|stores|uploads?|requests?|MB|KB|%|percent)\\b",
+      "min": 3
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/requirements.md",
+      "pattern": "^\\s*```\\s*(?:js|javascript|ts|typescript|sql|python|sh|bash)\\b"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/stakeholder-request.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(find . -path ./node_modules -prune -o -type f \\( -name '*.js' -o -name '*.mjs' -o -name '*.ts' -o -name '*.py' -o -name '*.sh' -o -name '*.sql' \\) -print | wc -l)\" -eq 9 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");/*R-A1*/const A=/quickly|response time|how fast|result time/,R=[/conflict|contradict|inconsisten|ambigu|unclear|undefined|vague|not defined|unspecified|clarif|confirm|decision|decide|open question|needs? (?:a |an )?(?:number|value|target|definition|answer)|assum/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");/*R-A2*/const A=/simple enough|without training|training|usab/,R=[/conflict|contradict|inconsisten|ambigu|unclear|undefined|vague|not defined|unspecified|clarif|confirm|decision|decide|open question|needs? (?:a |an )?(?:number|value|target|definition|answer)|assum/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");/*R-A3*/const A=/most recent|recent(?:ly)?|latest|which time|count time|arrival time/,R=[/conflict|contradict|inconsisten|ambigu|unclear|undefined|vague|not defined|unspecified|clarif|confirm|decision|decide|open question|needs? (?:a |an )?(?:number|value|target|definition|answer)|assum/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");/*R-C1*/const A=/whole file|entire file|all.or.nothing|atomic|good rows|valid rows|bad row/,R=[/conflict|contradict|inconsisten|ambigu|unclear|undefined|vague|not defined|unspecified|clarif|confirm|decision|decide|open question|needs? (?:a |an )?(?:number|value|target|definition|answer)|assum/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");/*R-C2*/const A=/store manager|any (?:member of )?staff|shared tablet|manager/,R=[/conflict|contradict|inconsisten|ambigu|unclear|undefined|vague|not defined|unspecified|clarif|confirm|decision|decide|open question|needs? (?:a |an )?(?:number|value|target|definition|answer)|assum/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");/*R-X1*/const A=/exactly as|as sent|differs? from|expected (?:count|quantity)|applied and rejected/,R=[/conflict|contradict|inconsisten|ambigu|unclear|undefined|vague|not defined|unspecified|clarif|confirm|decision|decide|open question|needs? (?:a |an )?(?:number|value|target|definition|answer)|assum/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");/*R-N1*/const A=/40 stores|forty stores|15 minutes|peak|concurrent|simultaneous/,R=[/shall|must|nfr|non-functional|propos|assum|target|decision|gap/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");/*R-U1*/const A=/per.store|each store|store dimension|one quantity per item|single quantity|store id/,R=[/conflict|contradict|inconsisten|ambigu|unclear|undefined|vague|not defined|unspecified|clarif|confirm|decision|decide|open question|needs? (?:a |an )?(?:number|value|target|definition|answer)|assum/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\");/*R-U2*/const A=/file format|csv|columns?|item id|identif|sku|header|replaces?|adjust|delta|absolute/,R=[/conflict|contradict|inconsisten|ambigu|unclear|undefined|vague|not defined|unspecified|clarif|confirm|decision|decide|open question|needs? (?:a |an )?(?:number|value|target|definition|answer)|assum/i],W=400;let ok=false;for(const m of t.matchAll(new RegExp(A.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "ambiguous-terms",
+      "criterion": "Names the three vague terms of the request (R-A1 \"quickly\", R-A2 \"simple enough ... without training\", R-A3 \"most recent\") and for each gives a number or a testable rule, or marks it as needing a decision. Partial credit for two of the three, or for naming a term with no proposal.",
+      "weight": 2
+    },
+    {
+      "id": "conflicts",
+      "criterion": "Names both conflicts (R-C1 reject the whole file against keep the good rows, R-C2 manager only against any staff on the shared tablet), shows both statements, and either chooses with a reason or marks the decision as needed. Silently picking one side, or leaving a conflict out, is a fail.",
+      "weight": 3
+    },
+    {
+      "id": "impossible-constraint",
+      "criterion": "Names R-X1: a count cannot be both applied exactly as sent and rejected when it differs from what the system expects. It proposes a rule or asks for a decision. Writing both rules as requirements without comment is a fail.",
+      "weight": 2
+    },
+    {
+      "id": "missing-nfr",
+      "criterion": "Adds a peak-load requirement that the request implies but does not state (R-N1: 40 stores in 15 minutes) with an acceptance check and at least one number, marked as proposed. Concurrency, file size or response time under load all count.",
+      "weight": 3
+    },
+    {
+      "id": "unstated-assumptions",
+      "criterion": "Lists R-U1 (one quantity per item today, per-store numbers need a store dimension) and R-U2 (file format, columns, item identifier, replace or adjust) as assumptions or open questions, each with the effect if it is wrong.",
+      "weight": 2
+    },
+    {
+      "id": "no-false-claims",
+      "criterion": "Does not claim the service already has stores, roles or a file import, does not present a proposed number as if the request gave it, and does not report a conflict that the request does not contain.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "requirements"
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "loosened": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "cases": [
+    {
+      "name": "DE1 named",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "The migration and backfill come first. The service depends on the schema.\n"
+      }
+    },
+    {
+      "name": "DE1 near miss 1",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "The migration runs. The service is built.\n"
+      }
+    },
+    {
+      "name": "DE1 near miss 2",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "Depends on something. Nothing else.\n"
+      }
+    },
+    {
+      "name": "DE2 named",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "The routes depend on the service, because the handlers call it.\n"
+      }
+    },
+    {
+      "name": "DE2 near miss 1",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "The service is built. The routes are built.\n"
+      }
+    },
+    {
+      "name": "DE2 near miss 2",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "Depends on something. The handler is mentioned.\n"
+      }
+    },
+    {
+      "name": "DE3 named",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "The read paths need the service first, because the report uses available quantity.\n"
+      }
+    },
+    {
+      "name": "DE3 near miss 1",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "The service is built. The report is built.\n"
+      }
+    },
+    {
+      "name": "DE3 near miss 2",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "Needs it first. Nothing named.\n"
+      }
+    },
+    {
+      "name": "PA1 named",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "The README can be written in parallel with the code.\n"
+      }
+    },
+    {
+      "name": "PA1 near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "The README is written last.\n"
+      }
+    },
+    {
+      "name": "PA1 near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "Work runs in parallel. Nothing named.\n"
+      }
+    },
+    {
+      "name": "TR1 named",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "Apply the migration first, with the backfill of existing items, before the deploy.\n"
+      }
+    },
+    {
+      "name": "TR1 near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "The migration is a task.\n"
+      }
+    },
+    {
+      "name": "TR1 near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "Before the deploy, first. Existing items. Nothing else.\n"
+      }
+    },
+    {
+      "name": "NF1 named",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "A concurrency test sends 50 reserve calls and verifies no oversell.\n"
+      }
+    },
+    {
+      "name": "NF1 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "Concurrency is a risk.\n"
+      }
+    },
+    {
+      "name": "NF1 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "A test is written. Nothing about load.\n"
+      }
+    }
+  ]
+}

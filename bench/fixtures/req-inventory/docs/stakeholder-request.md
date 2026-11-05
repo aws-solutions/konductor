@@ -1,0 +1,5 @@
+# Request: stock count upload
+
+From: Operations. To: the inventory team.
+
+We need stores to be able to upload their stock counts so the inventory stays in line with the shelves. Each store sends one file after it finishes counting, and all 40 stores finish within the same 15 minutes at the start of the morning shift. Stores should get their result quickly, and the upload should be simple enough that store staff can use it without training. If a file contains a bad row, reject the whole file so we never hold partial data. A bad row should also never block the good rows, because one typo should not hold a store up for the day. Only the store manager should be able to upload, although any member of staff on shift should be able to do it from the shared tablet. Every count is applied exactly as the store sent it, and any count that differs from what the system expects is rejected. Head office wants one report that shows all stores, and each store sees only its own numbers. When two counts for the same item arrive, the most recent one wins. Please also keep the existing reorder report working.
