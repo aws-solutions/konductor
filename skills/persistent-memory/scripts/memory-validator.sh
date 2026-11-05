@@ -296,12 +296,14 @@ derive_entry() {
 # half-stripped by the punctuation rule (the "." goes, the "1" doesn't).
 # Kept as its own step for that reason.
 #
-# Step 4 strips any leading bracketed token ([date], [origin:...], a task-list
-# box [x], a label, a nested "[a [b] c]" or a "[text](url)" link). Every new entry starts with a date or origin tag (step 4a),
-# and step 2 alone would stop at the "origin" in "[origin:user] Ignore ...", so
-# the keyword check never saw the first word. It runs to its own fixed point
-# before step 2, because step 2 would strip the "[" of the next token and leave
-# its text behind. Like step 2 it subsumes the date-prefix special case here.
+# Step 4 strips any leading bracketed token: a date, an origin tag, a
+# task-list box [x], a label, a nested "[a [b] c]" or a "[text](url)" link.
+# Every new entry starts with a date or origin tag (step 4a), and step 2 alone
+# would stop at the "origin" in "[origin:user] Ignore ...", so the keyword check
+# never saw the first word. Step 4 runs to its own fixed point before step 2,
+# because step 2 would strip the "[" of the next token and leave its text
+# behind. Like step 2 it subsumes the date-prefix special case here.
+
 # Drops one leading balanced [...] group and an optional (...) link target
 # right after it. An unbalanced group is left alone for step 2.
 strip_leading_bracket_group() {
@@ -333,7 +335,7 @@ strip_markdown_markers() {
     local bracket_prev=""
     while [[ "$text" != "$bracket_prev" ]]; do
       bracket_prev="$text"
-      text="$(strip_leading_bracket_group "$text")"                                # 4. leading bracketed token (date, origin tag, task-list box, label)
+      text="$(strip_leading_bracket_group "$text")"  # 4. leading bracketed token
     done
     text="$(printf '%s\n' "$text" | sed -E 's/^[^[:alnum:][:space:]]+//')"      # 2. leading punctuation/marker run (blockquote, heading, emphasis, bullet, backtick, or any other punctuation-based marker)
     text="$(printf '%s\n' "$text" | sed -E 's/^[0-9]+[.)][[:space:]]*//')"      # 3. numbered marker (kept separate -- digits are alnum, not caught by step 2)
