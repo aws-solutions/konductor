@@ -1,0 +1,797 @@
+[
+ {
+  "id": "mod-single-responsibility",
+  "dimension": "modularity",
+  "appliesTo": [
+   "code"
+  ],
+  "weight": 2,
+  "question": "Does each function the agent wrote or changed do one job?",
+  "levels": {
+   "fail": "A function the agent added or changed does 3 or more unrelated jobs, for example it validates input, applies a business rule and formats the response in one body.",
+   "partial": "Each changed function has one main job, but at least one also does a second unrelated job that could be its own function.",
+   "pass": "Every function the agent added or changed has one job that its name states, and no function mixes input parsing, rule logic and output formatting."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The signature line of the function that does the most jobs (or, for pass, of the largest changed function)."
+  }
+ },
+ {
+  "id": "mod-no-duplication",
+  "dimension": "modularity",
+  "appliesTo": [
+   "code"
+  ],
+  "weight": 2,
+  "question": "Is any logic written twice in the agent's change?",
+  "levels": {
+   "fail": "The same logic of 3 or more lines appears 2 or more times in the agent's changes, or the change re-implements logic that already exists in a shown file.",
+   "partial": "One short block of 1 or 2 lines, or one expression, is repeated.",
+   "pass": "No block is repeated; shared logic sits in one function or constant that the other places call."
+  },
+  "evidence": {
+   "minQuotes": 2,
+   "quote": "Two quotes separated by ' @@ ': the two copies (for fail or partial) or the shared helper and one call to it (for pass)."
+  }
+ },
+ {
+  "id": "mod-isolation",
+  "dimension": "modularity",
+  "appliesTo": [
+   "code"
+  ],
+  "weight": 2,
+  "question": "Can the rule logic run without real I/O, clock or global state?",
+  "levels": {
+   "fail": "Rule logic reads the clock, random values, environment variables, files, the network or a global singleton inside the function body, so a test cannot replace them without patching modules.",
+   "partial": "Rule logic takes plain values, but one changed function still reads the clock, environment, file system or network directly.",
+   "pass": "I/O, time and configuration are passed in as arguments or kept in one thin function, and the rule code takes plain values. If the change does no I/O, time or global access at all, pass and quote one changed line of pure computation."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The line that reaches outside the function (fail or partial) or the line that receives the dependency or plain value (pass)."
+  }
+ },
+ {
+  "id": "mod-pattern-fit",
+  "dimension": "modularity",
+  "appliesTo": [
+   "code"
+  ],
+  "weight": 1,
+  "question": "Is every abstraction used by a real need, and is no needed one missing?",
+  "levels": {
+   "fail": "An abstraction exists with one implementation and one caller (a factory, strategy, class hierarchy or config layer), or the same branch on one discriminator is repeated in 3 or more places where a table or a single function was needed.",
+   "partial": "One abstraction has a single use, or one branch on a discriminator is repeated twice, and the rest of the change is direct.",
+   "pass": "Every abstraction in the change has at least two users or a stated reason, and no branch on the same discriminator is repeated."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The abstraction or the repeated branch (fail or partial), or the abstraction and its second user (pass)."
+  }
+ },
+ {
+  "id": "maint-naming",
+  "dimension": "maintainability",
+  "appliesTo": [
+   "code"
+  ],
+  "weight": 1,
+  "question": "Do names say what the value holds or the function does?",
+  "levels": {
+   "fail": "2 or more identifiers the agent added are single letters outside loop indexes, or generic (data, tmp, val, obj, res, handle, process) for values with a specific meaning, or a name says the opposite of what the code does.",
+   "partial": "One identifier the agent added is single-letter or generic for a value with a specific meaning.",
+   "pass": "Every function, variable and constant the agent added is named for what it holds or does, and none is a generic name for a specific value."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The worst-named identifier in its line (fail or partial), or a representative function signature (pass)."
+  }
+ },
+ {
+  "id": "maint-size-nesting",
+  "dimension": "maintainability",
+  "appliesTo": [
+   "code"
+  ],
+  "weight": 2,
+  "question": "Are the changed functions short and shallow?",
+  "levels": {
+   "fail": "A function the agent added or changed is longer than 40 lines from signature to closing brace, or nests control flow 4 or more levels deep.",
+   "partial": "The longest changed function is 26 to 40 lines, or the deepest nesting is 3 levels.",
+   "pass": "Every function the agent added or changed is 25 lines or shorter and nests at most 2 levels deep."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The signature line of the longest or deepest changed function. Count lines and levels from the bundle before choosing the level."
+  }
+ },
+ {
+  "id": "maint-dead-code",
+  "dimension": "maintainability",
+  "appliesTo": [
+   "code"
+  ],
+  "weight": 1,
+  "question": "Does the change leave unused code behind?",
+  "levels": {
+   "fail": "The change leaves 2 or more of: commented-out code, an unused function, an unused import or variable, an unreachable branch.",
+   "partial": "The change leaves exactly 1 of those.",
+   "pass": "The change leaves none of those."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The dead line (fail or partial), or one changed line that is used (pass)."
+  }
+ },
+ {
+  "id": "maint-error-handling",
+  "dimension": "maintainability",
+  "appliesTo": [
+   "code"
+  ],
+  "weight": 2,
+  "question": "Are failures handled one way, with a message that names the cause?",
+  "levels": {
+   "fail": "The change handles failures in 2 or more different ways (some throw, some return null, some log and continue), or it swallows an error in an empty catch.",
+   "partial": "The change uses one mechanism, but at least one failure path gives no message or drops the offending value or field.",
+   "pass": "The change uses one mechanism for every failure, and each error says what failed and names the offending value or field."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "A failure-path line: the throw, return or catch that best shows the verdict."
+  }
+ },
+ {
+  "id": "maint-magic-constants",
+  "dimension": "maintainability",
+  "appliesTo": [
+   "code"
+  ],
+  "weight": 1,
+  "question": "Are limits and status values named?",
+  "levels": {
+   "fail": "2 or more unexplained literals with a business meaning (a limit, timeout, status code or role name) appear inline in the changed code.",
+   "partial": "Exactly 1 such literal appears inline.",
+   "pass": "Such values are named constants or come from configuration; only 0, 1 and self-explanatory literals appear inline."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The line with the inline literal (fail or partial) or the line that defines the named constant (pass)."
+  }
+ },
+ {
+  "id": "doc-why-not-what",
+  "dimension": "inline-docs",
+  "appliesTo": [
+   "comments"
+  ],
+  "weight": 2,
+  "question": "Do the added comments give a reason instead of repeating the code?",
+  "levels": {
+   "fail": "Most added comments restate the line below them (for example '// increment counter'), or a docstring only repeats the function name.",
+   "partial": "About half of the added comments give a reason, constraint or non-obvious behavior; the rest restate the code.",
+   "pass": "Every added comment gives a reason, constraint, edge case or non-obvious behavior, and none restates the line below it."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The comment that decides the verdict, copied with its marker removed."
+  }
+ },
+ {
+  "id": "doc-accuracy",
+  "dimension": "inline-docs",
+  "appliesTo": [
+   "comments",
+   "readme"
+  ],
+  "weight": 3,
+  "question": "Does every checkable statement in a comment or README match the code?",
+  "levels": {
+   "fail": "A comment, docstring or README sentence states behavior the code does not have: a wrong default, limit, status code, parameter or return value.",
+   "partial": "Every statement is correct, but a sentence that claims to list the limits, parameters or error cases leaves out one that the code enforces.",
+   "pass": "Every checkable statement in the added comments and README matches the code, and each one you checked is paired with the code line that confirms it."
+  },
+  "evidence": {
+   "minQuotes": 2,
+   "quote": "Two quotes separated by ' @@ ': first the comment or README sentence, then the code line that confirms or contradicts it."
+  }
+ },
+ {
+  "id": "doc-no-stale-or-noise",
+  "dimension": "inline-docs",
+  "appliesTo": [
+   "comments"
+  ],
+  "weight": 1,
+  "question": "Is any comment stale or a log of the edit?",
+  "levels": {
+   "fail": "2 or more comments describe behavior the agent's own change removed or replaced, or narrate the edit ('added validation here', 'fixed bug').",
+   "partial": "Exactly 1 comment is stale or narrates the edit.",
+   "pass": "No comment is stale after the change and none narrates the edit."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The stale or narrating comment (fail or partial), or the comment nearest the changed code (pass)."
+  }
+ },
+ {
+  "id": "doc-concise",
+  "dimension": "inline-docs",
+  "appliesTo": [
+   "comments"
+  ],
+  "weight": 1,
+  "question": "Is each comment as short as its reason allows?",
+  "levels": {
+   "fail": "A comment or docstring runs more than 6 lines for a function of 15 lines or fewer.",
+   "partial": "One comment runs more than 3 lines for a single reason.",
+   "pass": "Each comment is 1 to 3 lines."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The longest comment, or its first line if it is long."
+  }
+ },
+ {
+  "id": "cq-plain-typography",
+  "dimension": "doc-content",
+  "appliesTo": [
+   "readme",
+   "guide",
+   "design",
+   "review",
+   "threat-model"
+  ],
+  "weight": 2,
+  "question": "Does the prose avoid em dashes, en dashes and curly quotation marks?",
+  "levels": {
+   "fail": "The prose contains 3 or more em dashes, en dashes or curly quotation marks.",
+   "partial": "The prose contains 1 or 2 em dashes, en dashes or curly quotation marks.",
+   "pass": "The prose contains no em dash, no en dash and no curly quotation mark."
+  },
+  "auto": {
+   "detector": "typography",
+   "partialAt": 1,
+   "failAt": 3
+  }
+ },
+ {
+  "id": "cq-no-filler-terms",
+  "dimension": "doc-content",
+  "appliesTo": [
+   "readme",
+   "guide",
+   "design",
+   "review",
+   "threat-model"
+  ],
+  "weight": 2,
+  "question": "Does the prose avoid the stock filler terms listed in the pack?",
+  "levels": {
+   "fail": "3 or more terms from the pack's filler list appear in the prose, for example 'delve', 'seamless' or 'it is worth noting'.",
+   "partial": "1 or 2 terms from the pack's filler list appear in the prose.",
+   "pass": "No term from the pack's filler list appears in the prose."
+  },
+  "auto": {
+   "detector": "filler",
+   "partialAt": 1,
+   "failAt": 3
+  }
+ },
+ {
+  "id": "cq-sentence-length",
+  "dimension": "doc-content",
+  "appliesTo": [
+   "readme",
+   "guide",
+   "design",
+   "review",
+   "threat-model"
+  ],
+  "weight": 1,
+  "question": "Are sentences short enough to read in one pass?",
+  "levels": {
+   "fail": "4 or more sentences in the prose run longer than 35 words.",
+   "partial": "1 to 3 sentences in the prose run longer than 35 words.",
+   "pass": "No sentence in the prose runs longer than 35 words."
+  },
+  "auto": {
+   "detector": "long-sentences",
+   "partialAt": 1,
+   "failAt": 4
+  }
+ },
+ {
+  "id": "cq-lead-with-point",
+  "dimension": "doc-content",
+  "appliesTo": [
+   "readme",
+   "guide",
+   "design",
+   "review",
+   "threat-model"
+  ],
+  "weight": 2,
+  "question": "Does the document say what it is for before anything else?",
+  "levels": {
+   "fail": "The first 5 lines are a title, background or a statement of importance, and none says what the document is for or what the reader can do with it.",
+   "partial": "What the document is for appears, but only after 5 or more lines of background, or it says what the document covers without saying what the reader can do.",
+   "pass": "The first 3 lines say what the document is and what the reader can do or decide with it."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The first sentence after the title."
+  }
+ },
+ {
+  "id": "cq-concrete",
+  "dimension": "doc-content",
+  "appliesTo": [
+   "readme",
+   "guide",
+   "design",
+   "review",
+   "threat-model"
+  ],
+  "weight": 2,
+  "question": "Does each instruction or claim carry a command, path, value or example?",
+  "levels": {
+   "fail": "2 or more instructions or claims a reader would act on have no command, path, value or example behind them, for example 'set up the service as needed'.",
+   "partial": "Most instructions and claims carry a command, path, value or example, and 1 or 2 do not.",
+   "pass": "Every instruction or claim a reader would act on carries a command, path, value or example."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The most abstract instruction (fail or partial) or an instruction with its command or example (pass)."
+  }
+ },
+ {
+  "id": "cq-human-voice",
+  "dimension": "doc-content",
+  "appliesTo": [
+   "readme",
+   "guide",
+   "design",
+   "review",
+   "threat-model"
+  ],
+  "weight": 3,
+  "question": "Does the prose read like a person wrote it, without formulaic patterns?",
+  "levels": {
+   "fail": "3 or more formulaic patterns appear: a negative contrast ('it is not X, it is Y'), a list of three adjectives or nouns used as padding, a question the text answers itself, a chatbot phrase ('great question', 'hope this helps') or a closing paragraph that restates the opening.",
+   "partial": "1 or 2 of those formulaic patterns appear.",
+   "pass": "None of those formulaic patterns appears."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The most formulaic sentence (fail or partial) or a representative plain sentence (pass)."
+  }
+ },
+ {
+  "id": "cq-no-repetition",
+  "dimension": "doc-content",
+  "appliesTo": [
+   "readme",
+   "guide",
+   "design",
+   "review",
+   "threat-model"
+  ],
+  "weight": 2,
+  "question": "Does any sentence or section repeat something already said?",
+  "levels": {
+   "fail": "3 or more sentences or sections restate a heading, a nearby sentence or an earlier section.",
+   "partial": "1 or 2 sentences or sections restate a heading, a nearby sentence or an earlier section.",
+   "pass": "No sentence or section restates a heading or an earlier statement."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The sentence that repeats (fail or partial) or the last paragraph of the document (pass)."
+  }
+ },
+ {
+  "id": "cq-reader-order",
+  "dimension": "doc-content",
+  "appliesTo": [
+   "readme",
+   "guide"
+  ],
+  "weight": 2,
+  "question": "Can a reader follow the steps in the order given?",
+  "levels": {
+   "fail": "Steps are out of order or unnumbered where order matters, or a step uses a tool or file that the document introduces later.",
+   "partial": "Steps are in order, but a prerequisite appears after the first step, or one step that changes something does not say what the reader should see when it worked.",
+   "pass": "Prerequisites come before the first step, the steps are in order, and each step that changes something says what the reader should see afterwards."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The first step and, where it matters, the prerequisite or the expected result line."
+  }
+ },
+ {
+  "id": "cq-direct-instructions",
+  "dimension": "doc-content",
+  "appliesTo": [
+   "readme",
+   "guide"
+  ],
+  "weight": 1,
+  "question": "Do instructions start with a direct verb addressed to the reader?",
+  "levels": {
+   "fail": "More than half of the instructions use passive or impersonal wording, for example 'the command should be run' or 'it is recommended to'.",
+   "partial": "At least 1 and at most half of the instructions use passive or impersonal wording.",
+   "pass": "Every instruction starts with a direct verb such as Run, Open or Set."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The most indirect instruction (fail or partial) or a representative direct one (pass)."
+  }
+ },
+ {
+  "id": "test-asserts-behavior",
+  "dimension": "test-quality",
+  "appliesTo": [
+   "tests"
+  ],
+  "weight": 3,
+  "question": "Does each test check a result a wrong implementation would not give?",
+  "levels": {
+   "fail": "2 or more tests run the code and assert nothing about the result, or assert only that no error was thrown or that a result exists.",
+   "partial": "Most tests assert a specific value, status code or message, and exactly 1 test only checks that the code ran or that a result exists.",
+   "pass": "Every test asserts a concrete value, status code or message that a wrong implementation would not return."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The weakest assertion line (fail or partial) or the most specific one (pass)."
+  }
+ },
+ {
+  "id": "test-rule-would-fail",
+  "dimension": "test-quality",
+  "appliesTo": [
+   "tests"
+  ],
+  "weight": 3,
+  "question": "For each rule in the task, is there a test that fails if the rule is removed?",
+  "levels": {
+   "fail": "Half or more of the rules the task names have no test whose assertion would fail if that rule's check were deleted.",
+   "partial": "Exactly 1 rule has no test whose assertion would fail if that rule's check were deleted.",
+   "pass": "For every rule the task names, a test exists whose assertion would fail if that rule's check were deleted."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The assertion line for the least covered rule (fail or partial), or the assertion line for one rule you checked (pass). Work out the rules from the task text first and check each one."
+  }
+ },
+ {
+  "id": "test-scenario-spread",
+  "dimension": "test-quality",
+  "appliesTo": [
+   "tests"
+  ],
+  "weight": 2,
+  "question": "Do the tests go beyond the happy path?",
+  "levels": {
+   "fail": "The tests cover only the happy path, or only one input class such as valid input.",
+   "partial": "The tests cover the happy path and either boundary values or invalid input, but not both, or the code has an error path that no test reaches.",
+   "pass": "The tests include the happy path, a boundary value (empty, zero, maximum or off by one), an invalid input and an error path, and a state or concurrency case when the code keeps state."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "A test name from the category that is present and strongest, or for fail and partial the happy-path test name."
+  }
+ },
+ {
+  "id": "test-no-tautology",
+  "dimension": "test-quality",
+  "appliesTo": [
+   "tests"
+  ],
+  "weight": 2,
+  "question": "Is every expected value independent of the code under test?",
+  "levels": {
+   "fail": "2 or more tests compare a value to itself, to the output of the function under test, or to a value computed by the same code, or they mock the unit under test.",
+   "partial": "Exactly 1 test does one of those.",
+   "pass": "Every expected value is a literal or is computed independently of the code under test."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The tautological assertion (fail or partial) or an assertion with a literal expected value (pass)."
+  }
+ },
+ {
+  "id": "test-one-scenario",
+  "dimension": "test-quality",
+  "appliesTo": [
+   "tests"
+  ],
+  "weight": 1,
+  "question": "Does each test check one scenario?",
+  "levels": {
+   "fail": "2 or more tests hold 6 or more assertions that cover different scenarios, so a failure does not say which scenario broke.",
+   "partial": "1 test holds 6 or more assertions that cover different scenarios.",
+   "pass": "Each test checks one scenario, with at most 5 assertions, all about that scenario."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The test name with the most assertions (fail or partial) or a typical test name (pass)."
+  }
+ },
+ {
+  "id": "test-names",
+  "dimension": "test-quality",
+  "appliesTo": [
+   "tests"
+  ],
+  "weight": 1,
+  "question": "Does each test name state the scenario?",
+  "levels": {
+   "fail": "2 or more test names say nothing about the scenario (test1, works, it should work) or name only the function.",
+   "partial": "Exactly 1 test name says nothing about the scenario.",
+   "pass": "Every test name states the input condition and the expected outcome, for example 'rejects a fractional delta with 400'."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The least informative test name (fail or partial) or the most informative one (pass)."
+  }
+ },
+ {
+  "id": "test-deterministic",
+  "dimension": "test-quality",
+  "appliesTo": [
+   "tests"
+  ],
+  "weight": 1,
+  "question": "Does any test depend on time, randomness, network or another test?",
+  "levels": {
+   "fail": "A test depends on the wall clock, random values, the network, test order, or state left by another test, with no fake or reset.",
+   "partial": "A test reads the clock or shared state but fixes it with a fake or reset in only some of the places it is used.",
+   "pass": "No test reads the clock, randomness, network or another test's state, or each one replaces them with a fixed fake."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The line that reads the clock, randomness, network or shared state (fail or partial), or the setup line that fixes them (pass)."
+  }
+ },
+ {
+  "id": "scn-traced",
+  "dimension": "scenario-coverage",
+  "appliesTo": [
+   "tests",
+   "design"
+  ],
+  "weight": 3,
+  "question": "Are end-to-end scenarios identified and traced to requirements?",
+  "levels": {
+   "fail": "No end-to-end or integration scenario is described or tested: only single-function checks, or a test section that lists no scenarios.",
+   "partial": "Scenarios exist, but they do not name the requirement or rule they cover, or they cover only the happy path of an end-to-end flow.",
+   "pass": "At least 3 end-to-end scenarios are listed or tested, each naming the requirement or rule it covers, and at least one is a failure or concurrent case."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "One scenario line with its requirement reference (pass or partial) or the test section heading (fail)."
+  }
+ },
+ {
+  "id": "tm-scope",
+  "dimension": "threat-model",
+  "appliesTo": [
+   "review",
+   "threat-model"
+  ],
+  "weight": 2,
+  "question": "Does the document say what is protected and where untrusted input enters?",
+  "levels": {
+   "fail": "The document names no asset and no entry point where untrusted input enters (route, file, queue or external call).",
+   "partial": "The document names assets or entry points but not both, or lists them without saying which side of a boundary is trusted.",
+   "pass": "The document names the assets or data protected and the points where untrusted input crosses a trust boundary; for a code review, it lists the files and entry points it examined."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The sentence or list item naming the asset or the boundary (pass or partial), or the opening line of the document (fail)."
+  }
+ },
+ {
+  "id": "tm-stride",
+  "dimension": "threat-model",
+  "appliesTo": [
+   "threat-model"
+  ],
+  "weight": 3,
+  "question": "Is each STRIDE category considered?",
+  "levels": {
+   "fail": "Fewer than 4 of the 6 STRIDE categories (spoofing, tampering, repudiation, information disclosure, denial of service, elevation of privilege) are discussed.",
+   "partial": "4 or 5 categories are discussed, or all 6 appear but some are marked not applicable without a reason.",
+   "pass": "All 6 categories appear; each has at least one threat or is marked not applicable with a one-sentence reason."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The heading or sentence for the category that is thinnest (fail or partial), or for 'not applicable' with its reason (pass)."
+  }
+ },
+ {
+  "id": "tm-mitigations",
+  "dimension": "threat-model",
+  "appliesTo": [
+   "review",
+   "threat-model"
+  ],
+  "weight": 3,
+  "question": "Is each threat or finding paired with a specific control?",
+  "levels": {
+   "fail": "Most threats or findings have no mitigation or fix, or the mitigation is generic ('validate input', 'follow best practices', 'improve security').",
+   "partial": "Most threats or findings have a specific mitigation, but at least one is generic or none says where in the system the control goes.",
+   "pass": "Each threat or finding is paired with a mitigation that names the control, where it applies (file, function, route or component) and which threat it addresses."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The most generic mitigation (fail or partial) or the most specific one (pass)."
+  }
+ },
+ {
+  "id": "tm-residual",
+  "dimension": "threat-model",
+  "appliesTo": [
+   "review",
+   "threat-model"
+  ],
+  "weight": 2,
+  "question": "Are assumptions and remaining risk stated?",
+  "levels": {
+   "fail": "No assumption, residual risk or out-of-scope item is stated.",
+   "partial": "Assumptions are stated but no risk that remains after the mitigations, or the reverse.",
+   "pass": "At least one assumption is stated and the risk that remains after the mitigations is named; a code review states what it did not examine."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The assumption or residual-risk sentence (pass or partial), or the last paragraph of the document (fail)."
+  }
+ },
+ {
+  "id": "tm-grounded",
+  "dimension": "threat-model",
+  "appliesTo": [
+   "review",
+   "threat-model"
+  ],
+  "weight": 3,
+  "question": "Does every named component, file or route exist?",
+  "levels": {
+   "fail": "A threat or finding names a component, file, route, library or control that is not in the shown material or the answer key.",
+   "partial": "Every named item exists, but one real issue is placed in the wrong file or on the wrong line.",
+   "pass": "Every component, file, route and control the document names exists in the shown material or the answer key."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The invented or misplaced reference (fail or partial) or one reference you confirmed (pass)."
+  }
+ },
+ {
+  "id": "des-problem-first",
+  "dimension": "design-doc",
+  "appliesTo": [
+   "design"
+  ],
+  "weight": 2,
+  "question": "Does the document state the problem and requirements before the solution?",
+  "levels": {
+   "fail": "The document opens with the solution (components, tables, endpoints) and states the problem or requirements nowhere, or only at the end.",
+   "partial": "Requirements are stated, but only after the solution begins, or the design never refers back to them by id or name.",
+   "pass": "The first section states the problem and lists the requirements, and later sections refer back to them by id or name."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The first heading or sentence of the document, and where it matters a later reference to a requirement."
+  }
+ },
+ {
+  "id": "des-alternatives",
+  "dimension": "design-doc",
+  "appliesTo": [
+   "design"
+  ],
+  "weight": 1,
+  "question": "Are alternatives weighed against the chosen approach?",
+  "levels": {
+   "fail": "One approach is described and no alternative is mentioned.",
+   "partial": "An alternative is named without a cost, risk or reason for rejection.",
+   "pass": "At least one real alternative to a major decision is described with what it costs and why it was not chosen."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The sentence naming the alternative and its trade-off (pass or partial), or the sentence that states the single approach (fail)."
+  }
+ },
+ {
+  "id": "des-decision-rationale",
+  "dimension": "design-doc",
+  "appliesTo": [
+   "design"
+  ],
+  "weight": 2,
+  "question": "Does each major decision carry its reason?",
+  "levels": {
+   "fail": "The major decisions (ordering, locking, storage, notification path) are stated as facts with no reason.",
+   "partial": "Some decisions give a reason, and at least one major decision gives none.",
+   "pass": "Every major decision gives its reason in the same paragraph or in a decision list."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "A decision stated without a reason (fail or partial) or a decision with its reason (pass)."
+  }
+ },
+ {
+  "id": "des-consistency",
+  "dimension": "design-doc",
+  "appliesTo": [
+   "design"
+  ],
+  "weight": 3,
+  "question": "Do the data model and the API agree?",
+  "levels": {
+   "fail": "In 2 or more places the API or the data model uses a field, status, entity or endpoint that the other does not define, or the state flow in prose contradicts the table.",
+   "partial": "Exactly 1 field, status or type differs between the API and the data model.",
+   "pass": "Every field and status used in the API appears in the data model with the same name and meaning, and the state flow is the same in prose and in the model."
+  },
+  "evidence": {
+   "minQuotes": 2,
+   "quote": "Two quotes separated by ' @@ ': the API line and the data model line that disagree (fail or partial) or agree (pass)."
+  }
+ },
+ {
+  "id": "des-conflicts-surfaced",
+  "dimension": "design-doc",
+  "appliesTo": [
+   "design"
+  ],
+  "weight": 2,
+  "question": "Are conflicts and gaps in the requirements named?",
+  "levels": {
+   "fail": "A conflict or gap in the requirements that the answer key lists is not mentioned, or is resolved silently.",
+   "partial": "A listed conflict is named with no stated assumption or choice, or only some of the listed conflicts and gaps are named.",
+   "pass": "Every conflict and gap the answer key lists is named with its two statements and a stated assumption or choice."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The sentence that names the conflict (pass or partial), or the sentence that silently picks one side (fail)."
+  }
+ },
+ {
+  "id": "des-technical-accuracy",
+  "dimension": "design-doc",
+  "appliesTo": [
+   "design"
+  ],
+  "weight": 3,
+  "question": "Are the technical claims true, and can the mechanisms work as written?",
+  "levels": {
+   "fail": "A technical claim is false for the named technology (a behavior of a lock, isolation level, HTTP status, queue or protocol), or a described mechanism cannot work as written.",
+   "partial": "A claim is imprecise in a way that would change the design if taken literally, for example an optimistic version check is called a lock.",
+   "pass": "Every technical claim you checked is correct for the named technology, and each described mechanism can work as written."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "The claim you judged false, imprecise or correct, copied exactly."
+  }
+ },
+ {
+  "id": "des-testable-acceptance",
+  "dimension": "design-doc",
+  "appliesTo": [
+   "design"
+  ],
+  "weight": 2,
+  "question": "Can the stated checks be run and pass or fail?",
+  "levels": {
+   "fail": "The document has no acceptance criteria or test approach, or only says tests will be written.",
+   "partial": "The test approach lists areas but not expected results, for example 'test concurrency'.",
+   "pass": "At least 3 checks each state an input or situation and the expected outcome, for example 'two returns at once: exactly one hold becomes reserved'."
+  },
+  "evidence": {
+   "minQuotes": 1,
+   "quote": "One check with its expected outcome (pass), or the vaguest check (partial), or the test section heading (fail)."
+  }
+ }
+]

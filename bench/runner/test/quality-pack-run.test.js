@@ -480,3 +480,64 @@ test('report --verdict with --criteria-pack is refused instead of ignoring the p
     assert.match(r.stderr, /--criteria-pack does not apply with --verdict/);
   } finally { cleanup(s.root); }
 });
+
+// ---- the pack as part of the quality score ----
+
+const SCORING_QUALITY = path.join(__dirname, '..', '..', 'profiles', 'scoring-quality.json');
+const reportWith = (s, out, extra = {}) => generateRunReport({ run: loadRun(s.runDir), tasks: loadTasks(s.bench), baseline: 'vanilla', out, detail: 'full', format: 'both', defaultDir: s.runDir, ...extra });
+const readReport = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'report.json'), 'utf8'));
+
+test('a scoring file that weights the pack puts it in quality, and the report says so', async () => {
+  const s = judgedSetup();
+  try {
+    await runPackJudging({ ...common(s), caller: stub((ids) => (ids.includes('des-consistency') ? { 'des-consistency': { verdict: 'fail', evidence: 'Hold service design' } } : {})) });
+    reportWith(s, path.join(s.root, 'plain'), { qualityPack: pack });
+    reportWith(s, path.join(s.root, 'scored'), { qualityPack: pack, scoringFile: SCORING_QUALITY });
+    const plain = readReport(path.join(s.root, 'plain'));
+    const scored = readReport(path.join(s.root, 'scored'));
+    assert.deepEqual(plain.scores.weights, { hidden: 0.5, checks: 0.2, rubric: 0.3 });
+    assert.deepEqual(scored.scores.weights, { hidden: 0.4, checks: 0.16, rubric: 0.24, pack: 0.2 });
+    const q = (r) => r.scores.arms.vanilla.overall.quality;
+    assert.equal(q(scored).components.pack.n, 1);
+    assert.equal(q(plain).components.pack, undefined);
+    assert.notEqual(q(scored).value, q(plain).value);
+    assert.match(q(scored).inputs, /pack 1\/1 \(w 0\.2\)/);
+    const md = fs.readFileSync(path.join(s.root, 'scored', 'report.md'), 'utf8');
+    assert.match(md, /## Quality dimensions \(indicative, part of the quality score\)/);
+    assert.match(md, /The pack is part of the quality score in this report, with weight 0\.2/);
+    assert.match(md, /quality pack 0\.2/);
+    assert.equal(scored.qualityDimensions.scoredWeight, 0.2);
+    assert.equal(plain.qualityDimensions.scoredWeight, undefined);
+  } finally { cleanup(s.root); }
+});
+
+test('with a pack weight, a run with no current pack judgment stops the report, and a scoring file with a pack weight is refused without the pack', async () => {
+  const s = judgedSetup();
+  try {
+    await runPackJudging({ ...common(s), caller: stub() });
+    assert.throws(() => reportWith(s, path.join(s.root, 'a'), { scoringFile: SCORING_QUALITY }), /weight for pack needs the quality-pack scores/);
+    const file = path.join(s.runDir, FILE);
+    const q = JSON.parse(fs.readFileSync(file, 'utf8'));
+    fs.writeFileSync(file, JSON.stringify({ ...q, records: q.records.filter((r) => r.armId !== 'other') }));
+    assert.throws(() => reportWith(s, path.join(s.root, 'b'), { qualityPack: pack, scoringFile: SCORING_QUALITY }), /never judged by the pack \(other\/d1\/1\)/);
+    reportWith(s, path.join(s.root, 'c'), { qualityPack: pack });
+    fs.writeFileSync(file, JSON.stringify({ ...q, records: q.records.map((r) => ({ ...r, packRevision: 'old' })) }));
+    assert.throws(() => reportWith(s, path.join(s.root, 'd'), { qualityPack: pack, scoringFile: SCORING_QUALITY }), /another pack revision/);
+    const md = (() => { reportWith(s, path.join(s.root, 'e'), { qualityPack: pack }); return fs.readFileSync(path.join(s.root, 'e', 'report.md'), 'utf8'); })();
+    assert.match(md, /made against pack revision old/);
+    assert.match(md, /No run has a current pack record/);
+  } finally { cleanup(s.root); }
+});
+
+test('report-2x2 scores the pack in every cell when the scoring file weights it, and labels the weights', async () => {
+  const { root, bench, dirs } = await fourCells();
+  try {
+    const plain = buildFactorial({ dirs, benchDir: bench, qualityPack: pack });
+    const scored = buildFactorial({ dirs, benchDir: bench, qualityPack: pack, scoringFile: SCORING_QUALITY });
+    assert.deepEqual(scored.weights, { hidden: 0.4, checks: 0.16, rubric: 0.24, pack: 0.2 });
+    assert.notEqual(scored.cells[0].quality, plain.cells[0].quality);
+    assert.match(toMarkdown(renderFactorial(scored)), /hidden tests 0\.4, checks 0\.16, rubric 0\.24, quality pack 0\.2/);
+    assert.match(toMarkdown(renderFactorial(plain)), /hidden tests 0\.5, checks 0\.2, rubric 0\.3, renormalised/);
+    assert.throws(() => buildFactorial({ dirs, benchDir: bench, scoringFile: SCORING_QUALITY }), /weight for pack needs the quality-pack scores/);
+  } finally { cleanup(root); }
+});
