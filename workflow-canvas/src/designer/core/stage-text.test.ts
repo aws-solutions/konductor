@@ -1,27 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import type { StageView, WorkflowView } from '../../api/types';
+import type { StageKeys } from '../../api/types';
 import {
   inPlaceBlocker,
   withStages,
   type StageToWrite,
+  type ViewStages,
   type Written,
 } from './stage-text';
 
-function viewOf(...stages: StageView[]): WorkflowView {
-  return { name: 'hello', intent: { outcome: 'Say hi' }, stages };
+function viewOf(...stages: StageKeys[]): ViewStages {
+  return { stages };
 }
 
 // The stages of the view, each in its own place: a draft with no change.
-function kept(view: WorkflowView): StageToWrite[] {
+function kept(view: ViewStages): StageToWrite[] {
   return view.stages.map((stage, from) => ({ ...stage, from }));
 }
 
 // The stages of the view with one of them changed in place.
 function change(
-  view: WorkflowView,
+  view: ViewStages,
   at: number,
-  edit: Partial<StageView>,
+  edit: Partial<StageKeys>,
 ): StageToWrite[] {
   return kept(view).map((stage, i) =>
     i === at ? { ...stage, ...edit } : stage,

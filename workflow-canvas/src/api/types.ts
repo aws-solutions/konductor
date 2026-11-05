@@ -10,16 +10,42 @@ export interface Session {
   apiVersion: number;
 }
 
+/**
+ * The key of the file that names the kind of a stage: `agent`, or any other
+ * that a newer server adds. The page draws a kind it does not know as a plain
+ * stage.
+ */
+export type StageKind = 'agent' | (string & {});
+
+/** The lines of the workflow text that a stage takes up, counted from 1, both included. */
+export interface LineRange {
+  line: number;
+  end_line: number;
+}
+
 /** One unit of work in a workflow view. */
 export interface StageView {
   name: string;
+  kind: StageKind;
   agent: string;
+  range: LineRange;
+}
+
+/** The keys of a stage that the editor reads and writes. */
+export type StageKeys = Pick<StageView, 'name' | 'agent'>;
+
+/** The `goal` param of a workflow file: what the file says about the goal. */
+export interface GoalParamView {
+  description?: string;
+  default?: string;
 }
 
 /** The parsed workflow, ready to draw. */
 export interface WorkflowView {
   name: string;
   intent: { outcome: string };
+  /** The params of the file. The page reads the goal only. */
+  params?: { goal?: GoalParamView };
   stages: StageView[];
 }
 
@@ -40,6 +66,27 @@ export interface DiagnosticView {
   severity: Severity;
 }
 
+/** One key of a stage that a client may edit, and what it takes. */
+export interface StageField {
+  key: string;
+  /** `name`, `text` or `path`. A type a later version adds is shown as text. */
+  type: string;
+  required: boolean;
+  min_length?: number;
+  max_length?: number;
+  /** A regular expression that the whole value matches. */
+  pattern?: string;
+  /** Values the key may not take. */
+  reserved?: string[];
+  /** Keys that a stage may not have together with this one. */
+  excludes?: string[];
+}
+
+/** The editable keys of a stage, for each kind of stage the page knows. */
+export interface StageFields {
+  agent: StageField[];
+}
+
 /** What `GET /api/workflow` returns. */
 export interface WorkflowDocument {
   name: string;
@@ -52,6 +99,7 @@ export interface WorkflowDocument {
   /** `null` when there is no text or the text has errors. */
   view: WorkflowView | null;
   diagnostics: DiagnosticView[];
+  stageFields: StageFields;
 }
 
 /** What `PUT /api/workflow` returns: the file as it was written. */
@@ -87,4 +135,16 @@ export interface RunView {
   /** `null` while the run is `running`. */
   exitCode: number | null;
   stages: RunStageView[];
+}
+
+/** One run in `GET /api/runs`, with the key names of the contract. */
+export interface RunSummary {
+  run_id: string;
+  /** A UTC time to the whole second, such as `2026-10-24T04:12:05Z`. */
+  started_at: string;
+  status: RunStatus;
+  /** May be empty, for a run that took a workflow's empty default goal. */
+  goal: string;
+  /** True when the server cut `goal`. */
+  goal_truncated: boolean;
 }

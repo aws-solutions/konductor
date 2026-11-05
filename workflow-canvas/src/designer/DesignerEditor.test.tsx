@@ -25,6 +25,7 @@ import {
   HELLO_TEXT,
   HELLO_VIEW,
   loaded,
+  stageViewOf,
 } from '../test-support/fixtures';
 import type { WorkflowDocument } from '../api/types';
 
@@ -277,7 +278,7 @@ describe('picking the agent of a stage', () => {
       ...HELLO_DOCUMENT,
       view: {
         ...HELLO_VIEW,
-        stages: [{ name: 'draft', agent: 'my-agent' }],
+        stages: [stageViewOf('draft', 'my-agent')],
       },
     };
     await openDesigner(acceptingEdits(), odd);
@@ -339,10 +340,9 @@ describe('adding a stage', () => {
   });
 
   it('is off, and says why, at the most stages the API allows', async () => {
-    const stages = Array.from({ length: 40 }, (_, index) => ({
-      name: `stage-${index}`,
-      agent: 'k-developer',
-    }));
+    const stages = Array.from({ length: 40 }, (_, index) =>
+      stageViewOf(`stage-${index}`, 'k-developer'),
+    );
     await openDesigner(acceptingEdits(), {
       ...HELLO_DOCUMENT,
       view: { ...HELLO_VIEW, stages },
@@ -581,7 +581,7 @@ describe('an edit made while a save is in flight', () => {
     edits.reload.mockResolvedValue({
       ...HELLO_DOCUMENT,
       hash: 'e'.repeat(64),
-      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+      view: { ...HELLO_VIEW, stages: [stageViewOf('only', 'k-tpm')] },
     });
 
     fireEvent.click(
@@ -889,7 +889,7 @@ describe('a save that finds the file changed', () => {
     edits.reload.mockResolvedValue({
       ...HELLO_DOCUMENT,
       hash: 'e'.repeat(64),
-      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+      view: { ...HELLO_VIEW, stages: [stageViewOf('only', 'k-tpm')] },
     });
     const reload = within(screen.getByTestId('conflict')).getByRole('button', {
       name: 'Load the file again',
@@ -921,7 +921,7 @@ describe('a save that finds the file changed', () => {
     edits.reload.mockResolvedValue({
       ...HELLO_DOCUMENT,
       hash: 'e'.repeat(64),
-      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+      view: { ...HELLO_VIEW, stages: [stageViewOf('only', 'k-tpm')] },
     });
 
     fireEvent.click(
@@ -946,7 +946,7 @@ describe('a save that finds the file changed', () => {
     edits.reload.mockResolvedValue({
       ...HELLO_DOCUMENT,
       hash: 'e'.repeat(64),
-      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+      view: { ...HELLO_VIEW, stages: [stageViewOf('only', 'k-tpm')] },
     });
     fireEvent.click(
       within(screen.getByTestId('conflict')).getByRole('button', {

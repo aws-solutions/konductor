@@ -147,6 +147,47 @@ async function boxOf(locator: Locator): Promise<Box> {
   });
 }
 
+/** The text of a first-release workflow with these stages. */
+function textOf(
+  name: string,
+  outcome: string,
+  stages: ReadonlyArray<{ name: string; agent: string }>,
+): string {
+  return [
+    'format: konductor/1',
+    `name: ${name}`,
+    'version: 0.1.0',
+    'intent:',
+    `  outcome: ${outcome}`,
+    'stages:',
+    ...stages.flatMap((stage) => [
+      `  - name: ${stage.name}`,
+      `    agent: ${stage.agent}`,
+    ]),
+    '',
+  ].join('\n');
+}
+
+/** The keys of a stage that a client may edit, as `GET /api/workflow` returns them. */
+const STAGE_FIELDS = {
+  agent: [
+    { key: 'name', type: 'name', required: true },
+    { key: 'agent', type: 'name', required: true },
+  ],
+};
+
+/**
+ * The stages of a view for the stages of `textOf`: the first stage has the
+ * lines 7 and 8, and each next one takes the two lines after it.
+ */
+function viewStagesOf(stages: ReadonlyArray<{ name: string; agent: string }>) {
+  return stages.map((stage, i) => ({
+    ...stage,
+    kind: 'agent',
+    range: { line: 7 + 2 * i, end_line: 8 + 2 * i },
+  }));
+}
+
 /** A view of a workflow with `count` stages, as `GET /api/workflow` returns it. */
 function workflowOf(count: number) {
   const stages = Array.from({ length: count }, (_, i) => ({
@@ -155,11 +196,18 @@ function workflowOf(count: number) {
   }));
   return {
     name: 'big',
-    text: 'name: big\n',
+    text: textOf('big', 'Run it', stages),
     hash: 'a'.repeat(64),
     read_only: false,
-    view: { name: 'big', intent: { outcome: 'Run it' }, stages },
+    view: {
+      format: 'konductor/1',
+      version: '0.1.0',
+      name: 'big',
+      intent: { outcome: 'Run it' },
+      stages: viewStagesOf(stages),
+    },
     diagnostics: [],
+    stage_fields: STAGE_FIELDS,
   };
 }
 
@@ -225,15 +273,18 @@ test('shows in full the Japanese text that a node cuts short', async ({
     route.fulfill({
       json: {
         name: 'jp',
-        text: 'name: jp\n',
+        text: textOf('jp', outcome, [{ name, agent: 'a' }]),
         hash: 'a'.repeat(64),
         read_only: false,
         view: {
+          format: 'konductor/1',
+          version: '0.1.0',
           name: 'jp',
           intent: { outcome },
-          stages: [{ name, agent: 'a' }],
+          stages: viewStagesOf([{ name, agent: 'a' }]),
         },
         diagnostics: [],
+        stage_fields: STAGE_FIELDS,
       },
     }),
   );

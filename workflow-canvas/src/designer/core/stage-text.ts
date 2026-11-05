@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { StageView, WorkflowView } from '../../api/types';
+import type { StageKeys } from '../../api/types';
+
+/** The stages of a view: all the writer reads of it. */
+export interface ViewStages {
+  readonly stages: readonly StageKeys[];
+}
 
 // A value that a plain YAML scalar reads back as the same text: it starts
 // with a letter, has no character that YAML gives a meaning, and does not end
@@ -26,7 +31,7 @@ function scalar(value: string): string {
 }
 
 /** A stage to write: its name and agent, and the stage of the file it was. */
-export interface StageToWrite extends StageView {
+export interface StageToWrite extends StageKeys {
   /**
    * The place of the stage in the view that the text was read as. It is left
    * out for a stage that the file does not have yet.
@@ -160,14 +165,14 @@ function itemsOf(
 
 // A new item in the layout of the list: its dashes where the others have
 // them, and the agent in line with the name.
-function generated(stage: StageView, eol: string, dash: string): Line[] {
+function generated(stage: StageKeys, eol: string, dash: string): Line[] {
   return [
     { text: `${dash}- name: ${scalar(stage.name)}`, eol, made: true },
     { text: `${dash}  agent: ${scalar(stage.agent)}`, eol, made: true },
   ];
 }
 
-const sameStage = (a: StageView, b: StageView) =>
+const sameStage = (a: StageKeys, b: StageKeys) =>
   a.name === b.name && a.agent === b.agent;
 
 // A key of a block mapping at the start of `text`, plain or quoted, followed
@@ -284,8 +289,8 @@ function fieldOf(
 // that the writer edits in place.
 function edited(
   item: Item,
-  before: StageView,
-  after: StageView,
+  before: StageKeys,
+  after: StageKeys,
 ): Line[] | string {
   if (sameStage(before, after)) return item.lines;
   const column = columnOf(item);
@@ -349,7 +354,7 @@ function breakOf(line: Line, last: boolean, eol: string, fileEnd?: string) {
 
 // Whether `stages` are the stages of the view, each where the view has it.
 function unchanged(
-  view: readonly StageView[],
+  view: readonly StageKeys[],
   stages: readonly StageToWrite[],
 ): boolean {
   return (
@@ -368,7 +373,7 @@ function unchanged(
 // new lines for a stage the file does not have.
 function bodyOf(
   plan: Plan,
-  view: WorkflowView,
+  view: ViewStages,
   stages: readonly StageToWrite[],
   eol: string,
 ): Line[] | string {
@@ -410,7 +415,7 @@ function bodyOf(
  */
 export function withStages(
   text: string,
-  view: WorkflowView,
+  view: ViewStages,
   stages: readonly StageToWrite[],
 ): Written {
   if (unchanged(view.stages, stages)) return { ok: true, text };
@@ -450,7 +455,7 @@ export function withStages(
  */
 export function inPlaceBlocker(
   text: string,
-  view: WorkflowView,
+  view: ViewStages,
 ): string | undefined {
   const plan = planFor(text, view.stages.length);
   return typeof plan === 'string' ? plan : undefined;
