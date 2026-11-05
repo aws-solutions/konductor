@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// cli.rs — Konductor CLI command surface (clap derive macros, no separate
+// cli.rs - Konductor CLI command surface (clap derive macros, no separate
 // spec file). The hidden `__dump_schema` command (see cli/schema.rs) dumps
 // the live command tree as JSON for external validation.
 //
@@ -10,12 +10,18 @@
 // cli/init.rs, cli/doctor.rs).
 //
 // ── Exit-code contract (Engineering Design §6) ─────────────────────────────
-//   0 = all passed        1 = halted        2 = unresolved CRITICAL gate
-//   3 = budget exceeded    4 = user aborted a paused verdict
+//   0 = all passed        1 = halted
+//   2 = a finding at or above the effective threshold is unresolved
+//   3 = fix-cycle budget exceeded    4 = user aborted a paused verdict
+//   6 = success with warnings       64 = argument/usage error only
+//   65 = session content or integrity failure (corrupt or invalid session,
+//        record integrity, phase order (a started or completed phase after an
+//        earlier PENDING or IN_PROGRESS one), missing gate facts or evidence, an
+//        in-progress session without allow_running)
 //
 // ── Usage-error remap (PITFALL) ────────────────────────────────────────────
 // clap defaults usage errors to exit code 2, which collides with this
-// contract's "unresolved CRITICAL gate" signal. `Cli::try_parse()` catches
+// contract's "unresolved finding" signal. `Cli::try_parse()` catches
 // that and remaps it to `EX_USAGE` (64, BSD sysexits.h); `--help`/`--version`
 // keep clap's normal exit 0.
 
@@ -28,6 +34,8 @@ pub(crate) mod config;
 pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
+pub(crate) mod gate_config;
+pub(crate) mod gate_eval;
 pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
@@ -36,6 +44,7 @@ pub(crate) mod orchestration_mode;
 pub(crate) mod output;
 pub(crate) mod report;
 pub(crate) mod schema;
+pub(crate) mod skills_server;
 pub(crate) mod synth;
 mod telemetry;
 mod telemetry_hook;
@@ -43,6 +52,7 @@ mod time;
 mod trace;
 mod uninstall;
 mod update;
+mod verify_run;
 
 /// Test-only shared lock for every test in this crate that mutates the
 /// process-global `HOME` env var, since `std::env::set_var` has no
@@ -66,8 +76,9 @@ pub(crate) mod test_home_lock {
     }
 }
 
-/// Exit code the workflow contract reserves for "unresolved CRITICAL gate".
-/// Never emit this for a CLI usage error.
+/// Exit code the workflow contract reserves for an unresolved finding at or
+/// above the effective severity threshold, emitted by the gate evaluator
+/// (`verify-run`). Never emit this for a CLI usage error.
 const EXIT_CRITICAL_GATE: u8 = 2;
 
 /// Remapped exit code for CLI usage errors (bad flag, unknown subcommand,
@@ -90,6 +101,9 @@ const EXIT_VERIFY_FAILED: u8 = 65;
 pub(crate) const EXIT_SUCCESS_WITH_WARNINGS: u8 = 6;
 
 const EXIT_HALTED: u8 = 1;
+
+/// A recorded fix-cycle count went above the cap.
+const EXIT_BUDGET_EXCEEDED: u8 = 3;
 
 /// `--help` text styling (clap's own `Command::styles()`). Independent of
 /// `--no-color`/`NO_COLOR`: clap does its own TTY detection for `--help`
@@ -147,6 +161,14 @@ fn harness_value_parser() -> clap::builder::PossibleValuesParser {
     )
 }
 
+/// Digits only: no sign, spaces or decimals.
+fn parse_fix_cycle_pin(raw: &str) -> Result<u64, String> {
+    if raw.is_empty() || !raw.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(format!("`{raw}` is not a non-negative integer"));
+    }
+    raw.parse::<u64>().map_err(|err| format!("`{raw}`: {err}"))
+}
+
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Install Konductor into a repository.
@@ -185,8 +207,28 @@ pub enum Commands {
         link_bin: bool,
 
         /// Opt out of usage-analytics telemetry for this install. No
-        /// install record or telemetry hook is written, and any a prior
-        /// install at this target wrote is removed.
+        /// install record or telemetry hook is written, and any record a
+        /// prior install at this target wrote is removed. The skill-lookup
+        /// MCP server stops reporting too: it is launched with
+        /// `--install-info` pointing at that record when the installed
+        /// server supports it, or with `--telemetry off` when it does not.
+        ///
+        /// Scoped to the whole target directory, NOT to `--harness`:
+        /// `install-info.json` is one file per target, shared by every
+        /// harness installed there, so `--harness <name> --no-telemetry`
+        /// still removes the ENTIRE target's record, so telemetry hooks for
+        /// every harness at that target stop reporting, and so does every
+        /// skill-lookup MCP server there launched with `--install-info`.
+        /// Only the named harness's agent files are rewritten: another Kiro
+        /// CLI harness whose skill-lookup server lacks `--install-info`
+        /// keeps its previous setting until its own next `update`.
+        ///
+        /// Without this flag, installing at a target that already tracks a
+        /// harness and has no record keeps the target opted out, including
+        /// a reinstall of the only tracked harness: no record is written,
+        /// and a note points at `konductor update --target <dir>
+        /// --enable-telemetry` to opt back in. A first install writes the
+        /// record.
         #[arg(long, display_order = 4)]
         no_telemetry: bool,
 
@@ -246,14 +288,51 @@ pub enum Commands {
         #[arg(long, value_parser = harness_value_parser())]
         harness: Option<String>,
 
-        /// Opt out of usage-analytics telemetry for this update run,
-        /// regardless of the target's own history. When NOT passed,
-        /// `update` carries forward the target's earlier choice: the
+        /// Opt out of usage-analytics telemetry for this update run, and
+        /// durably: if the target's own `.konductor/install-info.json`
+        /// currently exists (telemetry was enabled), this run deletes it,
+        /// so the opt-out carries forward to a LATER plain `update` (no
+        /// flag re-passed) too, instead of silently re-enabling telemetry
+        /// the moment this flag is omitted. When NOT passed, `update`
+        /// carries forward the target's earlier choice the same way: the
         /// absence of `.konductor/install-info.json` on an existing
-        /// install means it opted out at install time. An `--all` batch
-        /// resolves this independently per target.
-        #[arg(long)]
+        /// install means it is opted out, with nothing left to carry
+        /// forward differently. The skill-lookup MCP server follows the same
+        /// record at startup, or gets `--telemetry off` when the installed
+        /// server predates `--install-info`. Pass
+        /// `--enable-telemetry` to reverse an opt-out. An `--all` batch
+        /// resolves this independently per target. Mutually exclusive
+        /// with `--enable-telemetry`.
+        ///
+        /// Scoped to the whole target directory, NOT to `--harness`:
+        /// `install-info.json` is one file per target, shared by every
+        /// harness installed there, so `--harness <name> --no-telemetry`
+        /// still removes the ENTIRE target's record, so telemetry hooks for
+        /// every harness at that target stop reporting, and so does every
+        /// skill-lookup MCP server there launched with `--install-info`.
+        /// Only the named harness's agent files are rewritten: another Kiro
+        /// CLI harness whose skill-lookup server lacks `--install-info`
+        /// keeps its previous setting until its own next `update`.
+        #[arg(long, conflicts_with = "enable_telemetry")]
         no_telemetry: bool,
+
+        /// Opt in to usage-analytics telemetry for this update run,
+        /// overriding any carried-forward opt-out (an absent or broken
+        /// `.konductor/install-info.json`) regardless of the target's own
+        /// history. Durably re-creates the record, the same way a fresh
+        /// `install` without `--no-telemetry` would, so a LATER plain
+        /// `update` also sees telemetry as enabled, not just this one
+        /// run -- the mirror image of `--no-telemetry`'s own
+        /// sticky-delete. An `--all` batch resolves this independently
+        /// per target. Mutually exclusive with `--no-telemetry`.
+        ///
+        /// Scoped to the whole target directory, NOT to `--harness`, for
+        /// the same reason `--no-telemetry` is: it recreates the
+        /// target-wide record. Skill-lookup servers launched with
+        /// `--install-info` follow it at once; another harness's telemetry
+        /// hooks return on that harness's next `update`.
+        #[arg(long = "enable-telemetry", action = ArgAction::SetTrue, conflicts_with = "no_telemetry")]
+        enable_telemetry: bool,
 
         /// Report exactly what would be overwritten for each selected
         /// target without touching the filesystem or making any network
@@ -278,7 +357,7 @@ pub enum Commands {
         #[arg(
             long,
             action = ArgAction::SetTrue,
-            conflicts_with_all = ["from", "target", "all", "harness", "dry_run"]
+            conflicts_with_all = ["from", "target", "all", "harness", "dry_run", "enable_telemetry"]
         )]
         cli: bool,
 
@@ -390,6 +469,32 @@ pub enum Commands {
         no_version_check: bool,
     },
 
+    /// Check a SOP session file against its gates and report one exit
+    /// code. Reads the session file and the project config; writes nothing.
+    #[command(name = "verify-run")]
+    VerifyRun {
+        /// The session file to check, relative to the root or absolute. It
+        /// must be a regular file inside the root.
+        #[arg(long)]
+        session: std::path::PathBuf,
+
+        /// The directory the session file and every recorded evidence path
+        /// must resolve under. Defaults to the current directory.
+        #[arg(long)]
+        root: Option<std::path::PathBuf>,
+
+        /// Accept a session whose run is still in progress (exit 0 when
+        /// nothing else fired) instead of failing it with exit 65.
+        #[arg(long = "allow-running", action = ArgAction::SetTrue)]
+        allow_running: bool,
+
+        /// Pin the fix-cycle budget from outside the session file. A
+        /// recorded `max_fix_cycles` above N exits 65 (`CAP_RAISED`); an
+        /// absent one takes N; a lower recorded cap stays in force.
+        #[arg(long = "max-fix-cycles", value_name = "N", value_parser = parse_fix_cycle_pin)]
+        max_fix_cycles: Option<u64>,
+    },
+
     /// Read or write Konductor configuration.
     ///
     /// Temporarily hidden from normal --help and dispatch while the
@@ -475,6 +580,7 @@ impl Commands {
             Commands::Synth { .. } => Self::SYNTH,
             Commands::Init { .. } => Self::INIT,
             Commands::Doctor { .. } => Self::DOCTOR,
+            Commands::VerifyRun { .. } => Self::VERIFY_RUN,
             Commands::Config { .. } => Self::CONFIG,
             Commands::Metrics { .. } => Self::METRICS,
             Commands::DumpSchema => "__dump_schema",
@@ -493,6 +599,7 @@ impl Commands {
     pub(crate) const SYNTH: &'static str = "synth";
     pub(crate) const INIT: &'static str = "init";
     pub(crate) const DOCTOR: &'static str = "doctor";
+    pub(crate) const VERIFY_RUN: &'static str = "verify-run";
     pub(crate) const CONFIG: &'static str = "config";
     #[allow(dead_code)]
     pub(crate) const METRICS: &'static str = "metrics";
@@ -518,9 +625,36 @@ impl ConfigAction {
     pub(crate) const LIST: &'static str = "list";
 }
 
+/// The text of a clap usage error before its `Usage:` section: the trimmed
+/// non-empty lines joined with a space, without the leading `error: `.
+fn usage_detail(err: &clap::Error) -> String {
+    let message = err.to_string();
+    let lines: Vec<&str> = message
+        .lines()
+        .take_while(|line| !line.trim().is_empty())
+        .map(str::trim)
+        .collect();
+    let joined = lines.join(" ");
+    joined
+        .strip_prefix("error: ")
+        .unwrap_or(&joined)
+        .to_string()
+}
+
+/// True when argv is a `verify-run` invocation with `--json`: its parse
+/// failures keep the one-object-on-stdout contract. The subcommand is the
+/// first argument that is not a flag, since the global flags take no value.
+fn wants_verify_run_json(argv: &[String]) -> bool {
+    let mut args = argv.iter().skip(1);
+    args.clone().any(|a| a == "--json")
+        && args
+            .find(|a| !a.starts_with('-'))
+            .is_some_and(|a| a == "verify-run")
+}
+
 /// Parse argv, remapping clap's usage-error exit code (2) to EX_USAGE (64)
-/// so it never collides with the workflow contract's "unresolved CRITICAL
-/// gate" code. `--help`/`--version` clap outcomes still exit 0.
+/// so it never collides with the workflow contract's "unresolved finding"
+/// code. `--help`/`--version` clap outcomes still exit 0.
 ///
 /// Every invocation is logged under ~/.konductor/logs/, including the exit
 /// paths below that terminate the process directly before `run()` ever
@@ -542,7 +676,7 @@ pub fn parse_or_exit() -> Cli {
                 ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
                     // A command group invoked with no subcommand (e.g.
                     // bare `konductor config`). `Error::exit()` would exit
-                    // 2 here, colliding with the reserved CRITICAL-gate
+                    // 2 here, colliding with the reserved unresolved-finding
                     // code, so flush and exit 0 manually instead.
                     use std::io::Write as _;
                     print!("{err}");
@@ -551,7 +685,11 @@ pub fn parse_or_exit() -> Cli {
                     std::process::exit(0);
                 }
                 _ => {
-                    eprint!("{err}");
+                    if wants_verify_run_json(&argv) {
+                        println!("{}", verify_run::usage_error_json(&usage_detail(&err)));
+                    } else {
+                        eprint!("{err}");
+                    }
                     logging::log_invocation(&argv, EXIT_USAGE_ERROR);
                     std::process::exit(EXIT_USAGE_ERROR.into());
                 }
@@ -593,15 +731,6 @@ fn run_inner(cli: Cli) -> u8 {
     };
 
     dispatch::dispatch(command, cli.verbose, cli.json, color)
-}
-
-/// `EXIT_CRITICAL_GATE` (2) is reserved for a future CRITICAL-gate feature
-/// and isn't returned by any handler yet; `EXIT_HALTED` (1) is returned
-/// today by `doctor`'s own local constant of the same value. This keeps
-/// both referenced so neither is flagged dead code.
-#[allow(dead_code)]
-fn _contract_constants_reference() -> (u8, u8) {
-    (EXIT_HALTED, EXIT_CRITICAL_GATE)
 }
 
 #[cfg(test)]
@@ -752,6 +881,36 @@ mod tests {
             }
             other => panic!("expected Install, got {other:?}"),
         }
+    }
+
+    /// `update --enable-telemetry` is the only way back in after an
+    /// opt-out, so `install` must not offer a competing flag.
+    #[test]
+    fn install_has_no_enable_telemetry_flag() {
+        let err = Cli::try_parse_from([
+            "konductor",
+            Commands::INSTALL,
+            "--harness",
+            "kiro-cli-v2",
+            "--enable-telemetry",
+        ])
+        .expect_err("install must not accept --enable-telemetry");
+        assert_eq!(err.kind(), clap::error::ErrorKind::UnknownArgument);
+    }
+
+    /// The opted-out note's accuracy relies on install never being a
+    /// preview: a dry run would print a note for a record it did not touch.
+    #[test]
+    fn install_has_no_dry_run_flag() {
+        let err = Cli::try_parse_from([
+            "konductor",
+            Commands::INSTALL,
+            "--harness",
+            "kiro-cli-v2",
+            "--dry-run",
+        ])
+        .expect_err("install must not accept --dry-run");
+        assert_eq!(err.kind(), clap::error::ErrorKind::UnknownArgument);
     }
 
     /// `--harness` must parse and carry each of its three documented
@@ -917,6 +1076,68 @@ mod tests {
         }
     }
 
+    // ── update --no-telemetry / --enable-telemetry ──────────────────────
+
+    #[test]
+    fn parses_update_with_enable_telemetry_flag() {
+        let cli =
+            Cli::try_parse_from(["konductor", Commands::UPDATE, "--enable-telemetry"]).unwrap();
+        match cli.command {
+            Some(Commands::Update {
+                enable_telemetry,
+                no_telemetry,
+                ..
+            }) => {
+                assert!(enable_telemetry);
+                assert!(
+                    !no_telemetry,
+                    "--enable-telemetry must not implicitly set --no-telemetry"
+                );
+            }
+            other => panic!("expected Update, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn update_enable_telemetry_defaults_to_false_when_omitted() {
+        let cli = Cli::try_parse_from(["konductor", Commands::UPDATE]).unwrap();
+        match cli.command {
+            Some(Commands::Update {
+                enable_telemetry, ..
+            }) => {
+                assert!(!enable_telemetry);
+            }
+            other => panic!("expected Update, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn update_no_telemetry_conflicts_with_enable_telemetry() {
+        let result = Cli::try_parse_from([
+            "konductor",
+            Commands::UPDATE,
+            "--no-telemetry",
+            "--enable-telemetry",
+        ]);
+        let err = result
+            .expect_err("--no-telemetry and --enable-telemetry together must be a usage error");
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    /// Same conflict, flags given in the opposite order.
+    #[test]
+    fn update_enable_telemetry_conflicts_with_no_telemetry_reverse_order() {
+        let result = Cli::try_parse_from([
+            "konductor",
+            Commands::UPDATE,
+            "--enable-telemetry",
+            "--no-telemetry",
+        ]);
+        let err = result
+            .expect_err("--enable-telemetry and --no-telemetry together must be a usage error");
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
     // ── update --cli and its conflict matrix ────────────────────────────
 
     #[test]
@@ -964,6 +1185,14 @@ mod tests {
             "/tmp/repo",
         ]);
         let err = result.expect_err("--cli and --from together must be a usage error");
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    #[test]
+    fn update_cli_conflicts_with_enable_telemetry() {
+        let result =
+            Cli::try_parse_from(["konductor", Commands::UPDATE, "--cli", "--enable-telemetry"]);
+        let err = result.expect_err("--cli and --enable-telemetry together must be a usage error");
         assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
 
@@ -1608,8 +1837,42 @@ mod tests {
     fn usage_error_exit_code_is_not_critical_gate() {
         // Guards the pitfall documented at the top of this file: the
         // remapped usage-error code must never equal the contract's
-        // "unresolved CRITICAL gate" code.
+        // "unresolved finding" code.
         assert_ne!(EXIT_USAGE_ERROR, EXIT_CRITICAL_GATE);
+    }
+
+    #[test]
+    fn no_cli_text_calls_exit_2_an_unresolved_critical_gate() {
+        let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut files = vec![
+            manifest.join("../../AGENTS.md"),
+            manifest.join("../README.md"),
+            manifest.join("../gate-config/config.yml"),
+            manifest.join("../gate-config/run-state.json"),
+            manifest.join("../gate-config/severity-schema.yml"),
+        ];
+        let mut dirs = vec![manifest.join("src"), manifest.join("tests")];
+        while let Some(dir) = dirs.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    dirs.push(path);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    files.push(path);
+                }
+            }
+        }
+        let stale = ["unresolved", "critical", "gate"].join(" ");
+        for path in files {
+            let text = std::fs::read_to_string(&path).unwrap().to_lowercase();
+            let flat = text.replace(['-', '\n', '/', '#', '*', '!'], " ");
+            let flat = flat.split_whitespace().collect::<Vec<_>>().join(" ");
+            assert!(
+                !flat.contains(&stale),
+                "{} still uses the old exit 2 wording",
+                path.display()
+            );
+        }
     }
 
     // ── Help-text regression: `config get`'s <KEY> example must be a real

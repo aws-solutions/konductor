@@ -3,13 +3,20 @@
 // orchestration_mode.rs: reads `orchestration.mode` from the user's
 // `~/.konductor/config.yml`. The session hook and `doctor` share this one
 // reader. Only the user layer is read; a project file's value is ignored.
+//
+// The mode is not a gate setting, so no gate command may fail on it. The
+// section therefore stays out of `config::RawConfig`: the gate loader ignores
+// it like any unknown key, `config set` keeps it (it edits the YAML mapping),
+// and this module parses it on its own, turning a bad shape into a fallback.
 
 // Callers arrive with the session hook; delete this line then.
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
 
-use crate::cli::config::{self, user_config_path, ConfigError};
+use serde::Deserialize;
+
+use crate::cli::config::user_config_path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Mode {
@@ -91,18 +98,22 @@ pub(crate) fn resolve_user_mode(home: Option<&Path>) -> ModeResolution {
             })
         }
     }
-    let raw = match config::load_raw_config(&path) {
-        Ok(raw) => raw,
+    let section = match read_section(&path) {
+        Ok(Some(section)) => section,
+        Ok(None) => return ModeResolution::Default,
         // Removed between the stat and the read: same as never there.
-        Err(ConfigError::ProjectConfigNotReadable { source, .. })
-            if source.kind() == std::io::ErrorKind::NotFound =>
-        {
+        Err(SectionError::Unreadable(source)) if source.kind() == std::io::ErrorKind::NotFound => {
             return ModeResolution::Default
         }
-        Err(error) => return ModeResolution::Fallback(load_failure(path, error)),
-    };
-    let Some(section) = raw.orchestration else {
-        return ModeResolution::Default;
+        Err(SectionError::Unreadable(source)) => {
+            return ModeResolution::Fallback(FallbackReason::Unreadable {
+                path,
+                kind: source.kind(),
+            })
+        }
+        Err(SectionError::Malformed(message)) => {
+            return ModeResolution::Fallback(FallbackReason::Malformed { path, message })
+        }
     };
     match section.mode {
         // A misspelled `mode` must not read as "no mode set". A known `mode`
@@ -125,23 +136,46 @@ pub(crate) fn resolve_user_mode(home: Option<&Path>) -> ModeResolution {
     }
 }
 
-fn load_failure(path: PathBuf, error: ConfigError) -> FallbackReason {
-    match error {
-        ConfigError::ProjectConfigNotReadable { source, .. } => FallbackReason::Unreadable {
-            path,
-            kind: source.kind(),
-        },
-        ConfigError::ProjectConfigMalformed { source, .. } => FallbackReason::Malformed {
-            path,
-            message: first_line(&source.to_string()),
-        },
-        // Unreachable today: `load_raw_config` returns only the two errors
-        // above. Kept so a new error is still shown, not dropped.
-        other => FallbackReason::Malformed {
-            path,
-            message: first_line(&other.to_string()),
-        },
-    }
+/// The `orchestration:` mapping of a config file.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub(crate) struct OrchestrationSection {
+    pub(crate) mode: Option<String>,
+    /// Keys this CLI does not know, such as a misspelled `mdoe`. Kept, not
+    /// rejected, so a newer sibling key does not break an older CLI;
+    /// `resolve_user_mode` reports them instead of silently using auto.
+    #[serde(flatten)]
+    pub(crate) unknown_keys: std::collections::BTreeMap<String, serde_yaml::Value>,
+}
+
+#[derive(Debug)]
+pub(crate) enum SectionError {
+    Unreadable(std::io::Error),
+    Malformed(String),
+}
+
+/// Reads the `orchestration:` section of the config file at `path`.
+/// An empty file, a missing key and a null section are `Ok(None)`.
+pub(crate) fn read_section(path: &Path) -> Result<Option<OrchestrationSection>, SectionError> {
+    let contents = std::fs::read_to_string(path).map_err(SectionError::Unreadable)?;
+    let document: serde_yaml::Value = serde_yaml::from_str(&contents)
+        .map_err(|error| SectionError::Malformed(first_line(&error.to_string())))?;
+    let section = match document {
+        serde_yaml::Value::Null => return Ok(None),
+        serde_yaml::Value::Mapping(mapping) => {
+            match mapping.get(serde_yaml::Value::String("orchestration".to_string())) {
+                None | Some(serde_yaml::Value::Null) => return Ok(None),
+                Some(section) => section.clone(),
+            }
+        }
+        _ => {
+            return Err(SectionError::Malformed(
+                "config file is not a mapping".to_string(),
+            ))
+        }
+    };
+    serde_yaml::from_value(section)
+        .map(Some)
+        .map_err(|error| SectionError::Malformed(first_line(&error.to_string())))
 }
 
 fn first_line(text: &str) -> String {
@@ -151,7 +185,9 @@ fn first_line(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::config::KONDUCTOR_DIR_NAME;
+    use crate::cli::config::{
+        load_config_with_home, set_config_value, CONFIG_FILE_NAME, KONDUCTOR_DIR_NAME,
+    };
     use std::fs;
 
     fn scratch_home(name: &str) -> PathBuf {
@@ -390,6 +426,68 @@ mod tests {
                 "{yaml_value}"
             );
         }
+    }
+
+    #[test]
+    fn non_mapping_document_is_malformed() {
+        assert_malformed(resolve_with("sequence-doc", "- a\n- b\n"));
+    }
+
+    #[test]
+    fn malformed_user_orchestration_section_leaves_load_config_working() {
+        let root = scratch_home("malformed-gate-root");
+        let home = scratch_home("malformed-gate-home");
+        fs::write(user_config_path(&home), "orchestration: 3\n").unwrap();
+
+        let loaded = load_config_with_home(&root, Some(&home));
+        let resolution = resolve_user_mode(Some(&home));
+        fs::remove_dir_all(&root).ok();
+        fs::remove_dir_all(&home).ok();
+
+        assert!(loaded.is_ok(), "{loaded:?}");
+        assert!(
+            matches!(
+                resolution,
+                ModeResolution::Fallback(FallbackReason::Malformed { .. })
+            ),
+            "{resolution:?}"
+        );
+    }
+
+    #[test]
+    fn malformed_project_orchestration_section_leaves_gates_working() {
+        let root = scratch_home("malformed-project");
+        fs::write(
+            root.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME),
+            "orchestration:\n  mode: [a]\ntier: minor\n",
+        )
+        .unwrap();
+
+        let loaded = load_config_with_home(&root, None);
+        fs::remove_dir_all(&root).ok();
+
+        assert!(loaded.is_ok(), "{loaded:?}");
+    }
+
+    #[test]
+    fn config_set_keeps_orchestration_section_and_unknown_keys() {
+        let root = scratch_home("set-keeps-section");
+        let path = root.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
+        fs::write(
+            &path,
+            "orchestration:\n  mode: coordinator\n  mdoe: x\ntier: minor\n",
+        )
+        .unwrap();
+
+        set_config_value(&root, "tier", "full").expect("set tier must succeed");
+
+        let section = read_section(&path).unwrap().expect("section kept");
+        fs::remove_dir_all(&root).ok();
+        assert_eq!(section.mode.as_deref(), Some("coordinator"));
+        assert_eq!(
+            section.unknown_keys.get("mdoe"),
+            Some(&serde_yaml::Value::String("x".to_string()))
+        );
     }
 
     #[test]
