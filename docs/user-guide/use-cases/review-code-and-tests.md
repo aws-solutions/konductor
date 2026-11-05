@@ -180,9 +180,9 @@ Run k-adversarial-pull-request-review against my current diff.
    per source, no recursive link-following, never blocks on missing context.
 1. **Ingest diff** — accepts git diff output, file paths, or raw diff content; excludes binaries,
    lock files, build artifacts. Stops if the diff is empty.
-2. **Parallel review passes** — spawns `k-developer` **three times concurrently**, each loading
-   exactly one pass skill and receiving the diff plus the step 0 summary. Findings are never shared
-   between them.
+2. **Parallel review passes**: returns a split of three `k-developer` parts to run
+   **concurrently**, each loading exactly one pass skill and carrying the diff plus the step 0
+   summary, and names step 3 as the step to resume at. Findings are never shared between them.
    - *Security* (`adversarial-code-review-pass-security`) — information disclosure, authorization,
      injection, secrets. CRITICAL if stack traces, internal IDs, or raw exception messages reach a
      caller, or unvalidated input reaches a query.
@@ -192,7 +192,8 @@ Run k-adversarial-pull-request-review against my current diff.
    - *Schema / contract* (`adversarial-code-review-pass-schema`) — API, schema and type changes,
      backward compatibility, validation completeness. IMPORTANT for ordering violations and wiring
      gaps. Test files are not flagged.
-3. **Reuse pass** — a **fourth** `k-developer` spawn, looking only for cross-pass reuse: an
+3. **Reuse pass**: resumed at step 3 with the three lists, the SOP returns a handoff note for a
+   **fourth** `k-developer` session and resumes at step 4. It looks only for cross-pass reuse: an
    existing utility the diff reimplements or bypasses, or one that would resolve two or more of the
    findings above. IMPORTANT when it flags a bypassed shared utility, transaction helper,
    validation middleware, error-mapping layer, or pagination utility.

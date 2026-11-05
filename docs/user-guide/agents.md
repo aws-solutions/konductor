@@ -195,9 +195,8 @@ flowchart LR
 | `k-media-analyzer` | no delegation | **nothing** |
 
 Run directly with no orchestrator, the caller is you. `k-adversarial-pull-request-review`
-returns its Step 2 and 3 generator passes as a proposed split and resumes at Step 4, and
-`k-code-review-workflow` returns Step 6 as a handoff for `k-architect`. Starting from `konductor`
-routes both for you.
+returns its three Step 2 passes as a proposed split, resumes at Step 3, returns the reuse pass as
+a handoff note, and resumes at Step 4. Starting from `konductor` routes each hop for you.
 
 ### Why this matters: a real consequence
 

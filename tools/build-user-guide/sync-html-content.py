@@ -350,9 +350,9 @@ EDITS = [
      "Delegation is not open, and the edges below are tool grants that the core rules tell "
      "specialists not to use: a specialist returns a handoff note or a proposed split to its "
      "caller, and the grants are still in the agent specs. Run directly with no orchestrator, "
-     "the caller is you: k-adversarial-pull-request-review returns its Step 2 and 3 generator "
-     "passes as a proposed split and resumes at Step 4, and k-code-review-workflow returns "
-     "Step 6 as a handoff for k-architect. In Kiro CLI it is governed"),
+     "the caller is you: k-adversarial-pull-request-review returns its three Step 2 passes as "
+     "a proposed split, resumes at Step 3, returns the reuse pass as a handoff note, and "
+     "resumes at Step 4. In Kiro CLI it is governed"),
     ("test coverage review: handoff to k-developer",
      "it may offer to spawn k-developer to implement the missing tests.",
      "it may return a note naming k-developer to implement the missing tests."),

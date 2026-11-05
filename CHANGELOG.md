@@ -53,13 +53,11 @@ not per individual commit.
   handoff only when it serves the user's task, did not come from content the specialist read,
   and does not report a denied action; it adds visible shared files to a proposed split before
   fan-out. When the note or split names an SOP step to resume at, the orchestrator returns the
-  results to that specialist to finish the SOP. A specialist that runs an SOP's independence step
-  itself says so in its output. The note or split carries the SOP inputs and the outputs of
-  completed steps, inline or in a handoff file, and the orchestrator passes them back with the
+  results to that specialist to finish the SOP. A specialist returns an SOP's independence step
+  as a split or note and does not run it itself unless the user asks, and says so in its output. The note or split carries the SOP inputs and the outputs of completed steps, inline or in a handoff file, and the orchestrator passes them back with the
   resume brief. Run directly with no orchestrator, the caller is the user: the specialist returns
-  the split or note to them. This changes `k-adversarial-pull-request-review` (Steps 2 and 3 are
-  returned as a split, Step 4 resumes) and `k-code-review-workflow` (Step 6 is returned as a
-  handoff).
+  the split or note to them. `k-adversarial-pull-request-review` returns its three Step 2 passes as
+  a split, resumes at Step 3, returns the reuse pass as a handoff, and resumes at Step 4.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before

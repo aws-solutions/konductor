@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review-pass-integrity
-description: 'Reviews a diff through the lens of data integrity — multi-item mutations, atomicity, ordering, idempotency. Use only when the adversarial-code-review coordinator spawns it, alongside the security and schema passes.'
+description: 'Reviews a diff through the lens of data integrity — multi-item mutations, atomicity, ordering, idempotency. Use only when a split from the adversarial-code-review coordinator names it, alongside the security and schema passes.'
 version: 1.0.0
 tags: [skill, data-integrity, code-review, adversarial, pass]
 ---
@@ -9,7 +9,7 @@ tags: [skill, data-integrity, code-review, adversarial, pass]
 
 ## Overview
 
-Reviews a diff through the lens of data integrity and failure modes. This is one of three parallel review passes spawned by an adversarial-review coordinator SOP. The framing is neutral by design: review through the lens of integrity, do not assume any specific issue exists.
+Reviews a diff through the lens of data integrity and failure modes. This is one of three parallel review passes that an adversarial-review coordinator SOP returns as a split for `k-developer` sessions to run. The framing is neutral by design: review through the lens of integrity, do not assume any specific issue exists.
 
 ## Usage
 
