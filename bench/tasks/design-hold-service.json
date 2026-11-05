@@ -28,7 +28,7 @@
     {
       "type": "contains",
       "path": "docs/design/hold-service.md",
-      "pattern": "(?:bounce[sd]?|no (?:email|e-mail)|no (?:email )?address|without an? (?:email )?address|missing (?:email )?address|delivery fail\\w*|undeliverable)[\\s\\S]{0,400}(?:not block|never block|(?:does not|doesn.t|do not|don.t) (?:block|prevent|affect|stop)|still|regardless|independent|retr(?:y|ies|ied|ying))"
+      "pattern": "(?:bounce[sd]?|no[- ](?:e-?mail|address)|(?:without|missing|bad|invalid|rejected|unknown|wrong)\\s+(?:(?:member|recipient)(?:'s)?\\s+)?(?:e-?mail|address)|delivery[- ]fail\\w*|undeliverable|(?:relay|mail|e-?mail|notification)\\s+(?:outage|failures?|fails|rejects?|is down)|(?:notification|e-?mail)s?\\s+(?:failed|failures?)|(?:permanent|transient)\\s+(?:failure|rejection)|retries\\s+(?:are\\s+)?exhausted|dead[- ]letter)[\\s\\S]{0,400}(?:(?:never|not|neither|nor)\\s+(?:block|release|extend|affect|stop|prevent|delay|consume|roll|cancel)\\w*|(?:does|do|did)(?:\\s+not|n't)\\s+\\w+|\\bstill\\b|regardless|independent|retr(?:y|ies|ied|ying)|(?:stays?|remains?|keeps?)\\s+(?:reserved|valid|moving|running|going)|queue\\s+(?:keeps|moves|continues)|continues?\\b|released?\\b|expire[sd]?\\b|next member|skipped|goes?\\s+straight\\s+to)|(?:(?:never|not|neither|nor)\\s+(?:block|release|extend|affect|stop|prevent|delay|consume|roll|cancel)\\w*|(?:does|do|did)(?:\\s+not|n't)\\s+\\w+|\\bstill\\b|regardless|independent|retr(?:y|ies|ied|ying)|(?:stays?|remains?|keeps?)\\s+(?:reserved|valid|moving|running|going)|queue\\s+(?:keeps|moves|continues)|continues?\\b|released?\\b|expire[sd]?\\b|next member|skipped|goes?\\s+straight\\s+to)[\\s\\S]{0,400}(?:bounce[sd]?|no[- ](?:e-?mail|address)|(?:without|missing|bad|invalid|rejected|unknown|wrong)\\s+(?:(?:member|recipient)(?:'s)?\\s+)?(?:e-?mail|address)|delivery[- ]fail\\w*|undeliverable|(?:relay|mail|e-?mail|notification)\\s+(?:outage|failures?|fails|rejects?|is down)|(?:notification|e-?mail)s?\\s+(?:failed|failures?)|(?:permanent|transient)\\s+(?:failure|rejection)|retries\\s+(?:are\\s+)?exhausted|dead[- ]letter)"
     },
     {
       "type": "cmd",
@@ -57,10 +57,9 @@
       "pattern": "\\b(?:5|five)\\b[^\\n]{0,30}(?:active )?holds?|holds?[^\\n]{0,40}\\b(?:5|five)\\b|(?:limit|maximum|max|at most|cap)\\b[^\\n]{0,40}\\b(?:5|five)\\b"
     },
     {
-      "type": "min_matches",
-      "path": "docs/design/hold-service.md",
-      "pattern": "\\bassum",
-      "min": 2
+      "type": "cmd",
+      "cmd": "awk '{ low=tolower($0); words+=gsub(/assum/,\"&\",low) } /^[ \\t]*#+[ \\t]/ { open=0 } { low=tolower($0) } (low ~ /^[ \\t]*#+[ \\t].*assum/ || low ~ /^[ \\t]*[|].*assum.*[|]/) { open=1; next } open && $0 ~ /^[ \\t]*([-*+]|[0-9]+[.)])[ \\t]/ { rows++ } open && $0 ~ /^[ \\t]*[|]/ && $0 !~ /^[ \\t]*[|][ :|-]+[|]?[ \\t]*$/ { rows++ } END { exit !(words >= 2 || rows >= 2) }' docs/design/hold-service.md",
+      "expectExit": 0
     },
     {
       "type": "min_matches",
@@ -70,13 +69,13 @@
     },
     {
       "type": "cmd",
-      "cmd": "c=0; h=$(grep -E '^[[:space:]]*(#+[[:space:]]|[*][*][^*]+[*][*]:?[[:space:]]*$)' docs/design/hold-service.md 2>/dev/null); for p in 'component|responsib' 'data|model|schema' 'api|endpoint' 'order|queue|reserv|window' 'return|concurren' 'notif' 'test' 'assum|conflict|gap'; do printf '%s\\n' \"$h\" | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 6 ]",
+      "cmd": "c=0; h=$(awk '/^[[:space:]]*#+[[:space:]]/ { print; next } /^[[:space:]]*[*][*][^*]+[*][*]/ { s=$0; sub(/^[[:space:]]*[*][*]/, \"\", s); sub(/[*][*].*/, \"\", s); print s; next } /^[[:space:]]*[|][ :|-]+[|]?[[:space:]]*$/ { if (prev ~ /^[[:space:]]*[|]/) print prev } { prev=$0 }' docs/design/hold-service.md 2>/dev/null); for p in 'component|responsib' 'data|model|schema|table' 'api|endpoint' 'order|queue|reserv|window' 'return|concurren' 'notif' 'test' 'assum|conflict|gap'; do printf '%s\\n' \"$h\" | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 6 ]",
       "expectExit": 0
     },
     {
       "type": "not_contains",
       "path": "docs/design/hold-service.md",
-      "pattern": "^(?![^\\n]*(out of scope|not in scope|excluded|deferred|later feature|later release|not included|non-goal))[^\\n]*weekly[^\\n]*report"
+      "pattern": "^(?![^\\n]*(out of scope|not in scope|excluded|deferred|later|future|follow-up|not included|non-goal))[^\\n]*weekly[^\\n]*report"
     },
     {
       "type": "cmd",

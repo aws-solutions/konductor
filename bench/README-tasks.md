@@ -55,6 +55,17 @@ Some checks are regression guards that pass on the untouched fixture. The valida
 
 A check must accept every reasonable phrasing (`retry`, `retries`; `5 days`, `five days`, `after 5`, `5 in REQ-6`) and still reject wrong answers. `tasks/negatives/<id>.json` lists documents laid over the reference solution and whether one check must pass or fail on them. Each check named in `loosened` needs at least two failing cases and one passing case. The validator and `node --test` both run them.
 
+### Revised checks of `design-hold-service`
+
+Four checks measured wording and layout, not content, and failed designs that had the content. Across the pilot (3 of 4 arms) and a 5-arm lite run (7 of 15 runs) they failed designs that had every required part.
+
+- Notification failure (check 4): the failure term had to come before the "does not block" phrase, and only "bounce", "no email" and a few address phrases counted. It now accepts either order within 400 characters, more failure terms (bad, invalid or rejected address, relay outage, permanent rejection, retries exhausted, dead letter) and any stated consequence for the hold or queue (never blocks or releases, stays reserved, queue keeps moving, goes straight to failed, copy released, next member, retry). A design that names bounces but states no consequence still fails.
+- Assumptions (check 10): the word "assum" had to appear twice. A design with an Assumptions heading and eight listed items had it once. It now passes with two uses of the word, or with an assumptions heading or an Assumption column followed by two list items or table rows.
+- Section topics (check 12): topics had to be standalone headings. It now also reads bold lead-ins ("**API.**") and the first row of a table ("| Component | Responsibility |"), and counts "table" for the data model. Six of eight topics are still needed.
+- Weekly report (check 13): a line was flagged unless it said "out of scope", "deferred" and similar. A line that keeps retention "for the later weekly report" was flagged. Lines saying later, future or follow-up are now allowed; a line that designs the report still fails.
+
+Results of this task scored before this change are stale for these four checks. The judge revision (prompt, rubric, answer key) is unchanged, so judgments stay valid. `bench.js recheck --run DIR` applies the new checks to saved runs and keeps the first results under `checksOriginal`; the new checks hash is the `checksRevision` it records.
+
 ## Mutation proof
 
 Reference solutions are realistic documents derived from the answer keys, and every check must pass on them. For each `sop`, `review` and `design` task (and the orchestration tasks that write a report) `tasks/stubs/<id>/` holds a keyword stub: the right headings and keywords, no substance. The validator lays it over the solution and requires at least one `min_matches` or `cmd` check to fail. Tasks of those classes need at least one `min_matches` check. A prompt that forbids edits needs a `fixture_unchanged` check.

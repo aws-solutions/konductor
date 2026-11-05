@@ -2,7 +2,10 @@
   "loosened": [
     1,
     4,
-    9
+    9,
+    10,
+    12,
+    13
   ],
   "cases": [
     {
@@ -183,6 +186,276 @@
       "expect": "fail",
       "files": {
         "docs/design/hold-service.md": "The reservation window is 7 days. Peak load is 50 requests per second.\n"
+      }
+    },
+    {
+      "name": "real notification section, kiro vanilla pilot",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## 6. Notification failures\n\nNotifications go through the outbox, so a relay outage never blocks or rolls back a reservation.\n\n- Transient failure (timeout, 4xx from the relay): retry with exponential backoff, up to 6 attempts over about 24 hours.\n- Permanent failure (rejected address, 5xx, or no address at send time): mark `failed` immediately.\n- On `failed`, the hold **stays reserved** and the clock keeps running. The hold is flagged `notificationFailed` in the staff queue view so a librarian can phone the member. The member also sees \"ready, pick up by <date>\" in `GET /members/me/holds`. We do not skip the member automatically, because silently passing over someone at the front of the queue is the failure the library is trying to remove. **[A7]**\n- Asynchronous bounces, where the relay accepts the message and later bounces it, are not visible to us. They surface only through the staff phone follow-up.\n"
+      }
+    },
+    {
+      "name": "real notification section, cc konductor pilot",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## Notification failures\n\nThe reservation commits first. Email is sent afterward from the outbox fields, so a failure never releases the copy.\n\n- On failure: back off 1 min, 5 min, 30 min, 2 h, then every 6 h; after 8 attempts set `failed`, log with `holdId`, raise an alert.\n- The 5-day clock keeps running. The member's holds page shows \"ready, pick up by <date>\" from `reservedUntil` whatever the email state. Staff see `notifyState` in the queue view and can resend.\n- Idempotency: state becomes `sent` only after the relay accepts. A crash in between sends one duplicate. Each email carries `Message-ID: hold-<id>`, so duplicates are identifiable. Exactly-once is not claimed.\n- A missing member email goes straight to `failed`.\n"
+      }
+    },
+    {
+      "name": "real notification section, cc vanilla pilot",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## 7. Notification failures\n\nThe email is sent from the outbox, not inside the request or event handler, so a mail outage never blocks reservation.\n- Send failure: retry with backoff (1, 5, 30 min, then hourly), up to 6 attempts; record `lastError`.\n- Permanent failure (bad address, 5xx rejection) or attempts exhausted: mark `failed`, log and raise an alert. The reservation remains valid: the member can still see `reserved` and the deadline in `GET /members/me/holds`.\n- Do not extend the window or skip the member on failure (the requirements do not say to). *Proposal for the owner to confirm:* if the email is still unsent after half the window, flag the hold for staff, who can phone the member.\n- The email is sent at most once on success: the outbox row is claimed with `FOR UPDATE SKIP LOCKED` and marked `sent` after relay acceptance. A crash in between can duplicate an email (at-least-once). Accepted.\n- A hold that is cancelled or expired before sending is not emailed (the sender re-checks status).\n"
+      }
+    },
+    {
+      "name": "real notification section, stack149b rep 1",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "### 4.5 Notification failures\n\nEach assignment writes a `notifications` row in the same transaction (a transactional outbox), so a committed reservation always has a pending email. The Notifier sends, and on a transient failure retries with backoff (1, 5, 15, 60 minutes, then stops). A permanent failure, such as an invalid address, is recorded immediately.\n\n| Failure | Behavior |\n|---------|----------|\n| Relay down or timeout | Retry as above. Reservation window keeps running. |\n| Retries exhausted, or permanent rejection | `notifications.status = failed`. The hold stays `reserved`. The staff queue view marks it \"email failed\" so a librarian can phone the member. |\n| Member has no email address | Place-hold is refused with `NO_EMAIL`, so this cannot happen at assignment. If the address is later removed, treated as a permanent failure. |\n| Bounce reported after the relay accepted the mail | Not detected. Assumed the relay gives no bounce feed. Residual risk: the member loses the copy after the window passes. |\n\nWe do not skip a member whose email failed. Skipping would drop them from the queue silently, which breaks the fair-queue promise.\n"
+      }
+    },
+    {
+      "name": "real notification section, v1.2.0 rep 1",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## 6. Notification failures\n\nThe Notifier retries with delays of 1 min, 5 min, 30 min, 2 h, 6 h, 12 h **(mine)**, about 21 h in total. Its idempotency key is `(holdId, reservationAt)`, so a retry after a timeout does not send a second email for the same reservation. A missing address or a permanent relay rejection goes straight to `dead`. A bounce reported by the relay counts as a failed attempt.\n\nThe reservation window starts when the relay accepts the email: on `sent`, `reservedUntil = sentAt + RESERVATION_DAYS`. Until then `reservedUntil` holds the provisional value from step 3, so a reservation is always bounded. If the job goes `dead`, `reservedUntil = deadAt + 2 days` **(mine)** so staff can phone the member, and the queue cannot stall forever. Visibility: the hold appears in `GET /holds?notifyState=dead`, a gauge `notifications_dead` alerts when above 0, and the member sees the reservation in `GET /members/me/holds`.\n"
+      }
+    },
+    {
+      "name": "real notification section, v1.2.0 rep 2",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## 6. Notification failures\n\nThe Notifier claims a due row with a 2 min lease, sends outside any transaction, then records the result.\n\n| Case | Behavior |\n|---|---|\n| Relay accepts | `state = sent`; `reserved_until` = the deadline written in the email. The window starts here. |\n| Transient failure (timeout, 4xx) | Exponential backoff from 30 s, doubling, capped at 1 h, ±20% jitter, up to 24 h. |\n| Permanent failure (bad or missing address, 5xx) or 24 h exhausted | `state = dead`; `reserved_until = now + window`; no email. The queue keeps moving. |\n| Crash after accept, before record | Duplicate email possible; accepted. |\n\nStarting the window on relay acceptance means an outage does not consume a member's time; the cost is up to 24 h of extra delay for the next member (A8). Fallbacks: the reservation shows in `GET /members/me/holds`, and the staff view shows `notifyState` so a librarian can phone the member (A9).\n\nObservability: counters for attempts, outcomes, dead letters, expiries, duplicate events; gauges for oldest pending notification and for queued holds while a copy sits on the shelf; histogram of return-to-window-start time. Alerts: any dead letter, oldest pending over 15 min, shelf anomaly above 0. Logs carry `holdId`, `titleId`, `eventId`.\n"
+      }
+    },
+    {
+      "name": "real notification section, v1.2.0 rep 3",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## 6. Notification failures\n\nThe Notifier polls pending rows due now and sends outside any transaction.\n\n- Transient failure (timeout, temporary 4xx): retry after 1 min, 5 min, 30 min, 2 h, then `failed`.\n- Permanent failure (no address, address rejected): `failed` at once.\n- On `failed`, the hold ends as `expired` (`notify_failed`), the copy is released and the next member is claimed. The member sees it in `GET /members/me/holds`; staff see the reason. Holding a copy for someone who never learned of it would block the queue for days.\n- `NO_EMAIL` at placement prevents most cases.\n"
+      }
+    },
+    {
+      "name": "failure rule is only a heading and a to-do",
+      "check": 4,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "## Notification failures\n\nTo be decided with the product owner.\n"
+      }
+    },
+    {
+      "name": "bounce named as an open question only",
+      "check": 4,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "Open question: what happens when an email bounces is not specified in the requirements.\n"
+      }
+    },
+    {
+      "name": "notifier described, no failure case",
+      "check": 4,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "## Notifications\n\nThe Notifier reads pending rows, sends the ready email through the mail relay and records the send time.\n"
+      }
+    },
+    {
+      "name": "consequence far before the failure term",
+      "check": 4,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "The hold is still a queue entry.\nx x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x \nA member may have no email address.\n"
+      }
+    },
+    {
+      "name": "real assumptions list, mainsha rep 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## 9. Assumptions\n\n- A1. The database is PostgreSQL or compatible (`SKIP LOCKED`, partial indexes, advisory locks). `overview.md` names no engine.\n- A2. Catalog delivers \"copy returned\" at least once, with a unique `eventId`, `titleId` and `copyId`.\n- A3. Copies of a title are interchangeable.\n- A4. Catalog calls the pickup endpoint at checkout of a reserved copy, and marks reserved copies unavailable until the hold ends. HoldService tells Catalog when a reserved copy is released.\n- A5. The window is exactly 5 x 24 hours, with no allowance for closed days.\n- A6. Only the \"ready\" email is sent. Cancellation, removal and expiry send none.\n- A7. Bounces after relay acceptance are ignored.\n- A8. Fines do not block holds. Ended holds are kept 12 months.\n- A9. Librarians only may read a title's queue. Managers have no access.\n- A10. REQ-9 covers the four public calls and states a median only. Return processing has no latency target.\n"
+      }
+    },
+    {
+      "name": "real assumptions list, v1.2.0 rep 3",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## 9. Assumptions\n\n- A1: PostgreSQL, or a database with `SKIP LOCKED` and advisory locks.\n- A2: Catalog offers idempotent `reserve` and `release` for a copy and publishes \"copy checked out\" (`copyId`, `memberId`). \"Copy returned\" carries `eventId`, `titleId`, `copyId`, delivered at least once.\n- A3: Catalog answers \"unreserved copy available?\" synchronously within the REQ-9 latency.\n- A4: Member service returns role and email on request.\n- A5: One hold per member per title.\n- A6: Retry schedule and `RESERVATION_DAYS` are configurable defaults. The relay reports only accept or reject at send time; later bounces are out of scope.\n- A7: Ended holds are kept 12 months, then purged.\n- A8: Position 0 means ready for pickup.\n"
+      }
+    },
+    {
+      "name": "real assumptions list, stack149 rep 3",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## Assumptions\n\n- A1: The database supports row locks (`SELECT ... FOR UPDATE`) and partial unique indexes, as PostgreSQL does.\n- A2: A member has one active hold per title. All copies of a title are interchangeable.\n- A3: Unpaid fines are not checked, since fines are out of scope in `vision.md`.\n- A4: The reservation clock starts when the copy is reserved, not when the email is sent.\n- A5: Library hours and holidays are ignored; windows are plain timestamps from the database clock.\n- A6: Retention is 12 months, so the later weekly report (US-6) still has history.\n"
+      }
+    },
+    {
+      "name": "real gaps table with an Assumption column, vanilla rep 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "## 8. Gaps and conflicts in the requirements\n\n| Item | Problem | Assumption |\n|------|---------|------------|\n| REQ-3 vs REQ-6 | Reservation is 7 days in REQ-3 and 5 days in REQ-6. US-3 promises the email states the period. | 5 days, as a single setting. Product owner to confirm. |\n| Pickup | No requirement says how a hold becomes `fulfilled`. | Catalog publishes a \"copy checked out\" event with member and copy. |\n| Catalog reserved state | A reserved copy must not be borrowable by others, but Catalog has no such state. REQ-1 and US-1 say \"available copy\" without defining it for reserved copies. | Catalog adds `reserve`/`release`; a reserved copy counts as unavailable. |\n| REQ-7 | \"Active hold\" is undefined. | `queued` and `reserved`. |\n| Duplicates | Nothing forbids two holds on one title by one member. | Forbidden. |\n| REQ-5, US-5 | Requirement says view and remove. Story says \"edit\". | Remove only. No reordering. |\n| Staff | REQ-5 says \"staff\". Roles are member, librarian, manager. | Librarian and manager. |\n| Notices | REQ-8 covers only the ready email. | No email on cancel, removal or expiry. |\n| Notification channel | Email is the only channel, so a member without an address cannot be told. | Hold allowed, flagged \"not notified\". |\n| Fines | The open questions ask about unpaid fines; the vision puts fines out of scope. | Not checked. `placeHold` has one eligibility step wh\n"
+      }
+    },
+    {
+      "name": "the word used twice in prose",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "I assume PostgreSQL. I also assume the catalog delivers return events at least once.\n"
+      }
+    },
+    {
+      "name": "assumptions heading with one entry",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "## Assumptions\n\n- A1: PostgreSQL.\n"
+      }
+    },
+    {
+      "name": "assumptions heading with no entries",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "## Assumptions\n\n## Testing\n\n- Unit tests for the queue.\n- Integration test for two returns at once.\n"
+      }
+    },
+    {
+      "name": "no assumptions anywhere",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "## Components\n\nHoldService, Notifier.\n\n## Testing\n\nUnit and integration tests.\n"
+      }
+    },
+    {
+      "name": "table with one data row under an Assumption column",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "| Item | Problem | Assumption |\n|---|---|---|\n| Window | 7 vs 5 days | 5 days |\n\n## Testing\n\n- Unit tests.\n"
+      }
+    },
+    {
+      "name": "real layout: topic labels as table headers and bold lead-ins, stack149 rep 3",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "# Design: Hold service\n\nStatus: draft. Sources: `docs/requirements.md` (REQ-1 to REQ-9), `docs/user-stories.md` (US-1 to US-5), `docs/design/overview.md`, `notes/open-questions.md`.\n\n## Problem\n\nA member who wants a checked-out title today asks a librarian to write a name on a paper list. The list gets lost, the member cannot see their place, and a returned book can sit on the shelf while nobody is called. The hold service replaces the list with an online queue and an email when a copy is ready.\n\n## Solution overview\n\n```mermaid\nflowchart LR\n  Web[Web app] -->|HTTP API| HS[HoldService]\n  HS --> Store[(HoldQueueStore)]\n  HS -->|availability, reserve, release| Cat[Catalog service]\n  Cat -->|copy returned, copy checked out| HS\n  HS --> N[Notifier]\n  N -->|email address| Mem[Member service]\n  N --> Relay[Mail relay]\n```\n\n| Component | Responsibility |\n|-----------|----------------|\n| HoldService | HTTP API, hold rules (5-hold limit, no hold when a copy is available), queue changes, return handling, and a once-a-minute sweeper that expires holds and retries stuck work. |\n| HoldQueueStore | Tables and constraints in the service's own relational database. It is the only owner of queue order. |\n| Notifier | Worker inside the HoldService process. Looks up the member's address, sends the \"copy ready\" email through the mail relay, records the result. |\n| Catalog (existing) | Source of truth for copies. Needs the changes listed under \"Conflicts and gaps\". |\n| Member service (existing) | Identity, role (member, librarian) and email address. |\n\n**Decision requested:** approve this design so that members see a fair, visible queue and are told promptly when a copy is held for them, and approve the Catalog changes it depends on.\n\n## How it works\n\n### Hold lifecycle and queue order\n\n```mermaid\nstateDiagram-v2\n  [*] --> queued: member places hold\n  queued --> reserved: copy returned, hold is first\n  queued --> cancelled: member cancels or staff removes\n  reserved --> fulfilled: member borrows the copy\n  reserved --> cancelled: member cancels or staff removes\n  reserved --> expired: reservedUntil passes\n```\n\nOrder is first come, first served (REQ-2). Each hold gets a per-title sequence number (`seq`) when it is created. Position is the count of `queued` holds with a `seq` at or below this hold's. Cancelling or removing a hold needs no renumbering; everyone behind moves up because the count drops (US-4, US-5). A `reserved` hold shows \"ready until <date>\" instead of a position.\n\nAll queue changes for a title (place, cancel, reserve, expire) first lock that title's row in `title_queue`. This makes `seq` allocation and \"pick the head\" safe under concurrency. `SKIP LOCKED` is not used because it would let the second person jump the first when the first hold's row is briefly locked by a cancel.\n\nThe reservation window is a single setting, `reservationDays`, default 5 (see conflict C1). `reservedUntil = reservedAt + reservationDays`. When a reserved hold is cancelled or expires, the same copy goes to the next `queued` hold, or back to the shelf if the queue is empty.\n\n### When a copy is returned\n\n```mermaid\nsequenceDiagram\n  participant C as Catalog\n  participant H as HoldService\n  participant S as HoldQueueStore\n  participant N as Notifier\n  C->>H: copy returned (titleId, copyId)\n  rect rgb(80,180,100)\n  H->>S: lock title row, take lowest-seq queued hold\n  H->>S: set reserved, copyId, reservedUntil, notify=pending\n  end\n  H->>C: reserve copyId (idempotent)\n  rect rgb(220,150,50)\n  N->>S: pick up notify=pending\n  N-->>N: email member\n  end\n```\n\nTwo returns at once: each event carries its own `copyId`, and the title lock makes the two handlers run one after the other. The first handler reserves its copy for the first hold, the second reserves its copy for the next hold. If only one member is waiting, the second copy finds an empty queue and stays on the shelf. Which copy goes to whom does not matter because copies of a title are interchangeable (assumption A2).\n\nRedelivered events are harmless. A unique index allows one `reserved` hold per `copyId`, so a repeat is a no-op. A hold inserted just after a handler saw an empty queue could wait while a copy sits on the shelf. The sweeper catches this by finding titles that have `queued` holds and an available copy, and running the same reserve step.\n\n### Notification failures\n\n```mermaid\nflowchart TD\n  A[notify=pending] --> B{address on file?}\n  B -- no --> F[notify=failed]\n  B -- yes --> C[send via relay]\n  C -- accepted --> D[notify=sent]\n  C -- error --> E{3 tries done?}\n  E -- no --> G[retry after 5, 30 min] --> C\n  E -- yes --> F\n```\n\nA failed email does not release the copy. The reservation clock keeps running, the hold shows as ready in the member's holds list, and the librarian queue view marks the hold \"notification failed\" so staff can phone the member. We do not skip the member, because that would punish them for a mail problem. The relay is assumed to report only immediate accept or reject, so later bounces are not detected (gap G5). Retries can send a duplicate email; that is accepted.\n\n## Implementation details\n\n**Tables.** `holds`: `id`, `titleId`, `memberId`, `seq`, `status`, `copyId` (null until reserved), `createdAt`, `reservedAt`, `reservedUntil`, `closedAt`, `closedBy`, `closeReason` (member, staff, expired, fulfilled), `staffReason`, `notifyStatus`, `notifyAttempts`, `nextNotifyAt`. `title_queue`: `titleId`, `nextSeq`. `member_quota`: `memberId`, a row to lock when counting.\n\n**Constraints.** Unique `(memberId, titleId)` where status is `queued` or `reserved`. Unique `copyId` where status is `reserved`. Indexes on `(titleId, seq)` where `queued`, on `memberId` where active, and on `reservedUntil` where `reserved`. Lock order is always member row, then title row, to avoid deadlocks. Active means `queued` or `reserved`, so the limit of 5 (REQ-7) is checked under the member lock.\n\n**API.** Errors use the existing API error format.\n\n| Method and path | Who | Behavior |\n|-----------------|-----|----------|\n| `POST /titles/{id}/holds` | member | 201 with the hold. 409 `COPY_AVAILABLE` (\"borrow it instead\"), `HOLD_LIMIT`, or `ALREADY_HELD`. |\n| `GET /members/me/holds` | member | Active holds with `status`, `position` or `reservedUntil`. |\n| `DELETE /holds/{id}` | owner or librarian | JSON body `{reason}`, required for a librarian. 404 for another member's hold. Cancels `queued` or `reserved`. |\n| `GET /titles/{id}/holds` | librarian | Queue in order with member name, `createdAt`, status, `notifyStatus`. |\n\nInternal inputs: Catalog \"copy returned\" and \"copy checked out\" events (the latter moves `reserved` to `fulfilled`). Retention: closed holds are purged after 12 months (A6).\n\n## Conflicts and gaps in the requirements\n\n| ID | Issue | Resolution here |\n|----|-------|-----------------|\n| C1 | REQ-3 reserves a copy for 7 days. REQ-6 releases it after 5. | Use 5 days, configurable. US-3 email text reads the same setting. **Needs a product decision.** |\n| C2 | US-5 says staff \"edit\" the queue. REQ-5 allows view and remove only. | Remove only. No reordering. |\n| C3 | The draft `DELETE /holds/{id}` has nowhere to carry the staff reason REQ-5 requires. Some proxies drop DELETE bodies. | Body on DELETE. Switch to `POST /holds/{id}/cancel` if that proves a problem. |\n| C4 | REQ-4 says cancel until pickup, but US-4 only describes queued holds. | Reserved holds can be cancelled; the copy passes on. |\n| G1 | Nothing defines how a copy is kept for a member. Without it, a walk-up borrower can take it. | Catalog adds `reserve` and `release` for a copy, and its availability excludes reserved copies. |\n| G2 | \"Pickup\" is undefined. | A Catalog checkout event for that member and copy. |\n| G3 | \"Copy returned\" event fields are not given. | Assumed `titleId` and `copyId`, delivered at least once. |\n| G4 | Overview `createdAt` as queue order can tie. | Use `seq`. |\n| G5 | Bounces and missing addresses (open question 1) are unspecified. | See notification failures above. |\n| G6 | REQ-9 does not say which calls the 50/s and 300 ms apply to. | Applied to `POST /titles/{id}/holds`, including its Catalog availability call. |\n\n## Assumptions\n\n- A1: The database supports row locks (`SELECT ... FOR UPDATE`) and partial unique indexes, as PostgreSQL does.\n- A2: A member has one active hold per title. All copies of a title are interchangeable.\n- A3: Unpaid fines are not checked, since fines are out of scope in `vision.md`.\n- A4: The reservation clock starts when the copy is reserved, not when the email is sent.\n- A5: Library hours and holidays are ignored; windows are plain timestamps from the database clock.\n- A6: Retention is 12 months, so the later weekly report (US-6) still has history.\n\n## Testing\n\n| Level | What |\n|-------|------|\n| Unit | State transitions, position count, window arithmetic with a fake clock, notification retry schedule. |\n| Integration (real database) | Two returns for one title in parallel with two and with one waiting member; duplicate event delivery; ten parallel placements by one member ending at 5; cancel racing a return; sweeper expiry racing a checkout; hold placed just after an empty-queue return is reserved by the sweeper. |\n| Contract | Catalog and Member service stubs for availability, reserve, release and events; relay stub that rejects, times out, and returns no address. |\n| API | Role checks, 404 on others' holds, reason required for librarian removal, each 409 code. |\n| Load | 50 placements per second with a median under 300 ms, with traffic concentrated on one popular title. |\n"
+      }
+    },
+    {
+      "name": "real layout: numbered headings, mainsha rep 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "# Hold service design\n\nFeature `hold-requests` (US-1 to US-5, REQ-1 to REQ-9). Builds on `overview.md`; its names and paths are kept unless section 8 says otherwise.\n\n## 1. Components and responsibilities\n\n- **HoldService**: HTTP API, the copy-returned handler, the pickup callback and an expiry sweeper (every minute). Every queue change ends in one routine, `advanceQueue(titleId, copyId)`, which reserves a freed copy for the next queued hold.\n- **HoldQueueStore**: tables `holds`, `notifications`, `processed_returns` in the service database. Constraints enforce uniqueness and order.\n- **Notifier**: a worker in the same process. It reads pending `notifications` rows, fetches the member's address from Member service and sends through the mail relay.\n- **Catalog service** and **Member service** are external (`feature-scope.md`).\n\nNo broker is added, matching `overview.md`. Pending work lives in tables and is polled with `SKIP LOCKED`.\n\n## 2. Data model\n\n`holds` extends the draft entity in `overview.md`:\n\n| Field | Notes |\n|-------|-------|\n| id, titleId, memberId | strings |\n| status | queued, reserved, fulfilled, cancelled, expired |\n| seq | bigint identity, unique. Queue order. |\n| createdAt | informational, shown to staff |\n| copyId, reservedUntil | null unless reserved. `reservedUntil` stays null until the email is accepted (section 6). |\n| endReason, removedBy, removalReason | `removalReason` required when staff remove (check constraint) |\n\nIndexes:\n- unique (titleId, memberId) where status in (queued, reserved)\n- unique (copyId) where status = reserved\n- (titleId, seq) where status = queued\n- (memberId) where status in (queued, reserved)\n- (reservedUntil) where status = reserved and reservedUntil is not null\n\n`notifications`: id, holdId (unique), status (pending, sent, dead), attempts, nextAttemptAt, lastError. `processed_returns`: eventId (primary key), titleId, copyId. Ended holds are purged after 12 months.\n\n## 3. API\n\n| Call | Who | Success | Errors |\n|------|-----|---------|--------|\n| POST /titles/{id}/holds | member | 201 `{id, titleId, status, position, createdAt}` | 404 title; 409 `title_available` (borrow it instead); 409 `already_holding`; 409 `hold_limit_reached`; 503 if Catalog is unreachable |\n| GET /members/me/holds | member | 200 `{holds:[{id, titleId, status, position, reservedUntil, createdAt}]}`, active holds only. `position` is set for queued holds. | 401 |\n| DELETE /holds/{id} | member (own) or librarian | 204. Librarians send `{\"reason\": \"...\"}`. | 400 `reason_required`; 404 (missing, or not the caller's hold); 409 `hold_not_active` |\n| GET /titles/{id}/holds | librarian | 200 ordered list with `memberId`, `status`, `position`, `createdAt`, `reservedUntil`, `notificationState` | 403; 404 |\n\nA repeated DELETE on a cancelled hold returns 204. Internal: `POST /internal/pickups {titleId, memberId, copyId}` marks the reserved hold fulfilled, idempotently.\n\n## 4. Queue ordering and the reservation window\n\n- **Order**: queued holds sort by `seq`. Position is 1 + the number of queued holds for the title with a lower `seq`, computed on read, so members behind a cancelled hold move up with no renumbering (US-4, US-5).\n- **Tie-break**: `seq` is unique, so simultaneous requests get distinct values in database insert order.\n- **Limit**: POST takes a per-member advisory lock (`pg_advisory_xact_lock`) before counting active holds, so parallel requests cannot pass 5.\n- **Window start**: `advanceQueue` marks the hold reserved and creates its notification. `reservedUntil` is the relay acceptance time plus 5 days (section 6).\n- **Expiry**: the sweeper runs `UPDATE holds SET status='expired' WHERE status='reserved' AND reservedUntil <= now() RETURNING copyId, titleId`, then calls `advanceQueue` per row. The conditional update makes reruns harmless. Time comparisons use the database clock.\n- Cancelling or removing a reserved hold also calls `advanceQueue` with its copy.\n\n## 5. Copy return handling\n\n1. The handler inserts `processed_returns(eventId)` with `ON CONFLICT DO NOTHING`. If nothing was inserted, the event is a redelivery and processing stops.\n2. In the same transaction: `SELECT ... FROM holds WHERE titleId=? AND status='queued' ORDER BY seq LIMIT 1 FOR UPDATE SKIP LOCKED`, then set status reserved and copyId, and insert the notification row. Commit.\n3. With no queued hold, nothing changes and the copy stays available.\n\nTwo returns of one title at once: each transaction locks a different row, so the two copies go to the first two members. The row lock and the unique index on `copyId` prevent double assignment. A rolled-back transaction leaves its event unprocessed, so it is redelivered. A cancel racing a return holds the row lock, so the return skips it and takes the next hold.\n\nA hold placed between the availability check and the insert could strand an available copy. A job every 5 minutes finds titles with queued holds and an available copy and calls `advanceQueue`.\n\n## 6. Notification failures\n\n- Retry the send up to 5 attempts at 1 min, 5 min, 30 min, 2 h and 6 h, stored in `nextAttemptAt`. Retry on timeouts, relay 4xx and Member service errors.\n- **The window starts when the relay accepts the message**, not on delivery. We have no delivery signal from the relay, so acceptance is the only observable event.\n- No address or a permanent relay rejection goes straight to dead letter. So do exhausted retries.\n- **Dead letter**: `notifications.status = dead`, an alert fires, and `reservedUntil` is set to the dead-letter time plus 5 days, so the queue cannot stall. The hold shows as ready in `GET /members/me/holds` and flagged in the staff view so a librarian can call the member.\n- A crash between relay acceptance and the database write can send a second email. This is accepted.\n\n## 7. Test approach\n\n- **Unit**: position, status transitions, retry schedule, window arithmetic.\n- **Integration** (real PostgreSQL, fake relay, Catalog and Member stubs): every endpoint, error code and role check.\n- **Concurrency**: two simultaneous returns with several queued holds (distinct holds, no repeated copy); same eventId delivered twice; cancel versus return; 20 parallel POSTs from one member (at most 5 holds, one per title); two sweepers at once.\n- **Failure injection**: relay timeout, 4xx and permanent rejection; Member service down; process killed after relay acceptance and before the write; killed mid-transaction.\n- **Time**: move `reservedUntil` and `nextAttemptAt` into the past instead of sleeping, then run the sweeper and worker. Cover the exact boundary and a repeat run.\n- **Load**: 50 POST/s, median under 300 ms (REQ-9).\n\n## 8. Conflicts and gaps in the requirements\n\n| # | Source statement | Problem | Resolution |\n|---|------------------|---------|------------|\n| 1 | `requirements.md` REQ-3 \"reserved for them for 7 days\" vs REQ-6 \"not picked up within 5 days\" | Conflict | One setting, 5 days. The email states the same value (US-3). |\n| 2 | `overview.md` Hold entity: `createdAt` \"queue order\"; REQ-2 first come, first served | Timestamps can tie | Order by `seq`. |\n| 3 | REQ-3 \"is notified\", REQ-8; `notes/open-questions.md` \"email bounces or the member has no address\" | Window start and failure undefined | Section 6. |\n| 4 | `notes/open-questions.md` \"Two copies... returned within seconds. Who gets which?\" | Undefined | Copies are interchangeable. First two queued holds, one each. |\n| 5 | REQ-7 \"active holds\"; US-1 has no limit criterion; US-1 silent on duplicate holds | Undefined | Active = queued or reserved. One hold per member per title. |\n| 6 | REQ-4 \"before pickup\"; `overview.md` status `fulfilled`; Catalog publishes only \"copy returned\" | Nothing says how pickup is detected | Catalog calls `/internal/pickups`. |\n| 7 | REQ-1, US-1 \"no available copy\" | Is a reserved, unclaimed copy available? | No. Catalog must exclude reserved copies. |\n| 8 | `notes/open-questions.md` unpaid fines; `vision.md` \"Fines... out of scope\" | Open | Fines are not checked. |\n| 9 | `notes/open-questions.md` \"How long do we keep cancelled and expired holds?\" | Open | 12 months. |\n| 10 | REQ-5, US-5 \"enter a reason\"; `overview.md` `DELETE /holds/{id}` | No place for the reason | JSON body on DELETE. |\n| 11 | REQ-9 \"hold requests\" | Scope and tail latency unstated | See A10. |\n\n## 9. Assumptions\n\n- A1. The database is PostgreSQL or compatible (`SKIP LOCKED`, partial indexes, advisory locks). `overview.md` names no engine.\n- A2. Catalog delivers \"copy returned\" at least once, with a unique `eventId`, `titleId` and `copyId`.\n- A3. Copies of a title are interchangeable.\n- A4. Catalog calls the pickup endpoint at checkout of a reserved copy, and marks reserved copies unavailable until the hold ends. HoldService tells Catalog when a reserved copy is released.\n- A5. The window is exactly 5 x 24 hours, with no allowance for closed days.\n- A6. Only the \"ready\" email is sent. Cancellation, removal and expiry send none.\n- A7. Bounces after relay acceptance are ignored.\n- A8. Fines do not block holds. Ended holds are kept 12 months.\n- A9. Librarians only may read a title's queue. Managers have no access.\n- A10. REQ-9 covers the four public calls and states a median only. Return processing has no latency target.\n"
+      }
+    },
+    {
+      "name": "generic headings, topics only in the body",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "# Design\n\n## Overview\n\nComponents and responsibilities, the data model, the API, queue order, returns, notifications, tests and assumptions are described here.\n\n## Details\n\nThe queue order is by creation time. A returned copy goes to the first hold. Notifications are emails. Tests are unit tests.\n\n## Notes\n\nWe assume PostgreSQL.\n"
+      }
+    },
+    {
+      "name": "five topic labels only",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "## Components and responsibilities\n\nText.\n\n## Data model\n\nText.\n\n## API\n\nText.\n\n## Queue order\n\nText.\n\n## Testing\n\nText.\n"
+      }
+    },
+    {
+      "name": "topic words in bold sentences, not labels",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "Overview text.\n\nThe components have responsibilities and a data model.\n\nThe api and the queue order follow, then returns and notifications.\n"
+      }
+    },
+    {
+      "name": "real line: retention kept for the later weekly report, stack149 rep 3",
+      "check": 13,
+      "type": "not_contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "- A6: Retention is 12 months, so the later weekly report (US-6) still has history.\n"
+      }
+    },
+    {
+      "name": "weekly report named as out of scope",
+      "check": 13,
+      "type": "not_contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "The weekly report (US-6) is out of scope for this design.\n"
+      }
+    },
+    {
+      "name": "weekly report deferred to a future release",
+      "check": 13,
+      "type": "not_contains",
+      "expect": "pass",
+      "files": {
+        "docs/design/hold-service.md": "A weekly overdue report is a follow-up and is not designed here.\n"
+      }
+    },
+    {
+      "name": "a scheduler job builds the weekly report",
+      "check": 13,
+      "type": "not_contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "A scheduler job builds the weekly report of overdue holds each Monday and emails it to librarians.\n"
+      }
+    },
+    {
+      "name": "an endpoint returns the weekly report",
+      "check": 13,
+      "type": "not_contains",
+      "expect": "fail",
+      "files": {
+        "docs/design/hold-service.md": "GET /reports/weekly returns the weekly overdue report as JSON.\n"
       }
     }
   ]
