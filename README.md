@@ -288,7 +288,7 @@ Only this file is read. A value in a project's `.konductor/config.yml` is ignore
 
 `install` wires a session-start hook for `konductor`, also under `--no-telemetry`. Under
 `coordinator` the hook tells `konductor` to read the installed coordinator routing rules
-(`k-orchestrator-routing-rules.md`) before it does anything else. It names only the installed rules file under your home directory, the project root, or a parent of the project root inside your home directory; a rules file located in the project ranks with the project's own instruction files. Under `auto`, or with no setting,
+(`k-orchestrator-routing-rules.md`) before it does anything else. The hook acts only for the install that wired it; see [where the hook may point](cli/README.md#orchestration-mode). Under `auto`, or with no setting,
 the hook injects nothing and the session costs nothing extra. The hook never fails a session: if
 it recognises a `konductor` session but cannot apply `coordinator`, it prints one fallback line
 and the session runs as `auto`.

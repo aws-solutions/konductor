@@ -193,7 +193,7 @@ The first reply of every `konductor` session states the mode: `Orchestration: co
 not apply `coordinator`. `Orchestration: auto (default)` with `coordinator` set means no hook
 output arrived; run `konductor doctor`, then see
 [Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
-Kiro CLI v3 and Claude Code installed with `konductor install` are supported; the Claude Code plugin does not wire the hook, so coordinator mode is not available there. The hook names only the installed rules file under your home directory, the project root, or a parent of the project root inside your home directory. Kiro CLI v2 is not: the hook is wired there but untested,
+Kiro CLI v3 and Claude Code installed with `konductor install` are supported; the Claude Code plugin does not wire the hook, so coordinator mode is not available there. The hook acts only for the install that wired it; see [where the hook may point](../../cli/README.md#orchestration-mode). Kiro CLI v2 is not: the hook is wired there but untested,
 and a v2 session the hook does not reach runs as `auto`.
 
 ## Orchestrator and delegation

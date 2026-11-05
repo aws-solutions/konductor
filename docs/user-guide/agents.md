@@ -60,7 +60,7 @@ A few things stand out and are worth knowing before you pick an agent:
 Every agent declares the `context/k-core-rules.md` context file, and the three orchestrators also
 declare `context/k-orchestrator-shared.md`. The mux and cmux orchestrators
 also declare `context/k-orchestrator-routing-rules.md`, which is what makes them behave as
-dispatchers; `konductor` declares `context/k-direct-work.md` and does the work itself.
+dispatchers; `konductor` declares `context/k-direct-work.md` and does the work itself in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators.
 
 ---
 
@@ -239,7 +239,7 @@ Code the distinction disappears — all three declare `Bash` there.
 
 The mux and cmux orchestrators load `context/k-orchestrator-routing-rules.md` at session start,
 which is what makes them behave as dispatchers rather than implementers. `konductor` loads
-`context/k-direct-work.md` instead and writes, runs commands and commits itself. Treat the
+`context/k-direct-work.md` instead and writes, runs commands and commits itself in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators. Treat the
 dispatcher rule as intent, not enforcement: it
 is a prompt rule, and the tool configuration does not back it up in either runtime. Kiro CLI
 pre-approves reads only, so a mutating call stops to ask you rather than being refused, and
@@ -256,7 +256,7 @@ The default entry point, and the one to use unless you have a specific reason no
 | **Skills** (22) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`, `threat-modeling`, `design-doc-guidelines`, `user-story-writing`, `backend-review`, `frontend-review`, `backend-development`, `frontend-development`, `design-evaluation`, `plan-review`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 21 plus `humanize-writing`, on demand |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` **only** |
 | **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Edit`, `Skill` |
-| **Can mutate?** | Yes, by design: it does the work itself. In Claude Code it declares `Bash`, `Write` and `Edit`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
+| **Can mutate?** | Yes, by design: it does the work itself in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators. In Claude Code it declares `Bash`, `Write` and `Edit`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
 
 It is the agent with the widest delegation reach — an explicit allowlist of all eight
 specialists — and the only one that declares

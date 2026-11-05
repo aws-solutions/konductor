@@ -77,7 +77,7 @@ By design. `context/k-orchestrator-routing-rules.md` makes it read-only:
 > You are a read-only orchestrator. You MUST NOT directly execute mutating operations.
 
 This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
-instead and edits files itself. On Kiro CLI it pre-approves `fs_read` alone, so each write or
+instead and edits files itself in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators (see Coordinator mode below). On Kiro CLI it pre-approves `fs_read` alone, so each write or
 command asks you first; on Claude Code it holds `Write`, `Edit` and `Bash` with no prompt gate, and
 the reviewer it spawns at each phase gate is the check.
 
@@ -205,7 +205,7 @@ and `konductor doctor` reports it. The next `konductor` session picks it up, wit
 first reply should read `Orchestration: coordinator`. `Orchestration: auto (default)` with
 `coordinator` set means no hook output arrived: run `konductor doctor`, then see
 [Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
-This works on Kiro CLI v3 and on Claude Code installed with `konductor install`. The Claude Code plugin does not wire the hook, so coordinator mode is not available there yet. The hook names only the installed rules file under your home directory, the project root, or a parent of the project root inside your home directory. Kiro CLI v2 is not supported: the hook is wired but
+This works on Kiro CLI v3 and on Claude Code installed with `konductor install`. The Claude Code plugin does not wire the hook, so coordinator mode is not available there yet. The hook acts only for the install that wired it; see [where the hook may point](../../cli/README.md#orchestration-mode). Kiro CLI v2 is not supported: the hook is wired but
 untested there, and a session it does not reach runs as `auto`.
 
 ---

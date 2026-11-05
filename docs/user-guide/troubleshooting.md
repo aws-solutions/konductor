@@ -152,7 +152,7 @@ The rule itself:
 > directly execute mutating operations. […] Every other `shell` command MUST be delegated.
 
 This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
-instead, so editing files there is expected.
+instead, so editing files there is expected in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators. If you set `coordinator` and `konductor` still edits files, see item 9.
 
 Running read-only commands such as `ls` or `grep` itself is expected: the Orchestrator Direct Work
 table in that file allows them. Editing files, building, or running tests is not.
