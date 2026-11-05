@@ -13,7 +13,7 @@ Reviews a diff through the lens of schema and contract stability: API shapes, ty
 
 ## Usage
 
-Spawned by an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) as one of three parallel subagent passes. May also be run directly against a diff.
+Runs from a split that an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) returns, as one of three parallel passes in separate `k-developer` sessions. May also be run directly against a diff.
 
 ## What to look for
 
