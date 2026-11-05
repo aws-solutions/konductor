@@ -19,6 +19,8 @@ __pycache__/
 # synthesized (this repo, when run with --local pointing here or as the
 # default target_dir) -- never committed.
 dist/
+# The rc-agents-md task fixture ships a built dist/ the agent must leave alone.
+!bench/rootcause/fixtures/rc-agents-repo/dist/
 
 # `scripts/generate-agent-files.js` output, rendered from
 # agents/*.agent-spec.json + skills/*/SKILL.md. Regenerate with
