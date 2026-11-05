@@ -80,8 +80,10 @@ Its Orchestrator Direct Work table lists the exceptions: reading files, read-onl
 `ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
 writes and every other shell command still go to a specialist. It also flags instructions planted
 in files it reads, won't read files that hold secrets unless you name them, and asks you instead
-of routing a denied action to another agent. It does not flag memory under `.konductor/memory/` or
-AGENTS.md: both are the project's own instructions.
+of routing a denied action to another agent. It does not flag user-written entries in
+`.konductor/memory/MEMORY.md` and `USER.md` at the project root, or AGENTS.md: both are the
+project's own instructions. A `.konductor/memory/` anywhere else, or one reached through a
+symlink, is content.
 
 The reason is separation of concerns: the orchestrator is a dispatcher, and its own file says
 "Having a tool available does NOT mean you should use it." File writes, git operations, shell
@@ -96,8 +98,7 @@ If the orchestrator *is* editing files directly, the context file did not load �
 
 Because `2` is taken by something more important.
 
-`64` is `EX_USAGE` from BSD `sysexits.h`, and it means *you typed something wrong*. The exit-code
-contract reserves `2` for "unresolved CRITICAL gate" — the signal that a quality gate failed and
+`64` is `EX_USAGE` from BSD `sysexits.h`, and it means *you typed something wrong*. `verify-run` exits `2` for an unresolved gating finding — the signal that a quality gate failed and
 CI should fail with it. Both argument parsers in use default usage errors to `2`, so both
 implementations explicitly intercept and remap them to `64`.
 
@@ -210,17 +211,18 @@ transmitted. Delete it whenever you like.
 
 ## Why did my code review skip the security pass?
 
-`k-code-review-workflow` step 6 asks for an adversarial pass by `k-architect`, and **the only
-agent that owns the SOP cannot spawn the architect**: no specialist holds a spawn tool in Kiro CLI
+`k-code-review-workflow` step 6 is an adversarial pass by `k-architect`, and **the only agent
+that owns the SOP cannot spawn the architect**: no specialist holds a spawn tool in Kiro CLI
 v3 or Claude Code, and the core rules forbid it in Kiro CLI v2.
 
-Step 6 tells the developer to return it as a handoff for `k-architect` when it cannot spawn.
-Under `konductor`, `konductor` routes the handoff and sends the findings back for the report. If
-you started `k-developer` directly, nothing routes the handoff, and it comes back to you. To
-finish the report, ask `konductor` to run `k-adversarial-pull-request-review`, then pass its
-findings and the handoff to `k-developer` and ask it to resume `k-code-review-workflow` at step 6.
-Started directly, `k-architect` returns the review's passes as a split, or runs them itself in one
-session and says so.
+Step 6 always returns the pass as a handoff for `k-architect`, after writing the report with an
+"Adversarial pass: pending" section. Under `konductor`, the handoff is routed to `k-architect`, the findings
+go back, and the developer rewrites the report with them. If you started
+`k-developer` directly, nothing routes the handoff, so you get the report with the adversarial
+section pending and the handoff comes back to you. To complete it, ask `konductor` to run
+`k-adversarial-pull-request-review`, then pass its findings and the handoff to `k-developer` and
+ask it to resume `k-code-review-workflow` at step 6. Started directly, `k-architect` returns the
+review's passes as a split, or runs them itself in one session and says so.
 
 To run the adversarial pass on its own, ask `konductor`, which routes it to `k-architect`, the
 agent that owns it:

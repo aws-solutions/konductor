@@ -158,8 +158,10 @@ against the rule above, fan it out with the briefs the split gives,
 and check the files each part actually touched when it returns; if two
 parts touched the same file, confirm both edits survived before
 reporting done, or have one agent reconcile that file. If the note or
-split names an SOP step to resume at, send the results back to that
-specialist to finish the SOP from the named step.
+split names an SOP step to resume at, send that specialist the SOP name, the
+step, the payload its note or split carries (or the handoff file path it
+names), and the results, so it finishes the SOP from the named step without
+re-running earlier steps.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
@@ -195,7 +197,7 @@ After code changes, run the maker-checker cycle:
 1. Get the git diff of all changes
 2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
 3. Address all CRITICAL and IMPORTANT findings (Review ceilings in the Verification Protocol). Never put SUGGESTIONs in a fix brief.
-4. Run the build and tests again, then re-review what the fix changed plus what calls, uses or depends on it, once (an SOP's own limit on fix rounds wins). List what that re-review still finds for the user, not for another fix; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix. A CRITICAL or IMPORTANT finding that survives the re-review blocks done: stop and report it to the user as unresolved instead of proceeding.
+4. Run the build and tests again for code, then re-review what the fix changed plus what calls, uses or depends on it, once (an SOP's own limit on fix rounds wins). Any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done: stop and report it to the user as unresolved instead of proceeding; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix.
 
 ## Failure Recovery
 

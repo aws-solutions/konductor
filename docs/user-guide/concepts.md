@@ -187,7 +187,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; a CRITICAL or IMPORTANT finding that survives blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; a surviving CRITICAL or IMPORTANT still blocks done. An artifact that passed review is not reviewed again unless it changes.
+fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; any CRITICAL or IMPORTANT finding in its last re-review still blocks done. An artifact that passed review is not reviewed again unless it changes.
 
 ## Maker-checker
 
@@ -204,7 +204,7 @@ SUGGESTION**, followed by: `Fix these issues? [y/n]`.
 
 The **Konductor CLI** is a separate command-line program named `konductor`. It handles setup, content
 build, lifecycle, and diagnostics for a Konductor-managed repository: `install`, `update`,
-`uninstall`, `doctor`, `init`, `synth`, and `metrics`.
+`uninstall`, `doctor`, `init`, `synth`, `verify-run`, and `metrics`.
 
 It does **not** run SDLC workflows. Running a workflow means talking to an agent, not typing a
 `konductor` subcommand.
