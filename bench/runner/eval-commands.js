@@ -26,6 +26,7 @@ const { loadRun, loadRuns } = require('../report/load.js');
 const { generateRunReport, generateContrast } = require('../report/generate.js');
 const { generateVerdict, KINDS } = require('../report/verdictgen.js');
 const { buildReport, defaultBaseline } = require('../report/aggregate.js');
+const { loadScoring } = require('../report/scores.js');
 const { renderMarkdown } = require('../report/render.js');
 const { explainRuns } = require('../report/explain.js');
 const { buildTrace, renderMarkdown: renderTrace, locateRun } = require('./lib/trace.js');
@@ -409,7 +410,7 @@ function cmdVerdict(opts) {
   const list = (v) => (v === undefined ? null : String(v === true ? '' : v).split(',').filter(Boolean));
   const res = generateVerdict({
     kind: opts.verdict, dirs, benchDir: benchDirOf(opts), extraDirs: extraDirsOf(opts), baseline, out: opts.out, format: opts.format, scoringFile: scoringOf(opts),
-    profile: optionalProfile(opts.profile), testArms: list(opts['test-arms']), changedSkills: list(opts['changed-skills']), phases: phasesOf(opts),
+    profile: optionalProfile(opts.profile), testArms: list(opts['test-arms']), changedSkills: list(opts['changed-skills']), phases: phasesOf(opts), qualityPack: packOf(opts),
   });
   if (opts.verdict === 'orchestrator-pass') {
     console.log(`Orchestrator pass rule against ${baseline} (cost at most 2.0x, paired quality interval within vanilla's spread on one task):`);
@@ -434,7 +435,9 @@ function cmdVerdict(opts) {
 
 function cmdReport(opts) {
   if (opts.verdict !== undefined) {
-    if (opts['criteria-pack'] !== undefined) throw new Error('--criteria-pack does not apply with --verdict: the verdict page has its own evidence');
+    if (opts['criteria-pack'] !== undefined && !(loadScoring(scoringOf(opts), { allowPack: true }).pack > 0)) {
+      throw new Error('--criteria-pack with --verdict needs a scoring file that gives the pack a weight (--scoring profiles/scoring-quality-fractional.json): the verdict page has no pack table of its own, so the pack counts only through the quality score');
+    }
     return cmdVerdict(opts);
   }
   const dirs = runDirsOf(opts);

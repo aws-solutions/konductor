@@ -263,9 +263,9 @@ function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkil
  * dirs: finished run directories. Cells are (harness, model); directories of one cell are pooled by exact ref.
  * Returns { baseline, rule, cells, skippedDirs, notes, unit, weights }.
  */
-function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', testArms = null, changedSkills = null, scoringFile, phases = null }) {
+function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', testArms = null, changedSkills = null, scoringFile, phases = null, qualityPack = null }) {
   const tasks = loadTasks(benchDir, { extraDirs });
-  const weights = loadScoring(scoringFile);
+  const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
   const byCell = new Map();
   const skippedDirs = [];
   let unit = 'credits';
@@ -276,7 +276,7 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
       continue;
     }
     enrichOrch(run);
-    const a = analyze({ run, tasks, baseline, scoringFile });
+    const a = analyze({ run, tasks, baseline, scoringFile, qualityPack });
     unit = a.scores.unit;
     const executed = run.runs.filter((e) => e.result.status !== 'budget_skipped');
     const rows = a.rows.map((r, i) => ({ ...normalize(r, 0), result: executed[i].result, orchSource: executed[i].orchSource }));

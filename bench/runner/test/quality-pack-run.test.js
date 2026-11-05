@@ -472,12 +472,12 @@ test('judge --criteria-pack runs through --judge-cmd, writes the quality file on
   } finally { cleanup(s.root); }
 });
 
-test('report --verdict with --criteria-pack is refused instead of ignoring the pack', () => {
+test('report --verdict with --criteria-pack is refused when the scoring file does not weight the pack', () => {
   const s = setup();
   try {
     const r = cli(['report', '--run', s.runDir, '--bench-dir', s.bench, '--verdict', 'platform', '--criteria-pack', 'quality']);
     assert.notEqual(r.status, 0);
-    assert.match(r.stderr, /--criteria-pack does not apply with --verdict/);
+    assert.match(r.stderr, /--criteria-pack with --verdict needs a scoring file that gives the pack a weight/);
   } finally { cleanup(s.root); }
 });
 

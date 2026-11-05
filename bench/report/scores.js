@@ -69,7 +69,7 @@ function loadScoring(file = DEFAULT_PROFILE, { allowPack = false, allowQuotes = 
     if (!finite(v) || v < 0) throw new Error(`scoring profile ${file}: weight for ${k} must be a number of 0 or more`);
     if (k !== PACK_COMPONENT || v > 0) out[k] = v;
   }
-  if (out[PACK_COMPONENT] > 0 && !allowPack) throw new Error(`scoring profile ${file}: a weight for pack needs the quality-pack scores, which only report and report-2x2 with --criteria-pack provide`);
+  if (out[PACK_COMPONENT] > 0 && !allowPack) throw new Error(`scoring profile ${file}: a weight for pack needs the quality-pack scores, which only report, report --verdict and report-2x2 with --criteria-pack provide`);
   if (!known.some((k) => out[k] > 0)) throw new Error(`scoring profile ${file}: at least one weight must be above 0`);
   const mode = data.checks ?? 'all';
   if (!CHECKS_MODES.includes(mode)) throw new Error(`scoring profile ${file}: "checks" must be one of ${CHECKS_MODES.map((m) => `"${m}"`).join(', ')}`);

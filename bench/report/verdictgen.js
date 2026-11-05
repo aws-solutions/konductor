@@ -12,16 +12,16 @@ const { writeOutputs, outPaths, formatOf } = require('./generate.js');
 
 const KINDS = ['platform', 'orchestrator-pass'];
 
-function generateVerdict({ kind, dirs, benchDir, extraDirs, baseline, out, format, scoringFile, profile, testArms = null, changedSkills = null, phases = null }) {
+function generateVerdict({ kind, dirs, benchDir, extraDirs, baseline, out, format, scoringFile, profile, testArms = null, changedSkills = null, phases = null, qualityPack = null }) {
   if (!KINDS.includes(kind)) throw new Error(`--verdict takes ${KINDS.join(' or ')} (got ${JSON.stringify(kind)})`);
   if (kind === 'orchestrator-pass') {
-    const v = buildOrchestratorPass({ dirs, benchDir, extraDirs, baseline, testArms, changedSkills, scoringFile, phases });
+    const v = buildOrchestratorPass({ dirs, benchDir, extraDirs, baseline, testArms, changedSkills, scoringFile, phases, qualityPack });
     const doc = buildOrchestratorPassDocument(v);
     const { dir } = outPaths(out, dirs[0]);
     const written = writeOutputs({ dir, name: 'orchestrator-pass', blocks: doc.blocks, charts: doc.charts, title: doc.title, format: formatOf(format), json: v });
     return { v, written };
   }
-  const v = buildVerdict({ dirs, benchDir, extraDirs, baseline, scoringFile, profile });
+  const v = buildVerdict({ dirs, benchDir, extraDirs, baseline, scoringFile, profile, qualityPack });
   const doc = buildVerdictDocument(v);
   const { dir } = outPaths(out, v.dirs[0].dir);
   const written = writeOutputs({ dir, name: 'verdict', blocks: doc.blocks, charts: doc.charts, title: doc.title, format: formatOf(format), json: v });

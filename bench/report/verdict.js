@@ -241,9 +241,9 @@ function sentenceFor(a, baseLabel, harness = null) {
  * dirs: run directories (each a finished run, usually one per suite). Returns the verdict data:
  * { baselineLabel, arms: [one entry per arm label], dirs, skippedDirs, notes, unit, rules }.
  */
-function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', scoringFile, profile = null }) {
+function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', scoringFile, profile = null, qualityPack = null }) {
   const tasks = loadTasks(benchDir, { extraDirs });
-  const weights = loadScoring(scoringFile);
+  const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
   const inputs = [];
   const skippedDirs = [];
   for (const d of dirs) {
@@ -252,7 +252,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
       skippedDirs.push({ dir: run.dir, reason: `no run of the baseline arm "${baseline}" (arms present: ${[...new Set(run.runs.map((r) => r.armId))].join(', ')})` });
       continue;
     }
-    const a = analyze({ run, tasks, baseline, scoringFile });
+    const a = analyze({ run, tasks, baseline, scoringFile, qualityPack });
     const src = inputs.length;
     inputs.push({ src, dir: run.dir, run, a, rows: a.rows.map((r) => normalize(r, src)), ledger: readLedger(run.dir), controls: readOptional(path.join(run.dir, 'controls-check.json')) });
   }
