@@ -545,8 +545,10 @@ The code follows the split of the Run view:
 ## The Run view
 
 The view draws the same graph as the Design view, read-only, with a **Goal** box
-and a **Run** button beside it. The goal starts as the outcome of the
-intent, because the API needs one (1 to 2048 characters) to start a run.
+and a **Run** button beside it. The goal starts as the `default` of the file's
+`params.goal`, and the `description` of that param is the help text of the box.
+A file without a default leaves the box empty and Run off until a goal is typed,
+because the API needs one (1 to 2048 characters) to start a run.
 
 - **Run** calls `POST /api/run` with the goal, then reads
   `GET /api/runs/{id}` once a second until the run is `passed` or `halted`.
@@ -601,7 +603,7 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   status line on the tab says only "See the error below.", which the live status region leaves out. When a read fails, the
   nodes are cleared and the alert adds that the run (with its id) may still be
   going on the server. A failed stage is a result, not an error, so it has no
-  alert. The goal is one line: line breaks in the outcome of the intent become
+  alert. The goal is one line: line breaks in the default become
   spaces, and Enter that ends an input method composition starts no run.
 - A workflow can be saved while a run goes on, so the run may have other stages
   than the graph. The graph is the saved workflow, and it is drawn again when

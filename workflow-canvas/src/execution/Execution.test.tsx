@@ -10,7 +10,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { Execution } from './Execution';
-import type { RunView } from '../api/types';
+import type { RunView, WorkflowDocument } from '../api/types';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import { HELLO_DOCUMENT, helloRun, loaded } from '../test-support/fixtures';
 import {
@@ -34,11 +34,14 @@ function serverShowing(...readings: RunView[]): RunPort {
   };
 }
 
-async function openExecution(runs: RunPort) {
+async function openExecution(
+  runs: RunPort,
+  document: WorkflowDocument = HELLO_DOCUMENT,
+) {
   const scheduler = new FakeScheduler();
   const { unmount } = render(
     <App
-      load={Promise.resolve(loaded(HELLO_DOCUMENT, runs))}
+      load={Promise.resolve(loaded(document, runs))}
       scheduler={scheduler}
     />,
   );
@@ -105,12 +108,49 @@ describe('the Execution tab before a run', () => {
     expect(statusLine().textContent).toContain('Ready. Press Run to start.');
   });
 
-  it('offers the outcome of the intent as the goal', async () => {
+  it('offers the default of params.goal as the goal, and its description as help', async () => {
     await openExecution(serverShowing(helloRun(0)));
 
     expect((screen.getByLabelText('Goal') as HTMLInputElement).value).toBe(
       'Add a greeting to the README',
     );
+    expect(
+      screen.getByText('What the workflow should accomplish.'),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        'What the run should achieve. Every stage is given it.',
+      ),
+    ).toBeNull();
+  });
+
+  it('does not offer the outcome of the intent as the goal', async () => {
+    const view = { ...HELLO_DOCUMENT.view!, params: {} };
+    await openExecution(serverShowing(helloRun(0)), {
+      ...HELLO_DOCUMENT,
+      view,
+    });
+
+    expect((screen.getByLabelText('Goal') as HTMLInputElement).value).toBe('');
+  });
+
+  it('starts empty with Run off when params.goal has no default, and turns Run on when a goal is typed', async () => {
+    const view = {
+      ...HELLO_DOCUMENT.view!,
+      params: { goal: { description: 'Say what to build.' } },
+    };
+    const runs = serverShowing(helloRun(0));
+    await openExecution(runs, { ...HELLO_DOCUMENT, view });
+
+    expect((screen.getByLabelText('Goal') as HTMLInputElement).value).toBe('');
+    expect(screen.getByText('Say what to build.')).toBeTruthy();
+    expect(isOff(runButton())).toBe(true);
+    expect(runs.start).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Goal'), {
+      target: { value: 'Fix the typo' },
+    });
+    expect(isOff(runButton())).toBe(false);
   });
 
   it('announces the status in a polite live region that is always there', async () => {
@@ -467,12 +507,14 @@ describe('the goal', () => {
     expect(runs.start).not.toHaveBeenCalled();
   });
 
-  it('offers a goal of one line when the outcome of the intent has line breaks', async () => {
+  it('offers a goal of one line when the default of params.goal has line breaks', async () => {
     const many = {
       ...HELLO_DOCUMENT,
       view: {
         ...HELLO_DOCUMENT.view!,
-        intent: { outcome: 'Fix the typo\n  and add a test\r\nthen ship' },
+        params: {
+          goal: { default: 'Fix the typo\n  and add a test\r\nthen ship' },
+        },
       },
     };
     const runs = serverShowing(helloRun(0));

@@ -11,17 +11,33 @@ const SESSION_BODY = {
   future_field: true,
 };
 
+// A workflow in the first-release format, and its view as the contract has
+// it. The page reads only the keys it draws, and ignores the others.
+const TEXT =
+  'format: konductor/1\nname: hello\nversion: 0.1.0\nintent:\n  outcome: Add a greeting\nstages:\n  - name: draft\n    agent: k-developer\n    prompt: Write the greeting.\n';
+
 const DOCUMENT_BODY = {
   name: 'hello',
-  text: 'name: hello\n',
+  text: TEXT,
   hash: 'a'.repeat(64),
   read_only: false,
   view: {
+    format: 'konductor/1',
+    version: '0.1.0',
     name: 'hello',
     intent: { outcome: 'Add a greeting' },
-    stages: [{ name: 'draft', agent: 'k-developer' }],
+    stages: [
+      { name: 'draft', agent: 'k-developer', prompt: 'Write the greeting.' },
+    ],
   },
   diagnostics: [],
+};
+
+/** The view of `DOCUMENT_BODY` as the page reads it. */
+const VIEW = {
+  name: 'hello',
+  intent: { outcome: 'Add a greeting' },
+  stages: [{ name: 'draft', agent: 'k-developer' }],
 };
 
 const SAVE_BODY = {
@@ -127,12 +143,45 @@ describe('createHttpApi', () => {
 
     expect(await api.getWorkflow('t')).toEqual({
       name: 'hello',
-      text: 'name: hello\n',
+      text: TEXT,
       hash: 'a'.repeat(64),
       readOnly: false,
-      view: DOCUMENT_BODY.view,
+      view: VIEW,
       diagnostics: [],
     });
+  });
+
+  it('reads the goal param of the view, and leaves out what is not a string', async () => {
+    const withParams = (goal: unknown) =>
+      reply({
+        ...DOCUMENT_BODY,
+        view: {
+          ...DOCUMENT_BODY.view,
+          params: { goal, other: { default: 'x' } },
+        },
+      });
+
+    expect(
+      (
+        await apiFor(
+          withParams({ description: 'Say it.', default: 'Do it' }),
+        ).api.getWorkflow('t')
+      ).view?.params,
+    ).toEqual({ goal: { description: 'Say it.', default: 'Do it' } });
+    expect(
+      (await apiFor(withParams({ default: 7 })).api.getWorkflow('t')).view
+        ?.params,
+    ).toEqual({ goal: {} });
+    expect(
+      (
+        await apiFor(
+          reply({
+            ...DOCUMENT_BODY,
+            view: { ...DOCUMENT_BODY.view, params: {} },
+          }),
+        ).api.getWorkflow('t')
+      ).view?.params,
+    ).toEqual({});
   });
 
   it('reads a read-only workflow', async () => {
@@ -391,7 +440,7 @@ describe('createHttpApi', () => {
   it('puts the text and base hash as JSON to /api/workflow with the token', async () => {
     const { api, fetchFn } = apiFor(reply(SAVE_BODY));
 
-    await api.saveWorkflow('t-1', 'name: hello\n', 'b'.repeat(64));
+    await api.saveWorkflow('t-1', TEXT, 'b'.repeat(64));
 
     const [path, init] = fetchFn.mock.calls[0] as unknown as [
       string,
@@ -404,7 +453,7 @@ describe('createHttpApi', () => {
       'Content-Type': 'application/json',
     });
     expect(JSON.parse(init.body as string)).toEqual({
-      text: 'name: hello\n',
+      text: TEXT,
       base_hash: 'b'.repeat(64),
     });
   });
@@ -414,7 +463,7 @@ describe('createHttpApi', () => {
 
     expect(await api.saveWorkflow('t', 'x', 'b'.repeat(64))).toEqual({
       hash: 'c'.repeat(64),
-      view: DOCUMENT_BODY.view,
+      view: VIEW,
       diagnostics: [],
     });
   });
@@ -522,7 +571,7 @@ describe('createHttpApi', () => {
   it('posts the text as JSON to /api/validate with the token', async () => {
     const { api, fetchFn } = apiFor(reply(CHECK_BODY));
 
-    await api.checkWorkflow('t-1', 'name: hello\n');
+    await api.checkWorkflow('t-1', TEXT);
 
     const [path, init] = fetchFn.mock.calls[0] as unknown as [
       string,
@@ -534,7 +583,7 @@ describe('createHttpApi', () => {
       Authorization: 'Bearer t-1',
       'Content-Type': 'application/json',
     });
-    expect(JSON.parse(init.body as string)).toEqual({ text: 'name: hello\n' });
+    expect(JSON.parse(init.body as string)).toEqual({ text: TEXT });
   });
 
   it('reads the view and findings of a check', async () => {
@@ -559,7 +608,7 @@ describe('createHttpApi', () => {
     );
 
     expect(await api.checkWorkflow('t', 'x')).toEqual({
-      view: DOCUMENT_BODY.view,
+      view: VIEW,
       diagnostics: [],
     });
   });

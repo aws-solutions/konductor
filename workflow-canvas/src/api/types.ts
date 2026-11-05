@@ -16,10 +16,18 @@ export interface StageView {
   agent: string;
 }
 
+/** The `goal` param of a workflow file: what the file says about the goal. */
+export interface GoalParamView {
+  description?: string;
+  default?: string;
+}
+
 /** The parsed workflow, ready to draw. */
 export interface WorkflowView {
   name: string;
   intent: { outcome: string };
+  /** The params of the file. The page reads the goal only. */
+  params?: { goal?: GoalParamView };
   stages: StageView[];
 }
 

@@ -97,11 +97,16 @@ function StageDriftNotice({
 const NO_GOAL_OF_JOINED_RUN =
   'This run was already going, so its goal is not known here.';
 
+// What the Goal box says about itself when the file gives no description.
+const GOAL_HELP = 'What the run should achieve. Every stage is given it.';
+
 function RunPanel({
+  goalHelp,
   goal,
   onGoalChange,
   execution,
 }: {
+  goalHelp: string | undefined;
   goal: string;
   onGoalChange: (goal: string) => void;
   execution: ExecutionController;
@@ -115,11 +120,7 @@ function RunPanel({
       <SpaceBetween size="m">
         <FormField
           label="Goal"
-          description={
-            joined
-              ? NO_GOAL_OF_JOINED_RUN
-              : 'What the run should achieve. Every stage is given it.'
-          }
+          description={joined ? NO_GOAL_OF_JOINED_RUN : (goalHelp ?? GOAL_HELP)}
           constraintText={`At most ${GOAL_MAX_LENGTH} characters.`}
           errorText={problem}
         >
@@ -182,6 +183,7 @@ function ExecutionView({
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
         <RunPanel
+          goalHelp={view.params?.goal?.description}
           goal={goal}
           onGoalChange={onGoalChange}
           execution={execution}

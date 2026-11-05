@@ -147,6 +147,27 @@ async function boxOf(locator: Locator): Promise<Box> {
   });
 }
 
+/** The text of a first-release workflow with these stages. */
+function textOf(
+  name: string,
+  outcome: string,
+  stages: ReadonlyArray<{ name: string; agent: string }>,
+): string {
+  return [
+    'format: konductor/1',
+    `name: ${name}`,
+    'version: 0.1.0',
+    'intent:',
+    `  outcome: ${outcome}`,
+    'stages:',
+    ...stages.flatMap((stage) => [
+      `  - name: ${stage.name}`,
+      `    agent: ${stage.agent}`,
+    ]),
+    '',
+  ].join('\n');
+}
+
 /** A view of a workflow with `count` stages, as `GET /api/workflow` returns it. */
 function workflowOf(count: number) {
   const stages = Array.from({ length: count }, (_, i) => ({
@@ -155,10 +176,16 @@ function workflowOf(count: number) {
   }));
   return {
     name: 'big',
-    text: 'name: big\n',
+    text: textOf('big', 'Run it', stages),
     hash: 'a'.repeat(64),
     read_only: false,
-    view: { name: 'big', intent: { outcome: 'Run it' }, stages },
+    view: {
+      format: 'konductor/1',
+      version: '0.1.0',
+      name: 'big',
+      intent: { outcome: 'Run it' },
+      stages,
+    },
     diagnostics: [],
   };
 }
@@ -225,10 +252,12 @@ test('shows in full the Japanese text that a node cuts short', async ({
     route.fulfill({
       json: {
         name: 'jp',
-        text: 'name: jp\n',
+        text: textOf('jp', outcome, [{ name, agent: 'a' }]),
         hash: 'a'.repeat(64),
         read_only: false,
         view: {
+          format: 'konductor/1',
+          version: '0.1.0',
           name: 'jp',
           intent: { outcome },
           stages: [{ name, agent: 'a' }],
