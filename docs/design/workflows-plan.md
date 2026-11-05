@@ -202,9 +202,10 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **Canvas:** the editor keeps a stage's other keys (`prompt`, `prompt_file`, and the later `outputs` and `done_when`)
   when it rewrites that stage, and no save drops `format`, `version`, `params` or a comment outside the stage block. A
   file the editor cannot edit in place is not rewritten whole, and the editor says why. The Execution tab shows a
-  blocked stage's `reason`. The page keeps the session token in memory only, and a 401 or a reload tells the user to
-  start `flow view` again. A `trust_required` answer opens a dialog that shows the `fix` command with a copy button and
-  a Run again button. The harness values include `claude` and `fake`. Both tabs show only slice 1 keys.
+  blocked stage's `reason`. The page keeps the session token in the `sessionStorage` of its tab, so a reload resumes the
+  session. A 401 drops the token and tells the user to start `flow view` again. A `trust_required` answer opens a dialog
+  that shows the `fix` command with a copy button and a Run again button. The harness values include `claude` and
+  `fake`. Both tabs show only slice 1 keys.
 - **API rows:** all six.
 - **Engine:** none. The page talks to the stub.
 - **Tests:** unit: the editor's writer for each stage layout, with first-release stages that carry `prompt` and
@@ -324,7 +325,8 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   untrusted workflow), saves with `base_hash` that follow the [canvas rule](workflows-spec.md#trust) and never move a
   trust record. Ports: an HTTP adapter only, with no new core port.
 - **Tests:** unit: request guards. Functional: the stub's own HTTP test suite pointed at the Rust server, plus the drift
-  test. Playwright: the 1b tests run with `WC_API_TARGET` on the Rust server. A save that changes the workflow, a
+  test. The server sends the Content-Security-Policy header with `frame-ancestors 'none'` on the response that serves
+  the page. Playwright: the 1b tests run with `WC_API_TARGET` on the Rust server. A save that changes the workflow, a
   prompt-only edit included, leaves the record, and the next Run answers `trust_required`. A test that runs after a save
   first confirms the workflow with `konductor flow trust <name> --yes`.
 - **Demo:** you can run `flow view hello-plan`, edit a prompt in the browser and save, confirm the changed workflow with
