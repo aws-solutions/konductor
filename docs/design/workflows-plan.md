@@ -2,46 +2,46 @@
 
 # Workflows: implementation plan
 
-**Status:** Proposed, with the [design](workflows.md). This plan is the one place that says what each slice adds, what
-it needs and how it is tested. The design, the [specification](workflows-spec.md) and
-[the exports note](workflows-exports.md) hold the rules and the decisions (D1 and up) that this plan cites.
+This plan is the one place that says what each slice adds, what it needs and how it is tested. The design, the
+[specification](workflows-spec.md) and [the exports note](workflows-exports.md) hold the rules and the decisions (D1
+and up) that this plan cites.
 
-The first release is slices 1, 2, 3a and 11a. In slice 1, the canvas track (1a, 1b) and the engine track (1c to 1f) can
-run in parallel and join at 1g. The release runs the review workflow ported from the
-`k-adversarial-pull-request-review` SOP, in sequence, from the CLI. It writes no Kiro or Claude native
-files. Those exports are slice 14.
+The first release is slices 1, 2, 3a and 11a. In slice 1, the canvas track (1a, 1b, 1b-2) and the engine track (1c to
+1f-2) can run in parallel and join at 1g, which needs both tracks, real harnesses included. The release runs the review
+workflow ported from the `k-adversarial-pull-request-review` SOP, in sequence, from the CLI. It writes no Kiro or
+Claude native files. Those exports are slice 14.
 
 ## Slices and steps at a glance
 
-"Already exists" lists what the repo has today, checked by reading `workflow-engine/` and `workflow-canvas/` on this
-branch. A row says "not verified" where it could not be confirmed. `workflow-engine/` holds only
-`examples/hello-plan.yml`. There is no Rust engine yet, so the proof of concept is the canvas: its API contract, its
-TypeScript stub and its tests.
-
-| #   | Adds                                                        | You can now ...                                                                                         | Needs              | Already exists                                                                                                                                                                     |
-| --- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1a  | Contract and stub for the first-release format              | Check a first-release file against the stub and see later keys named                                    | none               | `api/openapi.yaml` (six operations) and the stub for the base format, with the 12 shared codes                                                                                     |
-| 1b  | Bring the Designer and Execution UI up to the new contract  | Edit and save a first-release workflow in the browser without losing a key, and see why a stage blocked | 1a, canvas UI      | The Designer and Execution tabs, editing and run panels are built in open canvas pull requests that have not merged. Its editor writes only `name` and `agent` for a changed stage |
-| 1c  | Format and checks in Rust                                   | Run `flow check` and `flow show` on `hello-plan.yml`                                                    | none               | `examples/hello-plan.yml`; a TypeScript validator in the stub to compare against                                                                                                   |
-| 1d  | Stage prompt and the runner on the fake harness             | Run a workflow with `--harness fake` and get a pass or a halted run                                     | 1c                 | The stub's run simulator with an injected clock (it runs nothing)                                                                                                                  |
-| 1e  | Trust                                                       | Confirm a workflow at a prompt, be asked again after it changes, and get exit 77 with no terminal       | 1d                 | Not verified: no trust code found in `cli/` or the canvas                                                                                                                          |
-| 1f  | Real harnesses: `kiro-cli` (V2 and V3) and `claude`         | Run `hello-plan` on Kiro CLI or Claude Code                                                             | 1d, 1e             | Install harnesses `kiro-cli-v2` and `kiro-v3` exist in `cli/konductor-rs` (synth); no runner                                                                                       |
-| 1g  | Canvas server in Rust and `flow view`                       | Open the canvas on a real file and run it for real                                                      | 1a, 1b, 1c, 1d, 1e | The stub's session, token and route code in `stub-api/http/` is the model                                                                                                          |
-| 2   | Data between stages                                         | Pass a file from one stage to the next and set params                                                   | 1g                 | Nothing for templates or `outputs`. The stub's `RunRequest` carries `params.goal` only                                                                                             |
-| 3a  | `run` checks and `done_when`, `flow verify <run-id>`        | Make a stage pass only when Konductor has run its checks                                                | 1g                 | Nothing. The stub has no `accept` or `done_when` (verified)                                                                                                                        |
-| 11a | First port of the review SOP                                | Run the adversarial review as a workflow                                                                | 2, 3a              | The SOP `agent-sops/k-adversarial-pull-request-review.sop.md`; nothing built into the binary                                                                                       |
-| 3b  | `intent.writes` and command stages                          | Run a command as a stage, and be warned about stray changes                                             | 3a                 | Nothing                                                                                                                                                                            |
-| 4   | Loops back to an earlier stage                              | Repeat a stage until a check passes, with a limit                                                       | 3a                 | Nothing                                                                                                                                                                            |
-| 5   | Human gates                                                 | Pause for approval or an answer                                                                         | 1g                 | Nothing                                                                                                                                                                            |
-| 6   | Parallel stages                                             | Run review passes at the same time                                                                      | 1g                 | Nothing                                                                                                                                                                            |
-| 7   | Reuse                                                       | Include or extend another workflow                                                                      | 2                  | Nothing                                                                                                                                                                            |
-| 8   | Layers and patches                                          | Change a shipped workflow without copying it                                                            | 7                  | Nothing                                                                                                                                                                            |
-| 9   | Canvas patch editing                                        | Edit a shipped workflow in the canvas                                                                   | 8                  | Nothing                                                                                                                                                                            |
-| 10  | Customization in chat                                       | Ask the agent to adapt a workflow                                                                       | 8                  | Nothing                                                                                                                                                                            |
-| 11b | Later SOP ports and `fallback_sop`                          | Run more SOPs as workflows                                                                              | 11a, 2 to 7        | Nothing                                                                                                                                                                            |
-| 12  | Runner-only features                                        | Use conditions, per-item stages, a budget and worktrees                                                 | 4, 6               | Nothing                                                                                                                                                                            |
-| 13  | The [planned keys](workflows-spec.md#planned-keys-slice-13) | Set `effort`, per-stage `model` and typed params                                                        | 2                  | Nothing                                                                                                                                                                            |
-| 14  | Exports (14a Kiro, 14b Claude, 14c conformance)             | Write native Kiro and Claude files with `flow build`                                                    | 2, 3a              | Nothing                                                                                                                                                                            |
+| #    | Adds                                                                               | You can now ...                                                                                         | Needs                                |
+| ---- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1a   | Contract and stub for the first-release format                                     | Check a first-release file against the stub and see later keys named                                    | none                                 |
+| 1b   | Bring the Designer and Execution UI up to the new contract                         | Edit and save a first-release workflow in the browser without losing a key, and see why a stage blocked | 1a                                   |
+| 1b-2 | The multi-line prompt control and a parser-based value writer                      | Edit the prompt of a `>-` stage in the browser and find every other byte unchanged                      | 1b                                   |
+| 1c   | Format and checks in Rust                                                          | Run `flow check` and `flow show` on `hello-plan.yml`                                                    | none                                 |
+| 1d   | Stage prompt and the runner on the fake harness                                    | Run a workflow with `--harness fake --fake-script <path>` and get a pass or a halted run                | 1c                                   |
+| 1e   | Trust                                                                              | Confirm a workflow at a prompt, be asked again after it changes, and get exit 77 with no terminal       | 1d                                   |
+| 1f-1 | Process launcher, Kiro CLI adapters, Kiro conformance and the `doctor` version pin | Run `hello-plan` on Kiro CLI                                                                            | 1d, 1e                               |
+| 1f-2 | Claude adapter, the tool-to-rule map and Claude's conformance checks               | Run `hello-plan` on Claude Code                                                                         | 1f-1                                 |
+| 1f-3 | An optional ACP harness                                                            | Run a workflow on Kiro CLI or Claude Code through ACP                                                   | 1f-2                                 |
+| 1g   | Canvas server in Rust and `flow view`                                              | Open the canvas on a real file and run it for real                                                      | 1a, 1b, 1b-2, 1c, 1d, 1e, 1f-1, 1f-2 |
+| 1g-2 | The agent listing, the field information and run events (1h) for the contract      | Pick an agent for a stage from a list in the canvas, and see what each editable key takes               | 1g                                   |
+| 1h   | Run events: an event sink on the runner and `events.jsonl` in the run folder       | See a run's stage changes, with times, in the order they happened, as the canvas contract reads them    | 1g                                   |
+| 2    | Data between stages                                                                | Pass a file from one stage to the next and set params                                                   | 1g                                   |
+| 3a   | `run` checks and `done_when`, `flow verify <run-id>`                               | Make a stage pass only when Konductor has run its checks                                                | 1g                                   |
+| 11a  | First port of the review SOP                                                       | Run the adversarial review as a workflow                                                                | 2, 3a                                |
+| 3b   | `intent.writes` and command stages                                                 | Run a command as a stage, and be warned about stray changes                                             | 3a                                   |
+| 4    | Loops back to an earlier stage                                                     | Repeat a stage until a check passes, with a limit                                                       | 3a                                   |
+| 5    | Human gates                                                                        | Pause for approval or an answer                                                                         | 1g                                   |
+| 6    | Parallel stages                                                                    | Run review passes at the same time                                                                      | 1g                                   |
+| 7    | Reuse                                                                              | Include or extend another workflow                                                                      | 2                                    |
+| 8    | Layers and patches                                                                 | Change a shipped workflow without copying it                                                            | 7                                    |
+| 9    | Canvas patch editing                                                               | Edit a shipped workflow in the canvas                                                                   | 8                                    |
+| 10   | Customization in chat                                                              | Ask the agent to adapt a workflow                                                                       | 8                                    |
+| 11b  | Later SOP ports and `fallback_sop`                                                 | Run more SOPs as workflows                                                                              | 11a, 2 to 7                          |
+| 12   | Runner-only features                                                               | Use conditions, per-item stages, a budget and worktrees                                                 | 4, 6                                 |
+| 13   | The [planned keys](workflows-spec.md#planned-keys-slice-13)                        | Set `effort`, per-stage `model` and typed params                                                        | 2                                    |
+| 14   | Exports (14a Kiro, 14b Claude, 14c conformance)                                    | Write native Kiro and Claude files with `flow build`                                                    | 2, 3a                                |
 
 ## Order and dependencies
 
@@ -49,12 +49,16 @@ The table above is one valid order. The real dependencies are these:
 
 ```mermaid
 flowchart LR
-        s1a["1a"] --> s1b["1b"]
-    ui["canvas UI (other PRs)"] --> s1b
+    s1a["1a"] --> s1b["1b"]
+    s1b --> s1b2["1b-2"]
     s1c["1c"] --> s1d["1d"]
-        s1d --> s1e["1e"]
-    s1d & s1e --> s1f["1f"]
+    s1d --> s1e["1e"]
+    s1d & s1e --> s1f1["1f-1"]
+    s1f1 --> s1f2["1f-2"]
     s1a & s1b & s1c & s1d & s1e --> s1g["1g"]
+    s1f2 --> s1g
+    s1g --> s1g2["1g-2"]
+    s1g --> s1h["1h"]
     s1g --> s2["2"]
     s1g --> s3a["3a"]
     s2 & s3a --> s11a["11a"]
@@ -71,30 +75,38 @@ flowchart LR
     s2 & s3a --> s14["14"]
 ```
 
-| Step | Needs              | Why                                                                                                                                |
-| ---- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 1a   | none               | It changes a contract file and a stub. Neither needs Rust.                                                                         |
-| 1b   | 1a, canvas UI      | The tabs already exist in the open canvas pull requests. 1b changes them to the new contract, so it needs 1a and that work merged. |
-| 1c   | none               | It needs the spec and `hello-plan.yml`, not the canvas.                                                                            |
-| 1d   | 1c                 | The runner reads a checked workflow.                                                                                               |
-| 1e   | 1d                 | `flow run`, which 1d adds, calls the trust gate. The hash covers the workflow file and its prompt files, which the format defines. |
-| 1f   | 1d, 1e             | A real harness needs the runner, and D14 forbids a run of an unconfirmed project workflow.                                         |
-| 1g   | 1a, 1b, 1c, 1d, 1e | The server implements the new contract, passes the 1b Playwright tests, checks files, starts runs and answers `trust_required`.    |
-| 2    | 1g                 | A canvas control and an engine key ship together (D13), so the canvas must already run on the engine.                              |
-| 3a   | 1g                 | A check key is a canvas control and an engine key together (D13), so the canvas must already run on the engine.                    |
-| 11a  | 2, 3a              | The port uses params, outputs and checks.                                                                                          |
-| 14   | 2, 3a              | An export states outputs and param defaults (slice 2) and renders the checks (3a).                                                 |
+| Step | Needs                                | Why                                                                                                                                                        |
+| ---- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1a   | none                                 | It changes a contract file and a stub. Neither needs Rust.                                                                                                 |
+| 1b   | 1a                                   | 1b changes the Designer and Execution tabs to the new contract, so it needs only 1a.                                                                       |
+| 1b-2 | 1b                                   | 1b-2 adds the prompt control to the Designer tab that 1b brings up to the contract, so it needs 1b.                                                        |
+| 1c   | none                                 | It needs the spec and `hello-plan.yml`, not the canvas.                                                                                                    |
+| 1d   | 1c                                   | The runner reads a checked workflow.                                                                                                                       |
+| 1e   | 1d                                   | `flow run`, which 1d adds, calls the trust gate. The hash covers the workflow file and its prompt files, which the format defines.                         |
+| 1f-1 | 1d, 1e                               | A real harness needs the runner, and D14 forbids a run of an unconfirmed project workflow.                                                                 |
+| 1f-2 | 1f-1                                 | The Claude adapter uses the launcher and the harness choice that 1f-1 adds.                                                                                |
+| 1g   | 1a, 1b, 1b-2, 1c, 1d, 1e, 1f-1, 1f-2 | The server implements the new contract, passes the 1b and 1b-2 Playwright tests, checks files, starts runs on a real harness and answers `trust_required`. |
+| 1f-3 | 1f-2                                 | A third adapter behind the Harness trait. Nothing needs it.                                                                                                |
+| 2    | 1g                                   | A canvas control and an engine key ship together (D13), so the canvas must already run on the engine.                                                      |
+| 3a   | 1g                                   | A check key is a canvas control and an engine key together (D13), so the canvas must already run on the engine.                                            |
+| 11a  | 2, 3a                                | The port uses params, outputs and checks.                                                                                                                  |
+| 14   | 2, 3a                                | An export states outputs and param defaults (slice 2) and renders the checks (3a).                                                                         |
 
 Where the order differs from the obvious one, and why:
 
-- **The canvas starts before the engine.** 1a needs no Rust. The Designer and Execution tabs are already built in open
-  canvas pull requests, so the canvas track is 1a and then 1b, which brings that UI up to the new contract. 1g needs
-  both tracks.
+- **The canvas starts before the engine.** 1a needs no Rust. The canvas track is 1a and then 1b, which brings the
+  Designer and Execution UI up to the new contract, and then 1b-2, which adds the `prompt` control. 1g needs both
+  tracks.
 - **1c is the first Rust step, not the runner.** A runner without a checked file has nothing to run. The core crate and
   its no-IO test come first.
-- **Trust (1e) comes before the real harnesses (1f).** A real harness runs commands from the repo, so D14 must hold
-  before the first real run.
+- **Trust (1e) comes before the real harnesses (1f-1, 1f-2).** A real harness runs commands from the repo, so D14 must
+  hold before the first real run.
+- **1g waits for the real harnesses.** The canvas server starts real runs, and its demo runs a real harness, so it needs
+  1f-1 and 1f-2 as well as the runner.
+- **1g waits for the prompt control.** Its demo edits a prompt in the browser, so it needs 1b-2 (D39).
 - **Slice 2 waits for 1g.** Otherwise a key would reach the engine before the canvas could show it (D13).
+- **1f-3 is optional.** It needs 1f-2, nothing needs it, and it is not in the first release. It is off the critical
+  path: slices 2, 3a and 11a, and 1g, do not wait for it.
 - **3a does not need slice 2.** The two can be built in parallel. The table lists 2 first.
 - **11a comes before 3b.** The first port needs checks, not command stages.
 - **Slice 14 needs 2 and 3a, not 11a.** An export states outputs and param defaults (slice 2) and renders the checks
@@ -108,15 +120,22 @@ tests, demo line and release. Numbers stay stable: a decision, a code or a spec 
 it. A key belongs to a lettered step when the slice's keys arrive in more than one release, so `done_when` is 3a and
 `intent.writes` is 3b.
 
-Slice 1 is cut into seven steps because the canvas and engine tracks run in parallel, and because trust and the real
-harnesses are separate releases. Slices 3 and 11 are cut in two because their later parts are not in the first release.
-Slice 14 is cut into 14a Kiro, 14b Claude and 14c conformance.
+A step that is cut again takes a number after its letter, so 1f is 1f-1, 1f-2 and 1f-3.
+
+Slice 1 is cut into nine steps, an optional tenth, 1f-3, that the first release does not need, a follow-up, 1g-2, that
+adds the later contract operations and fields (D47), and 1h, the run events. The cuts are there because the canvas and
+engine tracks run in parallel, and because trust and the real harnesses are separate releases. The prompt control is
+its own step, 1b-2, because it needs a YAML parser that the other Designer edits do not (D39). The step stays "1b-2"
+beside "1b" and is not renamed 1b-1, and "1g" stays "1g" beside "1g-2". The harnesses are two steps: 1f-1 (the launcher
+and Kiro CLI) ships before 1f-2 (Claude Code). The optional 1f-3 adds a third adapter. Slices 3 and 11 are cut in two
+because their later parts are not in the first release. Slice 14 is cut into 14a Kiro, 14b Claude and 14c conformance.
+Slices 11b and 12 bundle several features, and are cut into lettered steps when they are scheduled.
 
 ## Rules for every slice
 
 - **The engine is Rust (D7).** It lives in a Cargo workspace under `workflow-engine/`. The assumed layout is a `core`
   crate and an `adapters` crate, with the `flow` commands wired into `cli/konductor-rs`. The workspace gets its own CI
-  job, like the canvas has (`.github/workflows/workflow-canvas.yml`).
+  job.
 - **The core crate does no IO.** A test fails the build if the crate imports file, network, process, environment, clock
   or random code, or depends on a crate outside an allow list. The test is written before the crate has any other code.
   `workflow-canvas/stub-api/core/purity.test.ts` does the same for the stub's core, and is the model.
@@ -136,54 +155,30 @@ Slice 14 is cut into 14a Kiro, 14b Claude and 14c conformance.
 
 ## How slice 1 ships
 
-The repo already has the canvas side: the contract (`workflow-canvas/api/openapi.yaml`), the stub that serves it and the
-tests around both. The Rust side does not exist. The plan ships the canvas first on the stub and builds the Rust side in
-parallel against the same OpenAPI contract. The two tracks join at 1g, where the Rust server replaces the stub and the
-1b tests run against it. The reason is that the canvas side needs no engine: the UI is built in open canvas pull
-requests, and 1a and 1b only make it match the contract. A shared contract with a drift test
+Slice 1 has two tracks. Track A, the canvas on the stub, is 1a, 1b and 1b-2. Track B, the Rust engine, is 1c to 1f-2.
+They build against the same OpenAPI contract (`workflow-canvas/api/openapi.yaml`) and join at 1g, where the Rust server
+replaces the stub and the 1b and 1b-2 tests run against it. The canvas track needs no engine: 1a and 1b only make the
+Designer and Execution tabs match the contract, and 1b-2 adds one control. A shared contract with a drift test
 (`stub-api/core/contract-drift.test.ts`) keeps the two sides honest.
 
-```mermaid
-flowchart LR
-    subgraph canvas["Track A: canvas on the stub"]
-        pr1["PR 1: 1a contract and stub"] --> pr2["PR 2: 1b canvas UI to the new contract"]
-    end
-    subgraph engine["Track B: Rust engine"]
-        pr3["PR 3: 1c format and checks"] --> pr4["PR 4: 1d runner, fake harness"]
-                pr4 --> pr5["PR 5: 1e trust"]
-        pr4 & pr5 --> pr6["PR 6: 1f real harnesses"]
-    end
-    pr1 & pr2 & pr3 & pr4 & pr5 --> pr7["PR 7: 1g Rust server replaces the stub"]
-```
-
-| PR  | Branch                 | What it adds                                                                                                      |
-| --- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 1   | `wc/contract-v1`       | 1a: contract changes, stub validator, fixtures and examples for the first-release format                          |
-| 2   | `wc/designer`          | 1b: the existing Designer and Execution UI changed to the new contract, with Playwright tests and new screenshots |
-| 3   | `engine/core`          | 1c: Cargo workspace, the no-IO test, the format, `flow check`, `flow show`, a CI job                              |
-| 4   | `engine/runner`        | 1d: `stage_prompt`, the stage result, run state, `flow run --harness fake`                                        |
-| 5   | `engine/trust`         | 1e: `flow trust <name>`, the prompt, the trust hash and record, exit 77                                           |
-| 6   | `engine/harnesses`     | 1f: the `kiro-cli` and `claude` adapters                                                                          |
-| 7   | `engine/canvas-server` | 1g: the Rust server for the six operations, `flow view`, the stub kept for dev and tests                          |
-
-PRs 1 and 3 can start on day one. PR 2 is cut from `integration/workflow-canvas` after PR 1 and the canvas UI pull
-requests have merged, because it needs both and a branch cannot stack on two parents. PR 2 follows PR 1, PR 4 follows PR
-3, PR 5 follows PR 4, and PR 6 follows PRs 4 and 5. PR 7 follows PRs 1 to 5, so it waits for both tracks. A canvas PR
-targets `main` and runs the existing canvas CI. A PR from the engine track runs the new workspace job.
+Each step is its own reviewable change on a branch named `<step>-<slug>`, such as `1a-contract`, `1b-2-prompt` or
+`1c-core`. A change that touches `workflow-canvas/` runs the canvas CI. A change from the engine track runs the new
+workspace job.
 
 ## Slice 1: Skeleton
 
 A file of stages and `file` checks that runs in the runner and opens in the canvas. Slice 1 adds the keys `format`,
 `name`, `version`, `intent`, `intent.outcome`, `intent.accept` with `id` and `file`, `params.goal`, `stages` with
-`name`, `agent`, `prompt` and `prompt_file`. Its seven steps follow.
+`name`, `agent`, `prompt` and `prompt_file`. Its nine steps follow, with the optional 1f-3 after 1f-2 and the follow-up
+1g-2 after 1g.
 
 ### 1a: Contract and stub
 
-- **Why now:** every later step builds against the contract, and the stub checks only the base format today.
+- **Why now:** every later step builds against the contract.
 - **YAML keys:** all slice 1 keys. Keys of later slices report `NOT_SUPPORTED_BY_THIS_BUILD` with their slice.
 - **Canvas:** none.
-- **API rows:** all six operations (`createSession`, `getWorkflow`, `saveWorkflow`, `checkWorkflow`, `startRun`,
-  `getRun`), changed as [the spec](workflows-spec.md#requirements-on-the-canvas-api-contract) lists.
+- **API rows:** the operations in the contract (`createSession`, `getWorkflow`, `saveWorkflow`, `checkWorkflow`,
+  `startRun`, `getRun`), changed as [the spec](workflows-spec.md#requirements-on-the-canvas-api-contract) lists.
 - **Engine:** none. The stub's validator, fixtures and examples change with the contract, including a workflow whose Run
   answers `trust_required`, the order of the `startRun` 409s, `reason` on `RunStage` and a workspace-wide
   `already_running`. After a save that changes a workflow's bytes, the stub answers that workflow's next Run with
@@ -192,12 +187,11 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   contract. Functional: the stub's HTTP tests in `stub-api/http/`. Playwright: `stub-api.spec.ts` still passes.
 - **Demo:** you can post a first-release workflow to the stub, and a file with `stages[].parallel` is refused with the
   slice named.
-- **Already in the PoC:** the contract and stub for the base format, with the 12 shared codes (verified).
 
 ### 1b: The canvas UI on the new contract
 
-- **Why now:** the Designer and Execution tabs are built in open canvas pull requests against the base contract. They
-  must keep every key of the new format on save (D13) and show what the new contract adds.
+- **Why now:** the Designer and Execution tabs must keep every key of the new format on save (D13) and show what the
+  new contract adds.
 - **YAML keys:** the slice 1 keys, edited through form controls and a raw YAML editor (D13).
 - **Canvas:** the editor keeps a stage's other keys (`prompt`, `prompt_file`, and the later `outputs` and `done_when`)
   when it rewrites that stage, and no save drops `format`, `version`, `params` or a comment outside the stage block. A
@@ -214,58 +208,56 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **Demo:** you can edit `hello-plan` in the browser, change a stage's agent, save, and find every other key in the file
   unchanged, see the next Run answer `trust_required` with the `fix` command, and watch a fake run of an unedited
   workflow pass.
-- **Already in the PoC:** the open canvas pull requests build the Designer, the Execution tab, editing and saving, the
-  theme and the Playwright tests. Their stage writer writes only `name` and `agent` for a changed stage, and their test
-  fixtures use the base format (a one-line `intent`, no `format` or `version`), so they change with 1b.
 
 ### 1c: Format and checks in Rust
 
 - **Why now:** it is the base of every other engine step, and it needs no canvas.
 - **YAML keys:** all slice 1 keys, with the [rules for every file](workflows-spec.md#rules-for-every-file).
 - **Canvas:** none.
-- **API rows:** none yet. 1g serves `checkWorkflow` from this code.
+- **API rows:** none. 1g serves `checkWorkflow` from this code.
 - **Engine:** the `core` crate: a YAML loader for the supported subset, the key table with slice tags, the checks and
   diagnostic codes, limits and path rules, and `NOT_SUPPORTED_BY_THIS_BUILD`. The `adapters` crate: a file source.
   Ports: `WorkflowSource`. Commands: `flow check`, `flow show` with `--json`. The YAML nesting limit.
-  The loader uses the event parser of the `saphyr-parser` crate (MIT or Apache-2.0) with a thin tree builder of our own.
-  The parser gives a start and end position for each scalar and shows anchors, aliases, tags, extra documents and the
-  `<<` key, so the builder rejects them. It does not detect duplicate keys, so the builder does, and it enforces the
-  nesting limit over the events. Its positions count characters, not bytes, so the builder converts them. The end of a
-  double-quoted scalar can run past the closing quote, so the builder finds the end of a quoted value itself. A spike
-  compared it with `serde_yaml` (no positions) and `marked-yaml` (accepts duplicate keys, start position only).
+  The loader uses the event parser of the `saphyr-parser` crate (MIT or Apache-2.0) with a thin tree builder of our own,
+  because the parser gives a start and end position for each scalar. The builder rejects anchors, aliases, tags, extra
+  documents and the `<<` key, detects duplicate keys, enforces the nesting limit over the events, converts character
+  positions to bytes, and finds the end of a quoted value itself.
 - **Tests:** unit: the no-IO test first, then a case per code, YAML nested past the limit, a byte order mark, non-ASCII
   text, CRLF line ends, a quoted value followed by a comment, a block scalar, a file near the size limit, the
   one-slice-per-key test, and byte-identical `--json` whatever the key order. Functional: `flow check` on
-  `hello-plan.yml` and on broken files. `konductor install`, `update` and `uninstall` leave `.konductor/workflows/`
-  alone. Playwright: none.
+  `hello-plan.yml` and on broken files, and `flow check library/x` and `flow show library/x` exit 64 with "Shipped
+  workflows (`library/<name>`) are not available yet." ([rule](workflows-spec.md#commands-and-exit-codes)).
+  `konductor install`, `update` and `uninstall` leave `.konductor/workflows/` alone. Playwright: none.
 - **Demo:** you can run `flow check hello-plan` and `flow show hello-plan --json`.
-- **Already in the PoC:** `hello-plan.yml`, and a TypeScript validator, YAML subset reader and source map in
-  `stub-api/core/` that model the same checks. How closely they match the spec is not verified.
 
 ### 1d: Stage prompt and the runner on the fake harness
 
 - **Why now:** it proves the run model (D8, D21) before any real tool is involved.
 - **YAML keys:** none new.
 - **Canvas:** none.
-- **API rows:** none yet. 1g serves `startRun` and `getRun` from this code.
+- **API rows:** none. 1g serves `startRun` and `getRun` from this code.
 - **Engine:** `stage_prompt` as a pure function (D10) with golden files; the [stage
   result](workflows-spec.md#stage-result) parser; run, stage and check states; `flow run --harness fake`. Ports:
   `Harness`, `Clock`, `RunStore` and `RunLock` (a per-workspace lock with its owner's PID and start time). The `fake`
-  harness replays scripted replies and is for tests only. The
+  harness replays scripted replies and is for tests only. The way a test server accepts `--harness fake` is a decision
+  recorded by this step ([deferred](workflows-spec.md#deferred-to-a-later-slice)) and implemented by the stub and the 1g
+  server. Run state is written to `.konductor/runs/<run-id>/` in the project, git-ignored through
+  `.konductor/.gitignore` ([rule](workflows-spec.md#run-stage-and-check-states)): `konductor init` writes it, and `flow
+  run` creates it with the pattern `runs/` if it is missing. This step wires the `doctor` gitignore check, which is
+  dormant until run state exists. The `getRun` of 1g and the `flow verify` of 3a read the same location. The
   [limits](workflows-spec.md#limits): the stage time limit decided against the clock port, and the output byte caps.
 - **Tests:** unit: golden prompts, a case per way a result line is invalid, state transitions with a fake clock, a stage
   that exceeds its time limit (`TIMEOUT`), a run whose owner is gone reads `halted`, a live owner refuses a second run,
   a param or prompt over its cap. Functional: a run through the real run store on the fake harness, including a missing
   result line (blocked) and a run that was `running` when the process stopped (`halted`). Playwright: none.
 - **Demo:** you can run `hello-plan` with `--harness fake` and get `passed`, and a bad reply halts the run with exit 1.
-- **Already in the PoC:** the stub's `RunSimulator` fakes runs from a clock, passes every stage and runs nothing.
 
 ### 1e: Trust
 
 - **Why now:** D14 must hold before any real harness runs.
 - **YAML keys:** none.
 - **Canvas:** none.
-- **API rows:** none yet. 1g adds `trust_required` to `startRun`.
+- **API rows:** none. 1g adds `trust_required` to `startRun`.
 - **Engine:** the [trust rules](workflows-spec.md#trust): the summary and prompt in `flow run`, `flow trust <name>` with
   `--yes` and `--revoke <name>`, `--trust` and `KONDUCTOR_TRUST`, the `trust_hash` of `flow check`, the per-workflow
   hash and the record. The summary lists, for each agent, the tools the runner lets it run without asking, and the repo
@@ -285,45 +277,196 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   nothing, and `flow trust` on a user or shipped workflow exits 0 and writes no record. Playwright: none.
 - **Demo:** you can run an untrusted workflow, confirm at the prompt, edit the file and be asked again, and in a run
   with no terminal get exit 77 with `--trust` named.
-- **Already in the PoC:** not verified. No trust code found.
 
-### 1f: Real harnesses
+### 1f-1: Process launcher and Kiro CLI
 
-- **Why now:** until a real tool runs a stage, no part of the run model is tested against reality.
+- **Why now:** until a real tool runs a stage, no part of the run model is tested against reality. Kiro CLI goes first;
+  Claude Code follows in 1f-2.
 - **YAML keys:** none.
 - **Canvas:** none.
 - **API rows:** none.
-- **Engine:** adapters for `kiro-cli` (V2 with `--v2`, V3 with `--v3` and `--trust-tools` ids from the agent's allow
-  list; D16, D19) and `claude -p "<prompt>" --output-format json` with `--agent <agent-id>` and `--allowedTools` rules
-  from the definition's `tools` ([invocation](workflows-spec.md#harness-invocation), D19). This step owns the map from
-  Claude tools to rules: `Agent(a, b)` becomes `Agent(a),Agent(b)`, and `mcp__x__*` passes through unchanged. Harness
-  choice by installed install harness ([rule](workflows-spec.md#commands-and-exit-codes)). A stage whose agent the
-  harness cannot see fails before the first stage, with the message the spec describes. Ports: `ProcessLauncher`.
-- **Tests:** unit: argument building for each harness, tool-id mapping for Kiro and tool-to-rule mapping for Claude.
-  Functional: the adapters against a fake executable that prints a scripted reply, and a process group killed after its
-  grace period. Conformance, on a headless `claude -p` session: `--agent` runs the named agent's prompt, model and
+- **Engine:** the `ProcessLauncher` port and its adapter: a session in its own process group, the stage time limit and
+  the kill after the grace period ([limits](workflows-spec.md#limits)). The launcher starts the session program under
+  `timeout -k 10 <limit in seconds>`, or `gtimeout` where it exists, so the deadline is enforced without the owner and
+  the kill grace is 10 seconds. The launcher runs `timeout --version` once per path, with a 2 second bound, caches the
+  answer, and treats output with "GNU coreutils" as GNU and anything else as the weaker flavor (D56). Under `timeout`,
+  the launcher reports a status of 124 or 137 as `TimedOut` only when its own clock has reached the limit (D52), and a
+  stage is `TIMEOUT` only on `TimedOut` (D57).
+  With neither on the PATH it starts the program directly and prints one warning. The
+  recorded group carries its absolute deadline (D51). Adapters for `kiro-cli` (V2 with `--v2`, V3 with
+  `--v3`, and no `--trust-tools` flag on either; D16, D19, D43). Harness choice by installed install harness
+  ([rule](workflows-spec.md#commands-and-exit-codes)). A stage whose agent the harness cannot see fails before the first
+  stage, with the message the spec describes. Every session starts through the runner, which carries the trust re-check
+  of step 1e (D23), so this step adds no trust code. Each session records its process group and start time in the run
+  state, and a new run ends the groups of a killed owner before it marks that run `halted` (D24). A reader that halts a
+  dead owner's run calls the same sweep first (D36). The launcher records the group right after the spawn. If it cannot
+  be recorded, the launcher stops the group and the stage fails as `SESSION_FAILED` with a message that the session was
+  not started (D49). While a session runs, the owner handles SIGINT, SIGTERM and SIGHUP: it ends the recorded group
+  (terminate, grace, kill), writes the run as `halted` with an interrupted status, and exits with that status (D49). The
+  sweep never ends a group whose leader has ended: it warns once and drops the record (D49). The
+  runner shows the last 4 KiB of a session's stderr, with the failure line, on the terminal only (D50).
+  The `doctor` check for a minimum tool version, set for Kiro CLI. A version below the minimum is `warn` and does not
+  change `doctor`'s exit code. The conformance checks of Kiro CLI (real
+  runs on both engines, and the working folder's definition winning over the home folder's) pin the minimum (D29), and
+  they run before this step merges. `--harness claude`, or an install with only `claude`, exits 64 with a message that
+  the Claude adapter arrives in step 1f-2.
+- **Tests:** unit: argument building for Kiro V2 and V3, where the arguments never hold `--trust-tools` or
+  `--trust-all-tools` (D43), the `doctor` version check, and the exit 64 for `claude` before 1f-2. Functional: the
+  adapters against a fake executable that prints a scripted reply, a process group killed after its grace period, and
+  the orphan sweep: a session's process group, left running by an owner killed with SIGKILL, is ended by the next run
+  before the old run reads `halted`, and a group whose start time differs is left alone. The same group is ended by a
+  reader that halts the run (D36). A signal to the owner ends the session group and halts the run with the interrupted
+  status (D49). A group that cannot be recorded is stopped, and the stage fails as `SESSION_FAILED` with a message that
+  the session was not started (D49). A group whose leader has ended is not ended: the sweep warns once and drops the
+  record, and a second run does not warn (D49). The stderr tail is bounded at 4 KiB and is not in the run state (D50).
+  With GNU `timeout`, the whole group is gone after the deadline with the owner killed. A fake `timeout` on the PATH
+  stands in where a test cannot run a real one, and the flavor probe has a case for each output (D56). With the other
+  flavor, the owner loop ends the group while the owner lives, and no test needs the strict guarantee.
+  The fallback prints one warning and the limit then depends on the owner. The record carries the deadline (D51). A
+  status of 124 or 137 before the limit is `SESSION_FAILED` and one at the limit is `TIMEOUT`, and without `timeout` a
+  status is never reinterpreted (D52). The sweep ends no group for a passed deadline alone (D54).
+  Conformance, on headless Kiro CLI sessions: a locked and a writer agent on each engine, with only the agent file's
+  allow rules and no flag (D43), and the working folder's definition winning over the
+  home folder's. Playwright: none. By hand: one run on Kiro V2, one on Kiro V3, and one with an install made to a
+  `--target` that is neither the project root nor `$HOME`. The conformance check confirms that the working folder's
+  definition wins when the working folder and the home folder define the same agent id (D42). Also check the host's
+  command-line argument limit against the prompt cap.
+- **Demo:** you can run `hello-plan` on Kiro CLI and read `PLAN.md`.
+- **Release:** it merges on its own. Kiro CLI users can run workflows before the Claude adapter lands.
+
+### 1f-2: Claude adapter and conformance
+
+- **Why now:** the second runner harness, and the first test of the stage-result and permission rules against Claude
+  Code.
+- **YAML keys:** none.
+- **Canvas:** none.
+- **API rows:** none.
+- **Engine:** the adapter for `claude -p "<prompt>" --output-format json` with `--agent <agent-id>` and `--allowedTools`
+  rules from the definition's `tools` ([invocation](workflows-spec.md#harness-invocation), D19). This step owns the map
+  from Claude tools to rules: `Agent(a, b)` becomes `Agent(a),Agent(b)`, and a name that matches `[A-Za-z0-9_*:.-]+`,
+  such as `mcp__x__*`, becomes a rule as it is. How the list is read is in the [Trust section](workflows-spec.md#trust)
+  (D31, D35, D38). The Claude value of the `doctor` minimum-version check is 2.1.323 (D34). The adapter passes no
+  `--bare` (D34). The agent it names is the one the Claude catalog of step 1e found (D44). It uses the launcher of 1f-1.
+- **Tests:** unit: argument building for Claude and the tool-to-rule mapping, where `Agent(a, b), Read` is two items, a
+  `[...]` list with a comma in parentheses is Unknown, unbalanced parentheses are Unknown, and an item outside the
+  charset makes the list Unknown with no flag and one stderr note (D31), such as `Bash(git status)` or a quoted item in
+  a `[...]` list, while an empty list (`tools:` with no items, or `[]`) gets no flag (D35). The `doctor` check names
+  2.1.323, and the arguments never hold `--bare` (D34). Functional: the adapter against a fake executable that prints a
+  scripted reply. Conformance, on a headless `claude -p` session: `--agent` runs the named agent's prompt, model and
   `tools`; a listed tool runs with no settings rule; an unlisted tool is not available; on an agent with no `tools` key,
   a call that needs approval is denied when the user's settings hold no allow rule for it; a settings allow rule for a
   tool outside `tools` does not make it available; a settings deny rule for a listed tool wins over `--allowedTools`;
-  and the prompt is not consumed as an `--allowedTools` rule. Playwright: none. By hand: one run on each of Kiro V2,
-  Kiro V3 and Claude, and one with an install made to a `--target` that is neither the project root nor `$HOME`. Also
-  record Kiro CLI's order when the repo defines an agent with the same id (Claude Code's is
-  [documented](workflows-spec.md#harness-invocation)), check whether `claude --bare` still loads Konductor's agents, and
-  check the host's command-line argument limit against the prompt cap.
-- **Demo:** you can run `hello-plan` on Kiro CLI or Claude Code and read `PLAN.md`.
-- **Already in the PoC:** `kiro-cli-v2` and `kiro-v3` install harnesses are in `cli/konductor-rs` (synth). No runner.
+  the prompt is not consumed as an `--allowedTools` rule; `--agent` runs the file that the Claude catalog of step 1e
+  names, including a repo file in a folder above the working directory (D44); and `--bare` does not load a project
+  agent, so Claude exits 1 for it (D34). Playwright: none. By hand: one run on Claude, and one with an install made to a
+  `--target` that is neither the project root nor `$HOME`.
+- **Demo:** you can run `hello-plan` on Claude Code and read `PLAN.md`.
+- **Release:** it merges after 1f-1. The conformance checks run before it merges.
 
 ### 1g: Canvas server in Rust and `flow view`
+### 1f-3: ACP harness (optional)
+
+- **Why now:** it is not needed for the first release, and it blocks nothing. It gives live stage output, which the
+  CLI harnesses cannot give (the events question under [open questions](#open-questions), and Claude has no live
+  output), and one client can drive any agent that speaks ACP. The Agent Client Protocol (ACP) is a JSON-RPC protocol
+  over stdio. The client starts an agent program and drives it with `initialize`, `session/new` and `session/prompt`.
+  The agent sends `session/update` notifications while it works and `session/request_permission` when it asks. The
+  client can send `session/cancel`. The adapter commands and what was checked about agent selection are in
+  [Sources](workflows.md#sources). The two CLI harnesses stay the default and the fallback. The core, the runner, the
+  run state, trust, the canvas and 1g do not change.
+- **YAML keys:** none new.
+- **Canvas:** none.
+- **API rows:** none.
+- **Agent selection (checked on one build of each adapter).** Each harness selects the agent that the catalog of step
+  1e names (D42, D44), and the agent runs with that file's prompt, model and tools. There is no fallback to a default
+  agent. The answer to `session/new` confirms the agent, and a stage whose answer does not name it fails before the
+  prompt is sent.
+  - **Kiro.** `kiro-cli acp --agent <id> --agent-engine v2` runs a V2 file. A V3 file runs with `--agent-engine v3`, and
+    the agent is the session mode, set through `session/new` `_meta.kiro.modeId`. That route is not in the public ACP
+    specification, so the answer is the check.
+  - **Claude.** `session/new` `_meta.claudeCode.options.agent` selects the agent, and the `agent` config option of the
+    answer must equal the id. The catalog is the project root and the folders above it up to the git top folder, with
+    no user folder (D44). An agent defined only in the user folder is not found by the adapter, so that is a usage
+    error (exit 64) before the first stage, and not exit 77. The user folder is not in this catalog, so an agent that
+    exists in the project catalog (the root or a folder above it) and in the user folder is the project file, and the
+    trust summary and hash cover that file. What stays not verified is the adapter itself: it was not tried with the
+    same name in both places.
+- **Cases (not in the verified runs).**
+  - A project `.claude/agents` file that is a link: the scan refuses it, with exit 77 and `tool_config_unreadable`, as
+    for any link in the scan.
+- **Engine:** a third adapter behind the `Harness` trait, next to the Kiro and Claude adapters, using the launcher of
+  1f-1. It speaks ACP over the adapter's stdio, with the standard library only unless the step shows that it cannot.
+  Rules (D45):
+  - **Names and choice.** `kiro-cli-acp` and `claude-acp` are separate `--harness` values. They are never chosen
+    automatically, and the order of the [harness choice rule](workflows-spec.md#commands-and-exit-codes) does not
+    change. `flow run` takes them. `flow view` does not, because the canvas lists no ACP harness (out of scope below).
+  - **Install and minimum.** The engine installs nothing. `konductor doctor` checks that the adapter's version is at
+    least the minimum of [Versions](workflows-spec.md#harness-invocation), with no upper bound, as for the Kiro and
+    Claude minimums (D29, D34). It checks the version only. A version below the minimum is a `warn` and does not
+    change the exit code of `doctor`. A missing adapter ends a run with the same exit as a missing CLI, and the run
+    does not fall back to the CLI harness.
+  - **Protocol.** ACP v1 only, and the verified adapters serve v1. An adapter that serves only v2 is refused when the
+    first session starts: the stage is blocked with `SESSION_FAILED` and a message that names the version, and the run
+    halts as usual (exit 1). Reevaluate if the adapters serve a later version.
+  - **Process control.** One adapter serves one stage, and it ends with its process group when the stage ends. The
+    adapter starts in its own process group, and the runner records the group and its start time in the run state, so
+    the sweep of a killed owner, and a signal that the owner handles, end it like any other session (D24, D36, D49). At
+    the stage limit the runner sends `session/cancel` and terminates the group in the same step, then kills it after
+    the one 10 second wait of [Limits](workflows-spec.md#limits). On SIGINT, SIGTERM or SIGHUP the owner kills the
+    adapter group (terminate, grace, kill) and sends no `session/cancel` (D53).
+  - **Output.** The runner keeps the last 1 MiB of the agent's message text, which it builds from the updates, as it
+    keeps the last 1 MiB of stdout for the CLI harnesses. The stage result is read from that text as before. Live
+    updates feed the events sink only if the events step exists, and are dropped otherwise. Updates are display data
+    and never evidence (D8).
+  - **Agent file check.** The runner hashes the agent file before and after each stage, and a change fails the stage.
+  - **Permissions (D46).** No `--trust-tools` flag exists over ACP (D43). The runner answers each
+    `session/request_permission` from the agent's own allow rules only: Kiro's `allowedTools` or `permissions.rules`,
+    and the rules that step 1f-2 derives from a Claude definition's `tools`. It allows when a rule matches. Otherwise it
+    denies, blocks the stage with the reason `SESSION_FAILED` and the denied tool in the stage message, and halts the
+    run. It never grants more than the agent file, and the trust summary and hash do not change. A rule matches by an
+    exact tool name, `Agent(<id>)`, or a prefix only for rules ending in `_*`, `/*`, `:*` or `.*`. Other rule text
+    matches nothing, so the matching is stricter than on the CLI harnesses. The answer is the one-time option, chosen
+    by its `kind` and never by its id. On Kiro the allow rules of the agent file apply with no request, an unlisted
+    tool sends one, and the default policy adds no allows. The Claude adapter starts in mode `auto`, which runs a
+    listed `Write` with no request, so the runner sets mode `default` with `session/set_config_option` and fails the
+    stage if it cannot confirm it. Any later change by the adapter to a different mode value also fails the stage.
+    Setting `default` again is not a change.
+    `settingSources: ["project"]` turns off the allow rules of local settings. In the verified runs, an allow rule in a
+    project `.claude/settings.json` did not apply and a deny rule in it did, and the cause is unknown. The agent file
+    stays the only source of allows. The trust summary and hash cover that file.
+- **Known limit.** On the verified build, Kiro rewrites a writable agent file at session start, so every
+  `kiro-cli-acp` stage fails the agent file check unless the agent file and its folder are read-only. This is accepted,
+  and the step is optional.
+- **Not verified:** Kiro with non-empty persistent permission stores (a rule in one could allow a tool that the agent
+  file does not list). Conformance against the real adapters: not verified, not a gate; the step is optional.
+- **Open questions:**
+  - How the adapter is located (on the PATH, or a Node entry point versus a standalone binary): not verified.
+- **Out of scope:** changing the CLI harnesses, an ACP crate decision beyond "standard library only unless the step
+  shows it cannot", ACP in the canvas, a permission prompt in the canvas, and ACP v2.
+- **Tests:** unit: the frames for `initialize`, `session/new`, `session/prompt` and `session/cancel`, a v2-only
+  adapter refused when the first session starts, the answer to a permission request (allow on a matching rule, deny and
+  block with no match, and no grant beyond the agent file), a later change to a different mode value that fails the
+  stage, the `doctor` check of the minimum version, the missing-adapter exit with no fallback, and for `claude-acp` an
+  agent only in the user folder, which is exit 64 before the first stage. Each limit of
+  [Limits](workflows-spec.md#limits) for the adapter has a test, and so has the agent file check. Functional: the
+  adapter against a fake ACP agent that speaks scripted frames over stdio, a timeout that sends `session/cancel` and the
+  terminate in one step and kills after 10 seconds, a signal to the owner that ends the group with no
+  `session/cancel`, the sweep of an adapter group left by a killed owner (D24), updates dropped when no events step
+  exists, and the 1 MiB cap on message text. Conformance on the real adapters is not verified. Playwright: none. By
+  hand: one run through each adapter.
+- **Demo:** you can run `hello-plan` with `--harness kiro-cli-acp` and with `--harness claude-acp`, and read `PLAN.md`.
+- **Release:** it merges after 1f-2, on its own. A harness that cannot select the named agent is not released.
+
 
 - **Why now:** this joins the tracks. The stub stops being the server.
 - **YAML keys:** none new.
-- **Canvas:** none. The page already talks to the contract. `WC_API_TARGET` points it at the Rust server.
+- **Canvas:** none. The page talks to the contract. `WC_API_TARGET` points it at the Rust server.
 - **API rows:** all six, from the engine. `startRun` answers `trust_required` with a `fix` that names the exact command,
   for example `konductor flow trust hello-plan`, and `harness_unavailable` covers `claude`. The canvas cannot grant
   trust.
-- **Engine:** an HTTP adapter on loopback with the launch code and session token, `flow view` (which asks first for an
-  untrusted workflow), saves with `base_hash` that follow the [canvas rule](workflows-spec.md#trust) and never move a
-  trust record. Ports: an HTTP adapter only, with no new core port.
+- **Engine:** an HTTP adapter on loopback with the launch code and session token, `getRun` reading the run state that 1d
+  writes, `flow view` (which asks first for an untrusted workflow), saves with `base_hash` that follow the [canvas
+  rule](workflows-spec.md#trust) and never move a trust record. Ports: an HTTP adapter only, with no new core port.
 - **Tests:** unit: request guards. Functional: the stub's own HTTP test suite pointed at the Rust server, plus the drift
   test. The server sends the Content-Security-Policy header with `frame-ancestors 'none'` on the response that serves
   the page. Playwright: the 1b tests run with `WC_API_TARGET` on the Rust server. A save that changes the workflow, a
@@ -331,7 +474,6 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   first confirms the workflow with `konductor flow trust <name> --yes`.
 - **Demo:** you can run `flow view hello-plan`, edit a prompt in the browser and save, confirm the changed workflow with
   the command the `trust_required` dialog shows, and run it on a real harness.
-- **Already in the PoC:** the stub's session, guard and route code in `stub-api/http/` (verified) is the model.
 
 ## Slice 2: Data between stages
 
@@ -356,7 +498,6 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   blocked, and a stage that creates or modifies it passes. Playwright: add a param, add an output name and path, run.
 - **Demo:** you can have a `plan` stage declare `design: DESIGN.md` and an `implement` stage told to read
   `{plan.design}`, which renders as `DESIGN.md`, with the run blocked if the file is missing.
-- **Already in the PoC:** nothing. The stub's `RunRequest` carries `params.goal` only (verified).
 
 ## Slice 3: Checks and command stages
 
@@ -367,16 +508,16 @@ Slice 3 ships in two steps. 3a is in the first release. 3b is not.
 - **Why now:** a stage should pass on evidence Konductor gathers itself (D8), and the port needs it.
 - **YAML keys:** `intent.accept[].run` and `stages[].done_when`.
 - **Canvas:** a check editor for `file` and `run` kinds, and a `done_when` picker.
-- **API rows:** `getWorkflow`, `saveWorkflow`, `checkWorkflow`. `getRun` has to report check states, which the contract
-  does not yet say (see [follow-ups](#follow-ups-for-the-design)).
+- **API rows:** `getWorkflow`, `saveWorkflow`, `checkWorkflow`. `getRun` has to report check states, and how it reports
+  them is an [open question](#open-questions).
 - **Engine:** run a `run` check as argv with no shell in the project root, `done_when` gating a stage, check states
-  (`verified`, `deferred`), `flow verify <run-id>` (which asks for trust as `flow run` does) with its three results and
-  exit codes.
+  (`verified`, `deferred`), `flow verify <run-id>` (which asks for trust as `flow run` does, and reads the run state
+  that 1d writes) with its three results and exit codes. A `flow` command finds the project root by the
+  [rule in the spec](workflows-spec.md#commands-and-exit-codes).
 - **Tests:** unit: quoting and argv tests, the result table. Functional: on the fake harness, a failing command fails
   the stage, a check past its time limit blocks it, and `flow verify` repeats it. Playwright: add a check, attach it to
   a stage, see it fail.
 - **Demo:** you can attach a `run` check to a stage and see the stage block when the command exits non-zero.
-- **Already in the PoC:** nothing.
 
 ### 3b: Command stages and `intent.writes`
 
@@ -391,20 +532,21 @@ Not in the first release. See [the stubs](#slices-not-in-the-first-release).
   port runs from the CLI only ([deferred](workflows-spec.md#deferred-to-a-later-slice)).
 - **API rows:** none new.
 - **Engine:** shipped workflows built into the binary and named `library/<name>` (D6), with lookup that reaches them.
-  The port is `library/k-adversarial-pull-request-review`, named by the [rule for SOP
+  From here `flow check library/<name>` and `flow show library/<name>` find the port instead of exiting 64. The port is
+  `library/k-adversarial-pull-request-review`, named by the [rule for SOP
   ports](workflows-spec.md#where-workflows-live). The port's stages follow the SOP's steps (ingest, review passes in
   sequence, reuse, validate, filter, verdict). Parallel review passes wait for slice 6. The review stages must write
   their findings to files (D21), so they use write-capable agents. `k-researcher` is the only shipped agent with no
   shell or file-write tool on either harness, and so it cannot serve them. The port is a shipped workflow, so it needs
   no confirmation in a repo without tool configuration files, and on Claude its agents' `tools` (including `Bash`,
-  `Write` and `WebFetch`) run without asking. `flow view library/<name>` exits 64 with the message that shipped
-  workflows run from the CLI only ([deferred](workflows-spec.md#deferred-to-a-later-slice)).
+  `Write` and `WebFetch`) run without asking. From here `flow view library/<name>` exits 64 with the message that
+  shipped workflows run from the CLI only, where before it gave the "not available yet" message
+  ([deferred](workflows-spec.md#deferred-to-a-later-slice)).
 - **Tests:** unit: a parity test that each SOP step maps to a stage or is listed as left out, golden files for the
   stages' prompts. Functional: the port on the fake harness end to end, and `flow view library/<name>` exits 64 and
   starts no server. Playwright: none. By hand: one run on each runner harness.
 - **Demo:** you can run the shipped review workflow (`library/k-adversarial-pull-request-review`) on a diff and get the
   report file.
-- **Already in the PoC:** the SOP exists in `agent-sops/` (verified). Nothing is built into the binary.
 
 ## Slices not in the first release
 
@@ -425,7 +567,7 @@ Each stub gives Adds, Needs and Demo. A full section is written when the slice i
   shipped workflow without copying it.
 - **9, canvas patch editing.** Needs 8. Demo: you can edit a shipped workflow in the canvas and save a patch. D12
   rejects edit operations and this slice plans them, so one of them changes first (see
-  [follow-ups](#follow-ups-for-the-design)).
+  [open questions](#open-questions)).
 - **10, customization in chat.** A skill that adapts a workflow. A workflow written by the chat is untrusted until the
   user confirms it. Needs 8. Demo: you can ask the agent to change a
   workflow and get a patch.
@@ -452,14 +594,32 @@ A step is done when all of these hold:
 - Contract tests pass: `npm run api:lint`, the drift test, and the stub test suite against the real server once 1g
   exists.
 
-## Follow-ups for the design
-
-Edits that other docs need so nothing is left dead.
+## Open questions
 
 - The spec's canvas-contract requirements do not say how `getRun` reports check results. Slice 3a needs that answer.
-- The stub reads no files, so it cannot raise `INVALID_VALUE` for a missing `prompt_file`. Decide in 1a whether the
-  stub checks only the path rules, and say so in the contract.
-- `cli/README.md` changes in 1c (the `flow` commands) and in 1e (the `77` row), as [the
-  spec](workflows-spec.md#commands-and-exit-codes) says.
-- `README.md` of `workflow-canvas/` says the only harness is `kiro-cli` and lists a base format. It changes in 1a.
 - D12 and slice 9 disagree about edit operations. Resolve before slice 9.
+- A shared conformance corpus (workflow files with their expected diagnostics) is run against both the TypeScript stub
+  and the Rust loader. 1g builds it, once both loaders exist.
+- 1b-2: the `yaml` package (the Designer) and the Rust loader can read some files differently: anchors, aliases, tags,
+  `<<` merge keys and duplicate keys. Until the shared conformance corpus above runs against both loaders, the 1b-2
+  writer's refusals are the answer, and the stub validator still checks every save.
+- Run state is read and written under the working folder by `flow view`, and under the project root, found by an upward
+  search, by `flow run`. Run from a subfolder, the two use different `.konductor/runs/` folders. This is for a later
+  change.
+- How the built canvas page ships is undecided. The recommendation is to install the built page next to the binary,
+  under the install manifest, because the server refuses a writable `dist/`. The decision is made before release.
+- The harness values of the canvas contract do not include the ACP values. The run state records `kiro-cli-acp` or
+  `claude-acp` (step 1f-3), and the `Harness` enum lists `kiro-cli`, `claude` and `fake`. The enum grows in a later
+  canvas change, and `flow view` does not take the ACP values until then.
+- Five points for the write-up of [1h](#1h-run-events), the run events:
+  - Who appends the halt event: the reader that writes `halted` for a dead owner appends it first, under the run lock,
+    once per run, stage and kind, so a retry adds nothing.
+  - The append rule: one JSON line per event in one write, and a torn last line is skipped on read.
+  - Numbering after a server restart: the next number is the last valid line plus one.
+  - Threats: `events.jsonl` is display data and never evidence, and the runner never reads it back for a decision.
+  - Claude: its `claude -p` json output has no live lines, so it gives state events only, unless 1f-2 moves to
+    `--output-format stream-json`. Console events are Kiro-only for now.
+- A cargo feature gate for the fake harness, so a release build has no `--harness fake`. It must land before the first
+  release and needs CI and release changes (D57).
+- Whether the members of a leaderless session group can be found by a marker, Linux first. Open. Until then the sweep
+  warns once and drops the record (D49).
