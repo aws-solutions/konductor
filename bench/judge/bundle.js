@@ -85,7 +85,7 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions }) {
     const mine = readText(path.join(runDir, 'workspace', rel));
     const orig = base.has(rel) ? readText(path.join(fixtureDir, rel)) : null;
     const same = orig && !mine.binary && !orig.binary ? orig.text === mine.text : orig && mine.binary && orig.binary && orig.sha === mine.sha;
-    if (!same) changed.push({ rel, created: !orig, ...mine });
+    if (!same) changed.push({ rel, created: !orig, orig: orig && !orig.binary ? orig.text : null, ...mine });
   }
   const deleted = [...base].filter((rel) => !ws.files.includes(rel)).sort();
 
@@ -126,7 +126,8 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions }) {
 
   const { text, fired } = redact(parts.join('\n\n'), redactions);
   // changed and deleted name the workspace files the bundle was built from, so a reader can tell later whether they moved.
-  return { text, fired, meta, changed: changed.map((f) => f.rel), deleted };
+  // `files` carries the unredacted file texts for local analysis (the quality pack's gating and diff); it is never sent to a judge as is.
+  return { text, fired, meta, changed: changed.map((f) => f.rel), deleted, files: changed.map((f) => ({ rel: f.rel, created: f.created, binary: Boolean(f.binary), text: f.binary ? null : f.text, orig: f.orig })) };
 }
 
 module.exports = { buildBundle, finalTextOf };
