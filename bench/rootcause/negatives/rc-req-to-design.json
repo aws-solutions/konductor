@@ -1,0 +1,302 @@
+{
+  "loosened": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    13,
+    14
+  ],
+  "cases": [
+    {
+      "name": "RQ1 phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "design/system-design.md": "The Saturday peak is 150 checkouts an hour, about 2.5 a minute, so a small simple backend is enough for 4,000 members.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ1 near miss 1",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "The peak is busy.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ1 near miss 2",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "There are 1,200 tools.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ2 phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "design/system-design.md": "The kiosk keeps a local store and works 8 hours without the network, then syncs.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ2 near miss 1",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "The kiosk is in the lobby.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ2 near miss 2",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "The app works offline.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ3 phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "design/system-design.md": "Open question: REQ-6 allows reservations 30 days ahead but US-3 says next day only.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ3 near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "Members can reserve tools.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ3 near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "Reservations are held for 30 days.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ4 phrased differently",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "design/system-design.md": "Personal data is deleted within 30 days; identity is stored apart from loans and photo ID is never stored.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ4 near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "We take privacy seriously.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ4 near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "Deleted tools leave the catalog.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ5 phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "design/system-design.md": "The city sends a CSV every night; reminders go out through the city SMS provider.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ5 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "The city sends a CSV every night.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ5 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "Members get a text message.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ6 phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "design/system-design.md": "Fees are paid at the desk; online payment is out of scope for the first release.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ6 near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "Members can pay online with a card.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ6 near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "Tools are lent for 7 days.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ7 phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "design/system-design.md": "The kiosk meets WCAG 2.1 AA with touch targets of 44 pixels.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ7 near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "The kiosk looks good.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ7 near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "Staff use a desk.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ8 phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "design/system-design.md": "The late fee rate is undecided; the board will set it, so it is a setting.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ8 near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "Late tools earn a fee.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    },
+    {
+      "name": "RQ8 near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "design/system-design.md": "The fee is 2 dollars a day.\n",
+        "design/business-context.md": "x\n",
+        "design/requirements-summary.md": "x\n",
+        "design/user-stories-extract.md": "x\n"
+      }
+    }
+  ]
+}
