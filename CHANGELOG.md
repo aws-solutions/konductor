@@ -84,10 +84,10 @@ not per individual commit.
   Step 3, returns the reuse pass as a handoff, and resumes at Step 4.
 - Specialist specs no longer grant any agent-spawning tool. Kiro CLI v2, Kiro CLI v3 and
   Claude Code configs block the runtime's spawn tools explicitly, so a specialist cannot call
-  one even when a prompt asks it to. The block does not cover shell: a specialist with shell access could
-  still run `kiro-cli` or `claude`. The Kiro CLI v3 block uses `excludedTools`, tested with
-  kiro-cli 2.35.0. Kiro CLI v2 ignores `excludedTools`, so a v2 specialist
-  gets the v2 built-in tools listed one by one, without `subagent`, in place of `@builtin`
+  one even when a prompt asks it to. The block does not cover shell: a specialist with shell
+  access could still run `kiro-cli` or `claude`. The Kiro CLI v3 block uses `excludedTools`,
+  tested with kiro-cli 2.35.0. Kiro CLI v2 ignores `excludedTools`, so a v2 specialist gets
+  the v2 built-in tools listed one by one, without `subagent`, in place of `@builtin`
   (checked with kiro-cli 2.36.0). `k-code-review-workflow` step 6 now writes the report with
   the adversarial section pending, then returns the pass as a handoff for `k-architect`.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
