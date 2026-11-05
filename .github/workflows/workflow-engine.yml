@@ -56,7 +56,7 @@ jobs:
         run: cargo test --locked
 
   minimum-rust-version:
-    name: Test (Rust 1.88)
+    name: Test (Rust 1.89)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -71,7 +71,7 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
-          toolchain: '1.88'
+          toolchain: '1.89'
 
       - name: Test
         run: cargo test --locked
