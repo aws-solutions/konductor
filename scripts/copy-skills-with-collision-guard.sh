@@ -4,7 +4,7 @@
 # copy-skills-with-collision-guard.sh: assembles a flat skills/ directory
 # from two sources: this repo's native skills/*/SKILL.md directories, and
 # the SOP-derived sop-*/SKILL.md directories konductor install --harness
-# claude produces (see generated/claude-plugin/README.md for why two
+# claude produces (see docs/guides/claude-plugin-build.md for why two
 # different tools produce these). Extracted out of
 # scripts/assemble-claude-plugin-branch.sh as its own script so the
 # collision-guard behavior below can be unit tested against synthetic

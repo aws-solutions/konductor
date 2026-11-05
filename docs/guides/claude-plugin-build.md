@@ -1,24 +1,33 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Claude plugin build output
+# Claude Code plugin: build and release
 
-`generated/claude-plugin/` is local build output. Do not edit generated
-agents or skills. The source of truth is `agents/`, `skills/`, and
-`agent-sops/` at the repository root.
+This guide is for maintainers. It covers how the Claude Code plugin is
+generated, assembled, validated and published. To install the plugin, see
+[Install via the Claude Code plugin marketplace](../user-guide/tasks/install-claude-plugin-marketplace.md).
+
+The source of truth is `agents/`, `skills/`, and `agent-sops/` at the
+repository root. `main` never carries generated plugin output.
 
 ## What is generated
 
+`scripts/generate-claude-plugin.sh --out <dir>` writes two directories:
+
 ```text
-generated/claude-plugin/
+<dir>/
 ├── agents/   Rendered Claude Code agent files
-├── skills/   SOP-derived Claude Code skills
-└── README.md This guide
+└── skills/   SOP-derived Claude Code skills
 ```
 
 `agents/` comes from `konductor synth`. `skills/` contains only converted
 SOPs. Native skills stay under the repository's `skills/` directory; assembly
 copies both sets into the release tree's `skills/`, which Claude Code scans by
 default.
+
+`scripts/assemble-claude-plugin-branch.sh` runs the generator into a
+temporary directory and removes it when it exits. `make claude-plugin` runs
+the generator into `dist/claude-plugin/`, which is gitignored, so you can
+inspect the output.
 
 ## Generate and validate
 
@@ -30,7 +39,8 @@ make claude-plugin-check
 `make claude-plugin` builds the CLI, synthesizes Claude agents, and performs
 the SOP-to-skill conversion in a temporary install. `make claude-plugin-check`
 additionally assembles the flat release tree (the only plugin layout this
-repository ships) and validates it, plus the committed `marketplace.json`.
+repository ships) into a scratch directory and validates it, plus the
+committed `marketplace.json`.
 
 The generator uses temporary `HOME` and install directories. It does not
 write to the developer's real Claude Code or Konductor state.
@@ -44,23 +54,23 @@ branch, and protect the `claude-plugin-v*` tag pattern.
 The release workflow assembles the flat plugin tree
 (`scripts/assemble-claude-plugin-branch.sh`), validates it, pushes it to a
 fresh, collision-resistant candidate branch, and opens a draft pull request
-into `release/plugins`. It never writes to `release/plugins` directly --
-the `plugins` branch ruleset blocks creation, update, deletion, and
+into `release/plugins`. It never writes to `release/plugins` directly. The
+`plugins` branch ruleset blocks creation, update, deletion, and
 non-fast-forward there with no bypass actors, and the org-wide ruleset
 requires two approvals before any PR merges.
 
 After a human merges that PR, a repository admin runs
-`tag-claude-plugin-release.yml` manually (Actions -> Tag Claude Code plugin
-release -> Run workflow), supplying the merged PR's number. This is a
-manual, post-merge step, not an automatic trigger: `release/plugins` is
-artifact-only (no `.github/`, no `VERSION`, no `scripts/`), so a
-`pull_request`-triggered workflow -- which GitHub only runs from a copy of
-the workflow file on the PR's base branch -- would never find a copy of
-itself there to run. The workflow instead verifies the supplied PR through
-the GitHub API (merged, base is `release/plugins`, head starts with the
-real `plugin-candidate/` prefix), checks out the merge commit, reads the
-version from the published `.claude-plugin/plugin.json`, and creates the
-immutable `claude-plugin-vX.Y.Z` tag on that commit.
+`tag-claude-plugin-release.yml` manually (Actions, then Tag Claude Code
+plugin release, then Run workflow), supplying the merged PR's number. This is
+a manual, post-merge step, not an automatic trigger. `release/plugins` is
+artifact-only (no `.github/`, no `VERSION`, no `scripts/`), and GitHub runs a
+`pull_request`-triggered workflow only from a copy of the workflow file on
+the PR's base branch, so such a workflow would never find a copy of itself
+there to run. The workflow instead verifies the supplied PR through the
+GitHub API (merged, base is `release/plugins`, head starts with the real
+`plugin-candidate/` prefix), checks out the merge commit, reads the version
+from the published `.claude-plugin/plugin.json`, and creates the immutable
+`claude-plugin-vX.Y.Z` tag on that commit.
 
 The published branch contains:
 
@@ -137,7 +147,7 @@ Users opt out with the plugin's `telemetry_enabled` option,
 `KONDUCTOR_TELEMETRY=off`, `telemetry.enabled: false` in
 `.konductor/config.yml`, or `"telemetry_consent": false` in
 `~/.konductor/telemetry.json`. See the
-[install guide](../../docs/user-guide/tasks/install-claude-plugin-marketplace.md#telemetry)
+[install guide](../user-guide/tasks/install-claude-plugin-marketplace.md#telemetry)
 and the root README's [Data Collection](../../README.md#data-collection)
 section. Tests: `node --test tests/scripts/claude-plugin-telemetry-hook.test.js`,
 also run by `make claude-plugin-check`.
@@ -152,11 +162,11 @@ tools once the server is configured; API tools still prompt for confirmation.
 
 ## Implementation references
 
-- `scripts/generate-claude-plugin.sh` generates this directory's
-  agents/skills output.
+- `scripts/generate-claude-plugin.sh` generates the agents and skills
+  output into the directory passed with `--out`.
 - `scripts/assemble-claude-plugin-branch.sh` builds the flat release tree,
-  calling the generator above first, then rendering `plugin.json` and
-  `.mcp.json` at the flat tree's own root.
+  calling the generator above into a temporary directory first, then
+  rendering `plugin.json` and `.mcp.json` at the flat tree's own root.
 - `scripts/render-claude-plugin-json.py` renders plugin and MCP metadata.
 - `scripts/rewrite-claude-plugin-mcp-tool-names.py` rewrites bundled tool
   grants for plugin namespacing and drops each agent's `mcpServers` block,
@@ -165,6 +175,6 @@ tools once the server is configured; API tools still prompt for confirmation.
 - `.github/workflows/tag-claude-plugin-release.yml` is a manually dispatched
   workflow that creates the immutable `claude-plugin-vX.Y.Z` tag after a
   human merges a candidate PR into `release/plugins`. It uses
-  `scripts/compute-plugin-release-tag.sh` for the same base/head/version
+  `scripts/compute-plugin-release-tag.sh` for the same base, head and version
   guards `scripts/validate-plugin-publish-preconditions.sh` applies before
   publishing.

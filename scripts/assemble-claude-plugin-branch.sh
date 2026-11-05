@@ -40,15 +40,18 @@ if [ ! -f README.md ] || [ ! -f LICENSE.txt ] || [ ! -f NOTICE.txt ]; then
   exit 1
 fi
 
-"$REPO_ROOT/scripts/generate-claude-plugin.sh"
+# Generator output is staged outside the repository and removed on exit.
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+"$REPO_ROOT/scripts/generate-claude-plugin.sh" --out "$STAGE"
 
 mkdir -p "$OUT/agents" "$OUT/skills" "$OUT/.claude-plugin"
-cp generated/claude-plugin/agents/*.md "$OUT/agents/"
+cp "$STAGE"/agents/*.md "$OUT/agents/"
 
 # Fails if a native skill and an SOP-derived skill share a name.
 "$REPO_ROOT/scripts/copy-skills-with-collision-guard.sh" \
   --native "$REPO_ROOT/skills" \
-  --sop "$REPO_ROOT/generated/claude-plugin/skills" \
+  --sop "$STAGE/skills" \
   --out "$OUT/skills"
 
 cp README.md "$OUT/README.md"

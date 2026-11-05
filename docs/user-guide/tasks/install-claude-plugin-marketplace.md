@@ -126,7 +126,7 @@ details and the event schema.
 - [Install for Claude Code](install-claude-code.md)
 - [Install for Kiro CLI](install-kiro-cli.md)
 - [Install via Kiro Power](install-kiro-power.md)
-- [Plugin build output](../../../generated/claude-plugin/README.md)
+- [Plugin build and release](../../guides/claude-plugin-build.md)
 - <https://aws-solutions.github.io/konductor/>
 
 [← Install for Claude Code](install-claude-code.md) · [Task guides](README.md)

@@ -13,10 +13,10 @@ name: Release
 # GitHub retired its free-tier Intel macOS runner and this org has no paid
 # larger-runner entitlement. `publish` downloads every leg's assets and
 # creates the release exactly once. `publish-claude-plugin` runs after
-# `publish` succeeds: it builds the Claude Code plugin tree (`make
-# claude-plugin` via scripts/generate-claude-plugin.sh, then
-# scripts/assemble-claude-plugin-branch.sh for the flat layout Claude Code
-# expects), pushes it to a collision-resistant candidate branch built on top
+# `publish` succeeds: it builds the Claude Code plugin tree with
+# scripts/assemble-claude-plugin-branch.sh, which stages
+# scripts/generate-claude-plugin.sh's output in a temporary directory and
+# then lays out the flat tree Claude Code expects, pushes it to a collision-resistant candidate branch built on top
 # of release/plugins' current tip, and opens a draft pull request into the
 # protected `release/plugins` branch.
 # It never writes to `release/plugins` directly -- the `plugins` branch
@@ -26,7 +26,7 @@ name: Release
 # (tag-claude-plugin-release.yml) creates the immutable
 # `claude-plugin-vX.Y.Z` tag after a human reviewer merges that PR. `main`
 # itself never carries generated plugin output (see .gitignore and
-# generated/claude-plugin/README.md).
+# docs/guides/claude-plugin-build.md).
 
 on:
   push:

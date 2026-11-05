@@ -46,7 +46,7 @@ def remote(tmp_path):
     """A disposable bare repo standing in for the real GitHub remote, with
     `main` and `release/plugins` both pointing at the same initial commit
     -- release/plugins starts as a copy of main, as it does in the real
-    repository (see generated/claude-plugin/README.md)."""
+    repository (see docs/guides/claude-plugin-build.md)."""
     bare = tmp_path / "remote.git"
     subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
 
@@ -422,7 +422,7 @@ def test_untracked_build_junk_in_checkout_never_reaches_the_candidate(
     _git("config", "user.email", "a@b.com", cwd=base_with_gitignore)
     _git("config", "user.name", "tester", cwd=base_with_gitignore)
     (base_with_gitignore / ".gitignore").write_text(
-        "cli/konductor-rs/target/\nbuild/\ndist/\ngenerated/claude-plugin/\n",
+        "cli/konductor-rs/target/\nbuild/\ndist/\n",
         encoding="utf-8",
     )
     _git("add", "-A", cwd=base_with_gitignore)
@@ -433,7 +433,7 @@ def test_untracked_build_junk_in_checkout_never_reaches_the_candidate(
         checkout / "cli" / "konductor-rs" / "target" / "x",
         checkout / "build" / "cli" / "konductor",
         checkout / "dist" / "x",
-        checkout / "generated" / "claude-plugin" / "x",
+        checkout / "dist" / "claude-plugin" / "agents" / "x",
     ]
     for junk in junk_paths:
         junk.parent.mkdir(parents=True, exist_ok=True)
@@ -462,7 +462,7 @@ def test_untracked_build_junk_in_checkout_never_reaches_the_candidate(
         f"candidate tree picked up untracked build junk from the checkout: "
         f"tracked={tracked}, expected={expected}"
     )
-    for junk in ("cli/konductor-rs/target/x", "build/cli/konductor", "dist/x", "generated/claude-plugin/x"):
+    for junk in ("cli/konductor-rs/target/x", "build/cli/konductor", "dist/x", "dist/claude-plugin/agents/x"):
         assert junk not in tracked
 
 
