@@ -1,11 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // The parts of api/openapi.yaml that the page reads.
 
+/** The harnesses that the contract names. `fake` is for tests only. */
+export type KnownHarness = 'kiro-cli' | 'claude' | 'fake';
+
+/**
+ * The program that runs each stage's agent: one the contract names, or any
+ * other that a newer server adds, as the contract lets a response enum gain
+ * values. The page only shows it, as it is, and offers no way to pick one.
+ */
+export type Harness = KnownHarness | (string & {});
+
 /** What `POST /api/session` returns. */
 export interface Session {
   token: string;
   root: string;
-  harness: string;
+  harness: Harness;
   /** The major version of the API. */
   apiVersion: number;
 }
@@ -83,6 +93,8 @@ export interface RunStageView {
 /** What `GET /api/runs/{id}` returns: the state of a run, live or finished. */
 export interface RunView {
   runId: string;
+  /** The harness that runs the stages of this run. */
+  harness: Harness;
   status: RunStatus;
   /** `null` while the run is `running`. */
   exitCode: number | null;

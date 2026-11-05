@@ -109,6 +109,7 @@ export function helloRun(
   const finished = halted || at >= HELLO_STAGES.length;
   return {
     runId: '20261024-0412-a7b3c',
+    harness: 'kiro-cli',
     status: halted ? 'halted' : finished ? 'passed' : 'running',
     exitCode: halted ? 1 : finished ? 0 : null,
     stages: HELLO_STAGES.map((name, index) => ({
