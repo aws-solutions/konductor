@@ -15,6 +15,22 @@ function scalar(value: string): string {
     : JSON.stringify(value);
 }
 
+/** A stage to write: its name and agent, and the stage of the file it was. */
+export interface StageToWrite extends StageView {
+  /**
+   * The place of the stage in the view that the text was read as. It is left
+   * out for a stage that the file does not have yet.
+   */
+  from?: number;
+}
+
+/**
+ * What the writer made of a change: the new text, or the reason it cannot
+ * write the change without rewriting more of the file than the change.
+ */
+export type Written =
+  { ok: true; text: string } | { ok: false; reason: string };
+
 /** One line of a file and the line break that ends it (empty at the end). */
 interface Line {
   text: string;
@@ -41,19 +57,36 @@ const STAGES_KEY = /^(?:stages|"stages"|'stages'):[ \t]*(?:#.*)?$/;
 // A line that starts the next top-level key or a document marker, which
 // ends the block of stages. A `-` at the start is an item of the block.
 const NEXT_KEY = /^(?:[^\s#-]|---|\.\.\.)/;
-const BLANK_OR_COMMENT = /^\s*(?:#.*)?$/;
+const BLANK = /^[ \t]*$/;
+const COMMENT = /^[ \t]*#/;
 const ITEM_START = /^[ \t]*-(?:[ \t]|$)/;
+// The header of a block scalar that keeps its trailing blank lines (`|+`,
+// `>2+`), whose blank lines at the end of the item are part of the value.
+const KEEP_CHOMPING = /:[ \t]+[|>](?:[1-9]?\+|\+[1-9])[ \t]*(?:#.*)?$/;
 // Where the dashes go in a list that has no item yet.
 const DEFAULT_DASH = '  ';
 
-const isFiller = (line: Line) => BLANK_OR_COMMENT.test(line.text);
+const isFiller = (line: Line) =>
+  BLANK.test(line.text) || COMMENT.test(line.text);
 const indentOf = (line: Line) => /^[ \t]*/.exec(line.text)![0];
 
+/** Why the writer leaves a file or a stage as it is. */
+const CANNOT_EDIT = {
+  notABlock:
+    'The stages of this file are written in brackets, as in `stages: [...]`, or not under a top-level `stages:` key, so the editor cannot change them in place. Make the change in a text editor.',
+  unmatched:
+    'The editor cannot tell where each stage of this file starts, so it cannot change the stages in place. Make the change in a text editor.',
+  stage: (name: string) =>
+    `The stage \`${name}\` is not written with one key to a line under its dash, so the editor cannot change it in place. Make the change in a text editor.`,
+  value: (key: string, name: string) =>
+    `The \`${key}\` of the stage \`${name}\` is not one value on the line of its key, so the editor cannot change it in place. Make the change in a text editor.`,
+} as const;
+
 // A stage as the file wrote it: the lines of its item, with the comments and
-// blank lines in front of it.
+// blank lines in front of it. `lead` counts those, so the dash is at `lead`.
 interface Item {
-  stage: StageView;
   lines: Line[];
+  lead: number;
 }
 
 // How the file lays out its list: the comments in front of the first item,
@@ -82,24 +115,33 @@ function layoutOf(block: Line[]): Layout | undefined {
   return head.every(isFiller) ? { head, starts, dash } : undefined;
 }
 
+// Whether a line at the end of an item belongs in front of the next one: a
+// blank line, or a comment no further in than the dashes. A comment further
+// in, or a line of a block scalar that starts with `#`, stays with its item,
+// and so do the blank lines of an item whose block scalar keeps them.
+function movesOn(line: Line, dash: string, keepsBlanks: boolean): boolean {
+  if (BLANK.test(line.text)) return !keepsBlanks;
+  return COMMENT.test(line.text) && indentOf(line).length <= dash.length;
+}
+
 // Splits the lines after the head at the start of each item. Comments and
-// blank lines between two items go with the one after them. Empty when the
-// items cannot be matched one to one with `stages`.
+// blank lines between two items go with the one after them, and those after
+// the last item are the `rest`, which stays in place.
 function itemsOf(
   block: Line[],
-  { starts }: Layout,
-  stages: readonly StageView[],
-): Item[] {
-  if (starts.length !== stages.length) return [];
+  { starts, dash }: Layout,
+): { items: Item[]; rest: Line[] } {
   let lead: Line[] = [];
-  return starts.map((start, n) => {
+  const items = starts.map((start, n) => {
     const body = block.slice(start, starts[n + 1] ?? block.length);
+    const keepsBlanks = body.some((line) => KEEP_CHOMPING.test(line.text));
     let cut = body.length;
-    while (cut > 1 && isFiller(body[cut - 1]!)) cut -= 1;
-    const item = { stage: stages[n]!, lines: [...lead, ...body.slice(0, cut)] };
+    while (cut > 1 && movesOn(body[cut - 1]!, dash, keepsBlanks)) cut -= 1;
+    const item = { lines: [...lead, ...body.slice(0, cut)], lead: lead.length };
     lead = body.slice(cut);
     return item;
   });
+  return { items, rest: lead };
 }
 
 // A new item in the layout of the list: its dashes where the others have
@@ -114,22 +156,142 @@ function generated(stage: StageView, eol: string, dash: string): Line[] {
 const sameStage = (a: StageView, b: StageView) =>
   a.name === b.name && a.agent === b.agent;
 
-// The lines of `stage`: the file's own for a stage that is unchanged, so its
-// comments and layout stay, and new ones for a stage that is new or changed.
-function linesOfStage(
-  stage: StageView,
-  unused: Item[],
-  eol: string,
-  dash: string,
-): Line[] {
-  const at = unused.findIndex((item) => sameStage(item.stage, stage));
-  return at < 0 ? generated(stage, eol, dash) : unused.splice(at, 1)[0]!.lines;
+// A key of a block mapping at the start of `text`, plain or quoted, followed
+// by its colon. The name of the key is in one of the three groups.
+const KEY =
+  /^(?:([A-Za-z_][A-Za-z0-9_-]*)|"([^"\\]*)"|'([^']*)')[ \t]*:(?=[ \t]|$)/;
+// A dash with a key after it, and a dash with nothing but a comment.
+const DASH_WITH_KEY = /^[ \t]*- +(?=[^\s#])/;
+const DASH_ALONE = /^[ \t]*-[ \t]*(?:#.*)?$/;
+
+// The column where the keys of the item's mapping start, or `undefined` when
+// the item is not a block mapping, such as `- {name: a, agent: b}`.
+function columnOf(item: Item): number | undefined {
+  const dashLine = item.lines[item.lead]!.text;
+  const withKey = DASH_WITH_KEY.exec(dashLine);
+  if (withKey) {
+    return KEY.test(dashLine.slice(withKey[0].length))
+      ? withKey[0].length
+      : undefined;
+  }
+  if (!DASH_ALONE.test(dashLine)) return undefined;
+  const first = item.lines.slice(item.lead + 1).find((line) => !isFiller(line));
+  const column = first && indentOf(first);
+  return column && column.length > indentOf(item.lines[item.lead]!).length
+    ? column.length
+    : undefined;
+}
+
+// The span of a scalar that starts at `from` and ends on the same line:
+// plain, or quoted and closed. `undefined` for anything else, such as a value
+// on the next line, a block scalar, a flow collection, an anchor or a tag.
+function scalarSpan(
+  text: string,
+  from: number,
+): { start: number; end: number } | undefined {
+  const start = from + /^[ \t]*/.exec(text.slice(from))![0].length;
+  const first = text[start];
+  if (first === undefined || /[#|>&*!{}[\]%@`,?]/.test(first)) return undefined;
+  let end: number;
+  if (first === '"' || first === "'") {
+    end = closingQuote(text, start);
+    if (end < 0) return undefined;
+    if (!/^[ \t]*(?:#.*)?$/.test(text.slice(end))) return undefined;
+  } else {
+    const comment = text.slice(start).search(/[ \t]#/);
+    end = comment < 0 ? text.length : start + comment;
+    while (end > start && /[ \t]/.test(text[end - 1]!)) end -= 1;
+  }
+  return { start, end };
+}
+
+// The index after the quote that closes the quoted scalar at `start`, or -1.
+function closingQuote(text: string, start: number): number {
+  const quote = text[start];
+  for (let i = start + 1; i < text.length; i += 1) {
+    if (quote === '"' && text[i] === '\\') i += 1;
+    else if (text[i] === quote) {
+      if (quote === "'" && text[i + 1] === "'") i += 1;
+      else return i + 1;
+    }
+  }
+  return -1;
+}
+
+// What YAML reads the scalar text as, or `undefined` for a double-quoted text
+// with an escape that JSON does not share; such a value is left alone.
+function valueOfScalar(raw: string): string | undefined {
+  if (raw.startsWith("'")) return raw.slice(1, -1).replaceAll("''", "'");
+  if (!raw.startsWith('"')) return raw;
+  try {
+    const value: unknown = JSON.parse(raw);
+    return typeof value === 'string' ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Where the value of a key is in the lines of an item. */
+interface Field {
+  line: number;
+  start: number;
+  end: number;
+}
+
+// The value of `key` in the item, if the file has it as one scalar on the line
+// of its key and it reads as `value`, so the writer knows it has the right
+// bytes. A line further in after it would be part of the value, or of a
+// mapping under the key, so such a value is not one the writer edits.
+function fieldOf(
+  item: Item,
+  column: number,
+  key: string,
+  value: string,
+): Field | undefined {
+  const { lines, lead } = item;
+  for (let i = lead; i < lines.length; i += 1) {
+    const line = lines[i]!;
+    const atColumn =
+      i === lead || (!isFiller(line) && indentOf(line).length === column);
+    const found = atColumn ? KEY.exec(line.text.slice(column)) : null;
+    if (!found || (found[1] ?? found[2] ?? found[3]) !== key) continue;
+    const span = scalarSpan(line.text, column + found[0].length);
+    const next = lines.slice(i + 1).find((other) => !isFiller(other));
+    const continues = next && indentOf(next).length > column;
+    if (!span || continues) return undefined;
+    const raw = line.text.slice(span.start, span.end);
+    return valueOfScalar(raw) === value ? { line: i, ...span } : undefined;
+  }
+  return undefined;
+}
+
+// The lines of an item with the values of the keys that changed replaced, and
+// every other byte as it was. The reason when one of them is not in a form
+// that the writer edits in place.
+function edited(
+  item: Item,
+  before: StageView,
+  after: StageView,
+): Line[] | string {
+  if (sameStage(before, after)) return item.lines;
+  const column = columnOf(item);
+  if (column === undefined) return CANNOT_EDIT.stage(before.name);
+  const lines = [...item.lines];
+  for (const key of ['name', 'agent'] as const) {
+    if (before[key] === after[key]) continue;
+    const field = fieldOf(item, column, key, before[key]);
+    if (!field) return CANNOT_EDIT.value(key, before.name);
+    const line = lines[field.line]!;
+    const text = `${line.text.slice(0, field.start)}${scalar(after[key])}${line.text.slice(field.end)}`;
+    lines[field.line] = { ...line, text };
+  }
+  return lines;
 }
 
 // Where the block of stages is in `lines`, or `undefined` when the file has no
-// `stages:` key of the block form at the top level. `end` stops before the
-// comments and blank lines that trail the last stage.
-function blockIn(lines: Line[]): { key: number; end: number } | undefined {
+// `stages:` key of the block form at the top level. `next` is the line of the
+// next top-level key, or the end of the file.
+function blockIn(lines: Line[]): { key: number; next: number } | undefined {
   const key = lines.findIndex((line, i) =>
     STAGES_KEY.test(i === 0 ? line.text.replace(BOM, '') : line.text),
   );
@@ -137,27 +299,30 @@ function blockIn(lines: Line[]): { key: number; end: number } | undefined {
   const next = lines.findIndex(
     (line, i) => i > key && NEXT_KEY.test(line.text),
   );
-  let end = next < 0 ? lines.length : next;
-  while (end > key + 1 && isFiller(lines[end - 1]!)) end -= 1;
-  return { key, end };
+  return { key, next: next < 0 ? lines.length : next };
 }
 
 // The block of stages of a file, as far as the writer can edit it in place.
 interface Plan {
   lines: Line[];
   key: number;
-  end: number;
-  block: Line[];
+  next: number;
   layout: Layout;
+  items: Item[];
+  rest: Line[];
 }
 
-function planFor(text: string): Plan | undefined {
+// The plan for a file whose view has `count` stages, or the reason the writer
+// cannot change its stages in place.
+function planFor(text: string, count: number): Plan | string {
   const lines = linesOf(text);
   const found = blockIn(lines);
-  if (!found) return undefined;
-  const block = lines.slice(found.key + 1, found.end);
+  if (!found) return CANNOT_EDIT.notABlock;
+  const block = lines.slice(found.key + 1, found.next);
   const layout = layoutOf(block);
-  return layout && { lines, ...found, block, layout };
+  if (!layout) return CANNOT_EDIT.notABlock;
+  if (layout.starts.length !== count) return CANNOT_EDIT.unmatched;
+  return { lines, ...found, layout, ...itemsOf(block, layout) };
 }
 
 // The line break a line ends with. A new line takes the one of the `stages:`
@@ -167,76 +332,102 @@ function breakOf(line: Line, last: boolean, eol: string, fileEnd?: string) {
   return line.made ? eol : line.eol || eol;
 }
 
-// Swaps the block of stages of `text` for `stages`, and leaves every other
-// byte alone. `undefined` when the stages are not a block that new items can
-// join: no `stages:` key of the block form at the top level, or a list of
-// another form.
-function replaceStageBlock(
-  text: string,
-  view: WorkflowView,
-  stages: readonly StageView[],
-): string | undefined {
-  const plan = planFor(text);
-  if (!plan) return undefined;
-  const { lines, key, end, block, layout } = plan;
-  const unused = itemsOf(block, layout, view.stages);
-  const eol = lines[key]!.eol || '\n';
-  const body = stages.flatMap((stage) =>
-    linesOfStage(stage, unused, eol, layout.dash),
+// Whether `stages` are the stages of the view, each where the view has it.
+function unchanged(
+  view: readonly StageView[],
+  stages: readonly StageToWrite[],
+): boolean {
+  return (
+    view.length === stages.length &&
+    stages.every(
+      (stage, i) =>
+        (stage.from === undefined || stage.from === i) &&
+        sameStage(stage, view[i]!),
+    )
   );
-  const tail = lines.slice(end);
-  const fileEnd = tail.length === 0 ? (lines[end - 1]?.eol ?? '') : undefined;
-  const written = [...layout.head, ...body].map((line, i, all) => ({
-    ...line,
-    eol: breakOf(line, i === all.length - 1, eol, fileEnd),
-  }));
-  return [...lines.slice(0, key + 1), ...written, ...tail]
-    .map((line) => line.text + line.eol)
-    .join('');
 }
 
-// A whole file written from the view: the layout that nothing else fits. The
-// view has no `format` or `version`, and the contract requires both, so the
-// file gets the first-release `format` and the `version` the contract suggests.
-// The intent is written as a mapping, the only form the contract reads.
-function writeWhole(view: WorkflowView, stages: readonly StageView[]): string {
-  const lines = stages.flatMap((stage) => generated(stage, '\n', DEFAULT_DASH));
-  return [
-    'format: konductor/1',
-    `name: ${scalar(view.name)}`,
-    'version: 0.1.0',
-    'intent:',
-    `  outcome: ${scalar(view.intent.outcome)}`,
-    'stages:',
-    ...lines.map((line) => line.text),
-    '',
-  ].join('\n');
+// The lines of each stage in order: the file's own for a stage it has, with
+// the values that changed replaced; the item of a deleted stage that matches
+// a new one exactly, so deleting and adding back a stage changes nothing; and
+// new lines for a stage the file does not have.
+function bodyOf(
+  plan: Plan,
+  view: WorkflowView,
+  stages: readonly StageToWrite[],
+  eol: string,
+): Line[] | string {
+  const claimed = new Set(stages.map((stage) => stage.from));
+  const unused = plan.items.flatMap((_, i) => (claimed.has(i) ? [] : [i]));
+  const body: Line[] = [];
+  for (const stage of stages) {
+    if (stage.from !== undefined) {
+      const item = plan.items[stage.from];
+      const before = view.stages[stage.from];
+      if (!item || !before) return CANNOT_EDIT.unmatched;
+      const lines = edited(item, before, stage);
+      if (typeof lines === 'string') return lines;
+      body.push(...lines);
+      continue;
+    }
+    const at = unused.findIndex((i) => sameStage(view.stages[i]!, stage));
+    if (at < 0) {
+      body.push(...generated(stage, eol, plan.layout.dash));
+    } else {
+      body.push(...plan.items[unused.splice(at, 1)[0]!]!.lines);
+    }
+  }
+  return body;
 }
 
 /**
- * The text of the workflow with `stages` in place of its own. Only the block
- * of stages changes: the name, the intent, `version`, the line endings and the
- * comments outside the block stay as they are. A stage that is unchanged keeps
- * its own lines, with the comments in front of it; a stage that is new or
- * changed is written with its dashes where the file's own have them, and the
- * comments written inside a stage that is changed or deleted go with it. A
- * file whose `stages` are not a list of items under a top-level key, such as
- * a list in the flow form, is written whole from `view`, in the plain layout,
- * which drops its comments and writes `version: 0.1.0`.
+ * The text of the workflow with `stages` in place of its own, or the reason
+ * the change cannot be written in place. A stage keeps every byte of its item
+ * but the values of the keys that changed, so its other keys, such as
+ * `prompt` and `prompt_file`, and its comments stay. A deleted stage takes
+ * its item and the comments in front of it; a new stage is written with its
+ * dashes where the file's own have them. Every byte outside the block of
+ * stages stays: `format`, `version`, `params`, the comments and the line
+ * endings. A file whose stages are not a list of items under a top-level key,
+ * such as a list in the flow form, is never rewritten whole: the result says
+ * why. The same goes for a stage or a value written in a form that cannot be
+ * edited in place, when that stage or value changes.
  */
 export function withStages(
   text: string,
   view: WorkflowView,
-  stages: readonly StageView[],
-): string {
-  return replaceStageBlock(text, view, stages) ?? writeWhole(view, stages);
+  stages: readonly StageToWrite[],
+): Written {
+  if (unchanged(view.stages, stages)) return { ok: true, text };
+  const plan = planFor(text, view.stages.length);
+  if (typeof plan === 'string') return { ok: false, reason: plan };
+  const { lines, key, next, layout, rest } = plan;
+  const eol = lines[key]!.eol || '\n';
+  const body = bodyOf(plan, view, stages, eol);
+  if (typeof body === 'string') return { ok: false, reason: body };
+  const tail = [...rest, ...lines.slice(next)];
+  const fileEnd = tail.length === 0 ? (lines.at(-1)?.eol ?? '') : undefined;
+  const written = [...layout.head, ...body].map((line, i, all) => ({
+    ...line,
+    eol: breakOf(line, i === all.length - 1, eol, fileEnd),
+  }));
+  return {
+    ok: true,
+    text: [...lines.slice(0, key + 1), ...written, ...tail]
+      .map((line) => line.text + line.eol)
+      .join(''),
+  };
 }
 
 /**
- * Whether a save of `text` would write the file whole, in the plain layout,
- * and so drop its comments and reset its `version`: its `stages` are not a
- * list of items under a top-level key.
+ * Why no change to the stages of `text` can be written in place, or
+ * `undefined` when the file lays out its stages so that a change can be. A
+ * single stage can still refuse a change of its own; see `withStages`.
  */
-export function willRewriteWhole(text: string): boolean {
-  return planFor(text) === undefined;
+export function inPlaceBlocker(
+  text: string,
+  view: WorkflowView,
+): string | undefined {
+  const plan = planFor(text, view.stages.length);
+  return typeof plan === 'string' ? plan : undefined;
 }

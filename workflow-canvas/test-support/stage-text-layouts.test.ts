@@ -6,8 +6,10 @@
 import { describe, expect, it } from 'vitest';
 import type { StageView, WorkflowView } from '../src/api/types.ts';
 import {
-  willRewriteWhole,
+  inPlaceBlocker,
   withStages,
+  type StageToWrite,
+  type Written,
 } from '../src/designer/core/stage-text.ts';
 import { checkWorkflowText } from '../stub-api/core/validator.ts';
 
@@ -41,6 +43,11 @@ const commented: Item = (s, d) => [
 ];
 const mixed: Item = (s, d, n) =>
   [plain, agentFirst, flow, dashAlone, quoted][n % 5]!(s, d, n);
+
+// Whether the item of the `n`th stage is a flow mapping, which the writer
+// keeps as it is but does not edit.
+const isFlow = (item: Item, n: number) =>
+  item === flow || (item === mixed && n % 5 === 2);
 
 const BLOCK_LAYOUTS: Array<[string, string, Item]> = [
   ['two spaces', '  ', plain],
@@ -118,26 +125,45 @@ function fileOf(eol: string, lines: string[]): string {
   return [...HEAD, 'stages:', ...lines, ...FOOT].join(eol);
 }
 
+/** An edit of a list: the new list, and the stage it changes in place, if any. */
+interface Edit {
+  stages: StageToWrite[];
+  changes?: number;
+}
+
 /** The edits of a list: each is a new list of stages. */
-function editsOf(stages: StageView[], pick: () => number): StageView[][] {
+function editsOf(stages: StageView[], pick: () => number): Edit[] {
   const fresh = { name: 'extra', agent: 'k-tpm' };
+  const kept = stages.map((stage, from) => ({ ...stage, from }));
   const at = Math.floor(pick() * (stages.length + 1));
   return [
-    [...stages, fresh],
-    [fresh, ...stages],
-    [...stages.slice(0, at), fresh, ...stages.slice(at)],
-    ...stages.map((_, i) =>
-      stages.map((t, j) => (i === j ? { ...t, name: `${t.name}-b` } : t)),
-    ),
-    ...stages.map((_, i) =>
-      stages.map((t, j) => (i === j ? { ...t, agent: 'k-architect' } : t)),
-    ),
-    ...stages
-      .map((_, i) => stages.filter((__, j) => i !== j))
-      .filter((x) => x.length > 0),
-    [...stages].reverse(),
-    [...stages, fresh, { name: 'extra-2', agent: 'k-tpm' }],
+    { stages: [...kept, fresh] },
+    { stages: [fresh, ...kept] },
+    { stages: [...kept.slice(0, at), fresh, ...kept.slice(at)] },
+    ...kept.map((_, i) => ({
+      stages: kept.map((t, j) => (i === j ? { ...t, name: `${t.name}-b` } : t)),
+      changes: i,
+    })),
+    ...kept.map((_, i) => ({
+      stages: kept.map((t, j) =>
+        i === j ? { ...t, agent: 'k-architect' } : t,
+      ),
+      changes: i,
+    })),
+    ...kept
+      .map((_, i) => ({ stages: kept.filter((__, j) => i !== j) }))
+      .filter((x) => x.stages.length > 0),
+    { stages: [...kept].reverse() },
+    { stages: [...kept, fresh, { name: 'extra-2', agent: 'k-tpm' }] },
   ];
+}
+
+const plainStages = (stages: readonly StageToWrite[]): StageView[] =>
+  stages.map(({ name, agent }) => ({ name, agent }));
+
+function textOf(written: Written, label: string): string {
+  expect(written, label).toMatchObject({ ok: true });
+  return written.ok ? written.text : '';
 }
 
 function expectValid(text: string, stages: StageView[], label: string) {
@@ -163,15 +189,26 @@ describe('withStages in every layout of the list', () => {
           );
           expectValid(text, stages, `${name} as it is`);
 
-          for (const next of editsOf(stages, pick)) {
-            const written = withStages(text, viewOf(stages), next);
+          for (const edit of editsOf(stages, pick)) {
+            const label = `${name} ${JSON.stringify(edit.stages)}`;
+            const written = withStages(text, viewOf(stages), edit.stages);
 
-            expect(willRewriteWhole(text), name).toBe(false);
-            expectValid(written, next, `${name} ${JSON.stringify(next)}`);
+            expect(inPlaceBlocker(text, viewOf(stages)), name).toBeUndefined();
+            if (edit.changes !== undefined && isFlow(item, edit.changes)) {
+              expect(written, label).toEqual({
+                ok: false,
+                reason: expect.stringContaining(
+                  `The stage \`s${edit.changes + 1}\``,
+                ) as string,
+              });
+              continue;
+            }
+            const next = textOf(written, label);
+            expectValid(next, plainStages(edit.stages), label);
             expect(
-              written.startsWith(`${HEAD.join(eol)}${eol}stages:${eol}`),
+              next.startsWith(`${HEAD.join(eol)}${eol}stages:${eol}`),
             ).toBe(true);
-            expect(written.endsWith(FOOT.join(eol))).toBe(true);
+            expect(next.endsWith(FOOT.join(eol))).toBe(true);
           }
         }
       }
@@ -187,7 +224,10 @@ describe('withStages in every layout of the list', () => {
         stages.flatMap((s, n) => item(s, dash, n)),
       );
 
-      expect(withStages(text, viewOf(stages), stages)).toBe(text);
+      expect(withStages(text, viewOf(stages), stages)).toEqual({
+        ok: true,
+        text,
+      });
     },
   );
 
@@ -201,11 +241,11 @@ describe('withStages in every layout of the list', () => {
       );
 
       const written = withStages(text, viewOf(stages), [
-        ...stages,
+        ...stages.map((stage, from) => ({ ...stage, from })),
         { name: 'extra', agent: 'k-tpm' },
       ]);
 
-      expect(written).toContain(
+      expect(textOf(written, 'add')).toContain(
         `\n${dash}- name: extra\n${dash}  agent: k-tpm\n`,
       );
     },
@@ -214,20 +254,37 @@ describe('withStages in every layout of the list', () => {
 
 describe('withStages when the list cannot take new items', () => {
   it.each(FLOW_LAYOUTS)(
-    'writes the whole file, and valid text, for %s',
+    'refuses every edit, and writes nothing, for %s',
     (_name, lines) => {
       const stages = stagesOf(2, ['k-developer']);
       const text = fileOf('\n', lines(stages));
       expectValid(text, stages, 'as it is');
 
-      for (const next of editsOf(stages, random(7))) {
-        expect(willRewriteWhole(text)).toBe(true);
-        expectValid(
-          withStages(text, viewOf(stages), next),
-          next,
-          JSON.stringify(next),
-        );
+      expect(inPlaceBlocker(text, viewOf(stages))).toContain(
+        'written in brackets',
+      );
+      for (const edit of editsOf(stages, random(7))) {
+        expect(
+          withStages(text, viewOf(stages), edit.stages),
+          JSON.stringify(edit.stages),
+        ).toEqual({
+          ok: false,
+          reason: inPlaceBlocker(text, viewOf(stages)),
+        });
       }
+    },
+  );
+
+  it.each(FLOW_LAYOUTS)(
+    'writes the same text back for no edit, for %s',
+    (_name, lines) => {
+      const stages = stagesOf(2, ['k-developer']);
+      const text = fileOf('\n', lines(stages));
+
+      expect(withStages(text, viewOf(stages), stages)).toEqual({
+        ok: true,
+        text,
+      });
     },
   );
 });

@@ -6,11 +6,13 @@ import { useState, type ReactNode } from 'react';
 import type { Draft, EditState, Problem } from './core';
 import {
   errorsOf,
+  fileBlocker,
+  isDirty,
   listedOf,
   notesOf,
   problemsOfDraft,
   textOf,
-  willRewriteWhole,
+  writeBlocker,
 } from './core';
 import { MessageText } from '../workflow/MessageText';
 
@@ -74,8 +76,8 @@ function Conflict({
 }: {
   problem: string | undefined;
   reloading: boolean;
-  /** The text of the draft, which a reload replaces. */
-  mine: string;
+  /** The text of the draft, which a reload replaces, if it can be written. */
+  mine: string | undefined;
   onReload: () => void;
 }) {
   return (
@@ -90,7 +92,7 @@ function Conflict({
       }
     >
       {problem ?? CONFLICT_TEXT}
-      <CopyVersion text={mine} />
+      {mine !== undefined && <CopyVersion text={mine} />}
     </Alert>
   );
 }
@@ -166,6 +168,7 @@ export function EditAlerts({
           <CopyVersion text={state.discarded} />
         </Alert>
       )}
+      <Unwritable state={state} />
       {save.phase === 'failed' && (
         <Alert type="error" header={failureHeader(save)}>
           {save.message}
@@ -205,23 +208,39 @@ export function ProblemAlerts({ state }: { state: EditState }) {
   );
 }
 
+// A change of the draft that cannot be written in place. A reason that holds
+// for the whole file is already in the note above the graph, so it is not
+// said twice.
+function Unwritable({ state }: { state: EditState }) {
+  const reason = isDirty(state) ? writeBlocker(state) : undefined;
+  if (reason === undefined || reason === fileBlocker(state)) return null;
+  return (
+    <Alert
+      type="warning"
+      header="This change cannot be saved"
+      data-testid="not-in-place"
+    >
+      <MessageText text={reason} />
+    </Alert>
+  );
+}
+
 /**
- * Says, before a save, that the file will be written in the plain layout
- * because its stages are not a block, which drops its comments and `version`.
- * It is a static note, not part of the live region.
+ * Says, before any change, that no change to the stages of this file can be
+ * saved, and why: the editor writes a change only in place and never rewrites
+ * the file whole. It is a static note, not part of the live region.
  */
-export function RewriteNotice({ text }: { text: string }) {
-  if (!willRewriteWhole(text)) return null;
+export function InPlaceNotice({ state }: { state: EditState }) {
+  const reason = fileBlocker(state);
+  if (reason === undefined) return null;
   return (
     <div className="wf-edit-notice">
       <Alert
         type="info"
-        header="Saving rewrites this file"
-        data-testid="rewrite-notice"
+        header="Changes to this file cannot be saved here"
+        data-testid="in-place-notice"
       >
-        The stages of this file are not written as a list under{' '}
-        <code>stages:</code>, so a save writes the whole file in the plain
-        layout. Its comments and <code>version</code> are not kept.
+        <MessageText text={reason} />
       </Alert>
     </div>
   );
