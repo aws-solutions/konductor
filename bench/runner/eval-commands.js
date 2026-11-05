@@ -26,6 +26,8 @@ const { generateRunReport, generateContrast } = require('../report/generate.js')
 const { generateVerdict, KINDS } = require('../report/verdictgen.js');
 const { buildReport, defaultBaseline } = require('../report/aggregate.js');
 const { renderMarkdown } = require('../report/render.js');
+const { explainRuns } = require('../report/explain.js');
+const { buildTrace, renderMarkdown: renderTrace, locateRun } = require('./lib/trace.js');
 const { recheckAll } = require('./lib/recheck.js');
 const { backfillAll } = require('./lib/backfill.js');
 const { backfillSkills, summarizeSkillsBackfill, renderSkillsBackfill } = require('./lib/backfill-skills.js');
@@ -551,4 +553,27 @@ function cmdReport2x2(opts) {
   }
 }
 
-module.exports = { cmdReport2x2, cmdJudge, cmdRecheck, cmdBackfill, cmdReport, cmdCompare, cmdContrast, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };
+// explain: the arithmetic behind the quality number of saved runs. Reads files only.
+async function cmdExplain(opts) {
+  const dir = need(opts, 'run');
+  const benchDir = benchDirOf(opts);
+  const tasks = loadTasks(benchDir, { extraDirs: extraDirsOf(opts) });
+  const rep = opts.rep === undefined ? undefined : numOpt(opts, 'rep', null, { int: true });
+  console.log(explainRuns({
+    dir, tasks, brief: Boolean(opts.brief), scoringFile: opts.scoring && opts.scoring !== true ? path.resolve(opts.scoring) : undefined,
+    filter: { arm: flagValue(opts, 'arm') ?? undefined, task: flagValue(opts, 'task') ?? undefined, rep },
+  }));
+}
+
+// trace: the ordered timeline of one saved run. Reads files only.
+async function cmdTrace(opts) {
+  const dir = need(opts, 'run');
+  const format = flagValue(opts, 'format') ?? 'md';
+  if (!['md', 'json'].includes(format)) throw new Error('--format takes md or json');
+  for (const f of ['arm', 'task', 'rep']) if (opts[f] === undefined) throw new Error(`trace needs --${f} (one run: --arm A --task T --rep N)`);
+  const runDir = locateRun(dir, { arm: flagValue(opts, 'arm'), task: flagValue(opts, 'task'), rep: numOpt(opts, 'rep', null, { int: true }) });
+  const trace = buildTrace(runDir, { instructions: Boolean(opts.instructions), repoRoot: opts['repo-root'] ? path.resolve(opts['repo-root']) : path.resolve(__dirname, '..', '..') });
+  console.log(format === 'json' ? JSON.stringify(trace, null, 2) : renderTrace(trace, { full: Boolean(opts.full) }).trimEnd());
+}
+
+module.exports = { cmdExplain, cmdTrace, cmdReport2x2, cmdJudge, cmdRecheck, cmdBackfill, cmdReport, cmdCompare, cmdContrast, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };

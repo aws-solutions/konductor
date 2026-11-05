@@ -52,6 +52,8 @@ Credits are Kiro credits; the opencode and Claude Code harnesses and the opencod
 | Is konductor better than the bare agent overall? | `run --suite lite\|full\|hard\|real\|autonomy\|pilot`, then `judge --run`, then `report --run` | kiro-cli login; judge credentials | lite: tens of credits. The others: see the next table | `report.md`: the diligence scorecard first, then quality /100, reliability, cost ratio and the noise band. `report --verdict platform` gives keep, discard or not enough evidence per arm |
 | Does the code structure, the test quality, the written content (README, guides, design docs, reviews) or the design quality differ between arms, beyond what the task rubric checks? | `judge --run $RUNS --criteria-pack quality` (add `--plan` first), then `report --run $RUNS --criteria-pack quality` | finished runs; the judge credentials of the earlier judging | free with `--plan`; otherwise about one more rubric pass of judge calls | the "Quality dimensions" section of `report.md`: a 0 to 100 score per dimension and arm, the runs where it did not apply (n/a), and JUDGES DIFFER where the panel disagrees. Indicative, and not part of quality /100 |
 | Does konductor produce clearer requirements and better task breakdowns than the bare agent, and is the work well made even when the task is small? | `run --suite requirements` (plan first with `pr-plan --suite requirements`), `judge --run $RUNS`, `judge --run $RUNS --criteria-pack quality`, then `report --run $RUNS --criteria-pack quality --scoring bench/profiles/scoring-quality.json` | kiro-cli login and judge credentials | tens of credits for the runs; judging about one rubric pass plus one pack pass | the "Quality dimensions" and "Process signals" tables, and a quality /100 that includes the pack. Details in [Suites and arms](#suites-and-arms) |
+| Why did this run get this quality number? Which check or judge verdict cost the points? | `explain --run $RUNS --arm A --task T --rep N` (`--brief` for one line per run) | finished runs | free | checks with what was observed, hidden tests, the rubric per judge with evidence and downgrade notes, weights, the renormalised sum, and the number if checks were scored as a fraction |
+| Why did konductor behave this way in this run: what it read, which skills it looked up and loaded, whom it delegated to with what brief, what came back? | `trace --run $RUNS --arm A --task T --rep N` (`--instructions` adds the installed instruction lines that mention each skill or agent) | one finished kiro-cli or Claude Code run | free | a timeline plus a header: entry agent, skills listed against loaded, spawn tree, wall time, credits, flags and what the run directory cannot show |
 | Does the answer depend on the harness (Kiro CLI against Claude Code)? | `bash bench/scripts/pilot-2x2.sh`, then `report-2x2` | both harnesses and Bedrock credentials | credits on Kiro, USD on Claude Code and the judge | `factorial-2x2.md` and `charts/`: quality per cell, the konductor effect per harness, cost ratios inside each harness |
 
 ### Start each process
@@ -185,6 +187,34 @@ A DELETE or PRUNE call needs: passed known-answer controls, an A/A arm, at least
 and medium or high confidence (30 or more runs per side for high). A "no effect" DELETE also needs an A/A spread under the 0.10 margin. These thresholds are this project's own choices.
 Anything weaker is NEEDS DATA, which means "this study cannot say", not "no effect". The reason is printed.
 The most common reasons: the skill loaded in under 30% of control runs, wave 1 had not finished, or tasks timed out.
+
+## Find out why a run behaved that way
+
+Two read-only commands answer "why" for a finished run. Neither calls a model nor writes into the run directory. The examples use a five-arm lite run; replace the path with yours.
+
+`explain` shows the arithmetic behind one quality number. A run directory with several arms works, as does a 2x2 cell directory or a 2x2 root (then `--arm` may name a cell such as `kiro-vanilla`).
+
+```
+node bench/runner/bench.js explain --run /var/tmp/stack-cmp/run --arm v1.2.0 --task design-hold-service --rep 1
+node bench/runner/bench.js explain --run /var/tmp/stack-cmp/run --task design-hold-service --brief
+node bench/runner/bench.js explain --run /var/tmp/pilot-2x2-req --arm kiro-konductor --task plan-multipart-feature
+```
+
+The output has six parts: header, checks (each with what was observed when it failed), hidden tests, the rubric (each judge's verdict per criterion, the quote, and a note when the quote was not found and the verdict dropped one level), the weights with their renormalisation and the final number, and a what-if with checks scored as a fraction. `--scoring FILE` explains under another weights file.
+
+`trace` shows what one run did, in order: the prompt, each assistant message, every tool call with shortened arguments, `find_skills` and `get_skill` calls, each delegation with the brief and what the specialist returned, files written, and credits and time per turn where the stream records them. Messages and tool calls made while a delegation is open are attributed to the specialist; that attribution is read from order and, for tool calls, the sub-task id, so treat a message line as probable.
+
+```
+node bench/runner/bench.js trace --run /var/tmp/stack-cmp/run --arm mainsha --task design-hold-service --rep 1
+node bench/runner/bench.js trace --run /var/tmp/stack-cmp/run --arm stack149 --task design-hold-service --rep 1 --instructions
+node bench/runner/bench.js trace --run /var/tmp/pilot-2x2 --arm cc-konductor --task design-hold-service --rep 1 --format json
+```
+
+The header lists the entry agent, how many skills its installed filter offered against which were loaded, the spawn tree, wall time, credits or USD, the result flags, and what the run directory cannot show. A run saved before session files were kept is flagged `transcriptPartial`; the header then says no session files exist and the trace comes from `stream.jsonl` alone, which has messages, thoughts, tool calls and their results but no model prompts and no per-event timestamps.
+
+`--instructions` adds, under each skill load and delegation, the lines of installed instruction text that mention the skill or agent: the installed agent's prompt from the run, and the agent spec, the contexts it lists and the delegation skill read from the arm's commit in `--repo-root` (default: this repository). It is marked INFERRED. A match shows what the instructions say about the name; it does not prove the instruction caused the call. Add `--full` to print briefs, results and thoughts without shortening.
+
+A run's quality can also be read in the report (`report --run $RUNS`); `explain` is for one run. For skills, `cap prune-report` and `skills --run DIR` count loads over many runs; `trace` is for one.
 
 ## What it cannot tell you yet
 

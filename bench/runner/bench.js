@@ -70,6 +70,15 @@ const USAGE = `Usage:
        (gpt-5.6-luna, deepseek-3.2, glm-5, qwen3-coder-next, minimax-m2.5) and are mapped to Bedrock ids. One results directory keeps one backend; kiro is the default)
        (--mode takes rubric, pairwise, graded. graded asks for a 1 to 5 grade of each response in both answer orders and reports where the preference flipped
        with position. --profile detailed makes rubric,pairwise,graded the default modes. Every call is a line in credit-ledger.jsonl)
+  node bench/runner/bench.js explain --run DIR [--arm A] [--task T] [--rep N] [--brief] [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
+       (how the quality number of saved runs was computed: every check with what was observed, hidden tests, the rubric per judge with its evidence and downgrade
+       notes, the weights and their renormalisation, the final number, and the number if checks were scored as a fraction. --run takes a run directory with
+       several arms, a 2x2 cell directory, or a 2x2 root (then --arm may name a cell). --brief prints one line per run. Reads files only; no model, no writes)
+  node bench/runner/bench.js trace --run DIR --arm A --task T --rep N [--format md|json] [--full] [--instructions] [--repo-root DIR]
+       (the timeline of one saved run from its stream.jsonl: the prompt, each assistant turn, every tool call, skill discovery and loads, each delegation with its
+       brief and what came back, files written, credits and time per turn, and a header with the entry agent, skills listed against loaded, the spawn tree, wall time,
+       credits, flags and what the run directory cannot show. --full prints briefs, results and thoughts in full. --instructions adds, for each skill load and
+       delegation, the installed instruction lines that mention it (read from the arm's commit in --repo-root, default this repository), marked INFERRED. Kiro and Claude Code runs)
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
        [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
@@ -297,6 +306,8 @@ async function main(argv) {
   if (cmd === 'report') return evalCommands.cmdReport(opts);
   if (cmd === 'report-2x2') return evalCommands.cmdReport2x2(opts);
   if (cmd === 'recheck') return evalCommands.cmdRecheck(opts);
+  if (cmd === 'explain') return evalCommands.cmdExplain(opts);
+  if (cmd === 'trace') return evalCommands.cmdTrace(opts);
   if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);
