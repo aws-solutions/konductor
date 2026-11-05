@@ -74,6 +74,32 @@ done
 # AGENT is the name from the orchestrator routing table (e.g. 'k-developer'),
 # or one qualified with this plugin's name ('konductor:k-developer').
 [[ "$AGENT" =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only, optionally prefixed with '<plugin>:'" >&2; exit 1; }
+
+# Permission mode for a Claude Code child session, from
+# KONDUCTOR_DISPATCH_PERMISSION_MODE. Kiro CLI children ignore it.
+quote_args() {
+  local out="" a
+  for a in "$@"; do out+=" $(printf '%q' "$a")"; done
+  printf '%s' "$out"
+}
+CLAUDE_PERMISSION_ARGS=""
+if [[ -n "${CLAUDECODE:-}" ]]; then
+  case "${KONDUCTOR_DISPATCH_PERMISSION_MODE:-interactive}" in
+    interactive) ;;
+    headless) CLAUDE_PERMISSION_ARGS="$(quote_args -p --permission-mode acceptEdits --permission-prompts none)" ;;
+    bypass)
+      CLAUDE_PERMISSION_ARGS="$(quote_args --dangerously-skip-permissions -p)"
+      echo "WARNING: KONDUCTOR_DISPATCH_PERMISSION_MODE=bypass: the child session skips every permission check. Use it only in an isolated environment." >&2
+      ;;
+    *)
+      echo "ERROR: KONDUCTOR_DISPATCH_PERMISSION_MODE must be interactive, headless or bypass (got '${KONDUCTOR_DISPATCH_PERMISSION_MODE}')" >&2
+      exit 1
+      ;;
+  esac
+  # claude reads a prompt that starts with '-' as an option; a leading space
+  # keeps it a prompt.
+  [[ "$TASK" == -* ]] && TASK=" $TASK"
+fi
 CMUX_BIN="${CMUX_BIN:-/Applications/cmux.app/Contents/MacOS/cmux}"
 [[ -x "$CMUX_BIN" ]] || { echo "ERROR: cmux binary not found or not executable (set CMUX_BIN to override)" >&2; exit 1; }
 cmux() { "$CMUX_BIN" "$@"; }
@@ -241,7 +267,7 @@ if [ -n "${CLAUDECODE:-}" ]; then
   # hardcoded /tmp/konductor-cmux literal, so a test pointed at an
   # isolated registry dir never leaks a .done file into the real one.
   DONE_FILE="${REGISTRY_DIR}/${DONE_KEY}.done"
-  PANE_CMD="${CMD_PREFIX}claude --agent \"${PREFIX}${AGENT}\" --dangerously-skip-permissions -p \"\$(cat '${TASK_FILE}')\""
+  PANE_CMD="${CMD_PREFIX}export KONDUCTOR_DONE_FILE=$(printf '%q' "$DONE_FILE") && claude --agent \"${PREFIX}${AGENT}\"${CLAUDE_PERMISSION_ARGS} \"\$(cat '${TASK_FILE}')\""
   # Fix 2: capture claude exit code; set status done/error to mirror tmux/zellij
   PANE_CMD="${PANE_CMD} ; ec=\$? ; st=done ; [ \"\$ec\" != 0 ] && st=error"
   PANE_CMD="${PANE_CMD} ; mkdir -p '${REGISTRY_DIR}' && python3 -c \"import json; f=open('${DONE_FILE}','w'); json.dump({'workspace_id':'${RECORDED_WS_ID}','status':'\$st','summary':'claude exit'},f)\""

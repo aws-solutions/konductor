@@ -37,6 +37,32 @@ done
 # or one qualified with this plugin's name ('konductor:k-developer').
 [[ "$AGENT" =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only, optionally prefixed with '<plugin>:'" >&2; exit 1; }
 
+# Permission mode for a Claude Code child session, from
+# KONDUCTOR_DISPATCH_PERMISSION_MODE. Kiro CLI children ignore it.
+quote_args() {
+  local out="" a
+  for a in "$@"; do out+=" $(printf '%q' "$a")"; done
+  printf '%s' "$out"
+}
+CLAUDE_PERMISSION_ARGS=""
+if [[ -n "${CLAUDECODE:-}" ]]; then
+  case "${KONDUCTOR_DISPATCH_PERMISSION_MODE:-interactive}" in
+    interactive) ;;
+    headless) CLAUDE_PERMISSION_ARGS="$(quote_args -p --permission-mode acceptEdits --permission-prompts none)" ;;
+    bypass)
+      CLAUDE_PERMISSION_ARGS="$(quote_args --dangerously-skip-permissions -p)"
+      echo "WARNING: KONDUCTOR_DISPATCH_PERMISSION_MODE=bypass: the child session skips every permission check. Use it only in an isolated environment." >&2
+      ;;
+    *)
+      echo "ERROR: KONDUCTOR_DISPATCH_PERMISSION_MODE must be interactive, headless or bypass (got '${KONDUCTOR_DISPATCH_PERMISSION_MODE}')" >&2
+      exit 1
+      ;;
+  esac
+  # claude reads a prompt that starts with '-' as an option; a leading space
+  # keeps it a prompt.
+  [[ "$TASK" == -* ]] && TASK=" $TASK"
+fi
+
 # In a Claude Code plugin this skill sits at <plugin root>/skills/mux-dispatch/,
 # and Claude Code names the plugin's agents <plugin>:<agent>.
 PLUGIN_ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -156,7 +182,8 @@ fi
     printf '  echo "ERROR: claude agent %s not installed under ~/.claude/agents or in this plugin; not dispatching"\n' "$AGENT"
     printf '  EXIT_CODE=1\n'
     printf 'else\n'
-    printf '  claude --agent "${PREFIX}%s" --dangerously-skip-permissions -p "$TASK"\n' "$AGENT"
+    printf '  export KONDUCTOR_DONE_FILE=%q\n' "${REGISTRY_DIR}/${WS_ID}.done"
+    printf '  claude --agent "${PREFIX}%s"%s "$TASK"\n' "$AGENT" "$CLAUDE_PERMISSION_ARGS"
     echo '  EXIT_CODE=$?'
     printf 'fi\n'
   else

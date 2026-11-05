@@ -9,8 +9,20 @@ description: Delegate tasks to parallel agent sessions via tmux or zellij. Auto-
 
 The orchestrator always dispatches via panes. The dispatch script selects the CLI automatically:
 
-- **Claude Code** (`$CLAUDECODE` is set): runs `claude --agent <PREFIX><agent-name> --dangerously-skip-permissions -p "<prompt>"` in the pane, where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`). The script never strips a prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. If `~/.claude/agents/` has no match and the skill ships inside a Claude Code plugin whose `agents/` has that agent, the bare name is launched and Claude resolves it to `<plugin>:<agent>`. A qualified `--agent` (`konductor:k-developer`) is launched only if the prefix is this plugin's name (from its `.claude-plugin/plugin.json`) and the plugin ships that agent; anything else is refused as not installed. **`--agent` must be a fully-qualified name.** If it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+`, optionally prefixed with `<plugin>:`, before any of this runs. Completion is detected via process exit (claude -p exits on task completion); the script then `touch`es the `.done` marker file.
+- **Claude Code** (`$CLAUDECODE` is set): runs `claude --agent <PREFIX><agent-name> <mode flags> "<prompt>"` in the pane, with the flags set by the permission mode (see [Permission modes](#permission-modes-claude-code)), where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`). The script never strips a prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. If `~/.claude/agents/` has no match and the skill ships inside a Claude Code plugin whose `agents/` has that agent, the bare name is launched and Claude resolves it to `<plugin>:<agent>`. A qualified `--agent` (`konductor:k-developer`) is launched only if the prefix is this plugin's name (from its `.claude-plugin/plugin.json`) and the plugin ships that agent; anything else is refused as not installed. **`--agent` must be a fully-qualified name.** If it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+`, optionally prefixed with `<plugin>:`, before any of this runs. The launcher exports `KONDUCTOR_DONE_FILE` before `claude` runs and writes the `.done` marker file after `claude` exits. That exit fallback is the only `.done` source for a Claude Code child; no hook writes it.
 - **kiro-cli** (default): runs `kiro-cli chat --agent <agent-name> ...` in the pane, using the exact `--agent` value passed in — no prefix is added or stripped. Completion is detected via the kiro-cli `stop` hook writing the `.done` file.
+
+## Permission modes (Claude Code)
+
+`KONDUCTOR_DISPATCH_PERMISSION_MODE` sets how a Claude Code child session starts. Kiro CLI children ignore it.
+
+| Mode | Child command | What the child can do |
+| --- | --- | --- |
+| `interactive` (default) | `claude --agent <agent> "<prompt>"` | Runs as a normal session in the pane and asks you there before it uses a tool that needs permission. Its `.done` file appears only after you exit that session. |
+| `headless` | `claude --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<prompt>"` | Runs once and exits. It can edit files. Any other call that would prompt, Bash and network calls included, is denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows it. `acceptEdits` alone does not allow build or test commands. |
+| `bypass` | `claude --agent <agent> --dangerously-skip-permissions -p "<prompt>"` | Skips every permission check. It is opt-in and meant only for an isolated environment, such as a disposable container or VM. The dispatch script prints a warning. |
+
+Any other value makes the dispatch script exit with an error before it opens a pane. Set the mode by exporting the variable in the shell that starts Claude Code, or, in the Claude Code plugin, with the plugin's `dispatch_permission_mode` option. An exported variable wins over the option. A prompt that starts with `-` is passed with a leading space, so `claude` reads it as the prompt and not as an option.
 
 ## Overview
 
@@ -84,7 +96,7 @@ unchanged when calling them through `dispatch.sh`.
 | `--split right\|down` | No       | Split direction (default: right)                                                                                  |
 | `--tab`               | No       | Create a new window instead of a split                                                                            |
 | `--close`             | No       | Auto-close pane when agent finishes (panes stay open by default; close via `--close` or `mux-close-pane.sh`)      |
-| `--interactive`       | No       | Keep the kiro-cli session open for mid-task human interaction (kiro-cli only; Claude Code runs one-shot via `-p`) |
+| `--interactive`       | No       | Keep the kiro-cli session open for mid-task human interaction (kiro-cli only; on Claude Code the permission mode decides) |
 
 **Examples:**
 
@@ -125,7 +137,7 @@ bash "<MUX_DISPATCH_DIR>/zellij-dispatch.sh" \
 
 ## Completion Detection
 
-Each agent's kiro-cli `stop` hook writes a done file via `mux-completion-hook.sh`:
+Each agent's kiro-cli `stop` hook writes a done file via `mux-completion-hook.sh`. On Claude Code the launcher writes it after `claude` exits:
 
 - Path: `/tmp/konductor-mux/<workspace-id>.done`
 - Format: `{"workspace_id": "...", "status": "done|error", "summary": "..."}`
