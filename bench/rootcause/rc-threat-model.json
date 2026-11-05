@@ -1,0 +1,139 @@
+{
+  "id": "rc-threat-model",
+  "class": "design",
+  "target": "k-architect",
+  "prompt": "docs/architecture.md describes a file-sharing service. Write a threat model at docs/threat-model.md: the assets, the trust boundaries, and the threats by STRIDE category, each with a likelihood, an impact and a mitigation. Cover every component in the description. Do not change the architecture document. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-share-service",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/threat-model.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/threat-model.md)\" -ge 25 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/threat-model.md)\" -le 400 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "docs/threat-model.md",
+      "pattern": "^#{1,6}\\s*.*\\bassets?\\b|\\bassets?\\b\\s*:"
+    },
+    {
+      "type": "contains",
+      "path": "docs/threat-model.md",
+      "pattern": "trust[- ]boundar(?:y|ies)"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");const G=[\"spoofing\",\"tampering\",\"repudiation\",\"information disclosure|disclosure of information|data exposure\",\"denial[- ]of[- ]service|\\\\bdos\\\\b\",\"elevation of privilege|privilege escalation|escalat\"];let c=0;for(const g of G)if(new RegExp(g,\"i\").test(t))c++;process.exit(c>=5?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");const G=[\"web app|browser|single-page|spa\\\\b\",\"api service|\\\\bapi\\\\b\",\"identity provider|single sign-on|\\\\bsso\\\\b|openid|oidc\",\"object store|bucket|blob\",\"metadata database|database|\\\\bdb\\\\b\",\"scan worker|scanner|virus scan|malware scan\",\"mailer|smtp|email\",\"admin console|admin\"];let c=0;for(const g of G)if(new RegExp(g,\"i\").test(t))c++;process.exit(c>=7?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/threat-model.md",
+      "pattern": "\\b(?:high|medium|low|critical)\\b",
+      "min": 12
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/threat-model.md",
+      "pattern": "\\b(?:mitigat\\w*|controls?|countermeasures?|fix(?:es)?|enforce|requires?|required|rate[- ]limit\\w*|encrypt\\w*|restrict\\w*|limit|revoke|quarantine|expir\\w*|lockout|sanitiz\\w*|salted|tls|audit)\\b",
+      "min": 8
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");/*TM1*/const A=new RegExp(\"token|guess|enumerat|brute[- ]force|entropy\",\"gi\"),R=[new RegExp(\"link|share\",\"i\"),new RegExp(\"short|6|six|guess|enumerat|entropy|random|length|characters?|brute\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");/*TM2*/const A=new RegExp(\"scan|malware|virus|infected\",\"gi\"),R=[new RegExp(\"before|after|async|immediately|until|quarantine|unscanned|serve|download|available\",\"i\"),new RegExp(\"file|upload\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");/*TM3*/const A=new RegExp(\"expir|never expire|pre-?signed|forward|24 hours|lifetime\",\"gi\"),R=[new RegExp(\"link|url|share\",\"i\"),new RegExp(\"default|never|long|forward|revoke|24|hours|days|short|expire\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");/*TM4*/const A=new RegExp(\"audit|logging|logs?|repudiat|non-?repudiation|accountab\",\"gi\"),R=[new RegExp(\"download|admin|who|actor|ip|requester|not logged|no log|missing|without|cannot prove|trace\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");/*TM5*/const A=new RegExp(\"rate[- ]limit|brute|lockout|attempts|size limit|max(?:imum)? size|denial of service|\\\\bdos\\\\b|exhaust\",\"gi\"),R=[new RegExp(\"password|upload|attempt|size|request|link\",\"i\"),new RegExp(\"no |not |without|unlimited|missing|lacks?|add|limit|throttl|lockout|cap\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");/*TM6*/const A=new RegExp(\"admin\",\"gi\"),R=[new RegExp(\"role|authori[sz]|privilege|ui only|hidden|client-?side|check|elevation|any (?:logged|authenticated|signed)|logged[- ]in|signed-in\",\"i\"),new RegExp(\"api|endpoint|server|backend|ui|button\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");/*TM7*/const A=new RegExp(\"email|mail|smtp|notification\",\"gi\"),R=[new RegExp(\"link|filename|file name|plain|tls|encrypt|disclos|leak|expos|inbox|forward\",\"i\"),new RegExp(\"tls|plain|encrypt|disclos|leak|expos|forward|inbox|sensitive|contain\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");/*TM8*/const A=new RegExp(\"sha-?1|unsalted|salt|hash|bcrypt|argon|scrypt|pbkdf\",\"gi\"),R=[new RegExp(\"password\",\"i\"),new RegExp(\"weak|unsalted|salt|bcrypt|argon|scrypt|pbkdf|offline|crack|slow|stretch|rainbow|sha-?1\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/threat-model.md\",\"utf8\");/*TM9*/const A=new RegExp(\"cookie|csrf|session|samesite|httponly\",\"gi\"),R=[new RegExp(\"secure|httponly|samesite|csrf|flags?|hijack|fixation|steal|xss|forged|forgery|attributes?\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/architecture.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "structure",
+      "criterion": "Lists the assets, names at least three trust boundaries, covers all 8 components and uses the STRIDE categories, with a likelihood, an impact and a mitigation for each threat.",
+      "weight": 2
+    },
+    {
+      "id": "exposure-threats",
+      "criterion": "Finds the guessable 6-character token (TM1), the file served before the scan finishes (TM2) and the links and download URLs that never or slowly expire (TM3), each tied to the flow in the description.",
+      "weight": 3
+    },
+    {
+      "id": "access-threats",
+      "criterion": "Finds that the admin endpoints check only a valid session (TM6), that password attempts are unlimited and uploads have no size limit (TM5), and the weak password hash (TM8).",
+      "weight": 3
+    },
+    {
+      "id": "accountability-and-channels",
+      "criterion": "Finds the missing audit trail for downloads and admin actions (TM4), the email that carries the link and file name with optional TLS (TM7) and the unspecified cookie protections (TM9).",
+      "weight": 2
+    },
+    {
+      "id": "no-false-claims",
+      "criterion": "Does not claim a control that the description lacks (rate limiting, scan before download, server-side admin checks, salted hashes), invents no component, and rates TM1, TM2 and TM6 at least medium.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

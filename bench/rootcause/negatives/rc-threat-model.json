@@ -1,0 +1,351 @@
+{
+  "loosened": [
+    4,
+    5,
+    6,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "cases": [
+    {
+      "name": "TM1 phrased differently",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "The share token has only 6 characters, so an attacker can guess or enumerate links; use 128-bit random tokens.\n"
+      }
+    },
+    {
+      "name": "TM1 near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Tokens are used for links.\n"
+      }
+    },
+    {
+      "name": "TM1 near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Session tokens expire after an hour.\n"
+      }
+    },
+    {
+      "name": "TM2 phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "Files are downloadable before the virus scan finishes, so unscanned malware can be served; quarantine until scanned.\n"
+      }
+    },
+    {
+      "name": "TM2 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Scanning is performed by a worker.\n"
+      }
+    },
+    {
+      "name": "TM2 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Malware is a risk in general.\n"
+      }
+    },
+    {
+      "name": "TM3 phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "Links never expire by default and pre-signed URLs last 24 hours and can be forwarded; make expiry mandatory.\n"
+      }
+    },
+    {
+      "name": "TM3 near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Expiry is configurable.\n"
+      }
+    },
+    {
+      "name": "TM3 near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "The pre-signed URL is returned to the browser.\n"
+      }
+    },
+    {
+      "name": "TM4 phrased differently",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "Repudiation: downloads through links and admin actions are not logged, so no one can prove who did what; add an audit trail.\n"
+      }
+    },
+    {
+      "name": "TM4 near miss 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Logs are rotated daily.\n"
+      }
+    },
+    {
+      "name": "TM4 near miss 2",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "The audit is scheduled.\n"
+      }
+    },
+    {
+      "name": "TM5 phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "No limit on password attempts allows brute force, and uploads have no size limit, so storage can be exhausted; add rate limits and a size cap.\n"
+      }
+    },
+    {
+      "name": "TM5 near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Denial of service is a category.\n"
+      }
+    },
+    {
+      "name": "TM5 near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Passwords are required.\n"
+      }
+    },
+    {
+      "name": "TM6 phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "Admin endpoints only check that the user is logged in; the admin button is hidden in the UI, so any user can escalate privilege. Enforce roles on the API.\n"
+      }
+    },
+    {
+      "name": "TM6 near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "The admin console exists.\n"
+      }
+    },
+    {
+      "name": "TM6 near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Admins are trusted.\n"
+      }
+    },
+    {
+      "name": "TM7 phrased differently",
+      "check": 15,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "Notification emails put the share link and file name in plain text and TLS is optional, which can disclose them; send only a notice and require TLS.\n"
+      }
+    },
+    {
+      "name": "TM7 near miss 1",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Emails are sent by the mailer.\n"
+      }
+    },
+    {
+      "name": "TM7 near miss 2",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "The email subject is short.\n"
+      }
+    },
+    {
+      "name": "TM8 phrased differently",
+      "check": 16,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "Link passwords are stored as unsalted SHA-1 hashes, which can be cracked offline; use argon2 or bcrypt.\n"
+      }
+    },
+    {
+      "name": "TM8 near miss 1",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Passwords are hashed.\n"
+      }
+    },
+    {
+      "name": "TM8 near miss 2",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "The hash of the file is stored.\n"
+      }
+    },
+    {
+      "name": "TM9 phrased differently",
+      "check": 17,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "The session cookie has no HttpOnly, Secure or SameSite flags and no CSRF protection is described.\n"
+      }
+    },
+    {
+      "name": "TM9 near miss 1",
+      "check": 17,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Sessions are created at sign-in.\n"
+      }
+    },
+    {
+      "name": "TM9 near miss 2",
+      "check": 17,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "The cookie is brown.\n"
+      }
+    },
+    {
+      "name": "stride all six",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege.\n"
+      }
+    },
+    {
+      "name": "stride five with other phrasing",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "spoofing tampering repudiation denial-of-service privilege escalation\n"
+      }
+    },
+    {
+      "name": "stride two categories",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Spoofing and tampering only.\n"
+      }
+    },
+    {
+      "name": "stride no categories",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Threats are listed by component.\n"
+      }
+    },
+    {
+      "name": "components all eight",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "web app, API service, identity provider, object store, metadata database, scan worker, mailer, admin console\n"
+      }
+    },
+    {
+      "name": "components two components",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "web app and API service\n"
+      }
+    },
+    {
+      "name": "components no components",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "The system has several parts.\n"
+      }
+    },
+    {
+      "name": "boundaries heading",
+      "check": 4,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "docs/threat-model.md": "## Trust boundaries\n"
+      }
+    },
+    {
+      "name": "boundaries word without trust",
+      "check": 4,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "There is a boundary somewhere.\n"
+      }
+    },
+    {
+      "name": "boundaries trusted users",
+      "check": 4,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "docs/threat-model.md": "Trusted users only.\n"
+      }
+    }
+  ]
+}

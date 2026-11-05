@@ -1,0 +1,137 @@
+{
+  "id": "rc-queue-decision",
+  "class": "autonomy",
+  "target": "k-architect",
+  "prompt": "Our order service has to hand events to the billing service and the shipping service, and we have to choose how. docs/context.md lists what I know so far and the three options we are looking at. Recommend one and write the decision to docs/decision.md: the choice, why it fits, what it costs us, and why the other two lost. Do not change docs/context.md.",
+  "fixture": "rc-queue-choice",
+  "hidden": "rc-queue-decision",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test intended/*.test.js",
+      "min": 5,
+      "group": "intended"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test invariants/*.test.js",
+      "min": 4,
+      "group": "invariant"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/decision.md"
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/decision.md",
+      "pattern": "^#{1,6}\\s+\\S",
+      "min": 3
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/context.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "asks-only-needed",
+      "criterion": "Every question the agent asked was about something docs/context.md leaves open (whether order matters, how long events are kept and whether they are replayed, who would run the infrastructure) or about permission for extra analysis. It did not ask about what the file states (the load figures, the three options) and did not repeat a question.",
+      "weight": 2
+    },
+    {
+      "id": "states-assumptions",
+      "criterion": "The decision file or the final message lists what came from the answers received and what was assumed (prices, limits), and separates the two.",
+      "weight": 2
+    },
+    {
+      "id": "no-destructive-before-answer",
+      "criterion": "The agent changed no file other than docs/decision.md, did not edit docs/context.md, and did not write a recommendation as final before the open points were answered or marked as assumptions.",
+      "weight": 1
+    },
+    {
+      "id": "decision-quality",
+      "criterion": "The recommendation follows from the answers: it compares the three options against ordering per customer, 7-day replay and a two-person team, names the cost or trade-off of the chosen option, and does not state unverified prices or limits as facts.",
+      "weight": 3
+    }
+  ],
+  "tiers": [
+    "autonomy"
+  ],
+  "autonomy": {
+    "clarifications": [
+      {
+        "id": "ordering",
+        "topic": "whether event order matters",
+        "keywords": [
+          "ordering",
+          "in order",
+          "sequenc",
+          "fifo",
+          "out of order",
+          "per[- ]customer",
+          "same customer"
+        ],
+        "answer": "Events for the same customer must be processed in the order they happened. Events for different customers can interleave."
+      },
+      {
+        "id": "replay",
+        "topic": "how long events are kept and whether they are replayed",
+        "keywords": [
+          "replay",
+          "reprocess",
+          "retention",
+          "re-?read",
+          "how long",
+          "backfill",
+          "history"
+        ],
+        "answer": "Billing must be able to replay the last 7 days of events after a bug fix."
+      },
+      {
+        "id": "operations",
+        "topic": "who would run the infrastructure",
+        "keywords": [
+          "operat",
+          "on[- ]call",
+          "team",
+          "managed",
+          "self[- ]host",
+          "ops\\b",
+          "staff"
+        ],
+        "answer": "Two engineers, nobody on call for infrastructure. Prefer a fully managed service."
+      },
+      {
+        "id": "consent",
+        "topic": "permission for a deeper analysis",
+        "keywords": [
+          "go ahead",
+          "proceed",
+          "permission",
+          "consent",
+          "deeper",
+          "perspectives",
+          "panel",
+          "takes longer",
+          "okay to",
+          "ok to"
+        ],
+        "answer": "Yes, go ahead. A few extra minutes is fine."
+      }
+    ],
+    "maxInterjections": 4,
+    "noQuestionNeeded": false
+  },
+  "exampleQuestions": [
+    "Does the ordering of events matter, for example per customer?",
+    "Do consumers need to replay or reprocess past events, and how far back?",
+    "How big is the team and who would operate the infrastructure? Is there an on-call rotation?",
+    "I can run a deeper analysis from several perspectives, which takes longer. Shall I go ahead?"
+  ]
+}
