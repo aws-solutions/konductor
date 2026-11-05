@@ -59,6 +59,7 @@ pub(crate) enum PersonaError {
     DigestUnreadable { path: PathBuf },
     DigestTooLarge { path: PathBuf },
     PathTooLong { install_root: PathBuf },
+    OutsideTrustedLocations { install_root: PathBuf },
 }
 
 /// `SessionStart` (Kiro CLI v3, Claude Code) and `agentSpawn` (Kiro CLI
@@ -155,7 +156,25 @@ fn persona_reason(error: &PersonaError) -> String {
              path than {}",
             display_path(install_root, home.as_deref())
         ),
+        PersonaError::OutsideTrustedLocations { install_root } => format!(
+            "the install at {} is outside the locations konductor follows; install under your \
+             home directory or the project root",
+            display_path(install_root, home.as_deref())
+        ),
     }
+}
+
+/// Rule 11 trusts a rules file under the home directory or at the
+/// project root. Outside the home, the install root is the project root
+/// when it is the working directory itself or a git checkout root that
+/// contains it.
+fn is_trusted_location(owning_root: &Path, home: Option<&Path>, cwd: &Path) -> bool {
+    let canonical =
+        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let root = canonical(owning_root);
+    home.is_some_and(|home| root.starts_with(canonical(home)))
+        || root == canonical(cwd)
+        || (root.join(".git").exists() && canonical(cwd).starts_with(&root))
 }
 
 /// `<home>/rest` as `~/rest`; any other path unchanged.
@@ -352,8 +371,18 @@ pub(crate) fn dispatch_orchestration_hook(
     if own_install.is_some_and(|own| !same_dir(own, owning_root)) {
         return;
     }
+    // `current_dir()` is physical; name the home as the session knows it.
+    let persona_root = home
+        .as_deref()
+        .filter(|home| same_dir(owning_root, home))
+        .unwrap_or(owning_root);
     let output = decide(&resolve_user_mode(home.as_deref()), || {
-        load_persona(owning_root)
+        if !is_trusted_location(owning_root, home.as_deref(), cwd) {
+            return Err(PersonaError::OutsideTrustedLocations {
+                install_root: persona_root.to_path_buf(),
+            });
+        }
+        load_persona(persona_root)
     });
     write_stdout(&render(&output));
 }
@@ -376,6 +405,27 @@ mod tests {
         upsert_strategy, ManifestFile, Provenance, Status, StrategyManifest,
     };
     use crate::cli::telemetry_hook::{resolve_invocations, HookEnv, AGENT_INVOCATION};
+
+    #[test]
+    fn an_install_root_is_trusted_inside_home_at_the_working_directory_or_at_a_git_root() {
+        let base = scratch_dir("trusted-location");
+        let home = base.join("home");
+        let project = base.join("work/proj");
+        let plain = base.join("work/plain");
+        std::fs::create_dir_all(home.join("proj")).unwrap();
+        std::fs::create_dir_all(project.join(".git")).unwrap();
+        std::fs::create_dir_all(project.join("sub/dir")).unwrap();
+        std::fs::create_dir_all(plain.join("sub")).unwrap();
+        let trusted = |root: &Path, cwd: &Path| is_trusted_location(root, Some(&home), cwd);
+        assert!(trusted(&home, &home.join("proj")));
+        assert!(trusted(&home.join("proj"), &base));
+        assert!(trusted(&plain, &plain));
+        assert!(trusted(&project, &project.join("sub/dir")));
+        assert!(!trusted(&plain, &plain.join("sub")));
+        assert!(!trusted(&project.join("sub"), &project));
+        assert!(!trusted(&project, &plain));
+        std::fs::remove_dir_all(&base).ok();
+    }
 
     const KIRO_V3_PAYLOAD: &str = r#"{"session_id":"sess_8147fdc3-f3ec-4b32-a669-a0d26bd4cea0","hook_event_name":"SessionStart","cwd":"/private/tmp"}"#;
     const CLAUDE_PAYLOAD: &str = r#"{"session_id":"4a192073-b15a-4eaa-89d3-d0ca80107561","transcript_path":"/x.jsonl","cwd":"/private/tmp","agent_type":"konductor","hook_event_name":"SessionStart","source":"startup"}"#;

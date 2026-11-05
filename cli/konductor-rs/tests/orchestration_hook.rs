@@ -278,6 +278,106 @@ fn the_pointer_keeps_a_symlinked_home_as_the_session_knows_it() {
 }
 
 #[test]
+fn a_session_inside_a_symlinked_home_gets_the_logical_pointer_and_fallback() {
+    let physical_home = scratch_dir("home-physical-inside");
+    install_into(&physical_home, &physical_home, &["konductor"]);
+    set_mode(&physical_home, "orchestration:\n  mode: coordinator\n");
+    let links = scratch_dir("home-links-inside");
+    let logical_home = links.join("home-link");
+    std::os::unix::fs::symlink(&physical_home, &logical_home).unwrap();
+    let project = logical_home.join("project");
+    std::fs::create_dir_all(&project).unwrap();
+
+    let stdout = fire(
+        &logical_home,
+        &project,
+        &[],
+        &[],
+        &claude_payload(Some("konductor"), "startup"),
+    );
+    let logical_rules = logical_home.join(".kiro/context/k-orchestrator-routing-rules.md");
+    assert!(
+        stdout.contains(&format!("read {} in full.", logical_rules.display())),
+        "{stdout}"
+    );
+
+    std::fs::remove_file(physical_home.join(".kiro/context/k-orchestrator-routing-rules.md"))
+        .unwrap();
+    let stdout = fire(
+        &logical_home,
+        &project,
+        &[],
+        &[],
+        &claude_payload(Some("konductor"), "startup"),
+    );
+    assert!(stdout.contains("~/.kiro/context/"), "{stdout}");
+    assert!(
+        !stdout.contains(&physical_home.display().to_string()),
+        "{stdout}"
+    );
+    for dir in [&physical_home, &links] {
+        std::fs::remove_dir_all(dir).ok();
+    }
+}
+
+#[test]
+fn a_subdirectory_session_of_a_git_project_outside_the_home_gets_the_digest() {
+    let home = scratch_dir("project-home");
+    let shared = scratch_dir("project-shared");
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    install_into(&home, &shared, &["konductor"]);
+    std::fs::create_dir_all(shared.join(".git")).unwrap();
+    let subdirectory = shared.join("proj/sub");
+    std::fs::create_dir_all(&subdirectory).unwrap();
+    let install_root = shared.display().to_string();
+
+    let stdout = fire(
+        &home,
+        &subdirectory,
+        &["--install-root", &install_root],
+        &[],
+        &claude_payload(Some("konductor"), "startup"),
+    );
+
+    assert_persona(&stdout, &shared.canonicalize().unwrap());
+    for dir in [&home, &shared] {
+        std::fs::remove_dir_all(dir).ok();
+    }
+}
+
+#[test]
+fn a_session_under_an_install_outside_the_home_and_not_the_project_root_gets_the_fallback() {
+    let home = scratch_dir("untrusted-home");
+    let shared = scratch_dir("untrusted-shared");
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    install_into(&home, &shared, &["konductor"]);
+    let subdirectory = shared.join("proj");
+    std::fs::create_dir_all(&subdirectory).unwrap();
+    let install_root = shared.display().to_string();
+
+    let stdout = fire(
+        &home,
+        &subdirectory,
+        &["--install-root", &install_root],
+        &[],
+        &claude_payload(Some("konductor"), "startup"),
+    );
+
+    assert!(
+        stdout.starts_with("Orchestration: auto (fallback:"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("outside the locations konductor follows"),
+        "{stdout}"
+    );
+    assert!(!stdout.contains("in full."), "{stdout}");
+    for dir in [&home, &shared] {
+        std::fs::remove_dir_all(dir).ok();
+    }
+}
+
+#[test]
 fn kiro_v3_identity_comes_from_the_kiro_home_session_store() {
     let home = scratch_dir("v3-home");
     install_into(&home, &home, &["konductor", "k-developer"]);
