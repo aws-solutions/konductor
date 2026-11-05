@@ -83,7 +83,8 @@ function applicability(pack, task, files) {
     if (gone) return { status: 'absent', reason: gone.reason };
     const undeclared = c.appliesTo.filter((t) => art.state[t].s === 'undeclared');
     const other = [...new Set(c.appliesTo.filter((t) => art.state[t].s !== 'undeclared').map((t) => art.state[t].reason))];
-    const asked = undeclared.length ? [`the task does not ask for ${undeclared.join(' or ')}`] : [];
+    const list = undeclared.length > 2 ? `any of ${undeclared.join(', ')}` : undeclared.join(' or ');
+    const asked = undeclared.length ? [`the task does not ask for ${list}`] : [];
     return { status: 'na', reason: [...asked, ...other].join('; ') };
   };
   return { ...art, criteria: pack.criteria.map((c) => ({ criterion: c, ...decide(c), ...(c.auto ? { prose: proseFor(art, c) } : {}) })) };
