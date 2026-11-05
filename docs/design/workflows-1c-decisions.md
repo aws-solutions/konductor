@@ -38,12 +38,14 @@ request, and the choice changes there. The spec stays the authority on the rules
 
 ## Rules the spec leaves open
 
-- **A path has no empty and no `.` segment** (`./a`, `a//b`, `dir/`). The spec's path rules do not say. The author gets the
-  real rule up front, and later steps never have to normalize a path.
+- **A path has no empty and no `.` segment** (`./a`, `a//b`, `dir/`). The spec's path rule covers this, under "Rules for
+  every file" in [the specification](workflows-spec.md). The engine applies it as written, so the author gets the real
+  rule up front and later steps never have to normalize a path.
 - **Text that looks like a template reference is `NOT_SUPPORTED_BY_THIS_BUILD`**, in an inline `prompt` and in the text of
   a `prompt_file`, as the spec says until slice 2 defines the escape. The pattern is the spec's, found by a small scanner
-  in one pass. Any other brace is literal. At most 20 findings are given for one prompt, so the report stays small.
-  An inline match is reported where it is in the file, and a match in a file's text at the `prompt_file` value.
+  in one pass. Any other brace is literal. An inline `prompt` reports at most 20 of these findings, so the report stays
+  small. A `prompt_file` reports one finding with the count. An inline match is reported where it is in the file, and a
+  match in a file's text at the `prompt_file` value.
 - **Booleans are the YAML 1.2 core set**: `true`, `True`, `TRUE`, `false`, `False`, `FALSE`. `yes`, `no`, `on` and `off`
   are strings.
 - **Any `format` other than the string `konductor/1` is `UNSUPPORTED_FORMAT`**, whatever its type. A `version` that is
