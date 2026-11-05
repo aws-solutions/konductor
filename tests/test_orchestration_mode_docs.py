@@ -48,3 +48,10 @@ def test_html_faq_qualifies_konductor_editing_by_mode():
         text = bundle.read_text()
         assert sentence in text, bundle.name
         assert '\\", \\"konductor edits' not in text, bundle.name
+
+
+def test_owner_bullet_describes_out_of_trust_install_as_fallback():
+    text = _flat(ROOT / "cli" / "README.md")
+    assert "treated as content" not in text
+    assert "an install outside the locations above" in text
+    assert "the working directory itself or a git checkout root that contains it" in text

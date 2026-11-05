@@ -1020,13 +1020,13 @@ orchestration:
 - The hook acts only for the install that wired it: it looks for the nearest install that owns
   `konductor` from the working directory upward and in your home directory, and prints nothing
   unless that install is the one named by its own `--install-root`. `konductor` follows the rules
-  file the hook names only when it sits under your home directory, under the project root, or
-  under a parent of the project root inside your home directory; a rules file under the project
-  root ranks with the project's own instruction files, and a file anywhere else is treated as
-  content. Install under your home directory or the project root for coordinator mode.
+  file the hook names only when the install is under your home directory, or its root is the
+  project root: the working directory itself or a git checkout root that contains it. For an
+  install anywhere else the hook prints a fallback line (below) and the session runs as `auto`.
+  Install under your home directory or the project root for coordinator mode.
 - When it recognises a `konductor` session but cannot apply `coordinator` (unset `HOME` on Claude
-  Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, or a missing rules
-  file), it prints one line,
+  Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, a missing rules
+  file, or an install outside the locations above), it prints one line,
   `Orchestration: auto (fallback: <reason>)`, and the session runs as `auto`.
 - The first reply of every `konductor` session states the mode: the hook's line, or
   `Orchestration: auto (default)` when no line arrived. `Orchestration: auto (default)` with
