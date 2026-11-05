@@ -155,8 +155,7 @@ rules that must never be missed.
 
 There are four today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
 rule, and the engineering practices, and all 11 agents load it. `context/k-direct-work.md` is loaded by `konductor`;
-`context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators, and read by
-`konductor` in the `coordinator` mode (see Orchestration shapes); `context/k-orchestrator-shared.md` holds the
+`context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators; `context/k-orchestrator-shared.md` holds the
 handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
 rules, including this one:
 
@@ -166,7 +165,7 @@ rules, including this one:
 That is why the mux and cmux orchestrators hand file edits and shell commands to `k-developer`
 rather than doing them themselves.
 
-`context/k-coordinator-digest.md` also lives in `context/`, but no agent loads it: the session-start hook prints it into a `coordinator` session (see Orchestration shapes).
+`context/k-coordinator-digest.md` also lives in `context/`, but no agent loads it: the session-start hook prints it into a `coordinator` session. In that mode `konductor` also reads the routing rules file (see Orchestration shapes).
 
 ## Orchestration shapes
 

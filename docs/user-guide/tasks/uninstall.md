@@ -180,6 +180,8 @@ For reference, so you can confirm nothing is left behind:
 | Location | Created by | Removed by |
 | --- | --- | --- |
 | Runtime agent directories | `konductor install` | `konductor uninstall` |
+| Session-start hook: `.kiro/hooks/konductor-orchestration-hooks.json` (Kiro CLI v3), the `agentSpawn` entry in `.kiro/agents/konductor.json` (Kiro CLI v2), the `SessionStart` block in the Claude Code hooks settings file | `konductor install` | `konductor uninstall` |
+| `.konductor/context/` under the install target (Claude Code installs only; `.konductor/memory/` is kept) | `konductor install` | `konductor uninstall` |
 | `<project>/.konductor/config.yml` | `konductor init` | you, manually |
 | `<project>/dist/` | `konductor synth` | you, manually — gitignored |
 | `~/.konductor/logs/konductor.log` | every CLI invocation | you, manually |

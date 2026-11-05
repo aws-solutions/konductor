@@ -31,6 +31,8 @@ On success it reports a per-content-type count: agents, skills, SOPs, and contex
 
 Install also wires a session-start hook for `konductor`, a `SessionStart` block in the Claude Code hooks settings file, which `orchestration.mode: coordinator` relies on. `uninstall` removes it.
 
+Install also copies the context files to `.konductor/context/` under the install target, where the hook reads the routing rules and the coordinator digest. No agent loads them from there, and `uninstall` removes them.
+
 Agent files land in `~/.claude/agents/`:
 
 ```bash
