@@ -3034,6 +3034,112 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    fn installed_konductor_skills_args(target_dir: &Path) -> Vec<String> {
+        let value: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
+        )
+        .unwrap();
+        value["mcpServers"]["konductor-skills"]["args"]
+            .as_array()
+            .expect("args must be an array")
+            .iter()
+            .map(|a| a.as_str().unwrap().to_string())
+            .collect()
+    }
+
+    /// Installs one opted-in and one opted-out target from a repo whose
+    /// MCP binary is `binary`, and returns each target with its injected
+    /// `konductor-skills` args.
+    fn install_opted_in_and_out_with_mcp_binary(
+        binary: &[u8],
+        label: &str,
+    ) -> [(std::path::PathBuf, Vec<String>); 2] {
+        let repo_root = scratch_dir(&format!("{label}-repo"));
+        seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
+        seed_synthed_skill(
+            &repo_root,
+            "constraints",
+            b"---\nname: constraints\n---\nBody\n",
+            &[],
+        );
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", binary);
+        let install = |target_dir: &Path, no_telemetry: bool| {
+            KiroCliInstallStrategy
+                .install_from_local(
+                    target_dir,
+                    Some(repo_root.to_str().unwrap()),
+                    "2026-01-01T00:00:00Z",
+                    no_telemetry,
+                )
+                .expect("install must succeed");
+        };
+        let opted_in = scratch_dir(&format!("{label}-opted-in"));
+        let opted_out = scratch_dir(&format!("{label}-opted-out"));
+
+        install(&opted_in, false);
+        install(&opted_out, true);
+        install(&opted_out, true);
+
+        fs::remove_dir_all(&repo_root).ok();
+        [opted_in, opted_out].map(|target_dir| {
+            let args = installed_konductor_skills_args(&target_dir);
+            (target_dir, args)
+        })
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_from_local_points_a_current_mcp_server_at_install_info_whether_or_not_opted_out() {
+        let targets = install_opted_in_and_out_with_mcp_binary(
+            crate::cli::install::resource_rewrite::FAKE_SERVER_WITH_INSTALL_INFO.as_bytes(),
+            "mcp-telemetry-arg-current",
+        );
+        for (target_dir, args) in targets {
+            assert_eq!(
+                args,
+                [
+                    "--skills-dir",
+                    "~/.konductor/skills",
+                    "--skills-dir",
+                    ".konductor/skills",
+                    "--install-info",
+                    ".konductor/install-info.json"
+                ]
+            );
+            fs::remove_dir_all(&target_dir).ok();
+        }
+    }
+
+    /// A binary whose `--help` does not list `--install-info` (here, one
+    /// that cannot run at all) keeps the per-harness `--telemetry off`.
+    #[test]
+    fn install_from_local_mcp_server_telemetry_arg_follows_no_telemetry_for_an_older_server() {
+        let [(opted_in, opted_in_args), (opted_out, opted_out_args)] =
+            install_opted_in_and_out_with_mcp_binary(b"binary bytes\n", "mcp-telemetry-arg-older");
+        assert_eq!(
+            opted_in_args,
+            [
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills"
+            ]
+        );
+        assert_eq!(
+            opted_out_args,
+            [
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills",
+                "--telemetry",
+                "off"
+            ]
+        );
+        fs::remove_dir_all(&opted_in).ok();
+        fs::remove_dir_all(&opted_out).ok();
+    }
+
     /// Reachability proof for the Claude/V3 `permissions.allow` grant
     /// and the telemetry hooks wired after it: both fire through this
     /// unmodified strategy's `install_from_local` whenever the target

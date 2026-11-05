@@ -45,7 +45,7 @@ log_fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
 # $WORKDIR itself, rather than falling through to memory-validator.sh's
 # ". " fallback -- which, if $TMPDIR happens to sit under some ancestor
 # git repo, would resolve there instead and pick up unrelated config. This
-# also lets us supply a deterministic .asdlc/memory-config.json with a URL
+# also lets us supply a deterministic .konductor/memory-config.json with a URL
 # allowlist, which is required to make the URL-rejection scenario
 # meaningful (with no allowlist configured, the validator permits all
 # URLs).
@@ -53,8 +53,8 @@ WORKDIR="$(mktemp -d)"
 git init -q "$WORKDIR"
 trap 'rm -rf "$WORKDIR"' EXIT
 
-mkdir -p "$WORKDIR/.asdlc"
-cat > "$WORKDIR/.asdlc/memory-config.json" <<'EOF'
+mkdir -p "$WORKDIR/.konductor"
+cat > "$WORKDIR/.konductor/memory-config.json" <<'EOF'
 {
   "limits": { "memory_max_chars": 2200, "user_max_chars": 1375 },
   "allowlist_patterns": ["*.example.com"]
@@ -130,8 +130,13 @@ assert_rejected "numbered-list item over 500 chars" "$NUMBERED_PAYLOAD" "exceeds
 # --- Positive control: well-formed bullet entry must still pass ----------
 # Confirms the fix adds coverage without regressing existing bullet
 # handling.
-BULLET_PAYLOAD='- [2026-08-24] Project uses DynamoDB single-table design'
+BULLET_PAYLOAD='- [2026-08-24] [origin:agent] Project uses DynamoDB single-table design'
 assert_accepted "well-formed bullet entry" "$BULLET_PAYLOAD"
+
+# --- Untagged new entry is rejected --------------------------------------
+# Core rule 11 follows untagged entries as the user's own words, so a new
+# line must carry [origin:agent] or [origin:user].
+assert_rejected "new entry without an origin tag" "- [2026-08-24] Project uses DynamoDB single-table design" "no [origin:agent] or [origin:user] tag"
 
 # --- Fix-back cycle 1: derive_entry() bullet-strip anchoring -------------
 # Same attack class as above ("payload dressed as markdown"), residual

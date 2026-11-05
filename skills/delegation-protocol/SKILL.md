@@ -51,7 +51,7 @@ CONTEXT: <File paths, patterns, constraints, handoff file references>
   USER DECISIONS IN FORCE: <one entry per decision the specialist must take as given: the user's own words from a user turn, quoted verbatim, then -> the action and target they approve; "none" when there are none>
 ```
 
-When the user asked to remove comments or logging, attribute that request to the user in CONTEXT and drop the default MUST DO / MUST NOT DO line it overrides. When the user approved a scope reduction, name what was approved in CONTEXT and keep `Do NOT silently reduce scope`, since anything beyond the approval is still a silent reduction (see the core rules' House rules section).
+Drop a default MUST DO / MUST NOT DO line that a house rule overrides and name the house rule in CONTEXT (its file and line, or its memory entry). The lines backed by NEVER rules 6 and 7 (comments, logging, scope) are dropped only on the user's own request. When the user asked to remove comments or logging, attribute that request to the user in CONTEXT and drop the default MUST DO / MUST NOT DO line it overrides. When the user approved a scope reduction, name what was approved in CONTEXT and keep `Do NOT silently reduce scope`, since anything beyond the approval is still a silent reduction (see the core rules' House rules section).
 
 If a section is not applicable, write `N/A` — never omit the section. `TARGET AGENT` is the one exception: it is never `N/A` — every delegation targets exactly one agent. `USER DECISIONS IN FORCE` is part of CONTEXT and uses `none`, not `N/A`.
 
@@ -164,8 +164,10 @@ against the rule above, fan it out with the briefs the split gives,
 and check the files each part actually touched when it returns; if two
 parts touched the same file, confirm both edits survived before
 reporting done, or have one agent reconcile that file. If the note or
-split names an SOP step to resume at, send the results back to that
-specialist to finish the SOP from the named step.
+split names an SOP step to resume at, send that specialist the SOP name, the
+step, the payload its note or split carries (or the handoff file path it
+names), and the results, so it finishes the SOP from the named step without
+re-running earlier steps.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
@@ -201,7 +203,7 @@ Before a phase closes, run the review your Verification Protocol calls for (for 
 1. Collect the phase's artifacts: the git diff for code, paths for documents and design artifacts.
 2. Spawn the reviewers your Verification Protocol names (for `konductor`, one per phase; for the mux and cmux orchestrators, one per artifact), for example `k-developer` with `backend-review` or `frontend-review`, `k-architect` with `design-evaluation` and `threat-modeling`. Each reviewer brief lists every artifact that reviewer covers and the checker skill for each.
 3. Address all CRITICAL and IMPORTANT findings (Review ceilings in the Verification Protocol). Never put SUGGESTIONs in a fix brief. Before the fix, triage the findings against the user's request, the project's house rules and the spec; rework CRITICAL and IMPORTANT findings that survive triage, and list the findings triage rejects and any SUGGESTIONs.
-4. Run the build and tests again for code, then re-review what the fix changed plus what calls, uses or depends on it, once (an SOP's own limit on fix rounds wins). List what that re-review still finds for the user, not for another fix; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix. A CRITICAL or IMPORTANT finding that survives the re-review blocks done: stop and report it to the user as unresolved instead of proceeding.
+4. Run the build and tests again for code, then re-review what the fix changed plus what calls, uses or depends on it, once (an SOP's own limit on fix rounds wins). Any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done: stop and report it to the user as unresolved instead of proceeding; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix.
 
 ## Failure Recovery
 

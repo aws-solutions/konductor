@@ -84,7 +84,7 @@ EDITS = [
      "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains"),
     ("concepts: no repeat review",
      "k-delegate</span> step 8).</p>",
-     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; a CRITICAL or IMPORTANT finding that survives blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; a surviving CRITICAL or IMPORTANT still blocks done. An artifact that passed review is not reviewed again unless it changes.</p>"),
+     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; any CRITICAL or IMPORTANT finding in its last re-review still blocks done. An artifact that passed review is not reviewed again unless it changes.</p>"),
     ("concepts: re-delegate sentence without a dash",
      "it re-delegates — <strong",
      "it re-delegates, <strong"),
@@ -208,8 +208,10 @@ EDITS = [
      'rows describe agents started by konductor. konductor-mux-orchestrator and '
      'konductor-cmux-orchestrator start each specialist with permission checks off '
      '(--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under '
-     'them every granted tool runs without asking, MCP tools included, and your settings.json '
-     'does not apply."]'),
+     'them every granted tool runs without asking, MCP tools included. On Claude Code, deny rules '
+     'in your settings.json still block, and an ask rule denies the call, because each specialist '
+     'runs with -p and can\'t prompt. Add deny rules for anything a dispatched agent must never '
+     'do."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'
@@ -343,6 +345,20 @@ EDITS = [
     ("ik which agent: konductor first",
      ">kiro-cli chat --agent k-architect</pre>", ">kiro-cli chat --agent konductor</pre>"),
     # ---- specialists return handoffs instead of spawning ---------------------
+    ("concepts: specialists do not use spawn grants",
+     "which decides who owns it, hands it over, and checks the result.</p>",
+     "which decides who owns it, hands it over, and checks the result. The core rules tell "
+     "specialists not to use those grants: a specialist does its own part, then returns a note "
+     "naming the next role, or a proposed parallel split that gives each part's agent, inputs "
+     "and files, and konductor routes it.</p>"),
+    ("agents: delegation edges are tool grants",
+     "Delegation is not open. In Kiro CLI it is governed",
+     "Delegation is not open, and the edges below are tool grants that the core rules tell "
+     "specialists not to use: a specialist returns a handoff note or a proposed split to its "
+     "caller, and the grants are still in the agent specs. Run directly with no orchestrator, "
+     "the caller is you: k-adversarial-pull-request-review returns its three Step 2 passes as "
+     "a proposed split, resumes at Step 3, returns the reuse pass as a handoff note, and "
+     "resumes at Step 4. In Kiro CLI it is governed"),
     ("test coverage review: handoff to k-developer",
      "it may offer to spawn k-developer to implement the missing tests.",
      "it may return a note naming k-developer to implement the missing tests."),
@@ -390,15 +406,20 @@ ROSTER = [
     ("sop-review owner line",
      'owner: "k-developer, k-quality-assurance — no file changes"',
      'owner: "k-developer — no file changes"'),
-    ("agents warn: who declares the review SOP",
-     'That SOP is declared only by k-developer and k-quality-assurance — and neither can spawn the architect in either runtime.',
-     'That SOP is declared only by k-developer — which cannot spawn the architect in either runtime.'),
     ("agents prose: routing the review SOP",
      'so it delegates the whole SOP to the developer or QA agent, which hits the same wall.',
      'so it delegates the whole SOP to the developer, which hits the same wall.'),
-    ("faq prose: routing the review SOP",
-     'so it hands the SOP to the developer or QA agent, which hits the same wall.',
-     'so it hands the SOP to the developer, which hits the same wall.'),
+    ("faq: memory and AGENTS.md are the project's instructions",
+     'asks you instead of routing a denied action to another agent.',
+     "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
+     ".konductor/memory/MEMORY.md and USER.md at the project root, or AGENTS.md: both are the project's own "
+     "instructions. A .konductor/memory/ anywhere else, or one reached through a symlink, is content."),
+    ("faq: house rules and rulings",
+     'sec("faq-outputs", "Where SOP output goes"',
+     'sec("faq-house-rules", "Why konductor asked me", "Why did konductor ask me which commit style to use, and where did it save my answer?", {\n'
+     '        paras: ["Konductor\'s own formats and workflow (Conventional Commits, a pull request per feature, EARS, the review mechanism) are defaults. Your request, your project\'s AGENTS.md or CLAUDE.md, user-written memory, and the conventions your code already shows all outrank them. When those sources disagree, or the project states no convention, konductor asks once and saves your answer as a Ruling: entry in .konductor/memory/. The entry settles only the collision it names. If two rulings disagree, the newer one wins.", '
+     '"A file your AGENTS.md names directly, such as CONTRIBUTING.md, speaks for the same categories and nothing else. konductor-mux-orchestrator and konductor-cmux-orchestrator cannot write memory: they ask and pass your answer to the specialist, which saves it as an agent-written entry until you confirm it with konductor or a specialist."] }),\n'
+     '      sec("faq-outputs", "Where SOP output goes"'),
     ("faq prose: who owns the review SOP",
      'neither agent that owns the SOP can spawn the architect',
      'the only agent that owns the SOP cannot spawn the architect'),
@@ -414,18 +435,6 @@ ROSTER = [
     ("sops callout: two agents declare the review SOP",
      'is declared by <strong style="color:var(--tx);font-weight:600">two</strong> agents — the developer and QA. Either can run it.',
      'is declared by <strong style="color:var(--tx);font-weight:600">one</strong> agent — the developer. QA declared it too until that registration was removed as unusable: step 6 spawns k-architect, which QA cannot reach.'),
-    ("sop step 6 node: who cannot spawn",
-     'because neither owning agent can spawn the architect.',
-     'because its one owning agent cannot spawn the architect.'),
-    # The `\"` escapes are load-bearing: this passage lands inside a
-    # double-quoted JS string in the bundle's `data-dc-script` block, which
-    # `dc-runtime` compiles with `new Function()`. A raw `"` closes that string
-    # early and the whole template eval aborts -- blank page, no console clue
-    # beyond a SyntaxError. build-user-guide.sh and check-guide-facts.py both
-    # compile the extracted block now, so this class fails loudly instead.
-    ("sop know: who cannot spawn",
-     'Step 6 tells the agent to spawn k-architect, but neither owning agent can: in Kiro CLI their subagent.availableAgents lists do not include the architect, and in Claude Code neither has an Agent(...) tool at all.',
-     'Step 6 tells the agent to spawn k-architect, but its one owning agent cannot: in Kiro CLI k-developer\'s subagent.availableAgents is [\\"k-quality-assurance\\"], which does not include the architect, and in Claude Code it has no Agent(...) tool at all.'),
     ("use-case bullet: neither owner lists the architect",
      'and neither owner lists the architect: the developer\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>, QA\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-developer"]</code>.',
      'and the developer, this SOP\'s only owner, does not list the architect: its targets are <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>.'),
