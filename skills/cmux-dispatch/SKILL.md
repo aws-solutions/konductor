@@ -24,7 +24,7 @@ The orchestrator always dispatches via panes. The dispatch script selects the CL
 
 Any other value makes the dispatch script exit with an error before it opens a pane. Set the mode by exporting the variable in the shell that starts Claude Code, or, in the Claude Code plugin, with the plugin's `dispatch_permission_mode` option. An exported variable wins over the option. A prompt that starts with `-` is passed with a leading space, so `claude` reads it as the prompt and not as an option.
 
-`<registry dir>` is `/tmp/konductor-cmux` (or `$KONDUCTOR_CMUX_REGISTRY_DIR` when set). `--add-dir` lets the child read a brief and write a `result-<slug>.md` there, outside its working directory; without it, `headless` denies both. It comes before `--agent` because it takes a list and would otherwise swallow the prompt.
+`<registry dir>` is `/tmp/konductor-cmux` (or `$KONDUCTOR_CMUX_REGISTRY_DIR` when set). `--add-dir` lets the child read a brief and write a `result-<slug>.md` there, outside its working directory; without it, `headless` denies both. It comes before `--agent` because it takes a list and would otherwise swallow the prompt. It exposes the whole registry dir, not one dispatch's files, so every child can see the other children's briefs, results and `.done` files, and a `headless` child auto-accepts edits anywhere in it.
 
 ## Overview
 

@@ -180,6 +180,14 @@ ARGS
     fi
   done
 
+  export KONDUCTOR_DISPATCH_PERMISSION_MODE=invalid
+  dispatch "$backend" "do it"
+  if grep -q "check the Claude Code plugin's dispatch_permission_mode option" "$WORKDIR/err"; then
+    log_pass "$backend mode 'invalid': points at the plugin option"
+  else
+    log_fail "$backend mode 'invalid': no hint about the plugin option"
+  fi
+
   export KONDUCTOR_DISPATCH_PERMISSION_MODE=headless
   dispatch "$backend" "$HOSTILE"
   expect_args "$backend hostile task arrives as one prompt argument" <<ARGS

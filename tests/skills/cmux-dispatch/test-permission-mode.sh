@@ -169,6 +169,14 @@ for bad in yolo invalid Headless; do
   fi
 done
 
+export KONDUCTOR_DISPATCH_PERMISSION_MODE=invalid
+dispatch "do it"
+if grep -q "check the Claude Code plugin's dispatch_permission_mode option" "$WORKDIR/err"; then
+  log_pass "mode 'invalid': points at the plugin option"
+else
+  log_fail "mode 'invalid': no hint about the plugin option"
+fi
+
 export KONDUCTOR_DISPATCH_PERMISSION_MODE=headless
 dispatch "$HOSTILE"
 expect_args "hostile task arrives as one prompt argument" <<ARGS

@@ -57,6 +57,10 @@ if [[ -n "${CLAUDECODE:-}" ]]; then
       ;;
     *)
       echo "ERROR: KONDUCTOR_DISPATCH_PERMISSION_MODE must be interactive, headless or bypass (got '${KONDUCTOR_DISPATCH_PERMISSION_MODE}')" >&2
+      # The plugin's SessionStart hook writes "invalid" for a mistyped option.
+      if [[ "$KONDUCTOR_DISPATCH_PERMISSION_MODE" == invalid ]]; then
+        echo "ERROR: check the Claude Code plugin's dispatch_permission_mode option; it must be interactive, headless or bypass (case-sensitive)." >&2
+      fi
       exit 1
       ;;
   esac
