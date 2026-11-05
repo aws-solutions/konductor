@@ -8,6 +8,7 @@ import {
   addStage,
   canAddStage,
   canRemoveStage,
+  idsOf,
   neighbourOf,
   removeStage,
   renameStage,
@@ -90,6 +91,7 @@ function savedAs(
   text: string,
   result: SaveResult,
 ): EditState {
+  // The file now holds the stages that were sent, in the order they were.
   const next: EditState = {
     ...state,
     saved: {
@@ -99,6 +101,8 @@ function savedAs(
       view: result.view,
       diagnostics: result.diagnostics,
     },
+    bases: state.sent ?? idsOf(state.draft),
+    sent: undefined,
     save: { phase: 'saved' },
   };
   // What was saved is what the findings of the save are about; if the draft
@@ -136,6 +140,8 @@ function reloaded(
 ): EditState {
   const next = openDocument(document, revision);
   // The reload replaces the draft; its text is kept so it can be recovered.
+  // A draft with a change the writer cannot write in place has no text, so
+  // nothing is kept for it.
   const discarded = isDirty(state) ? textOf(state) : undefined;
   return next
     ? {
@@ -192,7 +198,9 @@ function step(
     case 'checked':
       return checked(state, event.revision, event.diagnostics);
     case 'save':
-      return canSave(state) ? { ...state, save: { phase: 'saving' } } : state;
+      return canSave(state)
+        ? { ...state, save: { phase: 'saving' }, sent: idsOf(state.draft) }
+        : state;
     case 'saved':
       return whileSaving(state, () => savedAs(state, event.text, event.result));
     case 'conflict':

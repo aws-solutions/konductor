@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 import type { DiagnosticView, SaveResult } from '../../api/types';
-import { HELLO_DOCUMENT, HELLO_VIEW } from '../../test-support/fixtures';
+import {
+  HELLO_DOCUMENT,
+  HELLO_TEXT,
+  HELLO_VIEW,
+} from '../../test-support/fixtures';
 import { stagesOf } from './draft';
 import { reduce, reduceSlot } from './edit-reducer';
 import { canSave, saveStatus, textOf } from './edit-view';
@@ -337,7 +341,7 @@ describe('save', () => {
 
     const saved = run(edited, {
       type: 'saved',
-      text: 'sent',
+      text: textOf(saving)!,
       result: savedResult([
         { name: 'draft', agent: 'k-tpm' },
         HELLO_VIEW.stages[1]!,
@@ -723,6 +727,9 @@ describe('removing a stage that is not in the draft', () => {
 describe('a reload', () => {
   const NEWER = {
     ...HELLO_DOCUMENT,
+    text: HELLO_TEXT.slice(0, HELLO_TEXT.indexOf('  - name: draft')).concat(
+      '  - name: only\n    agent: k-tpm\n',
+    ),
     hash: 'e'.repeat(64),
     view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
   };

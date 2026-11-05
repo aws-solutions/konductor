@@ -31,12 +31,14 @@ export {
   canEdit,
   changeBlocker,
   canSave,
+  fileBlocker,
   isDirty,
   problemsOfDraft,
   READ_ONLY_REASON,
   saveBlocker,
   saveStatus,
   textOf,
+  writeBlocker,
   type SaveStatusKind,
 } from './edit-view';
 export {
@@ -46,7 +48,6 @@ export {
   SessionLost,
   type EditPort,
 } from './ports';
-export { willRewriteWhole } from './stage-text';
 export {
   errorsOf,
   joinMessages,
