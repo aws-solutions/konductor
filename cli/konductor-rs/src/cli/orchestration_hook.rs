@@ -165,11 +165,12 @@ fn persona_reason(error: &PersonaError) -> String {
 }
 
 /// Rule 11 trusts a rules file under the home directory or the project
-/// root; a parent of the project root counts only inside the home.
+/// tree. An install root that is an ancestor of the working directory
+/// (or the directory itself) is the project tree.
 fn is_trusted_location(owning_root: &Path, home: Option<&Path>, cwd: &Path) -> bool {
     let canonical =
         |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    same_dir(owning_root, cwd)
+    canonical(cwd).starts_with(canonical(owning_root))
         || home.is_some_and(|home| canonical(owning_root).starts_with(canonical(home)))
 }
 
@@ -401,6 +402,18 @@ mod tests {
         upsert_strategy, ManifestFile, Provenance, Status, StrategyManifest,
     };
     use crate::cli::telemetry_hook::{resolve_invocations, HookEnv, AGENT_INVOCATION};
+
+    #[test]
+    fn an_install_root_is_trusted_inside_home_or_above_the_working_directory() {
+        let home = Path::new("/h/user");
+        let trusted = |root, cwd| is_trusted_location(Path::new(root), Some(home), Path::new(cwd));
+        assert!(trusted("/h/user", "/h/user/proj"));
+        assert!(trusted("/h/user/proj", "/elsewhere"));
+        assert!(trusted("/work/proj", "/work/proj"));
+        assert!(trusted("/work/proj", "/work/proj/sub/dir"));
+        assert!(!trusted("/work/other", "/work/proj"));
+        assert!(!trusted("/work/proj/sub", "/work/proj"));
+    }
 
     const KIRO_V3_PAYLOAD: &str = r#"{"session_id":"sess_8147fdc3-f3ec-4b32-a669-a0d26bd4cea0","hook_event_name":"SessionStart","cwd":"/private/tmp"}"#;
     const CLAUDE_PAYLOAD: &str = r#"{"session_id":"4a192073-b15a-4eaa-89d3-d0ca80107561","transcript_path":"/x.jsonl","cwd":"/private/tmp","agent_type":"konductor","hook_event_name":"SessionStart","source":"startup"}"#;

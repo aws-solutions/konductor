@@ -321,28 +321,24 @@ fn a_session_inside_a_symlinked_home_gets_the_logical_pointer_and_fallback() {
 }
 
 #[test]
-fn an_install_outside_the_home_and_project_root_gets_the_fallback_not_the_digest() {
-    let home = scratch_dir("untrusted-home");
-    let shared = scratch_dir("untrusted-shared");
+fn a_subdirectory_session_of_an_install_outside_the_home_gets_the_digest() {
+    let home = scratch_dir("project-home");
+    let shared = scratch_dir("project-shared");
     set_mode(&home, "orchestration:\n  mode: coordinator\n");
     install_into(&home, &shared, &["konductor"]);
-    let project = shared.join("proj");
-    std::fs::create_dir_all(&project).unwrap();
+    let subdirectory = shared.join("proj/sub");
+    std::fs::create_dir_all(&subdirectory).unwrap();
     let install_root = shared.display().to_string();
 
     let stdout = fire(
         &home,
-        &project,
+        &subdirectory,
         &["--install-root", &install_root],
         &[],
         &claude_payload(Some("konductor"), "startup"),
     );
 
-    assert!(
-        stdout.starts_with("Orchestration: auto (fallback:") && stdout.contains("outside"),
-        "{stdout}"
-    );
-    assert!(!stdout.contains("in full"), "{stdout}");
+    assert_persona(&stdout, &shared.canonicalize().unwrap());
     for dir in [&home, &shared] {
         std::fs::remove_dir_all(dir).ok();
     }
