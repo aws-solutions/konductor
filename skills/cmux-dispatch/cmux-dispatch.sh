@@ -347,7 +347,7 @@ ENTRY=$(ASDLC_WS_ID="$WS_ID" \
   ASDLC_REGISTRY_FILE="$REGISTRY_FILE" \
   ASDLC_REGISTRY_LOCK="$REGISTRY_LOCK" \
   ASDLC_DONE_KEY="$DONE_KEY" \
-  ASDLC_DISPATCH_DIR="$DISPATCH_DIR" \
+  ENTRY_DISPATCH_DIR="$DISPATCH_DIR" \
   python3 -c "
 import json, os, sys, fcntl, tempfile
 entry = {
@@ -358,7 +358,7 @@ entry = {
     'mode': os.environ['ASDLC_MODE'],
     'cwd': os.environ['ASDLC_CWD'],
     'done_key': os.environ['ASDLC_DONE_KEY'],
-    'dispatch_dir': os.environ['ASDLC_DISPATCH_DIR'],
+    'dispatch_dir': os.environ['ENTRY_DISPATCH_DIR'],
     'dispatched_at': '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
 }
 registry_file = os.environ['ASDLC_REGISTRY_FILE']

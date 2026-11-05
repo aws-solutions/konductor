@@ -123,7 +123,7 @@ aborts the whole compound command before `2>/dev/null` can apply):
 
 Running the dispatch script, polling, and reading result files are orchestrator direct work, as defined in the Orchestrator Direct Work table of `k-orchestrator-routing-rules.md`. Run them yourself; never dispatch them to another surface.
 
-The `summary` field in the `.done` payload is a short status string — not a
+The `summary` field in the `.done` payload is a short status string, not a
 substitute for the deliverable. The script tells every child to write its full
 deliverable to `<dispatch dir>/result.md` for the orchestrator to read; use
 `cmux read-screen` only as a fallback.

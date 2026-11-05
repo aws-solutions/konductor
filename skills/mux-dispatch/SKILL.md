@@ -159,7 +159,7 @@ The `MUX_WORKSPACE_ID` env var is set per pane by the dispatch script and read b
 ### Results — write to a file, don't rely on the `.done` summary
 
 The `.done` payload's `summary` field is a short, often-truncated status string
-(and is literally `"shell fallback"` when the launcher's fallback wrote the file) —
+(and is literally `"shell fallback"` when the launcher's fallback wrote the file);
 it is not a substitute for the deliverable. The script tells every child to write
 its full deliverable to `<dispatch dir>/result.md`; the orchestrator reads that
 file once `.done` appears. Use a pane-content dump (see below)
