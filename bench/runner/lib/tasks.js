@@ -76,7 +76,7 @@ function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR) {
-  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard, real, autonomy, pilot, cap or requirements)`);
+  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap or requirements)`);
   const file = path.join(benchDir, 'suites', `${name}.json`);
   const fromFile = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks
