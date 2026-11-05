@@ -60,6 +60,13 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- The `code-review`, `non-functional-requirements`, `risk-management` and
+  `system-design-patterns` descriptions now name the tasks they cover, so they load on
+  ordinary task prompts: reviewing a folder or repository, adding measurable targets to a
+  requirements or design document, listing a plan's risks, and writing a system design.
+  `code-review` gains a step for reviewing a source tree with no diff, and
+  `system-design-patterns` gains a no-questions mode that works from documents the user
+  already gave.
 
 ### Fixed
 
