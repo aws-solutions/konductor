@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "workflow-core"
+version = "0.1.0"
+description = "The workflow file format and its checks. Does no IO."
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "workflow_core"
+
+[lints]
+workspace = true
+
+[dependencies]
+saphyr-parser = "=0.3.3"
