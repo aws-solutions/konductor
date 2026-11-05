@@ -161,7 +161,7 @@ describe('loadWorkflow', () => {
   });
 
   const LOST_SESSION =
-    'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server. An address works once.';
+    'The server no longer knows this session. It may have been started again. Start `flow view` again and open the address it prints. An address works once.';
   const CHANGES_LOST =
     'The changes you made on this page are lost when you open a fresh address; copy them first.';
 
@@ -257,7 +257,7 @@ describe('loadWorkflow', () => {
     const lost = result.workflow.edits.save('text', HELLO_HASH);
 
     await expect(lost).rejects.toThrow(
-      'The server answered 502. If it stopped, start it again and get a fresh launch address from the server.',
+      'The server answered 502. If it stopped, start `flow view` again and open the address it prints.',
     );
   });
 
@@ -306,6 +306,38 @@ describe('loadWorkflow', () => {
       ['a 409 with no run id', new ApiError('Busy.', 409, 'already_running')],
       ['a 500', new ApiError('Broken.', 500)],
     ])('leave %s as the error it is', async (_, error) => {
+      const runs = await portFor(
+        fakeApi({ startRun: vi.fn().mockRejectedValue(error) }),
+      );
+
+      await expect(runs.start('g', signal)).rejects.toBe(error);
+    });
+
+    it('tell that the workflow must be trusted, with the fix of the server', async () => {
+      const fix =
+        'Run `konductor flow trust hello` in a terminal, then try again.';
+      const error = new ApiError(
+        `Not trusted. ${fix}`,
+        409,
+        'trust_required',
+        undefined,
+        [],
+        undefined,
+        fix,
+      );
+      const runs = await portFor(
+        fakeApi({ startRun: vi.fn().mockRejectedValue(error) }),
+      );
+
+      await expect(runs.start('g', signal)).rejects.toMatchObject({
+        name: 'RunNeedsTrust',
+        message: error.message,
+        fix,
+      });
+    });
+
+    it('leave a trust_required with no fix as the error it is', async () => {
+      const error = new ApiError('Not trusted.', 409, 'trust_required');
       const runs = await portFor(
         fakeApi({ startRun: vi.fn().mockRejectedValue(error) }),
       );
@@ -362,6 +394,9 @@ describe('loadWorkflow', () => {
 
     expect(result).toMatchObject({ ok: false });
     expect(result.ok === false && result.message).toContain('launch code');
+    expect(result.ok === false && result.message).toContain(
+      'Start `flow view` again and open the address it prints',
+    );
     expect(result.ok === false && result.message).toContain('works once');
     expect(api.createSession).not.toHaveBeenCalled();
   });
@@ -572,7 +607,7 @@ describe('loadWorkflow with a kept session', () => {
     expect(memory.recall()).toBeUndefined();
     expect(result).toMatchObject({ ok: false });
     expect(result.ok === false && result.message).toMatch(
-      /server no longer knows this session.*launch address/s,
+      /server no longer knows this session.*Start `flow view` again/s,
     );
   });
 
@@ -588,7 +623,7 @@ describe('loadWorkflow with a kept session', () => {
     expect(result).toEqual({
       ok: false,
       message:
-        'Not reached. If it stopped, start it again and get a fresh launch address from the server.',
+        'Not reached. If it stopped, start `flow view` again and open the address it prints.',
     });
   });
 
@@ -1182,7 +1217,7 @@ describe('a 401 on a call after the load', () => {
       );
 
       await expect(call(runs)).rejects.toThrow(
-        /server no longer knows this session.*fresh launch address/s,
+        /server no longer knows this session.*Start `flow view` again/s,
       );
       expect(memory.recall()).toBeUndefined();
     },

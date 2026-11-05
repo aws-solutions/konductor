@@ -252,6 +252,29 @@ describe('createHttpApi', () => {
     },
   );
 
+  it('keeps the fix of a run refused for trust, apart from the sentence', async () => {
+    const fix =
+      'Run `konductor flow trust hello` in a terminal, then try again.';
+    const { api } = apiFor(
+      reply(
+        {
+          error: 'The workflow is not trusted yet.',
+          code: 'trust_required',
+          fix,
+        },
+        409,
+      ),
+    );
+
+    await expect(api.startRun('t', 'g')).rejects.toMatchObject({
+      name: 'ApiError',
+      message: `The workflow is not trusted yet. ${fix}`,
+      status: 409,
+      code: 'trust_required',
+      fix,
+    });
+  });
+
   it('fails with the sentence and code of an error body', async () => {
     const { api } = apiFor(
       reply(

@@ -171,7 +171,7 @@ export function EditAlerts({
       <Unwritable state={state} />
       {save.phase === 'failed' && (
         <Alert type="error" header={failureHeader(save)}>
-          {save.message}
+          <MessageText text={save.message} />
         </Alert>
       )}
     </div>

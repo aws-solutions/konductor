@@ -15,6 +15,7 @@ import {
 } from '../designer/core';
 import {
   RunAlreadyActive,
+  RunNeedsTrust,
   RunReadRefused,
   RunStartUnsure,
   type RunPort,
@@ -50,10 +51,10 @@ export type LoadResult =
   | { ok: false; message: string };
 
 const NO_LAUNCH_CODE =
-  'There is no launch code in the address. Get a fresh launch address from the server; it ends in #<launch code>. An address works once.';
+  'There is no launch code in the address. Start `flow view` again and open the address it prints; it ends in #<launch code>. An address works once.';
 
 const SESSION_UNKNOWN =
-  'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server. An address works once.';
+  'The server no longer knows this session. It may have been started again. Start `flow view` again and open the address it prints. An address works once.';
 
 /** The major version of the API that this page reads. */
 export const SUPPORTED_API_VERSION = 1;
@@ -69,6 +70,17 @@ function activeRunOf(error: unknown): RunAlreadyActive | undefined {
     error.code === 'already_running' &&
     error.runId !== undefined
     ? new RunAlreadyActive(error.message, error.runId)
+    : undefined;
+}
+
+// A 409 `trust_required` names, in its `fix`, the command that trusts the
+// workflow; the core is told as its own error. One with no `fix` has nothing
+// to show beyond its sentence, so it stays an ordinary failure.
+function trustNeededOf(error: unknown): RunNeedsTrust | undefined {
+  return error instanceof ApiError &&
+    error.code === 'trust_required' &&
+    error.fix !== undefined
+    ? new RunNeedsTrust(error.message, error.fix)
     : undefined;
 }
 
@@ -188,7 +200,12 @@ function runPortFor(
       try {
         return await guard(api.startRun(token, goal, signal));
       } catch (error) {
-        throw activeRunOf(error) ?? startUnsureOf(error) ?? error;
+        throw (
+          trustNeededOf(error) ??
+          activeRunOf(error) ??
+          startUnsureOf(error) ??
+          error
+        );
       }
     },
     get: async (runId, signal) => {

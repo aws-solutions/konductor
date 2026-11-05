@@ -3,6 +3,7 @@ import type { Page, Route } from '@playwright/test';
 import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { expect, test } from '../support/editing-fixtures';
 import { HELLO_PLAN_TEXT } from '../support/hello-plan';
+import { STEP_TIMEOUT_MS } from '../support/workflow-canvas-page';
 import {
   currentWorkflow,
   overwriteWorkflow,
@@ -97,6 +98,62 @@ test('keeps Save off for a change it cannot write in place, and says why', async
   await expect(designer.save).toBeFocused();
   expect(puts).toBe(0);
   expect((await currentWorkflow(request)).text).toBe(flow);
+});
+
+test('opens the trust dialog when a Run after a save answers trust_required', async ({
+  canvas,
+  designer,
+}) => {
+  let runs = 0;
+  designer.page.on('request', (sent) => {
+    if (sent.method() === 'POST' && sent.url().endsWith('/api/run')) runs += 1;
+  });
+  await designer.chooseAgent('k-architect');
+  await designer.save.click();
+  await designer.expectStatus('Saved');
+  await canvas.selectTab('Execution');
+
+  await canvas.runButton.click();
+
+  const dialog = canvas.page.getByRole('dialog');
+  await expect(dialog).toContainText('Trust the workflow to run it');
+  await expect(canvas.page.getByTestId('trust-fix')).toHaveText(
+    'Run konductor flow trust hello in a terminal, then try again.',
+  );
+  await expect(canvas.page.getByTestId('trust-command')).toHaveText(
+    'konductor flow trust hello',
+  );
+  await dialog.getByRole('button', { name: 'Copy' }).click();
+  await expect(
+    dialog
+      .getByText('Command copied')
+      .or(
+        dialog.getByText('The command could not be copied.', { exact: false }),
+      ),
+  ).toBeVisible();
+
+  await dialog.getByRole('button', { name: 'Run again' }).click();
+
+  // The file still differs from the trusted bytes, so the stub refuses again.
+  await expect(dialog).toContainText('Trust the workflow to run it');
+  expect(runs).toBe(2);
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(canvas.runError).toContainText('The run did not start');
+});
+
+test('runs the sample to a pass on the stub when the file holds its trusted bytes', async ({
+  canvas,
+}) => {
+  await canvas.selectTab('Execution');
+
+  await canvas.runButton.click();
+
+  await expect(canvas.badge('node-end')).toHaveText('Passed', {
+    timeout: 3 * STEP_TIMEOUT_MS,
+  });
+  await expect(canvas.page.getByRole('dialog')).toHaveCount(0);
+  await expect(canvas.runError).toHaveCount(0);
 });
 
 test('renames a stage and saves it', async ({ designer, request }) => {

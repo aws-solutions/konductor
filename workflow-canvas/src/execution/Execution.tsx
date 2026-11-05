@@ -15,6 +15,7 @@ import { useMemo } from 'react';
 import type { RunView, WorkflowView } from '../api/types';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { LoadResult } from '../workflow/load-workflow';
+import { MessageText } from '../workflow/MessageText';
 import { WorkflowGate, type DrawableWorkflow } from '../workflow/WorkflowGate';
 import {
   blockedStageOf,
@@ -33,6 +34,7 @@ import {
 } from './core';
 import './execution.css';
 import { runErrorOf } from './run-error';
+import { TrustDialog } from './TrustDialog';
 import type { ExecutionController } from './use-execution';
 
 // Safari reports the Enter that commits a composition after it has ended, with
@@ -93,7 +95,7 @@ function RunError({ state }: { state: ExecutionState }) {
   if (!error) return null;
   return (
     <Alert type="error" header={error.header} data-testid="run-error">
-      {error.message}
+      <MessageText text={error.message} />
       {error.note && <div>{error.note}</div>}
     </Alert>
   );
@@ -176,6 +178,7 @@ function RunPanel({
         <RunStatusLine state={execution.state} />
         <BlockedStage state={execution.state} />
         <RunError state={execution.state} />
+        <TrustDialog state={execution.state} onRunAgain={execution.start} />
       </SpaceBetween>
     </Container>
   );

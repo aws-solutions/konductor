@@ -368,4 +368,7 @@ test('explains what to do when the address has no launch code', async ({
 
   await expect(page.getByText('The workflow did not load')).toBeVisible();
   await expect(page.getByText(/no launch code in the address/)).toBeVisible();
+  await expect(
+    page.getByText(/Start flow view again and open the address it prints/),
+  ).toBeVisible();
 });
