@@ -33,11 +33,17 @@ defaults to the file name without `.yml` and must equal it when present (`NAME_M
   a second document and non-scalar keys are `YAML_UNSUPPORTED`. The root and every stage must be mappings
   (`NOT_A_MAPPING`). A key twice in one mapping is `DUPLICATE_KEY`, never "last one wins". A key that no slice plans is
   `UNKNOWN_KEY`.
-- A path is relative to the project root and uses `/`. It is not absolute and has no `..`. The exception is
-  `prompt_file`, which is relative to the workflow file's folder. A path never leaves its folder or follows a symlink
-  out of it. The engine reads a file only if it is a regular UTF-8 file with the expected name, within the size limit.
-  Anything else, such as a link or directory, is treated as not there, and nothing is read or written through it. A path
-  that breaks these rules in `intent.accept[].file`, a `stages[].outputs` value or `prompt_file` is `INVALID_VALUE`.
+- A path is one or more segments joined by `/`. A segment is not empty, not `.` and not `..`. The path has no `\`, no
+  control character (U+0000 to U+001F and U+007F to U+009F), does not start with `/`, and does not start with a drive
+  letter and a colon such as `C:`. A trailing `/` is an empty segment, so it is not allowed. Case is kept as written.
+  U+2028 and U+2029 are not control characters here, so they are allowed. These are the path rules. The engine, the
+  canvas API contract and its stub all apply them in the same way.
+- A path is relative to the project root. The exception is `prompt_file`, which is relative to the workflow file's
+  folder. A path never leaves its folder or follows a symlink out of it. Whether the file exists, whether it is a file
+  or a directory, a link that leaves the folder, the size limit and UTF-8 are checked when the file is read. The engine
+  reads a file only if it is a regular UTF-8 file with the expected name, within the size limit. Anything else, such as
+  a link or directory, is treated as not there, and nothing is read or written through it. A path that breaks the path
+  rules in `intent.accept[].file`, a `stages[].outputs` value or `prompt_file` is `INVALID_VALUE`.
 - One name pattern, `^[a-z0-9][a-z0-9-]{0,63}$`, applies to workflow names, stage names, check ids and agent ids
   (`INVALID_NAME`). Output names use `^[a-z][a-z0-9-]{0,63}$`. They start with a letter so that a reference can name
   them and numbers like `{1.5}` stay literal text (`INVALID_NAME`). Param names use `^[a-z][a-z0-9_]{0,63}$`
@@ -107,8 +113,9 @@ that ships in lettered steps tags a key with the step (`3a`).
 
 - At most one is set; both is `INVALID_VALUE` at the `prompt_file` value. With neither, the stage uses the fallback line
   below. A project workflow reads `prompt_file` only from `.konductor/workflows/` (the [trust hash](#trust) covers
-  it), a user workflow only from its own folder, and a shipped workflow embeds its prompt files. A missing file, or one
-  that breaks the file rules, is `INVALID_VALUE` at the `prompt_file` value.
+  it), a user workflow only from its own folder, and a shipped workflow embeds its prompt files. A path that breaks the
+  [path rules](#rules-for-every-file), a missing file, or one that breaks the file rules, is `INVALID_VALUE` at the
+  `prompt_file` value.
 - **Template references.** The reference pattern is `\{[a-z0-9][a-z0-9-]*\.[a-z_][a-z0-9_-]*\}`, as in `{run.goal}` or
   `{plan.design}`. Any other `{` or `}` is literal, so a JSON shape such as `{severity, file, line}` is fine. Slice 2
   fills in `{run.param}` and `{stage.output}` before `stage_prompt` runs. `{stage.output}` renders as the output's
@@ -415,6 +422,10 @@ needs the changes below.
   has `name` and `agent` only. It adds `format` (required, `konductor/1`) and every other key in [Keys](#keys).
   `version` changes from the optional string `'1.1'` to a required semver `X.Y.Z`, so `'1.1'` becomes `INVALID_VALUE`.
   The `MISSING_KEY` and `INVALID_VALUE` rows follow.
+- **Paths.** The `Path` schema holds the [path rules](#rules-for-every-file) as a pattern, and the contract text links
+  that rule instead of restating it. The stub reads no files, so it checks the path rules and nothing else. A server
+  that cannot use the pattern, such as one in a language whose regular expressions have no lookahead, checks the rules
+  by hand. All of them answer the same for the same path, which the shared test vectors check.
 - **View schema.** `WorkflowView` and its `Intent` and `Stage` schemas carry only `name`, `intent` and `stages`, and a
   stage has `name` and `agent`. They gain the keys of [Keys](#keys) that the canvas shows (D13): `Intent` gains
   `accept`, `Stage` gains `prompt`, `prompt_file`, `outputs` and `done_when`, and `WorkflowView` gains `format`,
@@ -456,10 +467,13 @@ needs the changes below.
 The base contract holds these rules, and this design keeps them. The server binds to loopback only, starts a session
 only with the launch code, and checks the session token on every call. The launch code is a one-time secret that
 `flow view` prints and the browser sends to start a session. The session token is the secret the server returns for that
-session, which the browser sends on every API call. A client keeps the token in memory only, as the contract says, so a
-reload loses the session and needs a new launch code from `flow view`. It drops the token on any 401. The page renders
-text from the repo (prompts, `prompt_file` contents, diagnostics) as plain text, under a strict content security
-policy.
+session, which the browser sends on every API call. A client may keep the token in the `sessionStorage` of its browser
+tab and nowhere else, as the contract says, so a reload of that tab needs no new launch code. It drops the token on any
+401 and when the user ends the session. The page does this. The browser copies that storage into a tab made by Duplicate
+or `window.open`, and may restore it with the tab, so script on the page can read the token. The page renders text from
+the repo (prompts, `prompt_file` contents, diagnostics) as plain text, under a strict content security policy. A server
+that serves the page sends its Content-Security-Policy as an HTTP header that includes `frame-ancestors 'none'`, as the
+contract's **The page** says. The policy in the page's `<meta>` tag cannot set `frame-ancestors` and is only a fallback.
 
 ## Slices
 
@@ -504,9 +518,10 @@ Each item has a slice or a design that owns it, and a rule until then.
   stage sessions. Until then `flow run` and `flow verify` ask on a terminal and otherwise exit 77 ([Trust](#trust)).
 - **Trust hash byte layout.** Owner: [step 1e](workflows-plan.md#1e-trust), which builds `flow trust`. It fixes the
   separators, path encoding, sort order and hex form of the hash, and the order of the files in it.
-- **Session recovery in the canvas.** Owner: the canvas contract, after the first release. A reload, a second tab or a
-  restarted server has no session, because the client keeps the token in memory only and the launch code works once.
-  Until then the page tells the user to start `flow view` again.
+- **Session recovery in the canvas.** Owner: the canvas contract, after the first release. A reload, a duplicated tab
+  or a tab the browser restores keeps the session, because the page keeps the token in the tab's `sessionStorage`. A tab
+  opened fresh or a restarted server has none, because the launch code works once. Recovery for those two cases is what
+  is deferred. Until then the page tells the user to start `flow view` again.
 - **Shipped workflows in the canvas.** Owner: the canvas contract, and slice 9 needs it. Until then the canvas shows
   only the `<name>.yml` files in its workflow folder, as the contract's name pattern and file rule say, and a shipped
   `library/<name>` workflow runs from the CLI only. `flow view library/<name>` exits 64 with a message that shipped
