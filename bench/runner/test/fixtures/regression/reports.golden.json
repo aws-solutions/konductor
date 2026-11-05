@@ -439,7 +439,8 @@
    "pin": {
     "runs": 6,
     "verified": 0,
-    "mismatch": 0
+    "mismatch": 0,
+    "unrecorded": 6
    },
    "verdict": {
     "rule": [
@@ -1228,7 +1229,8 @@
    "pin": {
     "runs": 6,
     "verified": 0,
-    "mismatch": 0
+    "mismatch": 0,
+    "unrecorded": 6
    },
    "verdict": {
     "rule": [

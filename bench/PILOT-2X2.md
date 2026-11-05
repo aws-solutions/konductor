@@ -86,6 +86,9 @@ chart appear only when the table has intervals. The quality chart has no interva
 - **A timeout is a cost and a quality event at once.** Kiro meters no credits for a run it kills, so a cell with timeouts has a
   cost lower bound, and the ratio says so.
 - **Claude Code vanilla is not empty.** Built-in agents and skills exist in that arm too (see the harness section of the README).
+- **Check wording can decide a cell.** Under the default scoring the checks term is 1 only when every check passes, so one brittle check moves a run by 40 points. On `design-hold-service`, four checks measured wording and failed designs that had the content; three of the four pilot cells lost the 40 points. They were rewritten (see "Revised checks of `design-hold-service`" in `README-tasks.md`), and pilot results scored before that read as stale for this task. `bench.js recheck --run CELL_DIR` rescores a saved cell; `report-2x2` then needs no change.
+- **Why a cell scored what it did.** `bench.js explain --run DIR --arm CELL --task T` prints the checks, the rubric per judge and the arithmetic for one cell and task, and `bench.js trace --run DIR --arm CELL --task T --rep 1` prints what the run did, in order. A `cells/` root works as `--run`; `--arm` names the cell (`kiro-vanilla`, `kiro-konductor`, `cc-vanilla`, `cc-konductor`).
+- **Kiro sessions.** Cells run on engine v3 save `session/sess_<id>/` files; cells saved before that fix have none and read `transcriptPartial`.
 
 ## How the pieces fit
 
