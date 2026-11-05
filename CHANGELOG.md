@@ -29,6 +29,9 @@ not per individual commit.
 - New `konductor verify-run --session <path>` checks a SOP session file and exits through the
   existing exit-code contract. `--root <dir>` sets the directory the session and its evidence
   must resolve under (default: the current directory). It writes nothing.
+- `make version-check` fails a PR or release when a crate, a lockfile entry for a Konductor
+  product crate (manifest under `cli/`, `mcp/` or `shared/`) or the CHANGELOG heading disagrees
+  with `VERSION`. Independently versioned path crates elsewhere are not checked.
 
 ### Changed
 
@@ -53,9 +56,15 @@ not per individual commit.
   `.konductor/memory/` at the top of the project's own git work tree, refusing a symlinked `.konductor`
   or `.konductor/memory`, and treating memory as content when a tracked top-level dot name is
   non-ASCII; orchestrators never bypass a denial or read unnamed secrets.
+- `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
+  check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
+  The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
+  unattended run stops and reports, and a later attended resume can resolve or override.
 
 ### Fixed
 
+- Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
+  (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
   and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
@@ -85,6 +94,13 @@ not per individual commit.
   such as a `telemetry:` opt-out. It now changes only the named key.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
+- `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
+
+### Security
+
+- `rustls` moves from 0.23.45 to 0.23.46 in the CLI, MCP server and shared crates. It fixes
+  GHSA-c8m5-c952-6cm4 (TLS session secrets exposed in `Debug` output), GHSA-h2v8-394m-p7vv,
+  GHSA-vp88-798v-h67f and GHSA-w44r-93j7-qv28.
 
 ## [1.2.0] - 2026-10-26
 
