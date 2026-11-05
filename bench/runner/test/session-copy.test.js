@@ -7,11 +7,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const net = require('node:net');
+const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, makeBench } = require('./helpers.js');
 const { makeFakeKiro } = require('./fake-kiro.js');
 const { copySessions, readTranscripts } = require('../lib/harness/kiro.js');
+const { redactHostPaths, hostPathRules } = require('../lib/hygiene.js');
 const { executeRun } = require('../lib/run-one.js');
 const { loadTasks } = require('../lib/tasks.js');
 
@@ -176,6 +178,103 @@ test('an artifact copy failure flags artifactCopyFailed and keeps the run result
     assert.equal(r.credits, 0.75);
     assert.ok(r.checks.length > 0);
     assert.ok(r.flags.includes('artifactCopyFailed'));
+  } finally {
+    s.cleanup();
+  }
+});
+
+// ---- engine v3: ~/.kiro/sessions/<workspace hash>/sess_<id>/ ----
+
+function v3Home(root, { messages = '{"payload":{"type":"user"}}\n', subs = { 'e1.jsonl': '{"payload":{"type":"assistant"}}\n' } } = {}) {
+  const home = path.join(root, 'home');
+  const sdir = path.join(home, '.kiro/sessions/ab12cd34ef56ab78/sess_abc-123');
+  fs.mkdirSync(path.join(sdir, 'sub-executions'), { recursive: true });
+  fs.writeFileSync(path.join(sdir, 'session.json'), '{"id":"sess_abc-123"}');
+  if (messages !== null) fs.writeFileSync(path.join(sdir, 'messages.jsonl'), messages);
+  for (const [name, text] of Object.entries(subs)) fs.writeFileSync(path.join(sdir, 'sub-executions', name), text);
+  fs.writeFileSync(path.join(sdir, 'publish.cursor'), '3');
+  return { home, sdir };
+}
+
+test('a v3 session directory is copied to session/<sess id>/ with its sub-agent files', () => {
+  const root = tmp();
+  try {
+    const { home } = v3Home(root);
+    fs.mkdirSync(path.join(home, '.kiro/sessions/ab12cd34ef56ab78/not-a-session'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.kiro/sessions/ab12cd34ef56ab78/not-a-session/x'), 'x');
+    const dest = path.join(root, 'out/session');
+    const r = copySessions(home, dest);
+    assert.deepEqual(allFiles(dest), [
+      'sess_abc-123', 'sess_abc-123/messages.jsonl', 'sess_abc-123/publish.cursor', 'sess_abc-123/session.json', 'sess_abc-123/sub-executions', 'sess_abc-123/sub-executions/e1.jsonl',
+    ]);
+    assert.deepEqual(r.skipped, []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a v3 workspace directory that is a symlink is skipped and not followed', () => {
+  const root = tmp();
+  try {
+    const { home } = v3Home(root);
+    const outside = path.join(root, 'outside/sess_evil');
+    fs.mkdirSync(outside, { recursive: true });
+    fs.writeFileSync(path.join(outside, 'messages.jsonl'), 'OUTSIDE');
+    fs.symlinkSync(path.join(root, 'outside'), path.join(home, '.kiro/sessions/linked'));
+    const dest = path.join(root, 'out/session');
+    const r = copySessions(home, dest);
+    assert.equal(allFiles(dest).some((f) => f.includes('sess_evil')), false);
+    assert.deepEqual(r.skipped.map((s) => [s.path, s.reason]), [['linked', 'symlink']]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the transcript of a v3 session is its messages plus its sub-execution files, and is partial only without messages', () => {
+  const root = tmp();
+  try {
+    const { home } = v3Home(root);
+    const dest = path.join(root, 'out/session');
+    copySessions(home, dest);
+    const whole = readTranscripts(dest, ['sess_abc-123'], 'stream text');
+    const expected = Buffer.byteLength('{"payload":{"type":"user"}}\n{"payload":{"type":"assistant"}}\n');
+    assert.deepEqual(whole.transcript, { bytes: expected, chars: expected, partial: false });
+    fs.rmSync(path.join(dest, 'sess_abc-123/messages.jsonl'));
+    const missing = readTranscripts(dest, ['sess_abc-123'], 'stream text');
+    assert.deepEqual(missing.transcript, { bytes: 11, chars: 11, partial: true });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('redactHostPaths replaces the host home in every saved file and leaves other paths alone', () => {
+  const root = tmp();
+  try {
+    fs.writeFileSync(path.join(root, 'a.jsonl'), '{"cwd":"/local/home/someone/project","other":"/home/someone2/x","scratch":"/tmp/w-1/home"}\n');
+    fs.mkdirSync(path.join(root, 'd'));
+    fs.writeFileSync(path.join(root, 'd/b.json'), '/Users/someone/code and /home/someone');
+    const n = redactHostPaths(root, hostPathRules({ HOME: '/local/home/someone' }, 'someone'));
+    assert.equal(n, 2);
+    assert.equal(fs.readFileSync(path.join(root, 'a.jsonl'), 'utf8'), '{"cwd":"<host-home>/project","other":"/home/someone2/x","scratch":"/tmp/w-1/home"}\n');
+    assert.equal(fs.readFileSync(path.join(root, 'd/b.json'), 'utf8'), '<host-home>/code and <host-home>');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a v3 run keeps its full session files, is not transcriptPartial, and carries no host path', async () => {
+  const hostPath = path.join(os.homedir(), 'private-project');
+  const s = setup({ sessionTreeV3: true, sessionId: 'sess_fake1', hostPath, credits: 0.75 });
+  try {
+    const r = await executeRun({ arm: ARM, task: s.task, replicate: 1, ctx: { ...s.ctx, config: { ...CONFIG, agentEngine: 'v3' } }, prepared: null, outDir: s.outDir });
+    assert.equal(r.infraError, null);
+    assert.equal(r.flags.includes('transcriptPartial'), false);
+    assert.equal(r.transcriptPartial, false);
+    const dir = path.join(s.outDir, 'session/sess_fake1');
+    assert.deepEqual(allFiles(dir), ['messages.jsonl', 'publish.cursor', 'session.json', 'sub-executions', 'sub-executions/e1.jsonl']);
+    const saved = allFiles(dir).filter((f) => f.endsWith('.json') || f.endsWith('.jsonl')).map((f) => fs.readFileSync(path.join(dir, f), 'utf8')).join('');
+    assert.equal(saved.includes(os.homedir()), false);
+    assert.match(fs.readFileSync(path.join(dir, 'messages.jsonl'), 'utf8'), /hello <host-home>\/private-project/);
   } finally {
     s.cleanup();
   }

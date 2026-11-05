@@ -4,6 +4,7 @@
 // Looks for credential material in run outputs. Reports file names and pattern names, never the matched text.
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { scrubString } = require('./scrub.js');
 
@@ -61,4 +62,34 @@ function scrubTree(dir, literals, { shapes = false } = {}) {
   return n;
 }
 
-module.exports = { scanTree, scrubTree, PATTERNS };
+/**
+ * The host's home directory and user name as they could appear in a saved file: the home path of the process, its
+ * /home, /local/home and /Users forms for the current user. Returned as [RegExp, replacement] pairs.
+ */
+function hostPathRules(env = process.env, user = os.userInfo().username) {
+  const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const rules = [];
+  if (user && user.length > 2) rules.push([new RegExp(`(?:/local)?/(?:home|Users)/${esc(user)}(?![\\w-])`, 'g'), '<host-home>']);
+  const homes = new Set([os.homedir(), env.HOME].filter((h) => typeof h === 'string' && h.length > 6 && h !== os.tmpdir()));
+  for (const h of [...homes].sort((a, b) => b.length - a.length)) rules.push([new RegExp(`${esc(h)}(?![\\w-])`, 'g'), '<host-home>']);
+  return rules;
+}
+
+/**
+ * Replaces the host's home path in every file under dir with <host-home>. A session saved from a sandboxed run holds the
+ * run's scratch paths; this removes the real user's, should one appear. Returns the number of files rewritten.
+ */
+function redactHostPaths(dir, rules = hostPathRules()) {
+  let n = 0;
+  for (const file of files(dir)) {
+    const text = readText(file);
+    if (text === null) continue;
+    const next = rules.reduce((t, [re, to]) => t.replace(re, to), text);
+    if (next === text) continue;
+    fs.writeFileSync(file, next, 'latin1');
+    n++;
+  }
+  return n;
+}
+
+module.exports = { scanTree, scrubTree, redactHostPaths, hostPathRules, PATTERNS };

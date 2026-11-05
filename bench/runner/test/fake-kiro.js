@@ -76,6 +76,14 @@ if (cfg.sessionTree) {
   fs.writeFileSync(path.join(sdir, 's1.jsonl'), '{"kind":"Prompt"}\\n');
   fs.writeFileSync(path.join(sdir, 's1/tool-results/out.txt'), 'nested');
 }
+if (cfg.sessionTreeV3) {
+  const sdir = path.join(process.env.HOME, '.kiro/sessions', 'ab12cd34ef56ab78', sid);
+  fs.mkdirSync(path.join(sdir, 'sub-executions'), { recursive: true });
+  fs.writeFileSync(path.join(sdir, 'session.json'), JSON.stringify({ id: sid, workspacePaths: [process.cwd(), cfg.hostPath || '/none'] }));
+  fs.writeFileSync(path.join(sdir, 'messages.jsonl'), JSON.stringify({ payload: { type: 'user', content: 'hello ' + (cfg.hostPath || '') } }) + '\\n');
+  fs.writeFileSync(path.join(sdir, 'sub-executions', 'e1.jsonl'), JSON.stringify({ payload: { type: 'assistant', content: 'sub' } }) + '\\n');
+  fs.writeFileSync(path.join(sdir, 'publish.cursor'), '1');
+}
 if (cfg.makeSocket) { const s = net.createServer(); s.listen(path.join(process.cwd(), 'sock'), () => { finish(); process.exit(0); }); } else if (tc.delayMs) { setTimeout(finish, tc.delayMs); } else { finish(); }
 `;
 

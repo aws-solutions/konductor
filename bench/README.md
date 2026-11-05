@@ -570,7 +570,12 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   load; the model then loads the tool and retries. `--stop-on` ignores refused calls too. The skill fields in `result.json` are written when the run
   ends, so runs saved by an older runner keep empty `skillsLoaded`; `bench.js skills` recomputes from `stream.jsonl` without writing, `backfill --skills` writes the recomputed fields, and `report` reads `result.json`.
 - `workToolCalls` leaves out the `subagent` call and the subagent `summary` pseudo-tool. Transcript
-  size sums the parent and subagent sessions (`transcriptPartial` if one is missing). Other metering
+  size sums the parent and subagent sessions (`transcriptPartial` if one is missing). Session files are copied to `<run>/session/`
+  from the run's scratch home: engine v2 writes `~/.kiro/sessions/cli/<id>.json` and `.jsonl`; engine v3 (kiro-cli 3.x) writes
+  `~/.kiro/sessions/<workspace hash>/sess_<id>/` with `session.json`, `messages.jsonl` and `sub-executions/<id>.jsonl`, copied to `session/sess_<id>/`.
+  Before this was handled, v3 runs copied nothing and fell back to the size of `stream.jsonl`, so every v3 run read `transcriptPartial`; runs saved by
+  that runner keep the flag and have no `session/` directory. The copy skips symlinks and special files, replaces the user's home path with
+  `<host-home>`, and the run's credential scrub covers it. Other metering
   units are flagged. `askedUser` marks a final message that ends with a question, asks for approval,
   or stops for a reason other than `end_turn`. `skillsMcpOk` records whether a `konductor-skills` call
   succeeded; konductor arms run with `--require-mcp-startup`.

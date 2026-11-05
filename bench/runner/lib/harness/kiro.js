@@ -16,7 +16,7 @@ const skills = require('../skills.js');
 const { promptFor } = require('../arm-opts.js');
 const { writeArmConfig } = require('../arm-config.js');
 const { orchMetricsOfRunDir } = require('../orch-metrics.js');
-const { scrubTree } = require('../hygiene.js');
+const { scrubTree, redactHostPaths } = require('../hygiene.js');
 const { secretLiterals } = require('../scrub.js');
 
 const id = 'kiro-cli';
@@ -58,12 +58,44 @@ function copyTree(srcDir, destDir, rel, out) {
   }
 }
 
+// Engine v2 keeps <sid>.json and <sid>.jsonl in ~/.kiro/sessions/cli. Engine v3 (kiro-cli 3.x) keeps one directory per
+// session, ~/.kiro/sessions/<workspace hash>/sess_<id>/, with session.json, messages.jsonl and sub-executions/<id>.jsonl for
+// each sub-agent. Both are copied under destDir; a v3 session lands at destDir/sess_<id>/.
+const V3_SESSION_DIR = /^sess_[0-9A-Za-z-]+$/;
+
 function copySessions(home, destDir) {
-  const src = path.join(home, '.kiro/sessions/cli');
+  const root = path.join(home, '.kiro/sessions');
   const out = { copied: [], skipped: [] };
-  if (!fs.existsSync(src)) return out;
-  copyTree(src, destDir, '', out);
+  if (!fs.existsSync(root)) return out;
+  const cli = path.join(root, 'cli');
+  if (fs.existsSync(cli)) copyTree(cli, destDir, '', out);
+  for (const workspace of safeReaddir(root)) {
+    if (workspace === 'cli') continue;
+    const wsDir = path.join(root, workspace);
+    if (!isRealDir(wsDir, out, workspace)) continue;
+    for (const name of safeReaddir(wsDir)) {
+      if (!V3_SESSION_DIR.test(name)) continue;
+      const src = path.join(wsDir, name);
+      if (isRealDir(src, out, path.join(workspace, name))) copyTree(src, path.join(destDir, name), name, out);
+    }
+  }
   return out;
+}
+
+function safeReaddir(dir) {
+  try { return fs.readdirSync(dir); } catch { return []; }
+}
+
+// A symlink or special file is listed as skipped and never followed.
+function isRealDir(p, out, rel) {
+  try {
+    const st = fs.lstatSync(p);
+    if (st.isDirectory()) return true;
+    if (st.isSymbolicLink()) out.skipped.push({ path: rel, reason: 'symlink' });
+  } catch (e) {
+    out.skipped.push({ path: rel, reason: `copy failed: ${e.code || e.message}` });
+  }
+  return false;
 }
 
 // The sessions only feed the transcript size and the credit cross-check, so a failed copy must not
@@ -72,6 +104,7 @@ function copySessionsTolerant(home, outDir, flags) {
   let skipped;
   try {
     skipped = copySessions(home, path.join(outDir, 'session')).skipped;
+    redactHostPaths(path.join(outDir, 'session'));
   } catch (e) {
     skipped = [{ path: '.', reason: `copy failed: ${e.code || e.message}` }];
   }
@@ -90,6 +123,18 @@ function readRegularFile(file) {
   try { return fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null; } catch { return null; }
 }
 
+// The transcript text of one session: engine v2 keeps <sid>.jsonl; engine v3 keeps <sid>/messages.jsonl and one file per
+// sub-agent run in <sid>/sub-executions. Null when the session's own transcript was not saved.
+function sessionTranscript(sessionDir, sid) {
+  const v2 = readRegularFile(path.join(sessionDir, `${sid}.jsonl`));
+  if (v2 !== null) return v2;
+  const main = readRegularFile(path.join(sessionDir, sid, 'messages.jsonl'));
+  if (main === null) return null;
+  const subDir = path.join(sessionDir, sid, 'sub-executions');
+  const subs = safeReaddir(subDir).filter((n) => n.endsWith('.jsonl')).sort().map((n) => readRegularFile(path.join(subDir, n)) ?? '');
+  return [main, ...subs].join('');
+}
+
 // Transcript size over the parent and every subagent session; partial when any file is missing.
 function readTranscripts(sessionDir, sessionIds, streamText) {
   let bytes = 0;
@@ -97,7 +142,7 @@ function readTranscripts(sessionDir, sessionIds, streamText) {
   let missing = false;
   const sessions = [];
   for (const sid of sessionIds) {
-    const t = readRegularFile(path.join(sessionDir, `${sid}.jsonl`));
+    const t = sessionTranscript(sessionDir, sid);
     if (t !== null) {
       bytes += Buffer.byteLength(t);
       chars += t.length;
