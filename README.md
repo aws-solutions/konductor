@@ -36,8 +36,10 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
 
 - 🎼 **One request, the whole lifecycle.** Requirements, design, code, tests and docs, without
   hand-carrying artifacts between chats.
-- ✅ **Every phase gets checked.** Each phase's work passes one review gate, and failed checks
-  get one fix and one re-review.
+- ✅ **Every phase gets checked.** Code, and documents a later phase implements, pass one fresh
+  reviewer; a standalone plan or requirements document passes its checker skill; a one-file change
+  passes by build, test and lint. Anything touching auth, secrets, data or infrastructure, and every
+  threat model, gets the reviewer. Failed checks get one fix and one re-review.
 - 🧠 **Expertise built in.** 82 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
 - 🪶 **No infrastructure.** Agents are configuration (prompts, skills, SOPs) that your Kiro or

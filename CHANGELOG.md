@@ -35,7 +35,7 @@ not per individual commit.
 
 ### Changed
 
-- `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate; it
+- `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate that needs one (next bullet); it
   spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
   work on disjoint files. An SOP's own instruction to spawn wins over that limit.
 - All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change whose

@@ -29,8 +29,8 @@ and the MCP registry entries.
 | Agent | Role | Model | Skills | SOPs | MCP |
 | --- | --- | --- | --- | --- | --- |
 | `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 22 | 10 | — |
-| `konductor-mux-orchestrator` | Same, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 9 | — |
-| `konductor-cmux-orchestrator` | Same, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 9 | — |
+| `konductor-mux-orchestrator` | Coordinator. Delegates every change, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 9 | — |
+| `konductor-cmux-orchestrator` | Coordinator. Delegates every change, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 9 | — |
 | `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
 | `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 4 | `aws-mcp` |
 | `k-developer` | Implementation, code review, git, builds. | `claude-sonnet-5.5` | 27 | 4 | `aws-mcp` |
