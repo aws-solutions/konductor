@@ -28,6 +28,8 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 const ORDINAL = { pass: 2, partial: 1, fail: 0 };
 
 const C = (id, label, key, status, value, threshold, note = '') => ({ id, label, key, status, value, threshold, note });
+// Present only when some run has no model record, so a study where every pin is verified has the facts it always had.
+const unrecordedPin = (n) => (n > 0 ? { unrecorded: n } : {});
 const unknown = (id, label, key, threshold, what = 'not recorded') => C(id, label, key, 'WARN', what, threshold);
 
 // ---- facts from a loaded run ----
@@ -165,7 +167,7 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
     failures: { n: rows.length, timeout: rows.filter((r) => r.outcome === 'timeout').length, error: rows.filter((r) => r.outcome === 'error').length, infraError: rows.filter((r) => r.outcome === 'infraError').length, modelMismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, checksFailed: rows.filter((r) => r.outcome === 'checksFailed').length },
     censored: rows.filter((r) => r.censored).length,
     contamination: contaminated.length ? { audited: contaminated.length, flagged: flagged.length, externalFetch: contaminated.filter((r) => (r.contamination.externalFetch || []).length).length, fixRecall: contaminated.filter((r) => (r.contamination.fixRecallChars || 0) >= MIN_RECALL).length } : null,
-    pin: { runs: rows.length, verified: rows.filter(pinOk).length, mismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, unrecorded: rows.filter((r) => r.outcome !== 'modelMismatch' && !pinOk(r) && !r.sessionModel && !r.streamModel).length },
+    pin: { runs: rows.length, verified: rows.filter(pinOk).length, mismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, ...unrecordedPin(rows.filter((r) => r.outcome !== 'modelMismatch' && !pinOk(r) && !r.sessionModel && !r.streamModel).length) },
     isolation: { modes: [...new Set(rows.map((r) => r.isolation).filter(Boolean))], unknown: rows.filter((r) => !r.isolation).length, tripwire: rows.filter((r) => r.tripwire).length, runs: rows.length },
     budget: { recorded: capKey !== null, cap: capKey ? (cfgs.every((c) => typeof c[capKey] === 'number') ? cfgs.reduce((n, c) => n + c[capKey], 0) : cfg[capKey]) : null, spent: rows.reduce((n, r) => n + (finite(r.credits) ? r.credits : 0), 0), skipped },
     provenance: provenanceOf(run, cfgs),
