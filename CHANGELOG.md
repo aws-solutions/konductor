@@ -49,6 +49,7 @@ not per individual commit.
 - The rule against reading secret files now lives in the core rules, so all 11 agents load it.
   From a file the user names, an agent reports key names or redacted values only, never the
   secret values, in replies, briefs, commits or logs.
+  A `credentials_file` an SOP passes in a brief counts as user-named.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
