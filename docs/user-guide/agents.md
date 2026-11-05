@@ -159,9 +159,10 @@ This is enforced in config, not just in the prompt:
   therefore replaces a specialist's `@builtin` with the v2 built-in tools listed one by one,
   without `subagent`, and drops `toolsSettings.subagent`. A `*` entry gets the same list plus
   `@<server>` for each of the spec's MCP servers. The list matches kiro-cli 2.36.0 and the v2
-  engine in kiro-cli 3.0.0, the last v2 release; v2 receives no further feature updates, so the
-  list is not expected to change. An older client that does not know one of these tools may fail
-  to load the specialists. Setting `toolsSettings.subagent.availableAgents` is not an
+  engine in kiro-cli 3.0.0, the last v2 release; older v2 clients were not checked. On kiro-cli
+  3.0.0 an unknown tool name does not stop an agent from loading. If a specialist fails to load
+  on an older client, run `kiro-cli agent validate --path .kiro/agents/<name>.json` and update
+  kiro-cli. Setting `toolsSettings.subagent.availableAgents` is not an
   alternative: a list that matches no agent still exposes the tool.
 
 The block covers the runtime's agent-spawning tools only, not shell. A specialist with shell
