@@ -31,7 +31,7 @@ TASK: <Atomic, specific goal — one verb, one outcome>
 
 EXPECTED OUTCOME: <Concrete deliverables with success criteria>
 
-REQUIRED SKILLS: <Relevant expertise the subagent needs>
+REQUIRED SKILLS: <Relevant expertise the subagent needs. On Kiro CLI, also add the V2 or V3 schema-load line from "Loading Required Skills on Kiro CLI">
 
 REQUIRED TOOLS: <Explicit tool allowlist — only these tools may be used>
 
@@ -51,6 +51,24 @@ CONTEXT: <File paths, patterns, constraints, handoff file references>
 ```
 
 If a section is not applicable, write `N/A` — never omit the section. `TARGET AGENT` is the one exception: it is never `N/A` — every delegation targets exactly one agent.
+
+### Loading Required Skills on Kiro CLI
+
+On Kiro CLI, a subagent loads the skills named in REQUIRED SKILLS with the `get_skill` tool, whose schema can start deferred. A schema the orchestrator loaded is not loaded for the subagent. When the delegation lists any skills, add the line for the subagent's engine to REQUIRED SKILLS. Each line matches the load rule in that engine's own skills index.
+
+Kiro CLI V3:
+
+```
+Before your first get_skill call, call load_resource with id tool::konductor-skills::get_skill, then call get_skill through tool_call with that id. Skills are not skill:: resources; load them only with get_skill.
+```
+
+Kiro CLI V2:
+
+```
+If get_skill is not in your tool list, call tool_search with tool_id konductor-skills::get_skill first, then call get_skill.
+```
+
+Use the line that matches the load rule in your own skills index. Claude Code subagents load skills natively and need no such line.
 
 ### Never Omit the Target Agent
 
