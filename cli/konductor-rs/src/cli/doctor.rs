@@ -3,9 +3,10 @@
 // doctor.rs - `konductor doctor` diagnostics (Rust implementation).
 //
 // Inspects a Konductor installation/checkout for problems and prints
-// actionable remediation guidance. Every check is reuse-only: it calls
-// the same functions `install`/`synth`/`config` already use, rather
-// than re-implementing any validation logic. Eight checks run today,
+// actionable remediation guidance. Every check reuses install/synth/config
+// code where it exists (paths, strategy names, hook command parsing); the
+// orchestration check reads hook files through `hook_locator`, whose readers
+// are pinned to the writers by round-trip tests. Eight checks run today,
 // in this order: source, runtime, manifest, config, container_runtime,
 // index_status, telemetry_state, orchestration.
 //

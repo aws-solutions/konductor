@@ -2,7 +2,8 @@
 //
 // orchestration_mode.rs: reads `orchestration.mode` from the user's
 // `~/.konductor/config.yml`. The session hook and `doctor` share this one
-// reader. Only the user layer is read; a project file's value is ignored.
+// reader. Only the user layer is read; a project file's value is ignored;
+// `doctor` reports one.
 //
 // The mode is not a gate setting, so no gate command may fail on it. The
 // section therefore stays out of `config::RawConfig`: the gate loader ignores
