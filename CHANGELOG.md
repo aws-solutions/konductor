@@ -66,10 +66,16 @@ not per individual commit.
   logo as its listing icon and drops the `kiro` keyword, the mux and cmux orchestrators describe
   `.done` completion on both runtimes, release assembly stages generator output in a temporary
   directory, and `make claude-plugin` writes the gitignored `dist/claude-plugin/`.
-- On Claude Code, the mux and cmux orchestrators start each child in the mode set by
-  `KONDUCTOR_DISPATCH_PERMISSION_MODE` or the plugin's `dispatch_permission_mode` option:
-  `interactive` (the default, which prompts in the pane), `headless` (no prompts, edits only unless
-  your permissions allow more) or the opt-in `bypass`, which skips every permission check.
+- **Behavior change:** on Claude Code, the mux and cmux orchestrators no longer start each child
+  with every permission check skipped (what is now `bypass`); the default is `interactive`, which
+  prompts in the child's pane. For unattended runs, set
+  `KONDUCTOR_DISPATCH_PERMISSION_MODE=headless` and allowlist your build and test commands, or use
+  `bypass` only in an isolated environment. An interactive child completes when it writes its
+  `$KONDUCTOR_DONE_FILE`. The plugin's `dispatch_permission_mode` option sets the same modes.
+- Each dispatched child gets its own 0700 directory under the registry for its brief, result and
+  `.done`, and is granted only that directory. A `.done` the child writes is kept, and the launcher
+  adds the exit code when the session ends, so a non-zero exit is always recorded as `error`.
+  `--brief <file>` passes a long brief.
 
 ### Fixed
 

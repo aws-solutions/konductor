@@ -472,14 +472,21 @@ own; servers such as Playwright MCP are yours to configure.
 
   | Mode | Child command | Effect |
   | --- | --- | --- |
-  | `interactive` (default) | `claude --add-dir <registry dir> --agent <agent> "<task>"` | A normal session in the pane that asks you before using a tool that needs permission. It stays open after the task, so type `/exit` in the pane when it reports done |
-  | `headless` | `claude --add-dir <registry dir> --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<task>"` | Runs once without prompts and skips the workspace trust dialog, because of `-p`. It can edit files in its working directory and the registry dir; Bash, network and other calls that would prompt are denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows them, so `acceptEdits` alone does not allow build or test commands |
-  | `bypass` | `claude --add-dir <registry dir> --agent <agent> --dangerously-skip-permissions -p "<task>"` | Opt-in. Skips every permission check, AWS API calls included. Use it only in an isolated environment |
+  | `interactive` (default) | `claude --add-dir <dispatch dir> --agent <agent> "<prompt>"` | A normal session in the pane that asks you before using a tool that needs permission. Its task is complete when it writes its `.done`; type `/exit` only to close the pane |
+  | `headless` | `claude --add-dir <dispatch dir> --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<prompt>"` | Runs once without prompts and skips the workspace trust dialog, because of `-p`. It can edit files in its working directory and its dispatch dir; Bash, network and other calls that would prompt are denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows them, so `acceptEdits` alone does not allow build or test commands |
+  | `bypass` | `claude --add-dir <dispatch dir> --agent <agent> --dangerously-skip-permissions -p "<prompt>"` | Opt-in. Skips every permission check, AWS API calls included. Use it only in an isolated environment |
 
-  `<registry dir>` is `/tmp/konductor-mux` or `/tmp/konductor-cmux`, where the child reads its brief
-  and writes its result. `--add-dir` exposes the whole registry dir, so every child can see the other
-  children's briefs, results and `.done` files, and a `headless` child auto-accepts edits anywhere in
-  it.
+  `<dispatch dir>` is a 0700 directory of its own under `/tmp/konductor-mux` or
+  `/tmp/konductor-cmux`, holding that dispatch's brief, result and `.done`. It is the only directory
+  the child is granted; the shared registry and other dispatches' files stay outside it. `<prompt>`
+  is a fixed instruction naming those files: the child writes its result there and, as its last
+  step, its `.done` (`$KONDUCTOR_DONE_FILE`). That `.done` is the completion signal, and the launcher
+  adds the exit code when the session ends, so a later crash still shows as `"error"`.
+
+  **Behavior change:** Claude Code children used to start with every permission check skipped (what
+  is now `bypass`). The default is now `interactive`. For unattended runs, set
+  `KONDUCTOR_DISPATCH_PERMISSION_MODE=headless` and allowlist your build and test commands in
+  `permissions.allow`, or use `bypass` only in an isolated environment.
 
   Set the mode with the plugin's `dispatch_permission_mode` option, or export
   `KONDUCTOR_DISPATCH_PERMISSION_MODE` in the shell that starts Claude Code; the variable wins.
