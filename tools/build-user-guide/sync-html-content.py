@@ -79,12 +79,8 @@ EDITS = [
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws-cli==1.7.0 — allowedTools grants documentation '
      'search/read, region list, and regional availability.'),
     # ---- every agent loads context/k-core-rules.md ---------------------------
-    ('concepts context file paragraph',
-     'There are two today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains',
-     'There are four today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-direct-work.md</span> is loaded by konductor; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by the mux and cmux orchestrators; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-shared.md</span> holds the handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains'),
-    ('concepts: no repeat review',
-     'k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; any CRITICAL or IMPORTANT finding in its last re-review still blocks done. An artifact that passed review is not reviewed again unless it changes.</p>',
-     'k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; any CRITICAL or IMPORTANT finding in its last re-review still blocks done. An artifact that passed review is not reviewed again unless it changes. When konductor made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.</p>'),
+    ('concepts context file paragraph', 'There are two today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains', 'There are four today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-direct-work.md</span> is loaded by konductor; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by the mux and cmux orchestrators; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-shared.md</span> holds the handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains'),
+    ('concepts: no repeat review', "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, or that the fix caused in what depends on it, blocks done, and the orchestrator stops and reports it to you; a pre-existing finding in unchanged code is listed for you. An SOP can set its own limit on fix rounds; a finding that blocks done under this rule still blocks it after the SOP's last re-review. An artifact that passed review is not reviewed again unless it changes.</p>", "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, or that the fix caused in what depends on it, blocks done, and the orchestrator stops and reports it to you; a pre-existing finding in unchanged code is listed for you. An SOP can set its own limit on fix rounds; a finding that blocks done under this rule still blocks it after the SOP's last re-review. An artifact that passed review is not reviewed again unless it changes. When konductor made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.</p>"),
     ("concepts: re-delegate sentence without a dash",
      "it re-delegates — <strong",
      "it re-delegates, <strong"),
@@ -330,20 +326,6 @@ EDITS = [
     ("ik which agent: konductor first",
      ">kiro-cli chat --agent k-architect</pre>", ">kiro-cli chat --agent konductor</pre>"),
     # ---- specialists return handoffs instead of spawning ---------------------
-    ("concepts: specialists do not use spawn grants",
-     "which decides who owns it, hands it over, and checks the result.</p>",
-     "which decides who owns it, hands it over, and checks the result. The core rules tell "
-     "specialists not to use those grants: a specialist does its own part, then returns a note "
-     "naming the next role, or a proposed parallel split that gives each part's agent, inputs "
-     "and files, and konductor routes it.</p>"),
-    ("agents: delegation edges are tool grants",
-     "Delegation is not open. In Kiro CLI it is governed",
-     "Delegation is not open, and the edges below are tool grants that the core rules tell "
-     "specialists not to use: a specialist returns a handoff note or a proposed split to its "
-     "caller, and the grants are still in the agent specs. Run directly with no orchestrator, "
-     "the caller is you: k-adversarial-pull-request-review returns its three Step 2 passes as "
-     "a proposed split, resumes at Step 3, returns the reuse pass as a handoff note, and "
-     "resumes at Step 4. In Kiro CLI it is governed"),
     ("test coverage review: handoff to k-developer",
      "it may offer to spawn k-developer to implement the missing tests.",
      "it may return a note naming k-developer to implement the missing tests."),
@@ -391,13 +373,10 @@ ROSTER = [
     ("sop-review owner line",
      'owner: "k-developer, k-quality-assurance — no file changes"',
      'owner: "k-developer — no file changes"'),
-    ("agents prose: routing the review SOP",
-     'so it delegates the whole SOP to the developer or QA agent, which hits the same wall.',
-     'so it delegates the whole SOP to the developer, which hits the same wall.'),
     ("faq: house rules and rulings",
      'sec("faq-outputs", "Where SOP output goes"',
      'sec("faq-house-rules", "Why konductor asked me", "Why did konductor ask me which commit style to use, and where did it save my answer?", {\n'
-     '        paras: ["Konductor\'s own formats and workflow (Conventional Commits, a pull request per feature, EARS, the review mechanism) are defaults. Your request, your project\'s AGENTS.md or CLAUDE.md, user-written memory, and the conventions your code already shows all outrank them. When those sources disagree, or the project states no convention, konductor asks once and saves your answer as a Ruling: entry in .konductor/memory/. The entry settles only the collision it names. If two rulings disagree, the newer one wins.", '
+     '        paras: ["Konductor\'s own formats and workflow (Conventional Commits, a pull request per feature, EARS, the review mechanism) are defaults. Your request, your project\'s AGENTS.md or CLAUDE.md, user-written memory, and the conventions your code already shows all outrank them. When those sources leave a collision open, or the project states no convention, konductor asks once and saves your answer as a Ruling: entry in .konductor/memory/. The entry settles only the collision it names. If two rulings disagree, the newer one wins.", '
      '"A file your AGENTS.md names directly, such as CONTRIBUTING.md, speaks for the same categories and nothing else. konductor-mux-orchestrator and konductor-cmux-orchestrator cannot write memory: they ask and pass your answer to the specialist, which saves it as an agent-written entry until you confirm it with konductor or a specialist."] }),\n'
      '      sec("faq-outputs", "Where SOP output goes"'),
     ("faq prose: who owns the review SOP",
@@ -412,12 +391,6 @@ ROSTER = [
     ("agents card: k-media-analyzer skills",
      "No SOPs. 1 skill \u2014 constraints only.",
      "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand."),
-    ("sops callout: two agents declare the review SOP",
-     'is declared by <strong style="color:var(--tx);font-weight:600">two</strong> agents — the developer and QA. Either can run it.',
-     'is declared by <strong style="color:var(--tx);font-weight:600">one</strong> agent — the developer. QA declared it too until that registration was removed as unusable: step 6 spawns k-architect, which QA cannot reach.'),
-    ("use-case bullet: neither owner lists the architect",
-     'and neither owner lists the architect: the developer\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>, QA\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-developer"]</code>.',
-     'and the developer, this SOP\'s only owner, does not list the architect: its targets are <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>.'),
     ("skills-per-agent table",
      '"rows":[{"k":"k-architect","v":"32"},{"k":"k-developer","v":"20"},{"k":"k-product-manager","v":"14"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"12"},{"k":"konductor-cmux-orchestrator","v":"11"},{"k":"konductor-mux-orchestrator","v":"11"},{"k":"k-quality-assurance","v":"10"},{"k":"k-researcher","v":"7"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
      '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"13"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),

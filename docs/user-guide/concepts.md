@@ -44,9 +44,9 @@ covers both — there is no separate CLI-versus-IDE choice to make.
 Konductor ships each agent with per-runtime settings, so the same agent behaves correctly in
 any of them. In `agents/*.agent-spec.json` these live under `clientConfig.kiroCli` and
 `clientConfig.claudeCli`. The two differ in real ways — for example, the Kiro CLI
-configuration for `k-architect` lists tools as `["@builtin", "subagent", "@aws-mcp"]`,
+configuration for `k-architect` lists tools as `["@builtin", "@aws-mcp"]`,
 while the Claude Code configuration lists `["Read", "Write", "Edit", "Bash", "Glob", "Grep",
-"WebFetch", "WebSearch", "TodoWrite", "mcp__aws-mcp__*"]`.
+"WebFetch", "WebSearch", "TodoWrite", "Skill", "mcp__aws-mcp__*"]`.
 
 ## Agent
 
@@ -197,7 +197,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding in the re-review, carried over or new, blocks done, and the orchestrator stops and reports it to you. An SOP can set its own limit on fix rounds; any CRITICAL or IMPORTANT finding in its last re-review still blocks done. An artifact that passed review is not reviewed again unless it changes. When `konductor` made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.
+fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, or that the fix caused in what depends on it, blocks done, and the orchestrator stops and reports it to you; a pre-existing finding in unchanged code is listed for you. An SOP can set its own limit on fix rounds; a finding that blocks done under this rule still blocks it after the SOP's last re-review. An artifact that passed review is not reviewed again unless it changes. When `konductor` made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.
 
 ## Maker-checker
 
