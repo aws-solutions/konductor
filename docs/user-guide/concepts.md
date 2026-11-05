@@ -155,8 +155,9 @@ rules that must never be missed.
 
 There are four today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
 rule, and the engineering practices, and all 11 agents load it. `context/k-direct-work.md` is loaded by `konductor`;
-`context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators; `context/k-orchestrator-shared.md` holds the
-handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
+`context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators (see
+Orchestration shapes); `context/k-orchestrator-shared.md` holds the handoff, split, denial and brief
+rules, and all three orchestrators load it. The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
 rules, including this one:
 
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You NEVER
