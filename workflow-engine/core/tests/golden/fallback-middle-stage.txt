@@ -1,0 +1,11 @@
+Goal: First line.
+Second line.
+Workflow outcome: Ship it.
+
+You are stage 2 of 3: review.
+Earlier stages: design (k-architect).
+Later stages: build (k-developer).
+Anything earlier stages produced is in the workspace files.
+All file paths are relative to the project root.
+
+Do the part of this work that fits your role.
