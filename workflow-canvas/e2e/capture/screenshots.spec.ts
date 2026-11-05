@@ -64,7 +64,7 @@ test('capture the Execution tab after the run passed', async ({ canvas }) => {
   await canvas.expectTabLoaded('Run');
 
   await canvas.runButton.click();
-  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+  await canvas.expectBadges(['Done', 'Passed', 'Passed', 'Passed']);
   await expect(canvas.runStatus).toContainText('Run passed.');
 
   await saveFullPageScreenshot(canvas.page, 'execution-tab-finished');

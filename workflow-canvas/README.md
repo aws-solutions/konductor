@@ -588,9 +588,9 @@ because the API needs one (1 to 2048 characters) to start a run.
   gets no answer, or is accepted in a reply the page cannot read, says that the
   run may not have started and that Run joins it if it did.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
-  outline), **Running**, **Done** and **Failed**. The word carries the state;
-  only Queued and Not run also differ in shape. The intent is Done once the run
-  has it. After a halt, the stages behind the failed one say **Not run**. The end
+  outline), **Running**, **Passed** and **Blocked**. The word carries the state;
+  only Queued and Not run also differ in shape. The intent is **Done** once the run
+  has it. After a halt, the stages behind the blocked one say **Not run**. The end
   shows the result: **Passed** or **Halted**.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
   done."). A screen reader hears each change from a polite live region that
