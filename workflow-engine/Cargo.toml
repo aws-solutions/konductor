@@ -6,7 +6,7 @@ members = ["core", "adapters"]
 [workspace.package]
 edition = "2021"
 license = "Apache-2.0"
-rust-version = "1.88"
+rust-version = "1.89"
 
 [workspace.lints.rust]
 # Kept in sync with shared/Cargo.toml. On aarch64 the GNU linker prints a
