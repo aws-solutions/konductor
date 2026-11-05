@@ -67,6 +67,9 @@ not per individual commit.
   `code-review` gains a step for reviewing a source tree with no diff, and
   `system-design-patterns` gains a no-questions mode that works from documents the user
   already gave.
+- The `kiro-requirements-generation`, `kiro-design-generation` and `kiro-task-generation`
+  descriptions each name their own input and output and the spec step before and after, so
+  the model picks the right one of the three.
 
 ### Fixed
 
