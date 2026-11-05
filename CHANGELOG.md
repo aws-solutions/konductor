@@ -60,6 +60,12 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- The Claude Code plugin is ready for the plugin directory. The README says what the plugin runs,
+  sends and fetches, including the telemetry endpoint and payload, that telemetry is on by default,
+  and how to turn it off, and adds example prompts and a support link. The plugin listing drops the
+  `kiro` keyword, the mux and cmux orchestrators describe `.done` completion on both runtimes, and
+  plugin build output is staged outside the repository (`make claude-plugin` writes
+  `dist/claude-plugin/`).
 
 ### Fixed
 
