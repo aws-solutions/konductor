@@ -164,14 +164,17 @@ fn persona_reason(error: &PersonaError) -> String {
     }
 }
 
-/// Rule 11 trusts a rules file under the home directory or the project
-/// tree. An install root that is an ancestor of the working directory
-/// (or the directory itself) is the project tree.
+/// Rule 11 trusts a rules file under the home directory or at the
+/// project root. Outside the home, the install root is the project root
+/// when it is the working directory itself or a git checkout root that
+/// contains it.
 fn is_trusted_location(owning_root: &Path, home: Option<&Path>, cwd: &Path) -> bool {
     let canonical =
         |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    canonical(cwd).starts_with(canonical(owning_root))
-        || home.is_some_and(|home| canonical(owning_root).starts_with(canonical(home)))
+    let root = canonical(owning_root);
+    home.is_some_and(|home| root.starts_with(canonical(home)))
+        || root == canonical(cwd)
+        || (root.join(".git").exists() && canonical(cwd).starts_with(&root))
 }
 
 /// `<home>/rest` as `~/rest`; any other path unchanged.
@@ -404,15 +407,24 @@ mod tests {
     use crate::cli::telemetry_hook::{resolve_invocations, HookEnv, AGENT_INVOCATION};
 
     #[test]
-    fn an_install_root_is_trusted_inside_home_or_above_the_working_directory() {
-        let home = Path::new("/h/user");
-        let trusted = |root, cwd| is_trusted_location(Path::new(root), Some(home), Path::new(cwd));
-        assert!(trusted("/h/user", "/h/user/proj"));
-        assert!(trusted("/h/user/proj", "/elsewhere"));
-        assert!(trusted("/work/proj", "/work/proj"));
-        assert!(trusted("/work/proj", "/work/proj/sub/dir"));
-        assert!(!trusted("/work/other", "/work/proj"));
-        assert!(!trusted("/work/proj/sub", "/work/proj"));
+    fn an_install_root_is_trusted_inside_home_at_the_working_directory_or_at_a_git_root() {
+        let base = scratch_dir("trusted-location");
+        let home = base.join("home");
+        let project = base.join("work/proj");
+        let plain = base.join("work/plain");
+        std::fs::create_dir_all(home.join("proj")).unwrap();
+        std::fs::create_dir_all(project.join(".git")).unwrap();
+        std::fs::create_dir_all(project.join("sub/dir")).unwrap();
+        std::fs::create_dir_all(plain.join("sub")).unwrap();
+        let trusted = |root: &Path, cwd: &Path| is_trusted_location(root, Some(&home), cwd);
+        assert!(trusted(&home, &home.join("proj")));
+        assert!(trusted(&home.join("proj"), &base));
+        assert!(trusted(&plain, &plain));
+        assert!(trusted(&project, &project.join("sub/dir")));
+        assert!(!trusted(&plain, &plain.join("sub")));
+        assert!(!trusted(&project.join("sub"), &project));
+        assert!(!trusted(&project, &plain));
+        std::fs::remove_dir_all(&base).ok();
     }
 
     const KIRO_V3_PAYLOAD: &str = r#"{"session_id":"sess_8147fdc3-f3ec-4b32-a669-a0d26bd4cea0","hook_event_name":"SessionStart","cwd":"/private/tmp"}"#;
