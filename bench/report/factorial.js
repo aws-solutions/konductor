@@ -95,7 +95,7 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile }) {
   const model = canonicalModel(run.config.canonicalModel ?? rows.find((r) => r.model)?.model ?? run.config.model);
   const shas = uniq(executed.map((e) => e.result.commitSha).filter(Boolean));
   const modelsSeen = uniq(executed.flatMap((e) => (e.result.claudeCode?.modelsSeen ?? [e.result.sessionModel ?? e.result.model]).filter(Boolean))).sort();
-  return { spec, dirs: run.dirs ?? [run.dir], armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
+  return { run, spec, dirs: run.dirs ?? [run.dir], armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
 }
 
 const sameJson = (x, y) => JSON.stringify(x) === JSON.stringify(y);
@@ -196,7 +196,7 @@ function costRatio(van, kon) {
  * dirs: { kiroVanilla, kiroKonductor, ccVanilla, ccKonductor }, each an array of finished and judged run directories
  * (several per cell are merged read-only, as `report` does). Throws when the four cells cannot be compared.
  */
-function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile } = {}) {
+function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile, qualityPack = null } = {}) {
   const tasks = loadTasks(benchDir, { extraDirs });
   const weights = loadScoring(scoringFile);
   const loaded = SPECS.map((spec) => loadCell(spec, dirs?.[spec.id], { tasks, weights, scoringFile }));
@@ -226,11 +226,17 @@ function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile } = {}) {
   const unpinned = cells.filter((c) => c.modelIdentity.pin && c.modelIdentity.pin.verified < c.modelIdentity.pin.runs);
   if (unpinned.length) out.push(`The model pin could not be verified from the session for every run in: ${unpinned.map((c) => `${labelOf(c)} (${c.modelIdentity.pin.verified}/${c.modelIdentity.pin.runs})`).join(', ')}. Kiro CLI vanilla runs record no session model; their model is the one passed on the command line. A run whose model was seen and differed would be counted as a mismatch.`);
   if (cells.some((c) => c.excluded > 0)) out.push(`Runs with an infra error or a model mismatch are left out of quality and counted in the table (${cells.filter((c) => c.excluded > 0).map((c) => `${labelOf(c)} ${c.excluded}`).join(', ')}).`);
+  let qualityDimensions = null;
+  if (qualityPack) {
+    const { summarizeQuality } = require('./quality.js');
+    qualityDimensions = summarizeQuality({ groups: loaded.map((c) => ({ id: c.spec.id, label: labelOf(c.spec), run: c.run })), tasks, pack: qualityPack, strictPanel: true });
+  }
   return {
     schemaVersion: 1, kind: 'factorial-2x2', tasks: taskIds, replicates: { min: reps.min, perTask: reps.perTask },
     descriptive: !intervals, descriptiveReason, model: loaded[0].model, units: { 'kiro-cli': 'credits', 'claude-code': 'USD' },
     judges: { backend: loaded[0].panel.backend, panel: loaded[0].panel.judges, models: loaded[0].panel.models },
     weights, cells, contrasts, costRatios, notes: out,
+    ...(qualityDimensions ? { qualityDimensions } : {}),
   };
 }
 
@@ -343,6 +349,7 @@ function renderFactorial(res, { charts = null } = {}) {
     ])),
   ];
   if (res.notes.length) blocks.push(D.h(2, 'Notes'), D.list(res.notes));
+  if (res.qualityDimensions) blocks.push(...require('./quality.js').qualityBlocks(res.qualityDimensions));
   blocks.push(D.h(2, 'Inputs'), D.list(cols.map((c) => `${HARNESS_NAME[c.harness]} ${c.role}: ${c.dirs.map((d) => path.basename(d)).join(', ')} (${c.unit})`)));
   return blocks;
 }
