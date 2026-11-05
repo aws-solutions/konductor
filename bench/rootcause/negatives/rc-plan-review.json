@@ -1,0 +1,370 @@
+{
+  "loosened": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    17,
+    18
+  ],
+  "cases": [
+    {
+      "name": "PR1 phrased differently",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "Task 3 (\"Make the exporter better\") is vague: it names no deliverable.\n"
+      }
+    },
+    {
+      "name": "PR1 near miss 1",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Task 3 takes 4 days.\n"
+      }
+    },
+    {
+      "name": "PR1 near miss 2",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The exporter is used by finance.\n"
+      }
+    },
+    {
+      "name": "PR2 phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "Tasks 2 and 7 have no done criteria, and \"works\" cannot be checked.\n"
+      }
+    },
+    {
+      "name": "PR2 near miss 1",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Task 2 builds the publisher.\n"
+      }
+    },
+    {
+      "name": "PR2 near miss 2",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The criteria for the rating are in the header.\n"
+      }
+    },
+    {
+      "name": "PR3 phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "The standard retry settings are not defined anywhere in the plan.\n"
+      }
+    },
+    {
+      "name": "PR3 near miss 1",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Retry handling is a good idea.\n"
+      }
+    },
+    {
+      "name": "PR3 near miss 2",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The volumes are large.\n"
+      }
+    },
+    {
+      "name": "PR4 phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "There is no rollback plan and no parallel run before the cutover.\n"
+      }
+    },
+    {
+      "name": "PR4 near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The plan has ten tasks.\n"
+      }
+    },
+    {
+      "name": "PR4 near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Ship it to staging.\n"
+      }
+    },
+    {
+      "name": "PR4b phrased differently",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "Task 9 deletes the nightly job before the reconciliation in task 8 is finished.\n"
+      }
+    },
+    {
+      "name": "PR4b near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Task 9 takes one day.\n"
+      }
+    },
+    {
+      "name": "PR4b near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Deletion of old files is routine.\n"
+      }
+    },
+    {
+      "name": "PR5 phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "The load test (task 6) needs the staging deployment from task 5 first.\n"
+      }
+    },
+    {
+      "name": "PR5 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The load test takes three days.\n"
+      }
+    },
+    {
+      "name": "PR5 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Staging is mentioned in the title.\n"
+      }
+    },
+    {
+      "name": "PR6 phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "The tasks add up to 36 days, so the 3 week target is not realistic.\n"
+      }
+    },
+    {
+      "name": "PR6 near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The target is 3 weeks.\n"
+      }
+    },
+    {
+      "name": "PR6 near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The schedule is shown in a table.\n"
+      }
+    },
+    {
+      "name": "PR7 phrased differently",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "Tasks 7 and 8 have no owner, and Dana owns three tasks at once.\n"
+      }
+    },
+    {
+      "name": "PR7 near miss 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Eli owns the schema.\n"
+      }
+    },
+    {
+      "name": "PR7 near miss 2",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The plan has an owner column.\n"
+      }
+    },
+    {
+      "name": "PR8 phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "Month-end volume is four times normal and the load test does not cover it.\n"
+      }
+    },
+    {
+      "name": "PR8 near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Invoices are issued every day.\n"
+      }
+    },
+    {
+      "name": "PR8 near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The queue is new.\n"
+      }
+    },
+    {
+      "name": "PR9 phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "The goal moves the reports service to the queue but no task covers it.\n"
+      }
+    },
+    {
+      "name": "PR9 near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Reports are read at 07:00.\n"
+      }
+    },
+    {
+      "name": "PR9 near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The data team is nice.\n"
+      }
+    },
+    {
+      "name": "PR10 phrased differently",
+      "check": 15,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "The production deploy is on a Wednesday, but deploys are allowed only on Tuesday and Thursday.\n"
+      }
+    },
+    {
+      "name": "PR10 near miss 1",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Deploys happen in production.\n"
+      }
+    },
+    {
+      "name": "PR10 near miss 2",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The 24th is a date.\n"
+      }
+    },
+    {
+      "name": "rating phrased differently",
+      "check": 17,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "Rating: 2 out of 5.\n"
+      }
+    },
+    {
+      "name": "rating near miss 1",
+      "check": 17,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Rating: poor.\n"
+      }
+    },
+    {
+      "name": "rating near miss 2",
+      "check": 17,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "There are 5 findings.\n"
+      }
+    },
+    {
+      "name": "verdict phrased differently",
+      "check": 18,
+      "type": "contains",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "**Verdict:** BLOCKED\n"
+      }
+    },
+    {
+      "name": "verdict near miss 1",
+      "check": 18,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Verdict: READY\n"
+      }
+    },
+    {
+      "name": "verdict near miss 2",
+      "check": 18,
+      "type": "contains",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Possible verdicts: NEEDS FIXES, READY.\n"
+      }
+    }
+  ]
+}

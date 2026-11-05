@@ -1,0 +1,148 @@
+{
+  "id": "rc-plan-review",
+  "class": "review",
+  "target": "k-tpm",
+  "prompt": "docs/plan.md is the work plan for replacing a nightly invoice export, and docs/context.md is its background. Review the plan before the team starts. For each problem give the task number or section, a severity (critical, important or minor), why it matters and what to change, most severe first. Give the plan a rating out of 5. End with a line that reads \"Verdict: NEEDS FIXES\" or \"Verdict: READY\". Write the review to review/plan-review.md. Do not change the plan or the background. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-work-plan",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "review/plan-review.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review/plan-review.md)\" -ge 14 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review/plan-review.md)\" -le 300 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "labelled_findings",
+      "path": "review/plan-review.md",
+      "min": 5
+    },
+    {
+      "type": "min_matches",
+      "path": "review/plan-review.md",
+      "pattern": "\\b(?:tasks?|T)\\s?-?\\d{1,2}\\b",
+      "min": 6
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR1*/const A=new RegExp(\"task 3|T3|better|vague\",\"gi\"),R=[new RegExp(\"vague|unclear|undefined|not specific|measurable|ambiguous|no deliverable|too broad|what (?:does|is)|cannot tell|no way to\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR2*/const A=new RegExp(\"acceptance|done when|definition of done|done criteria|criteria|verifiab|testable\",\"gi\"),R=[new RegExp(\"missing|lack|no |empty|blank|without|absent|not (?:defined|stated|specified|checkable|measurable)|works|cannot be checked|vague\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR3*/const A=new RegExp(\"retry|q3|volumes|standard\",\"gi\"),R=[new RegExp(\"not (?:defined|explained|specified|linked|stated)|undefined|unclear|missing|which|what|undocumented|never (?:defined|mentioned|states)|no definition|per service\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR4*/const A=new RegExp(\"rollback|roll back|cutover|cut-over|fallback|revert|parallel run|run both|switch ?over|undo\",\"gi\"),R=[new RegExp(\"no |missing|lack|without|absent|before|delete|remov|nightly|cannot|keep|add\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR4b*/const A=new RegExp(\"task 9|T9|delete the nightly|deleting the nightly|nightly job|delete\",\"gi\"),R=[new RegExp(\"task 8|T8|reconcil|before|prior|until|premature|too early\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR5*/const A=new RegExp(\"load test|task 6|T6\",\"gi\"),R=[new RegExp(\"before|depends|dependency|staging|task 5|T5|order|sequenc|after|needs\",\"i\")],W=250;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR6*/const A=new RegExp(\"3 weeks|three weeks|timeline|schedule|critical path|duration|target|15 (?:working )?days\",\"gi\"),R=[new RegExp(\"36|17|add up|sum|serial|inconsistent|does not (?:fit|add)|unrealistic|optimistic|exceed|longer|overrun|too (?:short|tight)|cannot|impossible|more than\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR7*/const A=new RegExp(\"owner|assign|unassigned|Dana|overallocat|overload|overbook\",\"gi\"),R=[new RegExp(\"task 7|T7|task 8|T8|tasks 7|no owner|unassigned|nobody|three|12 days|same time|same week|capacity|overbook|overload|Fran\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR8*/const A=new RegExp(\"month-end|month end|last day|four times|4x|4 times|peak|500 messages|queue limit\",\"gi\"),R=[new RegExp(\"risk|mitigat|load|capacity|not (?:addressed|covered|mentioned|tested)|missing|plan|test|volume\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR9*/const A=new RegExp(\"reports service|reports|data team\",\"gi\"),R=[new RegExp(\"no task|not (?:planned|covered|scheduled|in a task|a task)|missing|mentioned but|unscoped|goal|owner|involved\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/plan-review.md\",\"utf8\");/*PR10*/const A=new RegExp(\"wednesday|tuesday|thursday|deploy day|deploy rule|24th\",\"gi\"),R=[new RegExp(\"tuesday|thursday|rule|only|constraint|background|context|breaks|violat\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "review/plan-review.md",
+      "pattern": "\\b(?:fix|change|should|add|move|replace|define|name|split|reorder|write)\\b[^\\n]{0,80}",
+      "min": 6
+    },
+    {
+      "type": "contains",
+      "path": "review/plan-review.md",
+      "pattern": "\\b[1-5](?:\\.\\d)?\\s*(?:/|out of|of)\\s*5\\b|\\b[1-5]\\s*(?:stars?|\\u2605)|\\u2605"
+    },
+    {
+      "type": "contains",
+      "path": "review/plan-review.md",
+      "pattern": "^[\\s>*_#-]*(?:final\\s+)?verdict[\\s*_]*:[\\s*_`]*(?:needs fixes|blocked|not ready|not approved|do not proceed)"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/plan.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/context.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "sequencing-and-cutover",
+      "criterion": "Finds that the nightly job is deleted before the reconciliation is done with no rollback or parallel run (PR4), and that the load test is scheduled before the staging deployment it needs (PR5), rating the first critical or important.",
+      "weight": 3
+    },
+    {
+      "id": "timeline-and-ownership",
+      "criterion": "Shows that 3 weeks does not fit (36 days of work, a critical path past 15 days, a month of reconciliation) (PR6), and that tasks 7 and 8 have no owner and Dana is overloaded (PR7).",
+      "weight": 3
+    },
+    {
+      "id": "clarity-and-checkability",
+      "criterion": "Finds the vague task 3 (PR1), the missing or uncheckable done criteria (PR2) and the undefined references to the retry settings and Q3 volumes (PR3).",
+      "weight": 2
+    },
+    {
+      "id": "context-gaps",
+      "criterion": "Uses the background to find the uncovered month-end volume and queue limit (PR8), the reports service that is in the goal but in no task (PR9) and the Wednesday deploy (PR10).",
+      "weight": 2
+    },
+    {
+      "id": "verdict-and-no-false-claims",
+      "criterion": "Gives a rating below 4 of 5 and a verdict that the plan needs fixes, with a fix for each finding. Does not approve the plan, cites no task or constraint that does not exist, and changes no input file.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}
