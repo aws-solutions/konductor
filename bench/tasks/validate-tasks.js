@@ -510,11 +510,12 @@ function extraDirsFromArgs(argv = process.argv.slice(2)) {
 }
 
 function main() {
-  // Extra directories that suite files declare ("extraTasks") are always checked, with or without --extra-tasks.
-  const extraDirs = [...new Set([...fs.readdirSync(SUITES_DIR).filter((f) => f.endsWith('.json') && !f.endsWith('.manifest.json'))
-    .flatMap((f) => suiteExtraDirs(path.basename(f, '.json'), BENCH)), ...extraDirsFromArgs()])];
-  // --only-extra checks the extra directories alone: no bench tasks, suites, hygiene scan or registry.
+  // --only-extra checks the directories named with --extra-tasks alone: no bench tasks, suites, hygiene scan or registry.
   const onlyExtra = process.argv.includes('--only-extra');
+  const named = extraDirsFromArgs();
+  // Otherwise the extra directories that suite files declare ("extraTasks") are checked too, with or without --extra-tasks.
+  const extraDirs = onlyExtra ? named : [...new Set([...fs.readdirSync(SUITES_DIR).filter((f) => f.endsWith('.json') && !f.endsWith('.manifest.json'))
+    .flatMap((f) => suiteExtraDirs(path.basename(f, '.json'), BENCH)), ...named])];
   if (onlyExtra && !extraDirs.length) { console.error('validate-tasks: --only-extra needs --extra-tasks DIR'); process.exit(2); }
   const taskFiles = onlyExtra ? [] : fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith('.json') && !f.startsWith('_')).sort();
   const tasks = [];
