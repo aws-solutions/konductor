@@ -313,6 +313,24 @@
       }
     },
     {
+      "name": "acceptance: Check lines under bold ids",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "# Requirements\n\n**FR-1 Behaviour 1.** The service handles case 1.\nCheck: a test for case 1 returns 200.\n\n**FR-2 Behaviour 2.** The service handles case 2.\nCheck: a test for case 2 returns 200.\n\n**FR-3 Behaviour 3.** The service handles case 3.\nCheck: a test for case 3 returns 200.\n\n**FR-4 Behaviour 4.** The service handles case 4.\nCheck: a test for case 4 returns 200.\n\n**FR-5 Behaviour 5.** The service handles case 5.\nCheck: a test for case 5 returns 200.\n\n**FR-6 Behaviour 6.** The service handles case 6.\nCheck: a test for case 6 returns 200.\n\n**FR-7 Behaviour 7.** The service handles case 7.\nCheck: a test for case 7 returns 200.\n\n**FR-8 Behaviour 8.** The service handles case 8.\nCheck: a test for case 8 returns 200.\n\n**FR-9 Behaviour 9.** The service handles case 9.\nCheck: a test for case 9 returns 200.\n\n**FR-10 Behaviour 10.** The service handles case 10.\nCheck: a test for case 10 returns 200.\n\n"
+      }
+    },
+    {
+      "name": "acceptance: a sub-rule table without an Acceptance column is not a requirement list",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/requirements.md": "# Requirements\n\n**FR-1 Behaviour 1.** The service handles case 1.\nCheck: a test for case 1 returns 200.\n\n**FR-2 Behaviour 2.** The service handles case 2.\nCheck: a test for case 2 returns 200.\n\n**FR-3 Behaviour 3.** The service handles case 3.\nCheck: a test for case 3 returns 200.\n\n**FR-4 Behaviour 4.** The service handles case 4.\nCheck: a test for case 4 returns 200.\n\n**FR-5 Behaviour 5.** The service handles case 5.\nCheck: a test for case 5 returns 200.\n\n**FR-6 Behaviour 6.** The service handles case 6.\nCheck: a test for case 6 returns 200.\n\n**FR-7 Behaviour 7.** The service handles case 7.\nCheck: a test for case 7 returns 200.\n\n**FR-8 Behaviour 8.** The service handles case 8.\nCheck: a test for case 8 returns 200.\n\n**FR-9 Behaviour 9.** The service handles case 9.\nCheck: a test for case 9 returns 200.\n\n**FR-10 Behaviour 10.** The service handles case 10.\nCheck: a test for case 10 returns 200.\n\n\n## Row rules\n\n| Rule | Meaning |\n|------|---------|\n| R1 | Rule 1 of the file | `CODE_1` |\n| R2 | Rule 2 of the file | `CODE_2` |\n| R3 | Rule 3 of the file | `CODE_3` |\n| R4 | Rule 4 of the file | `CODE_4` |\n| R5 | Rule 5 of the file | `CODE_5` |\n| R6 | Rule 6 of the file | `CODE_6` |\n"
+      }
+    },
+    {
       "name": "acceptance: numbered requirements with no acceptance fail",
       "check": 4,
       "type": "cmd",
