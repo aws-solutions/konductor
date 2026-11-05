@@ -35,7 +35,8 @@ not per individual commit.
 - `orchestration.mode` (`auto` or `coordinator`) is read from `~/.konductor/config.yml` by one resolver.
   `config set` keeps an `orchestration:` section in the project file, which the resolver does not read.
 - `konductor` runs as a coordinator when `orchestration.mode` is `coordinator`: `install` wires a
-  session-start hook, even under `--no-telemetry`, that points it at the routing rules.
+  session-start hook, even under `--no-telemetry`, that points it at the routing rules, or prints a
+  fallback when the install that wired it is outside your home directory and the project root.
 
 ### Changed
 

@@ -59,6 +59,7 @@ pub(crate) enum PersonaError {
     DigestUnreadable { path: PathBuf },
     DigestTooLarge { path: PathBuf },
     PathTooLong { install_root: PathBuf },
+    OutsideTrustedLocations { install_root: PathBuf },
 }
 
 /// `SessionStart` (Kiro CLI v3, Claude Code) and `agentSpawn` (Kiro CLI
@@ -155,7 +156,21 @@ fn persona_reason(error: &PersonaError) -> String {
              path than {}",
             display_path(install_root, home.as_deref())
         ),
+        PersonaError::OutsideTrustedLocations { install_root } => format!(
+            "the install at {} is outside the locations konductor follows; install under your \
+             home directory or the project root",
+            display_path(install_root, home.as_deref())
+        ),
     }
+}
+
+/// Rule 11 trusts a rules file under the home directory or the project
+/// root; a parent of the project root counts only inside the home.
+fn is_trusted_location(owning_root: &Path, home: Option<&Path>, cwd: &Path) -> bool {
+    let canonical =
+        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    same_dir(owning_root, cwd)
+        || home.is_some_and(|home| canonical(owning_root).starts_with(canonical(home)))
 }
 
 /// `<home>/rest` as `~/rest`; any other path unchanged.
@@ -352,8 +367,18 @@ pub(crate) fn dispatch_orchestration_hook(
     if own_install.is_some_and(|own| !same_dir(own, owning_root)) {
         return;
     }
+    // `current_dir()` is physical; name the home as the session knows it.
+    let persona_root = home
+        .as_deref()
+        .filter(|home| same_dir(owning_root, home))
+        .unwrap_or(owning_root);
     let output = decide(&resolve_user_mode(home.as_deref()), || {
-        load_persona(owning_root)
+        if !is_trusted_location(owning_root, home.as_deref(), cwd) {
+            return Err(PersonaError::OutsideTrustedLocations {
+                install_root: persona_root.to_path_buf(),
+            });
+        }
+        load_persona(persona_root)
     });
     write_stdout(&render(&output));
 }
