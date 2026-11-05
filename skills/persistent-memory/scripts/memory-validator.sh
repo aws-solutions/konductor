@@ -2,8 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 set -euo pipefail
 
-TARGET="${1:?Usage: memory-validator.sh <target-file>}"
-PROPOSED="$(cat)"
+# --check-path runs only the path checks below, for reads: exit 0 silently when the
+# target is a path the validator would write, 1 with a REJECT line otherwise. It reads
+# no stdin and creates nothing.
+CHECK_PATH_ONLY=0
+if [[ "${1:-}" == "--check-path" ]]; then
+  CHECK_PATH_ONLY=1
+  shift
+fi
+TARGET="${1:?Usage: memory-validator.sh [--check-path] <target-file>}"
 
 # Config: read from .konductor/memory-config.json relative to git root.
 # Only path consulted, no fallback.
@@ -35,7 +42,7 @@ case "$TARGET" in
 esac
 TARGET_DIR="$(dirname "$TARGET")"
 
-# Refuse to write through a symlink or outside the project root. Trust in
+# Refuse to read or write through a symlink or outside the project root. Trust in
 # memory content is decided by the rules, not here; this guard only stops a
 # tracked symlink from turning a memory write into a write somewhere else.
 # The path is checked before anything is created, so a refused argument
@@ -63,6 +70,10 @@ if [[ -e "$TARGET" && ! -f "$TARGET" ]]; then
   echo "REJECT: $TARGET is not a regular file; memory is written only to a regular file under ${ROOT_P}/.konductor/memory/" >&2
   exit 1
 fi
+if [[ "$CHECK_PATH_ONLY" == 1 ]]; then
+  exit 0
+fi
+PROPOSED="$(cat)"
 mkdir -p "$TARGET_DIR"
 
 # _parse_config <path>: parses a JSON config file and, on success (exit 0),

@@ -850,6 +850,97 @@ def test_directory_at_the_target_path_is_refused(tmp_path):
     assert list(blocker.iterdir()) == []
 
 
+def run_check_path(target: Path, cwd: Path) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["bash", str(VALIDATOR), "--check-path", str(target)],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        cwd=str(cwd),
+    )
+
+
+def test_check_path_accepts_a_regular_file_silently_without_stdin(tmp_path):
+    _commit_initial(tmp_path)
+    memory_dir = tmp_path / ".konductor" / "memory"
+    memory_dir.mkdir(parents=True)
+    (memory_dir / "MEMORY.md").write_text("- [origin:user] keep\n")
+
+    result = run_check_path(Path(_relative_memory_target()), cwd=tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "" and result.stderr == ""
+
+
+def test_check_path_accepts_a_missing_file_and_creates_nothing(tmp_path):
+    _commit_initial(tmp_path)
+
+    result = run_check_path(Path(_relative_memory_target()), cwd=tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert not (tmp_path / ".konductor").exists()
+
+
+def test_check_path_refuses_a_symlinked_konductor_dir(tmp_path):
+    _commit_initial(tmp_path)
+    planted = tmp_path / "planted"
+    planted.mkdir()
+    (tmp_path / ".konductor").symlink_to("planted")
+
+    result = run_check_path(Path(_relative_memory_target()), cwd=tmp_path)
+    assert result.returncode == 1
+    assert "is a symlink" in result.stderr
+    assert list(planted.iterdir()) == []
+
+
+def test_check_path_refuses_a_symlinked_memory_dir(tmp_path):
+    root = tmp_path / "root"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=str(root), check=True)
+    _commit_initial(root)
+    (root / ".konductor").mkdir()
+    (root / ".konductor" / "memory").symlink_to(outside)
+
+    result = run_check_path(Path(_relative_memory_target()), cwd=root)
+    assert result.returncode == 1
+    assert "is a symlink" in result.stderr
+    assert list(outside.iterdir()) == []
+
+
+def test_check_path_refuses_a_symlinked_target_file(tmp_path):
+    root = tmp_path / "root"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=str(root), check=True)
+    _commit_initial(root)
+    outside_file = tmp_path / "outside.txt"
+    outside_file.write_bytes(b"secret\n")
+    memory_dir = root / ".konductor" / "memory"
+    memory_dir.mkdir(parents=True)
+    (memory_dir / "MEMORY.md").symlink_to(outside_file)
+
+    result = run_check_path(Path(_relative_memory_target()), cwd=root)
+    assert result.returncode == 1
+    assert "is a symlink" in result.stderr
+    assert outside_file.read_bytes() == b"secret\n"
+
+
+def test_check_path_refuses_a_directory_at_the_target(tmp_path):
+    _commit_initial(tmp_path)
+    (tmp_path / ".konductor" / "memory" / "MEMORY.md").mkdir(parents=True)
+
+    result = run_check_path(Path(_relative_memory_target()), cwd=tmp_path)
+    assert result.returncode == 1
+    assert "is not a regular file" in result.stderr
+
+
+def test_check_path_refuses_a_target_outside_the_memory_dir(tmp_path):
+    _commit_initial(tmp_path)
+
+    result = run_check_path(tmp_path / "elsewhere" / "MEMORY.md", cwd=tmp_path)
+    assert result.returncode == 1
+    assert "REJECT" in result.stderr
+
+
 def test_long_s_symlink_folded_onto_user_md_is_refused(tmp_path):
     """U+017F (long s) case-folds to `s`, so on a case-insensitive filesystem
     a planted `U\u017fER.md` symlink is the file the validator opens as USER.md."""
