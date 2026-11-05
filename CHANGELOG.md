@@ -56,9 +56,10 @@ not per individual commit.
   results to that specialist to finish the SOP. A specialist returns an SOP's independence step
   as a split or note and does not run it itself unless the user asks, and says so in its output.
   The note or split carries the SOP inputs and the outputs of completed steps, inline or in a
-  handoff file, and the orchestrator passes them back with the resume brief. Run directly with no orchestrator, the caller is the user: the specialist returns
-  the split or note to them. `k-adversarial-pull-request-review` returns its three Step 2 passes as
-  a split, resumes at Step 3, returns the reuse pass as a handoff, and resumes at Step 4.
+  handoff file, and the orchestrator passes them back with the resume brief. Run directly with
+  no orchestrator, the caller is the user: the specialist returns the split or note to them.
+  `k-adversarial-pull-request-review` returns its three Step 2 passes as a split, resumes at
+  Step 3, returns the reuse pass as a handoff, and resumes at Step 4.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
