@@ -163,7 +163,7 @@ A declared type with no produced file scores fail on its criteria without a mode
 
 ## In the quality score (opt-in)
 
-By default the pack is descriptive: `qualityOfRun` is hidden tests, checks and rubric, and no pack number enters it. A scoring file can give the pack a weight as a fourth component. `profiles/scoring-quality.json` does (hidden 0.4, checks 0.16, rubric 0.24, pack 0.2); `profiles/scoring.json` is unchanged.
+By default the pack is descriptive: `qualityOfRun` is hidden tests, checks and rubric, and no pack number enters it. A scoring file can give the pack a weight as a fourth component. `profiles/scoring-quality.json` does (hidden 0.4, checks 0.16, rubric 0.24, pack 0.2); `profiles/scoring.json` is unchanged. `profiles/scoring-quality-fractional.json` has the same weights and also scores the checks term as passed / total (see the scoring section of `README.md`); one `--scoring` file is read, so that file is the way to combine the pack with fractional checks.
 
 - **One number per run.** The pack score of a run is the weighted mean over every criterion that applied to it (pass 1, partial 0.5, fail 0, weighted by criterion), averaged over the judges. It does not depend on how many criteria applied, so a one-line fix and a design document sit on the same 0 to 1 scale.
 - **Small tasks count.** The change discipline criteria apply to a code change of any size, and a task that asks for code always declares them. A run where no criterion applied has no pack component, and the other weights are renormalised, as for any missing component. Nothing is imputed.

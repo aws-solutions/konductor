@@ -35,7 +35,9 @@ real cost of each cell, and prove the pipeline end to end (run, judge, combine).
 ## Units
 
 Quality is a 0 to 100 score, the repository formula (hidden tests 0.5, checks 0.2, rubric 0.3, renormalised over the parts a run
-has). It is compared across all four cells.
+has). It is compared across all four cells. By default the checks part is 1 only when every check passed. With no hidden
+tests, one failed check then costs 40 points. `--scoring bench/profiles/scoring-fractional.json` scores the checks part as
+passed / total instead, with the same weights; the report names the mode on its weights line.
 
 Cost is credits on Kiro and list-price USD on Claude Code. The two are never compared. Cost appears only as a ratio of
 konductor over vanilla inside one harness, per run and per successful run. A ratio is marked `>=`, `<=` or `~` when timed-out

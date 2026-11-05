@@ -900,7 +900,10 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   A run without judgments still renders; the charts that need them are listed under "Not shown". New JSON keys (`scores`, `diligence`, `detail`) are additive.
 - Scores (`report/scores.js`; every one has n and a 95% bootstrap CI, and is "anecdotal" below 3 runs; a failed run is never hidden):
   - Quality /100: per run, the weighted mean of the components it has: hidden tests (FAIL_TO_PASS, hiddenTests or intendedTests as passed/total), checks (all pass = 1), rubric
-    (mean over judges of the verified score; raw shown beside it). Weights come from `profiles/scoring.json` (0.5, 0.2, 0.3; `--scoring FILE`). A missing component is dropped and the
+    (mean over judges of the verified score; raw shown beside it). Weights come from `profiles/scoring.json` (0.5, 0.2, 0.3; `--scoring FILE`).
+    With no hidden tests the weights renormalise to checks 0.4 and rubric 0.6, so one failed check out of many costs 40 points. `--scoring bench/profiles/scoring-fractional.json` (same weights) scores the checks
+    term as passed / total instead, and `profiles/scoring-quality-fractional.json` does the same with the quality pack. A scoring file opts in with `"checks": "fraction"`; the default is `"all"`. The report's weights line and
+    quality formula say which mode was used, and the default output is unchanged. A missing component is dropped and the
     others renormalised, never imputed. infraError, modelMismatch and runs with no component are left out and counted. The inputs used are printed beside the score.
   - Reliability /100: 100 minus the share of runs that timed out, errored, hit infraError or had a modelMismatch.
   - Autonomy /100 (autonomy tier only): share of runs completed without help, with interjections per task and the unnecessary-question rate beside it.
