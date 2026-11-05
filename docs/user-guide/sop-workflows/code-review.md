@@ -383,8 +383,9 @@ counts.
   source, no recursive link following — and missing context never blocks the review.
 - **Generator and checker are different agents, deliberately.** Steps 2 and 3 are returned as a split
   and a handoff note for `k-developer` (four sessions in all), and the SOP resumes at steps 3 and
-  4; step 4 is `k-architect` running `adversarial-code-review` in Validator Mode on the result. The coordinator never generates a finding, which is what lets it judge them — and it is
-  why the SOP forbids the checker from proposing anything new. It is a filter, not a second review.
+  4; step 4 is `k-architect` running `adversarial-code-review` in Validator Mode on the result. The
+  coordinator never generates a finding, which is what lets it judge them. That is also why the SOP
+  forbids the checker from proposing anything new. It is a filter, not a second review.
 - **Two steps never run here.** Step 0.5 (load prior review state) and step 5 (historical filter)
   are **permanent no-ops on this package** — `historical-issues-registry` is abstract and
   `k-architect` has no tool that can read a pull request's prior comment threads. The SOP is
