@@ -157,6 +157,28 @@ def test_assembled_tree_ships_the_telemetry_hook(assembled):
     assert not matcher.search("Explore")
 
 
+def test_assembled_tree_ships_the_dispatch_env_hook(assembled):
+    """The dispatch-environment hook lands in the flat tree and runs
+    synchronously on every session start, and plugin.json declares the
+    option it reads."""
+    assert (assembled / "hooks" / "konductor-dispatch-env.sh").read_bytes() == (
+        REPO_ROOT / "scripts" / "claude-plugin-dispatch-env-hook.sh"
+    ).read_bytes()
+    hooks = json.loads((assembled / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+    entry = hooks["SessionStart"][1]
+    assert entry["matcher"] == "startup|resume|clear|compact"
+    handler = entry["hooks"][0]
+    assert "async" not in handler
+    assert handler["command"] == 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/konductor-dispatch-env.sh"'
+
+    option = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))[
+        "userConfig"
+    ]["dispatch_permission_mode"]
+    assert option["type"] == "string"
+    assert option["default"] == "interactive"
+    assert "options" not in option
+
+
 def test_assembled_agents_carry_no_ignored_mcp_servers_block(assembled):
     for agent in (assembled / "agents").glob("*.md"):
         frontmatter = agent.read_text(encoding="utf-8").split("---")[1]
