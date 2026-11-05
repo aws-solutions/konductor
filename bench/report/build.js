@@ -7,7 +7,7 @@
 const C = require('./charts.js');
 const D = require('./doc.js');
 const { medianCI, diffCI, wilson } = require('./stats.js');
-const { qualityOfRun, FORMULAS } = require('./scores.js');
+const { qualityOfRun, FORMULAS, checksModeNote, formulasForWeights } = require('./scores.js');
 const { agreementOf, THRESHOLDS } = require('./diligence.js');
 const { renderMarkdown } = require('./render.js');
 const { CLASS_ORDER } = require('./aggregate.js');
@@ -196,8 +196,8 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   // ---- full ----
   blocks.push(D.h(2, 'Scores with components'));
   blocks.push(scoreRowsTable(scores));
-  blocks.push(D.list(Object.entries(FORMULAS).filter(([k]) => k !== 'capability').map(([k, v]) => `**${k}**: ${v}`)));
-  blocks.push(D.p(`Weights in use: hidden ${scores.weights.hidden}, checks ${scores.weights.checks}, rubric ${scores.weights.rubric}${scores.weights.pack > 0 ? `, quality pack ${scores.weights.pack}` : ''}.`));
+  blocks.push(D.list(Object.entries(formulasForWeights(FORMULAS, scores.weights)).filter(([k]) => k !== 'capability').map(([k, v]) => `**${k}**: ${v}`)));
+  blocks.push(D.p(`Weights in use: hidden ${scores.weights.hidden}, checks ${scores.weights.checks}${checksModeNote(scores.weights)}, rubric ${scores.weights.rubric}${scores.weights.pack > 0 ? `, quality pack ${scores.weights.pack}` : ''}.`));
 
   blocks.push(D.h(2, 'Cost and effort by arm'));
   const metrics = [

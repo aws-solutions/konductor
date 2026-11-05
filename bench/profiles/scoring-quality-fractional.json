@@ -1,0 +1,5 @@
+{
+  "description": "scoring-quality.json (quality pack as a fourth component) with the checks component scored as passed / total. Use it with report or report-2x2 and --criteria-pack quality.",
+  "weights": { "hidden": 0.4, "checks": 0.16, "rubric": 0.24, "pack": 0.2 },
+  "checks": "fraction"
+}

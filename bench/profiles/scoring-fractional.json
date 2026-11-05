@@ -1,0 +1,5 @@
+{
+  "description": "Same weights as scoring.json, but the checks component is the share of checks that passed instead of 1 only when every check passed. A run that fails one check of five keeps 0.8 of the checks component, not 0. Select it with --scoring on report, report-2x2, contrast and verdict; every other file and number stays as it is.",
+  "weights": { "hidden": 0.5, "checks": 0.2, "rubric": 0.3 },
+  "checks": "fraction"
+}

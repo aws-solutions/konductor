@@ -14,7 +14,7 @@ const { loadRuns } = require('./load.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { analyze } = require('./generate.js');
 const { enrichOrch } = require('./orch.js');
-const { loadScoring, qualityOfRun } = require('./scores.js');
+const { loadScoring, qualityOfRun, checksModeNote } = require('./scores.js');
 const { spawnsOf } = require('./process.js');
 const { normalize } = require('./verdict.js');
 const { pairedCellCI, MIN_CELLS } = require('./stats.js');
@@ -33,7 +33,7 @@ const MIN_REPS = 2;
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const uniq = (xs) => [...new Set(xs)];
-const qualityWeightsText = (w) => `hidden tests ${w.hidden}, checks ${w.checks}, rubric ${w.rubric}${w.pack > 0 ? `, quality pack ${w.pack}` : ''}`;
+const qualityWeightsText = (w) => `hidden tests ${w.hidden}, checks ${w.checks}${checksModeNote(w)}, rubric ${w.rubric}${w.pack > 0 ? `, quality pack ${w.pack}` : ''}`;
 const labelOf = (spec) => `${HARNESS_NAME[spec.harness]} ${spec.role}`;
 
 /** claude-sonnet-5.5, us.anthropic.claude-sonnet-5-5 and claude-sonnet-5-5 name the same model. */

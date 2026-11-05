@@ -9,6 +9,7 @@ const D = require('./doc.js');
 const { tone } = require('./build.js');
 const { gradedTable } = require('./graded.js');
 const { NEE } = require('./verdict.js');
+const { checksModeNote } = require('./scores.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const f = (v, d = 1) => (fin(v) ? v.toFixed(d) : 'n/a');
@@ -116,7 +117,7 @@ function buildVerdictDocument(v) {
 
   blocks.push(D.h(2, 'How to read this page'));
   blocks.push(D.list(rulesFor(v)));
-  blocks.push(D.p(`Scoring weights come from profiles/scoring.json (hidden ${v.weights.hidden}, checks ${v.weights.checks}, rubric ${v.weights.rubric}); the formulas are in bench/README.md.`));
+  blocks.push(D.p(`Scoring weights come from profiles/scoring.json (hidden ${v.weights.hidden}, checks ${v.weights.checks}${checksModeNote(v.weights)}, rubric ${v.weights.rubric}); the formulas are in bench/README.md.`));
   blocks.push(D.note(`${NEE} is not a finding that the arm is no better. It means this study cannot say. More replicates, an A/A arm and judged output are what settle it.`));
   return { blocks, charts, title: 'Platform verdict' };
 }

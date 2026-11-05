@@ -61,7 +61,7 @@ function analyze({ run, tasks, baseline, scoringFile, qualityPack = null }) {
   const built = buildReport({ run, tasks, baseline: base });
   const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
   // Only a scoring file that weights the pack reads the pack judgments; otherwise rows and scores are exactly as before.
-  const ctx = weights.pack > 0 ? { ...built.ctx, packScoreOf: require('./packscore.js').packScores({ run, tasks, pack: qualityPack }).scoreOf } : built.ctx;
+  const ctx = { ...built.ctx, scoring: weights, ...(weights.pack > 0 ? { packScoreOf: require('./packscore.js').packScores({ run, tasks, pack: qualityPack }).scoreOf } : {}) };
   const rows = buildRows(run, tasks, ctx);
   const scores = computeScores({ rows, baseline: base, weights, unit: built.report.costUnit === 'usd' ? 'USD' : 'credits', harness: run.harness ?? null });
   const skipped = skippedCount(run);

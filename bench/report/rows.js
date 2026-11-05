@@ -6,6 +6,7 @@
 
 const { outcomeOf } = require('./aggregate.js');
 const { resultComparable } = require('../runner/lib/isolate.js');
+const { checksScore } = require('./scores.js');
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 const fraction = (h) => (h && h.total > 0 ? h.passed / h.total : null);
@@ -13,10 +14,10 @@ const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : nu
 
 /**
  * run: loaded run (loadRun or loadRuns). ctx: the `ctx` returned by buildReport (rubric index, judges, class lookup,
- * cost basis, and packScoreOf when the quality pack is part of the score). Budget-skipped runs are not rows; they are counted by `skippedCount`.
+ * cost basis, packScoreOf when the quality pack is part of the score, and scoring: the loaded weights, which say how checks are scored). Budget-skipped runs are not rows; they are counted by `skippedCount`.
  */
 function buildRows(run, tasks, ctx) {
-  const { rubricIdx, judges, rawScoreOf, classOf, noQuestionTasks, basis, packScoreOf = null } = ctx;
+  const { rubricIdx, judges, rawScoreOf, classOf, noQuestionTasks, basis, packScoreOf = null, scoring } = ctx;
   const rows = [];
   for (const e of run.runs) {
     const r = e.result;
@@ -29,7 +30,7 @@ function buildRows(run, tasks, ctx) {
       verified.push(rec.score);
       raw.push(rawScoreOf(rec));
     }
-    const checks = Array.isArray(r.checks) && r.checks.length ? (r.checks.every((c) => c.passed) ? 1 : 0) : null;
+    const checks = checksScore(r.checks, scoring);
     const hidden = fraction(r.hiddenTests) ?? fraction(r.intendedTests);
     rows.push({
       arm: e.armId, task: e.taskId, cls: classOf(e.taskId), rep: e.replicate, outcome: outcomeOf(r), status: r.status,

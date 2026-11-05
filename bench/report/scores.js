@@ -16,6 +16,11 @@ const COMPONENTS = Object.keys(DEFAULT_WEIGHTS);
 // An opt-in fourth component: the quality-pack score of a run. It exists only in a scoring file that gives it a weight, and
 // only report and report-2x2 with --criteria-pack can supply it.
 const PACK_COMPONENT = 'pack';
+// How a run's checks become the checks component. 'all' (the default) is 1 when every check passed, else 0. 'fraction' is
+// passed / total. The loaded weights carry `checksMode` only when it is 'fraction', so default weights are unchanged.
+const CHECKS_MODES = ['all', 'fraction'];
+const CHECKS_MODE_KEY = 'checksMode';
+const FRACTIONAL_CHECKS = 'fraction';
 const componentsOf = (weights) => (weights[PACK_COMPONENT] > 0 ? [...COMPONENTS, PACK_COMPONENT] : COMPONENTS);
 const DEFAULT_PROFILE = path.join(__dirname, '..', 'profiles', 'scoring.json');
 const RELIABILITY_FAILS = ['timeout', 'error', 'infraError', 'modelMismatch'];
@@ -36,11 +41,15 @@ function formulasForClaudeCode() {
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 
+const FRACTIONAL_CHECKS_FORMULA = (text) => text.replace('checks (1 when every check passed, else 0)', 'checks (passed / total, because the scoring file sets "checks": "fraction")');
+
 const PACK_FORMULA = ' Pack quality (opt-in, set by a weight for "pack" in the scoring file): per run, the weighted mean over the quality-pack criteria that applied (pass 1, partial 0.5, fail 0, weighted by criterion), averaged over the judges, 0..1. A run where no criterion applied has no pack component and the other weights are renormalised, as for any missing component.';
 
 /**
- * Weights file: { weights: { hidden, checks, rubric, pack? } }, each a number of 0 or more, at least one above 0. A weight above 0
- * for pack is refused unless the caller can supply pack scores (allowPack), so a command that cannot never drops the component quietly.
+ * Weights file: { weights: { hidden, checks, rubric, pack? }, checks?: "all" | "fraction" }. Each weight is a number of 0 or more, at
+ * least one above 0. A weight above 0 for pack is refused unless the caller can supply pack scores (allowPack), so a command that
+ * cannot never drops the component quietly. "checks" names how the checks component is scored (default "all"); the returned object
+ * gets `checksMode: "fraction"` only when the file asks for it.
  */
 function loadScoring(file = DEFAULT_PROFILE, { allowPack = false } = {}) {
   let data;
@@ -57,8 +66,24 @@ function loadScoring(file = DEFAULT_PROFILE, { allowPack = false } = {}) {
   }
   if (out[PACK_COMPONENT] > 0 && !allowPack) throw new Error(`scoring profile ${file}: a weight for pack needs the quality-pack scores, which only report and report-2x2 with --criteria-pack provide`);
   if (!known.some((k) => out[k] > 0)) throw new Error(`scoring profile ${file}: at least one weight must be above 0`);
+  const mode = data.checks ?? 'all';
+  if (!CHECKS_MODES.includes(mode)) throw new Error(`scoring profile ${file}: "checks" must be one of ${CHECKS_MODES.map((m) => `"${m}"`).join(', ')}`);
+  if (mode === FRACTIONAL_CHECKS) out[CHECKS_MODE_KEY] = mode;
   return out;
 }
+
+/** The checks component of one run, 0..1, or null when it ran no checks. `checks` is the result's list of { passed }. */
+function checksScore(checks, weights = DEFAULT_WEIGHTS) {
+  if (!Array.isArray(checks) || !checks.length) return null;
+  const passed = checks.filter((c) => c.passed).length;
+  return weights[CHECKS_MODE_KEY] === FRACTIONAL_CHECKS ? passed / checks.length : passed === checks.length ? 1 : 0;
+}
+
+/** Text appended after the checks weight in a scoring line; empty for the default mode so default output is unchanged. */
+const checksModeNote = (weights) => (weights?.[CHECKS_MODE_KEY] === FRACTIONAL_CHECKS ? ' (scored as passed / total)' : '');
+
+/** `formulas` with the checks wording of the mode in use; the same object when the mode is the default. */
+const formulasForWeights = (formulas, weights) => (weights?.[CHECKS_MODE_KEY] === FRACTIONAL_CHECKS ? { ...formulas, quality: FRACTIONAL_CHECKS_FORMULA(formulas.quality) } : formulas);
 
 /** { score 0..100, used: [component names] } for one run (a row or any object with the component values), or null when it has no weighted component. */
 function qualityOfRun(parts, weights = DEFAULT_WEIGHTS) {
@@ -195,8 +220,8 @@ function computeScores({ rows, baseline, weights = DEFAULT_WEIGHTS, unit = 'cred
       arms[arm][scope] = { quality, reliability: reliabilityBlock(mine), autonomy: autonomyBlock(mine), efficiency: efficiencyBlock(mine, baseRows, baseQuality, quality, unit) };
     }
   }
-  const formulas = harness === 'claude-code' ? formulasForClaudeCode() : FORMULAS;
+  const formulas = formulasForWeights(harness === 'claude-code' ? formulasForClaudeCode() : FORMULAS, weights);
   return { weights, unit, formulas: weights[PACK_COMPONENT] > 0 ? { ...formulas, quality: formulas.quality + PACK_FORMULA } : formulas, baseline: base, scopes, arms, rows: flatRows(arms, scopes, base) };
 }
 
-module.exports = { computeScores, qualityOfRun, loadScoring, componentsOf, PACK_COMPONENT, DEFAULT_WEIGHTS, FORMULAS, MIN_N, CEILING, RELIABILITY_FAILS };
+module.exports = { computeScores, qualityOfRun, loadScoring, checksScore, checksModeNote, formulasForWeights, componentsOf, PACK_COMPONENT, DEFAULT_WEIGHTS, FORMULAS, MIN_N, CEILING, RELIABILITY_FAILS };
