@@ -208,7 +208,7 @@ Code:
 
 Step 6 has `k-developer` write the report with an "Adversarial pass: pending" section, then
 return the pass as a handoff for `k-architect`, naming the SOP and the step to resume at. Under
-`konductor`, `konductor` routes it to the architect and sends the findings back, and the
+`konductor`, the handoff goes to the architect, the findings come back, and the
 developer rewrites the report. When `k-developer` is started directly, you get the report with
 the section pending and the handoff comes back to you. To complete it, ask
 `konductor` to run `k-adversarial-pull-request-review`, then pass its findings and the handoff

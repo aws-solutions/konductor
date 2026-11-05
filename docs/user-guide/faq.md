@@ -216,8 +216,8 @@ that owns the SOP cannot spawn the architect**: no specialist holds a spawn tool
 v3 or Claude Code, and the core rules forbid it in Kiro CLI v2.
 
 Step 6 always returns the pass as a handoff for `k-architect`, after writing the report with an
-"Adversarial pass: pending" section. Under `konductor`, `konductor` routes the handoff and sends
-the findings back, and the developer rewrites the report with them. If you started
+"Adversarial pass: pending" section. Under `konductor`, the handoff is routed to `k-architect`, the findings
+go back, and the developer rewrites the report with them. If you started
 `k-developer` directly, nothing routes the handoff, so you get the report with the adversarial
 section pending and the handoff comes back to you. To complete it, ask `konductor` to run
 `k-adversarial-pull-request-review`, then pass its findings and the handoff to `k-developer` and

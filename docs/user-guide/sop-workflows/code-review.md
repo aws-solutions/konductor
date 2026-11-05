@@ -80,7 +80,7 @@ flowchart TD
     S4["4. Consolidate<br/>sort CRITICAL → IMPORTANT → SUGGESTION<br/>deduplicate across skills<br/>attach file:line to each finding"]
     S4 --> S5["5. Critique findings<br/>when in doubt, reject"]
 
-    S5 --> S6{"6. Adversarial capability available<br/>AND review_type is not<br/>'frontend' only?"}
+    S5 --> S6{"6. review_type is not<br/>'frontend' only?"}
     S6 -->|No| S7
     S6 -->|Yes| Pending["Write the report with an<br/>'Adversarial pass: pending' section"]
     Pending --> Hand["Return step 6 as a handoff for k-architect<br/>diff as diff_input, cr_url as the adversarial SOP's pr_url"]
@@ -136,7 +136,7 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
   one owning agent cannot spawn: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code,
   and the core rules forbid it in Kiro CLI v2. Step 6 has `k-developer` write the report with an
   "Adversarial pass: pending" section, then return the pass as a handoff. Under `konductor`,
-  `konductor` routes it to `k-architect`, and the findings come back to replace the pending
+  the handoff goes to `k-architect`, and the findings come back to replace the pending
   section. When `k-developer` is started directly, you get the pending report and the handoff
   comes back to you: ask
   `konductor` to run [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review),

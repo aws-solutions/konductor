@@ -1430,10 +1430,6 @@ mod tests {
         assert_eq!(map_tool_tag("agent_crew"), "subagent");
     }
 
-    /// Unconfirmed entries (already-current tags, collection markers,
-    /// server-scoped MCP tags, and the unconfirmed `agentCrew` camelCase
-    /// spelling) must pass through unchanged rather than being invented
-    /// -- see `map_tool_tag`'s docstring.
     #[test]
     fn spawn_policy_ids_and_rename_table_agree() {
         for (id, tag) in TOOL_ID_TO_TAG {
@@ -1446,6 +1442,10 @@ mod tests {
         }
     }
 
+    /// Unconfirmed entries (already-current tags, collection markers,
+    /// server-scoped MCP tags, and the unconfirmed `agentCrew` camelCase
+    /// spelling) must pass through unchanged rather than being invented
+    /// -- see `map_tool_tag`'s docstring.
     #[test]
     fn map_tool_tag_passes_through_unconfirmed_entries() {
         assert_eq!(map_tool_tag("@builtin"), "@builtin");
