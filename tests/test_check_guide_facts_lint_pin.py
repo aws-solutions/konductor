@@ -152,6 +152,9 @@ def test_stale_delegation_phrases_stay_forbidden():
         "carry Agent(...) tools",
         "holds the subagent tool but can spawn nothing",
         "via Agent(...)",
+        "adversarial handoff never fires",
+        "step 6 silently no-ops",
+        "Its step-6 adversarial pass never fires",
     }
 
 

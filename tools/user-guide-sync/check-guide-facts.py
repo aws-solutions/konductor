@@ -59,6 +59,9 @@ STALE_DELEGATION_PHRASES = (
     "carry Agent(...) tools",
     "holds the subagent tool but can spawn nothing",
     "via Agent(...)",
+    "adversarial handoff never fires",
+    "step 6 silently no-ops",
+    "Its step-6 adversarial pass never fires",
 )
 KONDUCTOR_SPAWN_CELL = "the same 8 via Agent(...)"
 
@@ -459,7 +462,7 @@ def main() -> int:
         for phrase in STALE_DELEGATION_PHRASES:
             if phrase in text.replace(KONDUCTOR_SPAWN_CELL, ""):
                 perm_fails.append(
-                    f"{rel}: says {phrase!r} — specialists hold no spawn tool "
+                    f"{rel}: says {phrase!r}: specialists hold no spawn tool "
                     f"in Kiro CLI v3 or Claude Code"
                 )
         low = text.lower()

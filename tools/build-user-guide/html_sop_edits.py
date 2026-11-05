@@ -1160,3 +1160,32 @@ SOP_EDITS += [
      "Delegates to nothing — has the subagent tool with an empty target list.",
      "Delegates to nothing; it returns to its caller."),
 ]
+
+# The published page's "adversarial handoff never fires" section and index row,
+# rewritten to match use-cases/review-code-and-tests.md and sop-workflows/README.md.
+SOP_EDITS += [
+    ('known limitation: heading',
+     'Known limitation: the adversarial handoff never fires',
+     'Known limitation: the adversarial pass needs an orchestrator'),
+    ('known limitation: step 6 quote',
+     'If an adversarial CR-review step is available, spawn <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">k-architect</code> in adversarial mode with it, passing the same diff used in Step 1 as <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">diff_input</code>, to surface gaps missed by standard review.',
+     'Write the Step 7 report first, then return step 6 as a handoff naming <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">k-architect</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">k-adversarial-pull-request-review</code>, this SOP, and step 6 as the step to resume at.'),
+    ('known limitation: box label',
+     'NEITHER OWNING AGENT CAN DO THAT SPAWN — VERIFIED AGAINST THE AGENT SPECS',
+     'THE OWNING AGENT CANNOT SPAWN THE ARCHITECT, VERIFIED AGAINST THE AGENT SPECS'),
+    ('known limitation: through konductor',
+     '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)">Step 6\'s own constraints anticipate this — <em>"You MUST skip this step if no adversarial CR-review capability is available"</em> — so the workflow degrades gracefully rather than erroring. In practice <strong style="color:var(--tx);font-weight:600">step 6 silently no-ops and you get standard review only.</strong></p>',
+     '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)"><strong style="color:var(--tx);font-weight:600">Through <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">konductor</code>, step 6 runs.</strong> Step 6 has <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-developer</code> write the report with an "Adversarial pass: pending" section, then return the pass as a handoff for <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-architect</code>, naming the SOP and the step to resume at. <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">konductor</code> routes it to the architect and sends the findings back, and the developer rewrites the report with them.</p>'),
+    ('known limitation: started directly',
+     '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)"><strong style="color:var(--tx);font-weight:600">Routing through <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em">konductor</code> does not fix it.</strong> The orchestrator does not declare <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-code-review-workflow</code> (its SOPs are <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">kiro-spec-workflow</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-delegate</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-plan</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-context-gathering</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-verify</code>), so it delegates the whole SOP to the developer, which hits the same wall.</p>',
+     '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)"><strong style="color:var(--tx);font-weight:600">Started directly, the handoff comes back to you.</strong> Nothing routes it, so you get the report with the adversarial section pending. To complete it, ask <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">konductor</code> to run <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-adversarial-pull-request-review</code>, then pass its findings and the handoff to <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-developer</code> and ask it to resume <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-code-review-workflow</code> at step 6.'),
+    ('sop index: review workflow row',
+     'Its step-6 adversarial pass never fires',
+     'Its step-6 adversarial pass returns as a handoff'),
+]
+
+SOP_EDITS += [
+    ("sops callout: step 6 hands off",
+     "until that registration was removed as unusable: step 6 spawns k-architect, which QA cannot reach.",
+     "until that registration was removed as unusable: step 6 hands off to k-architect, which QA cannot reach."),
+]
