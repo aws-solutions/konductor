@@ -229,3 +229,10 @@ test('thresholds are the ones the README states', () => {
   assert.equal(THRESHOLDS.kappaMin, 0.6);
   assert.equal(THRESHOLDS.headroomShare, 0.25);
 });
+
+test('model pin: unverified runs are explained, and a pin that every run verified says nothing extra', () => {
+  const measured = (f) => by(evaluate(f), 'pin').value;
+  assert.equal(measured(good()), '18 of 18 runs verified');
+  assert.equal(measured(good({ pin: { runs: 18, verified: 15, mismatch: 0, unrecorded: 3 } })), '15 of 18 runs verified; 3 with no model record (no session file kept and no model setting in the stream, as in kiro-cli runs without agent files to rewrite)');
+  assert.equal(measured(good({ pin: { runs: 18, verified: 15, mismatch: 0 } })), '15 of 18 runs verified');
+});

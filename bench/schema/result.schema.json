@@ -295,6 +295,10 @@
         "null"
       ]
     },
+    "streamModel": {
+      "type": "string",
+      "description": "The model the session's model setting held in the event stream (engine v3), when it was not auto. A configured value, not proof of which model served each request."
+    },
     "sessionId": {
       "type": [
         "string",

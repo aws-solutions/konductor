@@ -139,7 +139,8 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
 
   // Claude Code reports the canonical id of the model it used; the run config holds the profile id the flag was given.
   const pinned = (r) => (cfg.harness === 'claude-code' && cfg.canonicalModel ? cfg.canonicalModel : cfg.model || r.model);
-  const pinOk = (r) => r.outcome !== 'modelMismatch' && ((r.sessionModel && r.sessionModel === pinned(r)) || (r.modelNormalized === true && (!cfg.model || !r.sessionModel || r.sessionModel === cfg.model)));
+  // A pin is verified by the model a session file records, by agent files rewritten to the model, or by the model setting a v3 stream reports.
+  const pinOk = (r) => r.outcome !== 'modelMismatch' && ((r.sessionModel && r.sessionModel === pinned(r)) || (r.streamModel && r.streamModel === pinned(r)) || (r.modelNormalized === true && (!cfg.model || !r.sessionModel || r.sessionModel === cfg.model)));
   const capKey = 'budgetCredits' in cfg ? 'budgetCredits' : 'budgetUsd' in cfg ? 'budgetUsd' : null;
   const checkRows = rows.filter((r) => r.checks !== null);
   const revisionOf = (e) => (tasks.get(e.taskId) ? checksRevision(tasks.get(e.taskId)) : null);
@@ -164,7 +165,7 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
     failures: { n: rows.length, timeout: rows.filter((r) => r.outcome === 'timeout').length, error: rows.filter((r) => r.outcome === 'error').length, infraError: rows.filter((r) => r.outcome === 'infraError').length, modelMismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, checksFailed: rows.filter((r) => r.outcome === 'checksFailed').length },
     censored: rows.filter((r) => r.censored).length,
     contamination: contaminated.length ? { audited: contaminated.length, flagged: flagged.length, externalFetch: contaminated.filter((r) => (r.contamination.externalFetch || []).length).length, fixRecall: contaminated.filter((r) => (r.contamination.fixRecallChars || 0) >= MIN_RECALL).length } : null,
-    pin: { runs: rows.length, verified: rows.filter(pinOk).length, mismatch: rows.filter((r) => r.outcome === 'modelMismatch').length },
+    pin: { runs: rows.length, verified: rows.filter(pinOk).length, mismatch: rows.filter((r) => r.outcome === 'modelMismatch').length, unrecorded: rows.filter((r) => r.outcome !== 'modelMismatch' && !pinOk(r) && !r.sessionModel && !r.streamModel).length },
     isolation: { modes: [...new Set(rows.map((r) => r.isolation).filter(Boolean))], unknown: rows.filter((r) => !r.isolation).length, tripwire: rows.filter((r) => r.tripwire).length, runs: rows.length },
     budget: { recorded: capKey !== null, cap: capKey ? (cfgs.every((c) => typeof c[capKey] === 'number') ? cfgs.reduce((n, c) => n + c[capKey], 0) : cfg[capKey]) : null, spent: rows.reduce((n, r) => n + (finite(r.credits) ? r.credits : 0), 0), skipped },
     provenance: provenanceOf(run, cfgs),
@@ -253,7 +254,7 @@ function evaluate(f, t = THRESHOLDS) {
   else add(C('contamination', 'Contamination flags', false, f.contamination.flagged === 0 ? 'PASS' : 'WARN', `${f.contamination.flagged} of ${f.contamination.audited} audited (externalFetch ${f.contamination.externalFetch}, fixRecall ${f.contamination.fixRecall})`, '0 flagged'));
 
   const pin = f.pin;
-  add(C('pin', 'Model pin verified in every run', true, pin.mismatch > 0 ? 'FAIL' : pin.verified === pin.runs && pin.runs > 0 ? 'PASS' : 'WARN', `${pin.verified} of ${pin.runs} runs verified${pin.mismatch ? `; ${pin.mismatch} mismatch` : ''}${f.hasDifferentModels ? '; run directories use different models' : ''}`, 'all runs'));
+  add(C('pin', 'Model pin verified in every run', true, pin.mismatch > 0 ? 'FAIL' : pin.verified === pin.runs && pin.runs > 0 ? 'PASS' : 'WARN', `${pin.verified} of ${pin.runs} runs verified${pin.mismatch ? `; ${pin.mismatch} mismatch` : ''}${pin.unrecorded ? `; ${pin.unrecorded} with no model record (no session file kept and no model setting in the stream, as in kiro-cli runs without agent files to rewrite)` : ''}${f.hasDifferentModels ? '; run directories use different models' : ''}`, 'all runs'));
 
   const iso = f.isolation;
   const weak = iso.modes.includes('none');

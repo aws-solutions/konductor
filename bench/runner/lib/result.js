@@ -147,6 +147,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     kiroCliVersion: env?.kiroCliVersion ?? null,
     modelListSnapshotPath: env?.modelListSnapshotPath ?? null,
     sessionModel,
+    ...(agg?.configuredModel ? { streamModel: agg.configuredModel } : {}),
     sessionId: agg?.sessionId ?? null,
     agent: arm.agent,
     agentEngine: config.agentEngine ?? null,

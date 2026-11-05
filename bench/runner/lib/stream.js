@@ -209,6 +209,7 @@ function aggregateStream(events) {
     skillsMcp: { calls: 0, errors: 0 },
     skillsMcpOk: null,
     engine: null,
+    configuredModel: null,
     finalText: null,
     finalTextTruncated: null,
     askedUser: null,
@@ -261,6 +262,12 @@ function aggregateStream(events) {
             out.credits += Number(m.usage) || 0;
             out.meteringEntries++;
           }
+          break;
+        }
+        // Engine v3 reports the session's settings; the model option starts at "auto" and then holds the model the session runs on.
+        if (u.sessionUpdate === 'config_option_update') {
+          const model = (u.configOptions || []).find((o) => o?.id === 'model')?.currentValue;
+          if (typeof model === 'string' && model && model !== 'auto') out.configuredModel = model;
           break;
         }
         if (u.sessionUpdate === 'tool_call_update') {
@@ -328,6 +335,7 @@ function mergeAggregates(aggs) {
     nonCreditUnits: [...new Set(aggs.flatMap((a) => a.nonCreditUnits))],
     turnDurationMs: last.runFinishedStatus === null || !durations.length ? null : durations.reduce((a, b) => a + b, 0),
     contextUsagePercentage: [...aggs].reverse().map((a) => a.contextUsagePercentage).find((v) => typeof v === 'number') ?? null,
+    configuredModel: [...aggs].reverse().map((a) => a.configuredModel).find(Boolean) ?? null,
     toolCalls: sumOf(aggs, 'toolCalls'),
     workToolCalls: sumOf(aggs, 'workToolCalls'),
     subagentCalls: sumOf(aggs, 'subagentCalls'),

@@ -607,7 +607,10 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   that runner keep the flag and have no `session/` directory. The copy skips symlinks and special files, replaces the user's home path with
   `<host-home>`, and the run's credential scrub covers it. Other metering
   units are flagged. `askedUser` marks a final message that ends with a question, asks for approval,
-  or stops for a reason other than `end_turn`. `skillsMcpOk` records whether a `konductor-skills` call
+  or stops for a reason other than `end_turn`. `streamModel` is the model the session's model setting held in an engine v3 stream (the setting starts at `auto`, then
+  holds the pinned model); the diligence scorecard counts it, beside the session file's model and agent files rewritten to the pin, as a record of the model. It shows the
+  model the session was set to, not which model served each request. A kiro-cli run without konductor has no agent file to rewrite and, before session files were saved, no
+  session model, so its pin could not be checked; runs saved before `streamModel` existed still read as unverified, and the scorecard says how many have no model record. `skillsMcpOk` records whether a `konductor-skills` call
   succeeded; konductor arms run with `--require-mcp-startup`.
 - A post-run failure keeps the run's credits and sets `infraError`; a socket or FIFO in the workspace is
   skipped by the snapshot. The cwd must hold no answer key. Checks: `file_exists`, `contains`,
