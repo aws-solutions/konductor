@@ -144,3 +144,29 @@ def test_existence_check_accepts_a_hidden_command_missing_from_the_readme():
 def test_existence_check_fails_for_a_name_in_neither_source():
     problem = check_guide_facts.withdrawn_command_problem("nosuchcmd", ["init"], {"config"})
     assert "cli/README.md does not declare it and cli.rs has no hidden command of that name" in problem
+
+
+def test_stale_delegation_phrases_stay_forbidden():
+    assert set(check_guide_facts.STALE_DELEGATION_PHRASES) == {
+        "can also spawn each other",
+        "carry Agent(...) tools",
+        "holds the subagent tool but can spawn nothing",
+        "via Agent(...)",
+    }
+
+
+def test_stale_delegation_phrase_in_a_bundle_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "site" / "user-guide.html"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original.replace("nothing · nothing", "k-developer via Agent(...)", 1),
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert "specialists hold no spawn tool" in result.stdout

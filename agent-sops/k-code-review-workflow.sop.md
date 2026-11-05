@@ -84,14 +84,14 @@ Validate each finding to eliminate false positives. When in doubt, reject — fa
 
 ### 6. Adversarial Review
 
-Write the Step 7 report first, then return step 6 as a handoff naming `k-architect`, `k-adversarial-pull-request-review`, this SOP, and step 6 as the step to resume at, per the core rules' specialist handoffs. The report is written from the Step 5 list with an `Adversarial pass: pending (handoff to k-architect)` section, so a direct run still leaves `output_file` behind. Include the SOP parameters (`source_dir`, `review_type`, `output_file`, `cr_url` if given, and the base branch Step 1 resolved), the Step 1 diff or the command that reproduces it, the Step 2 file counts by category, and the Step 5 consolidated findings list in the handoff so the resumed run can merge into them and rewrite the report. If the list is long, write it to `.konductor/handoff/k-developer-code-review.md` and name that path, per the `delegation-protocol` skill's Handoff Pattern.
+Write the Step 7 report first, then return step 6 as a handoff naming `k-architect`, `k-adversarial-pull-request-review`, this SOP, and step 6 as the step to resume at, per the core rules' specialist handoffs. The report is written from the Step 5 list with an `Adversarial pass: pending (handoff to k-architect)` section, so a direct run still leaves `output_file` behind. Include the SOP parameters (`source_dir`, `review_type`, `output_file`, `cr_url` if given, and the base branch Step 1 resolved), the Step 1 diff or the command that reproduces it, the Step 2 file counts by category, and the Step 5 consolidated findings list in the handoff so the resumed run can merge into them and rewrite the report. If the list is long, write it to `.konductor/handoff/k-developer-code-review-<output_file stem>.md` and name that path, per the `delegation-protocol` skill's Handoff Pattern.
 
 **Constraints:**
 
-- If you were resumed at step 6 with `k-architect`'s findings, You MUST NOT hand off again. Apply the false-positive, merge and no-re-report constraints below to those findings and the Step 5 list from the handoff, then continue to Step 7, which overwrites the pending report.
+- If you were resumed at step 6 with `k-architect`'s findings, You MUST first compare the handoff's `output_file` and Step 1 diff command with those in your resume brief; if either differs, stop and report the mismatch instead of merging. You MUST NOT hand off again. Apply the false-positive, merge and no-re-report constraints below to those findings and the Step 5 list from the handoff, then continue to Step 7, which overwrites the pending report.
 - You MUST skip this step only if `review_type` is `frontend` only (adversarial review targets backend/infra gaps); then continue to Step 7 with no pending section
 - You MUST NOT spawn `k-architect` yourself, whatever your tools allow; the handoff is the only path
-- You MUST write the report to `output_file` before returning the handoff, using the Step 7 structure plus the pending section
+- You MUST write the report to `output_file` before returning the handoff, using the Step 7 structure plus the pending section, and its verdict line MUST read `Verdict: PENDING ADVERSARIAL PASS`
 - You MUST pass the same diff used in Step 1 as `diff_input`
 - If the k-code-review-workflow was invoked with a CR URL, You MUST also pass it to `k-adversarial-pull-request-review` as its `pr_url` parameter — that is the name that SOP declares, and passing `cr_url` instead leaves it unset so the review degrades to diff-only. Do not send it to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
 - You MUST apply the same false-positive criteria from Step 5 to adversarial findings before merging them
@@ -123,7 +123,7 @@ Write the consolidated report to the output file.
   ```
 
 - If Step 6 returned a handoff, the report was already written with the pending section; on resume, overwrite it with the merged list and no pending section
-- You MUST state the verdict: READY FOR CR / NEEDS FIXES
+- You MUST state the verdict: READY FOR CR / NEEDS FIXES; `PENDING ADVERSARIAL PASS` only while the pending section exists
 - You MUST NOT print the full report in your response — reference the file
 
 **Expected Output:** Report file at `output_file` with verdict and finding counts

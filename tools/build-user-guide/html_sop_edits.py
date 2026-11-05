@@ -377,10 +377,6 @@ SOP_EDITS += [
     # are retired: both replacements said "genuinely read-only" / "genuinely
     # cannot write", which is the same misreading of `allowedTools`. Owned by
     # "qs checkpoint permission prose" and "ik success permission prose".
-    # specialists do talk to each other (toolsSettings.subagent.availableAgents)
-    ("concepts: specialists never talk",
-     "is a hub. Specialists never talk to each other; every piece of work routes through the orchestrator",
-     "is a hub \u2014 though not an exclusive one. In Kiro CLI four specialists can also spawn each other directly (k-architect \u2192 developer and QA; k-developer \u2192 QA; k-quality-assurance \u2192 developer and browser; k-tpm \u2192 developer and researcher), and in Claude Code k-architect and k-quality-assurance carry Agent(...) tools of their own. In the common case, though, work routes through the orchestrator"),
     # k-e2e-test-generation step 5 also runs its suite
 ]
 
@@ -392,21 +388,9 @@ SOP_EDITS += [
     ("delegation: konductor row",
      '{ k: "konductor", v: "any agent (unrestricted) \u00b7 the 8 specialists via Agent(...), plus SendMessage" }',
      '{ k: "konductor", v: "the 8 specialists (an explicit allowlist, not anything) \u00b7 the same 8 via Agent(...), plus SendMessage" }'),
-    ("delegation: k-architect row",
-     '{ k: "k-architect", v: "k-developer, k-quality-assurance \u00b7 nothing" }',
-     '{ k: "k-architect", v: "k-developer, k-quality-assurance \u00b7 k-developer, k-quality-assurance via Agent(...)" }'),
-    ("delegation: k-quality-assurance row",
-     '{ k: "k-quality-assurance", v: "k-developer \u00b7 nothing" }',
-     '{ k: "k-quality-assurance", v: "k-developer, k-browser \u00b7 k-developer, k-browser via Agent(...)" }'),
     ("delegation: orchestrators bullet",
      "it is the only agent with unrestricted delegation, and the only one that declares k-delegate.",
      "it has the widest delegation reach \u2014 an explicit allowlist of all eight specialists \u2014 and is the only one that declares k-delegate."),
-    ("delegation: glossary",
-     "An empty list means the agent holds the subagent tool but can spawn nothing. Only konductor is unrestricted.",
-     "An empty list means the agent holds the subagent tool but can spawn nothing. konductor's list is the widest, naming all eight specialists."),
-    ("delegation: claude-only caption",
-     "Agent(...) tool at all.\"],",
-     "Agent(...) tool at all. In Claude Code, k-architect and k-quality-assurance carry Agent(...) tools too, so delegation there is not konductor-only.\"],"),
     # k-browser's kiroCli.allowedTools has 13 @playwright-mcp entries
     ("k-browser tool count",
      "the Kiro CLI allowedTools enumerates 12 specific browser tools: snapshot, screenshot, console messages, network requests, tabs, navigate, navigate back, wait for, click, type, select option, press key.",
@@ -510,10 +494,6 @@ SOP_EDITS += [
     ("use-case: only-SOP-in-package claim",
      "is the only SOP in the entire package that changes your source files in place. Everything else here writes report files next to your code.",
      "is the only SOP on this page that changes your source files in place; everything else here writes report files next to your code. Elsewhere in the package, k-full-sdlc implements and commits per feature, and k-e2e-test-generation commits the suite it generates."),
-    # k-architect and k-quality-assurance both hold Agent(...) in Claude Code
-    ("use-case: claude spawn claim",
-     "have no cross-agent spawn capability there, period.",
-     "cannot reach the architect there: k-developer has no Agent(...) tool at all, and k-quality-assurance's names k-developer and k-browser. (k-architect and k-quality-assurance do hold Agent(...) tools, so delegation in Claude Code is not orchestrator-only.)"),
     # seven SOPs have no use-case walkthrough
     ("use-case: walkthrough coverage",
      "One SOP has no walkthrough here yet: ",
@@ -730,12 +710,6 @@ SOP_EDITS += [
     # from the at-a-glance cards and the skills-per-agent table above, and the one
     # that kept drifting unnoticed. Counts from dependencies.skills.skillNames;
     # delegation from availableAgents plus each spec's Agent(...) tool.
-    ("roster row: architect delegation runtimes",
-     "Can delegate to developer and QA in Kiro CLI.",
-     "Can delegate to developer and QA in both runtimes."),
-    ("roster row: QA delegation",
-     "Can delegate to the developer in Kiro CLI.",
-     "Can delegate to the developer and the browser agent in both runtimes."),
     ("roster row: PM skills",
      "No SOPs — skill-driven. 14 skills: user-story-writing",
      "No SOPs — skill-driven. 16 skills: user-story-writing"),
@@ -1115,10 +1089,10 @@ SOP_EDITS += [
 SOP_EDITS += [
     ("sop step 6 node: pending report then handoff",
      r'''node("06", "Adversarial pass — never actually fires", "Would spawn k-architect in adversarial mode with the same diff as diff_input (plus cr_url if supplied), applying step 5's filters and merging new CRITICAL / IMPORTANT only. Skipped by design for frontend-only reviews — and skipped in practice always, because its one owning agent cannot spawn the architect.", "skip")''',
-     r'''node("06", "Adversarial pass: handoff to k-architect", "Writes the report with an 'Adversarial pass: pending' section, then returns the pass as a handoff for k-architect with the same diff as diff_input (plus cr_url if supplied). On resume, applies step 5's filters and merges new CRITICAL / IMPORTANT only. Skipped by design for frontend-only reviews.", "good")'''),
+     r'''node("06", "Adversarial pass: handoff to k-architect", "Writes the report with an 'Adversarial pass: pending' section and the verdict PENDING ADVERSARIAL PASS, then returns the pass as a handoff for k-architect with the same diff as diff_input (plus cr_url if supplied). On resume, applies step 5's filters and merges new CRITICAL / IMPORTANT only. Skipped by design for frontend-only reviews.", "good")'''),
     ("sop know: adversarial step needs an orchestrator",
      r'''{ title: "The adversarial step never actually fires.", body: "Step 6 tells the agent to spawn k-architect, but its one owning agent cannot: in Kiro CLI k-developer's subagent.availableAgents is [\"k-quality-assurance\"], which does not include the architect, and in Claude Code it has no Agent(...) tool at all. The SOP degrades quietly by design, so you get standard review only. Routing through the orchestrator does not help — it does not declare this SOP. Run k-adversarial-pull-request-review against k-architect separately instead." }''',
-     r'''{ title: "The adversarial step needs an orchestrator.", body: "The SOP's one owning agent, k-developer, cannot spawn k-architect. Step 6 writes the report with the adversarial section pending, then returns the pass as a handoff. Under konductor, the handoff is routed to k-architect and the findings come back to replace the pending section. Started directly, you get the pending report and the handoff: ask konductor to run k-adversarial-pull-request-review, then resume k-code-review-workflow at step 6 with its findings." }'''),
+     r'''{ title: "The adversarial step needs an orchestrator.", body: "The SOP's one owning agent, k-developer, cannot spawn k-architect. Step 6 writes the report with the adversarial section pending and the verdict PENDING ADVERSARIAL PASS, then returns the pass as a handoff. Under konductor, the handoff is routed to k-architect and the findings come back to replace the pending section and give the final verdict. Started directly, you get the pending report and the handoff: ask konductor to run k-adversarial-pull-request-review, then resume k-code-review-workflow at step 6 with its findings." }'''),
     ("sop step 6 list: pending report then handoff",
      r'''body: "Attempts the architect spawn. Always no-ops today (see above), and is skipped by design when review_type is frontend only."''',
      r'''body: "Writes the report with the adversarial section pending, then returns the pass as a handoff for k-architect. Skipped by design when review_type is frontend only."'''),
@@ -1128,4 +1102,61 @@ SOP_EDITS += [
     ("agents warn: adversarial handoff",
      r'''warn: "Why this matters: k-code-review-workflow step 6 says to spawn k-architect in adversarial mode. That SOP is declared only by k-developer — which cannot spawn the architect in either runtime. The SOP anticipates this (\"You MUST skip this step if no adversarial CR-review capability is available\"), so it degrades quietly. In practice step 6 always no-ops and you get standard review only. Routing through the orchestrator does not fix it — it does not declare that SOP. Run k-adversarial-pull-request-review yourself against k-architect."''',
      r'''warn: "Why this matters: k-code-review-workflow step 6 is an adversarial pass by k-architect. That SOP is declared only by k-developer, which cannot spawn the architect in either runtime. Step 6 writes the report with an 'Adversarial pass: pending' section, then returns the pass as a handoff. Under konductor, the handoff is routed to k-architect and the findings come back to finish the report. Started directly, you get the pending report and the handoff: ask konductor to run k-adversarial-pull-request-review, then resume k-code-review-workflow at step 6 with its findings."'''),
+]
+
+# Specialists hold no spawn tool in Kiro CLI v3 or Claude Code. Each `old` is the
+# bundle sentence as published after the handoff-routing edits; the pre-existing
+# claims that specialists spawn each other are replaced, not appended to.
+SOP_EDITS += [
+    ("concepts: hub is exclusive",
+     "is a hub — though not an exclusive one. In Kiro CLI four specialists can also spawn each other directly (k-architect → developer and QA; k-developer → QA; k-quality-assurance → developer and browser; k-tpm → developer and researcher), and in Claude Code k-architect and k-quality-assurance carry Agent(...) tools of their own. In the common case, though, work routes through the orchestrator, which decides who owns it, hands it over, and checks the result. The core rules tell specialists not to use those grants: a specialist does its own part,",
+     "is a hub. Specialists never talk to each other and hold no spawn tool in Kiro CLI v3 or Claude Code (Kiro CLI v2 is not covered, so there only the core rules stop a spawn), so every piece of work routes through the orchestrator, which decides who owns it, hands it over, and checks the result. A specialist does its own part,"),
+    ("agents: delegation edges are the orchestrator's",
+     "Delegation is not open, and the edges below are tool grants that the core rules tell specialists not to use: a specialist returns a handoff note or a proposed split to its caller, and the grants are still in the agent specs.",
+     "Only the orchestrators delegate. The edges below are the orchestrator's tool grants: specialists hold none in Kiro CLI v3 or Claude Code, and Kiro CLI v2 is not covered, so there only the core rules stop a specialist from spawning. A specialist returns a handoff note or a proposed split to its caller."),
+    ("agents: delegation governance sentence",
+     " In Kiro CLI it is governed by each agent's toolsSettings.subagent.availableAgents; in Claude Code by whether the agent has an Agent(...) tool at all. In Claude Code, k-architect and k-quality-assurance carry Agent(...) tools too, so delegation there is not konductor-only.",
+     " In Kiro CLI, konductor's toolsSettings.subagent.availableAgents names the eight specialists; in Claude Code only konductor has an Agent(...) tool."),
+    ("delegation: k-architect row",
+     '{ k: "k-architect", v: "k-developer, k-quality-assurance · k-developer, k-quality-assurance via Agent(...)" }',
+     '{ k: "k-architect", v: "nothing · nothing" }'),
+    ("delegation: k-developer row",
+     '{ k: "k-developer", v: "k-quality-assurance · nothing" }',
+     '{ k: "k-developer", v: "nothing · nothing" }'),
+    ("delegation: k-quality-assurance row",
+     '{ k: "k-quality-assurance", v: "k-developer, k-browser · k-developer, k-browser via Agent(...)" }',
+     '{ k: "k-quality-assurance", v: "nothing · nothing" }'),
+    ("delegation: k-tpm row",
+     '{ k: "k-tpm", v: "k-developer, k-researcher · nothing" }',
+     '{ k: "k-tpm", v: "nothing · nothing" }'),
+    ("delegation: k-product-manager row",
+     '{ k: "k-product-manager", v: "has the tool, zero targets · nothing" }',
+     '{ k: "k-product-manager", v: "nothing · nothing" }'),
+    ("delegation: k-researcher row",
+     '{ k: "k-researcher", v: "has the tool, zero targets · nothing" }',
+     '{ k: "k-researcher", v: "nothing · nothing" }'),
+    ("delegation: glossary",
+     "An empty list means the agent holds the subagent tool but can spawn nothing. konductor's list is the widest, naming all eight specialists.",
+     "Specialists carry no spawn tool in Kiro CLI v3 or Claude Code; only the orchestrators spawn, and konductor's list names all eight specialists."),
+    ("use-case: claude spawn claim",
+     "cannot reach the architect there: k-developer has no Agent(...) tool at all, and k-quality-assurance's names k-developer and k-browser. (k-architect and k-quality-assurance do hold Agent(...) tools, so delegation in Claude Code is not orchestrator-only.)",
+     "cannot reach the architect there: no specialist has an Agent(...) tool."),
+    ("use-case: kiro spawn claim",
+     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI</strong>, delegation goes through <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">toolsSettings.subagent.availableAgents</code>, and the developer, this SOP's only owner, does not list the architect: its targets are <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">[\"k-quality-assurance\"]</code>.",
+     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI v3</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool; only konductor does. In Kiro CLI v2, <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">@builtin</code> still carries it, and only the core rules stop the spawn."),
+    ("roster row: architect delegation",
+     "Can delegate to developer and QA in both runtimes.",
+     "Delegates to nothing; it returns to its caller."),
+    ("roster row: developer delegation",
+     "Can delegate to QA in Kiro CLI.",
+     "Delegates to nothing; it returns to its caller."),
+    ("roster row: QA delegation",
+     "Can delegate to the developer and the browser agent in both runtimes.",
+     "Delegates to nothing; it returns to its caller."),
+    ("roster row: tpm delegation",
+     "Can delegate to developer and researcher in Kiro CLI.",
+     "Delegates to nothing; it returns to its caller."),
+    ("roster rows: empty target list",
+     "Delegates to nothing — has the subagent tool with an empty target list.",
+     "Delegates to nothing; it returns to its caller."),
 ]
