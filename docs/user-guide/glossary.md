@@ -176,7 +176,7 @@ project is worked on. See [Initialize a project](tasks/initialize-a-project.md#t
 ### Read-only
 
 Applied to an **agent**, it means the agent never mutates state — no file writes, no shell
-commands, no git operations. The **orchestrators** are read-only by rule. Applied to a **SOP** (as
+commands, no git operations. The **mux and cmux orchestrators** are read-only by rule. Applied to a **SOP** (as
 with `k-pre-cr-critique`), it means the SOP never modifies source files, creates commits, or runs
 builds or tests.
 
