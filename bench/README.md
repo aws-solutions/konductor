@@ -271,7 +271,7 @@ Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--b
 `--isolate auto|unshare|sandbox-exec|none`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
 `--hide PATH,..`, `--no-default-hide`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
-`--suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause` (`cap` is the fallback the `cap` commands use; they name their arms).
+`--suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|constraints-probe` (`cap` is the fallback the `cap` commands use; they name their arms).
 No credit cap is the default: every run is a line in `credit-ledger.jsonl` in the results directory and `run` prints the running total. `--budget-credits X` is an optional guard
 that stops new runs at 90% of X; a run that carries the command past 100% ends it with exit code 3. `run` prints the worst-case wall clock first. See "Profiles, credit ledger and platform verdict".
 The unit tests for the real-task track run a fake project's pytest suite. Without `python3 -m pytest`

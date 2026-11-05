@@ -14,7 +14,7 @@ const { parseArgs } = require('../bench.js');
 const { FLAGS, BOOLEAN_FLAGS, checkArgs, COMMANDS } = require('../lib/cli-flags.js');
 
 const BENCH_JS = path.join(__dirname, '..', 'bench.js');
-const COMMAND_NAMES = ['run', 'judge', 'report', 'report-2x2', 'compare', 'contrast', 'pr-plan', 'recheck', 'backfill', 'skills', 'calibrate', 'list-arms', 'cap', 'explain', 'trace'];
+const COMMAND_NAMES = ['run', 'judge', 'report', 'report-2x2', 'compare', 'contrast', 'pr-plan', 'recheck', 'backfill', 'skills', 'calibrate', 'list-arms', 'cap', 'explain', 'trace', 'probe-report'];
 const CAP_SUBS = ['list', 'audit', 'variant', 'plan', 'prune-report', 'scenarios', 'controls', 'skill-plan', 'skill-study', 'decide'];
 
 function sandbox() {

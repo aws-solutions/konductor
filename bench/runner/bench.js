@@ -3,7 +3,7 @@
 /**
  * bench.js - benchmark runner for Konductor on kiro-cli or opencode (run, judge, recheck, backfill, report, compare, calibrate).
  *
- *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause [--arms a,b] [--tasks id,id]
+ *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|constraints-probe [--arms a,b] [--tasks id,id]
  *        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
@@ -23,7 +23,7 @@ const { cmdCap } = require('../cap/cli.js');
 const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli-flags.js');
 
 const USAGE = `Usage:
-  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause [--arms a,b,c] [--tasks id,id]
+  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|constraints-probe [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
@@ -84,6 +84,12 @@ const USAGE = `Usage:
        brief and what came back, files written, credits and time per turn, and a header with the entry agent, skills listed against loaded, the spawn tree, wall time,
        credits, flags and what the run directory cannot show. --full prints briefs, results and thoughts in full. --instructions adds, for each skill load and
        delegation, the installed instruction lines that mention it (read from the arm's commit in --repo-root, default this repository), marked INFERRED. Kiro and Claude Code runs)
+  node bench/runner/bench.js probe-report --run DIR[,DIR...] [--run DIR ...] --out DIR [--scoring FILE] [--arms-file FILE] [--canary-token-file FILE]
+       (scores the runs of the constraints-probe suite from stream.jsonl and session files, with no model call: per probe, arm and position, the share of runs that applied
+       the rule with a Wilson 95% interval; the delegated agent's own actions for runs that went through the orchestrator; skill lookups, deferral failures and fingerprint hits;
+       the canary token; sandbox errno 38 runs, which are excluded from every rate; and the DECISION rows with fixed thresholds. Writes probe-report.md, probe-report.json,
+       probe-runs.jsonl and judge-queue.json to --out. --scoring takes a scoring profile for the checks quality column; --arms-file or --canary-token-file gives the exact canary token.
+       See bench/CONSTRAINTS-PROBE.md)
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
        [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
@@ -314,6 +320,7 @@ async function main(argv) {
   if (cmd === 'recheck') return evalCommands.cmdRecheck(opts);
   if (cmd === 'explain') return evalCommands.cmdExplain(opts);
   if (cmd === 'trace') return evalCommands.cmdTrace(opts);
+  if (cmd === 'probe-report') return require('../report/probes.js').cmdProbeReport(opts);
   if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);
