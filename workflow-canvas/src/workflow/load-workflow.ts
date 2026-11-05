@@ -5,7 +5,7 @@ import {
   lostSessionMessage,
   messageOf,
 } from '../api/message-of';
-import type { Session, WorkflowDocument } from '../api/types';
+import type { Harness, Session, WorkflowDocument } from '../api/types';
 import {
   SaveConflict,
   SaveLost,
@@ -27,7 +27,7 @@ import type { SessionMemory, SessionRecord } from '../launch/session-memory';
  * other part of the page does.
  */
 export interface LoadedWorkflow {
-  harness: string;
+  harness: Harness;
   document: WorkflowDocument;
   edits: EditPort;
   runs: RunPort;

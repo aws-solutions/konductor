@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type WorkflowApi } from '../api/api';
-import { sessionStorageMemory } from '../launch/session-memory';
+import {
+  sessionStorageMemory,
+  type SessionRecord,
+} from '../launch/session-memory';
 import {
   HELLO_DOCUMENT,
   HELLO_HASH,
@@ -417,7 +420,7 @@ describe('loadWorkflow', () => {
   });
 });
 
-const STORED = { token: 'stored-token', harness: 'stored-harness' };
+const STORED: SessionRecord = { token: 'stored-token', harness: 'claude' };
 
 function memoryWith(record?: typeof STORED) {
   const sessionStorage = memoryStorage();
@@ -550,7 +553,7 @@ describe('loadWorkflow with a kept session', () => {
     expect(api.getWorkflow).toHaveBeenCalledWith('stored-token');
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness', document: HELLO_DOCUMENT },
+      workflow: { harness: 'claude', document: HELLO_DOCUMENT },
     });
   });
 
@@ -651,7 +654,7 @@ describe('loadOnOpen', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness' },
+      workflow: { harness: 'claude' },
     });
     expect(api.getWorkflow).toHaveBeenCalledWith('stored-token');
     expect(memory.recall()).toEqual(STORED);
@@ -743,8 +746,8 @@ describe('loadOnOpen', () => {
   });
 });
 
-const PASTED = { token: 'token-1', harness: 'kiro-cli' };
-const PENDING = { token: 'pending-token', harness: 'pending-harness' };
+const PASTED: SessionRecord = { token: 'token-1', harness: 'kiro-cli' };
+const PENDING: SessionRecord = { token: 'pending-token', harness: 'fake' };
 
 const serverError = () => new ApiError('Server error.', 500);
 const unknownSession = () => new ApiError('Wrong.', 401);
@@ -843,7 +846,7 @@ describe('loadWorkflow with a pending session', () => {
     expect(api.getWorkflow).toHaveBeenCalledExactlyOnceWith('pending-token');
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'pending-harness' },
+      workflow: { harness: 'fake' },
     });
     expect(result).not.toHaveProperty('refused');
   });
@@ -868,7 +871,7 @@ describe('loadWorkflow with a pending session', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'pending-harness' },
+      workflow: { harness: 'fake' },
     });
   });
 
@@ -883,7 +886,7 @@ describe('loadWorkflow with a pending session', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness' },
+      workflow: { harness: 'claude' },
     });
     expect(result).not.toHaveProperty('refused');
     expect(memory.recallPending()).toBeUndefined();
@@ -900,7 +903,7 @@ describe('loadWorkflow with a pending session', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness' },
+      workflow: { harness: 'claude' },
     });
     expect(result).not.toHaveProperty('refused');
     expect(memory.recallPending()).toEqual(PENDING);
@@ -1017,7 +1020,7 @@ describe('loadOnOpen sessions', () => {
     ]);
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'stored-harness' },
+      workflow: { harness: 'claude' },
       refused: expect.stringMatching(/^Server error\./),
     });
     if (!result.ok) throw new Error('The load failed.');
@@ -1043,7 +1046,7 @@ describe('loadOnOpen sessions', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      workflow: { harness: 'pending-harness' },
+      workflow: { harness: 'fake' },
       refused: 'Wrong.',
     });
   });
@@ -1085,7 +1088,7 @@ function slowSession() {
 }
 
 describe('a session that answers after a newer one was kept', () => {
-  const newer = { token: 'newer-token', harness: 'kiro-cli' };
+  const newer: SessionRecord = { token: 'newer-token', harness: 'kiro-cli' };
 
   it('is not held as pending when a paste over a kept session answers late', async () => {
     const { api, answer } = slowSession();
