@@ -202,8 +202,10 @@ EDITS = [
      'rows describe agents started by konductor. konductor-mux-orchestrator and '
      'konductor-cmux-orchestrator start each specialist with permission checks off '
      '(--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under '
-     'them every granted tool runs without asking, MCP tools included, and your settings.json '
-     'does not apply."]'),
+     'them every granted tool runs without asking, MCP tools included. On Claude Code, deny rules '
+     'in your settings.json still block, and an ask rule denies the call, because each specialist '
+     'runs with -p and can\'t prompt. Add deny rules for anything a dispatched agent must never '
+     'do."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'
@@ -404,6 +406,11 @@ ROSTER = [
     ("agents prose: routing the review SOP",
      'so it delegates the whole SOP to the developer or QA agent, which hits the same wall.',
      'so it delegates the whole SOP to the developer, which hits the same wall.'),
+    ("faq: memory and AGENTS.md are the project's instructions",
+     'asks you instead of routing a denied action to another agent.',
+     "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
+     ".konductor/memory/MEMORY.md and USER.md at the project root, or AGENTS.md: both are the project's own "
+     "instructions. A .konductor/memory/ anywhere else, or one reached through a symlink, is content."),
     ("faq prose: routing the review SOP",
      'so it hands the SOP to the developer or QA agent, which hits the same wall.',
      'so it hands the SOP to the developer, which hits the same wall.'),
