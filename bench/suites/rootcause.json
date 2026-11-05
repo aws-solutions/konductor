@@ -10,6 +10,7 @@
     "sop-code-cleanup",
     "simple-refactor",
     "orch-patch-release",
+    "orch-search-hardening",
     "sop-spec-workflow",
     "rc-frontend-review",
     "rc-infra-iam-review",
@@ -18,7 +19,10 @@
     "rc-tpm-status",
     "rc-agents-md",
     "rc-threat-model",
-    "rc-queue-decision"
+    "rc-queue-decision",
+    "rc-plan-review",
+    "rc-legacy-estimate",
+    "rc-req-to-design"
   ],
   "arms": [
     "vanilla",

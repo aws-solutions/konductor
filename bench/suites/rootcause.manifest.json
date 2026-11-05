@@ -25,7 +25,9 @@
     "k-tpm": [
       "plan-multipart-feature",
       "sop-plan",
-      "rc-tpm-status"
+      "rc-tpm-status",
+      "rc-plan-review",
+      "rc-legacy-estimate"
     ],
     "k-quality-assurance": [
       "sop-test-coverage-review"
@@ -36,14 +38,16 @@
       "orch-patch-release",
       "rc-frontend-review",
       "rc-infra-iam-review",
-      "rc-agents-md"
+      "rc-agents-md",
+      "orch-search-hardening"
     ],
     "k-architect": [
       "rc-infra-iam-review",
       "rc-dynamodb-design",
       "rc-smithy-api",
       "rc-threat-model",
-      "rc-queue-decision"
+      "rc-queue-decision",
+      "rc-req-to-design"
     ],
     "konductor": [
       "sop-spec-workflow",
@@ -710,6 +714,169 @@
           ]
         }
       ]
+    },
+    {
+      "id": "rc-plan-review",
+      "source": "new",
+      "class": "review",
+      "fixture": "rc-work-plan",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 10,
+      "checks": 22,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 2.5,
+          "mid": 4,
+          "high": 6
+        },
+        "vanilla": {
+          "low": 1.2,
+          "mid": 2,
+          "high": 3
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-tpm",
+          "expectedSkills": [
+            "plan-review"
+          ],
+          "possibleSkills": [
+            "risk-management",
+            "task-decomposition",
+            "program-planning"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rc-legacy-estimate",
+      "source": "new",
+      "class": "sop",
+      "fixture": "rc-legacy-table",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 10,
+      "checks": 19,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 2.5,
+          "mid": 4,
+          "high": 6
+        },
+        "vanilla": {
+          "low": 1.2,
+          "mid": 2,
+          "high": 3
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-tpm",
+          "expectedSkills": [
+            "legacy-to-agentic-estimate"
+          ],
+          "possibleSkills": [
+            "program-planning",
+            "sprint-planning",
+            "status-reporting"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rc-req-to-design",
+      "source": "new",
+      "class": "design",
+      "fixture": "rc-product-handoff",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 10,
+      "checks": 21,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 3,
+          "mid": 5.5,
+          "high": 8
+        },
+        "vanilla": {
+          "low": 1.5,
+          "mid": 2.6,
+          "high": 3.8
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-architect",
+          "expectedSkills": [
+            "requirements-extraction",
+            "system-design-patterns"
+          ],
+          "possibleSkills": [
+            "non-functional-requirements",
+            "kiro-design-generation",
+            "adr-generator",
+            "design-doc-guidelines"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "orch-search-hardening",
+      "source": "existing",
+      "class": "orchestration",
+      "fixture": "inventory-api",
+      "timeoutSec": 1200,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 7,
+      "checks": 12,
+      "rubricItems": 4,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 3,
+          "mid": 6,
+          "high": 10
+        },
+        "vanilla": {
+          "low": 1.5,
+          "mid": 2.8,
+          "high": 4.5
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-developer",
+          "expectedSkills": [
+            "security-remediation",
+            "backend-development"
+          ],
+          "possibleSkills": [
+            "adversarial-code-review",
+            "backend-review",
+            "verification"
+          ]
+        }
+      ]
     }
   ],
   "expectedPairs": [
@@ -867,20 +1034,50 @@
       "task": "rc-queue-decision",
       "entryAgent": "k-architect",
       "skill": "deliberation-panel"
+    },
+    {
+      "task": "rc-plan-review",
+      "entryAgent": "k-tpm",
+      "skill": "plan-review"
+    },
+    {
+      "task": "rc-legacy-estimate",
+      "entryAgent": "k-tpm",
+      "skill": "legacy-to-agentic-estimate"
+    },
+    {
+      "task": "rc-req-to-design",
+      "entryAgent": "k-architect",
+      "skill": "requirements-extraction"
+    },
+    {
+      "task": "rc-req-to-design",
+      "entryAgent": "k-architect",
+      "skill": "system-design-patterns"
+    },
+    {
+      "task": "orch-search-hardening",
+      "entryAgent": "k-developer",
+      "skill": "security-remediation"
+    },
+    {
+      "task": "orch-search-hardening",
+      "entryAgent": "k-developer",
+      "skill": "backend-development"
     }
   ],
   "costPlan": {
     "basis": "credits per run from the task table: two observed values, the rest estimates (new tasks 2 to 6 credits). Judge credits are not included. Each entry run has vanilla plus 3 konductor arms.",
     "perPassCredits": {
-      "low": 199.3,
-      "mid": 326.7,
-      "high": 517.1
+      "low": 237.7,
+      "mid": 394.6,
+      "high": 621.4
     },
     "twoReplicates": {
       "reps": 2,
-      "runs": 144,
-      "totalMid": 653.4,
-      "cap": 981,
+      "runs": 176,
+      "totalMid": 789.2,
+      "cap": 1184,
       "perAgent": {
         "k-product-manager": {
           "tasks": 1,
@@ -888,9 +1085,9 @@
           "creditsMid": 53.2
         },
         "k-tpm": {
-          "tasks": 3,
-          "runs": 24,
-          "creditsMid": 107.4
+          "tasks": 5,
+          "runs": 40,
+          "creditsMid": 163.4
         },
         "k-quality-assurance": {
           "tasks": 1,
@@ -898,14 +1095,14 @@
           "creditsMid": 62
         },
         "k-developer": {
-          "tasks": 6,
-          "runs": 48,
-          "creditsMid": 165.6
+          "tasks": 7,
+          "runs": 56,
+          "creditsMid": 207.2
         },
         "k-architect": {
-          "tasks": 5,
-          "runs": 40,
-          "creditsMid": 172
+          "tasks": 6,
+          "runs": 48,
+          "creditsMid": 210.2
         },
         "konductor": {
           "tasks": 2,
@@ -916,9 +1113,9 @@
     },
     "threeReplicates": {
       "reps": 3,
-      "runs": 216,
-      "totalMid": 980.1,
-      "cap": 1471,
+      "runs": 264,
+      "totalMid": 1183.8,
+      "cap": 1776,
       "perAgent": {
         "k-product-manager": {
           "tasks": 1,
@@ -926,9 +1123,9 @@
           "creditsMid": 79.8
         },
         "k-tpm": {
-          "tasks": 3,
-          "runs": 36,
-          "creditsMid": 161.1
+          "tasks": 5,
+          "runs": 60,
+          "creditsMid": 245.1
         },
         "k-quality-assurance": {
           "tasks": 1,
@@ -936,14 +1133,14 @@
           "creditsMid": 93
         },
         "k-developer": {
-          "tasks": 6,
-          "runs": 72,
-          "creditsMid": 248.4
+          "tasks": 7,
+          "runs": 84,
+          "creditsMid": 310.8
         },
         "k-architect": {
-          "tasks": 5,
-          "runs": 60,
-          "creditsMid": 258
+          "tasks": 6,
+          "runs": 72,
+          "creditsMid": 315.3
         },
         "konductor": {
           "tasks": 2,
@@ -958,20 +1155,20 @@
     "note": "The rootcause suite names its own extra task directory (extraTasks in suites/rootcause.json), so --extra-tasks bench/rootcause is optional. --tasks overrides the suite task list.",
     "perEntryAgent": {
       "k-product-manager": "node bench/runner/bench.js run --suite rootcause --tasks req-vague-request \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-product-manager,mainsha=k-product-manager,stack149=k-product-manager \\\n  --replicates 2 --parallel 1 --budget-credits 80 --out \"$OUT/k-product-manager\"",
-      "k-tpm": "node bench/runner/bench.js run --suite rootcause --tasks plan-multipart-feature,sop-plan,rc-tpm-status \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-tpm,mainsha=k-tpm,stack149=k-tpm \\\n  --replicates 2 --parallel 1 --budget-credits 162 --out \"$OUT/k-tpm\"",
+      "k-tpm": "node bench/runner/bench.js run --suite rootcause --tasks plan-multipart-feature,sop-plan,rc-tpm-status,rc-plan-review,rc-legacy-estimate \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-tpm,mainsha=k-tpm,stack149=k-tpm \\\n  --replicates 2 --parallel 1 --budget-credits 246 --out \"$OUT/k-tpm\"",
       "k-quality-assurance": "node bench/runner/bench.js run --suite rootcause --tasks sop-test-coverage-review \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-quality-assurance,mainsha=k-quality-assurance,stack149=k-quality-assurance \\\n  --replicates 2 --parallel 1 --budget-credits 93 --out \"$OUT/k-quality-assurance\"",
-      "k-developer": "node bench/runner/bench.js run --suite rootcause --tasks sop-code-cleanup,simple-refactor,orch-patch-release,rc-frontend-review,rc-infra-iam-review,rc-agents-md \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-developer,mainsha=k-developer,stack149=k-developer \\\n  --replicates 2 --parallel 1 --budget-credits 249 --out \"$OUT/k-developer\"",
-      "k-architect": "node bench/runner/bench.js run --suite rootcause --tasks rc-infra-iam-review,rc-dynamodb-design,rc-smithy-api,rc-threat-model,rc-queue-decision \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-architect,mainsha=k-architect,stack149=k-architect \\\n  --replicates 2 --parallel 1 --budget-credits 258 --out \"$OUT/k-architect\"",
+      "k-developer": "node bench/runner/bench.js run --suite rootcause --tasks sop-code-cleanup,simple-refactor,orch-patch-release,rc-frontend-review,rc-infra-iam-review,rc-agents-md,orch-search-hardening \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-developer,mainsha=k-developer,stack149=k-developer \\\n  --replicates 2 --parallel 1 --budget-credits 311 --out \"$OUT/k-developer\"",
+      "k-architect": "node bench/runner/bench.js run --suite rootcause --tasks rc-infra-iam-review,rc-dynamodb-design,rc-smithy-api,rc-threat-model,rc-queue-decision,rc-req-to-design \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-architect,mainsha=k-architect,stack149=k-architect \\\n  --replicates 2 --parallel 1 --budget-credits 316 --out \"$OUT/k-architect\"",
       "konductor": "node bench/runner/bench.js run --suite rootcause --tasks sop-spec-workflow,rc-agents-md \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=konductor,mainsha=konductor,stack149=konductor \\\n  --replicates 2 --parallel 1 --budget-credits 140 --out \"$OUT/konductor\""
     }
   },
   "coverage": {
     "totalSkills": 82,
     "levels": {
-      "seed-prompts": 41,
-      "scenario-set": 6,
+      "seed-prompts": 37,
+      "scenario-set": 5,
       "indirect": 4,
-      "task": 26,
+      "task": 31,
       "none": 5
     },
     "withAtLeastOneShouldLoadTaskOrScenario": 73,
@@ -986,7 +1183,8 @@
       "adr-generator": {
         "task": [],
         "taskPossible": [
-          "rc-queue-decision@k-architect"
+          "rc-queue-decision@k-architect",
+          "rc-req-to-design@k-architect"
         ],
         "scenarioSet": false,
         "seedPrompts": true,
@@ -995,7 +1193,8 @@
       "adversarial-code-review": {
         "task": [],
         "taskPossible": [
-          "rc-frontend-review@k-developer"
+          "rc-frontend-review@k-developer",
+          "orch-search-hardening@k-developer"
         ],
         "scenarioSet": true,
         "seedPrompts": false,
@@ -1110,7 +1309,9 @@
         "level": "seed-prompts"
       },
       "backend-development": {
-        "task": [],
+        "task": [
+          "orch-search-hardening@k-developer"
+        ],
         "taskPossible": [
           "sop-code-cleanup@k-developer",
           "simple-refactor@k-developer",
@@ -1118,11 +1319,13 @@
         ],
         "scenarioSet": false,
         "seedPrompts": true,
-        "level": "seed-prompts"
+        "level": "task"
       },
       "backend-review": {
         "task": [],
-        "taskPossible": [],
+        "taskPossible": [
+          "orch-search-hardening@k-developer"
+        ],
         "scenarioSet": true,
         "seedPrompts": false,
         "level": "scenario-set"
@@ -1215,7 +1418,8 @@
         "task": [],
         "taskPossible": [
           "rc-dynamodb-design@k-architect",
-          "rc-smithy-api@k-architect"
+          "rc-smithy-api@k-architect",
+          "rc-req-to-design@k-architect"
         ],
         "scenarioSet": true,
         "seedPrompts": false,
@@ -1381,7 +1585,9 @@
         "task": [
           "sop-spec-workflow@konductor"
         ],
-        "taskPossible": [],
+        "taskPossible": [
+          "rc-req-to-design@k-architect"
+        ],
         "scenarioSet": false,
         "seedPrompts": false,
         "level": "task"
@@ -1407,14 +1613,16 @@
         "level": "task"
       },
       "legacy-to-agentic-estimate": {
-        "task": [],
+        "task": [
+          "rc-legacy-estimate@k-tpm"
+        ],
         "taskPossible": [
           "plan-multipart-feature@k-tpm",
           "sop-plan@k-tpm"
         ],
         "scenarioSet": false,
         "seedPrompts": true,
-        "level": "seed-prompts"
+        "level": "task"
       },
       "mux-dispatch": {
         "task": [],
@@ -1429,7 +1637,8 @@
         "taskPossible": [
           "sop-spec-workflow@konductor",
           "rc-dynamodb-design@k-architect",
-          "rc-threat-model@k-architect"
+          "rc-threat-model@k-architect",
+          "rc-req-to-design@k-architect"
         ],
         "scenarioSet": false,
         "seedPrompts": true,
@@ -1443,7 +1652,9 @@
         "level": "seed-prompts"
       },
       "plan-review": {
-        "task": [],
+        "task": [
+          "rc-plan-review@k-tpm"
+        ],
         "taskPossible": [
           "plan-multipart-feature@k-tpm",
           "sop-plan@k-tpm",
@@ -1451,7 +1662,7 @@
         ],
         "scenarioSet": false,
         "seedPrompts": true,
-        "level": "seed-prompts"
+        "level": "task"
       },
       "playwright-test-implementation": {
         "task": [],
@@ -1491,7 +1702,9 @@
           "sop-plan@k-tpm"
         ],
         "taskPossible": [
-          "rc-tpm-status@k-tpm"
+          "rc-tpm-status@k-tpm",
+          "rc-plan-review@k-tpm",
+          "rc-legacy-estimate@k-tpm"
         ],
         "scenarioSet": false,
         "seedPrompts": false,
@@ -1506,7 +1719,8 @@
       },
       "requirements-extraction": {
         "task": [
-          "req-vague-request@k-product-manager"
+          "req-vague-request@k-product-manager",
+          "rc-req-to-design@k-architect"
         ],
         "taskPossible": [
           "sop-spec-workflow@konductor"
@@ -1521,7 +1735,9 @@
           "sop-plan@k-tpm",
           "rc-tpm-status@k-tpm"
         ],
-        "taskPossible": [],
+        "taskPossible": [
+          "rc-plan-review@k-tpm"
+        ],
         "scenarioSet": false,
         "seedPrompts": false,
         "level": "task"
@@ -1534,13 +1750,15 @@
         "level": "seed-prompts"
       },
       "security-remediation": {
-        "task": [],
+        "task": [
+          "orch-search-hardening@k-developer"
+        ],
         "taskPossible": [
           "rc-infra-iam-review@k-developer"
         ],
         "scenarioSet": false,
         "seedPrompts": true,
-        "level": "seed-prompts"
+        "level": "task"
       },
       "security-test-generation": {
         "task": [
@@ -1589,7 +1807,8 @@
         "task": [],
         "taskPossible": [
           "plan-multipart-feature@k-tpm",
-          "sop-plan@k-tpm"
+          "sop-plan@k-tpm",
+          "rc-legacy-estimate@k-tpm"
         ],
         "scenarioSet": false,
         "seedPrompts": true,
@@ -1599,19 +1818,23 @@
         "task": [
           "rc-tpm-status@k-tpm"
         ],
-        "taskPossible": [],
+        "taskPossible": [
+          "rc-legacy-estimate@k-tpm"
+        ],
         "scenarioSet": false,
         "seedPrompts": false,
         "level": "task"
       },
       "system-design-patterns": {
-        "task": [],
+        "task": [
+          "rc-req-to-design@k-architect"
+        ],
         "taskPossible": [
           "rc-dynamodb-design@k-architect"
         ],
         "scenarioSet": true,
         "seedPrompts": false,
-        "level": "scenario-set"
+        "level": "task"
       },
       "task-decomposition": {
         "task": [
@@ -1619,7 +1842,8 @@
         ],
         "taskPossible": [
           "sop-plan@k-tpm",
-          "sop-spec-workflow@konductor"
+          "sop-spec-workflow@konductor",
+          "rc-plan-review@k-tpm"
         ],
         "scenarioSet": false,
         "seedPrompts": false,
@@ -1671,7 +1895,9 @@
       },
       "verification": {
         "task": [],
-        "taskPossible": [],
+        "taskPossible": [
+          "orch-search-hardening@k-developer"
+        ],
         "scenarioSet": false,
         "seedPrompts": true,
         "level": "seed-prompts"

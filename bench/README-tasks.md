@@ -187,8 +187,8 @@ A bench run of the earlier tasks never loaded 68 of the 82 skills. Four causes s
 
 ### Where the files are
 
-- `suites/rootcause.json` lists 16 tasks: 8 that already exist and 8 new ones. `suites/rootcause.manifest.json` holds what the task schema cannot: the entry agent of each task, the skills it should load (`expectedSkills`) and may load (`possibleSkills`), seeded items, check and rubric counts, a credit estimate, the run commands per entry agent and a coverage map of all 82 skills.
-- The 8 new tasks live in `rootcause/` (an extra tasks directory), with `rootcause/fixtures`, `solutions`, `stubs`, `negatives`, `hidden` and `partials` laid out like `tasks/`. They are not in `tasks/` because the task schema is closed and the validator makes every task in `tasks/` a member of the `full` suite. `--suite rootcause` adds the directory by itself (`extraTasks` in `suites/rootcause.json`); `--extra-tasks bench/rootcause` gives the same result and may also be passed.
+- `suites/rootcause.json` lists 20 tasks: 9 that already exist and 11 new ones. `suites/rootcause.manifest.json` holds what the task schema cannot: the entry agent of each task, the skills it should load (`expectedSkills`) and may load (`possibleSkills`), seeded items, check and rubric counts, a credit estimate, the run commands per entry agent and a coverage map of all 82 skills.
+- The 11 new tasks live in `rootcause/` (an extra tasks directory), with `rootcause/fixtures`, `solutions`, `stubs`, `negatives`, `hidden` and `partials` laid out like `tasks/`. They are not in `tasks/` because the task schema is closed and the validator makes every task in `tasks/` a member of the `full` suite. `--suite rootcause` adds the directory by itself (`extraTasks` in `suites/rootcause.json`); `--extra-tasks bench/rootcause` gives the same result and may also be passed.
 - `rootcause/scenarios/` holds draft trigger sets (see Competition scenarios below).
 
 Validate the new tasks alone in seconds with `node bench/tasks/validate-tasks.js --extra-tasks bench/rootcause --only-extra`, or with the rest of the bench by dropping `--only-extra`. A plain `node bench/tasks/validate-tasks.js` also checks `bench/rootcause`, because the suite file names it. The suite is registered in `SUITE_DEFAULTS` (`runner/lib/tasks.js`): 3 arms, 2 replicates, `--parallel 1`. Pass `--tasks` to run one entry agent's share.
@@ -217,10 +217,14 @@ Credits are for one run of a konductor arm and are estimates except where noted 
 |  |  | konductor | agents-md-authoring |  |  |  | 2.5 (1.5 to 4) |
 | `rc-threat-model` | new | k-architect | threat-modeling | 9 | 20 | 5 | 5 (3 to 7) |
 | `rc-queue-decision` | new | k-architect | socratic-elicitation, deliberation-panel | 5 | 6 | 4 | 5.5 (3 to 8) |
+| `rc-plan-review` | new | k-tpm | plan-review | 10 | 22 | 5 | 4 (2.5 to 6) |
+| `rc-legacy-estimate` | new | k-tpm | legacy-to-agentic-estimate | 10 | 19 | 5 | 4 (2.5 to 6) |
+| `rc-req-to-design` | new | k-architect | requirements-extraction, system-design-patterns | 10 | 21 | 5 | 5.5 (3 to 8) |
+| `orch-search-hardening` | existing | k-developer | security-remediation, backend-development | 7 | 12 | 4 | 6 (3 to 10) |
 
-The existing tasks and what they unlock: `req-vague-request` (requirements extraction and user stories), `plan-multipart-feature` (program planning, risk management, task decomposition), `sop-test-coverage-review` (test coverage analysis, end to end strategy, security test generation), `sop-code-cleanup` and `simple-refactor` (the code simplifier), `orch-patch-release` (git workflow), `sop-spec-workflow` (the three spec generation skills, reached through delegation from the orchestrator). `sop-plan` is a weak extra: it only suggests program planning and risk management. Two of the skills carry a legacy prefix; their exact names are in the manifest as escaped JSON strings.
+The existing tasks and what they unlock: `req-vague-request` (requirements extraction and user stories), `plan-multipart-feature` (program planning, risk management, task decomposition), `sop-test-coverage-review` (test coverage analysis, end to end strategy, security test generation), `sop-code-cleanup` and `simple-refactor` (the code simplifier), `orch-patch-release` (git workflow), `orch-search-hardening` (a security fix with tests and a risk list, reached through the developer agent), `sop-spec-workflow` (the three spec generation skills, reached through delegation from the orchestrator). `sop-plan` is a weak extra: it only suggests program planning and risk management. Two of the skills carry a legacy prefix; their exact names are in the manifest as escaped JSON strings.
 
-The new tasks are seeded the same way as the earlier ones: each fixture has an answer key with ids, each task has deterministic checks that look for content (a topic near the right file, a count with generous bounds, a structure check on a Smithy model or a policy JSON) and a graded rubric with one item per seeded group plus a no-false-claims item. Near misses and reference solutions are under `rootcause/negatives` and `rootcause/solutions`. `rc-queue-decision` is an autonomy task: its prompt leaves ordering, retention and who runs the system open, four clarifications answer the questions an agent should ask (including consent to a deeper multi-perspective analysis), and hidden tests score the document against the intended reading.
+The new tasks are seeded the same way as the earlier ones: each fixture has an answer key with ids, each task has deterministic checks that look for content (a topic near the right file, a count with generous bounds, a structure check on a Smithy model or a policy JSON) and a graded rubric with one item per seeded group plus a no-false-claims item. Near misses and reference solutions are under `rootcause/negatives` and `rootcause/solutions`. `rc-plan-review` reviews a work plan against its background (ten seeded problems, a rating and a verdict). `rc-legacy-estimate` converts a table of all-human estimates into agentic ranges; its reference numbers come from the conversion script of the skill, one row has a text estimate and one has no description, and a flat discount fails. `rc-req-to-design` hands product documents to the architect (design inputs under `design/` and a system design); its checks read every file under `design/`, so the agent may name the input files freely. `rc-queue-decision` is an autonomy task: its prompt leaves ordering, retention and who runs the system open, four clarifications answer the questions an agent should ask (including consent to a deeper multi-perspective analysis), and hidden tests score the document against the intended reading.
 
 ### Run it per entry agent
 
@@ -256,24 +260,24 @@ Each finished run keeps `<run>/<arm>/<task>/<replicate>/result.json` with `skill
 
 ### Coverage of the 82 skills
 
-26 skills are expected by a task (the first column of the table), 6 more by a scenario set, 41 more by seed prompts only: 73 of 82 have at least one task or scenario that should load them. Seed-only skills have no runnable test yet. Still without any: adversarial-code-review-pass-integrity (loaded by adversarial-code-review); adversarial-code-review-pass-schema (loaded by adversarial-code-review); adversarial-code-review-pass-security (loaded by adversarial-code-review); argumentation-reference (loaded by adversarial-design-review); claude-teams-behavior (Claude Code only; no Kiro agent lists it); cmux-dispatch (needs a cmux session around the agent; the bench has none); constraints (preloaded as core rules and excluded from the Kiro skill index, so a prompt cannot load it); historical-issues-registry (only an adversarial review coordinator with a platform delta layer loads it; not run standalone); mux-dispatch (needs a tmux or zellij session around the agent; the bench has none).
+31 skills are expected by a task (the first column of the table), 5 more by a scenario set, 37 more by seed prompts only: 73 of 82 have at least one task or scenario that should load them. The three tasks added later and the registration of `orch-search-hardening` moved five skills up to task level: plan-review, legacy-to-agentic-estimate, system-design-patterns, security-remediation and backend-development (the total of 73 does not change, because each already had a scenario set or seed prompts). Seed-only skills have no runnable test yet. Still without any: adversarial-code-review-pass-integrity (loaded by adversarial-code-review); adversarial-code-review-pass-schema (loaded by adversarial-code-review); adversarial-code-review-pass-security (loaded by adversarial-code-review); argumentation-reference (loaded by adversarial-design-review); claude-teams-behavior (Claude Code only; no Kiro agent lists it); cmux-dispatch (needs a cmux session around the agent; the bench has none); constraints (preloaded as core rules and excluded from the Kiro skill index, so a prompt cannot load it); historical-issues-registry (only an adversarial review coordinator with a platform delta layer loads it; not run standalone); mux-dispatch (needs a tmux or zellij session around the agent; the bench has none).
 
 ### Cost plan
 
-Per run, in credits, for a konductor arm: the two observed tasks cost 7.7 and 5.4; the new tasks are estimated at 2 to 6; the larger existing tasks (coverage review, spec workflow, cleanup) are guesses of 7 to 11. Vanilla is taken as 0.45 of a konductor run (earlier runs: 1.75 credits for vanilla against 4.4 for the main arm). Judge credits are not included. One pass of all entry runs (vanilla plus three konductor arms) is about 326.7 credits (199.3 to 517.1).
+Per run, in credits, for a konductor arm: the two observed tasks cost 7.7 and 5.4; the new tasks are estimated at 2 to 6 (4 to 5.5 for the three plan, estimate and handoff tasks); the larger existing tasks (coverage review, spec workflow, cleanup) are guesses of 7 to 11. Vanilla is taken as 0.45 of a konductor run (earlier runs: 1.75 credits for vanilla against 4.4 for the main arm). Judge credits are not included. One pass of all entry runs (vanilla plus three konductor arms) is about 394.6 credits (237.7 to 621.4).
 
 | Replicates | Runs | Credits (mid) | Cap (1.5x) |
 |------------|------|---------------|------------|
-| 2 | 144 | 653.4 | 981 |
-| 3 | 216 | 980.1 | 1471 |
+| 2 | 176 | 789.2 | 1184 |
+| 3 | 264 | 1183.8 | 1776 |
 
 | Entry agent | Tasks | Runs at 2 | Runs at 3 | Credits at 2 | Credits at 3 |
 |-------------|-------|-----------|-----------|--------------|--------------|
 | k-product-manager | 1 | 8 | 12 | 53.2 | 79.8 |
-| k-tpm | 3 | 24 | 36 | 107.4 | 161.1 |
+| k-tpm | 5 | 40 | 60 | 163.4 | 245.1 |
 | k-quality-assurance | 1 | 8 | 12 | 62 | 93 |
-| k-developer | 6 | 48 | 72 | 165.6 | 248.4 |
-| k-architect | 5 | 40 | 60 | 172 | 258 |
+| k-developer | 7 | 56 | 84 | 207.2 | 310.8 |
+| k-architect | 6 | 48 | 72 | 210.2 | 315.3 |
 | konductor | 2 | 16 | 24 | 93.2 | 139.8 |
 
 `pr-plan` prints one added arm, so it cannot print the four arm table; it also has no observed figures for this suite and needs `--budget-credits`. The table above comes from the manifest.
