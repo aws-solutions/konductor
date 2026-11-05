@@ -21,6 +21,8 @@ const SUITE_DEFAULTS = {
   cap: { arms: ['v1.2.0'], replicates: 1, parallel: 1 },
   // Documents rather than code: a requirements document and a work breakdown, rated by rubric and by the quality pack.
   requirements: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 3, parallel: 1 },
+  // Skills reached through the agents that own them; tasks come from bench/rootcause (a suite-declared extra directory) and bench/tasks.
+  rootcause: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 2, parallel: 1 },
 };
 const SUITE_NAMES = Object.keys(SUITE_DEFAULTS);
 
@@ -76,7 +78,7 @@ function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR) {
-  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap or requirements)`);
+  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard, real, autonomy, pilot, cap, requirements or rootcause)`);
   const file = path.join(benchDir, 'suites', `${name}.json`);
   const fromFile = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks
@@ -91,4 +93,15 @@ function loadSuite(name, tasks, benchDir = BENCH_DIR) {
   };
 }
 
-module.exports = { loadTasks, loadSuite, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };
+// Extra task directories a suite file declares in "extraTasks" (relative to the bench directory); [] when it declares none.
+function suiteExtraDirs(name, benchDir = BENCH_DIR) {
+  const file = path.join(benchDir, 'suites', `${name}.json`);
+  if (!fs.existsSync(file)) return [];
+  const dirs = JSON.parse(fs.readFileSync(file, 'utf8')).extraTasks;
+  return Array.isArray(dirs) ? dirs.map((d) => path.resolve(benchDir, d)) : [];
+}
+
+// The suite's own extra directories followed by the caller's, each once.
+const mergeExtraDirs = (suiteDirs, flagDirs = []) => [...new Set([...suiteDirs, ...flagDirs.map((d) => path.resolve(d))])];
+
+module.exports = { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };

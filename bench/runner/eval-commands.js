@@ -6,7 +6,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { loadTasks, loadSuite, BENCH_DIR } = require('./lib/tasks.js');
+const { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, BENCH_DIR } = require('./lib/tasks.js');
 const sandbox = require('./lib/sandbox.js');
 const { DEFAULTS, MIN_PANEL_FAMILIES, checkPanel, checkJudgeModel, families, modelFamily } = require('../judge/config.js');
 const { resolveIsolation } = require('./lib/isolate.js');
@@ -134,7 +134,7 @@ function judgePanelFor(opts) {
   const benchDir = benchDirOf(opts);
   const run = loadRun(runDir);
   let suiteJudges = [];
-  try { suiteJudges = loadSuite(run.config.suite, loadTasks(benchDir, { extraDirs: extraDirsOf(opts) }), benchDir).judges; } catch { /* run without a known suite */ }
+  try { suiteJudges = loadSuite(run.config.suite, loadTasks(benchDir, { extraDirs: mergeExtraDirs(suiteExtraDirs(run.config.suite, benchDir), extraDirsOf(opts)) }), benchDir).judges; } catch { /* run without a known suite */ }
   const { judges, small, substituted } = resolveJudges({ cliJudges: opts.judges, suiteJudges, subjectModel: run.config.model ?? null, allowSmallPanel: Boolean(opts['allow-small-panel']) });
   if (substituted) console.log(`subject ${run.config.model}: judge panel dropped ${substituted.dropped.join(', ')}, added ${substituted.added.join(', ') || 'nothing'} (a judge from the subject's own family is not used)`);
   return { runDir, benchDir, run, judges, small };

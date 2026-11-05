@@ -3,7 +3,7 @@
 /**
  * bench.js - benchmark runner for Konductor on kiro-cli or opencode (run, judge, recheck, backfill, report, compare, calibrate).
  *
- *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements [--arms a,b] [--tasks id,id]
+ *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause [--arms a,b] [--tasks id,id]
  *        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
@@ -23,7 +23,7 @@ const { cmdCap } = require('../cap/cli.js');
 const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli-flags.js');
 
 const USAGE = `Usage:
-  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements [--arms a,b,c] [--tasks id,id]
+  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]

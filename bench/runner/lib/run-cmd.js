@@ -13,7 +13,7 @@ const { STOP_ON } = require('./stop-watch.js');
 const { harnessFor, opencode: oc, claudeCode: cc } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime } = require('./harness/runtime.js');
 const { readProfile } = require('./harness/opencode-creds.js');
-const { loadTasks, loadSuite, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
+const { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
 const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
@@ -122,7 +122,7 @@ const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root']
 async function cmdRun(opts) {
   if (!SUITE_NAMES.includes(opts.suite)) throw new Error(`--suite ${SUITE_NAMES.join('|')} is required`);
   const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
-  const extraDirs = list(opts['extra-tasks']).map((d) => path.resolve(d));
+  const extraDirs = mergeExtraDirs(suiteExtraDirs(opts.suite, benchDir), list(opts['extra-tasks']));
   const tasksAll = loadTasks(benchDir, { extraDirs });
   const suite = loadSuite(opts.suite, tasksAll, benchDir);
   const taskIds = opts.tasks ? list(opts.tasks) : suite.taskIds;

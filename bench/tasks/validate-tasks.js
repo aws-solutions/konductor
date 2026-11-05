@@ -46,6 +46,7 @@ const { loadRegistry, validateRegistry } = require('../cap/registry.js');
 const { scanRepo, loadAgentSpecs } = require('../cap/scan.js');
 const controls = require('./controls.js');
 const toolchain = require('../runner/lib/toolchain.js');
+const { suiteExtraDirs } = require('../runner/lib/tasks.js');
 
 const BENCH = path.resolve(__dirname, '..');
 const TASKS_DIR = path.join(BENCH, 'tasks');
@@ -509,7 +510,9 @@ function extraDirsFromArgs(argv = process.argv.slice(2)) {
 }
 
 function main() {
-  const extraDirs = extraDirsFromArgs();
+  // Extra directories that suite files declare ("extraTasks") are always checked, with or without --extra-tasks.
+  const extraDirs = [...new Set([...fs.readdirSync(SUITES_DIR).filter((f) => f.endsWith('.json') && !f.endsWith('.manifest.json'))
+    .flatMap((f) => suiteExtraDirs(path.basename(f, '.json'), BENCH)), ...extraDirsFromArgs()])];
   // --only-extra checks the extra directories alone: no bench tasks, suites, hygiene scan or registry.
   const onlyExtra = process.argv.includes('--only-extra');
   if (onlyExtra && !extraDirs.length) { console.error('validate-tasks: --only-extra needs --extra-tasks DIR'); process.exit(2); }

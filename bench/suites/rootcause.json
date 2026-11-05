@@ -1,4 +1,7 @@
 {
+  "extraTasks": [
+    "rootcause"
+  ],
   "tasks": [
     "req-vague-request",
     "plan-multipart-feature",

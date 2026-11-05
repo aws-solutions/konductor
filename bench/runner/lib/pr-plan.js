@@ -8,7 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { parseArmSpec } = require('./arms.js');
 const { resolveRef } = require('./arm-source.js');
-const { loadTasks, loadSuite, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
+const { loadTasks, loadSuite, suiteExtraDirs, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 
 // Credits per arm for one pass over the suite, as measured: claude-sonnet-5.5, one replicate, one run per cell.
 // `lowerBound` arms had runs that ended before their final metering event.
@@ -98,7 +98,7 @@ function planPr({
   if (baseParsed.kind === 'dir' || (baseParsed.kind === 'git' && !baseParsed.bare)) throw new Error(`--base takes vanilla, main or a release tag such as ${DEFAULT_BASE}`);
   if (added.id === baseParsed.name) throw new Error(`the new arm is named "${added.id}", the same as the base arm`);
 
-  const tasks = loadTasks(benchDir);
+  const tasks = loadTasks(benchDir, { extraDirs: suiteExtraDirs(suite, benchDir) });
   const s = loadSuite(suite, tasks, benchDir);
   const reps = replicates === undefined ? s.replicates : Number(replicates);
   if (!Number.isInteger(reps) || reps < 1) throw new Error('--replicates must be an integer >= 1');
