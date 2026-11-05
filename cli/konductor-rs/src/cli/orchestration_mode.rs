@@ -2,7 +2,8 @@
 //
 // orchestration_mode.rs: reads `orchestration.mode` from the user's
 // `~/.konductor/config.yml`. The session hook and `doctor` share this one
-// reader. Only the user layer is read; a project file's value is ignored.
+// reader. Only the user layer is read. A project file's value is ignored, and
+// `doctor` reports one.
 //
 // The mode is not a gate setting, so no gate command may fail on it. The
 // section therefore stays out of `config::RawConfig`: the gate loader ignores
@@ -464,6 +465,22 @@ mod tests {
         fs::remove_dir_all(&root).ok();
 
         assert!(loaded.is_ok(), "{loaded:?}");
+    }
+
+    #[test]
+    fn project_only_mode_is_not_read_by_the_resolver() {
+        let home = scratch_home("project-only-home");
+        let project = scratch_home("project-only-project");
+        let project_file = project.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
+        fs::write(&project_file, "orchestration:\n  mode: coordinator\n").unwrap();
+
+        let resolution = resolve_user_mode(Some(&home));
+        let project_section = read_section(&project_file).unwrap().expect("section kept");
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&project).ok();
+
+        assert_eq!(resolution, ModeResolution::Default);
+        assert_eq!(project_section.mode.as_deref(), Some("coordinator"));
     }
 
     #[test]

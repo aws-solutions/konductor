@@ -266,7 +266,7 @@ Detail, with the verification, is in
 Konductor's own formats and workflow (Conventional Commits, a pull request per feature, EARS,
 the review mechanism) are defaults. Your request, your project's `AGENTS.md` or `CLAUDE.md`,
 user-written memory, and the conventions your code already shows all outrank them. When those
-sources disagree, or the project states no convention, `konductor` asks once and saves your
+sources leave a collision open, or the project states no convention, `konductor` asks once and saves your
 answer as a `Ruling:` entry in `.konductor/memory/`. The entry settles only the collision it
 names. If two rulings disagree, the newer one wins.
 
@@ -292,7 +292,7 @@ Each SOP has its own default output location. Most accept an override.
 | `k-test-coverage-review` | `test-coverage-review/` — four files |
 | `k-codebase-analysis` | `codebase-analysis.md` |
 | `kiro-spec-workflow` | `.kiro/specs/<feature-name>/` — three files |
-| `k-context-gathering` | `.konductor/handoff/<name>.md`, only when findings exceed ~100 lines |
+| `k-context-gathering`, `k-comprehensive-search` | `.konductor/handoff/<name>.md`, only when findings exceed ~100 lines |
 
 Nearly all of these SOPs are required to reference the file path rather than print the report
 inline, so if you get a one-paragraph summary and a path, that is correct behavior — the file is
