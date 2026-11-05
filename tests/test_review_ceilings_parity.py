@@ -52,3 +52,9 @@ def test_mirrors_carry_the_re_review_stop_wording():
 def test_no_mirror_ties_the_stop_to_a_finding_that_survives():
     for rel in MIRRORS:
         assert "that survives" not in (ROOT / rel).read_text(), rel
+
+
+def test_product_manager_step_5_is_bounded():
+    spec = (ROOT / "agents" / "k-product-manager.agent-spec.json").read_text()
+    assert "iterate until quality gate passes" not in spec
+    assert "fix CRITICAL and IMPORTANT ones once" in spec
