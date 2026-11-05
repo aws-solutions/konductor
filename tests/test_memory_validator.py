@@ -978,7 +978,22 @@ def test_check_path_accepts_a_regular_file_silently_without_stdin(tmp_path):
 
     result = run_check_path(Path(_relative_memory_target()), cwd=tmp_path)
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "" and result.stderr == ""
+    assert result.stdout == f"{memory_dir.resolve() / 'MEMORY.md'}\n"
+    assert result.stderr == ""
+
+
+def test_check_path_from_a_subdirectory_prints_the_root_path(tmp_path):
+    _commit_initial(tmp_path)
+    memory_dir = tmp_path / ".konductor" / "memory"
+    memory_dir.mkdir(parents=True)
+    (memory_dir / "MEMORY.md").write_text("- [origin:user] keep\n")
+    subdir = tmp_path / "src" / "pkg"
+    subdir.mkdir(parents=True)
+
+    result = run_check_path(Path(_relative_memory_target()), cwd=subdir)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f"{memory_dir.resolve() / 'MEMORY.md'}\n"
+    assert result.stderr == ""
 
 
 def test_check_path_accepts_a_missing_file_and_creates_nothing(tmp_path):

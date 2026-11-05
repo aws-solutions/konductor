@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 set -euo pipefail
 
-# --check-path runs only the path checks below, for reads: exit 0 silently when the
-# target is a path the validator would write, 1 with a REJECT line otherwise. It reads
-# no stdin and creates nothing.
+# --check-path runs only the path checks below, for reads: exit 0 and print the
+# canonical path to load when the target is a path the validator would write, 1 with a
+# REJECT line otherwise. It reads no stdin and creates nothing.
 CHECK_PATH_ONLY=0
 if [[ "${1:-}" == "--check-path" ]]; then
   CHECK_PATH_ONLY=1
@@ -71,6 +71,7 @@ if [[ -e "$TARGET" && ! -f "$TARGET" ]]; then
   exit 1
 fi
 if [[ "$CHECK_PATH_ONLY" == 1 ]]; then
+  printf '%s\n' "$TARGET"
   exit 0
 fi
 PROPOSED="$(cat)"
