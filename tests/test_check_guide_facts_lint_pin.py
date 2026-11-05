@@ -157,6 +157,7 @@ def test_stale_delegation_phrases_stay_forbidden():
         "Its step-6 adversarial pass never fires",
         "Kiro CLI v2 is not covered",
         "only the core rules stop",
+        "the core rules forbid it in Kiro CLI v2",
     }
 
 
@@ -193,3 +194,21 @@ def test_v2_spawn_caveat_in_the_guide_fails_the_guide_check(repo_copy):
         page.write_text(original, encoding="utf-8")
     assert result.returncode != 0
     assert "specialists hold no spawn tool in any runtime" in result.stdout
+
+
+def test_v2_core_rules_clause_in_the_guide_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "faq.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nNo specialist holds a spawn tool, and the core rules forbid it in Kiro CLI v2.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert result.returncode != 0
+    assert "the core rules forbid it in Kiro CLI v2" in result.stdout

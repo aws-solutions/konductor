@@ -64,6 +64,7 @@ STALE_DELEGATION_PHRASES = (
     "Its step-6 adversarial pass never fires",
     "Kiro CLI v2 is not covered",
     "only the core rules stop",
+    "the core rules forbid it in Kiro CLI v2",
 )
 KONDUCTOR_SPAWN_CELL = "the same 8 via Agent(...)"
 
