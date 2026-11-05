@@ -11,34 +11,39 @@ const path = require('node:path');
 const { runChecks } = require('../lib/checks.js');
 const { copyFixture } = require('../lib/sandbox.js');
 const { buildCheckEnv } = require('../lib/env.js');
-const { loadTasks, BENCH_DIR } = require('../lib/tasks.js');
+const { loadTasks, suiteExtraDirs, BENCH_DIR } = require('../lib/tasks.js');
 const { loadCases, checkCases, MIN_NEGATIVES } = require('../lib/negatives.js');
 const { mkScratch } = require('./scratch.js');
 
-const NEGATIVES = path.join(BENCH_DIR, 'tasks', 'negatives');
-const SOLUTIONS = path.join(BENCH_DIR, 'tasks', 'solutions');
-const tasks = loadTasks(BENCH_DIR);
+const EXTRA = suiteExtraDirs('rootcause', BENCH_DIR);
+const tasks = loadTasks(BENCH_DIR, { extraDirs: EXTRA });
+// bench/tasks plus every extra directory a suite declares; each keeps negatives and solutions beside its task files.
+const ROOTS = [path.join(BENCH_DIR, 'tasks'), ...EXTRA];
 
-for (const file of fs.readdirSync(NEGATIVES).filter((f) => f.endsWith('.json')).sort()) {
-  const id = file.replace(/\.json$/, '');
-  test(`negative and positive cases hold: ${id}`, () => {
-    const task = tasks.get(id);
-    assert.ok(task, `unknown task ${id}`);
-    const problems = checkCases({
-      task, spec: loadCases(NEGATIVES, id),
-      makeWorkspace: () => {
-        const dir = mkScratch('neg-');
-        copyFixture(task.fixtureDir, dir);
-        fs.cpSync(path.join(SOLUTIONS, id), dir, { recursive: true });
-        return dir;
-      },
-      evalOne: (dir, check) => {
-        const { env } = buildCheckEnv(process.env, { home: path.join(dir, '.home') });
-        return runChecks(dir, [check], { pristineDir: task.fixtureDir, env })[0].passed;
-      },
+for (const root of ROOTS) {
+  const NEGATIVES = path.join(root, 'negatives');
+  const SOLUTIONS = path.join(root, 'solutions');
+  for (const file of fs.readdirSync(NEGATIVES).filter((f) => f.endsWith('.json')).sort()) {
+    const id = file.replace(/\.json$/, '');
+    test(`negative and positive cases hold: ${id}`, () => {
+      const task = tasks.get(id);
+      assert.ok(task, `unknown task ${id}`);
+      const problems = checkCases({
+        task, spec: loadCases(NEGATIVES, id),
+        makeWorkspace: () => {
+          const dir = mkScratch('neg-');
+          copyFixture(task.fixtureDir, dir);
+          fs.cpSync(path.join(SOLUTIONS, id), dir, { recursive: true });
+          return dir;
+        },
+        evalOne: (dir, check) => {
+          const { env } = buildCheckEnv(process.env, { home: path.join(dir, '.home') });
+          return runChecks(dir, [check], { pristineDir: task.fixtureDir, env })[0].passed;
+        },
+      });
+      assert.deepEqual(problems, []);
     });
-    assert.deepEqual(problems, []);
-  });
+  }
 }
 
 test('checkCases reports a case that disagrees with its expectation and a loosened check without enough negatives', () => {

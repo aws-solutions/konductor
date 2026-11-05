@@ -40,6 +40,15 @@
     ],
     "plan-multipart-feature": [
       "plan"
+    ],
+    "rc-queue-decision": [
+      "design"
+    ],
+    "rc-tpm-status": [
+      "guide"
+    ],
+    "rc-agents-md": [
+      "guide"
     ]
   },
   "declaredOnly": [

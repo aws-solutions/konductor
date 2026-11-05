@@ -11,12 +11,14 @@ const path = require('node:path');
 const { runChecks } = require('../lib/checks.js');
 const { copyFixture } = require('../lib/sandbox.js');
 const { buildCheckEnv } = require('../lib/env.js');
-const { loadTasks, BENCH_DIR } = require('../lib/tasks.js');
+const { loadTasks, suiteExtraDirs, BENCH_DIR } = require('../lib/tasks.js');
 const { mkScratch } = require('./scratch.js');
 
-const SOLUTIONS = path.join(BENCH_DIR, 'tasks', 'solutions');
+// bench/tasks plus every extra directory a suite declares; an extra task keeps its solutions beside its task file.
+const solutionsOf = (task) => path.join(task.extraDir ?? path.join(BENCH_DIR, 'tasks'), 'solutions');
 
-for (const [id, task] of loadTasks(BENCH_DIR)) {
+for (const [id, task] of loadTasks(BENCH_DIR, { extraDirs: suiteExtraDirs('rootcause', BENCH_DIR) })) {
+  const SOLUTIONS = solutionsOf(task);
   if (id.startsWith('_') || !fs.existsSync(path.join(SOLUTIONS, id))) continue;
   test(`reference solution passes every runner check: ${id}`, () => {
     const dir = mkScratch('sol-');

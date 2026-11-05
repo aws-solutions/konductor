@@ -9,6 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const P = require('../../judge/pack/index.js');
+const { loadTasks, suiteExtraDirs } = require('../lib/tasks.js');
 
 const PACK_FILE = path.join(P.PACK_DIR, 'quality-pack.json');
 const pack = P.loadPack('quality');
@@ -72,9 +73,12 @@ test('the revision changes when an anchor changes and is stable otherwise', () =
   assert.notEqual(P.packRevision(p), pack.revision);
 });
 
-test('every task the pack declares exists in the shipped task set', () => {
-  const tasksDir = path.join(__dirname, '..', '..', 'tasks');
-  for (const id of Object.keys(pack.taskArtifacts)) assert.ok(fs.existsSync(path.join(tasksDir, `${id}.json`)), `${id} is declared but is not a task`);
+test('every task the pack declares exists in the shipped task set or in a suite-declared extra directory', () => {
+  const benchDir = path.join(__dirname, '..', '..');
+  const extraDirs = fs.readdirSync(path.join(benchDir, 'suites')).filter((f) => f.endsWith('.json') && !f.endsWith('.manifest.json'))
+    .flatMap((f) => suiteExtraDirs(path.basename(f, '.json'), benchDir));
+  const known = loadTasks(benchDir, { extraDirs: [...new Set(extraDirs)] });
+  for (const id of Object.keys(pack.taskArtifacts)) assert.ok(known.has(id), `${id} is declared but is not a task`);
 });
 
 test('loadPack refuses an unknown name and a name that is not a plain word', () => {
