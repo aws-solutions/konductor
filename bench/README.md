@@ -12,7 +12,9 @@ Two kinds of question, two sets of commands:
 | Is the whole platform better than the bare agent? | `run`, `judge`, `report --verdict platform` | yes |
 | Is this one skill loaded, needed, or padded? | the `cap` commands (below) | some are free |
 
-Jump to: [Try it without credits](#try-it-without-credits) |
+Jump to: [Which command answers my question](#which-command-answers-my-question) |
+[Try it without credits](#try-it-without-credits) |
+[Run it against a skill or an agent](#run-it-against-a-skill-or-an-agent) |
 [Evaluate one skill](#evaluate-one-skill-step-by-step) |
 [Read the answer](#read-the-answer) |
 [What it cannot tell you yet](#what-it-cannot-tell-you-yet) |
@@ -32,6 +34,40 @@ Jump to: [Try it without credits](#try-it-without-credits) |
 | Is the whole platform worth keeping? | `run`, `judge`, `report --verdict platform` | kiro-cli, opencode, Claude Code | credits or USD |
 
 Not covered: per-skill studies on opencode or Claude Code.
+
+## Which command answers my question
+
+Costs: **free** means no model call. **Tens of credits** is a few credits up to about a hundred. **Hundreds of credits per skill** is a controlled study.
+Credits are Kiro credits; the opencode and Claude Code harnesses and the opencode judge bill in USD. `main` is `origin/main` as last fetched, and no command here fetches.
+`$RUNS` is a directory of finished runs, `$OUT` a directory you choose. Commands in this table start with `node bench/runner/bench.js`, except `pilot-2x2.sh`.
+
+| Question | Command | It needs | Cost | Read this |
+| --- | --- | --- | --- | --- |
+| Is a skill well formed, oversized, a near duplicate of another, reachable by an agent? | `cap audit --base main --cap skill:NAME --out $OUT/audit` | Node, git, the ref | free | `cap-audit.md`: bytes, `tok~`, `nearest` (similarity to the closest skill), `kiro agents` (0 means no agent lists it), and the findings. Exit 1 only on an error finding |
+| Is a skill ever loaded in finished runs? Is it redundant, a prune candidate, a trim candidate? | `cap prune-report --base main --runs $RUNS --out $OUT/prune` (per-run detail: `skills --run DIR`) | finished runs of non-vanilla arms | free | `prune-report.md`: one class per skill and harness (HARMS, RELOCATE, PRUNE, FIX, KEEP, NEEDS DATA), the load rate with its exposure n, and a TRIM flag for a skill over the 90th percentile of size or above 0.6 Jaccard similarity to a neighbour. FIX means offered but never loaded. A class is a recommendation, never a deletion; see the table in [CAP-PLAYBOOK.md](CAP-PLAYBOOK.md) |
+| Which tasks would test a skill? | `cap scenarios --cap skill:NAME [--mode trigger] --out $OUT/ops` | `--dry-run` needs nothing; otherwise a kiro-cli login | free with `--dry-run`, under 1 credit otherwise | `$OUT/ops/scenarios/`: unreviewed drafts for a person to edit |
+| Does the agent load the skill for the right requests and skip near misses? | `cap trigger --cap skill:NAME --mode proxy --queries FILE --base main` (`--mode live` runs real agents) | a kiro-cli login, or opencode | proxy: about 0.09 credits per call; live: capped by `--budget-credits` | recall first, then precision and F1 with Wilson intervals, and what fired instead. "proxy not validated" means a miss is informative and a hit is not proof |
+| Is the skill needed against vanilla, and which sections can go? | `cap skill-plan --base main --only NAME --runs $RUNS --out $OUT/plan`, then `cap skill-study`, then `cap decide --study DIR` | kiro-cli login and AWS credentials for the opencode judge | plan and decide: free. Study: hundreds of credits per skill | `decisions/decisions.md`: DELETE, PRUNE (line ranges and a patch), KEEP or NEEDS DATA, with the reason |
+| Do the rubric items and checks of a study tell the arms apart? | `cap criteria --study DIR` | a finished study | free | `criteria.md`: items flagged NON-DISCRIMINATING, SATURATED or HIGH-VARIANCE |
+| Is konductor better than the bare agent overall? | `run --suite lite\|full\|hard\|real\|autonomy\|pilot`, then `judge --run`, then `report --run` | kiro-cli login; judge credentials | lite: tens of credits. The others: see the next table | `report.md`: the diligence scorecard first, then quality /100, reliability, cost ratio and the noise band. `report --verdict platform` gives keep, discard or not enough evidence per arm |
+| Does the answer depend on the harness (Kiro CLI against Claude Code)? | `bash bench/scripts/pilot-2x2.sh`, then `report-2x2` | both harnesses and Bedrock credentials | credits on Kiro, USD on Claude Code and the judge | `factorial-2x2.md`: quality per cell, the konductor effect per harness, cost ratios inside each harness |
+
+### Start each process
+
+Run these from the repository root. Add `--budget-credits N` to any `run` to stop new runs at 90% of N; `run` prints the worst-case wall clock first.
+`--prepare-only` builds and trial-installs every arm and spends nothing. The arms, replicates and cost per suite are in [Suites and arms](#suites-and-arms).
+
+| Process | Start it with | Note |
+| --- | --- | --- |
+| lite | `node bench/runner/bench.js run --suite lite --budget-credits 100 --out $OUT/lite` | vanilla, v1.2.0 and main, 1 replicate. One pass cost about 61 credits (n=1) |
+| full | `node bench/runner/bench.js run --suite full --budget-credits N --out $OUT/full` | all five arms, 3 replicates; no observed cost on file |
+| hard | `node bench/runner/bench.js run --suite hard --budget-credits N --out $OUT/hard` | six tasks scored by hidden tests, 3 arms, 3 replicates |
+| real | `node bench/real/fetch.js` once, then `node bench/runner/bench.js run --suite real --budget-credits N --out $OUT/real` | pinned public projects scored by their own tests; the fetch is the only networked step. About 121 credits or more per pass |
+| autonomy | `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT/autonomy` | a scripted user answers questions; see [Autonomy tier](#autonomy-tier) |
+| pilot | `node bench/runner/bench.js pr-plan --ref opt-a=REF --suite pilot --budget-credits 150`, then the `run --suite pilot` line it prints | 8 tasks, 1 replicate, for trying one option arm against a release |
+| cap | no command of its own | `--suite cap` is the fallback the `cap` commands use; start that work with `cap` |
+| scoring and report | `node bench/runner/bench.js judge --run $OUT/lite`, then `node bench/runner/bench.js report --run $OUT/lite` | `judge` spends credits (or USD with `--judge-backend opencode`); `report` is free and writes `report.md`, `report.html`, `report.json` and `charts/` |
+| 2x2 | `bash bench/scripts/pilot-2x2.sh --dry-run ...`, then without `--dry-run` | see [2x2 pilot](#2x2-pilot) |
 
 ## What you need
 
@@ -56,6 +92,44 @@ node --test "bench/runner/test/*.test.js"                           # unit tests
 
 `--base REF` reads local refs only; the runner never fetches. `main` means `origin/main`, and `HEAD` is not accepted (use a branch, tag or remote-tracking name).
 `cap audit` writes `cap-audit.md` and `cap-audit.json` and exits 1 on any error finding, for example `ratchet-stale` when a waiver in `bench/capabilities/audit-baseline.json` no longer applies. Exit 1 is a finding, not a crash.
+
+## Run it against a skill or an agent
+
+`$BASE` is a ref (`main`), or `dir:PATH` to read a working tree with your edits, for `cap audit` and `cap list`.
+The skill and agent names come from `cap list --base $BASE --kind skill` and `--kind agent`; an id is `skill:NAME` or `agent:NAME`.
+
+One skill, `backend-review`:
+
+```bash
+BASE=main; OUT=/var/tmp/bench-skill; RUNS=/path/to/finished/run-dir
+node bench/runner/bench.js cap audit --base $BASE --cap skill:backend-review --out $OUT/audit          # free: lint, size, nearest neighbour, reachability
+node bench/runner/bench.js cap prune-report --base $BASE --runs $RUNS --out $OUT/prune                  # free: loaded in your finished runs? class and TRIM flag
+node bench/runner/bench.js cap scenarios --cap skill:backend-review --mode trigger --n 10 --out $OUT/ops   # under 1 credit; add --dry-run for none
+node bench/runner/bench.js cap trigger --cap skill:backend-review --mode proxy \
+  --queries $OUT/ops/scenarios/skill-backend-review.trigger.json --base $BASE                           # review and edit the draft first
+node bench/runner/bench.js cap skill-plan --base $BASE --only backend-review --runs $RUNS --out $OUT/plan   # free: tasks, waves, credit estimate
+```
+
+The study itself (`cap skill-study`, then `cap decide` and `cap criteria`) is steps 5 to 8 of [Evaluate one skill](#evaluate-one-skill-step-by-step).
+`$RUNS` is optional for `cap skill-plan` but needed for `cap prune-report`; without runs the plan shows credit figures as n/a.
+
+One agent, `k-architect`:
+
+```bash
+BASE=main; OUT=/var/tmp/bench-agent
+node bench/runner/bench.js cap list --base $BASE --kind agent                                           # free: which agents exist, and their linked tasks
+node bench/runner/bench.js cap audit --base $BASE --cap agent:k-architect --out $OUT/audit             # free: size, description, who can reach it
+node bench/runner/bench.js cap plan --mode lift --cap agent:k-architect --base $BASE \
+  --tasks design-hold-service --budget-credits 100                                                       # free: prints the commands, runs nothing
+```
+
+`cap plan` prints five numbered steps: build a variant with the agent removed, run it against the base and an A/A repeat of the base
+(`base`, `base-b`, `x-minus`), contrast, judge, report. The run and judge steps spend credits (it prints an estimate, judge not included); the rest is free. Copy the printed lines in order. A lift counts only when it is larger than the `base-b` against `base` spread.
+Pass `--tasks` with the ids of tasks that exercise the agent. `cap list --base $BASE --cap agent:k-architect` names them on its last line
+("target-only tasks design-hold-service"); a task that is not linked in the registry still works when you pass it this way.
+
+Limits today. These commands work on the skills and agents of this repository at the ref you give, and the agent that does the work is konductor.
+Testing an arbitrary third-party skill or agent definition is not supported yet. Per-skill studies run on Kiro CLI only.
 
 ## Evaluate one skill, step by step
 
