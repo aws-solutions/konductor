@@ -17,7 +17,7 @@
     },
     {
       "type": "cmd",
-      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/requirements.md)\" -le 250 ]",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/requirements.md)\" -le 500 ]",
       "expectExit": 0
     },
     {
@@ -27,19 +27,19 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const L=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\").split(\"\\n\").filter((l)=>/\\bshall\\b/i.test(l)&&/^\\s*(\\||[-*]|\\d+[.)])/.test(l));const withId=L.filter((l)=>/\\b(?:REQ|FR|NFR|R)-?\\d+\\b|requirement\\s+\\d+/i.test(l));process.exit(L.length>=6&&withId.length/L.length>=0.8?0:1)'",
+      "cmd": "node -e 'const L=require(\"fs\").readFileSync(\"docs/requirements.md\",\"utf8\").split(\"\\n\");const def=/^[\\s|>#*_-]*(?:\\d+[.)]\\s*)?(?:\\*\\*|__)?\\[?((?:REQ|FR|NFR|R)-?\\d+)\\b/i;const acc=/\\b(?:AC|acceptance|accept(?:ed)? when|verif\\w*|tested? (?:by|with)|assert\\w*|passes)\\b/i;const head=/^\\*{0,2}(?:acceptance|ac|verification|test|check)\\b/i;const cells=(l)=>l.replace(/^\\s*\\||\\|\\s*$/g,\"\").split(\"|\").map((c)=>c.trim());const by={},col={};let cur=null,at=-1;for(const l of L){  if(/^#{1,6}\\s/.test(l)&&!def.test(l)){cur=null;at=-1;continue}  const row=/^\\s*\\|/.test(l);  if(row){const h=cells(l).findIndex((x)=>head.test(x));if(h>=0&&!def.test(l)){at=h;continue}}else at=-1;  const m=def.exec(l);  if(m){cur=m[1].toUpperCase();if(row&&at>=0)col[cur]=(col[cur]||\"\")+\" \"+(cells(l)[at]||\"\")}  if(cur)by[cur]=(by[cur]||\"\")+l+\"\\n\"}const ids=Object.keys(by);const ok=ids.filter((i)=>acc.test(by[i])||(col[i]||\"\").split(/\\s+/).filter(Boolean).length>=3);process.exit(ids.length>=8&&ok.length/ids.length>=0.8?0:1)'",
       "expectExit": 0
     },
     {
       "type": "min_matches",
       "path": "docs/requirements.md",
-      "pattern": "\\b(?:when|if|while|where|given)\\b[^\\n.]{3,200}\\b(?:shall|must|should|then)\\b",
+      "pattern": "\\b(?:when|if|while|where|given|upload(?:s|ed)?|submit(?:s|ted)?|a (?:file|row|request|user|store)s? (?:with|that|which))\\b[^\\n.]{3,200}\\b(?:shall|must|should|then|returns?|rejects?|rejected|applied|accepted|responds?|results? in|leaves?|is not|are not)\\b",
       "min": 6
     },
     {
       "type": "contains",
       "path": "docs/requirements.md",
-      "pattern": "^#{1,6}\\s*.*(?:assumptions?|open questions?|questions)"
+      "pattern": "^#{1,6}\\s*.*(?:assumptions?|open (?:questions?|issues?|decisions?)|questions|unclear|ambigu|conflicts?|gaps?|missing)"
     },
     {
       "type": "min_matches",

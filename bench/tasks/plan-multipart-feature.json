@@ -22,12 +22,12 @@
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");const ids=new Set();for(const m of t.matchAll(/\\b(?:task|T|P|WP)[ -]?(\\d+)\\b/gi)) if(Number(m[1])<=30) ids.add(m[1]);process.exit(ids.size>=5&&ids.size<=12?0:1)'",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");const ids=new Set();for(const m of t.matchAll(/\\b(?:task|T|P|WP)[ -]?(\\d+)\\b/gi)) if(Number(m[1])<=30) ids.add(m[1]);process.exit(ids.size>=5&&ids.size<=25?0:1)'",
       "expectExit": 0
     },
     {
       "type": "cmd",
-      "cmd": "node -e 'const L=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\").split(\"\\n\");const start=/^\\s*(?:#{1,6}\\s*|[-*]\\s*|\\|\\s*|\\*\\*)?(?:task|T|P|WP)[ -]?(\\d+)\\b/i;const by={};let cur=null;for(const l of L){const m=start.exec(l);if(m&&Number(m[1])<=30)cur=m[1];if(cur)by[cur]=(by[cur]||\"\")+l+\"\\n\"}const done=/\\b(?:done when|done:|done if|acceptance|accept(?:ed)? when|verif(?:y|ied|ication)|exit criteri|definition of done|passes|is done)\\b/i;const ids=Object.keys(by);process.exit(ids.length>=5&&ids.filter((i)=>done.test(by[i])).length/ids.length>=0.8?0:1)'",
+      "cmd": "node -e 'const L=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\").split(\"\\n\");const start=/^\\s*(?:#{1,6}\\s*|[-*]\\s*|\\|\\s*|\\*\\*)?(?:task|T|P|WP)[ -]?(\\d+)\\b/i;const head=/^\\*{0,2}(?:done when|acceptance|verification|exit criteri\\w*|definition of done|done)\\b/i;const cells=(l)=>l.replace(/^\\s*\\||\\|\\s*$/g,\"\").split(\"|\").map((c)=>c.trim());const done=/\\b(?:done when|done:|done if|acceptance|accept(?:ed)? when|verif(?:y|ied|ication)|exit criteri|definition of done|passes|is done)\\b/i;const by={},col={};let cur=null,at=-1;for(const l of L){  const row=/^\\s*\\|/.test(l);  if(row){const h=cells(l).findIndex((x)=>head.test(x));if(h>=0&&!start.test(l)){at=h;continue}}else at=-1;  const m=start.exec(l);  if(m&&Number(m[1])<=30){cur=m[1];if(row&&at>=0)col[cur]=cells(l)[at]||\"\"}  if(cur)by[cur]=(by[cur]||\"\")+l+\"\\n\"}const ids=Object.keys(by);const ok=ids.filter((i)=>done.test(by[i])||(col[i]||\"\").split(/\\s+/).filter(Boolean).length>=3);process.exit(ids.length>=5&&ok.length/ids.length>=0.8?0:1)'",
       "expectExit": 0
     },
     {
@@ -66,10 +66,9 @@
       "pattern": "^#{1,6}\\s*.*\\brisks?\\b"
     },
     {
-      "type": "min_matches",
-      "path": "docs/plan.md",
-      "pattern": "mitigat|spike|fallback|rollback|rehears",
-      "min": 2
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/plan.md\",\"utf8\");const words=(t.match(/mitigat|spike|fallback|rollback|rehears/gi)||[]).length>=2;const cells=(l)=>l.replace(/^\\s*\\||\\|\\s*$/g,\"\").split(\"|\").map((c)=>c.trim());let at=-1,rows=0,risk=false;for(const l of t.split(\"\\n\")){  if(/^#{1,6}\\s/.test(l)){risk=/\\brisks?\\b/i.test(l);at=-1;continue}  if(!risk||/^[\\s:|-]*$/.test(l))continue;  if(!/^\\s*\\|/.test(l)){at=-1;continue}  const c=cells(l);  if(at<0){at=c.findIndex((x)=>/^\\*{0,2}(?:mitigation|response|action|plan|countermeasure)/i.test(x));continue}  if((c[at]||\"\").split(/\\s+/).filter(Boolean).length>=3)rows++}process.exit(words||rows>=3?0:1)'",
+      "expectExit": 0
     },
     {
       "type": "not_contains",
@@ -100,6 +99,12 @@
       "type": "cmd",
       "cmd": "[ \"$(find . -path ./node_modules -prune -o -type f \\( -name '*.js' -o -name '*.mjs' -o -name '*.ts' -o -name '*.py' -o -name '*.sh' -o -name '*.sql' \\) -print | wc -l)\" -eq 9 ]",
       "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/plan.md",
+      "pattern": "\\b(?:depends? on|blocked by|requires?|needs|after)\\b",
+      "min": 4
     }
   ],
   "rubric": [

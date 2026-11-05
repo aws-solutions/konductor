@@ -1,11 +1,14 @@
 {
   "loosened": [
+    3,
+    4,
     5,
     6,
     7,
     8,
     9,
-    10
+    10,
+    12
   ],
   "cases": [
     {
@@ -168,6 +171,150 @@
       "expect": "fail",
       "files": {
         "docs/plan.md": "A test is written. Nothing about load.\n"
+      }
+    },
+    {
+      "name": "ids: 13 distinct ids pass",
+      "check": 3,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "# Plan\n\nTask 1: build part 1.\nTask 2: build part 2.\nTask 3: build part 3.\nTask 4: build part 4.\nTask 5: build part 5.\nTask 6: build part 6.\nTask 7: build part 7.\nTask 8: build part 8.\nTask 9: build part 9.\nTask 10: build part 10.\nTask 11: build part 11.\nTask 12: build part 12.\nTask 13: build part 13.\n"
+      }
+    },
+    {
+      "name": "ids: 25 distinct ids pass",
+      "check": 3,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "# Plan\n\nTask 1: build part 1.\nTask 2: build part 2.\nTask 3: build part 3.\nTask 4: build part 4.\nTask 5: build part 5.\nTask 6: build part 6.\nTask 7: build part 7.\nTask 8: build part 8.\nTask 9: build part 9.\nTask 10: build part 10.\nTask 11: build part 11.\nTask 12: build part 12.\nTask 13: build part 13.\nTask 14: build part 14.\nTask 15: build part 15.\nTask 16: build part 16.\nTask 17: build part 17.\nTask 18: build part 18.\nTask 19: build part 19.\nTask 20: build part 20.\nTask 21: build part 21.\nTask 22: build part 22.\nTask 23: build part 23.\nTask 24: build part 24.\nTask 25: build part 25.\n"
+      }
+    },
+    {
+      "name": "ids: 3 tasks only fail",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\nTask 1: build part 1.\nTask 2: build part 2.\nTask 3: build part 3.\n"
+      }
+    },
+    {
+      "name": "ids: one id repeated fail",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\nTask 1: build part one.\nTask 1: build part one.\nTask 1: build part one.\nTask 1: build part one.\nTask 1: build part one.\nTask 1: build part one.\nTask 1: build part one.\nTask 1: build part one.\n"
+      }
+    },
+    {
+      "name": "ids: 30 ids is runaway output fail",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\nTask 1: build part 1.\nTask 2: build part 2.\nTask 3: build part 3.\nTask 4: build part 4.\nTask 5: build part 5.\nTask 6: build part 6.\nTask 7: build part 7.\nTask 8: build part 8.\nTask 9: build part 9.\nTask 10: build part 10.\nTask 11: build part 11.\nTask 12: build part 12.\nTask 13: build part 13.\nTask 14: build part 14.\nTask 15: build part 15.\nTask 16: build part 16.\nTask 17: build part 17.\nTask 18: build part 18.\nTask 19: build part 19.\nTask 20: build part 20.\nTask 21: build part 21.\nTask 22: build part 22.\nTask 23: build part 23.\nTask 24: build part 24.\nTask 25: build part 25.\nTask 26: build part 26.\nTask 27: build part 27.\nTask 28: build part 28.\nTask 29: build part 29.\nTask 30: build part 30.\n"
+      }
+    },
+    {
+      "name": "done: konductor table layout with a Done when column",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Tasks\n\n| ID | Task | Done when (acceptance) | Depends on |\n|----|------|------------------------|------------|\n| T1 | Build part 1 of the reservation feature | Tests for this step pass and the review is signed off | none |\n| T2 | Build part 2 of the reservation feature | Tests for this step pass and the review is signed off | T1 |\n| T3 | Build part 3 of the reservation feature | Tests for this step pass and the review is signed off | T2 |\n| T4 | Build part 4 of the reservation feature | Tests for this step pass and the review is signed off | T3 |\n| T5 | Build part 5 of the reservation feature | Tests for this step pass and the review is signed off | T4 |\n| T6 | Build part 6 of the reservation feature | Tests for this step pass and the review is signed off | T5 |\n| T7 | Build part 7 of the reservation feature | Tests for this step pass and the review is signed off | T6 |\n| T8 | Build part 8 of the reservation feature | Tests for this step pass and the review is signed off | T7 |\n| T9 | Build part 9 of the reservation feature | Tests for this step pass and the review is signed off | T8 |\n| T10 | Build part 10 of the reservation feature | Tests for this step pass and the review is signed off | T9 |\n| T11 | Build part 11 of the reservation feature | Tests for this step pass and the review is signed off | T10 |\n| T12 | Build part 12 of the reservation feature | Tests for this step pass and the review is signed off | T11 |\n| T13 | Build part 13 of the reservation feature | Tests for this step pass and the review is signed off | T12 |\n\n"
+      }
+    },
+    {
+      "name": "done: inline phrase per task block",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "## Task 1\nBuild part 1.\nDone when the tests for part 1 pass.\n\n## Task 2\nBuild part 2.\nDone when the tests for part 2 pass.\n\n## Task 3\nBuild part 3.\nDone when the tests for part 3 pass.\n\n## Task 4\nBuild part 4.\nDone when the tests for part 4 pass.\n\n## Task 5\nBuild part 5.\nDone when the tests for part 5 pass.\n\n## Task 6\nBuild part 6.\nDone when the tests for part 6 pass.\n\n"
+      }
+    },
+    {
+      "name": "done: no done criteria at all fail",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Tasks\n\n| ID | Task | Depends on |\n|----|------|------------|\n| T1 | Build part 1 of the reservation feature | none |\n| T2 | Build part 2 of the reservation feature | T1 |\n| T3 | Build part 3 of the reservation feature | T2 |\n| T4 | Build part 4 of the reservation feature | T3 |\n| T5 | Build part 5 of the reservation feature | T4 |\n| T6 | Build part 6 of the reservation feature | T5 |\n| T7 | Build part 7 of the reservation feature | T6 |\n| T8 | Build part 8 of the reservation feature | T7 |\n\n"
+      }
+    },
+    {
+      "name": "done: Done when column present but cells empty fail",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Tasks\n\n| ID | Task | Done when (acceptance) | Depends on |\n|----|------|------------------------|------------|\n| T1 | Build part 1 of the reservation feature |  | none |\n| T2 | Build part 2 of the reservation feature |  | T1 |\n| T3 | Build part 3 of the reservation feature |  | T2 |\n| T4 | Build part 4 of the reservation feature |  | T3 |\n| T5 | Build part 5 of the reservation feature |  | T4 |\n| T6 | Build part 6 of the reservation feature |  | T5 |\n| T7 | Build part 7 of the reservation feature |  | T6 |\n| T8 | Build part 8 of the reservation feature |  | T7 |\n\n"
+      }
+    },
+    {
+      "name": "done: Done when cells are one word fail",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Tasks\n\n| ID | Task | Done when (acceptance) | Depends on |\n|----|------|------------------------|------------|\n| T1 | Build part 1 of the reservation feature | ok | none |\n| T2 | Build part 2 of the reservation feature | ok | T1 |\n| T3 | Build part 3 of the reservation feature | ok | T2 |\n| T4 | Build part 4 of the reservation feature | ok | T3 |\n| T5 | Build part 5 of the reservation feature | ok | T4 |\n| T6 | Build part 6 of the reservation feature | ok | T5 |\n| T7 | Build part 7 of the reservation feature | ok | T6 |\n| T8 | Build part 8 of the reservation feature | ok | T7 |\n\n"
+      }
+    },
+    {
+      "name": "done: only 2 of 8 rows state criteria fail",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Tasks\n\n| ID | Task | Done when (acceptance) | Depends on |\n|----|------|------------------------|------------|\n| T1 | Build part 1 of the reservation feature | Tests for this step pass and the review is signed off | none |\n| T2 | Build part 2 of the reservation feature | Tests for this step pass and the review is signed off | T1 |\n| T3 | Build part 3 of the reservation feature |  | T2 |\n| T4 | Build part 4 of the reservation feature |  | T3 |\n| T5 | Build part 5 of the reservation feature |  | T4 |\n| T6 | Build part 6 of the reservation feature |  | T5 |\n| T7 | Build part 7 of the reservation feature |  | T6 |\n| T8 | Build part 8 of the reservation feature |  | T7 |\n\n"
+      }
+    },
+    {
+      "name": "risks: Mitigation column with filled rows",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Risks\n\n| Risk | Likelihood | Impact | Mitigation | Owner |\n|------|-----------|--------|------------|-------|\n| Oversell under load | High | High | One atomic step in the service, tested with 50 requests | Dev |\n| SQL differs from stand-in | Medium | High | Run the burst test against staging before release | Platform |\n| Expiry job is down | Low | High | Expiry is a read-time comparison, no job needed | Dev |\n"
+      }
+    },
+    {
+      "name": "risks: two mitigation words outside a table",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Risks\n\n- Race: mitigation is a lock, and a rollback script exists.\n"
+      }
+    },
+    {
+      "name": "risks: risk table without a mitigation column fail",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Risks\n\n| Risk | Likelihood | Impact |\n|------|-----------|--------|\n| Oversell | High | High |\n| Drift | Medium | High |\n| Flaky tests | Low | Low |\n"
+      }
+    },
+    {
+      "name": "risks: Mitigation column left empty fail",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Risks\n\n| Risk | Mitigation |\n|------|------------|\n| Oversell | |\n| Drift | |\n| Flaky tests | |\n"
+      }
+    },
+    {
+      "name": "risks: a risk list with no response fail",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/plan.md": "# Plan\n\n## Risks\n\n- Oversell under load.\n- Drift between stand-in and SQL.\n- Flaky tests.\n"
       }
     }
   ]
