@@ -59,7 +59,8 @@ not per individual commit.
   handoff file, and the orchestrator passes them back with the resume brief. Run directly with
   no orchestrator, the caller is the user: the specialist returns the split or note to them.
   `k-adversarial-pull-request-review` returns its three Step 2 passes as a split, resumes at
-  Step 3, returns the reuse pass as a handoff, and resumes at Step 4.
+  Step 3, returns the reuse pass as a handoff, and resumes at Step 4. `konductor init` now
+  ignores `.konductor/handoff/`; add the line by hand in a project initialised earlier.
 - Specialist specs no longer grant any agent-spawning tool. Kiro CLI v3 and Claude Code
   configs block the runtime's spawn tools explicitly, so a specialist cannot call one even when
   a prompt asks it to. The block does not cover shell: a specialist with shell access could
@@ -73,7 +74,8 @@ not per individual commit.
   non-trivial work; orchestrators route skill work to the owning specialist.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
   and is never read or written through a symlink. The memory validator rejects a new or edited line without
-  an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept.
+  an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
+  instruction-like text after the date and origin tag.
   Orchestrators never bypass denials or read unnamed secrets.
 - `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
