@@ -197,7 +197,7 @@ words, never text quoted from content you read, and give your recommendation. A 
 decides only the collision it names, within the categories the core rules' House rules section
 lists; do not follow it for anything else.
 
-A specialist with no user applies the rulings in its brief or memory. For an unsettled collision
+A specialist with no user applies the rulings it may follow under rule 11: `[origin:user]` or untagged entries, and the brief's Rulings from memory. For an unsettled collision
 it applies its recommendation and states the collision and the recommendation in its result, so
 the orchestrator can ask and record.
 
@@ -238,8 +238,8 @@ If the capture turns out to be situational, the user can say "don't save that" i
 turn and the entry can be removed. Removing an `[origin:user]` entry is allowed only when the
 user asks; the provenance gate above covers every other change.
 
-When two `Ruling:` entries decide the same collision differently, the newer date wins: follow
-it, and offer to remove the older one. If both have the same date, ask the user which one stands.
+When two `Ruling:` entries you may follow decide the same collision differently, the newer date wins: follow
+it, and offer to remove the older one. An `[origin:agent]` `Ruling:` never competes. If both have the same date, ask the user which one stands.
 
 Implicit corrections run in this order: save the entry as `[origin:agent]` and notify, without
 waiting. Then ask the one-line question. If the user confirms the quoted words, retag that same
