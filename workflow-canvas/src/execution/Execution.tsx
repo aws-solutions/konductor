@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import Alert from '@cloudscape-design/components/alert';
+import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import Container from '@cloudscape-design/components/container';
 import FormField from '@cloudscape-design/components/form-field';
 import Header from '@cloudscape-design/components/header';
 import Input, { type InputProps } from '@cloudscape-design/components/input';
+import KeyValuePairs from '@cloudscape-design/components/key-value-pairs';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator, {
   type StatusIndicatorProps,
@@ -15,11 +17,13 @@ import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { LoadResult } from '../workflow/load-workflow';
 import { WorkflowGate, type DrawableWorkflow } from '../workflow/WorkflowGate';
 import {
+  blockedStageOf,
   GOAL_MAX_LENGTH,
   goalProblem,
   isInFlight,
   isJoinedRun,
   nodeStatuses,
+  reasonSentence,
   runOf,
   stageDrift,
   statusKind,
@@ -53,6 +57,32 @@ function RunStatusLine({ state }: { state: ExecutionState }) {
         {statusText(state)}
       </StatusIndicator>
     </div>
+  );
+}
+
+// The stage that stopped the run and why: the code of the reason, and what it
+// means when this page knows it. A blocked stage is a result, not an error.
+function BlockedStage({ state }: { state: ExecutionState }) {
+  const blocked = blockedStageOf(runOf(state));
+  if (!blocked) return null;
+  const sentence = reasonSentence(blocked.reason);
+  return (
+    <KeyValuePairs
+      data-testid="blocked-stage"
+      columns={1}
+      items={[
+        { label: 'Blocked stage', value: blocked.name },
+        {
+          label: 'Reason',
+          value: (
+            <SpaceBetween size="xxs">
+              <Box variant="code">{blocked.reason}</Box>
+              {sentence !== undefined && <Box>{sentence}</Box>}
+            </SpaceBetween>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -144,6 +174,7 @@ function RunPanel({
           Run
         </Button>
         <RunStatusLine state={execution.state} />
+        <BlockedStage state={execution.state} />
         <RunError state={execution.state} />
       </SpaceBetween>
     </Container>

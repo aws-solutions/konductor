@@ -128,6 +128,10 @@ function harnessOf(value: unknown): Harness {
   return isHarness(value) ? value : fail();
 }
 
+function reasonOf(value: unknown): string {
+  return typeof value === 'string' && value !== '' ? value : fail();
+}
+
 // The stages in `order`, each with its status from `stages`. The contract
 // lists each stage once, so a name that repeats is a bad reply.
 function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
@@ -137,11 +141,13 @@ function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
     const name = stringOf(entry);
     if (seen.has(name)) fail();
     seen.add(name);
-    const stage = Object.hasOwn(byName, name) ? byName[name] : fail();
-    return {
-      name,
-      status: oneOf(objectOf(stage).status, STAGE_STATUSES),
-    };
+    const stage = objectOf(Object.hasOwn(byName, name) ? byName[name] : fail());
+    const status = oneOf(stage.status, STAGE_STATUSES);
+    // The contract gives a blocked stage a reason, and no other stage one. A
+    // reason this page does not know is still a reason, shown as it is.
+    return status === 'blocked'
+      ? { name, status, reason: reasonOf(stage.reason) }
+      : { name, status };
   });
   // `order` holds the keys of `stages`: a stage that is not listed is a bad reply.
   return Object.keys(byName).length === listed.length ? listed : fail();

@@ -88,6 +88,11 @@ export type RunStatus = 'running' | 'passed' | 'halted';
 export interface RunStageView {
   name: string;
   status: StageRunStatus;
+  /**
+   * Why a `blocked` stage stopped the run, as a stable upper snake case code
+   * such as `RESULT_MISSING`. Only a blocked stage has one.
+   */
+  reason?: string;
 }
 
 /** What `GET /api/runs/{id}` returns: the state of a run, live or finished. */

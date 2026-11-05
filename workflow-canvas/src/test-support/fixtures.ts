@@ -99,11 +99,14 @@ const HELLO_STAGES = HELLO_VIEW.stages.map((stage) => stage.name);
  * The state of a run of the workflow above: stages before `at` have passed,
  * the one at `at` runs and the ones after it wait. An `at` past the last
  * stage is a run that passed. With `blockedAt`, that stage failed instead
- * and the run halted.
+ * and the run halted, for `reason` (`RESULT_MISSING` unless it is given).
  */
 export function helloRun(
   at: number,
-  { blockedAt }: { blockedAt?: number } = {},
+  {
+    blockedAt,
+    reason = 'RESULT_MISSING',
+  }: { blockedAt?: number; reason?: string } = {},
 ): RunView {
   const halted = blockedAt !== undefined;
   const finished = halted || at >= HELLO_STAGES.length;
@@ -112,17 +115,19 @@ export function helloRun(
     harness: 'kiro-cli',
     status: halted ? 'halted' : finished ? 'passed' : 'running',
     exitCode: halted ? 1 : finished ? 0 : null,
-    stages: HELLO_STAGES.map((name, index) => ({
-      name,
-      status:
-        index === blockedAt
-          ? 'blocked'
-          : index < (blockedAt ?? at)
-            ? 'passed'
-            : index === at && !halted
-              ? 'running'
-              : 'pending',
-    })),
+    stages: HELLO_STAGES.map((name, index) =>
+      index === blockedAt
+        ? { name, status: 'blocked', reason }
+        : {
+            name,
+            status:
+              index < (blockedAt ?? at)
+                ? 'passed'
+                : index === at && !halted
+                  ? 'running'
+                  : 'pending',
+          },
+    ),
   };
 }
 
