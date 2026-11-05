@@ -209,7 +209,7 @@ a handoff note, and resumes at Step 4. Starting from `konductor` routes each hop
 `k-code-review-workflow` step 6 is an adversarial pass by `k-architect`. That SOP
 is declared only by `k-developer`, which **cannot spawn `k-architect` in any runtime**:
 
-- Specialists hold no spawn tool in either runtime (see above).
+- Specialists hold no spawn tool in any runtime (see above).
 - The core rules tell a specialist to do such steps itself or return them to its caller.
 
 Step 6 has `k-developer` write the report with an "Adversarial pass: pending" section, then
