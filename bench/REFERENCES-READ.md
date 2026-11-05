@@ -48,7 +48,7 @@ From `stream.jsonl`, with `kiroTimeline` from `bench/runner/lib/trace.js`:
 1. **Skill loaded.** A successful `get_skill` (not one deferred before the tool schema was loaded), a `load_resource` of `skill::<name>`, or a read of the skill's `SKILL.md`. Names counted: the task's skill, plus `asana-sprint-planning` for the sprint task.
 2. **Read attempts** on `/skills/<skill>/references/...` (read tool calls, and shell `cat`, `head`, `sed`, `grep` and similar on such a path), plus a relative `references/...` read for the readable arm. Each attempt has an outcome:
    - **succeeded**: the file came back;
-   - **REFUSED**: the call failed, or returned a short result, with workspace-boundary or permission wording ("outside the workspace", "not allowed", "permission denied", "access denied", "blocked", "not trusted" and similar). The exact text is kept and printed;
+   - **REFUSED**: the call failed, or returned a short result, with workspace-boundary or permission wording ("outside the workspace", "not allowed", "permission denied", "access denied", "blocked", "not trusted", "rejected", "requires approval" and similar). The exact text is kept and printed;
    - **error**: any other failure (no such file, a bad range).
 3. **usedReference.** The planted fact is in the artifact the task writes (`docs/data-model.md`, `docs/rollover-plan.md`). The final message is recorded too, as a second signal only.
 4. **Credits and wall time** from `result.json`.

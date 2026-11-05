@@ -92,6 +92,8 @@ test('read refused as a short successful result is still a refusal, a long file 
   assert.equal(R.classifyRead({ result: 'Permission denied (EACCES)', failed: true }), 'refused');
   assert.equal(R.classifyRead({ result: '   ', failed: false }), 'error');
   assert.equal(R.classifyRead({ result: 'path is not trusted by the workspace policy', failed: true }), 'refused');
+  assert.equal(R.classifyRead({ result: 'The tool call was rejected by the user.', failed: true }), 'refused');
+  assert.equal(R.classifyRead({ result: 'Reading this path requires approval.', failed: true }), 'refused');
 });
 
 test('a read that errors for another reason is an error, not a refusal', () => {
