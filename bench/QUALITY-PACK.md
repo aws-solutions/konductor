@@ -78,7 +78,7 @@ Documents, READMEs and guides are judged for content, not only for presence. Thr
 
 Fenced code, inline code, tables and URLs are left out of the count. Only added lines count, so an existing README is not penalized for text the agent did not write. The evidence for a counted criterion is the list of hits, so a person can audit it. A term used as a literal feature name is a known false positive; read the evidence before acting on a low score.
 
-The other `cq-` criteria need reading and go to the judges: does the document lead with its purpose, does each instruction carry a command or example, does the prose avoid formulaic patterns (a negative contrast, a padded list of three, a question the text answers itself, a chatbot phrase, a closing paragraph that restates the opening), does it repeat itself, are steps in order, are instructions direct.
+The other `cq-` criteria need reading and go to the judges. Does the document lead with its purpose? Does each instruction carry a command or example? Does it repeat itself? Are steps in order and instructions direct? Does the prose avoid formulaic patterns: a negative contrast, a padded list of three, a question the text answers itself, a chatbot phrase, or a closing paragraph that restates the opening?
 
 One tell alone is weak evidence of machine-written text. The anchors therefore use counts (1 or 2 instances is partial, 3 or more is fail) and the program counts several tells together.
 
@@ -107,8 +107,8 @@ For the lite suite this gives:
 
 ## How a criterion is judged
 
-- **Separate call.** The pack runs as a second call per judge and run, not as extra items in the rubric call. The reasons: the existing rubric prompt, its cache keys and its reply validation stay byte-identical; a judge answers about 8 to 20 items instead of those plus the task rubric; the pack prompt can carry the diff and the quote rules without growing the rubric prompt; and a failure in one pass does not discard the other. The cost is that the bundle is sent twice. The prompt is the usual bundle (at most 48,000 characters), a diff capped at 12,000 characters, the task text, the answer key and only the criteria that apply, which stays inside the 120,000 byte argument limit.
-- **Same panel, blinding and aggregation.** The judges come from the same resolution as the rubric pass (`--judges`, suite, default panel), the bundle and the diff go through the same redaction, and scores are the mean over judges.
+- **Separate call.** The pack runs as a second call per judge and run, not as extra items in the rubric call. The rubric prompt, its cache keys and its reply validation stay byte-identical. A judge answers 8 to 20 items instead of those plus the task rubric. The pack prompt can carry the diff and the quote rules without growing the rubric prompt. A failure in one pass does not discard the other. The cost is that the bundle is sent twice. The prompt holds the usual bundle (at most 48,000 characters), a diff capped at 12,000 characters, the task text, the answer key and only the criteria that apply. A prompt over the 120,000 byte argument limit is refused with an error, as in the rubric pass.
+- **Same panel, blinding and aggregation.** The judges come from the same resolution as the rubric pass: `--judges`, then the suite, then the default panel. The bundle and the diff go through the same redaction. Scores are the mean over judges.
 - **Evidence is quoted and checked.** Each judged criterion has a `quote` rule that says what to copy: the weakest assertion, the longest function's signature, and so on. The reply is checked with `judge/quote.js`. A pass or partial whose quote is not found in the output drops one level, and the judge's own verdict is kept as `verdictRaw`. `doc-accuracy` and `des-consistency` need two quotes separated by ` @@ ` (the comment and the code it describes; the API line and the data model line). The first quote must be in the output. The second may come from the answer key when the code was not changed and so is not in the output.
 - **Anchors say how to break ties.** The prompt tells the judge to count where an anchor gives a number and to choose the lower level when the output sits between two.
 - **Score.** Per dimension: the weighted mean of pass 1, partial 0.5, fail 0 over the criteria that were judged, counted or scored absent. n/a criteria are left out. The mean over judges is reported per run, then the mean over runs on a 0 to 100 scale.
@@ -133,7 +133,7 @@ Without `--criteria-pack`, every command behaves and writes exactly as before.
 
 ## Reports
 
-`report` and `report-2x2` add a "Quality dimensions" section when `--criteria-pack quality` is given. Rows are dimensions, columns are arms (or the four cells). Each cell shows the 0 to 100 score, the number of runs where the dimension applied, the number where it was n/a, and `JUDGES DIFFER` when the mean spread between the highest and lowest judge exceeds 0.2 on the 0 to 1 scale. A list under the table gives the n/a reasons. The section says in its first line that the scores are not human-calibrated and are not part of the quality score. `report-2x2` refuses cells whose pack judgments come from different panels or backends. The SVG charts are unchanged.
+`report` and `report-2x2` add a "Quality dimensions" section when `--criteria-pack quality` is given. Rows are dimensions, columns are arms (or the four cells). Each cell shows the 0 to 100 score, the number of runs where the dimension applied, and the number where it was n/a. `JUDGES DIFFER` appears when the mean spread between the highest and lowest judge exceeds 0.2 on the 0 to 1 scale. A list under the table gives the n/a reasons. The section says in its first line that the scores are not human-calibrated and are not part of the quality score. `report-2x2` refuses cells whose pack judgments come from different panels or backends. The SVG charts are unchanged.
 
 ## Calibration
 
@@ -150,7 +150,7 @@ The wording of the criteria follows these public references.
 - Google engineering practices, "What to look for in a code review": design first, then complexity, tests, naming and comments. Shapes the modularity, maintainability, test and comment criteria.
 - Test smell research (tsDetect and the study of smells in LLM-generated unit tests): assertion roulette (many assertions in one test), tests with no assertion, magic numbers. Shapes `test-asserts-behavior`, `test-one-scenario`.
 - Wikipedia, "Signs of AI writing", and its caution that one tell proves nothing and a cluster is stronger. Shapes the written-content criteria and their count thresholds.
-- RULERS (locked rubrics and evidence-anchored scoring) and the AWS blog post on the rubric-based Nova judge: fixed and versioned rubrics, a short justification tied to each criterion, weights that sum to one, scores mapped to 0 to 1, and a check on evidence in code instead of trust in the judge. Shapes the revision hash, the quote rule and the weighted dimension score.
+- RULERS (locked rubrics and evidence-anchored scoring) and the AWS blog post on the rubric-based Nova judge. Both use fixed, versioned rubrics, a justification tied to each criterion, weights that sum to one, and scores mapped to 0 to 1. RULERS also checks evidence in code instead of trusting the judge. They shape the revision hash, the quote rule and the weighted dimension score.
 - Anchored scales from rubric practice: a level is defined by what an observer can see, with counts where possible.
 
 ## Known limits

@@ -50,6 +50,7 @@ Credits are Kiro credits; the opencode and Claude Code harnesses and the opencod
 | Is the skill needed against vanilla, and which sections can go? | `cap skill-plan --base main --only NAME --runs $RUNS --out $OUT/plan`, then `cap skill-study`, then `cap decide --study DIR` | kiro-cli login and AWS credentials for the opencode judge | plan and decide: free. Study: hundreds of credits per skill | `decisions/decisions.md`: DELETE, PRUNE (line ranges and a patch), KEEP or NEEDS DATA, with the reason |
 | Do the rubric items and checks of a study tell the arms apart? | `cap criteria --study DIR` | a finished study | free | `criteria.md`: items flagged NON-DISCRIMINATING, SATURATED or HIGH-VARIANCE |
 | Is konductor better than the bare agent overall? | `run --suite lite\|full\|hard\|real\|autonomy\|pilot`, then `judge --run`, then `report --run` | kiro-cli login; judge credentials | lite: tens of credits. The others: see the next table | `report.md`: the diligence scorecard first, then quality /100, reliability, cost ratio and the noise band. `report --verdict platform` gives keep, discard or not enough evidence per arm |
+| Does the code structure, the test quality, the written content (README, guides, design docs, reviews) or the design quality differ between arms, beyond what the task rubric checks? | `judge --run $RUNS --criteria-pack quality` (add `--plan` first), then `report --run $RUNS --criteria-pack quality` | finished runs; the judge credentials of the earlier judging | free with `--plan`; otherwise about one more rubric pass of judge calls | the "Quality dimensions" section of `report.md`: a 0 to 100 score per dimension and arm, the runs where it did not apply (n/a), and JUDGES DIFFER where the panel disagrees. Indicative, and not part of quality /100 |
 | Does the answer depend on the harness (Kiro CLI against Claude Code)? | `bash bench/scripts/pilot-2x2.sh`, then `report-2x2` | both harnesses and Bedrock credentials | credits on Kiro, USD on Claude Code and the judge | `factorial-2x2.md` and `charts/`: quality per cell, the konductor effect per harness, cost ratios inside each harness |
 
 ### Start each process
@@ -639,6 +640,16 @@ One backend per results directory. Judging a directory that already holds judgme
 node bench/runner/bench.js judge --run V/claude --judge-backend opencode --aws-creds-file CREDS --aws-profile bench --aws-region us-east-1 --profile detailed --budget-usd 25
 node bench/runner/bench.js report --run V/claude --profile detailed
 ```
+
+## Quality dimensions pack
+The task rubrics check that a run did what its task asked. The quality pack adds anchored criteria for how well it did it: modularity, maintainability, inline documentation, written content (READMEs, guides, design documents, reviews), test quality, scenario coverage, threat model completeness and design document structure. The criteria, their three anchors per level and the sources are in [QUALITY-PACK.md](QUALITY-PACK.md).
+
+- It is a separate pass over finished runs. `judge --run DIR --criteria-pack quality` writes `judgments-quality.json` and does not read or change `judgments.json`, so `qualityOfRun` and every existing report stay as they are. `--plan` prints the number of judge calls and calls nothing. `--mode`, `--baseline` and `--profile` do not apply to it.
+- A criterion applies only when the task asked for the artifact. A dimension the task did not ask for is n/a with the reason, never a fail. An artifact the task asked for and the agent did not produce scores fail without a judge call.
+- The judge grades only what the agent changed, quotes the evidence, and a quote that is not in the output drops the verdict one level, as in the rubric pass.
+- Em dashes, en dashes, curly quotes, stock filler words and sentences over 35 words are counted by a program, not judged.
+- `report` and `report-2x2` take `--criteria-pack quality` and add a "Quality dimensions" table. Without the flag their output is byte-identical to before. `calibrate export` and `calibrate score` take it too, so a person can rate a sample.
+- No sample has been rated yet. Read the scores as a way to see where arms differ, not as a measure.
 
 ## Calibration
 `calibrate export` writes a blinded `sheet.json`/`sheet.md` and a separate `key.json`. Fill the labels,

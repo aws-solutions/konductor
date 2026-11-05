@@ -285,3 +285,36 @@ test('dimension scores are weighted, count absent criteria as fail and leave n/a
   assert.deepEqual([d.modularity.judged, d.modularity.absent], [3, 1]);
   assert.deepEqual(d.maintainability, { score: null, judged: 0, absent: 0 });
 });
+
+// ---- documentation ----
+
+const read = (f) => fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8');
+
+test('the README has the pack section and the question-table row, and its commands use flags the CLI accepts', () => {
+  const doc = read('README.md');
+  assert.match(doc, /^## Quality dimensions pack$/m);
+  assert.match(doc, /\[QUALITY-PACK\.md\]\(QUALITY-PACK\.md\)/);
+  assert.match(doc, /\| `judge --run \$RUNS --criteria-pack quality` \(add `--plan` first\)|`judge --run \$RUNS --criteria-pack quality` \(add `--plan` first\)/);
+  const { checkArgs } = require('../lib/cli-flags.js');
+  assert.equal(checkArgs('judge', { _: [], run: 'x', 'criteria-pack': 'quality', plan: true }), null);
+  assert.equal(checkArgs('report', { _: [], run: 'x', 'criteria-pack': 'quality' }), null);
+});
+
+test('the pack document lists every criterion of the pack file once, with its dimension and weight', () => {
+  const doc = read('QUALITY-PACK.md');
+  for (const c of pack.criteria) {
+    const rows = doc.split('\n').filter((l) => l.startsWith(`| ${c.id} |`));
+    assert.equal(rows.length, 1, c.id);
+    assert.ok(rows[0].includes(`| ${c.weight} |`), `${c.id} weight`);
+    assert.ok(rows[0].includes(c.auto ? '| program |' : '| judge |'), `${c.id} scorer`);
+  }
+});
+
+test('the pack document and the README section follow the pack\'s own typography rule', () => {
+  const readme = read('README.md');
+  const section = readme.slice(readme.indexOf('## Quality dimensions pack'), readme.indexOf('## Calibration'));
+  for (const [name, text] of [['QUALITY-PACK.md', read('QUALITY-PACK.md')], ['README section', section]]) {
+    assert.deepEqual(P.DETECTORS.typography(P.proseOf(P.changeStats([file('d.md', text)]), ['d.md']), pack), [], name);
+    assert.deepEqual(P.DETECTORS['long-sentences'](P.proseOf(P.changeStats([file('d.md', text)]), ['d.md']), pack), [], name);
+  }
+});
