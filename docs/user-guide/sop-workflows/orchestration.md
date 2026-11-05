@@ -106,6 +106,11 @@ project's own structure.
 - **Fix cycles are a shared budget.** `max_fix_cycles` (default `2`) is per feature *for the whole
   run*: steps 7, 8, and 9 draw from one count, so a feature with sticky findings cannot churn.
   Step 10 has its own run-level counter, because documentation validation is project-wide.
+  The session stores the cap when it is minted, and the stored value stays the source of truth on
+  resume. Resuming with a different `max_fix_cycles` (an omitted one counts as the default `2`)
+  stops the run until you keep the stored value or approve the new one; an approved change is
+  logged in the session and reported in the summary. An unattended run stops and ends BLOCKED
+  instead, so re-invoke with the stored value to continue it.
 - **Parallelism requires worktrees.** Features sharing one working directory run sequentially.
   With `feature_isolation: worktree`, up to four features run at once. Phases themselves are
   always sequential.

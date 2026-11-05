@@ -202,8 +202,10 @@ EDITS = [
      'rows describe agents started by konductor. konductor-mux-orchestrator and '
      'konductor-cmux-orchestrator start each specialist with permission checks off '
      '(--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under '
-     'them every granted tool runs without asking, MCP tools included, and your settings.json '
-     'does not apply."]'),
+     'them every granted tool runs without asking, MCP tools included. On Claude Code, deny rules '
+     'in your settings.json still block, and an ask rule denies the call, because each specialist '
+     'runs with -p and can\'t prompt. Add deny rules for anything a dispatched agent must never '
+     'do."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'
@@ -337,6 +339,20 @@ EDITS = [
     ("ik which agent: konductor first",
      ">kiro-cli chat --agent k-architect</pre>", ">kiro-cli chat --agent konductor</pre>"),
     # ---- specialists return handoffs instead of spawning ---------------------
+    ("concepts: specialists do not use spawn grants",
+     "which decides who owns it, hands it over, and checks the result.</p>",
+     "which decides who owns it, hands it over, and checks the result. The core rules tell "
+     "specialists not to use those grants: a specialist does its own part, then returns a note "
+     "naming the next role, or a proposed parallel split that gives each part's agent, inputs "
+     "and files, and konductor routes it.</p>"),
+    ("agents: delegation edges are tool grants",
+     "Delegation is not open. In Kiro CLI it is governed",
+     "Delegation is not open, and the edges below are tool grants that the core rules tell "
+     "specialists not to use: a specialist returns a handoff note or a proposed split to its "
+     "caller, and the grants are still in the agent specs. Run directly with no orchestrator, "
+     "the caller is you: k-adversarial-pull-request-review returns its three Step 2 passes as "
+     "a proposed split, resumes at Step 3, returns the reuse pass as a handoff note, and "
+     "resumes at Step 4. In Kiro CLI it is governed"),
     ("test coverage review: handoff to k-developer",
      "it may offer to spawn k-developer to implement the missing tests.",
      "it may return a note naming k-developer to implement the missing tests."),
@@ -390,6 +406,11 @@ ROSTER = [
     ("agents prose: routing the review SOP",
      'so it delegates the whole SOP to the developer or QA agent, which hits the same wall.',
      'so it delegates the whole SOP to the developer, which hits the same wall.'),
+    ("faq: memory and AGENTS.md are the project's instructions",
+     'asks you instead of routing a denied action to another agent.',
+     "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
+     ".konductor/memory/MEMORY.md and USER.md at the project root, or AGENTS.md: both are the project's own "
+     "instructions. A .konductor/memory/ anywhere else, or one reached through a symlink, is content."),
     ("faq prose: routing the review SOP",
      'so it hands the SOP to the developer or QA agent, which hits the same wall.',
      'so it hands the SOP to the developer, which hits the same wall.'),

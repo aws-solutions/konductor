@@ -158,8 +158,10 @@ against the rule above, fan it out with the briefs the split gives,
 and check the files each part actually touched when it returns; if two
 parts touched the same file, confirm both edits survived before
 reporting done, or have one agent reconcile that file. If the note or
-split names an SOP step to resume at, send the results back to that
-specialist to finish the SOP from the named step.
+split names an SOP step to resume at, send that specialist the SOP name, the
+step, the payload its note or split carries (or the handoff file path it
+names), and the results, so it finishes the SOP from the named step without
+re-running earlier steps.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent

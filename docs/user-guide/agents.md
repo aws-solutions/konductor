@@ -104,7 +104,9 @@ names `fs_write` or `shell`. Claude Code values come from `clientConfig.claudeCl
 These rows describe agents started by `konductor`. `konductor-mux-orchestrator` and
 `konductor-cmux-orchestrator` start each specialist with permission checks off
 (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so under them
-every granted tool runs without asking, MCP tools included, and your `settings.json` does not apply.
+every granted tool runs without asking, MCP tools included. On Claude Code, deny rules in your
+`settings.json` still block, and an ask rule denies the call, because each specialist runs with `-p`
+and can't prompt. Add deny rules for anything a dispatched agent must never do.
 
 Three observations that are not obvious and do affect what you should trust:
 
@@ -160,6 +162,10 @@ access could still start a new agent session by running `kiro-cli` or `claude` f
 `k-architect`, `k-developer` and `k-quality-assurance` have shell pre-approved in Kiro CLI, and
 every specialist except `k-researcher` is granted `Bash` in Claude Code.
 
+The edges below are tool grants. The core rules tell specialists not to use them: a specialist
+does its own part, then returns a handoff note or a proposed parallel split to its caller. The
+grants themselves are still in the agent specs.
+
 ```mermaid
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
 flowchart LR
@@ -186,6 +192,10 @@ flowchart LR
 | `konductor-mux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
 | `konductor-cmux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
 | every `k-*` specialist | **nothing** | **nothing** |
+
+Run directly with no orchestrator, the caller is you. `k-adversarial-pull-request-review`
+returns its three Step 2 passes as a proposed split, resumes at Step 3, returns the reuse pass as
+a handoff note, and resumes at Step 4. Starting from `konductor` routes each hop for you.
 
 ### Why this matters: a real consequence
 

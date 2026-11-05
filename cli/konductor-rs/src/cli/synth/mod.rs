@@ -50,6 +50,7 @@ pub(crate) mod package;
 // path-containment predicate.
 pub(crate) mod path_safety;
 mod sidecar;
+mod skill_index;
 mod staging;
 
 #[allow(unused_imports)]
@@ -57,7 +58,7 @@ pub use model::{AgentSpec, AuxiliaryFile, CanonicalModel, SkillDef, SopDef};
 pub use parse_canonical::parse_canonical;
 
 /// Every failure path in `dispatch_synth` maps to this exit code -- never
-/// exit code 2, which is reserved for the "unresolved CRITICAL gate"
+/// exit code 2, which is reserved for the "unresolved finding"
 /// signal (see dispatch.rs's module docstring).
 const EXIT_USAGE_ERROR: u8 = 64;
 
