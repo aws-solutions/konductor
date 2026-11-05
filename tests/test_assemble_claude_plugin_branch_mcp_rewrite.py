@@ -133,6 +133,20 @@ def test_assembled_tree_has_no_repo_root_plugin_layout_leftovers(assembled):
     assert (assembled / ".claude-plugin" / "plugin.json").is_file()
 
 
+def test_assembled_tree_ships_the_listing_icon(assembled):
+    """The directory listing icon is the committed brand PNG, copied as is."""
+    icon = assembled / ".claude-plugin" / "icon.png"
+    data = icon.read_bytes()
+    assert data == (REPO_ROOT / "docs" / "assets" / "konductor-icon.png").read_bytes()
+    # The directory accepts a square PNG of 512 to 2048 px under 2 MB.
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    assert width == height
+    assert 512 <= width <= 2048
+    assert len(data) < 2 * 1024 * 1024
+
+
 def test_assembled_tree_ships_the_telemetry_hook(assembled):
     """The telemetry hook, its hooks.json, and the schema copy land in the
     flat tree, and the SubagentStart matcher covers every assembled agent."""

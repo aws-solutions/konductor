@@ -55,6 +55,8 @@ cp "$STAGE"/agents/*.md "$OUT/agents/"
   --out "$OUT/skills"
 
 cp README.md "$OUT/README.md"
+# The plugin directory's listing icon, a 1024 px render of docs/assets/konductor-logo.svg.
+cp "$REPO_ROOT/docs/assets/konductor-icon.png" "$OUT/.claude-plugin/icon.png"
 cp LICENSE.txt "$OUT/LICENSE.txt"
 cp NOTICE.txt "$OUT/NOTICE.txt"
 python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-readme-links.py" \

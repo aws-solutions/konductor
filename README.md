@@ -413,7 +413,7 @@ Everything else is bring-your-own:
 
 The [source repository](https://github.com/aws-solutions/konductor) has the layout below. The Claude
 Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/telemetry-schema.json`, its manifests,
-the README, `LICENSE.txt` and `NOTICE.txt`.
+its icon, the README, `LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/
