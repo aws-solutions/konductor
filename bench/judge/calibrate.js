@@ -11,6 +11,8 @@ const { buildBundle } = require('./bundle.js');
 const { rubricScore } = require('./score.js');
 const { effectiveLimits } = require('./config.js');
 const { percentAgreement, cohenKappa, spearman } = require('./agreement.js');
+const packLib = require('./pack/index.js');
+const { readQuality } = require('./packrun.js');
 
 const VERDICTS = ['pass', 'partial', 'fail'];
 
@@ -35,6 +37,16 @@ function fence(text) {
   return `${f}\n${text}\n${f}`;
 }
 
+function packMarkdown(pk) {
+  const rows = pk.criteria.map((c) => [`- **${c.id}** (${c.dimension}): ${c.question}`, `  - fail: ${c.levels.fail}`, `  - partial: ${c.levels.partial}`, `  - pass: ${c.levels.pass}`, `  - quote: ${c.quote}`].join('\n'));
+  const lines = [`Quality pack ${pk.id} (revision ${pk.revision}). Rate each criterion pass, partial or fail using only its three descriptions, and fill in \`pack.labels\` in sheet.json. Count where a description gives a number.`, rows.join('\n') || '(no criterion needs a rating for this output)'];
+  if (pk.computed.length) lines.push(`Scored by a program, not rated: ${pk.computed.join(', ')}.`);
+  if (pk.absent.length) lines.push(`Scored fail because the task asked for the artifact and none was produced: ${pk.absent.join(', ')}.`);
+  if (pk.na.length) lines.push(`Not applicable: ${pk.na.map((x) => `${x.id} (${x.reason})`).join('; ')}.`);
+  if (pk.changes) lines.push(`Changes made by the agent:\n\n${fence(pk.changes)}`);
+  return lines.join('\n\n');
+}
+
 function sheetMarkdown(items) {
   const head = '# Calibration sheet\n\nFill in labels in sheet.json: for each criterion set `pass`, `partial` or `fail`, judging only the output bundle against the rubric and answer key. Do not look at key.json until you are done.\n';
   const body = items.map((it) => [
@@ -44,12 +56,13 @@ function sheetMarkdown(items) {
     `Answer key:\n\n${it.answerKey ? fence(it.answerKey) : '(none)'}`,
     `Output bundle:\n\n${fence(it.bundle)}`,
     `Labels to fill in: ${it.rubric.map((r) => `${r.id}: ____`).join(' | ')}`,
+    ...(it.pack ? [packMarkdown(it.pack)] : []),
   ].join('\n\n'));
   return [head, ...body].join('\n\n---\n\n') + '\n';
 }
 
 // Writes sheet.json (blinded, editable), sheet.md (readable copy) and key.json (item -> arm).
-function exportSheet({ runDir, benchDir, n, seed, limits, explicitLimits = {}, redactions, outDir }) {
+function exportSheet({ runDir, benchDir, n, seed, limits, explicitLimits = {}, redactions, outDir, criteriaPack = null }) {
   const run = loadRun(runDir);
   const tasks = loadTasks(benchDir);
   const picked = drawSample(run.runs, n, seed);
@@ -60,14 +73,16 @@ function exportSheet({ runDir, benchDir, n, seed, limits, explicitLimits = {}, r
     if (!task) throw new Error(`task "${r.taskId}" is not in ${benchDir}/tasks`);
     const itemId = `item-${String(i + 1).padStart(3, '0')}`;
     const answerKeyFile = path.join(task.fixtureDir, ANSWER_KEY);
+    const built = buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions });
     items.push({
       itemId,
       taskPrompt: task.prompt,
       rubric: task.rubric.map(({ id, criterion, weight }) => ({ id, criterion, weight })),
       answerKey: fs.existsSync(answerKeyFile) ? fs.readFileSync(answerKeyFile, 'utf8') : null,
-      bundle: buildBundle({ runDir: r.dir, result: r.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, limits, explicitLimits), redactions }).text,
+      bundle: built.text,
       labels: Object.fromEntries(task.rubric.map((c) => [c.id, null])),
       notes: '',
+      ...(criteriaPack ? { pack: packItem(criteriaPack, task, built, redactions) } : {}),
     });
     key.items[itemId] = { armId: r.armId, taskId: r.taskId, replicate: r.replicate };
   });
@@ -78,6 +93,21 @@ function exportSheet({ runDir, benchDir, n, seed, limits, explicitLimits = {}, r
   fs.writeFileSync(path.join(dir, 'sheet.md'), sheetMarkdown(items));
   fs.writeFileSync(path.join(dir, 'key.json'), JSON.stringify(key, null, 2) + '\n');
   return { dir, sheetPath, n: items.length };
+}
+
+// The pack part of a sheet item: the criteria a person rates (the ones a judge is asked), with labels left empty.
+function packItem(thePack, task, built, redactions) {
+  const app = packLib.applicability(thePack, task, built.files);
+  const asked = app.criteria.filter((c) => c.status === 'judged').map((c) => c.criterion);
+  return {
+    id: thePack.id, revision: thePack.revision,
+    changes: packLib.redactedChanges(app.stats, redactions),
+    criteria: asked.map((c) => ({ id: c.id, dimension: c.dimension, question: c.question, levels: c.levels, quote: c.evidence.quote })),
+    computed: app.criteria.filter((c) => c.status === 'auto').map((c) => c.criterion.id),
+    absent: app.criteria.filter((c) => c.status === 'absent').map((c) => c.criterion.id),
+    na: app.criteria.filter((c) => c.status === 'na').map((c) => ({ id: c.criterion.id, reason: c.reason })),
+    labels: Object.fromEntries(asked.map((c) => [c.id, null])),
+  };
 }
 
 function assess({ agreement, kappa, spearman: rho }, t, n) {
@@ -171,6 +201,15 @@ function formatCalibration(res) {
   return lines.join('\n');
 }
 
+function formatPackCalibration(res) {
+  const lines = [`Quality pack ${res.pack.id} (revision ${res.pack.revision}): ${res.itemsLabeled}/${res.itemsWithPack} items with at least one rating. Judge vs human, per criterion:`];
+  for (const [j, s] of Object.entries(res.judges)) {
+    lines.push(`  ${j.padEnd(16)} ${s.status}  criteria=${s.nCriteria} agreement=${f2(s.agreement)} kappa=${f2(s.kappa)}${s.reasons.length ? `  (${s.reasons.join('; ')})` : ''}`);
+    for (const [d, v] of Object.entries(s.byDimension)) lines.push(`    ${d.padEnd(20)} n=${v.n} agreement=${f2(v.agreement)} kappa=${f2(v.kappa)}`);
+  }
+  return lines.join('\n');
+}
+
 /**
  * One kappa per rater from a review import's byRater: the lowest finite judge-vs-human kappa, the same reduction the
  * report applies to the pooled result. Sorted by rater id; `lowest` marks the minimum and `below` a kappa under kappaMin,
@@ -200,4 +239,39 @@ function formatRaterKappas(rows, kappaMin) {
   }).join(', ');
 }
 
-module.exports = { exportSheet, scoreLabels, formatCalibration, drawSample, raterKappas, formatRaterKappas };
+/**
+ * Judge versus human on the pack criteria of a labeled sheet. Reads sheet.json (items[].pack.labels), key.json and the run's
+ * judgments-quality.json. Only criteria a judge was asked and a person rated are paired; nothing is imputed.
+ */
+function scorePackLabels({ labelsFile, keyFile, thresholds }) {
+  const sheet = readJson(labelsFile);
+  const keyPath = keyFile || path.join(path.dirname(labelsFile), 'key.json');
+  const key = readJson(keyPath);
+  const runDir = path.resolve(path.dirname(keyPath), key.runDir);
+  const q = readQuality(runDir);
+  if (!q) throw new Error(`no judgments-quality.json in ${runDir}; run judge --criteria-pack first`);
+  const own = (o, k) => (o && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined);
+  const out = { pack: q.pack, itemsTotal: sheet.items.length, itemsWithPack: sheet.items.filter((it) => it.pack).length, itemsLabeled: 0, judges: {} };
+  for (const judge of q.judges) {
+    const pairs = [];
+    const byDim = {};
+    for (const it of sheet.items) {
+      if (!it.pack || it.pack.revision !== q.pack.revision) continue;
+      const k = own(key.items, it.itemId);
+      const rec = k && q.records.find((r) => r.judge === judge && r.armId === k.armId && r.taskId === k.taskId && r.replicate === k.replicate && !r.judgeError);
+      if (!rec) continue;
+      const verdicts = new Map(rec.criteria.filter((c) => c.status === 'judged').map((c) => [c.id, c]));
+      for (const c of it.pack.criteria) {
+        const human = own(it.pack.labels, c.id);
+        if (!VERDICTS.includes(human) || !verdicts.has(c.id)) continue;
+        pairs.push([human, verdicts.get(c.id).verdict]);
+        (byDim[c.dimension] ||= []).push([human, verdicts.get(c.id).verdict]);
+      }
+    }
+    out.judges[judge] = { ...stats(pairs, [], thresholds), byDimension: Object.fromEntries(Object.entries(byDim).map(([d, ps]) => [d, { n: ps.length, agreement: percentAgreement(ps), kappa: cohenKappa(ps) }])) };
+  }
+  out.itemsLabeled = sheet.items.filter((it) => it.pack && Object.values(it.pack.labels).some((v) => v !== null)).length;
+  return out;
+}
+
+module.exports = { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration, drawSample, raterKappas, formatRaterKappas };
