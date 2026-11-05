@@ -199,6 +199,105 @@ test('runAll with no leak writes an ok gate record', async () => {
   } finally { s.cleanup(); }
 });
 
+// ---- batch alarm: only a run window that saw the change fails the batch ----
+
+const runBatch = async (s, { replicates, onDone = null, gateStrict = false }) => {
+  const tasks = [...loadTasks(path.join(s.root, 'bench')).values()];
+  const logs = [];
+  let done = 0;
+  const log = (line) => {
+    logs.push(line);
+    if (onDone && /^done /.test(line)) onDone(++done);
+  };
+  const out = await runAll({ tasks, arms: [ARM], prepared: new Map(), prepErrors: new Map(), replicates, parallel: 1, budgetCredits: null, censoredFloor: 1, seed: 1, outDir: s.outDir, ctx: s.ctx, state: { results: [], spent: 0, charged: 0 }, log, gateStrict });
+  const record = JSON.parse(fs.readFileSync(path.join(s.outDir, gates.GATE_FILE), 'utf8'));
+  return { out, logs, record };
+};
+const touchInstalls = (s) => write(path.join(s.fakeHome, '.konductor/installs/outside.json'), '{"outside":true}');
+
+test('a change inside one run window raises the alarm and names the flagged and the unaffected runs', async () => {
+  const s = setup(PLANT);
+  try {
+    const { out, logs, record } = await runBatch(s, { replicates: 2 });
+    assert.equal(out.installsGate.ok, false);
+    assert.equal(record.ok, false);
+    assert.deepEqual(gates.installsChangedRuns(out.results), [{ arm: 'vanilla', task: 't1', rep: out.results.find((r) => r.status === 'error').replicate }]);
+    const alarm = logs.find((l) => l.startsWith('ISOLATION FAILURE'));
+    assert.match(alarm, /Runs whose window saw the change \(1 of 2\): vanilla\/t1\/#\d/);
+    assert.match(alarm, /Runs that saw no change \(1\): vanilla\/t1\/#\d/);
+    assert.match(alarm, /--gate-strict/);
+  } finally { s.cleanup(); }
+});
+
+test('a change between two runs is a warning: the batch stays ok and every run stands', async () => {
+  const s = setup(() => ({}));
+  try {
+    const { out, logs, record } = await runBatch(s, { replicates: 3, onDone: (n) => { if (n === 1) touchInstalls(s); } });
+    assert.deepEqual(out.results.map((r) => r.status), ['success', 'success', 'success']);
+    assert.equal(out.installsGate.ok, true);
+    assert.equal(record.ok, true);
+    assert.equal(record.outsideRuns, true);
+    assert.deepEqual(record.changed[0].added, ['outside.json']);
+    assert.match(record.window.from, /^\d{4}-\d\d-\d\dT/);
+    assert.match(record.warning, /^WARNING: .*outside\.json.* between .* and .*, outside every run window\. No run saw the change, so all 3 run\(s\) stand/);
+    assert.ok(logs.some((l) => l.startsWith('WARNING: ')));
+    assert.equal(logs.some((l) => l.startsWith('ISOLATION FAILURE')), false);
+    assert.deepEqual(gates.installsChangedRuns(out.results), []);
+  } finally { s.cleanup(); }
+});
+
+test('a change after the last run is a warning too', async () => {
+  const s = setup(() => ({}));
+  try {
+    const { out, logs, record } = await runBatch(s, { replicates: 2, onDone: (n) => { if (n === 2) touchInstalls(s); } });
+    assert.equal(out.results.filter((r) => r.status === 'success').length, 2);
+    assert.equal(record.ok, true);
+    assert.equal(record.outsideRuns, true);
+    assert.equal(logs.some((l) => l.startsWith('ISOLATION FAILURE')), false);
+  } finally { s.cleanup(); }
+});
+
+test('no change leaves the gate record exactly as before: no warning, window or outsideRuns keys, no extra log line', async () => {
+  const s = setup(() => ({}));
+  try {
+    const { logs, record } = await runBatch(s, { replicates: 2 });
+    assert.deepEqual(Object.keys(record), ['checkedAt', 'ok', 'changed', 'unreadable']);
+    assert.equal(record.ok, true);
+    assert.equal(logs.some((l) => /WARNING|ISOLATION/.test(l)), false);
+  } finally { s.cleanup(); }
+});
+
+test('--gate-strict: a change between runs still invalidates the batch, with the old message', async () => {
+  const s = setup(() => ({}));
+  try {
+    const { out, logs, record } = await runBatch(s, { replicates: 2, gateStrict: true, onDone: (n) => { if (n === 1) touchInstalls(s); } });
+    assert.equal(out.installsGate.ok, false);
+    assert.equal(record.ok, false);
+    assert.equal('outsideRuns' in record, false);
+    assert.ok(logs.some((l) => /^ISOLATION FAILURE: .*The runs of this batch are not trustworthy; see isolation-gate\.json\.$/.test(l)));
+    assert.equal(logs.some((l) => l.startsWith('WARNING')), false);
+  } finally { s.cleanup(); }
+});
+
+test('judgeBatch: skipped runs are not counted as unaffected, strict keeps the gate untouched, and an ok gate passes through', () => {
+  const bad = { ok: false, changed: [{ dir: '/h/.konductor/installs', before: { state: 'present' }, after: { state: 'present' }, added: [], removed: [], modified: ['.'] }], unreadable: [] };
+  const run = (replicate, extra = {}) => ({ armId: 'a', taskId: 't', replicate, status: 'success', flags: [], ...extra });
+  const results = [run(1), run(2, { status: 'budget_skipped' }), run(3, { flags: ['installsChanged'], status: 'error' })];
+  const loose = gates.judgeBatch({ gate: bad, results });
+  assert.deepEqual(loose.flagged, [{ arm: 'a', task: 't', rep: 3 }]);
+  assert.match(loose.alarm, /\(1 of 2\): a\/t\/#3\. Runs that saw no change \(1\): a\/t\/#1\./);
+  assert.equal(loose.gate, bad);
+  const strict = gates.judgeBatch({ gate: bad, results, strict: true });
+  assert.equal(strict.gate, bad);
+  assert.match(strict.alarm, /Treat this batch as invalid\.$/);
+  const ok = { ok: true, changed: [], unreadable: [] };
+  assert.deepEqual(gates.judgeBatch({ gate: ok, results }), { gate: ok, flagged: [{ arm: 'a', task: 't', rep: 3 }], alarm: null, warning: null });
+  const demoted = gates.judgeBatch({ gate: bad, results: [run(1), run(2)], window: { from: 'F', to: 'T' } });
+  assert.equal(demoted.gate.ok, true);
+  assert.deepEqual(demoted.gate.window, { from: 'F', to: 'T' });
+  assert.match(demoted.warning, / between F and T, outside every run window\. No run saw the change, so all 2 run\(s\) stand\./);
+});
+
 // Fail closed: a gate that cannot read the installs directory must not report "nothing changed".
 const readable = (p) => { try { fs.readdirSync(p); return true; } catch { return false; } };
 
