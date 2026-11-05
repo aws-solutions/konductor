@@ -159,7 +159,7 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   const heads = arms.filter((a) => a !== base);
   const unit = report.costUnit === 'usd' ? 'USD' : 'credits';
   const good = rows.filter((r) => r.outcome === 'good');
-  const rq = (r) => (r.outcome === 'infraError' || r.outcome === 'modelMismatch' ? null : qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights)?.score ?? null);
+  const rq = (r) => (r.outcome === 'infraError' || r.outcome === 'modelMismatch' ? null : qualityOfRun(r, weights)?.score ?? null);
   const taskOrder = [...new Set(rows.map((r) => r.task))].sort((a, b) => classRank(tasks.get(a)?.class) - classRank(tasks.get(b)?.class) || (a < b ? -1 : 1));
   const omitted = [];
 
@@ -197,7 +197,7 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   blocks.push(D.h(2, 'Scores with components'));
   blocks.push(scoreRowsTable(scores));
   blocks.push(D.list(Object.entries(FORMULAS).filter(([k]) => k !== 'capability').map(([k, v]) => `**${k}**: ${v}`)));
-  blocks.push(D.p(`Weights in use: hidden ${scores.weights.hidden}, checks ${scores.weights.checks}, rubric ${scores.weights.rubric}.`));
+  blocks.push(D.p(`Weights in use: hidden ${scores.weights.hidden}, checks ${scores.weights.checks}, rubric ${scores.weights.rubric}${scores.weights.pack > 0 ? `, quality pack ${scores.weights.pack}` : ''}.`));
 
   blocks.push(D.h(2, 'Cost and effort by arm'));
   const metrics = [

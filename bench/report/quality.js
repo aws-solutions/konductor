@@ -10,12 +10,14 @@ const { readQuality, FILE } = require('../judge/packrun.js');
 const { taskRevision } = require('../judge/revision.js');
 const { DEFAULTS } = require('../judge/config.js');
 const D = require('./doc.js');
+const { summarizeProcess, processBlocks } = require('./process.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const uniq = (xs) => [...new Set(xs)];
 
 const NOTE = 'Dimension scores are indicative: no person has rated a sample for this pack yet, so judge-versus-human agreement is unknown. They are not part of the quality score or the scorecard. A dimension marked n/a did not apply to that run (the task did not ask for it, or the change was too small to judge); n/a is never counted as a fail.';
+const scoredNote = (w) => `Dimension scores are indicative: no person has rated a sample for this pack yet, so judge-versus-human agreement is unknown. The pack is part of the quality score in this report, with weight ${w}: each run contributes one pack score, the mean over all criteria that applied to it, beside hidden tests, checks and the rubric. The table below splits that score by dimension. A dimension marked n/a did not apply to that run; n/a is never counted as a fail, and a run where nothing applied has no pack component.`;
 
 /** Records of one run (or merged runs) with the replicate numbers the report uses. */
 function recordsOf(run) {
@@ -37,7 +39,7 @@ function recordsOf(run) {
  * groups: [{ id, label, run, arm? }]. Each group is a loaded run (loadRun or loadRuns); `arm` limits it to one arm.
  * Throws when a group has no quality file or the groups were judged by different panels, backends or pack revisions.
  */
-function summarizeQuality({ groups, tasks, pack, disagreeScore = DEFAULTS.disagreeScore, strictPanel = false }) {
+function summarizeQuality({ groups, tasks, pack, disagreeScore = DEFAULTS.disagreeScore, strictPanel = false, scoredWeight = null }) {
   const loaded = groups.map((g) => ({ g, ...recordsOf(g.run) }));
   for (const l of loaded) if (!l.files.length) throw new Error(`no ${FILE} in ${(l.g.run.dirs || [l.g.run.dir]).join(', ')}; run bench.js judge --criteria-pack ${pack.id} --run DIR first`);
   const panels = uniq(loaded.flatMap((l) => l.files.map((f) => JSON.stringify({ judges: f.q.judges, backend: f.q.backend ?? 'kiro' }))));
@@ -47,12 +49,14 @@ function summarizeQuality({ groups, tasks, pack, disagreeScore = DEFAULTS.disagr
     if (!revisions.has(id)) revisions.set(id, tasks.has(id) ? taskRevision(tasks.get(id)) : null);
     return revisions.get(id);
   };
-  let stale = 0;
+  const stale = { pack: 0, task: 0 };
   let errors = 0;
+  const staleRevisions = new Set();
   const out = loaded.map((l) => {
     const usable = l.records.filter((r) => {
       if (l.g.arm && r.armId !== l.g.arm) return false;
-      if (r.packRevision !== pack.revision || r.taskRevision !== currentRevision(r.taskId)) { stale++; return false; }
+      if (r.packRevision !== pack.revision) { stale.pack++; staleRevisions.add(r.packRevision); return false; }
+      if (r.taskRevision !== currentRevision(r.taskId)) { stale.task++; return false; }
       if (r.judgeError || !r.dimensions) { errors++; return false; }
       return true;
     });
@@ -87,7 +91,8 @@ function summarizeQuality({ groups, tasks, pack, disagreeScore = DEFAULTS.disagr
     dimensions: pack.dimensions.map((d) => ({ id: d.id, label: d.label })), groups: out,
     judges: uniq(loaded.flatMap((l) => l.files.flatMap((f) => f.q.judges))).sort(), backend: loaded[0].files[0].q.backend ?? 'kiro',
     spend: { credits: loaded.reduce((n, l) => n + l.files.reduce((m, f) => m + (f.q.spentCredits || 0), 0), 0), usd: loaded.some((l) => l.files.some((f) => f.q.spentUsd !== undefined)) ? loaded.reduce((n, l) => n + l.files.reduce((m, f) => m + (f.q.spentUsd || 0), 0), 0) : null },
-    stale, errors, note: NOTE,
+    process: summarizeProcess({ groups, tasks }),
+    stale: stale.pack + stale.task, staleBy: stale, staleRevisions: [...staleRevisions].sort(), usable: out.reduce((n, g) => n + g.runs, 0), errors, ...(scoredWeight > 0 ? { scoredWeight } : {}), note: scoredWeight > 0 ? scoredNote(scoredWeight) : NOTE,
   };
 }
 
@@ -103,7 +108,7 @@ function qualityBlocks(s) {
   const head = ['dimension', ...s.groups.map((g) => g.label)];
   const rows = s.dimensions.map((d) => [d.label, ...s.groups.map((g) => cellText(g.dimensions[d.id]))]);
   const blocks = [
-    D.h(2, 'Quality dimensions (indicative, not in the quality score)'),
+    D.h(2, s.scoredWeight > 0 ? 'Quality dimensions (indicative, part of the quality score)' : 'Quality dimensions (indicative, not in the quality score)'),
     D.note(s.note),
     D.table(head, rows),
     D.p(`Score is 0 to 100: the mean over runs of the judge mean of pass 1, partial 0.5, fail 0, weighted by criterion. n is the number of runs where the dimension applied. JUDGES DIFFER marks a mean spread between the highest and lowest judge above ${s.disagreeScore} on a 0 to 1 scale. Pack ${s.pack.id}, revision ${s.pack.revision}; judges: ${s.judges.join(', ')}.`),
@@ -111,7 +116,15 @@ function qualityBlocks(s) {
   const reasons = s.dimensions.flatMap((d) => s.groups.flatMap((g) => g.dimensions[d.id].naReasons.slice(0, 2).map((r) => `${d.label}, ${g.label}: ${r.count} run(s) n/a, ${r.reason}`)));
   if (reasons.length) blocks.push(D.h(3, 'Why a dimension was n/a'), D.list(reasons));
   blocks.push(D.p(`Pack judging spend: ${s.spend.usd !== null ? `$${s.spend.usd.toFixed(4)} USD` : `${s.spend.credits.toFixed(2)} credits`}, kept in judgments-quality.json and not in the credit ledger.`));
-  if (s.stale || s.errors) blocks.push(D.p(`Left out: ${s.stale} record(s) made against another pack or task revision, ${s.errors} with a judge error.`));
+  if (s.stale || s.errors) {
+    const parts = [];
+    if (s.staleBy.pack) parts.push(`${s.staleBy.pack} record(s) made against pack revision ${s.staleRevisions.join(', ')} (the pack is now ${s.pack.revision})`);
+    if (s.staleBy.task) parts.push(`${s.staleBy.task} record(s) made against an earlier version of the task prompt, rubric or answer key`);
+    if (s.errors) parts.push(`${s.errors} record(s) with a judge error`);
+    blocks.push(D.p(`Left out, not mixed in: ${parts.join('; ')}. Rerun bench.js judge --criteria-pack ${s.pack.id} --run DIR to refresh them; a rerun replaces the old record.`));
+    if (!s.usable) blocks.push(D.note('No run has a current pack record, so every cell above is n/a for that reason, not because the dimensions did not apply.'));
+  }
+  blocks.push(...processBlocks(s.process, D));
   return blocks;
 }
 

@@ -20,7 +20,7 @@ function buildContrastDocument({ c, run, rows, scores, card, facts, weights, det
   const charts = new Map();
   const add = (name, svg, alt) => { charts.set(name, svg); blocks.push(D.chart(name, svg, alt)); };
   const unit = c.costUnit === 'usd' ? 'USD' : 'credits';
-  const rq = (r) => (r.outcome === 'infraError' || r.outcome === 'modelMismatch' ? null : qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights)?.score ?? null);
+  const rq = (r) => (r.outcome === 'infraError' || r.outcome === 'modelMismatch' ? null : qualityOfRun(r, weights)?.score ?? null);
   const groupOf = c.by === 'task' ? (r) => r.task : (r) => r.cls;
 
   blocks.push(D.h(1, `Contrast: ${c.heads.join(', ')} vs ${c.base} (${detail})`));

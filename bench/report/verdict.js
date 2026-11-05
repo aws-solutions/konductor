@@ -133,13 +133,13 @@ function normalize(r, src) {
 
 const qualityList = (rows, weights) => rows
   .filter((r) => r.outcome !== 'infraError' && r.outcome !== 'modelMismatch')
-  .map((r) => qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights)?.score)
+  .map((r) => qualityOfRun(r, weights)?.score)
   .filter(fin);
 
 const cellKey = (r) => `${r.src}|${r.task}`;
 const isNonScored = (r, weights) => {
   if (r.outcome === 'infraError' || r.outcome === 'modelMismatch') return true;
-  return !qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights);
+  return !qualityOfRun(r, weights);
 };
 
 /** How many of a side's runs have no score, and why. */
@@ -148,7 +148,7 @@ function nonScoredOf(rows, weights) {
   for (const r of rows) {
     if (r.outcome === 'infraError') by.infraError++;
     else if (r.outcome === 'modelMismatch') by.modelMismatch++;
-    else if (!qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights)) by.noComponent++;
+    else if (!qualityOfRun(r, weights)) by.noComponent++;
   }
   const n = by.infraError + by.modelMismatch + by.noComponent;
   return { n, total: rows.length, share: rows.length ? n / rows.length : 0, ...by };
@@ -169,7 +169,7 @@ function pairCells(headRows, baseRows, weights) {
     for (const r of rows) {
       const c = slot(r);
       if (isNonScored(r, weights)) continue;
-      const q = qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights);
+      const q = qualityOfRun(r, weights);
       c[side].push(q.score);
       // A failed run with nothing to score is a filled-in zero, not a scoring on some components, so it carries no signature.
       if (r.zeroFilled) continue;

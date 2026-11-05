@@ -15,6 +15,7 @@ const { loadTasks } = require('../runner/lib/tasks.js');
 const { analyze } = require('./generate.js');
 const { enrichOrch } = require('./orch.js');
 const { loadScoring, qualityOfRun } = require('./scores.js');
+const { spawnsOf } = require('./process.js');
 const { normalize } = require('./verdict.js');
 const { pairedCellCI, MIN_CELLS } = require('./stats.js');
 const D = require('./doc.js');
@@ -32,6 +33,7 @@ const MIN_REPS = 2;
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const uniq = (xs) => [...new Set(xs)];
+const qualityWeightsText = (w) => `hidden tests ${w.hidden}, checks ${w.checks}, rubric ${w.rubric}${w.pack > 0 ? `, quality pack ${w.pack}` : ''}`;
 const labelOf = (spec) => `${HARNESS_NAME[spec.harness]} ${spec.role}`;
 
 /** claude-sonnet-5.5, us.anthropic.claude-sonnet-5-5 and claude-sonnet-5-5 name the same model. */
@@ -39,7 +41,7 @@ function canonicalModel(id) {
   return String(id ?? 'unknown').replace(/^(?:us|eu|apac|global)\.anthropic\./, '').replace(/\./g, '-');
 }
 
-function loadCell(spec, dirs, { tasks, weights, scoringFile }) {
+function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack }) {
   const where = `cell ${spec.id} (${labelOf(spec)})`;
   if (!Array.isArray(dirs) || !dirs.length) throw new Error(`${where}: no run directory given`);
   let run;
@@ -55,7 +57,7 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile }) {
   if (spec.role === 'konductor' && isVanillaArm) throw new Error(`${where}: the arm is ${armId}; a konductor cell needs a konductor arm`);
   if (spec.harness === 'claude-code' && !armId.startsWith('cc-')) throw new Error(`${where}: arm ${armId} is not a Claude Code arm`);
 
-  const a = analyze({ run, tasks, baseline: armId, scoringFile });
+  const a = analyze({ run, tasks, baseline: armId, scoringFile, qualityPack });
   if (a.scores.unit !== spec.unit) throw new Error(`${where}: cost unit is ${a.scores.unit}, expected ${spec.unit}; units are never mixed across harnesses`);
 
   const j = run.judgments;
@@ -76,8 +78,8 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile }) {
     const n = normalize(r, 0);
     const result = executed[i].result;
     const excluded = r.outcome === 'infraError' || r.outcome === 'modelMismatch';
-    const q = excluded ? null : qualityOfRun({ hidden: n.hidden, checks: n.checks, rubric: n.rubric }, weights);
-    const spawns = result.orch?.spawns ?? result.claudeCode?.spawned ?? result.subagentCalls ?? null;
+    const q = excluded ? null : qualityOfRun(n, weights);
+    const spawns = spawnsOf(result);
     return {
       task: r.task, rep: r.rep, outcome: r.outcome, excluded, quality: q ? q.score : null, hasRubric: r.rubric !== null,
       cost: fin(r.credits) ? r.credits : null, censored: Boolean(r.censored), wallMs: r.wall, spawns: fin(spawns) ? spawns : null,
@@ -198,8 +200,8 @@ function costRatio(van, kon) {
  */
 function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile, qualityPack = null } = {}) {
   const tasks = loadTasks(benchDir, { extraDirs });
-  const weights = loadScoring(scoringFile);
-  const loaded = SPECS.map((spec) => loadCell(spec, dirs?.[spec.id], { tasks, weights, scoringFile }));
+  const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
+  const loaded = SPECS.map((spec) => loadCell(spec, dirs?.[spec.id], { tasks, weights, scoringFile, qualityPack }));
   const { tasks: taskIds, notes } = checkComparable(loaded);
   const cells = loaded.map((c) => summarizeCell(c, taskIds));
   const byId = Object.fromEntries(cells.map((c) => [c.id, c]));
@@ -229,7 +231,7 @@ function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile, qualityPa
   let qualityDimensions = null;
   if (qualityPack) {
     const { summarizeQuality } = require('./quality.js');
-    qualityDimensions = summarizeQuality({ groups: loaded.map((c) => ({ id: c.spec.id, label: labelOf(c.spec), run: c.run })), tasks, pack: qualityPack, strictPanel: true });
+    qualityDimensions = summarizeQuality({ groups: loaded.map((c) => ({ id: c.spec.id, label: labelOf(c.spec), run: c.run })), tasks, pack: qualityPack, strictPanel: true, scoredWeight: weights.pack ?? null });
   }
   return {
     schemaVersion: 1, kind: 'factorial-2x2', tasks: taskIds, replicates: { min: reps.min, perTask: reps.perTask },
@@ -322,7 +324,7 @@ function renderFactorial(res, { charts = null } = {}) {
     D.note(res.descriptive
       ? `${res.descriptiveReason}. These are the observed numbers of one pilot, not statistics: no interval is shown and no effect should be called real from them.`
       : `Intervals are paired by task (t interval on the per-task differences) over ${res.tasks.length} tasks with at least ${MIN_REPS} replicates per cell.`),
-    D.p(`Model ${res.model}. Quality is the repository score (hidden tests 0.5, checks 0.2, rubric 0.3, renormalised over what a run has, times 100). Judges: ${res.judges.panel.join(', ')} (${res.judges.backend}). Tasks: ${res.tasks.join(', ')}.`),
+    D.p(`Model ${res.model}. Quality is the repository score (${qualityWeightsText(res.weights)}, renormalised over what a run has, times 100). Judges: ${res.judges.panel.join(', ')} (${res.judges.backend}). Tasks: ${res.tasks.join(', ')}.`),
     D.h(2, 'Quality by cell'),
     D.table(head, [...taskRows,
       ['**mean over tasks**', ...cols.map((c) => `**${f1(c.quality)}**`)],

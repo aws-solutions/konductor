@@ -13,10 +13,10 @@ const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : nu
 
 /**
  * run: loaded run (loadRun or loadRuns). ctx: the `ctx` returned by buildReport (rubric index, judges, class lookup,
- * cost basis). Budget-skipped runs are not rows; they are counted by `skippedCount`.
+ * cost basis, and packScoreOf when the quality pack is part of the score). Budget-skipped runs are not rows; they are counted by `skippedCount`.
  */
 function buildRows(run, tasks, ctx) {
-  const { rubricIdx, judges, rawScoreOf, classOf, noQuestionTasks, basis } = ctx;
+  const { rubricIdx, judges, rawScoreOf, classOf, noQuestionTasks, basis, packScoreOf = null } = ctx;
   const rows = [];
   for (const e of run.runs) {
     const r = e.result;
@@ -46,6 +46,8 @@ function buildRows(run, tasks, ctx) {
       commitSha: r.commitSha ?? null, contentHash: r.contentHash ?? null, dirty: r.dirty ?? null, armConfig: r.armConfig ?? null,
       armPrefix: r.armPrefix ? { sha256: r.armPrefix.sha256 ?? null, bytes: r.armPrefix.bytes ?? null } : null,
       tripwire: (r.flags || []).includes('homeTripwire') || (r.flags || []).includes('homeTripwireTruncated'),
+      // Only when the scoring file weights the pack, so a default row has exactly the fields it always had.
+      ...(packScoreOf ? { pack: packScoreOf(e.armId, e.taskId, e.replicate) } : {}),
     });
   }
   return rows;

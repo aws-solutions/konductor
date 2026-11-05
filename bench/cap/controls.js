@@ -126,7 +126,7 @@ function qualityOf(rows, arm, task, weights) {
   let unscored = 0;
   for (const r of mine) {
     if (r.outcome === 'infraError' || r.outcome === 'modelMismatch') { excluded[r.outcome]++; continue; }
-    const q = qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights);
+    const q = qualityOfRun(r, weights);
     if (q) scores.push(q.score);
     else if (r.outcome === 'timeout' || r.outcome === 'error') { scores.push(0); failedAsZero++; } else unscored++;
   }

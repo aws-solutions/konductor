@@ -61,7 +61,7 @@ function agreementOf(records) {
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
 function armQuality(rows, weights) {
-  const s = rows.filter((r) => r.outcome !== 'infraError' && r.outcome !== 'modelMismatch').map((r) => qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights)).filter(Boolean).map((q) => q.score);
+  const s = rows.filter((r) => r.outcome !== 'infraError' && r.outcome !== 'modelMismatch').map((r) => qualityOfRun(r, weights)).filter(Boolean).map((q) => q.score);
   return mean(s);
 }
 

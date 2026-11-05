@@ -31,7 +31,7 @@ function armScoresFromRows(rows, weights) {
   for (const r of rows) {
     const a = (out[r.arm] ??= { scores: [], credits: [], keys: [], excluded: { infraError: 0, modelMismatch: 0 }, failedAsZero: 0, unscored: 0, runs: 0, timeouts: 0, timeoutTasks: {}, components: {} });
     if (r.outcome === 'infraError' || r.outcome === 'modelMismatch') { a.excluded[r.outcome]++; continue; }
-    const q = qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights);
+    const q = qualityOfRun(r, weights);
     if (q) {
       a.scores.push(q.score / 100);
       const byTask = (a.components[r.task] ??= {});

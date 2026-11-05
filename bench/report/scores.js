@@ -13,6 +13,10 @@ const MIN_N = 3;
 const CEILING = 95;
 const DEFAULT_WEIGHTS = { hidden: 0.5, checks: 0.2, rubric: 0.3 };
 const COMPONENTS = Object.keys(DEFAULT_WEIGHTS);
+// An opt-in fourth component: the quality-pack score of a run. It exists only in a scoring file that gives it a weight, and
+// only report and report-2x2 with --criteria-pack can supply it.
+const PACK_COMPONENT = 'pack';
+const componentsOf = (weights) => (weights[PACK_COMPONENT] > 0 ? [...COMPONENTS, PACK_COMPONENT] : COMPONENTS);
 const DEFAULT_PROFILE = path.join(__dirname, '..', 'profiles', 'scoring.json');
 const RELIABILITY_FAILS = ['timeout', 'error', 'infraError', 'modelMismatch'];
 
@@ -32,26 +36,33 @@ function formulasForClaudeCode() {
 
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 
-/** Weights file: { weights: { hidden, checks, rubric } }, each a number of 0 or more, at least one above 0. */
-function loadScoring(file = DEFAULT_PROFILE) {
+const PACK_FORMULA = ' Pack quality (opt-in, set by a weight for "pack" in the scoring file): per run, the weighted mean over the quality-pack criteria that applied (pass 1, partial 0.5, fail 0, weighted by criterion), averaged over the judges, 0..1. A run where no criterion applied has no pack component and the other weights are renormalised, as for any missing component.';
+
+/**
+ * Weights file: { weights: { hidden, checks, rubric, pack? } }, each a number of 0 or more, at least one above 0. A weight above 0
+ * for pack is refused unless the caller can supply pack scores (allowPack), so a command that cannot never drops the component quietly.
+ */
+function loadScoring(file = DEFAULT_PROFILE, { allowPack = false } = {}) {
   let data;
   try { data = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { throw new Error(`scoring profile ${file}: ${e.code === 'ENOENT' ? 'file not found' : e.message}`); }
   const w = data?.weights;
   if (!w || typeof w !== 'object' || Array.isArray(w)) throw new Error(`scoring profile ${file}: "weights" must be an object`);
-  for (const k of Object.keys(w)) if (!COMPONENTS.includes(k)) throw new Error(`scoring profile ${file}: unknown component "${k}" (known: ${COMPONENTS.join(', ')})`);
+  const known = [...COMPONENTS, PACK_COMPONENT];
+  for (const k of Object.keys(w)) if (!known.includes(k)) throw new Error(`scoring profile ${file}: unknown component "${k}" (known: ${known.join(', ')})`);
   const out = {};
-  for (const k of COMPONENTS) {
+  for (const k of known) {
     const v = w[k] ?? 0;
     if (!finite(v) || v < 0) throw new Error(`scoring profile ${file}: weight for ${k} must be a number of 0 or more`);
-    out[k] = v;
+    if (k !== PACK_COMPONENT || v > 0) out[k] = v;
   }
-  if (!COMPONENTS.some((k) => out[k] > 0)) throw new Error(`scoring profile ${file}: at least one weight must be above 0`);
+  if (out[PACK_COMPONENT] > 0 && !allowPack) throw new Error(`scoring profile ${file}: a weight for pack needs the quality-pack scores, which only report and report-2x2 with --criteria-pack provide`);
+  if (!known.some((k) => out[k] > 0)) throw new Error(`scoring profile ${file}: at least one weight must be above 0`);
   return out;
 }
 
-/** { score 0..100, used: [component names] } for one run, or null when it has no weighted component. */
+/** { score 0..100, used: [component names] } for one run (a row or any object with the component values), or null when it has no weighted component. */
 function qualityOfRun(parts, weights = DEFAULT_WEIGHTS) {
-  const used = COMPONENTS.filter((k) => finite(parts[k]) && (weights[k] ?? 0) > 0);
+  const used = componentsOf(weights).filter((k) => finite(parts[k]) && (weights[k] ?? 0) > 0);
   if (!used.length) return null;
   const total = used.reduce((n, k) => n + weights[k], 0);
   return { score: (used.reduce((n, k) => n + weights[k] * parts[k], 0) / total) * 100, used };
@@ -63,11 +74,12 @@ const pct = (v, d = 0) => (v === null || v === undefined ? 'n/a' : `${v.toFixed(
 function qualityBlock(rows, weights) {
   const excluded = { infraError: 0, modelMismatch: 0, noComponents: 0 };
   const scores = [];
-  const comp = Object.fromEntries(COMPONENTS.map((k) => [k, { n: 0, weight: weights[k] }]));
+  const active = componentsOf(weights);
+  const comp = Object.fromEntries(active.map((k) => [k, { n: 0, weight: weights[k] }]));
   const raws = [];
   for (const r of rows) {
     if (r.outcome === 'infraError' || r.outcome === 'modelMismatch') { excluded[r.outcome]++; continue; }
-    const q = qualityOfRun({ hidden: r.hidden, checks: r.checks, rubric: r.rubric }, weights);
+    const q = qualityOfRun(r, weights);
     if (!q) { excluded.noComponents++; continue; }
     scores.push(q.score);
     for (const k of q.used) comp[k].n++;
@@ -75,7 +87,7 @@ function qualityBlock(rows, weights) {
   }
   const ci = scores.length ? meanCI(scores) : { mean: null, ciLow: null, ciHigh: null };
   const n = scores.length;
-  const used = COMPONENTS.filter((k) => comp[k].n > 0);
+  const used = active.filter((k) => comp[k].n > 0);
   const left = Object.entries(excluded).filter(([, v]) => v).map(([k, v]) => `${v} ${k}`);
   return {
     value: ci.mean, ciLow: ci.ciLow, ciHigh: ci.ciHigh, n, anecdotal: n < MIN_N, ceiling: ci.mean !== null && ci.mean >= CEILING,
@@ -183,7 +195,8 @@ function computeScores({ rows, baseline, weights = DEFAULT_WEIGHTS, unit = 'cred
       arms[arm][scope] = { quality, reliability: reliabilityBlock(mine), autonomy: autonomyBlock(mine), efficiency: efficiencyBlock(mine, baseRows, baseQuality, quality, unit) };
     }
   }
-  return { weights, unit, formulas: harness === 'claude-code' ? formulasForClaudeCode() : FORMULAS, baseline: base, scopes, arms, rows: flatRows(arms, scopes, base) };
+  const formulas = harness === 'claude-code' ? formulasForClaudeCode() : FORMULAS;
+  return { weights, unit, formulas: weights[PACK_COMPONENT] > 0 ? { ...formulas, quality: formulas.quality + PACK_FORMULA } : formulas, baseline: base, scopes, arms, rows: flatRows(arms, scopes, base) };
 }
 
-module.exports = { computeScores, qualityOfRun, loadScoring, DEFAULT_WEIGHTS, FORMULAS, MIN_N, CEILING, RELIABILITY_FAILS };
+module.exports = { computeScores, qualityOfRun, loadScoring, componentsOf, PACK_COMPONENT, DEFAULT_WEIGHTS, FORMULAS, MIN_N, CEILING, RELIABILITY_FAILS };

@@ -56,11 +56,13 @@ function readSpend(run) {
 }
 
 /** Everything a run report needs, without writing a file. */
-function analyze({ run, tasks, baseline, scoringFile }) {
+function analyze({ run, tasks, baseline, scoringFile, qualityPack = null }) {
   const base = baseline ?? defaultBaseline(run);
   const built = buildReport({ run, tasks, baseline: base });
-  const weights = loadScoring(scoringFile);
-  const rows = buildRows(run, tasks, built.ctx);
+  const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
+  // Only a scoring file that weights the pack reads the pack judgments; otherwise rows and scores are exactly as before.
+  const ctx = weights.pack > 0 ? { ...built.ctx, packScoreOf: require('./packscore.js').packScores({ run, tasks, pack: qualityPack }).scoreOf } : built.ctx;
+  const rows = buildRows(run, tasks, ctx);
   const scores = computeScores({ rows, baseline: base, weights, unit: built.report.costUnit === 'usd' ? 'USD' : 'credits', harness: run.harness ?? null });
   const skipped = skippedCount(run);
   const facts = collectFacts({ run, tasks, rows, ctx: built.ctx, report: built.report, skipped, baseline: scores.baseline, weights, calibration: readCalibration(run) });
@@ -93,7 +95,7 @@ function writeOutputs({ dir, name, blocks, charts, title, format, json }) {
 
 function generateRunReport({ run, tasks, baseline, out, detail, format, scoringFile, defaultDir, profile = null, phases = null, qualityPack = null }) {
   enrichOrch(run);
-  const a = analyze({ run, tasks, baseline, scoringFile });
+  const a = analyze({ run, tasks, baseline, scoringFile, qualityPack });
   const d = detailOf(detail);
   const check = profile ? profileCheck(profile, { facts: a.facts, judgments: run.judgments }) : null;
   const doc = buildRunDocument({ run, tasks, report: a.report, rows: a.rows, scores: a.scores, card: a.card, facts: a.facts, ctx: a.ctx, weights: a.weights, detail: d, profile: profile ? { profile, check } : null, docPhases: phases });
@@ -102,7 +104,7 @@ function generateRunReport({ run, tasks, baseline, out, detail, format, scoringF
     // Opt-in: without --criteria-pack nothing below runs and the outputs are unchanged.
     const { summarizeQuality, qualityBlocks } = require('./quality.js');
     const armIds = [...new Set(run.runs.filter((r) => r.result.status !== 'budget_skipped').map((r) => r.armId))].sort((x, y) => (x === a.base ? -1 : y === a.base ? 1 : x < y ? -1 : 1));
-    quality = summarizeQuality({ groups: armIds.map((id) => ({ id, label: id, run, arm: id })), tasks, pack: qualityPack });
+    quality = summarizeQuality({ groups: armIds.map((id) => ({ id, label: id, run, arm: id })), tasks, pack: qualityPack, scoredWeight: a.weights.pack ?? null });
     doc.blocks.push(...qualityBlocks(quality));
   }
   const json = { ...a.report, detail: d, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), ...(quality ? { qualityDimensions: quality } : {}), scores: a.scores, orchestration: summarizeOrch(run, { phases }), diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };

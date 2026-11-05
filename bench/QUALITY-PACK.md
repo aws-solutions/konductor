@@ -2,7 +2,7 @@
 
 The task rubrics check whether a run did what its task asked. They do not say whether the code is well factored, whether the tests would catch a regression, or whether the README is something a person wants to read. The quality pack adds anchored criteria for those dimensions and runs them as a separate judging pass over finished runs.
 
-The pack never touches the default numbers. `qualityOfRun` (hidden tests, checks, rubric), every existing `report` table and every task's rubric revision stay as they are. Pack scores are reported beside them and are indicative until a person has rated a sample (see Calibration).
+By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, checks, rubric), every existing `report` table and every task's rubric revision stay as they are, and pack scores are reported beside them. A scoring file can make the pack a fourth component of the quality score (see In the quality score). Pack scores are indicative until a person has rated a sample (see Calibration).
 
 ## What it measures
 
@@ -160,6 +160,30 @@ A declared type with no produced file scores fail on its criteria without a mode
 - **Evidence is quoted and checked.** Each judged criterion has a `quote` rule that says what to copy: the weakest assertion, the longest function's signature, and so on. The reply is checked with `judge/quote.js`. A pass or partial whose quote is not found in the output drops one level, and the judge's own verdict is kept as `verdictRaw`. `doc-accuracy` and `des-consistency` need two quotes separated by ` @@ ` (the comment and the code it describes; the API line and the data model line). The first quote must be in the output. The second may come from the answer key when the code was not changed and so is not in the output.
 - **Anchors say how to break ties.** The prompt tells the judge to count where an anchor gives a number and to choose the lower level when the output sits between two.
 - **Score.** Per dimension: the weighted mean of pass 1, partial 0.5, fail 0 over the criteria that were judged, counted or scored absent. n/a criteria are left out. The mean over judges is reported per run, then the mean over runs on a 0 to 100 scale.
+
+## In the quality score (opt-in)
+
+By default the pack is descriptive: `qualityOfRun` is hidden tests, checks and rubric, and no pack number enters it. A scoring file can give the pack a weight as a fourth component. `profiles/scoring-quality.json` does (hidden 0.4, checks 0.16, rubric 0.24, pack 0.2); `profiles/scoring.json` is unchanged.
+
+- **One number per run.** The pack score of a run is the weighted mean over every criterion that applied to it (pass 1, partial 0.5, fail 0, weighted by criterion), averaged over the judges. It does not depend on how many criteria applied, so a one-line fix and a design document sit on the same 0 to 1 scale.
+- **Small tasks count.** The change discipline criteria apply to a code change of any size, and a task that asks for code always declares them. A run where no criterion applied has no pack component, and the other weights are renormalised, as for any missing component. Nothing is imputed.
+- **No quiet gaps.** With a pack weight, `report` and `report-2x2` stop with a message when an executed run has no current pack judgment (never judged, or made against another pack or task revision). Mixing runs that have the component with runs that do not would compare arms on different inputs.
+- **Where it works.** Only `report` and `report-2x2` with `--criteria-pack` accept a scoring file with a pack weight. Every other command refuses it, so no number is computed with the component silently dropped.
+- **The dimension table stays.** It is the same data cut by dimension, now labelled as part of the quality score.
+
+## Process signals
+
+The judge never sees the transcript, so the "Quality dimensions" section adds a small table of signals read from the recorded results. They describe how a run was carried out, are not judged and are not scored.
+
+| Signal | Source | n/a when |
+|---|---|---|
+| Spawns per run, runs that delegated | `orch.spawns`, else `claudeCode.spawned`, else `subagentCalls` in result.json | no stream was parsed (the run ended first). A vanilla arm with no subagent tool records 0, which is a count |
+| Distinct agents per run | agent names in `capInvocation.delegatedTo` (unnamed calls left out and listed) | the run has no stream aggregate |
+| Assumptions section in a document | a heading, bold label or short line that opens an assumptions or open-questions list, in a changed markdown file | the task or workspace cannot be read |
+| Assumptions section in the final message | the same test on `finalText` | no final message was recorded |
+| Ended on a question | `askedUser` in result.json, the runner's end-of-turn check | the run did not finish with a final message |
+
+Kiro CLI and Claude Code record all five. Claude Code spawns come from Agent tool calls and the result line; Kiro spawns come from the subagent tool, one per stage. The question check is a heuristic on the last message in both harnesses. A harness or a run that did not record a signal shows n/a with the reason under the table.
 
 ## Files and commands
 
