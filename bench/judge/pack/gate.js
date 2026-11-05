@@ -12,6 +12,9 @@ const CODE_EXT = new Set(['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.py', '
 // A missing README or missing comments is not a failure of the pack: the task's own checks cover a missing README.
 const DOC_NOTHING_TYPES = new Set(['comments', 'readme']);
 
+// What a derived type is called when a task does not ask for it, so the reason reads "does not ask for code", not "for change".
+const REASON_LABEL = { change: 'code', delegation: 'assignments' };
+
 const ext = (rel) => path.extname(rel).toLowerCase();
 const isTestPath = (rel) => /(^|\/)(tests?|__tests__|spec|specs)\//i.test(rel) || /(^|\/)(test_[^/]*|[^/]*[._-](test|spec)\.[a-z]+)$/i.test(rel);
 const isCode = (rel) => CODE_EXT.has(ext(rel));
@@ -67,7 +70,7 @@ function artifactStates(pack, task, files, { deleted = [] } = {}) {
       else state[t] = addedComments > 0 ? { s: 'present' } : { s: 'none', reason: 'no comments in the changed code' };
       continue;
     }
-    if (!declared.has(t)) { state[t] = { s: 'undeclared', reason: 'not asked for' }; continue; }
+    if (!declared.has(t)) { state[t] = { s: 'undeclared', reason: 'not asked for', label: REASON_LABEL[t] ?? t }; continue; }
     const have = haveOf[t] ?? [];
     if (!have.length) state[t] = DOC_NOTHING_TYPES.has(t) ? { s: 'none', reason: `no ${t} change` } : { s: 'absent', reason: `the task asks for ${t} and none was produced` };
     else if (t === 'code' && addedCode < min) state[t] = { s: 'none', reason: `the code change is too small to judge (${addedCode} added code line(s), minimum ${min})` };
@@ -84,7 +87,7 @@ function applicability(pack, task, files, extra = {}) {
     if (states.some((x) => x.s === 'present')) return { status: c.auto ? 'auto' : 'judged' };
     const gone = states.find((x) => x.s === 'absent');
     if (gone) return { status: 'absent', reason: gone.reason };
-    const undeclared = c.appliesTo.filter((t) => art.state[t].s === 'undeclared');
+    const undeclared = [...new Set(c.appliesTo.filter((t) => art.state[t].s === 'undeclared').map((t) => art.state[t].label ?? t))];
     const other = [...new Set(c.appliesTo.filter((t) => art.state[t].s !== 'undeclared').map((t) => art.state[t].reason))];
     const list = undeclared.length > 2 ? `any of ${undeclared.join(', ')}` : undeclared.join(' or ');
     const asked = undeclared.length ? [`the task does not ask for ${list}`] : [];

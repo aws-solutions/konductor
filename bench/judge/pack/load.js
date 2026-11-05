@@ -22,6 +22,7 @@ const PACK_SCHEMA = {
     id: { type: 'string', minLength: 1 },
     minAddedCodeLines: { type: 'integer', minimum: 0 },
     taskArtifacts: { type: 'object' },
+    declaredOnly: { type: 'array', items: { type: 'string' } },
     artifactTypes: { type: 'object' },
     dimensions: { type: 'array', minItems: 1, items: { type: 'object', required: ['id', 'label'], properties: { id: { type: 'string' }, label: { type: 'string' } } } },
     criteria: {
@@ -98,6 +99,7 @@ function validatePack(pack) {
     if (key) out.push(...dataProblems(detector, key, pack[key]));
   }
   for (const d of dims) if (!pack.criteria.some((c) => c.dimension === d)) out.push(`dimension ${d} has no criterion`);
+  for (const t of pack.declaredOnly || []) if (!types.has(t)) out.push(`declaredOnly: "${t}" is not an artifact type of the pack`);
   for (const [task, list] of Object.entries(pack.taskArtifacts || {})) {
     if (!Array.isArray(list)) out.push(`taskArtifacts.${task} must be an array`);
     else for (const t of list) if (!types.has(t)) out.push(`taskArtifacts.${task}: "${t}" is not an artifact type of the pack`);

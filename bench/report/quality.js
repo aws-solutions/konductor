@@ -49,6 +49,7 @@ function summarizeQuality({ groups, tasks, pack, disagreeScore = DEFAULTS.disagr
     if (!revisions.has(id)) revisions.set(id, tasks.has(id) ? taskRevision(tasks.get(id)) : null);
     return revisions.get(id);
   };
+  const declaredOnlyIds = new Set(pack.criteria.filter((c) => c.appliesTo.every((t) => (pack.declaredOnly || []).includes(t))).map((c) => c.id));
   const stale = { pack: 0, task: 0 };
   let errors = 0;
   const staleRevisions = new Set();
@@ -66,7 +67,9 @@ function summarizeQuality({ groups, tasks, pack, disagreeScore = DEFAULTS.disagr
       const perRun = runs.map((k) => {
         const recs = usable.filter((r) => `${r.armId}\u0000${r.taskId}\u0000${r.replicate}` === k);
         const scores = recs.map((r) => r.dimensions[d.id]?.score).filter(fin);
-        const reasons = recs.flatMap((r) => r.na.filter((x) => x.dimension === d.id).map((x) => x.reason));
+        const mine = recs.flatMap((r) => r.na.filter((x) => x.dimension === d.id));
+        // A criterion that only a task naming its type can use (a plan's assignments) is not why the dimension is n/a.
+        const reasons = (mine.some((x) => !declaredOnlyIds.has(x.id)) ? mine.filter((x) => !declaredOnlyIds.has(x.id)) : mine).map((x) => x.reason);
         return { score: scores.length ? mean(scores) : null, spread: scores.length > 1 ? Math.max(...scores) - Math.min(...scores) : null, reasons };
       });
       const scored = perRun.filter((x) => x.score !== null);

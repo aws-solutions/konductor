@@ -92,7 +92,8 @@ const DETECTORS = {
     for (const line of text.split('\n')) {
       if (line.startsWith('D ')) { hits.push(`deleted ${line.slice(2)}`); continue; }
       const body = line.slice(1);
-      if (line[0] === '+' && skip.some((re) => re.test(body))) hits.push(`skipped: ${body.trim().slice(0, 50)}`);
+      // A skipped test replaces its declaration, so it is counted once as skipped and not again as removed.
+      if (line[0] === '+' && skip.some((re) => re.test(body))) { hits.push(`skipped: ${body.trim().slice(0, 50)}`); added++; continue; }
       if (declaration.some((re) => re.test(body))) { if (line[0] === '-') removed++; else added++; }
     }
     // A rewritten test shows as one removed and one added declaration; only the net loss counts.
