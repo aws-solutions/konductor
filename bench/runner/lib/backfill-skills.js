@@ -24,6 +24,12 @@ const keyOf = (armId, taskId, replicate) => `${armId}\u0000${taskId}\u0000${repl
 const pick = (o) => Object.fromEntries(FIELDS.map((k) => [k, o[k] ?? null]));
 const isKilled = (result) => result.status === 'timeout' || Boolean(result.creditsCensored);
 
+// A result saved before skillCallsFailedByTool existed that recorded no failed skill calls already implies all zeros.
+// Treating that as equal keeps such runs "unchanged", so a rerun does not rewrite every old result.json for a field
+// that would only say 0, 0, 0.
+const NO_FAILURES = { get_skill: 0, load_resource: 0, find_skills: 0 };
+const withImpliedSplit = (f) => (f.skillCallsFailedByTool == null && f.skillCallsFailed === 0 ? { ...f, skillCallsFailedByTool: NO_FAILURES } : f);
+
 function assess({ result, row, dir, tasks, now }) {
   if (runtimeOf(result) !== 'kiro-cli') return { status: 'skipped', reason: 'not a kiro-cli run' };
   if (result.status === 'budget_skipped') return { status: 'skipped', reason: 'budget-skipped run' };
@@ -33,7 +39,7 @@ function assess({ result, row, dir, tasks, now }) {
   try { agg = aggregateRunDir(dir); } catch { return { status: 'skipped', reason: 'no stream.jsonl' }; }
   const after = pick({ ...row.fields, capInvocation: capInvocationOf({ agg, extraction: row.extraction, sops: row.sops }) });
   const before = pick(result);
-  if (isDeepStrictEqual(before, after)) return { status: 'unchanged', before, after };
+  if (isDeepStrictEqual(withImpliedSplit(before), after)) return { status: 'unchanged', before, after };
   const next = { ...result, ...after, skillsBackfill: { at: now(), source: 'stream.jsonl' } };
   const errors = validateResult(next);
   if (errors.length) return { status: 'unrecoverable', reason: `the rewritten result.json would not validate: ${errors[0]}` };

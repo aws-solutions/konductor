@@ -226,6 +226,38 @@ test('the summary counts runs, loads and failed calls per arm, before and after'
 
 // ---- command line ----
 
+test('--write adds the split of failed calls by tool; a zero-failure result without the field is left alone', () => {
+  const w = makeWorld();
+  try {
+    assert.equal('skillCallsFailedByTool' in read(w.cell, 'orch', 't1'), false);
+    const by = byRun(run(w, { write: true }));
+    assert.equal(by['vanilla/t1/1'].status, 'unchanged', 'no failures, so the missing split already says zero');
+    assert.equal('skillCallsFailedByTool' in read(w.cell, 'vanilla', 't1'), false);
+    const r = read(w.cell, 'orch', 't1');
+    const split = r.skillCallsFailedByTool;
+    assert.equal(Object.values(split).reduce((a, b) => a + b, 0), r.skillCallsFailed);
+    assert.deepEqual(Object.keys(split).sort(), ['find_skills', 'get_skill', 'load_resource']);
+  } finally { fs.rmSync(w.root, { recursive: true, force: true }); }
+});
+
+test('a stream with a refused load_resource and an SOP activation is recovered into the failed split and the SOP fields', () => {
+  const w = makeWorld();
+  try {
+    const tail = `${completion}\n${finished}\n`;
+    put(w.cell, 'orch', 't1', 3, blind(), fixture('v3-load-resource-refused.stream.jsonl') + tail);
+    put(w.cell, 'orch', 't1', 4, blind(), fixture('v3-sop-activation.stream.jsonl') + tail);
+    run(w, { write: true });
+    const refused = read(w.cell, 'orch', 't1', 3);
+    assert.deepEqual(refused.skillCallsFailedByTool, { get_skill: 1, load_resource: 1, find_skills: 0 });
+    assert.equal(refused.skillCallsFailed, 2);
+    assert.deepEqual(refused.capInvocation.firstDecision, { kind: 'get_skill', name: 'design-doc-guidelines' });
+    const sop = read(w.cell, 'orch', 't1', 4);
+    assert.deepEqual(sop.sopsLoaded.map((x) => `${x.name}:${x.via}`), ['sop-k-design-doc-creation:disclose_context']);
+    assert.deepEqual(sop.capInvocation.firstDecision, { kind: 'skill', name: 'sop-k-design-doc-creation' });
+    assert.deepEqual(sop.skillCallsFailedByTool, { get_skill: 1, load_resource: 0, find_skills: 0 });
+  } finally { fs.rmSync(w.root, { recursive: true, force: true }); }
+});
+
 const cli = (w, args) => spawnSync('node', [BENCH, 'backfill', '--run', w.cell, '--bench-dir', w.bench, '--repo-root', w.repo, ...args], { encoding: 'utf8', env: { ...process.env, HOME: tmp() } });
 
 test('--skills is a dry run unless --write is given and prints a per-arm before and after table', () => {

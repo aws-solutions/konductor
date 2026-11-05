@@ -173,9 +173,10 @@ test('v2 is unchanged: skills and contamination output of the v2 fixtures equal 
   assert.deepEqual(Object.keys(snap).sort(), ['delegating-smoke.stream.jsonl', 'kiro-find-skills.stream.jsonl', 'kiro-main-orch-input-validation.stream.jsonl', 'v2-skills-mixed.stream.jsonl']);
   for (const [name, want] of Object.entries(snap)) {
     const ev = eventsOf(name);
-    // failedCalls was added after the snapshot; every field the snapshot has must still match.
-    const { failedCalls, ...skills } = JSON.parse(JSON.stringify(extractSkills(ev, 'kiro-cli')));
+    // failedCalls and failedByTool were added after the snapshot; every field the snapshot has must still match.
+    const { failedCalls, failedByTool, ...skills } = JSON.parse(JSON.stringify(extractSkills(ev, 'kiro-cli')));
     assert.ok(Array.isArray(failedCalls) && failedCalls.length <= skills.skillCallsFailed, name);
+    assert.equal(Object.values(failedByTool).reduce((a, b) => a + b, 0), skills.skillCallsFailed, name);
     assert.deepEqual(skills, want.skills, name);
     assert.deepEqual(scanStream(ev, null), want.contamination, name);
   }

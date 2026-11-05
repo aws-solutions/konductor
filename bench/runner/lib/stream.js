@@ -97,6 +97,21 @@ function skillResourceCallOf(update) {
   return id ? { name: id[1] } : null;
 }
 
+// A v3 call that activates an SOP shows as "Load skill: sop-<name>" (the update that finishes it reads "Loaded skill:"),
+// not as load_resource, and carries _meta.kiro.toolId = disclose_context. toolNameOf cannot name it, and it must not:
+// tool counts of existing runs stay as they are.
+const SOP_ACTIVATION_TITLE = /^Load(?:ed)? skill: (sop-\S+)$/;
+const SOP_ACTIVATION_ID = /^skill::(sop-[^:\s]+)$/;
+
+/** { name } of a v3 SOP activation call (event or update), else null. */
+function skillActivationOf(update) {
+  if (!isV3Call(update) || update?._meta?.kiro?.toolId !== 'disclose_context') return null;
+  const t = typeof update.title === 'string' ? SOP_ACTIVATION_TITLE.exec(update.title) : null;
+  const id = typeof update.rawInput?.id === 'string' ? SOP_ACTIVATION_ID.exec(update.rawInput.id) : null;
+  const name = t?.[1] ?? id?.[1];
+  return name ? { name } : null;
+}
+
 // The arguments of an MCP tool call. v3 nests them under rawInput.arguments next to the tool id; v2 sends them flat.
 function mcpInputOf(rawInput) {
   if (!rawInput || typeof rawInput !== 'object' || typeof rawInput.tool_id !== 'string') return rawInput;
@@ -380,4 +395,4 @@ function sessionModels(session) {
   return (session?.session_state?.conversation_metadata?.user_turn_metadatas || []).map((t) => t.model ?? null);
 }
 
-module.exports = { toolNameOf, isV3Call, mcpToolNameOf, skillsCallOf, skillResourceCallOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
+module.exports = { toolNameOf, isV3Call, mcpToolNameOf, skillsCallOf, skillResourceCallOf, skillActivationOf, mcpInputOf, subagentTargets, sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
