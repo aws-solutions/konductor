@@ -1,0 +1,286 @@
+{
+  "loosened": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "cases": [
+    {
+      "name": "DY1 phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "Comments are stored as separate items under the ticket partition key, ordered by a time sort key, because of the 400 KB item limit.\n"
+      }
+    },
+    {
+      "name": "DY1 near miss 1",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Comments are shown newest first.\n"
+      }
+    },
+    {
+      "name": "DY1 near miss 2",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The item limit is 400 KB.\n"
+      }
+    },
+    {
+      "name": "DY2 phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "AP2 uses a global secondary index with customerId as partition key and createdAt as sort key, read newest first.\n"
+      }
+    },
+    {
+      "name": "DY2 near miss 1",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Customers are important.\n"
+      }
+    },
+    {
+      "name": "DY2 near miss 2",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The customerId field is a string.\n"
+      }
+    },
+    {
+      "name": "DY3 phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "A sparse index on assignedAgent with priority and createdAt as the sort key holds only open tickets.\n"
+      }
+    },
+    {
+      "name": "DY3 near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Agents work on tickets.\n"
+      }
+    },
+    {
+      "name": "DY3 near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Priority is a number from 1 to 4.\n"
+      }
+    },
+    {
+      "name": "DY4 phrased differently",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "externalRef gets a lookup item guarded by a conditional write so it stays unique.\n"
+      }
+    },
+    {
+      "name": "DY4 near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The reference number is optional.\n"
+      }
+    },
+    {
+      "name": "DY4 near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "externalRef is a string attribute.\n"
+      }
+    },
+    {
+      "name": "DY5 phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "For the dashboard, avoid a Scan or a status index; keep counters updated from the change stream.\n"
+      }
+    },
+    {
+      "name": "DY5 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The dashboard is refreshed once a minute.\n"
+      }
+    },
+    {
+      "name": "DY5 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Run a Scan for the dashboard counts.\n"
+      }
+    },
+    {
+      "name": "DY6 phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "AP7 uses TransactWriteItems to update the ticket under a status condition and put the audit entry together.\n"
+      }
+    },
+    {
+      "name": "DY6 near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Closing a ticket takes one click.\n"
+      }
+    },
+    {
+      "name": "DY6 near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Transactions are supported.\n"
+      }
+    },
+    {
+      "name": "DY7 phrased differently",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "On-demand capacity because traffic is bursty, 2,000 reads/s; the 200,000-ticket customer is the hot key to watch.\n"
+      }
+    },
+    {
+      "name": "DY7 near miss 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Capacity will be decided later.\n"
+      }
+    },
+    {
+      "name": "DY7 near miss 2",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "On-demand mode.\n"
+      }
+    },
+    {
+      "name": "DY8a phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "Alternatives rejected: a status GSI, because four values create hot partitions.\n"
+      }
+    },
+    {
+      "name": "DY8a near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Trade-offs were considered.\n"
+      }
+    },
+    {
+      "name": "DY8a near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Alternatives exist.\n"
+      }
+    },
+    {
+      "name": "DY8b phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "Comment items get a TTL after 90 days and move to S3; the table uses the Standard-IA class.\n"
+      }
+    },
+    {
+      "name": "DY8b near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Retention is 7 years.\n"
+      }
+    },
+    {
+      "name": "DY8b near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "Tickets are kept.\n"
+      }
+    },
+    {
+      "name": "all seven patterns",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/data-model.md": "AP1 AP2 AP3 AP4 AP5 AP6 AP7\n"
+      }
+    },
+    {
+      "name": "three patterns",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "AP1 AP2 AP3\n"
+      }
+    },
+    {
+      "name": "no pattern ids",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/data-model.md": "The table has keys.\n"
+      }
+    }
+  ]
+}

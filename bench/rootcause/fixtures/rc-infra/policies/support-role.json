@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SupportReadOrders",
+      "Effect": "Allow",
+      "Action": ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"],
+      "Resource": "arn:aws:dynamodb:us-east-1:111122223333:table/Orders"
+    },
+    {
+      "Sid": "SupportFullBucket",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "SupportManageUsers",
+      "Effect": "Allow",
+      "Action": ["iam:*"],
+      "Resource": "*"
+    }
+  ]
+}

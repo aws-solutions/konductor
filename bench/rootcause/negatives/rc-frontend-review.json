@@ -1,0 +1,286 @@
+{
+  "loosened": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "cases": [
+    {
+      "name": "FE1 phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "SignupForm.tsx uses a native <input> and <button> where Cloudscape Input and Button are required; replace them.\n"
+      }
+    },
+    {
+      "name": "FE1 near miss 1",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "The page title is shown in a heading.\n"
+      }
+    },
+    {
+      "name": "FE1 near miss 2",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Native html is mentioned here but only in the build tooling notes.\n"
+      }
+    },
+    {
+      "name": "FE2 phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "api.ts returns Promise<any> and UserTable props use any[]; use explicit types instead.\n"
+      }
+    },
+    {
+      "name": "FE2 near miss 1",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Any reviewer can run this.\n"
+      }
+    },
+    {
+      "name": "FE2 near miss 2",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Types are explicit and complete in all four files.\n"
+      }
+    },
+    {
+      "name": "FE3 phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "UserTable.tsx renders displayName with dangerouslySetInnerHTML, which is a stored XSS risk; render it as text.\n"
+      }
+    },
+    {
+      "name": "FE3 near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "The table renders each row with a key.\n"
+      }
+    },
+    {
+      "name": "FE3 near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "dangerouslySetInnerHTML appears in Navbar.tsx, which is unsafe.\n"
+      }
+    },
+    {
+      "name": "FE4 phrased differently",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "SignupForm logs the password with console.log and the field is type=\"text\", so it is visible; mask it and remove the log.\n"
+      }
+    },
+    {
+      "name": "FE4 near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "A password field is a common form field.\n"
+      }
+    },
+    {
+      "name": "FE4 near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "The login page logs the password with console.log and exposes it.\n"
+      }
+    },
+    {
+      "name": "FE5 phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "useUsers.ts has an effect that reads query but has an empty dependency array, so results go stale, and it has no cleanup on unmount.\n"
+      }
+    },
+    {
+      "name": "FE5 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Hooks are a React feature.\n"
+      }
+    },
+    {
+      "name": "FE5 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "The effect in useOrders.ts has an empty dependency array and no cleanup.\n"
+      }
+    },
+    {
+      "name": "FE6 phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "SignupForm inputs have placeholders but no label, and the error text is not announced to screen readers.\n"
+      }
+    },
+    {
+      "name": "FE6 near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Accessibility matters to our users.\n"
+      }
+    },
+    {
+      "name": "FE6 near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "The error banner in Header.tsx is not announced to screen readers.\n"
+      }
+    },
+    {
+      "name": "FE7 phrased differently",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "SignupForm validates the email with indexOf instead of a Zod schema.\n"
+      }
+    },
+    {
+      "name": "FE7 near miss 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Validation is important.\n"
+      }
+    },
+    {
+      "name": "FE7 near miss 2",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Zod is listed as a dependency in package.json.\n"
+      }
+    },
+    {
+      "name": "FE8 phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "The submit handler in SignupForm.tsx has an empty catch that swallows errors, and api.ts never checks res.ok.\n"
+      }
+    },
+    {
+      "name": "FE8 near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Errors can happen anywhere.\n"
+      }
+    },
+    {
+      "name": "FE8 near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "The empty catch in server.js swallows errors.\n"
+      }
+    },
+    {
+      "name": "FE9 phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "UserTable.tsx uses key={i}, the array index; use a stable id as the row key.\n"
+      }
+    },
+    {
+      "name": "FE9 near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "The key point is that the table renders rows.\n"
+      }
+    },
+    {
+      "name": "FE9 near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "List keys in Menu.tsx use the array index.\n"
+      }
+    },
+    {
+      "name": "FE10 phrased differently",
+      "check": 15,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/frontend-review.md": "UserTable.tsx and SignupForm.tsx use inline styles with literal colors; use design tokens instead.\n"
+      }
+    },
+    {
+      "name": "FE10 near miss 1",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Styling is a matter of taste.\n"
+      }
+    },
+    {
+      "name": "FE10 near miss 2",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/frontend-review.md": "Hex colors in theme.css should be tokens.\n"
+      }
+    }
+  ]
+}

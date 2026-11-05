@@ -1,0 +1,370 @@
+{
+  "loosened": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    19,
+    20,
+    21
+  ],
+  "cases": [
+    {
+      "name": "IN1 phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "UploadBucket in template.yaml:14 sets AccessControl PublicRead, so anyone can read uploads; make the bucket private and add a PublicAccessBlock.\n"
+      }
+    },
+    {
+      "name": "IN1 near miss 1",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The bucket name is orders-uploads-example.\n"
+      }
+    },
+    {
+      "name": "IN1 near miss 2",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The Orders table is publicly readable.\n"
+      }
+    },
+    {
+      "name": "IN2 phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "The upload bucket has no default encryption or versioning; enable SSE-KMS and versioning.\n"
+      }
+    },
+    {
+      "name": "IN2 near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The bucket is encrypted with KMS and versioned.\n"
+      }
+    },
+    {
+      "name": "IN2 near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The Orders table has no encryption.\n"
+      }
+    },
+    {
+      "name": "IN3 phrased differently",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "OrdersTable has no point-in-time recovery, no DeletionPolicy and no encryption setting; add them.\n"
+      }
+    },
+    {
+      "name": "IN3 near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The table uses on-demand billing.\n"
+      }
+    },
+    {
+      "name": "IN3 near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The bucket has no point-in-time recovery.\n"
+      }
+    },
+    {
+      "name": "IN4 phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "OpsSecurityGroup allows SSH (port 22) from 0.0.0.0/0; restrict it to 10.20.0.0/16.\n"
+      }
+    },
+    {
+      "name": "IN4 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "Security groups control network traffic.\n"
+      }
+    },
+    {
+      "name": "IN4 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "SSH keys are rotated yearly.\n"
+      }
+    },
+    {
+      "name": "IN5 phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "FunctionRole grants dynamodb:* and s3:* on Resource \"*\", which breaks least privilege; scope it to the Orders table and the uploads/ prefix.\n"
+      }
+    },
+    {
+      "name": "IN5 near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "Roles should be reviewed yearly.\n"
+      }
+    },
+    {
+      "name": "IN5 near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The support role in support-role.json uses s3:* on all resources.\n"
+      }
+    },
+    {
+      "name": "IN6 phrased differently",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "The FunctionRole trust policy has Principal AWS \"*\", so any account can assume it; trust only lambda.amazonaws.com.\n"
+      }
+    },
+    {
+      "name": "IN6 near miss 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "Trust is earned over time.\n"
+      }
+    },
+    {
+      "name": "IN6 near miss 2",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The support-role.json has a Principal of *.\n"
+      }
+    },
+    {
+      "name": "IN7 phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "DbPassword has a literal default and is passed as the DB_PASSWORD environment variable in plain text; move it to Secrets Manager.\n"
+      }
+    },
+    {
+      "name": "IN7 near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "Passwords should be strong.\n"
+      }
+    },
+    {
+      "name": "IN7 near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The README has a heading called Requirements.\n"
+      }
+    },
+    {
+      "name": "IN8 phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "CreateOrderMethod has AuthorizationType NONE, so anyone can create orders; require an authorizer.\n"
+      }
+    },
+    {
+      "name": "IN8 near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The API returns 200.\n"
+      }
+    },
+    {
+      "name": "IN8 near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "Authentication to the console uses SSO.\n"
+      }
+    },
+    {
+      "name": "IN9 phrased differently",
+      "check": 15,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "OrdersFunctionLogs has no RetentionInDays, so logs never expire; set 90 days.\n"
+      }
+    },
+    {
+      "name": "IN9 near miss 1",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "Logs are useful.\n"
+      }
+    },
+    {
+      "name": "IN9 near miss 2",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "The log group name is /aws/lambda/orders-handler.\n"
+      }
+    },
+    {
+      "name": "IN10 phrased differently",
+      "check": 16,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/infra-review.md": "support-role.json gives iam:* and s3:* on all resources, but the support team may only read and must not manage identities; remove iam and limit s3 to GetObject.\n"
+      }
+    },
+    {
+      "name": "IN10 near miss 1",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "Support teams are busy.\n"
+      }
+    },
+    {
+      "name": "IN10 near miss 2",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/infra-review.md": "FunctionRole has iam:* permissions.\n"
+      }
+    },
+    {
+      "name": "scoped read policy",
+      "check": 19,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/support-role.fixed.json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:111122223333:table/Orders\"},{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::b/uploads/*\"}]}\n"
+      }
+    },
+    {
+      "name": "iam star kept",
+      "check": 19,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/support-role.fixed.json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:111122223333:table/Orders\"},{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::b/uploads/*\"},{\"Effect\":\"Allow\",\"Action\":[\"iam:*\"],\"Resource\":\"*\"}]}\n"
+      }
+    },
+    {
+      "name": "s3 star kept",
+      "check": 19,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/support-role.fixed.json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:111122223333:table/Orders\"},{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::b/*\"}]}\n"
+      }
+    },
+    {
+      "name": "read only",
+      "check": 21,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/support-role.fixed.json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:111122223333:table/Orders\"},{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::b/uploads/*\"}]}\n"
+      }
+    },
+    {
+      "name": "put allowed",
+      "check": 21,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/support-role.fixed.json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:111122223333:table/Orders\"},{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::b/uploads/*\"},{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":\"arn:aws:s3:::b/uploads/*\"}]}\n"
+      }
+    },
+    {
+      "name": "wildcard resource on s3",
+      "check": 21,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/support-role.fixed.json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:111122223333:table/Orders\"},{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":\"*\"}]}\n"
+      }
+    },
+    {
+      "name": "both reads",
+      "check": 20,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/support-role.fixed.json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:111122223333:table/Orders\"},{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::b/uploads/*\"}]}\n"
+      }
+    },
+    {
+      "name": "no s3 read",
+      "check": 20,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/support-role.fixed.json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:GetItem\"],\"Resource\":\"arn:aws:dynamodb:us-east-1:111122223333:table/Orders\"}]}\n"
+      }
+    },
+    {
+      "name": "no table read",
+      "check": 20,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/support-role.fixed.json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::b/uploads/*\"}]}\n"
+      }
+    }
+  ]
+}

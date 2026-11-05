@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "capId": "skill:trade-off-evaluator",
+  "kind": "skill",
+  "status": "draft-unreviewed",
+  "generatedBy": {
+    "tool": "hand-written, checked with cap import rules",
+    "group": "design"
+  },
+  "neighbours": [],
+  "queries": [
+    {
+      "id": "i01",
+      "text": "Evaluate the trade-offs between a managed queue and an event bus for fan-out to five consumers.",
+      "expect": "load",
+      "rationale": "matches trade-off-evaluator and none of its siblings in design"
+    },
+    {
+      "id": "i02",
+      "text": "Score these three database options on cost, latency, complexity, scalability and operability and give me a recommendation.",
+      "expect": "load",
+      "rationale": "matches trade-off-evaluator and none of its siblings in design"
+    },
+    {
+      "id": "i03",
+      "text": "Which is better for our webhook retries: a step function workflow or a queue with a worker? Compare them properly.",
+      "expect": "load",
+      "rationale": "matches trade-off-evaluator and none of its siblings in design"
+    },
+    {
+      "id": "i04",
+      "text": "Compare these alternatives for session storage: an in-memory cache, a key-value store, or signed cookies. I want a matrix and a pick.",
+      "expect": "load",
+      "rationale": "matches trade-off-evaluator and none of its siblings in design"
+    },
+    {
+      "id": "i05",
+      "text": "We are deciding between building our own scheduler and buying one. Lay out the trade-offs across the usual dimensions.",
+      "expect": "load",
+      "rationale": "matches trade-off-evaluator and none of its siblings in design"
+    },
+    {
+      "id": "i06",
+      "text": "Rate monolith, modular monolith and microservices for a team of six against cost, latency, complexity, scale and operations burden.",
+      "expect": "load",
+      "rationale": "matches trade-off-evaluator and none of its siblings in design"
+    },
+    {
+      "id": "i07",
+      "text": "Compare serverless containers versus functions for a bursty API and tell me which wins and why.",
+      "expect": "load",
+      "rationale": "matches trade-off-evaluator and none of its siblings in design"
+    },
+    {
+      "id": "i08",
+      "text": "Can you tighten this RFC? It reads like a wall of text and the proposal is buried in paragraph six.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill design-doc-guidelines",
+      "nearMissOf": "skill:design-doc-guidelines"
+    },
+    {
+      "id": "i09",
+      "text": "Look over my design doc before the architecture meeting. Is the structure right, is it too technical for the audience, and are the diagrams accurate?",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill design-doc-guidelines",
+      "nearMissOf": "skill:design-doc-guidelines"
+    },
+    {
+      "id": "i10",
+      "text": "Restructure this one-pager so a busy director gets the ask in the first two lines.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill design-doc-guidelines",
+      "nearMissOf": "skill:design-doc-guidelines"
+    },
+    {
+      "id": "i11",
+      "text": "We are starting a new notifications service from scratch. Interview me about the requirements and then produce a system design with non-functional requirements and an architecture diagram description.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill system-design-patterns",
+      "nearMissOf": "skill:system-design-patterns"
+    },
+    {
+      "id": "i12",
+      "text": "I need a system design for a file ingestion pipeline but I do not know where to begin. Ask me what you need.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill system-design-patterns",
+      "nearMissOf": "skill:system-design-patterns"
+    },
+    {
+      "id": "i13",
+      "text": "Walk me through designing the architecture for a new booking service, step by step, with questions about scale and availability.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill system-design-patterns",
+      "nearMissOf": "skill:system-design-patterns"
+    },
+    {
+      "id": "i14",
+      "text": "Design the DynamoDB table for a chat app: get messages in a room by time, list rooms per user, and look up a message by id.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill dynamodb-design",
+      "nearMissOf": "skill:dynamodb-design"
+    },
+    {
+      "id": "i15",
+      "text": "Given these access patterns for an orders service, give me partition and sort keys, the global secondary indexes I need and a capacity plan.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill dynamodb-design",
+      "nearMissOf": "skill:dynamodb-design"
+    },
+    {
+      "id": "i16",
+      "text": "I have a NoSQL data model question: how should I key a multi-tenant table so each tenant's items are queried efficiently without a hot partition?",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill dynamodb-design",
+      "nearMissOf": "skill:dynamodb-design"
+    }
+  ],
+  "taskIdeas": [],
+  "reviewNote": "Draft for human review. Written for a competition run: the should-load prompts are the ones only this skill should match, the near misses are the exclusive prompts of its siblings. Ambiguous prompts are in the competition file, not here. Delete or edit before use, then assign splits."
+}

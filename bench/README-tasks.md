@@ -180,3 +180,109 @@ nothing about whether anyone can answer, and never mentions clarifications, hidd
   prompt leaves open (rounding midpoints, equal timestamps).
 - Add one: fixture, `tasks/<id>.json`, `hidden/<id>/{intended,invariants}`, `solutions/<id>/`, two partials, list it in
   `suites/autonomy.json`, run `node bench/tasks/validate-tasks.js`.
+
+## Rootcause suite: skills reached through the agents that own them
+
+A bench run of the earlier tasks never loaded 68 of the 82 skills. Four causes show in the earlier investigation: no counted task covers frontend, infrastructure and IAM, DynamoDB, Smithy, cost, QA, requirements, planning, program management or onboarding work; the specialist agents that own those skills were entered in 3 runs or fewer; a sibling skill wins when two cover the same ground (the backend review skill loaded 56 times while the adversarial review and the pull request review skills loaded 0); and every earlier prompt ends with "Do not ask me questions", which rules out the skills that exist to ask them. The rootcause suite answers the first three with tasks that are run through the owning agent, and the fourth with one task that answers clarifying questions from a fixed list. It does not prove a skill helps. It shows whether a skill loads when its owner does the work, and which skill loads instead when it does not.
+
+### Where the files are
+
+- `suites/rootcause.json` lists 16 tasks: 8 that already exist and 8 new ones. `suites/rootcause.manifest.json` holds what the task schema cannot: the entry agent of each task, the skills it should load (`expectedSkills`) and may load (`possibleSkills`), seeded items, check and rubric counts, a credit estimate, the run commands per entry agent and a coverage map of all 82 skills.
+- The 8 new tasks live in `rootcause/` (an extra tasks directory), with `rootcause/fixtures`, `solutions`, `stubs`, `negatives`, `hidden` and `partials` laid out like `tasks/`. They are not in `tasks/` because the task schema is closed and the validator makes every task in `tasks/` a member of the `full` suite. Run them with `--extra-tasks bench/rootcause`.
+- `rootcause/scenarios/` holds draft trigger sets (see Competition scenarios below).
+
+Validate the new tasks alone in seconds with `node bench/tasks/validate-tasks.js --extra-tasks bench/rootcause --only-extra`, or with the rest of the bench by dropping `--only-extra`. The suite name `rootcause` is not yet registered in the runner (`SUITE_DEFAULTS` in `runner/lib/tasks.js`), so until it is, pass `--suite requirements` together with `--tasks`: the task list then overrides the suite and only its defaults apply.
+
+### Tasks, entry agents and expected skills
+
+Credits are for one run of a konductor arm and are estimates except where noted (see Cost plan).
+
+| Task | Source | Entry agent | Expected skills | Seeded items | Checks | Rubric items | Credits per run |
+|------|--------|-------------|-----------------|--------------|--------|--------------|-----------------|
+| `req-vague-request` | existing | k-product-manager | requirements-extraction, user-story-writing | 9 | 24 | 6 | 7.7 (5.5 to 10.5) |
+| `plan-multipart-feature` | existing | k-tpm | program-planning, risk-management, task-decomposition | 11 | 21 | 6 | 5.4 (4 to 8) |
+| `sop-plan` | existing (weak) | k-tpm | program-planning, risk-management | 9 | 14 | 6 | 5 (3 to 9) |
+| `sop-test-coverage-review` | existing | k-quality-assurance | test-coverage-analysis, e2e-test-strategy, security-test-generation | 5 | 23 | 5 | 9 (5 to 16) |
+| `sop-code-cleanup` | existing | k-developer | (legacy-prefix)-code-simplifier | 9 | 20 | 5 | 7 (4 to 12) |
+| `simple-refactor` | existing | k-developer | (legacy-prefix)-code-simplifier | 1 | 4 | 4 | 2.5 (1.5 to 4) |
+| `orch-patch-release` | existing | k-developer | git-workflow | 1 | 10 | 5 | 3.5 (2 to 6) |
+| `sop-spec-workflow` | existing | konductor | kiro-requirements-generation, kiro-design-generation, kiro-task-generation | 9 | 19 | 5 | 11 (6 to 20) |
+| `rc-frontend-review` | new | k-developer | frontend-review | 10 | 20 | 5 | 4 (2.5 to 6) |
+| `rc-infra-iam-review` | new | k-developer | infra-validation | 10 | 25 | 5 | 4.5 (3 to 7) |
+|  |  | k-architect | iam-policy-design, policy-validation |  |  |  | 4.5 (3 to 7) |
+| `rc-dynamodb-design` | new | k-architect | dynamodb-design, dynamodb-validation | 8 | 19 | 5 | 5 (3 to 7) |
+| `rc-smithy-api` | new | k-architect | smithy-modeling, smithy-validation | 9 | 31 | 5 | 5 (3 to 7) |
+| `rc-tpm-status` | new | k-tpm | status-reporting, risk-management | 9 | 21 | 5 | 5 (3 to 7) |
+| `rc-agents-md` | new | k-developer | agents-md-authoring | 7 | 20 | 5 | 2.5 (1.5 to 4) |
+|  |  | konductor | agents-md-authoring |  |  |  | 2.5 (1.5 to 4) |
+| `rc-threat-model` | new | k-architect | threat-modeling | 9 | 20 | 5 | 5 (3 to 7) |
+| `rc-queue-decision` | new | k-architect | socratic-elicitation, deliberation-panel | 5 | 6 | 4 | 5.5 (3 to 8) |
+
+The existing tasks and what they unlock: `req-vague-request` (requirements extraction and user stories), `plan-multipart-feature` (program planning, risk management, task decomposition), `sop-test-coverage-review` (test coverage analysis, end to end strategy, security test generation), `sop-code-cleanup` and `simple-refactor` (the code simplifier), `orch-patch-release` (git workflow), `sop-spec-workflow` (the three spec generation skills, reached through delegation from the orchestrator). `sop-plan` is a weak extra: it only suggests program planning and risk management. Two of the skills carry a legacy prefix; their exact names are in the manifest as escaped JSON strings.
+
+The new tasks are seeded the same way as the earlier ones: each fixture has an answer key with ids, each task has deterministic checks that look for content (a topic near the right file, a count with generous bounds, a structure check on a Smithy model or a policy JSON) and a graded rubric with one item per seeded group plus a no-false-claims item. Near misses and reference solutions are under `rootcause/negatives` and `rootcause/solutions`. `rc-queue-decision` is an autonomy task: its prompt leaves ordering, retention and who runs the system open, four clarifications answer the questions an agent should ask (including consent to a deeper multi-perspective analysis), and hidden tests score the document against the intended reading.
+
+### Run it per entry agent
+
+An entry agent is chosen per arm with `--arm-agent`, so each entry agent is one run directory. Each run has vanilla (no agent) plus three konductor arms, so every entry agent gets its own baseline. The arms are `v1.2.0`, the main commit and the stack head; `--arm-agent` names every konductor arm. The commands are in the manifest (`commands.perEntryAgent`); this is the shape:
+
+```sh
+OUT=/var/tmp/rootcause-run
+node bench/runner/bench.js run --suite requirements --extra-tasks bench/rootcause \
+  --tasks plan-multipart-feature,sop-plan,rc-tpm-status \
+  --arms vanilla,v1.2.0,mainsha=<main-sha>,stack149=<stack-sha> \
+  --arm-agent v1.2.0=k-tpm,mainsha=k-tpm,stack149=k-tpm \
+  --replicates 2 --parallel 1 --budget-credits 162 --out "$OUT/k-tpm"
+```
+
+Repeat for k-product-manager, k-quality-assurance, k-developer, k-architect and konductor with the task lists in the manifest. Two tasks run through two agents (`rc-infra-iam-review`, `rc-agents-md`), so their vanilla cell is run twice. Every agent must be installed by every konductor arm; the run stops at once if an arm lacks it. The runner needs the `--extra-tasks` directory on every call.
+
+### Reading the expected-versus-actual load matrix
+
+Each finished run keeps `<run>/<arm>/<task>/<replicate>/result.json` with `skillsLoaded` (name and count). `bench.js skills --run DIR` prints the per-run detail and `cap prune-report --runs-glob 'OUT/*'` pools loads per skill. To build the matrix, take `expectedPairs` from the manifest (task, entry agent, skill) and count, for each pair and arm, the replicates whose `skillsLoaded` names the skill.
+
+- A cell with loads in at least half of the replicates is a hit. Loads in some replicates are partial. Zero is a miss.
+- A miss with a passing task says the model did the work without the skill; the skill may still help the score, which only the per-skill study can show. A miss where a sibling loaded (the `possibleSkills`, or the group in the competition files) says the sibling won.
+- A miss with no skill loaded at all says the description did not match the prompt, or the skill is not listed by the entry agent. Check the agent spec before blaming the description: the runner records `installed-agent.json` from the orchestrator spec for every entry agent, so its exposure figures can be wrong for the others.
+- `possibleSkills` are never counted as misses. Report loads per arm and per model; do not pool.
+
+### Competition scenarios
+
+`rootcause/scenarios/` holds drafts for a later `cap trigger` run. All are marked `draft-unreviewed`: a person edits or deletes them before use and assigns splits.
+
+- `skill-*.trigger.json`: for eight skills in two sibling groups (code review: backend review, adversarial review, pull request review, frontend review; design: design doc guidelines, system design patterns, trade-off evaluator, DynamoDB design). Each has 7 prompts that only that skill should match and 6 to 9 near misses, which are the exclusive prompts of its siblings. They pass the `cap import` text rules and load with `cap trigger --queries FILE`.
+- `competition-code-review.json`, `competition-design.json`: the same exclusive prompts by skill plus four ambiguous prompts per group where two or three siblings could load. The ambiguous prompts are not in the per-skill files because they have no single right answer; run them and record which sibling loads.
+- `seeds/uncovered-skills.seed.json`: 123 seed prompts (two should-load and one near miss) for 41 skills that no task reaches, each with its entry agent. They are inputs for `cap scenarios --mode trigger --seed-queries`, not finished sets.
+
+### Coverage of the 82 skills
+
+26 skills are expected by a task (the first column of the table), 6 more by a scenario set, 41 more by seed prompts only: 73 of 82 have at least one task or scenario that should load them. Seed-only skills have no runnable test yet. Still without any: adversarial-code-review-pass-integrity (loaded by adversarial-code-review); adversarial-code-review-pass-schema (loaded by adversarial-code-review); adversarial-code-review-pass-security (loaded by adversarial-code-review); argumentation-reference (loaded by adversarial-design-review); claude-teams-behavior (Claude Code only; no Kiro agent lists it); cmux-dispatch (needs a cmux session around the agent; the bench has none); constraints (preloaded as core rules and excluded from the Kiro skill index, so a prompt cannot load it); historical-issues-registry (only an adversarial review coordinator with a platform delta layer loads it; not run standalone); mux-dispatch (needs a tmux or zellij session around the agent; the bench has none).
+
+### Cost plan
+
+Per run, in credits, for a konductor arm: the two observed tasks cost 7.7 and 5.4; the new tasks are estimated at 2 to 6; the larger existing tasks (coverage review, spec workflow, cleanup) are guesses of 7 to 11. Vanilla is taken as 0.45 of a konductor run (earlier runs: 1.75 credits for vanilla against 4.4 for the main arm). Judge credits are not included. One pass of all entry runs (vanilla plus three konductor arms) is about 326.7 credits (199.3 to 517.1).
+
+| Replicates | Runs | Credits (mid) | Cap (1.5x) |
+|------------|------|---------------|------------|
+| 2 | 144 | 653.4 | 981 |
+| 3 | 216 | 980.1 | 1471 |
+
+| Entry agent | Tasks | Runs at 2 | Runs at 3 | Credits at 2 | Credits at 3 |
+|-------------|-------|-----------|-----------|--------------|--------------|
+| k-product-manager | 1 | 8 | 12 | 53.2 | 79.8 |
+| k-tpm | 3 | 24 | 36 | 107.4 | 161.1 |
+| k-quality-assurance | 1 | 8 | 12 | 62 | 93 |
+| k-developer | 6 | 48 | 72 | 165.6 | 248.4 |
+| k-architect | 5 | 40 | 60 | 172 | 258 |
+| konductor | 2 | 16 | 24 | 93.2 | 139.8 |
+
+`pr-plan` prints one added arm, so it cannot print the four arm table; it also has no observed figures for this suite and needs `--budget-credits`. The table above comes from the manifest.
+
+### Limits
+
+- Single-shot tasks: one prompt, one run. A task shows that a skill loads for that prompt, not that it loads in a longer session.
+- Only `rc-queue-decision` answers questions, from a fixed list. An agent that asks something the list does not cover gets the default answer. Skills that depend on a back and forth are covered by one task.
+- Credit figures are estimates for all but two tasks. Replace them with the figures of the first run before raising the replicates.
+- Checks test content with generous bounds and several small checks, so a correct document in an unusual form can still miss one. Rubric scores need the judge panel.
+- The scenario files and seed prompts are drafts, written by hand from the skill descriptions. They need a person to review them; none has been run.
+- The quality pack infers artifact types from the task class and prompt. `rc-queue-decision` (class autonomy) would be read as a code task, and `rc-tpm-status` and `rc-agents-md` have no inferred type. Declaring them in `criteria/quality-pack.json` needs a change to the test that requires every declared task to be in `tasks/`. The fragment is in the hand-off note.

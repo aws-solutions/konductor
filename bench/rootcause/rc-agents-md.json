@@ -1,0 +1,133 @@
+{
+  "id": "rc-agents-md",
+  "class": "simple",
+  "target": "k-developer",
+  "prompt": "This repository has no AGENTS.md. Create one in the repository root so that AI coding assistants know how to work here: how to run the tests and the linter, the code style, which files must not be edited by hand, and how to write commit messages. Base it only on what the repository contains, and where the files disagree, follow what the tools actually use. Do not change any other file. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-agents-repo",
+  "timeoutSec": 300,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "AGENTS.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' AGENTS.md)\" -ge 12 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' AGENTS.md)\" -le 140 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "AGENTS.md",
+      "pattern": "^#{1,4}\\s+\\S",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"AGENTS.md\",\"utf8\");/*AM1*/const A=new RegExp(\"npm (?:run )?test|node --test\",\"gi\"),R=[],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"AGENTS.md\",\"utf8\");/*AM2*/const A=new RegExp(\"npm run lint|node scripts/lint\",\"gi\"),R=[],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"AGENTS.md\",\"utf8\");/*AM4*/const A=new RegExp(\"dist\",\"gi\"),R=[new RegExp(\"generated|do not (?:edit|modify|change|touch)|never (?:edit|modify|change)|don.t (?:edit|touch|modify)|build output|release\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"AGENTS.md\",\"utf8\");/*AM5*/const A=new RegExp(\"conventional commits?|feat:|fix:|commit message\",\"gi\"),R=[new RegExp(\"conventional|feat|fix|chore|docs\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"AGENTS.md\",\"utf8\");/*AM6*/const A=new RegExp(\"\\\\.test\\\\.js|next to|beside|alongside|colocat\",\"gi\"),R=[new RegExp(\"test\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"AGENTS.md\",\"utf8\");/*AM7*/const A=new RegExp(\"dependenc|node (?:version )?>?=? ?20|node 20|engines\",\"gi\"),R=[new RegExp(\"no (?:new |runtime )?(?:runtime )?dependenc|zero|without adding|do not add|don.t add|node:test|\\\\b20\\\\b\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"AGENTS.md\",\"utf8\");const G=[\"2[- ]?(?:space|spaces)|two[- ]space|indent\",\"single[- ]quotes?\",\"semicolons?\",\"named exports?|default exports?\"];let c=0;for(const g of G)if(new RegExp(g,\"i\").test(t))c++;process.exit(c>=3?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"AGENTS.md\",\"utf8\");const bad=t.split(\"\\n\").filter((l)=>new RegExp(\"\\\\byarn\\\\b\",\"i\").test(l)&&!new RegExp(\"\\\\b(?:not|never|no|out of date|outdated|stale|instead|rather than|wrong|incorrect|ignore|does not exist|doesn.t exist|there is no)\\\\b|n.t\\\\b\",\"i\").test(l));process.exit(bad.length?1:0)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"AGENTS.md\",\"utf8\");const bad=t.split(\"\\n\").filter((l)=>new RegExp(\"npm run (?:build|dev|start|e2e|deploy)|make (?:build|test)|\\\\bpnpm\\\\b\",\"i\").test(l)&&!new RegExp(\"\\\\b(?:not|never|no|out of date|outdated|stale|instead|rather than|wrong|incorrect|ignore|does not exist|doesn.t exist|there is no)\\\\b|n.t\\\\b\",\"i\").test(l));process.exit(bad.length?1:0)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "scripts"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "dist"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "CONTRIBUTING.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": ".editorconfig"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "commands",
+      "criterion": "States the test command npm test and the lint command npm run lint (AM1, AM2), taken from package.json and not from the stale README.",
+      "weight": 3
+    },
+    {
+      "id": "conventions",
+      "criterion": "Covers the code style (2 spaces, single quotes, semicolons, named exports; AM3), tests next to the source as *.test.js (AM6), no new runtime dependencies and Node 20 (AM7), and Conventional Commits (AM5).",
+      "weight": 2
+    },
+    {
+      "id": "generated-files",
+      "criterion": "Says dist/ is generated by npm run release and must not be edited by hand (AM4).",
+      "weight": 2
+    },
+    {
+      "id": "stale-readme",
+      "criterion": "Does not tell an assistant to run yarn or a build script. Either ignores the stale README commands or says they are out of date, and the final message states this choice.",
+      "weight": 2
+    },
+    {
+      "id": "no-false-claims",
+      "criterion": "Invents no command, script, tool, directory or CI that the repository does not have, and changes no file other than AGENTS.md.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

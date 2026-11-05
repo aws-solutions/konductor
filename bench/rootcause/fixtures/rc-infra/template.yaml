@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Orders API stack (API, function, table, upload bucket)
+
+Parameters:
+  DbPassword:
+    Type: String
+    Default: orders-Pa55word!
+
+Resources:
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: orders-uploads-example
+      AccessControl: PublicRead
+
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Orders
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: orderId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: orderId
+          KeyType: HASH
+
+  FunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: '*'
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: orders-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:*
+                  - s3:*
+                Resource: '*'
+
+  OrdersFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: orders-handler
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt FunctionRole.Arn
+      Code:
+        ZipFile: exports.handler = async () => ({ statusCode: 200 });
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref OrdersTable
+          DB_PASSWORD: !Ref DbPassword
+          BUCKET: !Ref UploadBucket
+
+  OrdersFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/orders-handler
+
+  OpsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Operations access to the support host
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  OrdersApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: orders-api
+
+  CreateOrderMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OrdersApi
+      ResourceId: !GetAtt OrdersApi.RootResourceId
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrdersFunction.Arn}/invocations

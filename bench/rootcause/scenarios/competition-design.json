@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "kind": "competition",
+  "group": "design",
+  "status": "draft-unreviewed",
+  "reviewNote": "Draft for human review. Written for a competition run: the should-load prompts are the ones only this skill should match, the near misses are the exclusive prompts of its siblings. Ambiguous prompts are in the competition file, not here. Delete or edit before use, then assign splits.",
+  "siblings": [
+    "design-doc-guidelines",
+    "system-design-patterns",
+    "trade-off-evaluator",
+    "dynamodb-design"
+  ],
+  "exclusive": {
+    "design-doc-guidelines": [
+      {
+        "id": "design-doc-guidelines-1",
+        "text": "Can you tighten this RFC? It reads like a wall of text and the proposal is buried in paragraph six."
+      },
+      {
+        "id": "design-doc-guidelines-2",
+        "text": "Look over my design doc before the architecture meeting. Is the structure right, is it too technical for the audience, and are the diagrams accurate?"
+      },
+      {
+        "id": "design-doc-guidelines-3",
+        "text": "Restructure this one-pager so a busy director gets the ask in the first two lines."
+      },
+      {
+        "id": "design-doc-guidelines-4",
+        "text": "Edit my technical spec to remove filler, vague claims and anything that sounds machine generated."
+      },
+      {
+        "id": "design-doc-guidelines-5",
+        "text": "Here is my architecture proposal draft. Tell me what a skeptical reader would flag about clarity and flow."
+      },
+      {
+        "id": "design-doc-guidelines-6",
+        "text": "Is this ADR too long? Help me cut it down and make the decision and its consequences obvious."
+      },
+      {
+        "id": "design-doc-guidelines-7",
+        "text": "Proofread and reorganize my design write-up for a mixed audience of engineers and product managers, and keep the technical claims correct."
+      }
+    ],
+    "system-design-patterns": [
+      {
+        "id": "system-design-patterns-1",
+        "text": "We are starting a new notifications service from scratch. Interview me about the requirements and then produce a system design with non-functional requirements and an architecture diagram description."
+      },
+      {
+        "id": "system-design-patterns-2",
+        "text": "I need a system design for a file ingestion pipeline but I do not know where to begin. Ask me what you need."
+      },
+      {
+        "id": "system-design-patterns-3",
+        "text": "Walk me through designing the architecture for a new booking service, step by step, with questions about scale and availability."
+      },
+      {
+        "id": "system-design-patterns-4",
+        "text": "Help me design a new multi-tenant reporting feature end to end: components, data flow, non-functional requirements and a starting point for a threat model."
+      },
+      {
+        "id": "system-design-patterns-5",
+        "text": "Start a high level design for a payments reconciliation service and guide me with the questions an architect would ask."
+      },
+      {
+        "id": "system-design-patterns-6",
+        "text": "We need a system design document for a brand new webhook delivery platform. Run the discovery questions first."
+      },
+      {
+        "id": "system-design-patterns-7",
+        "text": "Greenfield service, nothing written yet. Take me through the design conversation until we have a system design and a diagram description."
+      }
+    ],
+    "trade-off-evaluator": [
+      {
+        "id": "trade-off-evaluator-1",
+        "text": "Evaluate the trade-offs between a managed queue and an event bus for fan-out to five consumers."
+      },
+      {
+        "id": "trade-off-evaluator-2",
+        "text": "Score these three database options on cost, latency, complexity, scalability and operability and give me a recommendation."
+      },
+      {
+        "id": "trade-off-evaluator-3",
+        "text": "Which is better for our webhook retries: a step function workflow or a queue with a worker? Compare them properly."
+      },
+      {
+        "id": "trade-off-evaluator-4",
+        "text": "Compare these alternatives for session storage: an in-memory cache, a key-value store, or signed cookies. I want a matrix and a pick."
+      },
+      {
+        "id": "trade-off-evaluator-5",
+        "text": "We are deciding between building our own scheduler and buying one. Lay out the trade-offs across the usual dimensions."
+      },
+      {
+        "id": "trade-off-evaluator-6",
+        "text": "Rate monolith, modular monolith and microservices for a team of six against cost, latency, complexity, scale and operations burden."
+      },
+      {
+        "id": "trade-off-evaluator-7",
+        "text": "Compare serverless containers versus functions for a bursty API and tell me which wins and why."
+      }
+    ],
+    "dynamodb-design": [
+      {
+        "id": "dynamodb-design-1",
+        "text": "Design the DynamoDB table for a chat app: get messages in a room by time, list rooms per user, and look up a message by id."
+      },
+      {
+        "id": "dynamodb-design-2",
+        "text": "Given these access patterns for an orders service, give me partition and sort keys, the global secondary indexes I need and a capacity plan."
+      },
+      {
+        "id": "dynamodb-design-3",
+        "text": "I have a NoSQL data model question: how should I key a multi-tenant table so each tenant's items are queried efficiently without a hot partition?"
+      },
+      {
+        "id": "dynamodb-design-4",
+        "text": "Propose a single-table layout with indexes for a ticketing system and show the CloudFormation for it."
+      },
+      {
+        "id": "dynamodb-design-5",
+        "text": "Help me model leaderboards and player profiles in DynamoDB, including how to avoid hot keys."
+      },
+      {
+        "id": "dynamodb-design-6",
+        "text": "What partition key and index strategy should I use for sensor readings queried by device and by time range?"
+      },
+      {
+        "id": "dynamodb-design-7",
+        "text": "Turn our list of read and write patterns into table and index definitions for DynamoDB with on-demand versus provisioned guidance."
+      }
+    ]
+  },
+  "ambiguous": [
+    {
+      "id": "b1",
+      "text": "We are about to design a new event-driven service and are torn between queues and streams. Help me decide and design the architecture.",
+      "eitherMayLoad": [
+        "system-design-patterns",
+        "trade-off-evaluator"
+      ]
+    },
+    {
+      "id": "b2",
+      "text": "Draft a design document for a new image processing service, from the requirements up to the written doc.",
+      "eitherMayLoad": [
+        "system-design-patterns",
+        "design-doc-guidelines"
+      ]
+    },
+    {
+      "id": "b3",
+      "text": "Should this data live in DynamoDB or a relational database? Compare them for our workload and sketch the table design if DynamoDB wins.",
+      "eitherMayLoad": [
+        "dynamodb-design",
+        "trade-off-evaluator"
+      ]
+    },
+    {
+      "id": "b4",
+      "text": "Review the alternatives section of this design doc. Are the trade-offs convincing?",
+      "eitherMayLoad": [
+        "design-doc-guidelines",
+        "trade-off-evaluator"
+      ]
+    }
+  ],
+  "howToRead": "Per-skill recall and false triggers come from the skill-*.trigger.json files via cap trigger. For competition, run the exclusive and ambiguous prompts of the group and record which sibling loaded: a sibling that wins on another skill's exclusive prompt is the competitor, and an ambiguous prompt where only one of eitherMayLoad ever loads shows which description wins ties."
+}

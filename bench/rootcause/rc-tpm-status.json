@@ -1,0 +1,142 @@
+{
+  "id": "rc-tpm-status",
+  "class": "sop",
+  "target": "k-tpm",
+  "prompt": "Today is 2025-03-14. docs/ holds the program tracker, last week's status report, the risk log and the budget summary for the checkout redesign program. Write this week's executive status report to status/status-report.md (overall status as red, amber or green with the reason, progress against plan, milestones, budget, decisions needed from executives, and the top risks) and an updated risk register to status/risk-register.md (every risk with probability, impact, owner, mitigation, and a trigger or contingency). Use only what the files say, and point out where the files disagree with each other. Do not change the inputs. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-program-tracker",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "status/status-report.md"
+    },
+    {
+      "type": "file_exists",
+      "path": "status/risk-register.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' status/status-report.md)\" -ge 15 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' status/status-report.md)\" -le 160 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' status/risk-register.md)\" -ge 10 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' status/risk-register.md)\" -le 200 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "status/status-report.md",
+      "pattern": "payment|gateway|security review|load test|staging|accessibility|cart",
+      "min": 5
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/status-report.md\",\"utf8\");const red=/(overall|rag|health|status)[^\\n]{0,60}\\b(red|amber|yellow)\\b/i.test(t);const green=/(overall|rag|health)\\W{0,12}(?:status\\W{0,12})?\\W{0,6}green\\b/i.test(t)&&!/(overall|rag|health)[^\\n]{0,60}\\b(red|amber|yellow)\\b/i.test(t);process.exit(red&&!green?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/status-report.md\",\"utf8\");/*TP1b*/const A=new RegExp(\"last week|previous (?:report|week)|prior (?:report|week)|was green|from green|downgrad|changed|moved from\",\"gi\"),R=[new RegExp(\"green\",\"i\"),new RegExp(\"red|amber|yellow\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/status-report.md\",\"utf8\");/*TP2*/const A=new RegExp(\"load[- ]test|\\\\bW5\\\\b\",\"gi\"),R=[new RegExp(\"W3|W4|staging|payment|depend\",\"i\"),new RegExp(\"inconsisten|premature|incorrect|cannot|before|stale|verify|confirm|questionable|error|should not|not valid|wrong|mismatch|rerun|re-run|repeat|invalid\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/status-report.md\",\"utf8\");/*TP3*/const A=new RegExp(\"overrun|over budget|over-budget|burn|forecast|\\\\bEAC\\\\b|estimate at completion|cost variance|78\",\"gi\"),R=[new RegExp(\"budget|spent|cost\",\"i\"),new RegExp(\"\\\\d{2,}\",\"i\"),new RegExp(\"78|55|1\\\\.[5-9]\\\\d?\\\\s*(?:m|million)|1,[5-9]\\\\d\\\\d,\\\\d{3}|\\\\b[3-5]\\\\d ?(?:%|percent)\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/status-report.md\",\"utf8\");/*TP6*/const A=new RegExp(\"decision\",\"gi\"),R=[new RegExp(\"descope|de-scope|loyalty|move (?:the )?launch|delay|postpone|push|new (?:launch )?date|extend|add (?:capacity|engineer)|later release\",\"i\"),new RegExp(\"option|\\\\bor\\\\b|either|versus|vs|1\\\\.|alternatives?\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/status-report.md\",\"utf8\");/*TP9*/const A=new RegExp(\"launch|2025-04-15|April 15|15 April\",\"gi\"),R=[new RegExp(\"risk|slip|delay|late|jeopard|miss|behind|weeks?|red|amber\",\"i\"),new RegExp(\"2025-04-15|april|weeks?|slip|miss\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/risk-register.md\",\"utf8\");/*TP4*/const A=new RegExp(\"priya|key[- ]person|single point|bus factor|only engineer\",\"gi\"),R=[new RegExp(\"risk|owns|only|capacity|overload|depend|single|knowledge\",\"i\"),new RegExp(\"chen|pair|backup|cover|document|cross-train|second|mitigat\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/risk-register.md\",\"utf8\");/*TP5a*/const A=new RegExp(\"R-?0?2\\\\b|contract|load-?testing tool\",\"gi\"),R=[new RegExp(\"closed|retire|resolved|no longer|obsolete|remove|superseded|n/a|not applicable|was signed|is signed|has been signed|signed on\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/risk-register.md\",\"utf8\");/*TP5b*/const A=new RegExp(\"R-?0?3\\\\b|staging\",\"gi\"),R=[new RegExp(\"\\\\b(?:Priya|Omar|Lena|Chen|Ana|Sam)\\\\b\",\"i\")],W=250;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/risk-register.md\",\"utf8\");/*TP8*/const A=new RegExp(\"sandbox|outage|unavailab\",\"gi\"),R=[new RegExp(\"risk|provider|payment\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/risk-register.md\",\"utf8\");const ids=new Set((t.match(/\\bR-?0?\\d+\\b/gi)||[]).map((s)=>s.toUpperCase().replace(/[^R0-9]/g,\"\").replace(/^R0+/,\"R\")));process.exit(ids.size>=5?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"status/risk-register.md\",\"utf8\");const G=[\"probability|likelihood\",\"impact|severity\",\"owner\",\"mitigation|response\",\"trigger|contingency\"];let c=0;for(const g of G)if(new RegExp(g,\"i\").test(t))c++;process.exit(c>=5?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "honest-status",
+      "criterion": "Reports amber or red, not green, and says it changed from last week (TP1). Explains that the payment integration is past due and on the critical path to the 2025-04-15 launch and names the launch as at risk (TP9). Flags that the load test is marked done although its dependencies are not (TP2).",
+      "weight": 3
+    },
+    {
+      "id": "budget",
+      "criterion": "States that 78 percent of the budget is spent at 55 percent progress and forecasts an overrun with a number (about 1.7 million or about 40 percent over), derived from the files (TP3). A bare \"over budget\" with no figure is partial.",
+      "weight": 2
+    },
+    {
+      "id": "decision",
+      "criterion": "Asks executives for a decision with at least two options and their consequences (move the date, descope, add capacity), and a recommendation (TP6).",
+      "weight": 2
+    },
+    {
+      "id": "register",
+      "criterion": "The risk register has at least 5 risks, each with probability, impact, owner, mitigation and a trigger or contingency (TP7). It retires R2 (contract signed), gives R3 an owner and a mitigation (TP5), adds the key-person risk on Priya (TP4) and at least one new risk such as the sandbox outage or the schedule slip (TP8).",
+      "weight": 3
+    },
+    {
+      "id": "no-false-claims",
+      "criterion": "Uses only facts or arithmetic from the inputs, does not invent a spend or an approved new launch date, does not call the budget on plan, and leaves the input files unchanged.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

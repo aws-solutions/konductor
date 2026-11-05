@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "kind": "competition",
+  "group": "code-review",
+  "status": "draft-unreviewed",
+  "reviewNote": "Draft for human review. Written for a competition run: the should-load prompts are the ones only this skill should match, the near misses are the exclusive prompts of its siblings. Ambiguous prompts are in the competition file, not here. Delete or edit before use, then assign splits.",
+  "siblings": [
+    "backend-review",
+    "adversarial-code-review",
+    "code-review",
+    "frontend-review"
+  ],
+  "exclusive": {
+    "backend-review": [
+      {
+        "id": "backend-review-1",
+        "text": "I added a new Lambda handler and a service class that writes to a DynamoDB table. Can you check that it follows our layering, the types are strict and the tests are meaningful before I open the change?"
+      },
+      {
+        "id": "backend-review-2",
+        "text": "My repository layer does a scan and then filters in memory for one tenant. Look over the backend changes for DynamoDB mistakes and anything that breaks the handler to service to repository pattern."
+      },
+      {
+        "id": "backend-review-3",
+        "text": "Please go through the TypeScript backend changes in src/handlers and src/services. I want findings ranked as critical, important or suggestion, focused on type safety and test quality."
+      },
+      {
+        "id": "backend-review-4",
+        "text": "Finished the order service backend work: a new API handler, validation and an update to the data access code. Run a pre-review pass on it for pattern compliance."
+      },
+      {
+        "id": "backend-review-5",
+        "text": "Check my Lambda backend change for DynamoDB correctness: key design in the queries, conditional writes and error handling in the data layer."
+      },
+      {
+        "id": "backend-review-6",
+        "text": "Before this goes to my teammates, sanity check the server-side TypeScript I just wrote for strict typing, error mapping and whether the unit tests would actually catch a regression."
+      },
+      {
+        "id": "backend-review-7",
+        "text": "I refactored the service layer behind our API and want a quick quality gate on the backend code: patterns, types, tests."
+      }
+    ],
+    "adversarial-code-review": [
+      {
+        "id": "adversarial-code-review-1",
+        "text": "The standard review is done and approved. Now take a second, skeptical pass at this change that touches auth and data writes: look for information leaks, partial writes and missing input validation."
+      },
+      {
+        "id": "adversarial-code-review-2",
+        "text": "This diff changes how we write several records in one request and parses an external partner API response. Hunt for places where data integrity could break or untrusted fields slip through."
+      },
+      {
+        "id": "adversarial-code-review-3",
+        "text": "Play the checker on my change and assume the first reviewer missed something. Focus on what the error responses reveal, what happens if the second write fails, and whether the request schema is enforced."
+      },
+      {
+        "id": "adversarial-code-review-4",
+        "text": "I need an attacker-minded look at the endpoint changes before merge: do error messages or logs expose internals, can a retry leave the data half updated, is every field validated?"
+      },
+      {
+        "id": "adversarial-code-review-5",
+        "text": "Our usual review passed but this PR adds an admin endpoint and a bulk update. Check specifically for authorization gaps, data corruption on partial failure and unvalidated payload shapes."
+      },
+      {
+        "id": "adversarial-code-review-6",
+        "text": "Before I submit, challenge the API boundary changes: what does the response leak, what if the batch write is interrupted, and are request bodies checked against a schema?"
+      },
+      {
+        "id": "adversarial-code-review-7",
+        "text": "Do a three-angle hostile check of this change covering disclosure, integrity and schema validation. The normal quality review already ran."
+      }
+    ],
+    "code-review": [
+      {
+        "id": "code-review-1",
+        "text": "Open a pull request for my branch with a good description and request reviewers."
+      },
+      {
+        "id": "code-review-2",
+        "text": "A teammate sent me a pull request. Read the diff, point out anything unclear, and summarize whether it is ready to approve."
+      },
+      {
+        "id": "code-review-3",
+        "text": "I got three comments on my PR. Help me work through them one by one and push the fixes."
+      },
+      {
+        "id": "code-review-4",
+        "text": "Look at the changes on my local branch compared with main and tell me what to fix before I push, grouped by severity."
+      },
+      {
+        "id": "code-review-5",
+        "text": "Use the GitHub CLI to check out PR 128, read the diff and write up feedback for the author."
+      },
+      {
+        "id": "code-review-6",
+        "text": "Write the PR description for these commits, make sure the title follows our convention, and submit it."
+      },
+      {
+        "id": "code-review-7",
+        "text": "Walk me through how to go over a colleague's diff: what to look at first, what to comment on, and how to word feedback kindly."
+      }
+    ],
+    "frontend-review": [
+      {
+        "id": "frontend-review-1",
+        "text": "I built a new form with React Hook Form and Cloudscape components. Check it for component rule violations and type safety before review."
+      },
+      {
+        "id": "frontend-review-2",
+        "text": "Go over the React TypeScript changes in the settings page: Cloudscape usage, form validation with Zod, and whether the tests cover the interactions."
+      },
+      {
+        "id": "frontend-review-3",
+        "text": "Look over my UI changes for native HTML elements that should be design system components, loosely typed props and missing form error handling."
+      },
+      {
+        "id": "frontend-review-4",
+        "text": "Check my table and filter components on the frontend: do they follow the component library rules, is the state typed, are the tests meaningful?"
+      },
+      {
+        "id": "frontend-review-5",
+        "text": "Before I ask for review, run a quality pass on the React forms I wrote: hook form patterns, strict types, test quality."
+      },
+      {
+        "id": "frontend-review-6",
+        "text": "Does my new wizard component use the design system correctly and handle form state the way our patterns require?"
+      },
+      {
+        "id": "frontend-review-7",
+        "text": "Frontend work is done: dashboard cards and a create-user form with validation. Give me a quick gate on patterns, types and tests."
+      }
+    ]
+  },
+  "ambiguous": [
+    {
+      "id": "a1",
+      "text": "Please review my latest changes before I merge them.",
+      "eitherMayLoad": [
+        "backend-review",
+        "code-review",
+        "adversarial-code-review"
+      ]
+    },
+    {
+      "id": "a2",
+      "text": "I just finished the data access code for the orders API. Look it over, especially anything around validation and what could go wrong with writes.",
+      "eitherMayLoad": [
+        "backend-review",
+        "adversarial-code-review"
+      ]
+    },
+    {
+      "id": "a3",
+      "text": "A coworker's pull request touches login and session handling. Read the diff and comment on what looks risky.",
+      "eitherMayLoad": [
+        "code-review",
+        "adversarial-code-review"
+      ]
+    },
+    {
+      "id": "a4",
+      "text": "Check my full stack feature: the Lambda handler plus the React form that calls it.",
+      "eitherMayLoad": [
+        "backend-review",
+        "frontend-review"
+      ]
+    }
+  ],
+  "howToRead": "Per-skill recall and false triggers come from the skill-*.trigger.json files via cap trigger. For competition, run the exclusive and ambiguous prompts of the group and record which sibling loaded: a sibling that wins on another skill's exclusive prompt is the competitor, and an ambiguous prompt where only one of eitherMayLoad ever loads shows which description wins ties."
+}

@@ -1,0 +1,369 @@
+{
+  "loosened": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "cases": [
+    {
+      "name": "TP1b phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/status-report.md": "Status moved from green last week to red this week.\n"
+      }
+    },
+    {
+      "name": "TP1b near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "Last week the team met on Tuesday.\n"
+      }
+    },
+    {
+      "name": "TP1b near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "Last week status was green and this week is green.\n"
+      }
+    },
+    {
+      "name": "TP2 phrased differently",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/status-report.md": "The load test is marked done but depends on staging and payment work that is not finished, so the result is not valid and must be rerun.\n"
+      }
+    },
+    {
+      "name": "TP2 near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "The load test was done by Omar.\n"
+      }
+    },
+    {
+      "name": "TP2 near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "The load test depends on staging.\n"
+      }
+    },
+    {
+      "name": "TP3 phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/status-report.md": "Budget: 78 percent spent at 55 percent progress; forecast 1.7 million, an overrun of about 42 percent.\n"
+      }
+    },
+    {
+      "name": "TP3 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "Budget is on plan.\n"
+      }
+    },
+    {
+      "name": "TP3 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "Budget overrun is possible.\n"
+      }
+    },
+    {
+      "name": "TP6 phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/status-report.md": "Decision needed: move the launch by three weeks, or descope loyalty points.\n"
+      }
+    },
+    {
+      "name": "TP6 near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "Decision: none.\n"
+      }
+    },
+    {
+      "name": "TP6 near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "A decision on naming is needed.\n"
+      }
+    },
+    {
+      "name": "TP9 phrased differently",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/status-report.md": "The 2025-04-15 launch is at risk of slipping three weeks.\n"
+      }
+    },
+    {
+      "name": "TP9 near miss 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "Launch is planned.\n"
+      }
+    },
+    {
+      "name": "TP9 near miss 2",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "Launch communications are drafted.\n"
+      }
+    },
+    {
+      "name": "TP4 phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/risk-register.md": "Key person risk: Priya is the only engineer who knows the gateway code; Chen pairs with her.\n"
+      }
+    },
+    {
+      "name": "TP4 near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "Priya is a senior engineer.\n"
+      }
+    },
+    {
+      "name": "TP4 near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "The team has a key.\n"
+      }
+    },
+    {
+      "name": "TP5a phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/risk-register.md": "R2 is closed because the contract was signed on 2025-03-03.\n"
+      }
+    },
+    {
+      "name": "TP5a near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "R2 stays open: the contract is not signed.\n"
+      }
+    },
+    {
+      "name": "TP5a near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "The contract is long.\n"
+      }
+    },
+    {
+      "name": "TP5b phrased differently",
+      "check": 15,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/risk-register.md": "R3 staging capacity: owner Omar.\n"
+      }
+    },
+    {
+      "name": "TP5b near miss 1",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "R3 staging has no capacity.\n"
+      }
+    },
+    {
+      "name": "TP5b near miss 2",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "Staging is a test area.\n"
+      }
+    },
+    {
+      "name": "TP8 phrased differently",
+      "check": 16,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/risk-register.md": "New risk: payment provider sandbox outage.\n"
+      }
+    },
+    {
+      "name": "TP8 near miss 1",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "The sandbox is a test area.\n"
+      }
+    },
+    {
+      "name": "TP8 near miss 2",
+      "check": 16,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "Outages are rare.\n"
+      }
+    },
+    {
+      "name": "rag amber with reason",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/status-report.md": "## Overall status: AMBER (was green)\n"
+      }
+    },
+    {
+      "name": "rag red",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/status-report.md": "Overall: RED\n"
+      }
+    },
+    {
+      "name": "rag green",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "## Overall status: GREEN\n"
+      }
+    },
+    {
+      "name": "rag no status",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/status-report.md": "The program is going well.\n"
+      }
+    },
+    {
+      "name": "register ids five ids",
+      "check": 17,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/risk-register.md": "R1 R2 R3 R4 R5\n"
+      }
+    },
+    {
+      "name": "register ids hyphenated",
+      "check": 17,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/risk-register.md": "R-01 R-02 R-03 R-04 R-05\n"
+      }
+    },
+    {
+      "name": "register ids two ids",
+      "check": 17,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "R1 R2\n"
+      }
+    },
+    {
+      "name": "register ids no ids",
+      "check": 17,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "Risks are listed here.\n"
+      }
+    },
+    {
+      "name": "register fields all fields",
+      "check": 18,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/risk-register.md": "probability impact owner mitigation trigger\n"
+      }
+    },
+    {
+      "name": "register fields likelihood and contingency",
+      "check": 18,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "status/risk-register.md": "likelihood severity owner response contingency\n"
+      }
+    },
+    {
+      "name": "register fields missing mitigation and trigger",
+      "check": 18,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "probability impact owner\n"
+      }
+    },
+    {
+      "name": "register fields only an owner column",
+      "check": 18,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "status/risk-register.md": "owner\n"
+      }
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "id": "rc-frontend-review",
+  "class": "review",
+  "target": "k-developer",
+  "prompt": "Review the front-end code in src/ against the conventions in README.md. For each problem give the file and line, a severity (critical, important or minor), why it matters and the fix, and write the findings to review/frontend-review.md, most severe first. Do not change source or any other existing file. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-signup-ui",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "review/frontend-review.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review/frontend-review.md)\" -ge 14 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review/frontend-review.md)\" -le 400 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "labelled_findings",
+      "path": "review/frontend-review.md",
+      "min": 6
+    },
+    {
+      "type": "min_matches",
+      "path": "review/frontend-review.md",
+      "pattern": "\\.tsx?\\b\\s*(?:[:#(,]|line)\\s*L?\\d+",
+      "min": 6
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");const S=[[\"SignupForm.tsx\",15],[\"SignupForm.tsx\",24],[\"SignupForm.tsx\",18],[\"SignupForm.tsx\",11],[\"UserTable.tsx\",11],[\"UserTable.tsx\",10],[\"UserTable.tsx\",7],[\"useUsers.ts\",14],[\"useUsers.ts\",8],[\"api.ts\",1],[\"api.ts\",8],[\"api.ts\",2]];const re=/([\\w./-]+\\.[a-z]{1,5})(?:\\s*[:#(,]\\s*|\\s+)(?:L|lines?\\s+)?(\\d+)(?:\\s*(?:-|\\u2013|to)\\s*L?(\\d+))?/gi;const hit=new Set();for(const m of t.matchAll(re)){const base=m[1].split(\"/\").pop().toLowerCase();const a=+m[2],b=m[3]?+m[3]:a;for(const [f,l] of S){if(f.toLowerCase()===base&&l>=a-3&&l<=b+3)hit.add(f+\":\"+l)}}process.exit(hit.size>=6?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE1*/const A=new RegExp(\"cloudscape|native (?:html|form|element|control|input|table|button)|plain html|raw html|<(?:input|button|table|form)\\\\b\",\"gi\"),R=[new RegExp(\"SignupForm|UserTable|form|table\",\"i\"),new RegExp(\"native|plain|raw|html|<input|<button|<table|<form|instead of|rather than|replace\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE2*/const A=new RegExp(\"\\\\bany\\\\b|untyped|loose(?:ly)? typed|type safety|explicit types?\",\"gi\"),R=[new RegExp(\"api|useUsers|UserTable|SignupForm|props|state\",\"i\"),new RegExp(\"should|must|replace|avoid|instead|violat|forbid|not allowed|type\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE3*/const A=new RegExp(\"dangerouslySetInnerHTML|\\\\bxss\\\\b|cross-site scripting|inject(?:ion)? (?:html|script)|unescaped html\",\"gi\"),R=[new RegExp(\"UserTable|displayName|user\",\"i\"),new RegExp(\"should|must|vulnerab|unsafe|risk|sanitiz|escape|text|instead|attack|inject\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE4*/const A=new RegExp(\"console\\\\.log|password\",\"gi\"),R=[new RegExp(\"SignupForm\",\"i\"),new RegExp(\"log|console|visible|plain ?text|type=.?text|mask|type=\\\"?password|leak|expos|credential\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE5*/const A=new RegExp(\"useEffect|dependency|dependencies|stale|race|abort|cleanup|clean-up|unmount|cancel\",\"gi\"),R=[new RegExp(\"useUsers\",\"i\"),new RegExp(\"query|dependenc|empty array|\\\\[\\\\]|cancel|abort|unmount|cleanup|race|stale|error\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE6*/const A=new RegExp(\"a11y|accessib|aria|label|screen reader|keyboard|announce|live region\",\"gi\"),R=[new RegExp(\"SignupForm|UserTable\",\"i\"),new RegExp(\"missing|lacks?|without|no |not |should|must|only|placeholder|announce|keyboard|tabindex|role\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE7*/const A=new RegExp(\"zod|schema|indexOf|hand-?(?:written|rolled)|validation\",\"gi\"),R=[new RegExp(\"SignupForm\",\"i\"),new RegExp(\"zod|schema|indexOf|hand|per-field|should|instead|replace|manual\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE8*/const A=new RegExp(\"catch|swallow|res\\\\.ok|status code|error handling|encodeURIComponent|url-?encod|content-?type\",\"gi\"),R=[new RegExp(\"api\\\\.ts|SignupForm\",\"i\"),new RegExp(\"swallow|empty|ignor|never|not check|without|missing|should|encode|silent|unhandled\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE9*/const A=new RegExp(\"key=\\\\{?i|index as (?:a )?key|array index|list keys?|\\\\bkeys?\\\\b\",\"gi\"),R=[new RegExp(\"UserTable\",\"i\"),new RegExp(\"index|stable|id|unique|should|instead|avoid|reorder\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");/*FE10*/const A=new RegExp(\"inline style|hex|design tokens?|hard-?coded colou?r|#0972d3|style=\",\"gi\"),R=[new RegExp(\"SignupForm|UserTable\",\"i\"),new RegExp(\"token|inline|hex|hard|should|instead|replace|literal\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "grep -qiE 'critical|high|blocker|severe' review/frontend-review.md && node -e 'const t=require(\"fs\").readFileSync(\"review/frontend-review.md\",\"utf8\");const W=500;let ok=0;for(const k of [/dangerouslySetInnerHTML|xss/i,/console\\.log|type=.?text|plain ?text|visible/i]){for(const m of t.matchAll(new RegExp(k.source,\"gi\"))){const s=t.slice(Math.max(0,m.index-W),m.index+W);if(/critical|high|blocker|severe/i.test(s)){ok++;break}}}process.exit(ok>=2?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "security",
+      "criterion": "Finds the two critical defects: user-supplied displayName rendered with dangerouslySetInnerHTML (FE3) and the password logged and shown in clear text (FE4), and rates both critical or high. Partial credit for one of the two, or for both found with a low severity.",
+      "weight": 3
+    },
+    {
+      "id": "conventions",
+      "criterion": "Finds that native form and table elements are used where the README requires Cloudscape components (FE1) and that any is used in props, state and API results (FE2), naming files and lines.",
+      "weight": 2
+    },
+    {
+      "id": "behavior",
+      "criterion": "Finds the data-fetching hook defects (FE5: empty dependency array, no cancel, no error path) and the swallowed errors and unchecked responses (FE8), explaining the user-visible effect of each.",
+      "weight": 2
+    },
+    {
+      "id": "a11y-validation",
+      "criterion": "Finds the missing labels, unannounced errors and keyboard-unreachable row (FE6), plus the hand-written validation (FE7). Minor items (FE9 list key, FE10 inline colors) are a bonus, not required.",
+      "weight": 1
+    },
+    {
+      "id": "fixes-and-no-false-claims",
+      "criterion": "Each finding carries a concrete fix. The review does not claim the code already uses Cloudscape, Zod or typed props, cites no file that does not exist, and changes no fixture file.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

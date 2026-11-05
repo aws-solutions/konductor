@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "capId": "skill:adversarial-code-review",
+  "kind": "skill",
+  "status": "draft-unreviewed",
+  "generatedBy": {
+    "tool": "hand-written, checked with cap import rules",
+    "group": "code-review"
+  },
+  "neighbours": [],
+  "queries": [
+    {
+      "id": "i01",
+      "text": "The standard review is done and approved. Now take a second, skeptical pass at this change that touches auth and data writes: look for information leaks, partial writes and missing input validation.",
+      "expect": "load",
+      "rationale": "matches adversarial-code-review and none of its siblings in code-review"
+    },
+    {
+      "id": "i02",
+      "text": "This diff changes how we write several records in one request and parses an external partner API response. Hunt for places where data integrity could break or untrusted fields slip through.",
+      "expect": "load",
+      "rationale": "matches adversarial-code-review and none of its siblings in code-review"
+    },
+    {
+      "id": "i03",
+      "text": "Play the checker on my change and assume the first reviewer missed something. Focus on what the error responses reveal, what happens if the second write fails, and whether the request schema is enforced.",
+      "expect": "load",
+      "rationale": "matches adversarial-code-review and none of its siblings in code-review"
+    },
+    {
+      "id": "i04",
+      "text": "I need an attacker-minded look at the endpoint changes before merge: do error messages or logs expose internals, can a retry leave the data half updated, is every field validated?",
+      "expect": "load",
+      "rationale": "matches adversarial-code-review and none of its siblings in code-review"
+    },
+    {
+      "id": "i05",
+      "text": "Our usual review passed but this PR adds an admin endpoint and a bulk update. Check specifically for authorization gaps, data corruption on partial failure and unvalidated payload shapes.",
+      "expect": "load",
+      "rationale": "matches adversarial-code-review and none of its siblings in code-review"
+    },
+    {
+      "id": "i06",
+      "text": "Before I submit, challenge the API boundary changes: what does the response leak, what if the batch write is interrupted, and are request bodies checked against a schema?",
+      "expect": "load",
+      "rationale": "matches adversarial-code-review and none of its siblings in code-review"
+    },
+    {
+      "id": "i07",
+      "text": "Do a three-angle hostile check of this change covering disclosure, integrity and schema validation. The normal quality review already ran.",
+      "expect": "load",
+      "rationale": "matches adversarial-code-review and none of its siblings in code-review"
+    },
+    {
+      "id": "i08",
+      "text": "I added a new Lambda handler and a service class that writes to a DynamoDB table. Can you check that it follows our layering, the types are strict and the tests are meaningful before I open the change?",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill backend-review",
+      "nearMissOf": "skill:backend-review"
+    },
+    {
+      "id": "i09",
+      "text": "My repository layer does a scan and then filters in memory for one tenant. Look over the backend changes for DynamoDB mistakes and anything that breaks the handler to service to repository pattern.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill backend-review",
+      "nearMissOf": "skill:backend-review"
+    },
+    {
+      "id": "i10",
+      "text": "Please go through the TypeScript backend changes in src/handlers and src/services. I want findings ranked as critical, important or suggestion, focused on type safety and test quality.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill backend-review",
+      "nearMissOf": "skill:backend-review"
+    },
+    {
+      "id": "i11",
+      "text": "Open a pull request for my branch with a good description and request reviewers.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill code-review",
+      "nearMissOf": "skill:code-review"
+    },
+    {
+      "id": "i12",
+      "text": "A teammate sent me a pull request. Read the diff, point out anything unclear, and summarize whether it is ready to approve.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill code-review",
+      "nearMissOf": "skill:code-review"
+    },
+    {
+      "id": "i13",
+      "text": "I got three comments on my PR. Help me work through them one by one and push the fixes.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill code-review",
+      "nearMissOf": "skill:code-review"
+    },
+    {
+      "id": "i14",
+      "text": "I built a new form with React Hook Form and Cloudscape components. Check it for component rule violations and type safety before review.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill frontend-review",
+      "nearMissOf": "skill:frontend-review"
+    },
+    {
+      "id": "i15",
+      "text": "Go over the React TypeScript changes in the settings page: Cloudscape usage, form validation with Zod, and whether the tests cover the interactions.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill frontend-review",
+      "nearMissOf": "skill:frontend-review"
+    }
+  ],
+  "taskIdeas": [],
+  "reviewNote": "Draft for human review. Written for a competition run: the should-load prompts are the ones only this skill should match, the near misses are the exclusive prompts of its siblings. Ambiguous prompts are in the competition file, not here. Delete or edit before use, then assign splits."
+}

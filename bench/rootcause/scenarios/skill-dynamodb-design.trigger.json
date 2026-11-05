@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "capId": "skill:dynamodb-design",
+  "kind": "skill",
+  "status": "draft-unreviewed",
+  "generatedBy": {
+    "tool": "hand-written, checked with cap import rules",
+    "group": "design"
+  },
+  "neighbours": [],
+  "queries": [
+    {
+      "id": "i01",
+      "text": "Design the DynamoDB table for a chat app: get messages in a room by time, list rooms per user, and look up a message by id.",
+      "expect": "load",
+      "rationale": "matches dynamodb-design and none of its siblings in design"
+    },
+    {
+      "id": "i02",
+      "text": "Given these access patterns for an orders service, give me partition and sort keys, the global secondary indexes I need and a capacity plan.",
+      "expect": "load",
+      "rationale": "matches dynamodb-design and none of its siblings in design"
+    },
+    {
+      "id": "i03",
+      "text": "I have a NoSQL data model question: how should I key a multi-tenant table so each tenant's items are queried efficiently without a hot partition?",
+      "expect": "load",
+      "rationale": "matches dynamodb-design and none of its siblings in design"
+    },
+    {
+      "id": "i04",
+      "text": "Propose a single-table layout with indexes for a ticketing system and show the CloudFormation for it.",
+      "expect": "load",
+      "rationale": "matches dynamodb-design and none of its siblings in design"
+    },
+    {
+      "id": "i05",
+      "text": "Help me model leaderboards and player profiles in DynamoDB, including how to avoid hot keys.",
+      "expect": "load",
+      "rationale": "matches dynamodb-design and none of its siblings in design"
+    },
+    {
+      "id": "i06",
+      "text": "What partition key and index strategy should I use for sensor readings queried by device and by time range?",
+      "expect": "load",
+      "rationale": "matches dynamodb-design and none of its siblings in design"
+    },
+    {
+      "id": "i07",
+      "text": "Turn our list of read and write patterns into table and index definitions for DynamoDB with on-demand versus provisioned guidance.",
+      "expect": "load",
+      "rationale": "matches dynamodb-design and none of its siblings in design"
+    },
+    {
+      "id": "i08",
+      "text": "Can you tighten this RFC? It reads like a wall of text and the proposal is buried in paragraph six.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill design-doc-guidelines",
+      "nearMissOf": "skill:design-doc-guidelines"
+    },
+    {
+      "id": "i09",
+      "text": "Look over my design doc before the architecture meeting. Is the structure right, is it too technical for the audience, and are the diagrams accurate?",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill design-doc-guidelines",
+      "nearMissOf": "skill:design-doc-guidelines"
+    },
+    {
+      "id": "i10",
+      "text": "Restructure this one-pager so a busy director gets the ask in the first two lines.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill design-doc-guidelines",
+      "nearMissOf": "skill:design-doc-guidelines"
+    },
+    {
+      "id": "i11",
+      "text": "We are starting a new notifications service from scratch. Interview me about the requirements and then produce a system design with non-functional requirements and an architecture diagram description.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill system-design-patterns",
+      "nearMissOf": "skill:system-design-patterns"
+    },
+    {
+      "id": "i12",
+      "text": "I need a system design for a file ingestion pipeline but I do not know where to begin. Ask me what you need.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill system-design-patterns",
+      "nearMissOf": "skill:system-design-patterns"
+    },
+    {
+      "id": "i13",
+      "text": "Walk me through designing the architecture for a new booking service, step by step, with questions about scale and availability.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill system-design-patterns",
+      "nearMissOf": "skill:system-design-patterns"
+    },
+    {
+      "id": "i14",
+      "text": "Evaluate the trade-offs between a managed queue and an event bus for fan-out to five consumers.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill trade-off-evaluator",
+      "nearMissOf": "skill:trade-off-evaluator"
+    },
+    {
+      "id": "i15",
+      "text": "Score these three database options on cost, latency, complexity, scalability and operability and give me a recommendation.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill trade-off-evaluator",
+      "nearMissOf": "skill:trade-off-evaluator"
+    },
+    {
+      "id": "i16",
+      "text": "Which is better for our webhook retries: a step function workflow or a queue with a worker? Compare them properly.",
+      "expect": "none",
+      "rationale": "exclusive prompt of the sibling skill trade-off-evaluator",
+      "nearMissOf": "skill:trade-off-evaluator"
+    }
+  ],
+  "taskIdeas": [],
+  "reviewNote": "Draft for human review. Written for a competition run: the should-load prompts are the ones only this skill should match, the near misses are the exclusive prompts of its siblings. Ambiguous prompts are in the competition file, not here. Delete or edit before use, then assign splits."
+}

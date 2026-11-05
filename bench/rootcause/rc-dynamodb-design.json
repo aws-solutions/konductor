@@ -1,0 +1,134 @@
+{
+  "id": "rc-dynamodb-design",
+  "class": "design",
+  "target": "k-architect",
+  "prompt": "docs/access-patterns.md describes how a support ticket service reads and writes its data and how much traffic it carries. Design the DynamoDB tables and indexes for it and write the design to docs/data-model.md: the key schema of each table and index, the shape of each item type, how each access pattern is served (name the table or index and the key condition), the capacity mode with the reason, and the risks and trade-offs including alternatives you rejected. Do not write code and do not change the input. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-ticket-access",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/data-model.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/data-model.md)\" -ge 30 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/data-model.md)\" -le 350 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/data-model.md",
+      "pattern": "\\b(?:partition key|PK|HASH)\\b",
+      "min": 3
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/data-model.md",
+      "pattern": "\\b(?:sort key|SK|RANGE)\\b",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");const G=[\"AP\\\\s?1\\\\b|ticket by id|GetItem\",\"AP\\\\s?2\\\\b|customer\",\"AP\\\\s?3\\\\b|agent\",\"AP\\\\s?4\\\\b|comments\",\"AP\\\\s?5\\\\b|external ?ref\",\"AP\\\\s?6\\\\b|dashboard\",\"AP\\\\s?7\\\\b|close\"];let c=0;for(const g of G)if(new RegExp(g,\"i\").test(t))c++;process.exit(c>=6?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*DY1*/const A=new RegExp(\"comments?\",\"gi\"),R=[new RegExp(\"separate (?:items?|rows)|own items?|item collection|sort key|begins_with|same partition|400 ?kb|SK\\\\b\",\"i\"),new RegExp(\"item\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*DY2*/const A=new RegExp(\"customerId|customer index|per customer|for a customer|customer-?tickets\",\"gi\"),R=[new RegExp(\"index|GSI\",\"i\"),new RegExp(\"createdAt|sort key|newest|descending|ScanIndexForward|time\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*DY3*/const A=new RegExp(\"sparse|agent queue|assignedAgent|per agent\",\"gi\"),R=[new RegExp(\"index|GSI\",\"i\"),new RegExp(\"priority\",\"i\"),new RegExp(\"open|sparse|only\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*DY4*/const A=new RegExp(\"externalRef|external reference|EXTREF\",\"gi\"),R=[new RegExp(\"unique|conditional|attribute_not_exists|transaction|lookup item|GSI|index\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*DY5*/const A=new RegExp(\"dashboard|AP6|status counts?|counters?|count of tickets\",\"gi\"),R=[new RegExp(\"stream|counter|aggregate|export|analytics|materiali[sz]ed|lambda|cache\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*DY6*/const A=new RegExp(\"TransactWriteItems|transaction|transactional|atomic\",\"gi\"),R=[new RegExp(\"close|AP7|audit\",\"i\"),new RegExp(\"condition|status|both|double|capacity|2x\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*DY7*/const A=new RegExp(\"on-demand|provisioned|capacity mode|auto ?scaling|read units?|write units?|hot (?:key|partition)|partition limits?|3,?000|1,?000\",\"gi\"),R=[new RegExp(\"\\\\d\",\"i\"),new RegExp(\"because|since|reason|spiky|bursty|steady|rates?|200,?000|largest customer|shard\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*DY8a*/const A=new RegExp(\"rejected|alternatives?|trade-?offs?|considered\",\"gi\"),R=[new RegExp(\"status|per entity|one table per|list attribute|relational|sql|rdbms|scan\",\"i\"),new RegExp(\"because|since|reason|but|hot|limit|cost|breaks\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/data-model.md\",\"utf8\");/*DY8b*/const A=new RegExp(\"ttl|archiv|cold storage|infrequent|standard-ia|retention|tiering\",\"gi\"),R=[new RegExp(\"ttl|archiv|cold|s3|table class|infrequent|expire|tier|move\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/data-model.md",
+      "pattern": "^\\s*```\\s*(?:js|javascript|ts|typescript|python|py|java|go|sh|bash)\\b"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/access-patterns.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ -s docs/data-model.md ] && [ \"$(find . -type f \\( -name '*.js' -o -name '*.ts' -o -name '*.py' -o -name '*.java' \\) | wc -l)\" -eq 0 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "item-collections",
+      "criterion": "Keeps comments as separate items in the ticket item collection instead of a list attribute, explains the 400 KB item limit, and serves AP1 and AP4 from the base table with strongly consistent reads (DY1).",
+      "weight": 3
+    },
+    {
+      "id": "indexes",
+      "criterion": "Serves AP2 with a customer index sorted by time (DY2), AP3 with a sparse agent queue index (DY3) and AP5 with a lookup that enforces uniqueness through a conditional write or transaction (DY4). Every pattern names the table or index and the key condition.",
+      "weight": 3
+    },
+    {
+      "id": "dashboard-and-transaction",
+      "criterion": "Rejects a scan or a status index for the dashboard (four values, hot partitions) and proposes stream-fed counters or an export (DY5). Uses TransactWriteItems with a condition for closing a ticket (DY6).",
+      "weight": 2
+    },
+    {
+      "id": "capacity-and-lifecycle",
+      "criterion": "Chooses a capacity mode with a reason that uses the stated rates, names the 200,000-ticket customer as the key to watch (DY7), and addresses 7-year retention with 90-day hot data (DY8).",
+      "weight": 2
+    },
+    {
+      "id": "no-false-claims",
+      "criterion": "Names at least one rejected alternative with a reason, and makes no false claim (a GSI enforcing uniqueness, a strongly consistent GSI read, a Query sorted by a non-key attribute, a relational schema).",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

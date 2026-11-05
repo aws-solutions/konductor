@@ -1,0 +1,32 @@
+{
+  "tasks": [
+    "req-vague-request",
+    "plan-multipart-feature",
+    "sop-plan",
+    "sop-test-coverage-review",
+    "sop-code-cleanup",
+    "simple-refactor",
+    "orch-patch-release",
+    "sop-spec-workflow",
+    "rc-frontend-review",
+    "rc-infra-iam-review",
+    "rc-dynamodb-design",
+    "rc-smithy-api",
+    "rc-tpm-status",
+    "rc-agents-md",
+    "rc-threat-model",
+    "rc-queue-decision"
+  ],
+  "arms": [
+    "vanilla",
+    "v1.2.0",
+    "main"
+  ],
+  "replicates": 2,
+  "parallel": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ]
+}

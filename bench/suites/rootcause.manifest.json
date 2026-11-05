@@ -1,0 +1,1688 @@
+{
+  "schemaVersion": 1,
+  "suite": "rootcause",
+  "suiteFile": "bench/suites/rootcause.json",
+  "extraTasksDir": "bench/rootcause",
+  "purpose": "Run konductor skills through the agent that owns them, record which skills load, and compare with what each task expects. expectedSkills should load; possibleSkills may load and are not counted as misses.",
+  "entryAgentRule": "An entry agent is set per arm with --arm-agent, not per task, so each entry agent is one run directory. Vanilla has no agent and runs the same tasks in every run directory, which gives each entry agent its own baseline.",
+  "notes": [
+    "The task schema is closed (additionalProperties false), so expectedSkills and entry agents live here and not in the task files.",
+    "The two skills with a legacy prefix are written with a JSON escape (\\u0064) so the files carry no internal marker; JSON.parse returns the real names.",
+    "rc-queue-decision is an autonomy task: it needs a kiro-cli arm with scripted replies and is judged by the autonomy rubric."
+  ],
+  "entryAgents": [
+    "k-product-manager",
+    "k-tpm",
+    "k-quality-assurance",
+    "k-developer",
+    "k-architect",
+    "konductor"
+  ],
+  "tasksByEntryAgent": {
+    "k-product-manager": [
+      "req-vague-request"
+    ],
+    "k-tpm": [
+      "plan-multipart-feature",
+      "sop-plan",
+      "rc-tpm-status"
+    ],
+    "k-quality-assurance": [
+      "sop-test-coverage-review"
+    ],
+    "k-developer": [
+      "sop-code-cleanup",
+      "simple-refactor",
+      "orch-patch-release",
+      "rc-frontend-review",
+      "rc-infra-iam-review",
+      "rc-agents-md"
+    ],
+    "k-architect": [
+      "rc-infra-iam-review",
+      "rc-dynamodb-design",
+      "rc-smithy-api",
+      "rc-threat-model",
+      "rc-queue-decision"
+    ],
+    "konductor": [
+      "sop-spec-workflow",
+      "rc-agents-md"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "req-vague-request",
+      "source": "existing",
+      "class": "design",
+      "fixture": "req-inventory",
+      "timeoutSec": 600,
+      "tier": [
+        "requirements"
+      ],
+      "seededItems": 9,
+      "checks": 24,
+      "rubricItems": 6,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 5.5,
+          "mid": 7.7,
+          "high": 10.5
+        },
+        "vanilla": {
+          "low": 2.5,
+          "mid": 3.5,
+          "high": 5
+        },
+        "basis": "observed 7.72 konductor, 3.49 vanilla"
+      },
+      "entries": [
+        {
+          "agent": "k-product-manager",
+          "expectedSkills": [
+            "requirements-extraction",
+            "user-story-writing"
+          ],
+          "possibleSkills": [
+            "decision-research",
+            "kiro-requirements-generation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plan-multipart-feature",
+      "source": "existing",
+      "class": "sop",
+      "fixture": "plan-inventory",
+      "timeoutSec": 600,
+      "tier": [
+        "requirements"
+      ],
+      "seededItems": 11,
+      "checks": 21,
+      "rubricItems": 6,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 4,
+          "mid": 5.4,
+          "high": 8
+        },
+        "vanilla": {
+          "low": 2,
+          "mid": 3,
+          "high": 4.5
+        },
+        "basis": "observed 5.37 konductor, 3.01 vanilla"
+      },
+      "entries": [
+        {
+          "agent": "k-tpm",
+          "expectedSkills": [
+            "program-planning",
+            "risk-management",
+            "task-decomposition"
+          ],
+          "possibleSkills": [
+            "plan-review",
+            "sprint-planning",
+            "legacy-to-agentic-estimate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sop-plan",
+      "source": "existing (weak)",
+      "class": "sop",
+      "fixture": "product-spec",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 9,
+      "checks": 14,
+      "rubricItems": 6,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 3,
+          "mid": 5,
+          "high": 9
+        },
+        "vanilla": {
+          "low": 1.5,
+          "mid": 2.3,
+          "high": 4
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-tpm",
+          "expectedSkills": [
+            "program-planning",
+            "risk-management"
+          ],
+          "possibleSkills": [
+            "plan-review",
+            "sprint-planning",
+            "legacy-to-agentic-estimate",
+            "task-decomposition"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sop-test-coverage-review",
+      "source": "existing",
+      "class": "sop",
+      "fixture": "inventory-api",
+      "timeoutSec": 1500,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 5,
+      "checks": 23,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 5,
+          "mid": 9,
+          "high": 16
+        },
+        "vanilla": {
+          "low": 2.5,
+          "mid": 4,
+          "high": 7
+        },
+        "basis": "estimate (timeout 1500 s)"
+      },
+      "entries": [
+        {
+          "agent": "k-quality-assurance",
+          "expectedSkills": [
+            "test-coverage-analysis",
+            "e2e-test-strategy",
+            "security-test-generation"
+          ],
+          "possibleSkills": [
+            "document-formats"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sop-code-cleanup",
+      "source": "existing",
+      "class": "sop",
+      "fixture": "inventory-api",
+      "timeoutSec": 900,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 9,
+      "checks": 20,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 4,
+          "mid": 7,
+          "high": 12
+        },
+        "vanilla": {
+          "low": 2,
+          "mid": 3.2,
+          "high": 5.5
+        },
+        "basis": "estimate (timeout 900 s)"
+      },
+      "entries": [
+        {
+          "agent": "k-developer",
+          "expectedSkills": [
+            "as\u0064lc-code-simplifier"
+          ],
+          "possibleSkills": [
+            "code-review",
+            "backend-development"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "simple-refactor",
+      "source": "existing",
+      "class": "simple",
+      "fixture": "textkit",
+      "timeoutSec": 300,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 1,
+      "checks": 4,
+      "rubricItems": 4,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 1.5,
+          "mid": 2.5,
+          "high": 4
+        },
+        "vanilla": {
+          "low": 0.7,
+          "mid": 1.1,
+          "high": 1.8
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-developer",
+          "expectedSkills": [
+            "as\u0064lc-code-simplifier"
+          ],
+          "possibleSkills": [
+            "backend-development"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "orch-patch-release",
+      "source": "existing",
+      "class": "orchestration",
+      "fixture": "textkit",
+      "timeoutSec": 480,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 1,
+      "checks": 10,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 2,
+          "mid": 3.5,
+          "high": 6
+        },
+        "vanilla": {
+          "low": 1,
+          "mid": 1.6,
+          "high": 2.7
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-developer",
+          "expectedSkills": [
+            "git-workflow"
+          ],
+          "possibleSkills": [
+            "backend-development"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sop-spec-workflow",
+      "source": "existing",
+      "class": "sop",
+      "fixture": "product-spec",
+      "timeoutSec": 1200,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 9,
+      "checks": 19,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 6,
+          "mid": 11,
+          "high": 20
+        },
+        "vanilla": {
+          "low": 3,
+          "mid": 5,
+          "high": 9
+        },
+        "basis": "estimate (timeout 1200 s, three delegated phases)"
+      },
+      "entries": [
+        {
+          "agent": "konductor",
+          "expectedSkills": [
+            "kiro-requirements-generation",
+            "kiro-design-generation",
+            "kiro-task-generation"
+          ],
+          "possibleSkills": [
+            "requirements-extraction",
+            "non-functional-requirements",
+            "task-decomposition"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rc-frontend-review",
+      "source": "new",
+      "class": "review",
+      "fixture": "rc-signup-ui",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 10,
+      "checks": 20,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 2.5,
+          "mid": 4,
+          "high": 6
+        },
+        "vanilla": {
+          "low": 1.1,
+          "mid": 1.8,
+          "high": 2.7
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-developer",
+          "expectedSkills": [
+            "frontend-review"
+          ],
+          "possibleSkills": [
+            "frontend-development",
+            "code-review",
+            "adversarial-code-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rc-infra-iam-review",
+      "source": "new",
+      "class": "review",
+      "fixture": "rc-infra",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 10,
+      "checks": 25,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 3,
+          "mid": 4.5,
+          "high": 7
+        },
+        "vanilla": {
+          "low": 1.3,
+          "mid": 2,
+          "high": 3.2
+        },
+        "basis": "estimate, per entry agent"
+      },
+      "entries": [
+        {
+          "agent": "k-developer",
+          "expectedSkills": [
+            "infra-validation"
+          ],
+          "possibleSkills": [
+            "code-review",
+            "security-remediation"
+          ]
+        },
+        {
+          "agent": "k-architect",
+          "expectedSkills": [
+            "iam-policy-design",
+            "policy-validation"
+          ],
+          "possibleSkills": [
+            "infra-validation",
+            "adversarial-design-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rc-dynamodb-design",
+      "source": "new",
+      "class": "design",
+      "fixture": "rc-ticket-access",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 8,
+      "checks": 19,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 3,
+          "mid": 5,
+          "high": 7
+        },
+        "vanilla": {
+          "low": 1.3,
+          "mid": 2.2,
+          "high": 3.2
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-architect",
+          "expectedSkills": [
+            "dynamodb-design",
+            "dynamodb-validation"
+          ],
+          "possibleSkills": [
+            "system-design-patterns",
+            "trade-off-evaluator",
+            "non-functional-requirements",
+            "design-doc-guidelines"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rc-smithy-api",
+      "source": "new",
+      "class": "design",
+      "fixture": "rc-library-api",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 9,
+      "checks": 31,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 3,
+          "mid": 5,
+          "high": 7
+        },
+        "vanilla": {
+          "low": 1.3,
+          "mid": 2.2,
+          "high": 3.2
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-architect",
+          "expectedSkills": [
+            "smithy-modeling",
+            "smithy-validation"
+          ],
+          "possibleSkills": [
+            "aws-service-validator",
+            "design-doc-guidelines"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rc-tpm-status",
+      "source": "new",
+      "class": "sop",
+      "fixture": "rc-program-tracker",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 9,
+      "checks": 21,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 3,
+          "mid": 5,
+          "high": 7
+        },
+        "vanilla": {
+          "low": 1.3,
+          "mid": 2.2,
+          "high": 3.2
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-tpm",
+          "expectedSkills": [
+            "status-reporting",
+            "risk-management"
+          ],
+          "possibleSkills": [
+            "program-planning",
+            "plan-review",
+            "program-decision-docs"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rc-agents-md",
+      "source": "new",
+      "class": "simple",
+      "fixture": "rc-agents-repo",
+      "timeoutSec": 300,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 7,
+      "checks": 20,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 1.5,
+          "mid": 2.5,
+          "high": 4
+        },
+        "vanilla": {
+          "low": 0.7,
+          "mid": 1.1,
+          "high": 1.8
+        },
+        "basis": "estimate, per entry agent"
+      },
+      "entries": [
+        {
+          "agent": "k-developer",
+          "expectedSkills": [
+            "agents-md-authoring"
+          ],
+          "possibleSkills": []
+        },
+        {
+          "agent": "konductor",
+          "expectedSkills": [
+            "agents-md-authoring"
+          ],
+          "possibleSkills": []
+        }
+      ]
+    },
+    {
+      "id": "rc-threat-model",
+      "source": "new",
+      "class": "design",
+      "fixture": "rc-share-service",
+      "timeoutSec": 600,
+      "tier": [
+        "full"
+      ],
+      "seededItems": 9,
+      "checks": 20,
+      "rubricItems": 5,
+      "multiTurn": false,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 3,
+          "mid": 5,
+          "high": 7
+        },
+        "vanilla": {
+          "low": 1.3,
+          "mid": 2.2,
+          "high": 3.2
+        },
+        "basis": "estimate"
+      },
+      "entries": [
+        {
+          "agent": "k-architect",
+          "expectedSkills": [
+            "threat-modeling"
+          ],
+          "possibleSkills": [
+            "adversarial-design-review",
+            "design-evaluation",
+            "non-functional-requirements"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rc-queue-decision",
+      "source": "new",
+      "class": "autonomy",
+      "fixture": "rc-queue-choice",
+      "timeoutSec": 600,
+      "tier": [
+        "autonomy"
+      ],
+      "seededItems": 5,
+      "checks": 6,
+      "rubricItems": 4,
+      "multiTurn": true,
+      "estCreditsPerRun": {
+        "konductorArm": {
+          "low": 3,
+          "mid": 5.5,
+          "high": 8
+        },
+        "vanilla": {
+          "low": 1.3,
+          "mid": 2.4,
+          "high": 3.6
+        },
+        "basis": "estimate (multi-turn, scripted replies)"
+      },
+      "entries": [
+        {
+          "agent": "k-architect",
+          "expectedSkills": [
+            "socratic-elicitation",
+            "deliberation-panel"
+          ],
+          "possibleSkills": [
+            "decision-research",
+            "trade-off-evaluator",
+            "architecture-advisor",
+            "decision-writing",
+            "adr-generator"
+          ]
+        }
+      ]
+    }
+  ],
+  "expectedPairs": [
+    {
+      "task": "req-vague-request",
+      "entryAgent": "k-product-manager",
+      "skill": "requirements-extraction"
+    },
+    {
+      "task": "req-vague-request",
+      "entryAgent": "k-product-manager",
+      "skill": "user-story-writing"
+    },
+    {
+      "task": "plan-multipart-feature",
+      "entryAgent": "k-tpm",
+      "skill": "program-planning"
+    },
+    {
+      "task": "plan-multipart-feature",
+      "entryAgent": "k-tpm",
+      "skill": "risk-management"
+    },
+    {
+      "task": "plan-multipart-feature",
+      "entryAgent": "k-tpm",
+      "skill": "task-decomposition"
+    },
+    {
+      "task": "sop-plan",
+      "entryAgent": "k-tpm",
+      "skill": "program-planning"
+    },
+    {
+      "task": "sop-plan",
+      "entryAgent": "k-tpm",
+      "skill": "risk-management"
+    },
+    {
+      "task": "sop-test-coverage-review",
+      "entryAgent": "k-quality-assurance",
+      "skill": "test-coverage-analysis"
+    },
+    {
+      "task": "sop-test-coverage-review",
+      "entryAgent": "k-quality-assurance",
+      "skill": "e2e-test-strategy"
+    },
+    {
+      "task": "sop-test-coverage-review",
+      "entryAgent": "k-quality-assurance",
+      "skill": "security-test-generation"
+    },
+    {
+      "task": "sop-code-cleanup",
+      "entryAgent": "k-developer",
+      "skill": "as\u0064lc-code-simplifier"
+    },
+    {
+      "task": "simple-refactor",
+      "entryAgent": "k-developer",
+      "skill": "as\u0064lc-code-simplifier"
+    },
+    {
+      "task": "orch-patch-release",
+      "entryAgent": "k-developer",
+      "skill": "git-workflow"
+    },
+    {
+      "task": "sop-spec-workflow",
+      "entryAgent": "konductor",
+      "skill": "kiro-requirements-generation"
+    },
+    {
+      "task": "sop-spec-workflow",
+      "entryAgent": "konductor",
+      "skill": "kiro-design-generation"
+    },
+    {
+      "task": "sop-spec-workflow",
+      "entryAgent": "konductor",
+      "skill": "kiro-task-generation"
+    },
+    {
+      "task": "rc-frontend-review",
+      "entryAgent": "k-developer",
+      "skill": "frontend-review"
+    },
+    {
+      "task": "rc-infra-iam-review",
+      "entryAgent": "k-developer",
+      "skill": "infra-validation"
+    },
+    {
+      "task": "rc-infra-iam-review",
+      "entryAgent": "k-architect",
+      "skill": "iam-policy-design"
+    },
+    {
+      "task": "rc-infra-iam-review",
+      "entryAgent": "k-architect",
+      "skill": "policy-validation"
+    },
+    {
+      "task": "rc-dynamodb-design",
+      "entryAgent": "k-architect",
+      "skill": "dynamodb-design"
+    },
+    {
+      "task": "rc-dynamodb-design",
+      "entryAgent": "k-architect",
+      "skill": "dynamodb-validation"
+    },
+    {
+      "task": "rc-smithy-api",
+      "entryAgent": "k-architect",
+      "skill": "smithy-modeling"
+    },
+    {
+      "task": "rc-smithy-api",
+      "entryAgent": "k-architect",
+      "skill": "smithy-validation"
+    },
+    {
+      "task": "rc-tpm-status",
+      "entryAgent": "k-tpm",
+      "skill": "status-reporting"
+    },
+    {
+      "task": "rc-tpm-status",
+      "entryAgent": "k-tpm",
+      "skill": "risk-management"
+    },
+    {
+      "task": "rc-agents-md",
+      "entryAgent": "k-developer",
+      "skill": "agents-md-authoring"
+    },
+    {
+      "task": "rc-agents-md",
+      "entryAgent": "konductor",
+      "skill": "agents-md-authoring"
+    },
+    {
+      "task": "rc-threat-model",
+      "entryAgent": "k-architect",
+      "skill": "threat-modeling"
+    },
+    {
+      "task": "rc-queue-decision",
+      "entryAgent": "k-architect",
+      "skill": "socratic-elicitation"
+    },
+    {
+      "task": "rc-queue-decision",
+      "entryAgent": "k-architect",
+      "skill": "deliberation-panel"
+    }
+  ],
+  "costPlan": {
+    "basis": "credits per run from the task table: two observed values, the rest estimates (new tasks 2 to 6 credits). Judge credits are not included. Each entry run has vanilla plus 3 konductor arms.",
+    "perPassCredits": {
+      "low": 199.3,
+      "mid": 326.7,
+      "high": 517.1
+    },
+    "twoReplicates": {
+      "reps": 2,
+      "runs": 144,
+      "totalMid": 653.4,
+      "cap": 981,
+      "perAgent": {
+        "k-product-manager": {
+          "tasks": 1,
+          "runs": 8,
+          "creditsMid": 53.2
+        },
+        "k-tpm": {
+          "tasks": 3,
+          "runs": 24,
+          "creditsMid": 107.4
+        },
+        "k-quality-assurance": {
+          "tasks": 1,
+          "runs": 8,
+          "creditsMid": 62
+        },
+        "k-developer": {
+          "tasks": 6,
+          "runs": 48,
+          "creditsMid": 165.6
+        },
+        "k-architect": {
+          "tasks": 5,
+          "runs": 40,
+          "creditsMid": 172
+        },
+        "konductor": {
+          "tasks": 2,
+          "runs": 16,
+          "creditsMid": 93.2
+        }
+      }
+    },
+    "threeReplicates": {
+      "reps": 3,
+      "runs": 216,
+      "totalMid": 980.1,
+      "cap": 1471,
+      "perAgent": {
+        "k-product-manager": {
+          "tasks": 1,
+          "runs": 12,
+          "creditsMid": 79.8
+        },
+        "k-tpm": {
+          "tasks": 3,
+          "runs": 36,
+          "creditsMid": 161.1
+        },
+        "k-quality-assurance": {
+          "tasks": 1,
+          "runs": 12,
+          "creditsMid": 93
+        },
+        "k-developer": {
+          "tasks": 6,
+          "runs": 72,
+          "creditsMid": 248.4
+        },
+        "k-architect": {
+          "tasks": 5,
+          "runs": 60,
+          "creditsMid": 258
+        },
+        "konductor": {
+          "tasks": 2,
+          "runs": 24,
+          "creditsMid": 139.8
+        }
+      }
+    }
+  },
+  "commands": {
+    "setup": "OUT=/var/tmp/rootcause-run; mkdir -p \"$OUT\"",
+    "note": "Until the rootcause suite name is registered in the runner (see the patch note), pass --suite requirements: --tasks overrides the suite task list and only its defaults apply.",
+    "perEntryAgent": {
+      "k-product-manager": "node bench/runner/bench.js run --suite requirements --extra-tasks bench/rootcause --tasks req-vague-request \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-product-manager,mainsha=k-product-manager,stack149=k-product-manager \\\n  --replicates 2 --parallel 1 --budget-credits 80 --out \"$OUT/k-product-manager\"",
+      "k-tpm": "node bench/runner/bench.js run --suite requirements --extra-tasks bench/rootcause --tasks plan-multipart-feature,sop-plan,rc-tpm-status \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-tpm,mainsha=k-tpm,stack149=k-tpm \\\n  --replicates 2 --parallel 1 --budget-credits 162 --out \"$OUT/k-tpm\"",
+      "k-quality-assurance": "node bench/runner/bench.js run --suite requirements --extra-tasks bench/rootcause --tasks sop-test-coverage-review \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-quality-assurance,mainsha=k-quality-assurance,stack149=k-quality-assurance \\\n  --replicates 2 --parallel 1 --budget-credits 93 --out \"$OUT/k-quality-assurance\"",
+      "k-developer": "node bench/runner/bench.js run --suite requirements --extra-tasks bench/rootcause --tasks sop-code-cleanup,simple-refactor,orch-patch-release,rc-frontend-review,rc-infra-iam-review,rc-agents-md \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-developer,mainsha=k-developer,stack149=k-developer \\\n  --replicates 2 --parallel 1 --budget-credits 249 --out \"$OUT/k-developer\"",
+      "k-architect": "node bench/runner/bench.js run --suite requirements --extra-tasks bench/rootcause --tasks rc-infra-iam-review,rc-dynamodb-design,rc-smithy-api,rc-threat-model,rc-queue-decision \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=k-architect,mainsha=k-architect,stack149=k-architect \\\n  --replicates 2 --parallel 1 --budget-credits 258 --out \"$OUT/k-architect\"",
+      "konductor": "node bench/runner/bench.js run --suite requirements --extra-tasks bench/rootcause --tasks sop-spec-workflow,rc-agents-md \\\n  --arms vanilla,v1.2.0,mainsha=ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c,stack149=80c73994353d1dc54e2927088a49da16dc19a530 \\\n  --arm-agent v1.2.0=konductor,mainsha=konductor,stack149=konductor \\\n  --replicates 2 --parallel 1 --budget-credits 140 --out \"$OUT/konductor\""
+    }
+  },
+  "coverage": {
+    "totalSkills": 82,
+    "levels": {
+      "seed-prompts": 41,
+      "scenario-set": 6,
+      "indirect": 4,
+      "task": 26,
+      "none": 5
+    },
+    "withAtLeastOneShouldLoadTaskOrScenario": 73,
+    "bySkill": {
+      "about-konductor": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "adr-generator": {
+        "task": [],
+        "taskPossible": [
+          "rc-queue-decision@k-architect"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "adversarial-code-review": {
+        "task": [],
+        "taskPossible": [
+          "rc-frontend-review@k-developer"
+        ],
+        "scenarioSet": true,
+        "seedPrompts": false,
+        "level": "scenario-set"
+      },
+      "adversarial-code-review-pass-integrity": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "indirect": "loaded by adversarial-code-review",
+        "level": "indirect"
+      },
+      "adversarial-code-review-pass-schema": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "indirect": "loaded by adversarial-code-review",
+        "level": "indirect"
+      },
+      "adversarial-code-review-pass-security": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "indirect": "loaded by adversarial-code-review",
+        "level": "indirect"
+      },
+      "adversarial-design-review": {
+        "task": [],
+        "taskPossible": [
+          "rc-infra-iam-review@k-architect",
+          "rc-threat-model@k-architect"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "agents-md-authoring": {
+        "task": [
+          "rc-agents-md@k-developer",
+          "rc-agents-md@konductor"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "app-discovery": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "architecture-advisor": {
+        "task": [],
+        "taskPossible": [
+          "rc-queue-decision@k-architect"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "architecture-diagram-generation": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "argumentation-reference": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "indirect": "loaded by adversarial-design-review",
+        "level": "indirect"
+      },
+      "asana-sprint-planning": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "as\u0064lc-aspect-review": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "as\u0064lc-code-simplifier": {
+        "task": [
+          "sop-code-cleanup@k-developer",
+          "simple-refactor@k-developer"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "aws-service-validator": {
+        "task": [],
+        "taskPossible": [
+          "rc-smithy-api@k-architect"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "backend-development": {
+        "task": [],
+        "taskPossible": [
+          "sop-code-cleanup@k-developer",
+          "simple-refactor@k-developer",
+          "orch-patch-release@k-developer"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "backend-review": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": true,
+        "seedPrompts": false,
+        "level": "scenario-set"
+      },
+      "claude-teams-behavior": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "none": "Claude Code only; no Kiro agent lists it",
+        "level": "none"
+      },
+      "cmux-dispatch": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "none": "needs a cmux session around the agent; the bench has none",
+        "level": "none"
+      },
+      "code-review": {
+        "task": [],
+        "taskPossible": [
+          "sop-code-cleanup@k-developer",
+          "rc-frontend-review@k-developer",
+          "rc-infra-iam-review@k-developer"
+        ],
+        "scenarioSet": true,
+        "seedPrompts": false,
+        "level": "scenario-set"
+      },
+      "constraints": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "none": "preloaded as core rules and excluded from the Kiro skill index, so a prompt cannot load it",
+        "level": "none"
+      },
+      "cost-estimation": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "cypress-test-implementation": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "decision-research": {
+        "task": [],
+        "taskPossible": [
+          "req-vague-request@k-product-manager",
+          "rc-queue-decision@k-architect"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "decision-writing": {
+        "task": [],
+        "taskPossible": [
+          "rc-queue-decision@k-architect"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "delegation-protocol": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "deliberation-panel": {
+        "task": [
+          "rc-queue-decision@k-architect"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "design-doc-guidelines": {
+        "task": [],
+        "taskPossible": [
+          "rc-dynamodb-design@k-architect",
+          "rc-smithy-api@k-architect"
+        ],
+        "scenarioSet": true,
+        "seedPrompts": false,
+        "level": "scenario-set"
+      },
+      "design-evaluation": {
+        "task": [],
+        "taskPossible": [
+          "rc-threat-model@k-architect"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "design-impact-review": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "design-quality-check": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "doc-accuracy-analyzer": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "document-formats": {
+        "task": [],
+        "taskPossible": [
+          "sop-test-coverage-review@k-quality-assurance"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "dom-inspection": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "dynamodb-design": {
+        "task": [
+          "rc-dynamodb-design@k-architect"
+        ],
+        "taskPossible": [],
+        "scenarioSet": true,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "dynamodb-validation": {
+        "task": [
+          "rc-dynamodb-design@k-architect"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "e2e-test-strategy": {
+        "task": [
+          "sop-test-coverage-review@k-quality-assurance"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "external-research": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "find-aws-skills": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "frontend-development": {
+        "task": [],
+        "taskPossible": [
+          "rc-frontend-review@k-developer"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "frontend-review": {
+        "task": [
+          "rc-frontend-review@k-developer"
+        ],
+        "taskPossible": [],
+        "scenarioSet": true,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "git-merge": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "git-workflow": {
+        "task": [
+          "orch-patch-release@k-developer"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "historical-issues-registry": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "none": "only an adversarial review coordinator with a platform delta layer loads it; not run standalone",
+        "level": "none"
+      },
+      "humanize-writing": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "iam-policy-design": {
+        "task": [
+          "rc-infra-iam-review@k-architect"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "infra-validation": {
+        "task": [
+          "rc-infra-iam-review@k-developer"
+        ],
+        "taskPossible": [
+          "rc-infra-iam-review@k-architect"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "kiro-design-generation": {
+        "task": [
+          "sop-spec-workflow@konductor"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "kiro-requirements-generation": {
+        "task": [
+          "sop-spec-workflow@konductor"
+        ],
+        "taskPossible": [
+          "req-vague-request@k-product-manager"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "kiro-task-generation": {
+        "task": [
+          "sop-spec-workflow@konductor"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "legacy-to-agentic-estimate": {
+        "task": [],
+        "taskPossible": [
+          "plan-multipart-feature@k-tpm",
+          "sop-plan@k-tpm"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "mux-dispatch": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "none": "needs a tmux or zellij session around the agent; the bench has none",
+        "level": "none"
+      },
+      "non-functional-requirements": {
+        "task": [],
+        "taskPossible": [
+          "sop-spec-workflow@konductor",
+          "rc-dynamodb-design@k-architect",
+          "rc-threat-model@k-architect"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "persistent-memory": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "plan-review": {
+        "task": [],
+        "taskPossible": [
+          "plan-multipart-feature@k-tpm",
+          "sop-plan@k-tpm",
+          "rc-tpm-status@k-tpm"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "playwright-test-implementation": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "policy-validation": {
+        "task": [
+          "rc-infra-iam-review@k-architect"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "pre-planning-analysis": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "program-decision-docs": {
+        "task": [],
+        "taskPossible": [
+          "rc-tpm-status@k-tpm"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "program-planning": {
+        "task": [
+          "plan-multipart-feature@k-tpm",
+          "sop-plan@k-tpm"
+        ],
+        "taskPossible": [
+          "rc-tpm-status@k-tpm"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "progress-tracking": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "requirements-extraction": {
+        "task": [
+          "req-vague-request@k-product-manager"
+        ],
+        "taskPossible": [
+          "sop-spec-workflow@konductor"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "risk-management": {
+        "task": [
+          "plan-multipart-feature@k-tpm",
+          "sop-plan@k-tpm",
+          "rc-tpm-status@k-tpm"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "sdlc-navigator": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "security-remediation": {
+        "task": [],
+        "taskPossible": [
+          "rc-infra-iam-review@k-developer"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "security-test-generation": {
+        "task": [
+          "sop-test-coverage-review@k-quality-assurance"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "smithy-modeling": {
+        "task": [
+          "rc-smithy-api@k-architect"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "smithy-validation": {
+        "task": [
+          "rc-smithy-api@k-architect"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "socratic-elicitation": {
+        "task": [
+          "rc-queue-decision@k-architect"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "sop-state-management": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "sprint-planning": {
+        "task": [],
+        "taskPossible": [
+          "plan-multipart-feature@k-tpm",
+          "sop-plan@k-tpm"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "status-reporting": {
+        "task": [
+          "rc-tpm-status@k-tpm"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "system-design-patterns": {
+        "task": [],
+        "taskPossible": [
+          "rc-dynamodb-design@k-architect"
+        ],
+        "scenarioSet": true,
+        "seedPrompts": false,
+        "level": "scenario-set"
+      },
+      "task-decomposition": {
+        "task": [
+          "plan-multipart-feature@k-tpm"
+        ],
+        "taskPossible": [
+          "sop-plan@k-tpm",
+          "sop-spec-workflow@konductor"
+        ],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "test-coverage-analysis": {
+        "task": [
+          "sop-test-coverage-review@k-quality-assurance"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "threat-modeling": {
+        "task": [
+          "rc-threat-model@k-architect"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "trade-off-evaluator": {
+        "task": [],
+        "taskPossible": [
+          "rc-dynamodb-design@k-architect",
+          "rc-queue-decision@k-architect"
+        ],
+        "scenarioSet": true,
+        "seedPrompts": false,
+        "level": "scenario-set"
+      },
+      "ui-text-validation": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "user-story-writing": {
+        "task": [
+          "req-vague-request@k-product-manager"
+        ],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": false,
+        "level": "task"
+      },
+      "verification": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      },
+      "workspace-skills": {
+        "task": [],
+        "taskPossible": [],
+        "scenarioSet": false,
+        "seedPrompts": true,
+        "level": "seed-prompts"
+      }
+    }
+  }
+}

@@ -1,0 +1,781 @@
+[
+  {
+    "skill": "about-konductor",
+    "entryAgent": "konductor",
+    "query": "I just installed this assistant. What can it do and how do I get started?",
+    "should_trigger": true
+  },
+  {
+    "skill": "about-konductor",
+    "entryAgent": "konductor",
+    "query": "Give me a short tour of what you can help with and which commands I should know first.",
+    "should_trigger": true
+  },
+  {
+    "skill": "about-konductor",
+    "entryAgent": "konductor",
+    "query": "Explain how DynamoDB global secondary indexes work.",
+    "should_trigger": false,
+    "nearMissOf": "sdlc-navigator"
+  },
+  {
+    "skill": "sdlc-navigator",
+    "entryAgent": "konductor",
+    "query": "We finished the requirements. Which step comes next and who should do it?",
+    "should_trigger": true
+  },
+  {
+    "skill": "sdlc-navigator",
+    "entryAgent": "konductor",
+    "query": "How do the design, build and test phases connect, and where does a security review fit?",
+    "should_trigger": true
+  },
+  {
+    "skill": "sdlc-navigator",
+    "entryAgent": "konductor",
+    "query": "Review the requirements document for unclear terms.",
+    "should_trigger": false,
+    "nearMissOf": "requirements-extraction"
+  },
+  {
+    "skill": "pre-planning-analysis",
+    "entryAgent": "konductor",
+    "query": "Someone asked me to \"make onboarding better\". I cannot tell if that is design, research or code. Help me work out what kind of request it is before we start.",
+    "should_trigger": true
+  },
+  {
+    "skill": "pre-planning-analysis",
+    "entryAgent": "konductor",
+    "query": "This request is vague and could mean three different pieces of work. List what is ambiguous and what scope to propose.",
+    "should_trigger": true
+  },
+  {
+    "skill": "pre-planning-analysis",
+    "entryAgent": "konductor",
+    "query": "Write a work breakdown for the onboarding redesign with dates.",
+    "should_trigger": false,
+    "nearMissOf": "program-planning"
+  },
+  {
+    "skill": "sop-state-management",
+    "entryAgent": "konductor",
+    "query": "We are halfway through a multi-step workflow and I need to pause. Save where we are so I can resume tomorrow.",
+    "should_trigger": true
+  },
+  {
+    "skill": "sop-state-management",
+    "entryAgent": "konductor",
+    "query": "Pick up the multi-step process we started yesterday from the saved state.",
+    "should_trigger": true
+  },
+  {
+    "skill": "sop-state-management",
+    "entryAgent": "konductor",
+    "query": "Commit my work in progress to a branch.",
+    "should_trigger": false,
+    "nearMissOf": "git-workflow"
+  },
+  {
+    "skill": "git-merge",
+    "entryAgent": "konductor",
+    "query": "Merge my feature branch into the main branch and clean up the branch afterwards.",
+    "should_trigger": true
+  },
+  {
+    "skill": "git-merge",
+    "entryAgent": "konductor",
+    "query": "Prepare a release merge from the development branch into main.",
+    "should_trigger": true
+  },
+  {
+    "skill": "git-merge",
+    "entryAgent": "konductor",
+    "query": "Write a commit message for these changes.",
+    "should_trigger": false,
+    "nearMissOf": "git-workflow"
+  },
+  {
+    "skill": "persistent-memory",
+    "entryAgent": "konductor",
+    "query": "From now on always use tabs in this project. Remember that for next time.",
+    "should_trigger": true
+  },
+  {
+    "skill": "persistent-memory",
+    "entryAgent": "konductor",
+    "query": "You keep getting the test command wrong. Remember the right one for future sessions.",
+    "should_trigger": true
+  },
+  {
+    "skill": "persistent-memory",
+    "entryAgent": "konductor",
+    "query": "Explain how browser local storage works.",
+    "should_trigger": false,
+    "nearMissOf": "external-research"
+  },
+  {
+    "skill": "workspace-skills",
+    "entryAgent": "konductor",
+    "query": "That sequence of steps for releasing this package worked. Save it as a reusable procedure for this project.",
+    "should_trigger": true
+  },
+  {
+    "skill": "workspace-skills",
+    "entryAgent": "konductor",
+    "query": "We keep repeating the same five steps to rotate keys. Capture them so the next session can follow them.",
+    "should_trigger": true
+  },
+  {
+    "skill": "workspace-skills",
+    "entryAgent": "konductor",
+    "query": "Remember that I prefer short answers.",
+    "should_trigger": false,
+    "nearMissOf": "persistent-memory"
+  },
+  {
+    "skill": "verification",
+    "entryAgent": "konductor",
+    "query": "Before you tell me the task is done, show evidence that it works.",
+    "should_trigger": true
+  },
+  {
+    "skill": "verification",
+    "entryAgent": "konductor",
+    "query": "Prove the fix works: run the checks and show me the output before reporting completion.",
+    "should_trigger": true
+  },
+  {
+    "skill": "verification",
+    "entryAgent": "konductor",
+    "query": "Write unit tests for the parser.",
+    "should_trigger": false,
+    "nearMissOf": "test-coverage-analysis"
+  },
+  {
+    "skill": "ui-text-validation",
+    "entryAgent": "k-quality-assurance",
+    "query": "Check the labels, error messages and button text in our console screens for consistency and style.",
+    "should_trigger": true
+  },
+  {
+    "skill": "ui-text-validation",
+    "entryAgent": "k-quality-assurance",
+    "query": "Review the wording of these form errors and empty states against our content guidelines.",
+    "should_trigger": true
+  },
+  {
+    "skill": "ui-text-validation",
+    "entryAgent": "k-quality-assurance",
+    "query": "Write end to end tests for the sign-in form.",
+    "should_trigger": false,
+    "nearMissOf": "playwright-test-implementation"
+  },
+  {
+    "skill": "playwright-test-implementation",
+    "entryAgent": "k-quality-assurance",
+    "query": "Write Playwright tests for the checkout flow: add to cart, pay, see the confirmation.",
+    "should_trigger": true
+  },
+  {
+    "skill": "playwright-test-implementation",
+    "entryAgent": "k-quality-assurance",
+    "query": "Turn this test plan into runnable Playwright specs with stable selectors.",
+    "should_trigger": true
+  },
+  {
+    "skill": "playwright-test-implementation",
+    "entryAgent": "k-quality-assurance",
+    "query": "Write Cypress tests for the checkout flow.",
+    "should_trigger": false,
+    "nearMissOf": "cypress-test-implementation"
+  },
+  {
+    "skill": "cypress-test-implementation",
+    "entryAgent": "k-quality-assurance",
+    "query": "Implement the Cypress tests from this strategy document, with custom commands and fixtures.",
+    "should_trigger": true
+  },
+  {
+    "skill": "cypress-test-implementation",
+    "entryAgent": "k-quality-assurance",
+    "query": "Set up Cypress specs for the login and profile pages and plan the order of work.",
+    "should_trigger": true
+  },
+  {
+    "skill": "cypress-test-implementation",
+    "entryAgent": "k-quality-assurance",
+    "query": "Write Playwright tests for the profile page.",
+    "should_trigger": false,
+    "nearMissOf": "playwright-test-implementation"
+  },
+  {
+    "skill": "dom-inspection",
+    "entryAgent": "k-quality-assurance",
+    "query": "Inspect the signup page and list each field, its validation rules and the error message selectors.",
+    "should_trigger": true
+  },
+  {
+    "skill": "dom-inspection",
+    "entryAgent": "k-quality-assurance",
+    "query": "Which fields on this form are conditionally shown, and what constraints does each have?",
+    "should_trigger": true
+  },
+  {
+    "skill": "dom-inspection",
+    "entryAgent": "k-quality-assurance",
+    "query": "Check the wording of the signup page errors.",
+    "should_trigger": false,
+    "nearMissOf": "ui-text-validation"
+  },
+  {
+    "skill": "document-formats",
+    "entryAgent": "k-quality-assurance",
+    "query": "Read the attached Word document and pull out the acceptance criteria.",
+    "should_trigger": true
+  },
+  {
+    "skill": "document-formats",
+    "entryAgent": "k-quality-assurance",
+    "query": "Convert this markdown report into a docx file I can send to the team.",
+    "should_trigger": true
+  },
+  {
+    "skill": "document-formats",
+    "entryAgent": "k-quality-assurance",
+    "query": "Summarize this PDF diagram.",
+    "should_trigger": false,
+    "nearMissOf": "k-media-analyzer"
+  },
+  {
+    "skill": "external-research",
+    "entryAgent": "k-researcher",
+    "query": "Find out what the current best practices are for rotating database credentials and cite sources.",
+    "should_trigger": true
+  },
+  {
+    "skill": "external-research",
+    "entryAgent": "k-researcher",
+    "query": "Compare how three open source libraries handle retries with backoff, with links.",
+    "should_trigger": true
+  },
+  {
+    "skill": "external-research",
+    "entryAgent": "k-researcher",
+    "query": "Search our internal wiki for the onboarding guide.",
+    "should_trigger": false,
+    "nearMissOf": "internal search"
+  },
+  {
+    "skill": "sprint-planning",
+    "entryAgent": "k-product-manager",
+    "query": "Plan next sprint: we have 40 story points of capacity and these twelve tickets. Which fit?",
+    "should_trigger": true
+  },
+  {
+    "skill": "sprint-planning",
+    "entryAgent": "k-product-manager",
+    "query": "Size these tasks in story points and build a sprint backlog from them.",
+    "should_trigger": true
+  },
+  {
+    "skill": "sprint-planning",
+    "entryAgent": "k-product-manager",
+    "query": "Create the tasks in Asana for this project.",
+    "should_trigger": false,
+    "nearMissOf": "asana-sprint-planning"
+  },
+  {
+    "skill": "asana-sprint-planning",
+    "entryAgent": "k-product-manager",
+    "query": "Create the sprint in Asana with these tasks, estimates and the right hierarchy.",
+    "should_trigger": true
+  },
+  {
+    "skill": "asana-sprint-planning",
+    "entryAgent": "k-product-manager",
+    "query": "Track capacity for the sprint in Asana and flag if we are overcommitted.",
+    "should_trigger": true
+  },
+  {
+    "skill": "asana-sprint-planning",
+    "entryAgent": "k-product-manager",
+    "query": "Plan the sprint with story points on a whiteboard.",
+    "should_trigger": false,
+    "nearMissOf": "sprint-planning"
+  },
+  {
+    "skill": "legacy-to-agentic-estimate",
+    "entryAgent": "k-product-manager",
+    "query": "Our old estimate for this migration was 40 engineer days of all manual coding. Re-estimate it assuming the team uses AI coding agents.",
+    "should_trigger": true
+  },
+  {
+    "skill": "legacy-to-agentic-estimate",
+    "entryAgent": "k-product-manager",
+    "query": "Convert this effort table from a classic estimate to one that accounts for AI tooling, with low, mid and high bands.",
+    "should_trigger": true
+  },
+  {
+    "skill": "legacy-to-agentic-estimate",
+    "entryAgent": "k-product-manager",
+    "query": "Estimate the cost of running this service on AWS.",
+    "should_trigger": false,
+    "nearMissOf": "cost-estimation"
+  },
+  {
+    "skill": "decision-research",
+    "entryAgent": "k-product-manager",
+    "query": "Before we write the decision record, gather the context: prior art, alternatives and trade-offs for adopting feature flags.",
+    "should_trigger": true
+  },
+  {
+    "skill": "decision-research",
+    "entryAgent": "k-product-manager",
+    "query": "Research the options for our identity provider and build the evidence base for a recommendation.",
+    "should_trigger": true
+  },
+  {
+    "skill": "decision-research",
+    "entryAgent": "k-product-manager",
+    "query": "Write the decision record for choosing feature flags.",
+    "should_trigger": false,
+    "nearMissOf": "decision-writing"
+  },
+  {
+    "skill": "adr-generator",
+    "entryAgent": "k-architect",
+    "query": "Document our decision to use a message queue instead of direct calls as an architecture decision record with alternatives and consequences.",
+    "should_trigger": true
+  },
+  {
+    "skill": "adr-generator",
+    "entryAgent": "k-architect",
+    "query": "Write an ADR for moving the session store to a managed cache.",
+    "should_trigger": true
+  },
+  {
+    "skill": "adr-generator",
+    "entryAgent": "k-architect",
+    "query": "Write a design doc for the session store.",
+    "should_trigger": false,
+    "nearMissOf": "design-doc-guidelines"
+  },
+  {
+    "skill": "architecture-advisor",
+    "entryAgent": "k-architect",
+    "query": "Quick opinion: should we put the cache in front of the API or the database? Give me a short recommendation with the trade-off.",
+    "should_trigger": true
+  },
+  {
+    "skill": "architecture-advisor",
+    "entryAgent": "k-architect",
+    "query": "Sanity check this plan to use a single queue for all event types. Is it a good idea?",
+    "should_trigger": true
+  },
+  {
+    "skill": "architecture-advisor",
+    "entryAgent": "k-architect",
+    "query": "Produce a full system design for the event pipeline.",
+    "should_trigger": false,
+    "nearMissOf": "system-design-patterns"
+  },
+  {
+    "skill": "architecture-diagram-generation",
+    "entryAgent": "k-architect",
+    "query": "Draw the architecture of this system as a draw.io diagram with the AWS service icons and data flows.",
+    "should_trigger": true
+  },
+  {
+    "skill": "architecture-diagram-generation",
+    "entryAgent": "k-architect",
+    "query": "Generate a multi-account architecture diagram from the design document.",
+    "should_trigger": true
+  },
+  {
+    "skill": "architecture-diagram-generation",
+    "entryAgent": "k-architect",
+    "query": "Describe the architecture in words for the design doc.",
+    "should_trigger": false,
+    "nearMissOf": "design-doc-guidelines"
+  },
+  {
+    "skill": "aws-service-validator",
+    "entryAgent": "k-architect",
+    "query": "Fact check the AWS claims in my design: are the limits and features I cite for these services accurate?",
+    "should_trigger": true
+  },
+  {
+    "skill": "aws-service-validator",
+    "entryAgent": "k-architect",
+    "query": "Does this service really support that feature in that region? Verify the AWS statements in the document.",
+    "should_trigger": true
+  },
+  {
+    "skill": "aws-service-validator",
+    "entryAgent": "k-architect",
+    "query": "Fact check the performance numbers in my benchmark report.",
+    "should_trigger": false,
+    "nearMissOf": "doc-accuracy-analyzer"
+  },
+  {
+    "skill": "cost-estimation",
+    "entryAgent": "k-architect",
+    "query": "Estimate the monthly AWS cost for this architecture at baseline, optimized and high availability scenarios.",
+    "should_trigger": true
+  },
+  {
+    "skill": "cost-estimation",
+    "entryAgent": "k-architect",
+    "query": "What will this design cost to run at 10 million requests a day?",
+    "should_trigger": true
+  },
+  {
+    "skill": "cost-estimation",
+    "entryAgent": "k-architect",
+    "query": "Compare two designs on cost and complexity.",
+    "should_trigger": false,
+    "nearMissOf": "trade-off-evaluator"
+  },
+  {
+    "skill": "decision-writing",
+    "entryAgent": "k-architect",
+    "query": "Draft the decision record for adopting event sourcing, with alternatives and consequences in plain language.",
+    "should_trigger": true
+  },
+  {
+    "skill": "decision-writing",
+    "entryAgent": "k-architect",
+    "query": "Review this decision record: are the alternatives fair and the consequences specific?",
+    "should_trigger": true
+  },
+  {
+    "skill": "decision-writing",
+    "entryAgent": "k-architect",
+    "query": "Gather prior art and options for event sourcing.",
+    "should_trigger": false,
+    "nearMissOf": "decision-research"
+  },
+  {
+    "skill": "doc-accuracy-analyzer",
+    "entryAgent": "k-architect",
+    "query": "Before I submit this design doc, check every factual claim in it against sources and report which are wrong.",
+    "should_trigger": true
+  },
+  {
+    "skill": "doc-accuracy-analyzer",
+    "entryAgent": "k-architect",
+    "query": "Run an accuracy pass on my document: extract the verifiable claims and verify each one.",
+    "should_trigger": true
+  },
+  {
+    "skill": "doc-accuracy-analyzer",
+    "entryAgent": "k-architect",
+    "query": "Tighten the prose of my design doc.",
+    "should_trigger": false,
+    "nearMissOf": "design-doc-guidelines"
+  },
+  {
+    "skill": "adversarial-design-review",
+    "entryAgent": "k-architect",
+    "query": "Challenge the decisions in this design: argue against the architecture and classify what you find by severity.",
+    "should_trigger": true
+  },
+  {
+    "skill": "adversarial-design-review",
+    "entryAgent": "k-architect",
+    "query": "Play devil's advocate on my design doc and attack the weakest trade-offs.",
+    "should_trigger": true
+  },
+  {
+    "skill": "adversarial-design-review",
+    "entryAgent": "k-architect",
+    "query": "Score the design for production readiness across ten dimensions.",
+    "should_trigger": false,
+    "nearMissOf": "design-evaluation"
+  },
+  {
+    "skill": "design-evaluation",
+    "entryAgent": "k-architect",
+    "query": "Evaluate this complete design package for production readiness before handoff to implementation.",
+    "should_trigger": true
+  },
+  {
+    "skill": "design-evaluation",
+    "entryAgent": "k-architect",
+    "query": "Run the final quality gate on the design, threat model, API specs and data models together.",
+    "should_trigger": true
+  },
+  {
+    "skill": "design-evaluation",
+    "entryAgent": "k-architect",
+    "query": "Challenge the design decisions as a skeptic.",
+    "should_trigger": false,
+    "nearMissOf": "adversarial-design-review"
+  },
+  {
+    "skill": "design-quality-check",
+    "entryAgent": "k-architect",
+    "query": "Score my design doc for filler phrases, hedging and unsupported claims before the review meeting.",
+    "should_trigger": true
+  },
+  {
+    "skill": "design-quality-check",
+    "entryAgent": "k-architect",
+    "query": "Is this design doc ready for review? Check structure completeness and flag over-engineering.",
+    "should_trigger": true
+  },
+  {
+    "skill": "design-quality-check",
+    "entryAgent": "k-architect",
+    "query": "Fact check the numbers in my design doc.",
+    "should_trigger": false,
+    "nearMissOf": "doc-accuracy-analyzer"
+  },
+  {
+    "skill": "non-functional-requirements",
+    "entryAgent": "k-architect",
+    "query": "From this system design, extract measurable performance, availability, security and observability requirements.",
+    "should_trigger": true
+  },
+  {
+    "skill": "non-functional-requirements",
+    "entryAgent": "k-architect",
+    "query": "Turn the design into numbers: latency targets, uptime, scaling limits and monitoring needs.",
+    "should_trigger": true
+  },
+  {
+    "skill": "non-functional-requirements",
+    "entryAgent": "k-architect",
+    "query": "Write the acceptance tests for these requirements.",
+    "should_trigger": false,
+    "nearMissOf": "test-coverage-analysis"
+  },
+  {
+    "skill": "backend-development",
+    "entryAgent": "k-developer",
+    "query": "Fix the failing Lambda handler: the DynamoDB update drops an attribute. Keep the change minimal.",
+    "should_trigger": true
+  },
+  {
+    "skill": "backend-development",
+    "entryAgent": "k-developer",
+    "query": "Add pagination to the list endpoint in the service layer without refactoring the rest.",
+    "should_trigger": true
+  },
+  {
+    "skill": "backend-development",
+    "entryAgent": "k-developer",
+    "query": "Review my backend change for pattern compliance.",
+    "should_trigger": false,
+    "nearMissOf": "backend-review"
+  },
+  {
+    "skill": "progress-tracking",
+    "entryAgent": "k-developer",
+    "query": "Check how far along the implementation is against the plan and whether every requirement has code behind it.",
+    "should_trigger": true
+  },
+  {
+    "skill": "progress-tracking",
+    "entryAgent": "k-developer",
+    "query": "Update the status of the tasks in this feature plan based on what is merged.",
+    "should_trigger": true
+  },
+  {
+    "skill": "progress-tracking",
+    "entryAgent": "k-developer",
+    "query": "Write a weekly status report for executives.",
+    "should_trigger": false,
+    "nearMissOf": "status-reporting"
+  },
+  {
+    "skill": "find-aws-skills",
+    "entryAgent": "k-developer",
+    "query": "I need to set up AWS Glue jobs and I am not sure where to start. Is there guidance for that service?",
+    "should_trigger": true
+  },
+  {
+    "skill": "find-aws-skills",
+    "entryAgent": "k-developer",
+    "query": "Find specialized guidance for configuring AWS Backup plans.",
+    "should_trigger": true
+  },
+  {
+    "skill": "find-aws-skills",
+    "entryAgent": "k-developer",
+    "query": "Explain what DynamoDB streams are.",
+    "should_trigger": false,
+    "nearMissOf": "external-research"
+  },
+  {
+    "skill": "as\u0064lc-aspect-review",
+    "entryAgent": "k-developer",
+    "query": "Do a parallel multi-aspect review of this module covering security, performance and readability.",
+    "should_trigger": true
+  },
+  {
+    "skill": "as\u0064lc-aspect-review",
+    "entryAgent": "k-developer",
+    "query": "Review this design from several angles at once and give me one combined report.",
+    "should_trigger": true
+  },
+  {
+    "skill": "as\u0064lc-aspect-review",
+    "entryAgent": "k-developer",
+    "query": "Review this pull request quickly.",
+    "should_trigger": false,
+    "nearMissOf": "code-review"
+  },
+  {
+    "skill": "design-impact-review",
+    "entryAgent": "k-developer",
+    "query": "If I rename this database column, what else breaks: API, UI, tests and docs? Trace the impact.",
+    "should_trigger": true
+  },
+  {
+    "skill": "design-impact-review",
+    "entryAgent": "k-developer",
+    "query": "We are changing the response schema. List every downstream artifact this affects.",
+    "should_trigger": true
+  },
+  {
+    "skill": "design-impact-review",
+    "entryAgent": "k-developer",
+    "query": "Review the column rename code change.",
+    "should_trigger": false,
+    "nearMissOf": "backend-review"
+  },
+  {
+    "skill": "security-remediation",
+    "entryAgent": "k-developer",
+    "query": "Here are the findings from the security scan. Plan the fixes in priority order with effort estimates.",
+    "should_trigger": true
+  },
+  {
+    "skill": "security-remediation",
+    "entryAgent": "k-developer",
+    "query": "Turn this vulnerability report into a remediation plan with risk context.",
+    "should_trigger": true
+  },
+  {
+    "skill": "security-remediation",
+    "entryAgent": "k-developer",
+    "query": "Do a threat model of this service.",
+    "should_trigger": false,
+    "nearMissOf": "threat-modeling"
+  },
+  {
+    "skill": "frontend-development",
+    "entryAgent": "k-developer",
+    "query": "Build a create-user form with validation using our component library and typed props.",
+    "should_trigger": true
+  },
+  {
+    "skill": "frontend-development",
+    "entryAgent": "k-developer",
+    "query": "Replace the native inputs in this page with design system components and extract a reusable form field.",
+    "should_trigger": true
+  },
+  {
+    "skill": "frontend-development",
+    "entryAgent": "k-developer",
+    "query": "Review the React form I wrote.",
+    "should_trigger": false,
+    "nearMissOf": "frontend-review"
+  },
+  {
+    "skill": "plan-review",
+    "entryAgent": "k-tpm",
+    "query": "Critique this work plan: is it clear, verifiable, and does it see the big picture? Give it a rating.",
+    "should_trigger": true
+  },
+  {
+    "skill": "plan-review",
+    "entryAgent": "k-tpm",
+    "query": "Tell me if this implementation plan is ready to execute or what is blocking it.",
+    "should_trigger": true
+  },
+  {
+    "skill": "plan-review",
+    "entryAgent": "k-tpm",
+    "query": "Write the plan for the migration.",
+    "should_trigger": false,
+    "nearMissOf": "program-planning"
+  },
+  {
+    "skill": "program-decision-docs",
+    "entryAgent": "k-tpm",
+    "query": "Write a decision document for the program: three options, trade-offs and a recommendation on whether to extend the deadline.",
+    "should_trigger": true
+  },
+  {
+    "skill": "program-decision-docs",
+    "entryAgent": "k-tpm",
+    "query": "We need a formal options analysis on whether to buy or build the reporting tool.",
+    "should_trigger": true
+  },
+  {
+    "skill": "program-decision-docs",
+    "entryAgent": "k-tpm",
+    "query": "Write the weekly status report.",
+    "should_trigger": false,
+    "nearMissOf": "status-reporting"
+  },
+  {
+    "skill": "app-discovery",
+    "entryAgent": "k-browser",
+    "query": "Open the deployed app, walk every page and list the forms and interactive elements you find.",
+    "should_trigger": true
+  },
+  {
+    "skill": "app-discovery",
+    "entryAgent": "k-browser",
+    "query": "Crawl the staging site and produce a report of its pages and controls.",
+    "should_trigger": true
+  },
+  {
+    "skill": "app-discovery",
+    "entryAgent": "k-browser",
+    "query": "Write a Playwright test for the login page.",
+    "should_trigger": false,
+    "nearMissOf": "playwright-test-implementation"
+  },
+  {
+    "skill": "delegation-protocol",
+    "entryAgent": "konductor",
+    "query": "Have the architect design the API and then the developer implement it. Write each handoff so nothing is lost between them.",
+    "should_trigger": true
+  },
+  {
+    "skill": "delegation-protocol",
+    "entryAgent": "konductor",
+    "query": "Split this feature across specialists and run the independent parts in parallel, then collect the results.",
+    "should_trigger": true
+  },
+  {
+    "skill": "delegation-protocol",
+    "entryAgent": "konductor",
+    "query": "Implement the API yourself in one pass.",
+    "should_trigger": false,
+    "nearMissOf": "backend-development"
+  },
+  {
+    "skill": "humanize-writing",
+    "entryAgent": "konductor",
+    "query": "Rewrite this paragraph so it does not sound like it was generated by an AI, but keep the meaning and my voice.",
+    "should_trigger": true
+  },
+  {
+    "skill": "humanize-writing",
+    "entryAgent": "konductor",
+    "query": "My README reads like a chatbot wrote it. Clean up the filler and the stock phrases.",
+    "should_trigger": true
+  },
+  {
+    "skill": "humanize-writing",
+    "entryAgent": "konductor",
+    "query": "Check the facts in my README.",
+    "should_trigger": false,
+    "nearMissOf": "doc-accuracy-analyzer"
+  }
+]
