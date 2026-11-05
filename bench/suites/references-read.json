@@ -1,0 +1,20 @@
+{
+  "extraTasks": [
+    "refs"
+  ],
+  "tasks": [
+    "refs-dynamodb-design",
+    "refs-sprint-capacity",
+    "refs-dynamodb-readable"
+  ],
+  "arms": [
+    "main"
+  ],
+  "replicates": 3,
+  "parallel": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ]
+}
