@@ -8,6 +8,10 @@ import {
   SAMPLE_TEXT,
 } from '../support/stub-workflow';
 
+// Everything in the sample file above its stages, which a save of the stages
+// leaves as it is.
+const HEADER = SAMPLE_TEXT.slice(0, SAMPLE_TEXT.indexOf('stages:\n'));
+
 // These tests save to the stub, which keeps one workflow for all of them, so
 // they run one after the other in one worker. The `sample` fixture fails a
 // test that finds itself in another worker, so `--repeat-each` or a second
@@ -94,7 +98,7 @@ test('deletes a stage and saves what is left', async ({
   await designer.save.click();
   await designer.expectStatus('Saved');
   expect((await currentWorkflow(request)).text).toBe(
-    'name: hello\nintent: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n',
+    `${HEADER}stages:\n  - name: draft\n    agent: k-developer\n`,
   );
 });
 
@@ -114,7 +118,7 @@ test('deletes a stage in the middle, selects the one before it and saves the res
   await designer.save.click();
   await designer.expectStatus('Saved');
   expect((await currentWorkflow(request)).text).toBe(
-    'name: hello\nintent: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n  - name: ship\n    agent: k-developer\n',
+    `${HEADER}stages:\n  - name: draft\n    agent: k-developer\n  - name: ship\n    agent: k-developer\n`,
   );
 });
 
@@ -151,7 +155,7 @@ test('does everything with the keyboard', async ({ designer, request }) => {
   await designer.expectStatus('Saved');
   await expect(designer.save).toBeFocused();
   expect((await currentWorkflow(request)).text).toBe(
-    'name: hello\nintent: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n  - name: ship\n    agent: k-media-analyzer\n',
+    `${HEADER}stages:\n  - name: draft\n    agent: k-developer\n  - name: ship\n    agent: k-media-analyzer\n`,
   );
 });
 

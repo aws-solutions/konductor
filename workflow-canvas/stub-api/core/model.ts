@@ -14,6 +14,10 @@ export const DIAGNOSTIC_CODES = [
   'DUPLICATE_STAGE',
   'NAME_MISMATCH',
   'INVALID_VALUE',
+  'UNSUPPORTED_FORMAT',
+  'STAGE_KIND_MISSING',
+  'STAGE_KIND_AMBIGUOUS',
+  'NOT_SUPPORTED_BY_THIS_BUILD',
 ] as const;
 
 export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
@@ -31,14 +35,36 @@ export interface Diagnostic {
   suggestion?: string;
 }
 
+/** A check of the intent. This build reads `file` checks only. */
+export interface Check {
+  id: string;
+  file: string;
+}
+
+export interface Param {
+  description?: string;
+  default?: string;
+}
+
+export interface Intent {
+  outcome: string;
+  accept?: Check[];
+}
+
 export interface Stage {
   name: string;
   agent: string;
+  prompt?: string;
+  prompt_file?: string;
 }
 
+/** The parsed text: the keys of the file, with `name` filled in. */
 export interface WorkflowView {
+  format: string;
+  version: string;
   name: string;
-  intent: { outcome: string };
+  intent: Intent;
+  params?: Record<string, Param>;
   stages: Stage[];
 }
 
@@ -66,8 +92,27 @@ export interface SaveResult {
   diagnostics: Diagnostic[];
 }
 
+/** Why a stage is blocked. */
+export const STAGE_REASONS = [
+  'RESULT_MISSING',
+  'RESULT_INVALID',
+  'RESULT_FAILURE',
+  'SESSION_FAILED',
+  'TIMEOUT',
+  'OUTPUT_MISSING',
+  'OUTPUT_UNCHANGED',
+  'CHECK_FAILED',
+] as const;
+
+export type StageReason = (typeof STAGE_REASONS)[number];
 export type StageStatus = 'pending' | 'running' | 'passed' | 'blocked';
 export type RunStatus = 'running' | 'passed' | 'halted';
+
+export interface RunStage {
+  status: StageStatus;
+  /** Present when the stage is `blocked`. */
+  reason?: StageReason;
+}
 
 export interface Run {
   run_id: string;
@@ -78,5 +123,5 @@ export interface Run {
   finished_at: string | null;
   exit_code: number | null;
   order: string[];
-  stages: Record<string, { status: StageStatus }>;
+  stages: Record<string, RunStage>;
 }

@@ -195,12 +195,18 @@ function replaceStageBlock(
     .join('');
 }
 
-// A whole file written from the view: the layout that nothing else fits.
+// A whole file written from the view: the layout that nothing else fits. The
+// view has no `format` or `version`, and the contract requires both, so the
+// file gets the first-release `format` and the `version` the contract suggests.
+// The intent is written as a mapping, the only form the contract reads.
 function writeWhole(view: WorkflowView, stages: readonly StageView[]): string {
   const lines = stages.flatMap((stage) => generated(stage, '\n', DEFAULT_DASH));
   return [
+    'format: konductor/1',
     `name: ${scalar(view.name)}`,
-    `intent: ${scalar(view.intent.outcome)}`,
+    'version: 0.1.0',
+    'intent:',
+    `  outcome: ${scalar(view.intent.outcome)}`,
     'stages:',
     ...lines.map((line) => line.text),
     '',
@@ -216,7 +222,7 @@ function writeWhole(view: WorkflowView, stages: readonly StageView[]): string {
  * comments written inside a stage that is changed or deleted go with it. A
  * file whose `stages` are not a list of items under a top-level key, such as
  * a list in the flow form, is written whole from `view`, in the plain layout,
- * which drops its comments and `version`.
+ * which drops its comments and writes `version: 0.1.0`.
  */
 export function withStages(
   text: string,
@@ -228,8 +234,8 @@ export function withStages(
 
 /**
  * Whether a save of `text` would write the file whole, in the plain layout,
- * and so drop its comments and `version`: its `stages` are not a list of items
- * under a top-level key.
+ * and so drop its comments and reset its `version`: its `stages` are not a
+ * list of items under a top-level key.
  */
 export function willRewriteWhole(text: string): boolean {
   return planFor(text) === undefined;
