@@ -280,8 +280,9 @@ disclosure, data integrity failures, and schema/validation gaps.
 
 **Only `k-architect` declares this SOP** — `k-developer` and the three orchestrators do not, so
 none of them invokes it directly. `k-architect` acts as the coordinator: it returns the generator
-passes to its caller as a split and a handoff note, resumes to run the checker phase itself, and runs a generator pass itself only when the user
-asks for an in-session run, which is what keeps generator and checker independent otherwise.
+passes to its caller as a split and a handoff note, resumes to run the checker phase itself,
+and runs a generator pass itself only when the user asks for an in-session run, which is what
+keeps generator and checker independent otherwise.
 
 ### How to invoke it
 
