@@ -181,3 +181,18 @@ def test_faq_does_not_claim_a_no_convention_fallback():
         "docs/site/user-guide.html",
     ):
         assert "states no convention" not in _read(rel), rel
+
+
+def test_ruling_entries_have_their_own_subsection():
+    text = _read("skills/persistent-memory/SKILL.md")
+    assert "### Ruling entries" in text
+    section = text.split("### Ruling entries", 1)[1].split("### Marker syntax", 1)[0]
+    for number in ("1. ", "2. ", "3. ", "4. "):
+        assert re.search(rf"^{number}", section, re.M), number
+    flat = " ".join(section.split())
+    for phrase in (
+        "prefixed `Ruling:`",
+        "rulings it may follow under rule 11",
+        "A specialist with no user applies",
+    ):
+        assert phrase in flat, phrase

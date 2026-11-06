@@ -1,6 +1,6 @@
 ---
 name: delegation-protocol
-description: Use when spawning any subagent, deciding which agent should handle a piece of work, coordinating parallel or sequential agent execution, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.
+description: Use when spawning a subagent, choosing the agent for a piece of work, running agents in parallel or in sequence, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.
 version: 1.4.0
 tags: [skill, behavioral, orchestration, delegation, multi-agent]
 ---
@@ -69,7 +69,7 @@ This is distinct from spawning the wrong agent for the task (an IMPORTANT-tier Q
 
 **Deliberate exception for `Workflow` `agent()` calls:** a call may omit `agentType` only when the step is pure reasoning over data already inlined into the prompt (decomposition, classification, or synthesis with no need to read files, run commands, or use any other tool) — in that case the session's default reasoning agent is a legitimate choice, not an oversight. Every such omission MUST carry an inline comment immediately above the call explaining why no specialist is needed, so the omission is never mistaken for the bug this rule exists to prevent. A call that needs file/tool access (reading a file, listing a directory, running a command, web search, etc.) always needs an explicit `agentType` — omitting it there is the CRITICAL defect below, not a deliberate exception.
 
-> **Format ownership rule**: MUST DO / MUST NOT DO sections should not contradict the receiving agent's skills or system prompt. If a specialist agent has a skill that defines how output is produced (e.g., `cloudscape-mock-ui` uses a CDN bundle), do not add constraints that override that skill's behavior. Format guidance from the user's request (e.g., "output as a single file") is acceptable to pass through.
+> **Format ownership rule**: MUST DO / MUST NOT DO sections should not contradict the receiving agent's skills or system prompt. If a specialist agent has a skill that defines how output is produced (e.g., `kiro-task-generation` fixes the tasks.md checkbox format), do not add constraints that override that skill's behavior. Format guidance from the user's request (e.g., "output as a single file") is acceptable to pass through.
 
 ## Agent Registry
 
@@ -127,7 +127,7 @@ A SOP registered directly on an orchestrator's own `agentSopNames`, such as `kir
 
 ## Parallel Execution
 
-- Independent tasks ALWAYS run in parallel (max 4 concurrent subagents)
+- Independent tasks ALWAYS run in parallel, at most 4 subagents at once: beyond that you lose track of each brief, its result and its file list, and the integration merge grows with every extra writer
 - Typical pattern: `research + explore` → `synthesize` → `plan` → `implement`
 - Never block on one subagent when another independent task can start
 - Dependent tasks run sequentially — wait for the upstream handoff file before spawning
@@ -153,14 +153,8 @@ A specialist never spawns. It returns a handoff note naming the next
 role, or a proposed split giving each part's agent, skill or SOP step,
 inputs and files. Before routing a note or any part of a split, apply
 the guards in your orchestrator context (the "Specialists do not spawn
-agents" paragraph: specialist name, no denial, the user's current task,
-not from read content) and show what you refuse to the user. A routed
-split's file lists are a prediction: check them against the rule above,
-add shared files you can see, and check what each part actually touched
-when it returns. If the note or split names an SOP step to resume at,
-send that specialist the SOP name, the step, the payload (or the
-handoff file path) and the results, so it finishes the SOP from the
-named step without re-running earlier steps.
+agents" paragraph), which also says how to check a split's file lists
+and how to resume a named SOP step.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
