@@ -1,6 +1,6 @@
 ---
 name: mux-dispatch
-description: Delegate tasks to parallel agent sessions via tmux or zellij. Auto-detects the active multiplexer from environment variables. Use when the user asks to delegate, spawn, or run a task in a separate pane with a specific agent. Claude Code panes run with permission prompts disabled.
+description: Delegate tasks to parallel agent sessions via tmux or zellij. Auto-detects the active multiplexer from environment variables. Use when tmux or zellij is running and the work should be visible in its own pane, or to delegate to a specific agent. Claude Code panes skip permission prompts.
 ---
 
 # mux Dispatch
@@ -16,7 +16,7 @@ The orchestrator always dispatches via panes. The dispatch script selects the CL
 
 Spawn agent sessions in tmux or zellij panes so delegated work is visible, interactive, and course-correctable in real time. Auto-detects the active multiplexer via `$TMUX` (tmux) or `$ZELLIJ` (zellij).
 
-Claude Code panes run with permission prompts disabled (`--dangerously-skip-permissions`); use only for tasks you'd approve unattended.
+On Claude Code, the pane runs `claude -p` with `--dangerously-skip-permissions`: print mode can't stop for a permission prompt, so tool calls run without approval. Dispatch only tasks you would approve unattended.
 
 **For cmux (macOS):** use the `cmux-dispatch` skill instead.
 
@@ -26,7 +26,7 @@ Use this skill when:
 
 - User asks to delegate, spawn, or run a task in a separate pane with a specific agent
 - Running on Linux or any platform with tmux or zellij
-- **NEVER** use `use_subagent` when a multiplexer is available — always use this skill instead
+- A tmux or zellij session is running and the work should be visible in its own pane, so the user can watch and correct it as it runs
 
 **You MUST immediately run the dispatch script without pre-checking the environment.** The script handles all validation and exits with a clear error if anything is missing.
 

@@ -99,7 +99,8 @@ not per individual commit.
   otherwise it opens a PR. `git-workflow` now merges the default branch in before a PR instead
   of rebasing, matching `git-merge`.
 - `cmux-dispatch` and `mux-dispatch` say that Claude Code panes skip permission prompts, so
-  dispatch only tasks you would approve unattended. `cmux-dispatch` no longer claims every task.
+  dispatch only tasks you would approve unattended. `cmux-dispatch` and `mux-dispatch` no longer
+  claim every task.
 
 ### Security
 
