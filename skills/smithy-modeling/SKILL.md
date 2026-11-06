@@ -88,6 +88,7 @@ namespace [appropriate.namespace]
 /// Service documentation
 @title("[Service Title]")
 @documentation("[Detailed service description]")
+@httpBearerAuth
 service [ServiceName] {
     version: "[YYYY-MM-DD]"
     operations: [
@@ -343,6 +344,7 @@ namespace com.example.todo
 /// Todo Service provides task management capabilities
 @title("Todo Service")
 @documentation("RESTful service for managing todo items")
+@httpBearerAuth
 service TodoService {
     version: "2024-11-14"
     operations: [
