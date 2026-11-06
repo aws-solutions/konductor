@@ -1049,11 +1049,11 @@ const bucket = new s3.Bucket(this, 'DocumentsBucket', {
 ```
 
 **Code Quality** - Stack Organization
-Suggestion: Consider extracting repeated patterns into reusable constructs
+Observation: Repeated resource patterns are not extracted into reusable constructs
 Benefit: Improved code maintainability and reusability
 
 **Documentation** - Missing inline comments
-Suggestion: Add inline comments explaining complex resource configurations
+Observation: Complex resource configurations have no inline comments
 Benefit: Improved code readability for team members
 
 ### Positive Findings
@@ -1072,7 +1072,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 ## Validation Summary
 
-**Overall Recommendation**: Address 3 critical security issues before deployment. IMPORTANT operational issues should be resolved for production readiness.
+**Overall Recommendation**: Address 2 CRITICAL security issues before deployment. IMPORTANT operational issues should be resolved for production readiness.
 
 **Key Strengths**:
 
