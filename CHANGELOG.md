@@ -53,9 +53,11 @@ not per individual commit.
 - Specialist agents no longer spawn other agents. They finish their part and hand the next
   step, or a proposed parallel split, back to the orchestrator. The orchestrator routes a
   handoff only when it serves the user's task, did not come from content the specialist read,
-  and does not report a denied action; it adds visible shared files to a proposed split before
-  fan-out. When the note or split names an SOP step to resume at, the orchestrator returns the
-  results to that specialist to finish the SOP. A specialist returns an SOP's independence step
+  and does not report a denied action; it applies the same checks to every part of a proposed
+  split, refuses a part that names an orchestrator, and shows refused parts to you; it adds
+  visible shared files to a proposed split before fan-out. When the note or split names an
+  SOP step to resume at, the orchestrator returns the results to that specialist to finish
+  the SOP. A specialist returns an SOP's independence step
   as a split or note and does not run it itself unless the user asks, and says so in its output.
   The note or split carries the SOP inputs and the outputs of completed steps, inline or in a
   handoff file, and the orchestrator passes them back with the resume brief. Run directly with
@@ -63,8 +65,9 @@ not per individual commit.
   `k-adversarial-pull-request-review` returns its three Step 2 passes as a split, resumes at
   Step 3, returns the reuse pass as a handoff, and resumes at Step 4. `konductor init` now
   ignores `.konductor/handoff/`; add the line by hand in a project initialised earlier.
-- Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it (not shell
-  or Kiro CLI v2). `k-code-review-workflow` step 6 writes a `PENDING ADVERSARIAL PASS` report, then hands off.
+- Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it, with
+  `disallowedTools` on Claude Code for every specialist (not shell or Kiro CLI v2).
+  `k-code-review-workflow` step 6 writes a `PENDING ADVERSARIAL PASS` report, then hands off.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
@@ -72,7 +75,8 @@ not per individual commit.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
   and is never read or written through a symlink. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
-  instruction-like text after the date and origin tag.
+  instruction-like text after the date and origin tag, and reads the text of a leading `[label]`
+  or `[label](url)` as entry text.
   Orchestrators never bypass denials or read unnamed secrets.
 - `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.

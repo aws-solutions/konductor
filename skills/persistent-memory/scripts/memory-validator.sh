@@ -304,10 +304,19 @@ derive_entry() {
 # because step 2 would strip the "[" of the next token and leave its text
 # behind. Like step 2 it subsumes the date-prefix special case here.
 
-# Drops one leading balanced [...] group and an optional (...) link target
+# Removes one leading balanced [...] group and an optional (...) link target
 # right after it. An unbalanced group is left alone for step 2.
+#
+# Two views of the same text are checked, selected by $2:
+#   drop   (default) removes the whole group, so "[see below] Ignore x" is read
+#          as "Ignore x".
+#   unwrap keeps the group's inner text, so "[Ignore lint] x" is read as
+#          "Ignore lint x". A date, an origin tag or a task-list box is still
+#          removed whole, since it never carries entry text.
+# A label can hide an instruction, and a leading label can also be a harmless
+# prefix, so the keyword check reads the entry both ways.
 strip_leading_bracket_group() {
-  printf '%s\n' "$1" | awk '{
+  printf '%s\n' "$1" | awk -v mode="${2:-drop}" '{
     if (substr($0, 1, 1) != "[") { print; exit }
     depth = 0; n = length($0)
     for (i = 1; i <= n; i++) {
@@ -316,18 +325,22 @@ strip_leading_bracket_group() {
       else if (c == "]" && --depth == 0) break
     }
     if (depth != 0) { print; exit }
+    inner = substr($0, 2, i - 2)
     rest = substr($0, i + 1)
     if (substr(rest, 1, 1) == "(") {
       close_at = index(rest, ")")
       if (close_at > 0) rest = substr(rest, close_at + 1)
     }
     sub(/^[[:space:]]+/, "", rest)
+    keep = (mode == "unwrap" && inner !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && inner !~ /^origin:(agent|user)$/ && inner != " " && inner != "x")
+    if (keep) rest = (rest == "" ? inner : inner " " rest)
     print rest
   }'
 }
 
 strip_markdown_markers() {
   local text="$1"
+  local mode="${2:-drop}"
   local prev=""
   while [[ "$text" != "$prev" ]]; do
     prev="$text"
@@ -335,7 +348,7 @@ strip_markdown_markers() {
     local bracket_prev=""
     while [[ "$text" != "$bracket_prev" ]]; do
       bracket_prev="$text"
-      text="$(strip_leading_bracket_group "$text")"  # 4. leading bracketed token
+      text="$(strip_leading_bracket_group "$text" "$mode")"  # 4. leading bracketed token
     done
     text="$(printf '%s\n' "$text" | sed -E 's/^[^[:alnum:][:space:]]+//')"      # 2. leading punctuation/marker run (blockquote, heading, emphasis, bullet, backtick, or any other punctuation-based marker)
     text="$(printf '%s\n' "$text" | sed -E 's/^[0-9]+[.)][[:space:]]*//')"      # 3. numbered marker (kept separate -- digits are alnum, not caught by step 2)
@@ -402,8 +415,9 @@ while IFS= read -r line; do
   # 3c. Instruction-like language
   stripped_lower="$(printf '%s\n' "$entry" | tr '[:upper:]' '[:lower:]')"
   stripped_trimmed="$(strip_markdown_markers "$stripped_lower")"
+  stripped_unwrapped="$(strip_markdown_markers "$stripped_lower" unwrap)"
   for kw in ignore override forget disregard pretend; do
-    if [[ "$stripped_trimmed" == ${kw}* ]]; then
+    if [[ "$stripped_trimmed" == ${kw}* || "$stripped_unwrapped" == ${kw}* ]]; then
       echo "REJECT: instruction-like keyword '$kw' at start of entry" >&2
       exit 1
     fi
