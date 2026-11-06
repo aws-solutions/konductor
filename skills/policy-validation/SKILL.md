@@ -30,7 +30,33 @@ Overly permissive actions (wildcards without justification), missing condition k
 - Validate only policies with a concrete policy document: JSON, or CDK code with actual statements. A role that appears only in a table or description has nothing to check, so don't flag it, not even for a missing permission boundary.
 - Tell a security gap from a design decision. If the design justifies a choice (for example, "AWS-managed keys sufficient for Internal/Confidential data classification"), say so in the finding and present your recommendation as an alternative. With no justification, it is a gap.
 - Report only what the design missed. If it already has a "Compliance Gaps Identified" table, a SOC 2 checklist, threat mitigation tables, or remediation steps under "Next Steps and Recommendations", reference them, check that they are accurate, and add only new gaps. Repeating them lengthens the report without telling the maker anything new.
-- Rate every finding CRITICAL, IMPORTANT, or SUGGESTION, the scale the Quality Gate uses.
+- Rate every finding CRITICAL, IMPORTANT, or SUGGESTION, the scale the Quality Gate uses. Severity Mapping below says which findings go where.
+
+## Severity Mapping
+
+The per-check "Flag as" lines follow this mapping. When a check and this list disagree, this list wins.
+
+**CRITICAL:** a finding that exposes data, grants more than the role needs, or leaves no audit trail.
+
+- Wildcard action or resource without a documented justification
+- Cross-account trust without `sts:ExternalId` or another condition key
+- `kms:*` granted to a non-admin principal
+- S3 bucket open to the public, a data store with no encryption at rest, or no TLS enforcement where sensitive data moves
+- CloudTrail missing, or not enabled in all regions
+- KMS key rotation off where a named compliance framework or the design requires it
+- A compliance violation the checklists in CATEGORY 5 flag CRITICAL, or a threat with no control
+
+**IMPORTANT:** a weakness that raises risk but leaves the data protected and the trail intact.
+
+- CloudTrail logs not encrypted or without log file validation
+- KMS key rotation off for sensitive data where nothing requires it
+- Key administrators who can also decrypt
+- No permission boundary on a role with `iam:*` or `sts:AssumeRole`
+- Log retention shorter than a compliance requirement, or missing security alarms
+
+**SUGGESTION:** hardening beyond the minimum, such as VPC endpoints instead of an internet gateway, service-specific logs, or tighter condition keys.
+
+Older reports on a HIGH/MEDIUM/LOW scale map to this one: HIGH becomes IMPORTANT unless the finding is on the CRITICAL list above, and MEDIUM and LOW become SUGGESTION.
 
 ## Validation Framework
 
@@ -112,7 +138,7 @@ Check for:
 
 - Check for `EnableKeyRotation: true` on all KMS customer-managed keys
 - Verify rotation schedule is annual (AWS default)
-- Flag as IMPORTANT if rotation is disabled for keys encrypting sensitive data
+- Flag as CRITICAL if rotation is disabled and a named compliance framework or the design requires it; otherwise flag as IMPORTANT if rotation is disabled for keys encrypting sensitive data
 - Recommend enabling automatic rotation for all customer-managed keys
 
 **KMS Key Policy Validation**:
@@ -145,7 +171,7 @@ Check for:
 
 - Check for `IsMultiRegionTrail: true` on CloudTrail configuration
 - Check for `IncludeGlobalServiceEvents: true` to capture IAM, STS, CloudFront events
-- Flag as CRITICAL if CloudTrail is not enabled in all regions
+- Flag as CRITICAL if CloudTrail is missing or not enabled in all regions
 - Recommend single multi-region trail for centralized audit logging
 
 **CloudTrail Encryption and Log File Validation**:
@@ -797,6 +823,9 @@ Generate output in this format:
 - Cross-account trust without `ExternalId` or condition keys
 - KMS key policies allow `kms:*` to non-admin principals
 - S3 bucket policies allow public access
+- CloudTrail missing or not enabled in all regions
+- KMS key rotation off where a compliance framework or the design requires it
+- Anything else on the CRITICAL list in Severity Mapping
 
 **IMPORTANT (should fix):**
 
