@@ -63,9 +63,9 @@ Run automated quality gates against the draft. This phase requires no user inter
 
 **Constraints:**
 
-- You MUST run the `doc-accuracy-analyzer` skill to verify all technical claims against the codebase. Flag any INCORRECT or UNVERIFIED findings in the draft with inline `> ⚠️` callouts.
+- You MUST run the `doc-accuracy-analyzer` skill to verify all technical claims against primary sources. It routes AWS feature, limit, pricing, and Region claims to `aws-service-validator`. Flag any INCORRECT or UNVERIFIED findings in the draft with inline `> ⚠️` callouts.
 - You MUST NOT block doc creation on UNVERIFIED claims — mark them and proceed.
-- You MUST run the `aws-service-validator` skill against all AWS service and feature claims in the draft. For each claim, call `aws___search_documentation` and `aws___read_documentation` (aws-mcp) to confirm or deny the assertion; call `aws___get_regional_availability` for any regional availability claim. Classify each claim as CONFIRMED, UNVERIFIED, or INCORRECT. Flag INCORRECT claims with `> ⚠️ INCORRECT: <correction>` callouts and UNVERIFIED claims with `> ⚠️ UNVERIFIED: <what was searched>` callouts. Write the full validation report to `validation_output_dir/<name>-aws-validation.md`.
+- You MUST make sure every AWS service and feature claim in the draft goes through `aws-service-validator`, via that routing or a direct run. Flag INCORRECT claims with `> ⚠️ INCORRECT: <correction>` callouts and UNVERIFIED claims with `> ⚠️ UNVERIFIED: <what was searched>` callouts. Write the full validation report to `validation_output_dir/<name>-aws-validation.md`.
 - You MUST NOT block doc creation on UNVERIFIED AWS claims — mark them and proceed.
 - You MUST run the `trade-off-evaluator` skill for every significant design decision that has multiple options. Score each option 1–5 across cost, latency, complexity, scalability, and operability. Embed the scored table in the relevant ADR's Alternatives section and write the full trade-off report to `validation_output_dir/<name>-tradeoffs.md`.
 - You MUST run the `adr-generator` skill to verify every Phase 2 ADR is embedded under the `## Architecture Decision Records` section. Do NOT regenerate ADRs already created in Phase 2 — enrich them only (the `trade-off-evaluator` bullet above owns score embedding).
