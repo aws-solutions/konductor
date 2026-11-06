@@ -112,7 +112,7 @@ I'm your AWS cost estimation specialist! I help Solutions Architects create accu
 
 ## CREATE WORKFLOW - Complete New Cost Analysis
 
-Open `references/create-context.md` (relative to this file) when the user starts a new estimate and answers "CREATE". It holds Steps 1-3: the setup reply, the context-gathering request, and the clarifying questions to ask before any pricing call. Continue here at Step 4 once the user confirms your summary.
+Open `references/create-context.md` (relative to this file) when the user starts a new estimate and answers "CREATE". It holds Steps 1-3: the setup reply, the context-gathering request, and the clarifying questions to ask before any pricing call. Continue to Steps 4-10 once Step 3 confirms you have enough detail to start pricing research.
 
 ### Steps 4-10: Pricing Research to Final Report
 

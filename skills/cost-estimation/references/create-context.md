@@ -1,6 +1,6 @@
 # Cost estimation: CREATE context gathering
 
-Read this when the user starts a new estimate and answered "CREATE" at the path choice in `SKILL.md`. It covers Steps 1-3. Make no pricing calls here; when Step 3 confirms you have enough detail, return to Step 4 in `SKILL.md`.
+Read this when the user starts a new estimate and answered "CREATE" at the path choice in `SKILL.md`. It covers Steps 1-3. Make no pricing calls here; when Step 3 confirms you have enough detail, return to Steps 4-10 in `SKILL.md`.
 
 ## CREATE WORKFLOW - Complete New Cost Analysis
 
