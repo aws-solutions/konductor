@@ -1116,6 +1116,8 @@ fn installed_specialists_cannot_spawn_but_orchestrator_can() {
         std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
     };
     assert!(!read_claude("k-example").contains("Agent("));
+    assert!(read_claude("k-example").contains("disallowedTools:"));
+    assert!(!read_claude("konductor").contains("disallowedTools"));
     assert!(read_claude("konductor").contains("Agent(k-other)"));
 
     std::fs::remove_dir_all(&repo_root).ok();

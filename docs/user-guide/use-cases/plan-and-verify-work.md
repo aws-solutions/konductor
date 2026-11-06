@@ -17,8 +17,9 @@ All three are declared by all three orchestrators. This page uses the plain
 
 ## What "owned by the orchestrator" actually means
 
-The mux and cmux orchestrators are dispatchers by design, and `konductor` does the work itself; no
-runtime enforces either shape. In Kiro CLI
+The mux and cmux orchestrators are dispatchers by design, and `konductor` does the work itself in
+the default `auto` mode (in `coordinator` mode it hands every change to a specialist); no runtime
+enforces either shape. In Kiro CLI
 `konductor`'s `allowedTools` is `fs_read` alone, which pre-approves reads and nothing else; a write
 or a shell command still reaches you as a permission prompt, because `@builtin` grants both. In
 **Claude Code it is granted `Bash` and `Write`** with no prompt of its own, alongside `Read`, `Glob`, `Grep`,

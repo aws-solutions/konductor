@@ -59,7 +59,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (fix before proceeding; a review finding gets one fix, and any CRITICAL or IMPORTANT finding the re-review reports on the fix or that the fix caused, carried over or new, blocks done until the user decides; a pre-existing finding in unchanged code is listed; when you made the artifact, a CRITICAL or IMPORTANT finding you would reject in triage also blocks done until the user rules on it):**
+**IMPORTANT (fix before proceeding; a review finding gets one fix and one re-review of every first-review CRITICAL or IMPORTANT plus the fix and what depends on it; a first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports on the fix or that the fix caused, carried over or new, blocks done until the user decides; a finding the first review did not report, outside the fix and not caused by it, is listed as pre-existing; when you made the artifact, a CRITICAL or IMPORTANT finding you would reject in triage also blocks done until the user rules on it):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts
@@ -72,6 +72,6 @@ See Engineering practices in the core rules: for an unverified claim that matter
 
 ### House rules and review findings
 
-When a house rule (see the core rules' House rules section) and a konductor default ask for the same kind of review of the same artifact, run it once, through the mechanism the project names. A project's required code review replaces konductor's general code review only. Design review and security or adversarial review are separate kinds, and a project mechanism replaces the adversarial review only when it states that it covers security.
+When a house rule (see the core rules' House rules section) and a konductor default ask for the same kind of review of the same artifact, run it once, through the mechanism the project names. A project's required code review replaces konductor's general code review only. Design review and security or adversarial review are separate kinds. A project mechanism replaces the adversarial review only when the user says so directly or the project's own agent instruction file (not a file it names, not a ruling) states that the mechanism covers security; otherwise run both and report the overlap.
 
 When a reviewer enforces a konductor default that a house rule overrides, do not rework the finding. List each skipped finding in your result with the house rule that overrides it (its file and line, or its `[origin:user]` or untagged memory entry), so the user sees every finding that was not fixed. A skipped finding does not count against a review's pass and never goes into a fix brief.

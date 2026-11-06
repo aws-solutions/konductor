@@ -1016,7 +1016,8 @@ orchestration:
   entry in `.kiro/agents/konductor.json` on Kiro CLI v2. `uninstall` removes them.
 - Under `coordinator` the hook prints `Orchestration: coordinator`, a line telling `konductor` to
   read the installed `k-orchestrator-routing-rules.md` in full, and the short coordinator digest
-  (under 2,500 bytes in total). Under `auto`, or with no setting, it prints nothing.
+  (under 2,500 bytes in total). Only the mode line and the Step 1 pointer are trusted; the summary
+  lines are a preview of the file. Under `auto`, or with no setting, it prints nothing.
 - The hook acts only for the install that wired it: it looks for the nearest install that owns
   `konductor` from the working directory upward and in your home directory, and prints nothing
   unless that install is the one named by its own `--install-root`. `konductor` follows the rules

@@ -77,9 +77,12 @@ By design. `context/k-orchestrator-routing-rules.md` makes it read-only:
 > You are a read-only orchestrator. You MUST NOT directly execute mutating operations.
 
 This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
-instead and edits files itself in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators (see Coordinator mode below). On Kiro CLI it pre-approves `fs_read` alone, so each write or
-command asks you first; on Claude Code it holds `Write`, `Edit` and `Bash` with no prompt gate, and
-the reviewer it spawns at each phase gate is the check.
+instead and edits files itself in the default `auto` mode. In `coordinator` mode it hands every change
+to a specialist, like the mux and cmux orchestrators (see
+[How do I make konductor hand every change to a specialist?](#how-do-i-make-konductor-hand-every-change-to-a-specialist)).
+On Kiro CLI it pre-approves `fs_read` alone, so each write or command asks you first; on Claude Code
+it holds `Write`, `Edit` and `Bash` with no prompt gate, and the reviewer it spawns at each phase gate
+is the check.
 
 The mux and cmux Orchestrator Direct Work table lists the exceptions: reading files, read-only commands such as
 `ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
@@ -266,7 +269,7 @@ Detail, with the verification, is in
 Konductor's own formats and workflow (Conventional Commits, a pull request per feature, EARS,
 the review mechanism) are defaults. Your request, your project's `AGENTS.md` or `CLAUDE.md`,
 user-written memory, and the conventions your code already shows all outrank them. When those
-sources leave a collision open, or the project states no convention, `konductor` asks once and saves your
+sources leave a collision open, `konductor` asks once and saves your
 answer as a `Ruling:` entry in `.konductor/memory/`. The entry settles only the collision it
 names. If two rulings disagree, the newer one wins.
 

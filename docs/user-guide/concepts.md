@@ -156,8 +156,8 @@ rules that must never be missed.
 There are four today. `context/k-core-rules.md` holds the NEVER DO rules, the writing-habits
 rule, and the engineering practices, and all 11 agents load it. `context/k-direct-work.md` is loaded by `konductor`;
 `context/k-orchestrator-routing-rules.md` is loaded by the mux and cmux orchestrators (see
-Orchestration shapes); `context/k-orchestrator-shared.md` holds the handoff, split, denial and brief
-rules, and all three orchestrators load it. The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
+Orchestration shapes); `context/k-orchestrator-shared.md` holds the handoff, split, denial, brief and
+capability-routing rules, and all three orchestrators load it. The routing rules file contains the coordinator rules and three `[CODE RED]`
 rules, including this one:
 
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You NEVER
@@ -171,7 +171,7 @@ rather than doing them themselves.
 ## Orchestration shapes
 
 `konductor` ships in its single-writer shape: it reads, writes and runs commands itself and spawns a
-fresh `k-*` reviewer when a phase closes. This shape is the `auto` orchestration mode, the default.
+fresh `k-*` reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none). This shape is the `auto` orchestration mode, the default.
 The coordinator shape, where the orchestrator never writes and every change goes to a specialist, is
 what `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` use, and what `konductor` uses
 in the `coordinator` mode. Set the mode by hand in your user config; there is no command for it:
@@ -218,7 +218,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, or that the fix caused in what depends on it, blocks done, and the orchestrator stops and reports it to you; a pre-existing finding in unchanged code is listed for you. An SOP can set its own limit on fix rounds; a finding that blocks done under this rule still blocks it after the SOP's last re-review. An artifact that passed review is not reviewed again unless it changes. When `konductor` made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.
+fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every CRITICAL or IMPORTANT finding from the first review plus the fix and what uses or depends on it; a first-review finding still open, any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, and any the fix caused in what depends on it, blocks done, and the orchestrator stops and reports it to you; a finding the first review did not report, outside the fix and not caused by it, is listed for you as pre-existing. An SOP can set its own limit on fix rounds; a finding that blocks done under this rule still blocks it after the SOP's last re-review. An artifact that passed review is not reviewed again unless it changes. When `konductor` made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.
 
 ## Maker-checker
 
