@@ -45,6 +45,7 @@ not per individual commit.
 - `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate that needs one (next bullet); it
   spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
   work on disjoint files. An SOP's own instruction to spawn wins over that limit.
+- The Kiro skills index no longer tells an orchestrator to route a listed skill's task to a specialist; the loaded rules file (Direct Work, or the routing rules) decides, and the load rule asks for the skills the task needs instead of at most two.
 - All three orchestrators skip the reviewer for a lookup, a listing, a standalone document its
   checker skill covers, or a one-file change whose build, test and lint passed (not for auth,
   secrets, data or infrastructure), and triage findings against the request, house rules and spec
