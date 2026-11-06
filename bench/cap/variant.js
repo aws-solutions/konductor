@@ -9,6 +9,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const sandbox = require('../runner/lib/sandbox.js');
+const { ensureOwnedDir } = require('../runner/lib/owned.js');
 const armSource = require('../runner/lib/arm-source.js');
 const { resolveMain, parseArmSpec } = require('../runner/lib/arms.js');
 const { realHomes } = require('../runner/lib/isolate.js');
@@ -325,6 +326,7 @@ function buildVariant({ repo, base = 'v1.2.0', drop = [], replace = [], add = []
   const planned = variantPaths({ repo, base, drop, replace, add, overlay, toAgent, preset, scratch: scratchReal, agentEngine });
   const { ref, sha } = planned;
   const variantsDir = path.join(scratchReal, 'variants');
+  ensureOwnedDir(scratchReal, 'scratch');
   fs.mkdirSync(variantsDir, { recursive: true });
   const work = fs.mkdtempSync(path.join(variantsDir, '.build-'));
   const tree = path.join(work, 'tree');

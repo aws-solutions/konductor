@@ -7,6 +7,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { tryMark } = require('../runner/lib/owned.js');
 
 const CELLS = ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor'];
 const MARKER = 'pilot-2x2.json';
@@ -49,6 +50,7 @@ function initOut(args) {
     if (!dry) {
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, MARKER), `${JSON.stringify({ tool: 'pilot-2x2', schemaVersion: 1, createdAt: new Date().toISOString(), ...want }, null, 2)}\n`);
+      tryMark(dir, 'study-driver-dir', { id: 'pilot-2x2' });
     }
     out('fresh');
     return;

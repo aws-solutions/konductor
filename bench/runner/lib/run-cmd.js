@@ -27,6 +27,7 @@ const { optionalProfile, replicatesFor, aaArmFor, writeCalibrationSample } = req
 const { loadRun } = require('../../report/load.js');
 const { createInstallsGate, describeChange, judgeBatch } = require('./isolation-gates.js');
 const toolchain = require('./toolchain.js');
+const { ensureOwnedDir } = require('./owned.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
 const DEFAULT_EFFORT = 'high';
@@ -93,7 +94,7 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
   if (runtimes.some((r) => r !== 'kiro-cli')) throw new Error('--prepare-only covers kiro-cli arms; opencode and Claude Code arms need their binary and AWS credentials, so check them with a normal run');
   const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
   const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
-  fs.mkdirSync(cacheDir, { recursive: true });
+  ensureOwnedDir(cacheDir, 'cache');
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
   for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
@@ -224,8 +225,9 @@ async function cmdRun(opts) {
   const awsProfile = isOc ? (opts['aws-profile'] && opts['aws-profile'] !== true ? opts['aws-profile'] : 'bench') : null;
   if (isOc) readProfile(awsCredsFile, awsProfile);
 
-  fs.mkdirSync(outDir, { recursive: true });
-  fs.mkdirSync(cacheDir, { recursive: true });
+  ensureOwnedDir(outDir, 'run-out');
+  ensureOwnedDir(cacheDir, 'cache');
+  if (opts['cargo-target'] || !process.env.CARGO_TARGET_DIR) for (const t of [cargoTarget, `${cargoTarget}-mcp`]) ensureOwnedDir(t, 'cargo-target');
   const scratchDir = sandbox.makeScratchRoot();
   procs.trackScratch(scratchDir);
 
