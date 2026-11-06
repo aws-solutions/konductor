@@ -32,16 +32,17 @@ Requirements (PM) → Design (Architect) → Feature Splitting (Developer) → P
 
 ## Available Agents
 
-| Agent                 | Role                      | Key Skills                                                                                    |
-| --------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| `k-product-manager`   | Product Manager           | User stories, requirements extraction, decision research, sprint planning (Asana)             |
-| `k-tpm`               | Technical Program Manager | Program planning, status reporting, risk management, program decisions, sprint planning       |
-| `k-architect`         | Solutions Architect       | System design, APIs, data models, threat models, security policies, diagrams, cost estimation |
-| `k-developer`         | Software Engineer         | Feature planning, backend/frontend implementation, code review, infrastructure validation     |
-| `k-researcher`        | Researcher                | External documentation search, web research, AWS docs                                         |
-| `k-quality-assurance` | Quality Assurance         | Test coverage, E2E strategy, security testing, UI text validation                             |
-| `k-media-analyzer`    | Media Analyst             | PDF/image/diagram interpretation                                                              |
-| `k-browser`           | Browser Automation        | Web scraping, E2E test execution (Playwright), form automation, screenshots                   |
+| Agent                 | Role                      | Key Skills                                                                                                                                   |
+| --------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `k-product-manager`   | Product Manager           | User stories, requirements extraction, decision research, sprint planning (Asana)                                                            |
+| `k-tpm`               | Technical Program Manager | Program planning, status reporting, risk management, program decisions, sprint planning                                                      |
+| `k-architect`         | Solutions Architect       | System design, APIs, data models, threat models, security policies, diagrams, cost estimation                                                |
+| `k-developer`         | Software Engineer         | Feature planning, backend/frontend implementation, code review, infrastructure validation                                                    |
+| `k-researcher`        | Researcher                | External documentation search, web research, AWS docs                                                                                        |
+| `k-quality-assurance` | Quality Assurance         | Test coverage, E2E strategy, security testing, UI text validation                                                                            |
+| `k-media-analyzer`    | Media Analyst             | PDF/image/diagram interpretation                                                                                                             |
+| `k-browser`           | Browser Automation        | Web scraping, E2E test execution (Playwright), form automation, screenshots                                                                  |
+| `konductor`           | Orchestrator              | Routing: takes a request through the phases, briefs specialists, verifies results (delegation-protocol, pre-planning-analysis, verification) |
 
 ## SDLC Workflow
 
@@ -92,4 +93,5 @@ To switch to a different agent:
 
 - Kiro CLI: `kiro-cli chat --agent k-architect`
 - Kiro IDE: `@k-architect`
+- Claude Code: `claude --agent k-architect`
 - Or ask the current agent to spawn the next agent as a subagent
