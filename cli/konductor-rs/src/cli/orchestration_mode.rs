@@ -64,7 +64,7 @@ pub(crate) enum FallbackReason {
         path: PathBuf,
         kind: std::io::ErrorKind,
     },
-    /// The file parsed, but the `orchestration` section does not fit.
+    /// The file is not valid YAML, or the `orchestration` section does not fit.
     Malformed { path: PathBuf, message: String },
     /// `mode` is set to something other than `auto` or `coordinator`.
     UnknownValue { value: String },
