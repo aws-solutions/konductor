@@ -44,28 +44,30 @@ impl Mode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ModeResolution {
-    /// No `~/.konductor/config.yml`, or no `orchestration.mode` in it.
+    /// Nothing to apply: no `~/.konductor/config.yml` (`NotFound`, which covers a dangling
+    /// symlink), or a file with no `orchestration.mode`.
     Default,
     /// The user file names a valid mode.
     Explicit(Mode),
-    /// The file exists but cannot be used; the session runs `auto` and says why.
+    /// A mode may be set but cannot be used: the home directory is unknown, the path is not a
+    /// readable regular file, the YAML is malformed, or the value is not a mode. The session
+    /// runs `auto` and the hook and `doctor` say why.
     Fallback(FallbackReason),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FallbackReason {
+    /// No home directory, so the user file could not be located.
     HomeUnresolved,
+    /// The path exists but is a directory or cannot be read.
     Unreadable {
         path: PathBuf,
         kind: std::io::ErrorKind,
     },
-    Malformed {
-        path: PathBuf,
-        message: String,
-    },
-    UnknownValue {
-        value: String,
-    },
+    /// The file parsed, but the `orchestration` section does not fit.
+    Malformed { path: PathBuf, message: String },
+    /// `mode` is set to something other than `auto` or `coordinator`.
+    UnknownValue { value: String },
 }
 
 /// `home` comes from `index::env_home_dir`, which treats an empty `HOME`
