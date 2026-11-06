@@ -447,6 +447,8 @@ Overall Score = (IAM Policy Score × 0.30) +
                 (Compliance Score × 0.20)
 ```
 
+Write the sum out in the report with each category score, for example `0.30×40 + 0.25×60 + 0.25×25 + 0.20×75 = 48`, and list the deductions behind each category score. Keep all four weights when the user names no compliance framework: score Compliance Readiness from the gaps this review found instead of dropping it and re-weighting the rest.
+
 **Interpretation**:
 
 - **90-100**: Hardened Production (Best practices implemented)
