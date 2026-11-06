@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Pins the wording of the persistent-memory skill."""
 
+import re
 from pathlib import Path
 
 import yaml
@@ -54,8 +55,23 @@ def test_write_time_reread_runs_the_checked_read():
 def test_reading_memory_points_at_writing_memory_for_the_validator_path():
     assert "Saving Memory" not in RAW
     reading = TEXT.split("## Reading Memory")[1].split("## Writing Memory")[0]
-    assert "resolve `$VALIDATOR` as in Writing Memory step 3" in reading, reading
+    assert "resolve `$VALIDATOR` as in Writing Memory step 3, its lookup fence only" in reading, reading
     assert "Writing Memory step 1" in reading, reading
+
+
+def test_validator_lookup_fence_carries_no_write_line():
+    """Reading Memory and step 1 paste the step 3 lookup to resolve the
+    validator. With `$PROPOSED_CONTENT` unset, a write line in that same fence
+    replaces the memory file with an empty one and exits 0."""
+    writing = RAW.split("## Writing Memory")[1].split("## Configuration")[0]
+    fences = re.findall(r"```bash\n(.*?)```", writing, flags=re.DOTALL)
+    lookup, write = fences[0], fences[1]
+    assert 'VALIDATOR=""' in lookup, lookup
+    assert "memory-validator.sh not found" in lookup, lookup
+    assert '| bash "$VALIDATOR"' not in lookup, lookup
+    assert write.strip() == 'printf \'%s\' "$PROPOSED_CONTENT" | bash "$VALIDATOR" ".konductor/memory/MEMORY.md"', write
+    step_1 = writing.split("1. ")[1].split("2. ")[0]
+    assert "its lookup fence only" in step_1, step_1
 
 
 def test_gitignore_bootstrap_targets_the_git_root():

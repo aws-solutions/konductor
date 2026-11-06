@@ -7,7 +7,7 @@ context at session start. Follow these instructions for the duration of the sess
 
 Before starting work, load available project context:
 
-- You MUST load project memory through the `persistent-memory` skill's Reading Memory steps: `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` only, each after its `--check-path` check exits 0 (in this checkout: `bash skills/persistent-memory/scripts/memory-validator.sh --check-path <file>`). Never read that directory with a glob or an import.
+- You MUST load project memory through the `persistent-memory` skill's Reading Memory steps: `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` only, each after its `--check-path` check exits 0 (in this checkout: `bash skills/persistent-memory/scripts/memory-validator.sh --check-path <file>`). Never read that directory with a glob or an import. If you have no shell to run the check, skip memory and say so.
 
 If a path does not exist, skip it silently and continue.
 
