@@ -158,6 +158,8 @@ def test_stale_delegation_phrases_stay_forbidden():
         "Kiro CLI v2 is not covered",
         "only the core rules stop",
         "the core rules forbid it in Kiro CLI v2",
+        "cannot spawn the architect in either runtime",
+        "no spawn tool in either runtime",
     }
 
 
