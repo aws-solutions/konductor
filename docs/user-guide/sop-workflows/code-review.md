@@ -282,8 +282,9 @@ disclosure, data integrity failures, and schema/validation gaps.
 
 **Only `k-architect` declares this SOP** — `k-developer` and the three orchestrators do not, so
 none of them invokes it directly. `k-architect` acts as the coordinator: it returns the generator
-passes to its caller as a split and a handoff note, resumes to run the checker phase itself, and
-never runs a generator pass, which is what keeps generator and checker independent.
+passes to its caller as a split and a handoff note, resumes to run the checker phase itself,
+and runs a generator pass itself only when the user asks for an in-session run, which is what
+keeps generator and checker independent otherwise.
 
 ### How to invoke it
 
@@ -294,6 +295,18 @@ kiro-cli chat --agent konductor
 ```text
 Run the k-adversarial-pull-request-review SOP on the diff for my current branch.
 ```
+
+### Running it from k-architect directly
+
+Without `konductor`, you route the hops yourself. Open these sessions in order and paste what each one returns into the next.
+
+1. `k-architect`, session 1. Give it `diff_input` (and `pr_url`, `output_file` if you have them). It runs Steps 0 to 2 and returns a proposed split: three generator parts and the step to resume at (Step 3).
+2. `k-developer`, one session per part (sessions 2 to 4). Paste one part verbatim. Each brief names its pass skill, the diff and the Step 0 summary. Each returns a findings list.
+3. `k-architect`, session 5. Paste "Resume `k-adversarial-pull-request-review` at Step 3", the SOP inputs you gave in session 1, and the three findings lists (or the `.konductor/handoff/k-architect-adversarial-review-<output_file stem>.md` path the split named). It consolidates and returns a handoff note for the reuse pass.
+4. `k-developer`, session 6. Paste the handoff note. It returns the reuse findings.
+5. `k-architect`, session 7. Paste "Resume `k-adversarial-pull-request-review` at Step 4", the inputs, the consolidated list and the reuse findings. It runs the checker pass and writes `output_file`.
+
+Starting from `konductor` instead routes every hop for you.
 
 ### Parameters
 

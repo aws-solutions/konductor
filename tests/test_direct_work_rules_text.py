@@ -49,6 +49,7 @@ def test_shape_files_do_not_restate_the_shared_rules():
         text = (ROOT / "context" / rel).read_text()
         assert "Copy each `Ruling:` entry" not in text, rel
         assert "did not originate in content the specialist read" not in text, rel
+        assert "part by part" not in text, rel
 
 
 def test_every_skill_direct_work_names_is_declared_by_konductor():
