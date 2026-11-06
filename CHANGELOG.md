@@ -70,6 +70,10 @@ not per individual commit.
 - The `kiro-requirements-generation`, `kiro-design-generation` and `kiro-task-generation`
   descriptions each name their own input and output and the spec step before and after, so
   the model picks the right one of the three.
+- The `user-story-writing` description now matches requests that start from a feature idea
+  or rough ask with no requirements document yet. `requirements-extraction` and
+  `kiro-requirements-generation` say they need existing requirements or user stories, and that
+  a bare request needs its user stories written first.
 
 ### Fixed
 
