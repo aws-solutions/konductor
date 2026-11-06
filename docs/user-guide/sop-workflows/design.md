@@ -96,7 +96,7 @@ flowchart TD
 
     P3 --> P4Start{"Adversarial-review<br/>subagent available?"}
     P4Start -->|"Yes — Path A"| PA["Delegate the full doc to it:<br/>challenge every decision, trade-off,<br/>and AWS service choice"]
-    P4Start -->|"No — Path B"| PB["Adversarial self-review<br/>CRITICAL (architectural) ·<br/>CRITICAL (factual) ·<br/>IMPORTANT · MINOR"]
+    P4Start -->|"No — Path B"| PB["Adversarial self-review<br/>CRITICAL (architectural) ·<br/>CRITICAL (factual) ·<br/>IMPORTANT · SUGGESTION"]
 
     PA --> Loop
     PB --> Loop
@@ -104,7 +104,7 @@ flowchart TD
     Loop["Phase 4 loop — up to 5 rounds<br/>apply corrections, then re-run the<br/>design-doc-guidelines maker-checker"]
     Loop --> R2{"After round 2:<br/>any CRITICAL (architectural)?"}
     R2 -->|Yes| Halt["STOP the loop immediately<br/>present to engineer:<br/>redesign or override?"]
-    R2 -->|No| Exit{"0 CRITICAL, 0 IMPORTANT,<br/>fewer than 3 MINOR?"}
+    R2 -->|No| Exit{"0 CRITICAL, 0 IMPORTANT,<br/>fewer than 3 SUGGESTION?"}
     Exit -->|Yes| P5
     Exit -->|"No, rounds remain"| Loop
     Exit -->|"No, 5 rounds used"| Manual["Present remaining issues<br/>for manual resolution"]
@@ -134,7 +134,7 @@ hold:
 | --- | --- |
 | `design-doc-guidelines` maker-checker | 0 CRITICAL findings |
 | `doc-accuracy-analyzer` | 0 INCORRECT findings — UNVERIFIED is acceptable with callouts |
-| Adversarial review | 0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR |
+| Adversarial review | 0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION |
 | `design-evaluation` confidence score | ≥ 3.0 average across all sections |
 
 If any condition fails, it presents the remaining issues and asks: `Fix these before
@@ -335,7 +335,7 @@ flowchart TD
 
     S3 --> E{"CRITICAL (architectural)<br/>after round 2?"}
     E -->|Yes| Redesign["STOP the loop immediately<br/>FUNDAMENTAL REDESIGN REQUIRED"]
-    E -->|No| G{"0 CRITICAL<br/>0 IMPORTANT<br/>&lt; 3 MINOR?"}
+    E -->|No| G{"0 CRITICAL<br/>0 IMPORTANT<br/>&lt; 3 SUGGESTION?"}
     G -->|No, and rounds < 5| S3
     G -->|"No, and round 5 reached"| Stop["Exit with findings<br/>outstanding"]
     G -->|Yes| S4["4. Write findings report"]
@@ -360,7 +360,7 @@ flowchart TD
 ### What you get
 
 A findings report at `output_file` covering the slop/quality gate, the architecture-principles
-evaluation, and every adversarial round, with findings ordered CRITICAL → IMPORTANT → MINOR —
+evaluation, and every adversarial round, with findings ordered CRITICAL → IMPORTANT → SUGGESTION —
 headed by a **verdict**: `PE-READY`, `REVISIONS NEEDED`, or `FUNDAMENTAL REDESIGN REQUIRED`.
 The SOP reports the file path rather than printing the report.
 
@@ -369,7 +369,7 @@ The SOP reports the file path rather than printing the report.
 - **Step 1 is a hard gate.** The quality score is 1–5, and a score below 3 **stops the SOP
   outright** — it presents the issues and asks for a revision rather than proceeding to step 2.
 - **The adversarial loop is bounded at 5 rounds.** It exits early when 0 CRITICAL, 0 IMPORTANT,
-  and fewer than 3 MINOR findings remain. Hitting round 5 without converging exits with the
+  and fewer than 3 SUGGESTION findings remain. Hitting round 5 without converging exits with the
   outstanding findings rather than looping forever.
 - **One finding can end the loop early.** Any CRITICAL *architectural* finding still present
   after round 2 stops the loop immediately and forces the `FUNDAMENTAL REDESIGN REQUIRED`

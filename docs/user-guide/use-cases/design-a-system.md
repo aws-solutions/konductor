@@ -118,12 +118,12 @@ Three automated passes, with no user interaction permitted:
 ### Phase 4 — Adversarial review loop *(can pause once)*
 
 The architect challenges its own design across up to 5 rounds, classifying findings CRITICAL
-(architectural or factual) / IMPORTANT / MINOR.
+(architectural or factual) / IMPORTANT / SUGGESTION.
 
 **If a CRITICAL architectural finding survives past round 2, the loop stops immediately** and you
 are asked whether to redesign or override. That is the one hard pause in Phases 2–4.
 
-Otherwise it exits early once a round produces 0 CRITICAL, 0 IMPORTANT, and fewer than 3 MINOR
+Otherwise it exits early once a round produces 0 CRITICAL, 0 IMPORTANT, and fewer than 3 SUGGESTION
 findings, applying corrections and re-running the guidelines check between rounds. No finding is
 silently dropped — each is either fixed or recorded as an engineer override.
 
@@ -153,7 +153,7 @@ The SOP will not claim the doc is ready for principal-engineer review unless **a
 
 - [ ] `design-doc-guidelines` maker-checker: **0 CRITICAL**
 - [ ] `doc-accuracy-analyzer`: **0 INCORRECT** (UNVERIFIED is acceptable with callouts)
-- [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR**
+- [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION**
 - [ ] `design-evaluation` confidence score: **≥ 3.0 average**
 
 If any fails, it presents what is left and asks: `Fix these before submission? [y/n]`.

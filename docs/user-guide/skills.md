@@ -125,7 +125,7 @@ Checking a design before anyone builds it.
 | `design-quality-check` | Scores a design doc for writing quality, structural completeness, and KISS/YAGNI compliance. Detects filler, hedging, unsupported claims, passive voice, circular reasoning. | The doc is complete but reads badly, or you suspect padding. | `k-architect` |
 | `doc-accuracy-analyzer` | Six-step verification of a technical document against primary sources: extracts claims, investigates each, classifies, reports. | You need to know which claims in a document are actually true. | `k-architect` |
 | `aws-service-validator` | Validates AWS service and feature claims against live AWS documentation. Catches hallucinated AWS assertions. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
-| `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / MINOR. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
+| `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
 | `humanize-writing` | Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. | Writing or editing prose, or a draft reads machine-written. | all 11. On Claude Code, `k-architect`, `k-developer`, `k-product-manager` and `k-tpm` preload it when they run as subagents. Otherwise, and on Kiro CLI, it loads on demand |
 
 ---

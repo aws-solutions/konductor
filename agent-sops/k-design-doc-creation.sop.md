@@ -79,11 +79,11 @@ Challenge every major design decision before presenting the doc to the engineer.
 
 **Constraints:**
 
-- You MUST apply the `adversarial-design-review` skill to challenge every major architectural decision, trade-off, and AWS service choice, classifying each finding as CRITICAL, IMPORTANT, or MINOR.
+- You MUST apply the `adversarial-design-review` skill to challenge every major architectural decision, trade-off, and AWS service choice, classifying each finding as CRITICAL, IMPORTANT, or SUGGESTION.
 - You MUST run up to 5 adversarial rounds.
 - After round 2: if any finding is classified CRITICAL (architectural), You MUST stop the loop immediately, present the finding to the engineer, and ask whether to redesign or override.
 - You MUST apply corrections from each round and re-run the `design-doc-guidelines` maker-checker before the next round.
-- You MUST exit the loop early when: 0 CRITICAL findings, 0 IMPORTANT findings, and fewer than 3 MINOR findings.
+- You MUST exit the loop early when: 0 CRITICAL findings, 0 IMPORTANT findings, and fewer than 3 SUGGESTION findings.
 - If the exit condition is not met after 5 rounds, You MUST present the remaining issues to the engineer for manual resolution before proceeding to Phase 5.
 - You MUST NOT silently discard findings — every finding must either be fixed or explicitly noted as "engineer override".
 
@@ -109,7 +109,7 @@ The document is ready for principal engineer review when all of the following ar
 
 - `design-doc-guidelines` maker-checker: **0 CRITICAL findings**
 - `doc-accuracy-analyzer`: **0 INCORRECT findings** (UNVERIFIED is acceptable with callouts)
-- Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR findings**
+- Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION findings**
 - `design-evaluation` confidence score: **≥ 3.0 average** across all sections
 
 If any condition is not met, the SOP MUST NOT present the doc as ready for principal engineer review. Present remaining issues to the engineer and ask: "Fix these before submission? [y/n]"
