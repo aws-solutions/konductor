@@ -843,7 +843,9 @@ stdout instead:
 ```bash
 konductor flow check <name> [--json]
 konductor flow show <name> [--json]
-konductor flow run <name> --harness fake [--fake-script <path>] [--goal "..."] [--json]
+konductor flow run <name> --harness fake [--fake-script <path>] [--goal "..."] [--trust <hash>] [--json]
+konductor flow trust <name> [--yes]
+konductor flow trust --revoke <name>
 ```
 
 A workflow is a YAML file, `<name>.yml`, that lists the stages of a piece of work and the agent that does each one.
@@ -899,9 +901,58 @@ directory or anything bigger is treated as not there, and a link is never follow
   read, or that another start is taking at that moment, also exits `75`. Under `--json` the envelope's `code` tells
   them apart: `already_running` (with `run_id` and `pid`) or `lock_unreadable`.
 
+- `flow trust <name>` shows what the workflow will run and asks "Trust this workflow and run it? y/N". On yes it
+  records the workflow's trust hash. On a workflow that is already trusted at its current hash it says so and exits 0;
+  `--yes` records it again without the summary or the question. `flow trust --revoke
+  <name>` removes the record. On a workflow that needs no trust (see below), `flow trust` says so, exits 0 and writes
+  nothing. There is no repo-wide form.
+
+**Trust.** A project workflow runs only after you confirm it, once for each workflow. A user workflow needs no
+confirmation, unless the repository has tool configuration files, which a headless run loads without asking:
+`.claude/settings.json`, `.mcp.json`, and the files under `.kiro/agents/` and `.claude/agents/`. Then every workflow run
+there needs it. The folders searched are the current directory and each folder above it up to the git root, and a git
+root that is your home folder does not widen the search. Files that `konductor install` recorded in the repository's `.konductor/manifest`, and that have not
+changed since, are not counted, but only when the install index in your home folder lists the repository as an install
+target. `flow run` shows the summary and asks on a terminal. The summary has the workflow's name, path and trust hash,
+each agent with the tools the runner lets it run without asking (the `allowedTools` of a Kiro agent file, or the `tools`
+of a Claude agent file as written there, and for a Claude agent with no `tools` key the line "every tool is available,
+and the file's tools key pre-approves none"), each `run` check command, and every file the hash covers. An agent file
+can also set keys that change what runs and that this build does not read: `hooks`, `mcpServers`, `permissionMode`
+(Claude Code), and `permissions`, `includeMcpJson`, `toolsSettings` (Kiro CLI). When one is present the summary names it
+on an "also sets" line. The agent is looked for in the current directory, then the folders above it up to the git root,
+then your home folder, for Kiro CLI and for Claude Code.
+
+Some tool configuration cannot be hashed from its content: a link to a folder, a folder with more than 512 files or
+nested more than 4 levels below `.kiro/agents` or `.claude/agents`, a file over 1 MiB or one that cannot be read, or a
+name that is not UTF-8. A change behind it would not show in the hash, so `flow run` and `flow trust` exit `77` and name
+the entry, and `--trust` and `--yes` do not override that. Remove the link, reduce the folder or make the file
+readable. Under `--json` the `code` of that refusal is `tool_config_unreadable`.
+
+`--trust` and `KONDUCTOR_TRUST` are ignored when the workflow needs no trust.
+
+Without a terminal, an untrusted workflow exits `77` and names the two ways to go on: `konductor flow trust <name>`, or
+`--trust <hash>` (also `KONDUCTOR_TRUST=<hash>`). The hash must equal the current trust hash, which `flow check` prints
+(`trust hash:` in the text, `trust_hash` with `--json`). It permits that one run and records nothing. A hash that does
+not match exits `77` and prints both hashes.
+
+The trust hash is a SHA-256 over the bytes of the workflow file, of every `prompt_file` it names, and of the tool
+configuration files, written as 64 lowercase hex digits. Each file is a frame of a kind byte, the length of its path as 8
+bytes (big endian), the path, the length of its content as 8 bytes, and the content, after the tag `konductor-trust/1`
+and a newline. The frames are the workflow (empty path), then the prompt files sorted by path, then the tool
+configuration files sorted by path. The exact layout is in
+[`workflow-engine/core/src/trust.rs`](../workflow-engine/core/src/trust.rs). The hash is made from the bytes the loader
+parsed, so a file edited after you confirmed it cannot run.
+
+The record is `~/.konductor/trust.json` (mode 0600), keyed by the canonical path of the git root and the
+workflow name. The git root is the one the tool configuration scan uses (a git root equal to your home folder does not
+count); with no git root the key is the current directory. A run from a subfolder and a run from the root share one record.
+It is written to a temporary file and renamed, under a lock, and a record that cannot be read or parsed trusts nothing. `flow check` and `flow show` never need trust.
+
 Exit codes: `0` when the workflow has no errors (for `flow run`, when the run passed), `1` when a run halted, `64` for
 a usage error (a bad name, `library/<name>`, a name that matches no file, or a bad `flow run` input), `65` when the
-workflow has errors, and `75` when the workspace lock refuses the run.
+workflow has errors, `74` when the trust record cannot be kept (no home folder, or a file error), `75` when the
+workspace lock refuses the run, and `77` when the workflow is not trusted and you
+said no, there was no terminal, or `--trust` did not match.
 
 ---
 
@@ -950,7 +1001,9 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | 6 | Success with warnings — emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
   | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
   | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error). Also the workflow has errors (`flow check`, `flow show`, `flow run`) |
+  | 74 | The trust record cannot be kept or read (`flow run`, `flow trust`, `EX_IOERR`): no home folder, or a file error. Nothing ran |
   | 75 | The workspace lock refuses the run (`flow run`, `EX_TEMPFAIL`): another run is active, the lock cannot be read, or other starts were taking it. Try again later |
+  | 77 | Trust refusal (`flow run`, `flow trust`): the workflow is not trusted and you said no, no terminal was available, `--trust` did not match, or the repository's tool configuration cannot be read in full |
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 

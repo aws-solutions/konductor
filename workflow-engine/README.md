@@ -6,8 +6,8 @@ The Rust workspace behind `konductor flow`. It reads a workflow file, checks it 
 [the specification](../docs/design/workflows-spec.md) and runs it. The design and the plan are in
 [docs/design/workflows.md](../docs/design/workflows.md) and [docs/design/workflows-plan.md](../docs/design/workflows-plan.md).
 
-This is step 1d of the plan: the file format and its checks (1c), and the stage prompt and the runner on the `fake`
-harness (1d). It has no real harness, no trust and no canvas server yet.
+This is step 1e of the plan: the file format and its checks (1c), the stage prompt and the runner on the `fake`
+harness (1d), and trust (1e). It has no real harness and no canvas server yet.
 
 ## Crates
 
@@ -16,10 +16,13 @@ harness (1d). It has no real harness, no trust and no canvas server yet.
   and check states (`run.rs`) and the runner (`runner.rs`). It does no IO. `core/tests/purity.rs` fails the build if the
   crate reads a file, opens a socket, starts a process, reads the environment, the clock or a random source, uses
   `unsafe`, or depends on a crate that is not in its allow list. The world reaches it through ports: `WorkflowSource`,
-  `Clock`, `Harness`, `RunStore` and `RunLock` (`ports.rs`).
+  `Clock`, `Harness`, `RunStore`, `RunLock`, `TrustStore`, `Terminal` and `AgentCatalog` (`ports.rs`). `trust.rs` holds the
+  trust hash and its byte layout, the verdict on a `--trust` hash, and the summary the user reads before confirming.
 - `adapters` holds what touches the world: the file source and the lookup of a bare name in `.konductor/workflows/` of
   the project and then of the home folder; the run store and the workspace lock under `.konductor/runs/`; the system
-  clock; and the `fake` harness, which replays scripted replies and is for tests only. `harness_choice.rs` decides
+  clock; the trust record `~/.konductor/trust.json`; the scan of the repo tool configuration files; the agent catalog,
+  which reads the tools of a Kiro or Claude agent definition; the terminal; and the `fake` harness, which replays
+  scripted replies and is for tests only. `harness_choice.rs` decides
   which harness a run may use.
 
 The golden files of the stage prompt are in `core/tests/golden/`. They hold the exact text, with no final newline.
