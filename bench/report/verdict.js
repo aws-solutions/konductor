@@ -16,6 +16,8 @@ const { loadRun, readJson } = require('./load.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { analyze } = require('./generate.js');
 const { computeScores, qualityOfRun, loadScoring, MIN_N } = require('./scores.js');
+const { mergeQuote, platformSensitivity } = require('./quotes.js');
+const { otherRule } = require('../judge/views.js');
 const { diffCI, pairedCellCI, MIN_CELLS } = require('./stats.js');
 const { THRESHOLDS } = require('./diligence.js');
 const { prefixIdentity } = require('./aa-identity.js');
@@ -241,7 +243,7 @@ function sentenceFor(a, baseLabel, harness = null) {
  * dirs: run directories (each a finished run, usually one per suite). Returns the verdict data:
  * { baselineLabel, arms: [one entry per arm label], dirs, skippedDirs, notes, unit, rules }.
  */
-function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', scoringFile, profile = null, qualityPack = null }) {
+function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', scoringFile, profile = null, qualityPack = null, quoteRule = null, withSensitivity = true }) {
   const tasks = loadTasks(benchDir, { extraDirs });
   const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
   const inputs = [];
@@ -252,7 +254,7 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
       skippedDirs.push({ dir: run.dir, reason: `no run of the baseline arm "${baseline}" (arms present: ${[...new Set(run.runs.map((r) => r.armId))].join(', ')})` });
       continue;
     }
-    const a = analyze({ run, tasks, baseline, scoringFile, qualityPack });
+    const a = analyze({ run, tasks, baseline, scoringFile, qualityPack, quoteRule });
     const src = inputs.length;
     inputs.push({ src, dir: run.dir, run, a, rows: a.rows.map((r) => normalize(r, src)), ledger: readLedger(run.dir), controls: readOptional(path.join(run.dir, 'controls-check.json')) });
   }
@@ -377,7 +379,13 @@ function buildVerdict({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', sc
       judges: i.a.facts.judging.judges, profileName: i.run.config.profile?.name ?? null,
     };
   });
-  return { schemaVersion: 1, baseline, baselineLabel, comparisons, unit: unit === 'USD' ? 'USD' : 'credits', ...(harness ? { harness } : {}), arms, dirs: dirInfo, skippedDirs, notes, weights, noiseFloorPts: NOISE_FLOOR_PTS };
+  const quote = mergeQuote(inputs.map((i) => i.a.quote));
+  const result = { schemaVersion: 1, baseline, baselineLabel, comparisons, unit: unit === 'USD' ? 'USD' : 'credits', ...(harness ? { harness } : {}), arms, dirs: dirInfo, skippedDirs, notes, weights, noiseFloorPts: NOISE_FLOOR_PTS, quote };
+  // The same verdict under the other quote rule, so the page can say whether the call depends on the rule.
+  if (withSensitivity) {
+    result.sensitivity = platformSensitivity(result, buildVerdict({ dirs, benchDir, extraDirs, baseline, scoringFile, profile, qualityPack, quoteRule: otherRule(quote.requested), withSensitivity: false }));
+  }
+  return result;
 }
 
 module.exports = { buildVerdict, decide, unisolatedReason, aaNoiseFromCells, levelText, refLabel, sentenceFor, normalize, qualityList, aaGroups, prefixIdentity, armOrder, perCellMin, pairCells, nonScoredOf, componentCheck, cellKey, KEEP, DISCARD, NEE, NOISE_FLOOR_PTS, MAX_NONSCORED_SHARE, COST_MAX };

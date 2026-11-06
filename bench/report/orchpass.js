@@ -19,6 +19,8 @@ const { loadRun } = require('./load.js');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { analyze, outPaths, writeOutputs, formatOf } = require('./generate.js');
 const { computeScores, loadScoring, MIN_N } = require('./scores.js');
+const { mergeQuote, passSensitivity } = require('./quotes.js');
+const { otherRule } = require('../judge/views.js');
 const { normalize, unisolatedReason, aaNoiseFromCells, levelText, qualityList, aaGroups, refLabel, pairCells, nonScoredOf, componentCheck, MAX_NONSCORED_SHARE, NOISE_FLOOR_PTS } = require('./verdict.js');
 const { pairedCellCI, withinCellSd, MIN_CELLS } = require('./stats.js');
 const { enrichOrch, summarize } = require('./orch.js');
@@ -263,11 +265,12 @@ function buildCell({ key, inputs, baseline, weights, unit, testArms, changedSkil
  * dirs: finished run directories. Cells are (harness, model); directories of one cell are pooled by exact ref.
  * Returns { baseline, rule, cells, skippedDirs, notes, unit, weights }.
  */
-function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', testArms = null, changedSkills = null, scoringFile, phases = null, qualityPack = null }) {
+function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'vanilla', testArms = null, changedSkills = null, scoringFile, phases = null, qualityPack = null, quoteRule = null, withSensitivity = true }) {
   const tasks = loadTasks(benchDir, { extraDirs });
   const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
   const byCell = new Map();
   const skippedDirs = [];
+  const quotes = [];
   let unit = 'credits';
   for (const d of dirs) {
     const run = loadRun(d);
@@ -276,7 +279,8 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
       continue;
     }
     enrichOrch(run);
-    const a = analyze({ run, tasks, baseline, scoringFile, qualityPack });
+    const a = analyze({ run, tasks, baseline, scoringFile, qualityPack, quoteRule });
+    quotes.push(a.quote);
     unit = a.scores.unit;
     const executed = run.runs.filter((e) => e.result.status !== 'budget_skipped');
     const rows = a.rows.map((r, i) => ({ ...normalize(r, 0), result: executed[i].result, orchSource: executed[i].orchSource }));
@@ -327,7 +331,12 @@ function buildOrchestratorPass({ dirs, benchDir, extraDirs = [], baseline = 'van
     evidence: `NOT ENOUGH EVIDENCE also when a side has fewer than ${MIN_N} scored runs, the cell has fewer than ${MIN_CELLS} paired task cells, no A/A repeat, no task where vanilla has two scored runs, more than a fifth of the runs on a side have no score (infra error, model mismatch, nothing to score), the arm and vanilla were scored on different components in any cell, or a change that lives only in skills never loaded one.`,
     gpt: 'A GPT cell is judged on its own ratios to vanilla; the Claude cell on the same harness is shown beside it, ratio against ratio, never raw credits.',
   };
-  return { schemaVersion: 1, kind: 'orchestrator-pass', baseline, comparisons, rule, cells, skippedDirs, notes, unit: unit === 'USD' ? 'USD' : 'credits', weights, phases };
+  const quote = mergeQuote(quotes);
+  const result = { schemaVersion: 1, kind: 'orchestrator-pass', baseline, comparisons, rule, cells, skippedDirs, notes, unit: unit === 'USD' ? 'USD' : 'credits', weights, phases, quote };
+  if (withSensitivity) {
+    result.sensitivity = passSensitivity(result, buildOrchestratorPass({ dirs, benchDir, extraDirs, baseline, testArms, changedSkills, scoringFile, phases, qualityPack, quoteRule: otherRule(quote.requested), withSensitivity: false }));
+  }
+  return result;
 }
 
 module.exports = { buildOrchestratorPass, decideCell, sampleSd, cellKeyOf, targetOf, boundedCost, PASS, FAIL, NEE, COST_MAX, QUALITY_FLOOR_PTS };

@@ -25,7 +25,7 @@ const { loadPack } = require('../judge/pack/index.js');
 const { runPackJudging, describePackPlan, FILE } = require('../judge/packrun.js');
 const { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration } = require('../judge/calibrate.js');
 const { loadRun, loadRuns } = require('../report/load.js');
-const { generateRunReport, generateContrast } = require('../report/generate.js');
+const { generateRunReport, generateContrast, useScoringQuoteRule } = require('../report/generate.js');
 const { generateVerdict, KINDS } = require('../report/verdictgen.js');
 const { buildReport, defaultBaseline } = require('../report/aggregate.js');
 const { loadScoring } = require('../report/scores.js');
@@ -315,7 +315,7 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
-      backend, quoteRule, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
+      backend, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
       limits, explicitLimits, redactions, log,
     });
   } finally {
@@ -512,6 +512,7 @@ function cmdContrast(opts) {
   if (opts.base !== undefined && opts.base === true) throw new Error('--base needs an arm name');
   const run = loadRuns(dirs);
   const tasks = loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) });
+  useScoringQuoteRule(run, tasks, scoringOf(opts));
   const c = contrastRun({
     run, tasks, base: opts.base, heads,
     minRel: numOpt(opts, 'min-rel', 0.15), rule, by: opts.by === undefined ? 'class' : String(opts.by), phases: phasesOf(opts),

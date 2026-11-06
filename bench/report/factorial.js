@@ -19,6 +19,8 @@ const { spawnsOf } = require('./process.js');
 const { normalize } = require('./verdict.js');
 const { pairedCellCI, MIN_CELLS } = require('./stats.js');
 const D = require('./doc.js');
+const { mergeQuote, STRICT_ONLY, ruleLine } = require('./quotes.js');
+const { otherRule } = require('../judge/views.js');
 const C = require('./charts.js');
 
 const SPECS = [
@@ -41,7 +43,7 @@ function canonicalModel(id) {
   return String(id ?? 'unknown').replace(/^(?:us|eu|apac|global)\.anthropic\./, '').replace(/\./g, '-');
 }
 
-function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack }) {
+function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack, quoteRule = null }) {
   const where = `cell ${spec.id} (${labelOf(spec)})`;
   if (!Array.isArray(dirs) || !dirs.length) throw new Error(`${where}: no run directory given`);
   let run;
@@ -57,7 +59,7 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack }) {
   if (spec.role === 'konductor' && isVanillaArm) throw new Error(`${where}: the arm is ${armId}; a konductor cell needs a konductor arm`);
   if (spec.harness === 'claude-code' && !armId.startsWith('cc-')) throw new Error(`${where}: arm ${armId} is not a Claude Code arm`);
 
-  const a = analyze({ run, tasks, baseline: armId, scoringFile, qualityPack });
+  const a = analyze({ run, tasks, baseline: armId, scoringFile, qualityPack, quoteRule });
   if (a.scores.unit !== spec.unit) throw new Error(`${where}: cost unit is ${a.scores.unit}, expected ${spec.unit}; units are never mixed across harnesses`);
 
   const j = run.judgments;
@@ -97,7 +99,7 @@ function loadCell(spec, dirs, { tasks, weights, scoringFile, qualityPack }) {
   const model = canonicalModel(run.config.canonicalModel ?? rows.find((r) => r.model)?.model ?? run.config.model);
   const shas = uniq(executed.map((e) => e.result.commitSha).filter(Boolean));
   const modelsSeen = uniq(executed.flatMap((e) => (e.result.claudeCode?.modelsSeen ?? [e.result.sessionModel ?? e.result.model]).filter(Boolean))).sort();
-  return { run, spec, dirs: run.dirs ?? [run.dir], armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
+  return { run, spec, dirs: run.dirs ?? [run.dir], quote: a.quote, armId, rows, unit: a.scores.unit, panel, revisions, model, modelsSeen, pin: a.facts.pin ?? null, shas, harnessVersion: executed[0].result.harnessVersion ?? executed[0].result.kiroCliVersion ?? null };
 }
 
 const sameJson = (x, y) => JSON.stringify(x) === JSON.stringify(y);
@@ -198,10 +200,10 @@ function costRatio(van, kon) {
  * dirs: { kiroVanilla, kiroKonductor, ccVanilla, ccKonductor }, each an array of finished and judged run directories
  * (several per cell are merged read-only, as `report` does). Throws when the four cells cannot be compared.
  */
-function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile, qualityPack = null } = {}) {
+function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile, qualityPack = null, quoteRule = null, withSensitivity = true } = {}) {
   const tasks = loadTasks(benchDir, { extraDirs });
   const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
-  const loaded = SPECS.map((spec) => loadCell(spec, dirs?.[spec.id], { tasks, weights, scoringFile, qualityPack }));
+  const loaded = SPECS.map((spec) => loadCell(spec, dirs?.[spec.id], { tasks, weights, scoringFile, qualityPack, quoteRule }));
   const { tasks: taskIds, notes } = checkComparable(loaded);
   const cells = loaded.map((c) => summarizeCell(c, taskIds));
   const byId = Object.fromEntries(cells.map((c) => [c.id, c]));
@@ -233,12 +235,35 @@ function buildFactorial({ dirs, benchDir, extraDirs = [], scoringFile, qualityPa
     const { summarizeQuality } = require('./quality.js');
     qualityDimensions = summarizeQuality({ groups: loaded.map((c) => ({ id: c.spec.id, label: labelOf(c.spec), run: c.run })), tasks, pack: qualityPack, strictPanel: true, scoredWeight: weights.pack ?? null });
   }
-  return {
-    schemaVersion: 1, kind: 'factorial-2x2', tasks: taskIds, replicates: { min: reps.min, perTask: reps.perTask },
+  const quote = mergeQuote(loaded.map((c) => c.quote));
+  const result = {
+    schemaVersion: 1, kind: 'factorial-2x2', quote, tasks: taskIds, replicates: { min: reps.min, perTask: reps.perTask },
     descriptive: !intervals, descriptiveReason, model: loaded[0].model, units: { 'kiro-cli': 'credits', 'claude-code': 'USD' },
     judges: { backend: loaded[0].panel.backend, panel: loaded[0].panel.judges, models: loaded[0].panel.models },
     weights, cells, contrasts, costRatios, notes: out,
     ...(qualityDimensions ? { qualityDimensions } : {}),
+  };
+  if (withSensitivity) result.sensitivity = factorialSensitivity(result, buildFactorial({ dirs, benchDir, extraDirs, scoringFile, qualityPack, quoteRule: otherRule(quote.requested), withSensitivity: false }));
+  return result;
+}
+
+/** The 2x2 under the other quote rule against the one in use: quality per cell with rank, and the konductor effect per harness. */
+function factorialSensitivity(res, o) {
+  const rule = res.quote.requested;
+  const other = o.quote.requested;
+  if (o.quote.state === 'strict-only' || res.quote.state === 'strict-only') return { available: false, rule, other, reason: STRICT_ONLY };
+  const rank = (r) => { const order = [...r.cells].sort((a, b) => (b.quality ?? -Infinity) - (a.quality ?? -Infinity) || (a.id < b.id ? -1 : 1)).map((c) => c.id); return Object.fromEntries(order.map((id, i) => [id, i + 1])); };
+  const rp = rank(res);
+  const ro = rank(o);
+  const cells = res.cells.map((c) => {
+    const b = o.cells.find((x) => x.id === c.id);
+    return { id: c.id, harness: c.harness, role: c.role, quality: c.quality, otherQuality: b?.quality ?? null, rank: rp[c.id], otherRank: ro[c.id], flip: rp[c.id] !== ro[c.id] };
+  });
+  const effects = Object.keys(res.contrasts).map((k) => ({ id: k, label: res.contrasts[k].label, delta: res.contrasts[k].delta, otherDelta: o.contrasts[k]?.delta ?? null, interval: res.contrasts[k].interval, otherInterval: o.contrasts[k]?.interval ?? null }));
+  const orderDiffers = cells.some((c) => c.flip);
+  return {
+    available: true, rule, other, cells, effects, orderDiffers,
+    warning: orderDiffers ? `The order of the four cells by quality differs between the rules (${rule}: ${Object.entries(rp).sort((a, b) => a[1] - b[1]).map(([id]) => id).join(' > ')}; ${other}: ${Object.entries(ro).sort((a, b) => a[1] - b[1]).map(([id]) => id).join(' > ')}). Read the ranking as unsettled.` : null,
   };
 }
 
@@ -296,6 +321,27 @@ function factorialCharts(res) {
 
 // ---- rendering ----
 
+/** The rule line of the 2x2 page and, when the other view exists, the cell qualities under both rules. */
+function factorialRuleBlocks(res) {
+  const sens = res.sensitivity;
+  const blocks = [D.p(ruleLine(res.quote, sens?.available ? 'see the table below.' : 'not available.'))];
+  if (!sens?.available) return blocks;
+  const cap = (r) => (r === 'strict' ? 'strict' : 'lenient');
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : 'n/a');
+  const signedNum = (v) => (typeof v === 'number' && Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}` : 'n/a');
+  blocks.push(D.table(
+    ['cell', `mean quality, ${cap(sens.rule)}`, `mean quality, ${cap(sens.other)}`, 'rank'],
+    sens.cells.map((c) => [`${HARNESS_NAME[c.harness]} ${c.role}`, num(c.quality), num(c.otherQuality), c.flip ? `${c.rank} to ${c.otherRank} **FLIP**` : String(c.rank)]),
+    `Quality per cell under both quote rules (${cap(sens.rule)} is the one in use)`,
+  ));
+  blocks.push(D.table(
+    ['contrast', `estimate, ${cap(sens.rule)}`, `estimate, ${cap(sens.other)}`],
+    sens.effects.map((e) => [e.label, signedNum(e.delta), signedNum(e.otherDelta)]),
+  ));
+  if (sens.warning) blocks.push(D.note(`Warning: ${sens.warning}`));
+  return blocks;
+}
+
 const f1 = (v) => (fin(v) ? v.toFixed(1) : 'n/a');
 const f2 = (v) => (fin(v) ? v.toFixed(2) : 'n/a');
 const signed = (v) => (fin(v) ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}` : 'n/a');
@@ -350,10 +396,13 @@ function renderFactorial(res, { charts = null } = {}) {
       c.modelIdentity.pin ? `${c.modelIdentity.pin.verified}/${c.modelIdentity.pin.runs} verified, ${c.modelIdentity.pin.mismatch} mismatch (${c.modelIdentity.models.join(', ') || c.model})` : c.model,
     ])),
   ];
+  if (res.quote) {
+    blocks.splice(1, 0, ...factorialRuleBlocks(res));
+  }
   if (res.notes.length) blocks.push(D.h(2, 'Notes'), D.list(res.notes));
   if (res.qualityDimensions) blocks.push(...require('./quality.js').qualityBlocks(res.qualityDimensions));
   blocks.push(D.h(2, 'Inputs'), D.list(cols.map((c) => `${HARNESS_NAME[c.harness]} ${c.role}: ${c.dirs.map((d) => path.basename(d)).join(', ')} (${c.unit})`)));
   return blocks;
 }
 
-module.exports = { buildFactorial, renderFactorial, factorialCharts, canonicalModel, SPECS, CONTRASTS, MIN_REPS };
+module.exports = { buildFactorial, factorialSensitivity, renderFactorial, factorialCharts, canonicalModel, SPECS, CONTRASTS, MIN_REPS };

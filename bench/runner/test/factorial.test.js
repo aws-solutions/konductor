@@ -362,3 +362,21 @@ test('a missing cost ratio or contrast is left off the chart instead of drawn as
   assert.equal(count(charts.get('cost-ratio'), /data-role="bar"/g), 1);
   assert.equal(count(charts.get('konductor-effect'), /data-role="bar"/g), 1);
 });
+
+test('the 2x2 page names the evidence-quote rule and shows the cells under both rules', () => {
+  const root = tmp();
+  try {
+    const bench = benchWith(root);
+    const res = buildFactorial({ dirs: four(root, bench), benchDir: bench });
+    assert.equal(res.quote.requested, 'lenient');
+    assert.equal(res.sensitivity.available, true);
+    assert.equal(res.sensitivity.other, 'strict');
+    assert.equal(res.sensitivity.cells.length, 4);
+    const md = toMarkdown(renderFactorial(res));
+    assert.match(md, /Evidence-quote rule: lenient \(tightened: quotes with 20 or more unsupported letters are rejected\)\. Strict sensitivity: see the table below\./);
+    assert.match(md, /Quality per cell under both quote rules \(lenient is the one in use\)/);
+    const strict = buildFactorial({ dirs: four(root, bench), benchDir: bench, scoringFile: path.join(__dirname, '..', '..', 'profiles', 'scoring-strict-quotes.json') });
+    assert.equal(strict.quote.requested, 'strict');
+    assert.match(toMarkdown(renderFactorial(strict)), /Evidence-quote rule: strict \(every segment between ellipses/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

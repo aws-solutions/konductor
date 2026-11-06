@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { tmp, write, makeBench, makeRun } = require('./helpers.js');
+const { tmp, write, makeBench, makeRun, withViews } = require('./helpers.js');
 const { explainRuns, expandRunDirs } = require('../../report/explain.js');
 const { loadTasks } = require('../lib/tasks.js');
 
@@ -25,7 +25,7 @@ function judgments(runDir, records) {
     const val = (v) => ({ pass: 1, partial: 0.5, fail: 0 })[v];
     const score = criteria.reduce((s, c) => s + weights[c.id] * val(c.verdict), 0) / 4;
     const scoreRaw = criteria.reduce((s, c) => s + weights[c.id] * val(c.verdictRaw), 0) / 4;
-    return { kind: 'rubric', judge: r.judge, armId: r.arm, taskId: 't1', replicate: r.rep ?? 1, taskRevision: null, score, scoreRaw, criteria, judgeError: null, parseFailures: 0, calls: [], redactionsFired: {} };
+    return withViews({ kind: 'rubric', judge: r.judge, armId: r.arm, taskId: 't1', replicate: r.rep ?? 1, taskRevision: null, score, scoreRaw, criteria, judgeError: null, parseFailures: 0, calls: [], redactionsFired: {} });
   });
   write(path.join(runDir, 'judgments.json'), JSON.stringify({ schemaVersion: 1, baseline: 'vanilla', judges: [...new Set(records.map((r) => r.judge))], modes: ['rubric'], rubric, pairwise: [] }));
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The opt-in lenient evidence matcher, the offline rescoring command and the scoring-file key. No model call.
+// The lenient evidence matcher, the offline rescoring command and the scoring-file key. No model call.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,7 +10,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, write, makeBench, makeRun } = require('./helpers.js');
 const { makeQuoteMatcher } = require('../../judge/quote.js');
-const { rescoreQuotes, readLenientJudgments, LENIENT_FILE } = require('../../judge/rescore.js');
+const { rescoreQuotes, LENIENT_FILE } = require('../../judge/rescore.js');
 const { loadScoring } = require('../../report/scores.js');
 const { compileRedactions, DEFAULT_REDACTIONS } = require('../../judge/redact.js');
 const { loadRuns } = require('../../report/load.js');
@@ -152,13 +152,14 @@ test('rescoring recomputes verdicts and scores, writes a new file, and leaves ju
     assert.ok(Math.abs(r.armAfter.vanilla - (1 + 1 + 0.625) / 3) < 1e-9);
     const file = JSON.parse(fs.readFileSync(r.file, 'utf8'));
     assert.equal(file.quoteMatch.mode, 'lenient');
+    assert.equal(file.quoteMatch.maxUnsupportedLetters, 20);
     const fixed = file.rubric.find((x) => x.judge === 'j1' && x.armId === 'vanilla');
     assert.equal(fixed.score, 1);
     assert.equal(fixed.criteria[1].verdict, 'pass');
     assert.equal(fixed.criteria[1].evidenceFound, true);
     assert.equal(fixed.criteria[1].evidenceDowngraded, undefined);
     assert.equal(fixed.criteria[1].verdictRaw, 'pass');
-    assert.deepEqual(readLenientJudgments(s.runDir).rubric.length, 4);
+    assert.equal(file.rubric.length, 4);
   } finally { cleanup(s.root); }
 });
 
@@ -170,12 +171,11 @@ test('a strict recheck reproduces the stored verdicts and writes nothing', () =>
     assert.equal(r.changed, 0);
     assert.deepEqual(r.before, r.after);
     assert.equal(fs.existsSync(path.join(s.runDir, LENIENT_FILE)), false);
-    assert.throws(() => readLenientJudgments(s.runDir), /judge --rescore-quotes --run/);
     assert.throws(() => rescoreQuotes({ runDir: s.runDir, benchDir: s.bench, redactions, mode: 'loose' }), /lenient or strict/);
   } finally { cleanup(s.root); }
 });
 
-test('the scoring key "quotes" is off by default and refused where the lenient file is not read', () => {
+test('the scoring key "quotes" defaults to lenient and accepts strict in every command', () => {
   const root = tmp();
   try {
     const lenientFile = path.join(root, 'l.json');
@@ -184,29 +184,10 @@ test('the scoring key "quotes" is off by default and refused where the lenient f
     write(strictFile, JSON.stringify({ weights: { hidden: 0.5, checks: 0.2, rubric: 0.3 }, quotes: 'strict' }));
     const bad = path.join(root, 'b.json');
     write(bad, JSON.stringify({ weights: { rubric: 1 }, quotes: 'sloppy' }));
-    assert.deepEqual(loadScoring(), loadScoring(strictFile), 'strict adds nothing to the loaded weights');
-    assert.equal(loadScoring(lenientFile, { allowQuotes: true }).quoteMode, 'lenient');
-    assert.throws(() => loadScoring(lenientFile), /read by report only/);
+    assert.deepEqual(loadScoring(), loadScoring(lenientFile), 'lenient adds nothing to the loaded weights');
+    assert.equal(loadScoring(strictFile).quoteMode, 'strict');
     assert.throws(() => loadScoring(bad), /"quotes" must be one of "strict", "lenient"/);
   } finally { cleanup(root); }
-});
-
-test('a report with the lenient key reads judgments-lenient.json, says so, and fails clearly without it', () => {
-  const s = setup();
-  try {
-    const scoring = path.join(s.root, 'lenient.json');
-    write(scoring, JSON.stringify({ weights: { hidden: 0.5, checks: 0.2, rubric: 0.3 }, quotes: 'lenient' }));
-    const tasks = loadTasks(s.bench);
-    const build = (scoringFile) => generateRunReport({ run: loadRuns([s.runDir]), tasks, baseline: 'vanilla', out: path.join(s.root, 'out'), detail: 'full', format: 'md', scoringFile, defaultDir: path.join(s.root, 'out') });
-    assert.throws(() => build(scoring), /no judgments-lenient\.json/);
-    rescoreQuotes({ runDir: s.runDir, benchDir: s.bench, redactions });
-    build(scoring);
-    const md = fs.readFileSync(path.join(s.root, 'out', 'report.md'), 'utf8');
-    assert.match(md, /Quote matching: lenient\./);
-    assert.match(md, /\| j1 \| 4 \| 1 \(25\.0%\) \| 0 \(0\.0%\) \|/);
-    build(undefined);
-    assert.doesNotMatch(fs.readFileSync(path.join(s.root, 'out', 'report.md'), 'utf8'), /Quote matching/);
-  } finally { cleanup(s.root); }
 });
 
 test('judge --rescore-quotes runs from the command line and refuses options that would call a model', () => {
@@ -221,7 +202,7 @@ test('judge --rescore-quotes runs from the command line and refuses options that
     const plan = spawnSync(process.execPath, [BENCH_JS, 'judge', '--rescore-quotes', '--plan', '--run', s.runDir, '--bench-dir', s.bench], { encoding: 'utf8', env });
     assert.notEqual(plan.status, 0);
     assert.match(plan.stderr, /--plan does not apply with --rescore-quotes/);
-    const orphan = spawnSync(process.execPath, [BENCH_JS, 'judge', '--quote-match', 'lenient', '--run', s.runDir, '--bench-dir', s.bench], { encoding: 'utf8', env });
-    assert.match(orphan.stderr, /--quote-match goes with --rescore-quotes/);
+    const unknown = spawnSync(process.execPath, [BENCH_JS, 'judge', '--quote-match', 'loose', '--run', s.runDir, '--bench-dir', s.bench], { encoding: 'utf8', env });
+    assert.match(unknown.stderr, /--quote-match takes strict or lenient/);
   } finally { cleanup(s.root); }
 });

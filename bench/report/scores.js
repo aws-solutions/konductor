@@ -8,6 +8,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { meanCI, ratioBootstrap } = require('./stats.js');
+const { QUOTE_RULES, DEFAULT_QUOTE_RULE } = require('../judge/quote.js');
 
 const MIN_N = 3;
 const CEILING = 95;
@@ -20,11 +21,12 @@ const PACK_COMPONENT = 'pack';
 // passed / total. The loaded weights carry `checksMode` only when it is 'fraction', so default weights are unchanged.
 const CHECKS_MODES = ['all', 'fraction'];
 const CHECKS_MODE_KEY = 'checksMode';
-// How the judge's evidence quotes are matched. 'strict' (the default) uses the stored judgments.json. 'lenient' reads
-// judgments-lenient.json, made by `judge --rescore-quotes`. The loaded weights carry `quoteMode` only when it is 'lenient'.
-const QUOTE_MODES = ['strict', 'lenient'];
+// How the judge's evidence quotes are matched: 'lenient' (the default, tightened) or 'strict'. Both views live in the
+// judgments (see judge/views.js); the rule only picks which one the scores read. The loaded weights carry `quoteMode` only
+// when it is 'strict', the non-default, so a default scoring file loads to the same object as before.
+const QUOTE_MODES = QUOTE_RULES;
 const QUOTE_MODE_KEY = 'quoteMode';
-const LENIENT_QUOTES = 'lenient';
+const STRICT_QUOTES = 'strict';
 const FRACTIONAL_CHECKS = 'fraction';
 const componentsOf = (weights) => (weights[PACK_COMPONENT] > 0 ? [...COMPONENTS, PACK_COMPONENT] : COMPONENTS);
 const DEFAULT_PROFILE = path.join(__dirname, '..', 'profiles', 'scoring.json');
@@ -54,9 +56,10 @@ const PACK_FORMULA = ' Pack quality (opt-in, set by a weight for "pack" in the s
  * Weights file: { weights: { hidden, checks, rubric, pack? }, checks?: "all" | "fraction" }. Each weight is a number of 0 or more, at
  * least one above 0. A weight above 0 for pack is refused unless the caller can supply pack scores (allowPack), so a command that
  * cannot never drops the component quietly. "checks" names how the checks component is scored (default "all"); the returned object
- * gets `checksMode: "fraction"` only when the file asks for it.
+ * gets `checksMode: "fraction"` only when the file asks for it. "quotes" names the evidence-quote rule ("lenient", the default, or
+ * "strict"); the returned object gets `quoteMode: "strict"` only for strict.
  */
-function loadScoring(file = DEFAULT_PROFILE, { allowPack = false, allowQuotes = false } = {}) {
+function loadScoring(file = DEFAULT_PROFILE, { allowPack = false } = {}) {
   let data;
   try { data = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { throw new Error(`scoring profile ${file}: ${e.code === 'ENOENT' ? 'file not found' : e.message}`); }
   const w = data?.weights;
@@ -74,14 +77,14 @@ function loadScoring(file = DEFAULT_PROFILE, { allowPack = false, allowQuotes = 
   const mode = data.checks ?? 'all';
   if (!CHECKS_MODES.includes(mode)) throw new Error(`scoring profile ${file}: "checks" must be one of ${CHECKS_MODES.map((m) => `"${m}"`).join(', ')}`);
   if (mode === FRACTIONAL_CHECKS) out[CHECKS_MODE_KEY] = mode;
-  const quotes = data.quotes ?? 'strict';
+  const quotes = data.quotes ?? DEFAULT_QUOTE_RULE;
   if (!QUOTE_MODES.includes(quotes)) throw new Error(`scoring profile ${file}: "quotes" must be one of ${QUOTE_MODES.map((m) => `"${m}"`).join(', ')}`);
-  if (quotes === LENIENT_QUOTES) {
-    if (!allowQuotes) throw new Error(`scoring profile ${file}: "quotes": "lenient" is read by report only; other commands cannot use the lenient judgments`);
-    out[QUOTE_MODE_KEY] = quotes;
-  }
+  if (quotes === STRICT_QUOTES) out[QUOTE_MODE_KEY] = quotes;
   return out;
 }
+
+/** The evidence-quote rule a loaded scoring object asks for. */
+const quoteRuleOf = (weights) => weights?.[QUOTE_MODE_KEY] ?? DEFAULT_QUOTE_RULE;
 
 /** The checks component of one run, 0..1, or null when it ran no checks. `checks` is the result's list of { passed }. */
 function checksScore(checks, weights = DEFAULT_WEIGHTS) {
@@ -235,4 +238,4 @@ function computeScores({ rows, baseline, weights = DEFAULT_WEIGHTS, unit = 'cred
   return { weights, unit, formulas: weights[PACK_COMPONENT] > 0 ? { ...formulas, quality: formulas.quality + PACK_FORMULA } : formulas, baseline: base, scopes, arms, rows: flatRows(arms, scopes, base) };
 }
 
-module.exports = { computeScores, qualityOfRun, loadScoring, checksScore, checksModeNote, formulasForWeights, componentsOf, PACK_COMPONENT, DEFAULT_WEIGHTS, FORMULAS, MIN_N, CEILING, RELIABILITY_FAILS };
+module.exports = { computeScores, qualityOfRun, loadScoring, quoteRuleOf, checksScore, checksModeNote, formulasForWeights, componentsOf, PACK_COMPONENT, DEFAULT_WEIGHTS, FORMULAS, MIN_N, CEILING, RELIABILITY_FAILS };

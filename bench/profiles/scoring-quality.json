@@ -1,4 +1,5 @@
 {
   "description": "Weights for the 0..100 quality score with the quality pack as a fourth component. Use it with report or report-2x2 and --criteria-pack quality, after judge --criteria-pack quality. A component a run does not have is dropped and the rest are renormalised, so a run where no pack criterion applied is scored on the other three.",
-  "weights": { "hidden": 0.4, "checks": 0.16, "rubric": 0.24, "pack": 0.2 }
+  "weights": { "hidden": 0.4, "checks": 0.16, "rubric": 0.24, "pack": 0.2 },
+  "quotes": "lenient"
 }

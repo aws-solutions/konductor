@@ -106,13 +106,6 @@ function rescoreQuotes({ runDir, benchDir, extraDirs = [], redactions, mode = 'l
   return result;
 }
 
-/** The lenient judgments of a run directory, or throws with the command that makes them. */
-function readLenientJudgments(runDir) {
-  const file = path.join(runDir, LENIENT_FILE);
-  if (!fs.existsSync(file)) throw new Error(`the scoring file asks for lenient quote matching, but ${runDir} has no ${LENIENT_FILE}; run bench.js judge --rescore-quotes --run ${runDir} first`);
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
-}
-
 function formatRescore(r) {
   const pct = (v) => (v === null ? 'n/a' : `${(100 * v).toFixed(1)}%`);
   const f2 = (v) => (typeof v === 'number' ? v.toFixed(3) : 'n/a');
@@ -126,4 +119,4 @@ function formatRescore(r) {
   return lines.join('\n');
 }
 
-module.exports = { rescoreQuotes, readLenientJudgments, formatRescore, rescoredCriteria, LENIENT_FILE };
+module.exports = { rescoreQuotes, formatRescore, rescoredCriteria, LENIENT_FILE };

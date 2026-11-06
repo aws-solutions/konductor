@@ -75,9 +75,22 @@ function addTask(bench, id, cls) {
   write(path.join(bench, `tasks/${id}.json`), JSON.stringify({ ...t, id, class: cls }));
 }
 
+/**
+ * A hand-written rubric record with both quote views set equal to what it already says, so the report reads it the same under
+ * either rule. Without this a record counts as one from before the dual view, and its lenient view is matched again against
+ * the run's output, which the made-up quotes of a fixture do not appear in.
+ */
+function withViews(rec) {
+  const criteria = (rec.criteria || []).map((c) => {
+    const found = c.evidenceFound !== false;
+    return { ...c, verdictStrict: c.verdict, verdictLenient: c.verdict, quoteFound: { strict: found, lenient: found } };
+  });
+  return { ...rec, criteria, scoreStrict: rec.score ?? null, scoreLenient: rec.score ?? null };
+}
+
 // recs: [{judge, arm, task, rep, score, criteria?: {c1:'pass',...}, error?}]
 function writeJudgments(runDir, { judges, rubric = [], pairwise = [] }) {
-  const R = rubric.map((r) => ({
+  const R = rubric.map((r) => withViews({
     kind: 'rubric', judge: r.judge, armId: r.arm, taskId: r.task || 't1', replicate: r.rep || 1,
     score: r.score ?? null, criteria: Object.entries(r.criteria || {}).map(([id, verdict]) => ({ id, verdict, evidence: 'e', evidenceFound: true })),
     judgeError: r.error ?? null, parseFailures: 0, calls: [{ credits: 0.1, latencyMs: 100, cached: false, ok: true }], redactionsFired: {},
@@ -92,3 +105,4 @@ function writeJudgments(runDir, { judges, rubric = [], pairwise = [] }) {
 
 module.exports.addTask = addTask;
 module.exports.writeJudgments = writeJudgments;
+module.exports.withViews = withViews;

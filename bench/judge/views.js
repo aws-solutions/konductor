@@ -7,6 +7,8 @@
 // rule the judge ran with (the default is lenient, tightened). A record from before the dual view has only the strict
 // verdicts in those fields; its lenient view is rebuilt from the saved output when the bundle can be rebuilt.
 
+const fs = require('node:fs');
+const path = require('node:path');
 const { DOWNGRADE, rubricScore } = require('./score.js');
 const { makeQuoteMatcher, DEFAULT_QUOTE_RULE, QUOTE_RULES } = require('./quote.js');
 
@@ -92,7 +94,9 @@ function viewJudgments(run, rule, { tasks, redactions, rebuild = true } = {}) {
       let m = null;
       const entry = run.runs.find((e) => keyOf(e) === k);
       const task = tasks?.get(rec.taskId);
-      if (entry && task) {
+      // A run with no kept workspace (or a failed snapshot) cannot have its output rebuilt: the quotes would look unsupported.
+      const rebuildable = entry && task && fs.existsSync(path.join(entry.dir, 'workspace')) && !(entry.result.flags || []).includes('snapshotFailed');
+      if (rebuildable) {
         try {
           red = red ?? loadRedactions(undefined);
           m = makeQuoteMatcher(buildBundle({ runDir: entry.dir, result: entry.result, fixtureDir: task.fixtureDir, limits: effectiveLimits(task, j.limits ?? {}, {}), redactions: red }).text, { lenient: true });

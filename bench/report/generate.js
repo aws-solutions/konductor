@@ -7,12 +7,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { buildReport, defaultBaseline } = require('./aggregate.js');
 const { buildRows, skippedCount } = require('./rows.js');
-const { computeScores, loadScoring } = require('./scores.js');
+const { computeScores, loadScoring, quoteRuleOf } = require('./scores.js');
+const { applyQuoteRule, compareViews } = require('./quotes.js');
+const { otherRule } = require('../judge/views.js');
 const { collectFacts, scorecard } = require('./diligence.js');
 const { buildRunDocument } = require('./build.js');
 const { toMarkdown, toHtml } = require('./doc.js');
 const { readJson } = require('./load.js');
-const { readLenientJudgments } = require('../judge/rescore.js');
 const { enrichOrch, summarize: summarizeOrch } = require('./orch.js');
 const { profileCheck } = require('../runner/lib/profiles.js');
 
@@ -57,14 +58,12 @@ function readSpend(run) {
 }
 
 /** Everything a run report needs, without writing a file. */
-function analyze({ run, tasks, baseline, scoringFile, qualityPack = null }) {
+function analyze({ run, tasks, baseline, scoringFile, qualityPack = null, quoteRule = null }) {
   const base = baseline ?? defaultBaseline(run);
-  const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack), allowQuotes: true });
-  // A scoring file with "quotes": "lenient" swaps in the rescored judgments before anything reads them.
-  if (weights.quoteMode === 'lenient') {
-    if ((run.dirs || [run.dir]).length > 1) throw new Error('"quotes": "lenient" needs one run directory; rescore and report each directory on its own');
-    run.judgments = readLenientJudgments(run.dir);
-  }
+  const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
+  // The scoring file's evidence-quote rule (lenient unless it says strict) picks the view of the judgments everything below reads.
+  // `quoteRule` overrides it, which is how the sensitivity view is made.
+  const quote = applyQuoteRule(run, tasks, quoteRule ?? quoteRuleOf(weights));
   const built = buildReport({ run, tasks, baseline: base });
   // Only a scoring file that weights the pack reads the pack judgments; otherwise rows and scores are exactly as before.
   const ctx = { ...built.ctx, scoring: weights, ...(weights.pack > 0 ? { packScoreOf: require('./packscore.js').packScores({ run, tasks, pack: qualityPack }).scoreOf } : {}) };
@@ -74,7 +73,23 @@ function analyze({ run, tasks, baseline, scoringFile, qualityPack = null }) {
   const facts = collectFacts({ run, tasks, rows, ctx: built.ctx, report: built.report, skipped, baseline: scores.baseline, weights, calibration: readCalibration(run) });
   const card = scorecard(facts);
   run.spend = readSpend(run);
-  return { ...built, base: scores.baseline, rows, scores, facts, card, weights };
+  return { ...built, base: scores.baseline, rows, scores, facts, card, weights, quote };
+}
+
+/** Points `run` at the quote view the scoring file asks for, for commands that read the judgments before `analyze` does. */
+function useScoringQuoteRule(run, tasks, scoringFile) {
+  return applyQuoteRule(run, tasks, quoteRuleOf(loadScoring(scoringFile)));
+}
+
+/**
+ * The same analysis under the other quote rule, compared with `primary` (the analyze() result of the rule in use). The run is left
+ * pointing at the primary view. Nothing is written.
+ */
+function quoteSensitivity({ run, tasks, baseline, scoringFile, qualityPack = null, primary }) {
+  if (!(run.judgmentsStored ?? run.judgments)) return { available: false, rule: primary.quote.requested, other: otherRule(primary.quote.requested), reason: 'not judged' };
+  const secondary = analyze({ run, tasks, baseline: primary.base ?? baseline, scoringFile, qualityPack, quoteRule: otherRule(primary.quote.requested) });
+  applyQuoteRule(run, tasks, primary.quote.requested);
+  return compareViews(primary, secondary);
 }
 
 function outPaths(out, defaultDir) {
@@ -102,9 +117,10 @@ function writeOutputs({ dir, name, blocks, charts, title, format, json }) {
 function generateRunReport({ run, tasks, baseline, out, detail, format, scoringFile, defaultDir, profile = null, phases = null, qualityPack = null }) {
   enrichOrch(run);
   const a = analyze({ run, tasks, baseline, scoringFile, qualityPack });
+  const sens = quoteSensitivity({ run, tasks, baseline, scoringFile, qualityPack, primary: a });
   const d = detailOf(detail);
   const check = profile ? profileCheck(profile, { facts: a.facts, judgments: run.judgments }) : null;
-  const doc = buildRunDocument({ run, tasks, report: a.report, rows: a.rows, scores: a.scores, card: a.card, facts: a.facts, ctx: a.ctx, weights: a.weights, detail: d, profile: profile ? { profile, check } : null, docPhases: phases });
+  const doc = buildRunDocument({ run, tasks, report: a.report, rows: a.rows, scores: a.scores, card: a.card, facts: a.facts, ctx: a.ctx, weights: a.weights, detail: d, profile: profile ? { profile, check } : null, docPhases: phases, quote: a.quote, sens });
   let quality = null;
   if (qualityPack) {
     // Opt-in: without --criteria-pack nothing below runs and the outputs are unchanged.
@@ -113,7 +129,7 @@ function generateRunReport({ run, tasks, baseline, out, detail, format, scoringF
     quality = summarizeQuality({ groups: armIds.map((id) => ({ id, label: id, run, arm: id })), tasks, pack: qualityPack, scoredWeight: a.weights.pack ?? null });
     doc.blocks.push(...qualityBlocks(quality));
   }
-  const json = { ...a.report, detail: d, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), ...(quality ? { qualityDimensions: quality } : {}), scores: a.scores, orchestration: summarizeOrch(run, { phases }), diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
+  const json = { ...a.report, detail: d, quoteRule: a.quote, quoteSensitivity: sens, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), ...(quality ? { qualityDimensions: quality } : {}), scores: a.scores, orchestration: summarizeOrch(run, { phases }), diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
   const { dir, name } = outPaths(out, defaultDir);
   const { renderMarkdown } = require('./render.js');
   const written = writeOutputs({ dir, name, blocks: doc.blocks, charts: doc.charts, title: doc.title, format: formatOf(format), json });
@@ -123,12 +139,13 @@ function generateRunReport({ run, tasks, baseline, out, detail, format, scoringF
 function generateContrast({ run, tasks, c, out, detail, format, scoringFile, defaultDir }) {
   const { buildContrastDocument } = require('./contrastdoc.js');
   const a = analyze({ run, tasks, baseline: c.base, scoringFile });
+  const sens = quoteSensitivity({ run, tasks, baseline: c.base, scoringFile, primary: a });
   const d = detailOf(detail);
-  const doc = buildContrastDocument({ c, run, rows: a.rows, scores: a.scores, card: a.card, facts: a.facts, weights: a.weights, detail: d });
-  const json = { ...c, detail: d, scores: a.scores, diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
+  const doc = buildContrastDocument({ c, run, rows: a.rows, scores: a.scores, card: a.card, facts: a.facts, weights: a.weights, detail: d, quote: a.quote, sens });
+  const json = { ...c, detail: d, quoteRule: a.quote, quoteSensitivity: sens, scores: a.scores, diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
   const { dir } = outPaths(out, defaultDir);
   const written = writeOutputs({ dir, name: 'contrast', blocks: doc.blocks, charts: doc.charts, title: doc.title, format: formatOf(format), json });
   return { written, card: a.card, markdown: require('fs').existsSync(path.join(dir, 'contrast.md')) ? fs.readFileSync(path.join(dir, 'contrast.md'), 'utf8') : '' };
 }
 
-module.exports = { generateRunReport, generateContrast, analyze, writeOutputs, outPaths, detailOf, formatOf, DETAILS, FORMATS, readCalibration };
+module.exports = { generateRunReport, generateContrast, analyze, quoteSensitivity, useScoringQuoteRule, writeOutputs, outPaths, detailOf, formatOf, DETAILS, FORMATS, readCalibration };

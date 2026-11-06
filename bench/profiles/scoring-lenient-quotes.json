@@ -1,4 +1,5 @@
 {
+  "description": "The default weights with the evidence-quote rule written out as lenient (tightened). Lenient is the default of every scoring file, so this file gives the same scores as scoring.json; it is kept so older command lines still work.",
   "weights": { "hidden": 0.5, "checks": 0.2, "rubric": 0.3 },
   "quotes": "lenient"
 }

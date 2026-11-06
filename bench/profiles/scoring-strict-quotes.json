@@ -1,0 +1,5 @@
+{
+  "description": "The default weights with the strict evidence-quote rule: a quote counts only when every segment between ellipses appears in the output, in order. This reproduces the numbers the benchmark gave before lenient became the default. Select it with --scoring on report, report-2x2, contrast and report --verdict.",
+  "weights": { "hidden": 0.5, "checks": 0.2, "rubric": 0.3 },
+  "quotes": "strict"
+}
