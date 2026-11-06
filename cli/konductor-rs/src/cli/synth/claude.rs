@@ -465,8 +465,8 @@ fn is_date(part: &str) -> bool {
 /// precedence rule) before rendering, so the frontmatter's `mcpServers:`
 /// key reflects both sources rather than only the Claude-specific one.
 ///
-/// For a specialist (`k-*`), spawn tools are dropped from `tools`; with no
-/// `tools` list, `disallowedTools` denies them instead.
+/// For a specialist (`k-*`), spawn tools are dropped from `tools` and
+/// `disallowedTools` denies them, whether or not a `tools` list exists.
 fn render_agent_md(
     name: &str,
     config: &super::parser::AgentConfig,
@@ -495,13 +495,10 @@ fn render_agent_md(
             .cloned()
             .collect()
     });
-    // A specialist with no `tools` list inherits every default tool,
-    // spawn tools included, so it needs an explicit deny instead.
-    let disallowed_tools: &[&str] = if specialist && tools.is_none() {
-        &CLAUDE_SPAWN_TOOLS
-    } else {
-        &[]
-    };
+    // Spawn tools are dropped from `tools` and denied here. With no `tools`
+    // list a specialist inherits every default tool, so the deny is the only
+    // block; it also covers a list filtered down to empty.
+    let disallowed_tools: &[&str] = if specialist { &CLAUDE_SPAWN_TOOLS } else { &[] };
     let frontmatter = ClaudeAgentFrontmatter {
         name,
         description: &config.description,
@@ -992,7 +989,10 @@ mod tests {
             parsed["tools"],
             serde_yaml::from_str::<serde_yaml::Value>("[Read, Skill]").unwrap()
         );
-        assert!(parsed.get("disallowedTools").is_none());
+        assert_eq!(
+            parsed["disallowedTools"],
+            serde_yaml::from_str::<serde_yaml::Value>("[Agent, Task, Workflow]").unwrap()
+        );
     }
 
     #[test]

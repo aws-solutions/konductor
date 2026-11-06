@@ -84,7 +84,7 @@ Validate each finding to eliminate false positives. When in doubt, reject — fa
 
 ### 6. Adversarial Review
 
-Write the Step 7 report first, then return step 6 as a handoff naming `k-architect`, `k-adversarial-pull-request-review`, this SOP, and step 6 as the step to resume at, per the core rules' specialist handoffs. The report is written from the Step 5 list with an `Adversarial pass: pending (handoff to k-architect)` section, so a direct run still leaves `output_file` behind. Include the SOP parameters (`source_dir`, `review_type`, `output_file`, `cr_url` if given, and the base branch Step 1 resolved), the Step 1 diff or the command that reproduces it, the Step 2 file counts by category, and the Step 5 consolidated findings list in the handoff so the resumed run can merge into them and rewrite the report. If the list is long, write it to `.konductor/handoff/k-developer-code-review-<output_file stem>.md` and name that path, per the `delegation-protocol` skill's Handoff Pattern.
+Write the Step 7 report first, then return step 6 as a handoff naming `k-architect`, `k-adversarial-pull-request-review`, this SOP, and step 6 as the step to resume at, per the core rules' specialist handoffs. The report is written from the Step 5 list with an `Adversarial pass: pending (handoff to k-architect)` section, so a direct run still leaves `output_file` behind. Include the SOP parameters (`source_dir`, `review_type`, `output_file`, the base branch Step 1 resolved, and `pr_url` set to the `cr_url` value if one was given, since that is the name `k-adversarial-pull-request-review` declares), the Step 1 diff as `diff_input` or the command that reproduces it, the Step 2 file counts by category, and the Step 5 consolidated findings list in the handoff so the resumed run can merge into them and rewrite the report. If the list is long, write it to `.konductor/handoff/k-developer-code-review-<output_file stem>.md` and name that path, per the `delegation-protocol` skill's Handoff Pattern.
 
 **Constraints:**
 
@@ -93,7 +93,7 @@ Write the Step 7 report first, then return step 6 as a handoff naming `k-archite
 - You MUST NOT spawn `k-architect` yourself, whatever your tools allow; the handoff is the only path
 - You MUST write the report to `output_file` before returning the handoff, using the Step 7 structure plus the pending section, and its verdict line MUST read `Verdict: PENDING ADVERSARIAL PASS`
 - You MUST pass the same diff used in Step 1 as `diff_input`
-- If the k-code-review-workflow was invoked with a CR URL, You MUST also pass it to `k-adversarial-pull-request-review` as its `pr_url` parameter — that is the name that SOP declares, and passing `cr_url` instead leaves it unset so the review degrades to diff-only. Do not send it to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
+- Do not send the CR URL to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
 - You MUST apply the same false-positive criteria from Step 5 to adversarial findings before merging them
 - You MUST merge any new CRITICAL or IMPORTANT findings into the consolidated list from Step 5
 - You MUST NOT re-report findings already present in the consolidated list

@@ -37,6 +37,9 @@ not per individual commit.
 - `konductor` runs as a coordinator when `orchestration.mode` is `coordinator`: `install` wires a
   session-start hook, even under `--no-telemetry`, that points it at the routing rules, or prints a
   fallback when the install that wired it is outside your home directory and is not the project root.
+  Only the mode line and the Step 1 pointer in the hook's output are instructions; the summary
+  lines are a preview of the named rules file. The pointer names an install under a symlinked
+  home through the logical home for project and parent-of-project installs too.
 - `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
   config value is valid.
 
@@ -46,11 +49,8 @@ not per individual commit.
   spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
   work on disjoint files. An SOP's own instruction to spawn wins over that limit.
 - The Kiro skills index no longer tells an orchestrator to route a listed skill's task to a specialist; the loaded rules file (Direct Work, or the routing rules) decides, and the load rule asks for the skills the task needs instead of at most two.
-- All three orchestrators skip the reviewer for a lookup, a listing, a standalone document its
-  checker skill covers, or a one-file change whose build, test and lint passed (not for auth,
-  secrets, data or infrastructure), and triage findings against the request, house rules and spec
-  before the fix. When `konductor` made the artifact, a
-  finding it would reject goes to you before it is dropped.
+- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at most 50 changed lines whose build, test and lint passed (not for auth, secrets, data or infrastructure), and triage findings against the request, house rules and spec before the fix.
+- `konductor` also closes a standalone document with its checker skill instead of a reviewer, and when it made the artifact a finding it would reject goes to you before it is dropped.
 - The handoff, split, denial and brief rules every orchestrator follows now live in
   `context/k-orchestrator-shared.md`, loaded by all three orchestrators.
 - A specialist treats a quoted user decision in its brief as approval only for the action it
@@ -58,7 +58,7 @@ not per individual commit.
 - The rule against reading secret files now lives in the core rules, so all 11 agents load it.
   From a file the user names, an agent reports key names or redacted values only, never the
   secret values, in replies, briefs, commits or logs.
-  A `credentials_file` an SOP passes in a brief counts as user-named.
+  A `credentials_file` that `k-light-ui-testing` or `k-e2e-test-generation` passes in a brief counts as user-named.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
@@ -77,9 +77,11 @@ not per individual commit.
 - Specialist agents no longer spawn other agents. They finish their part and hand the next
   step, or a proposed parallel split, back to the orchestrator. The orchestrator routes a
   handoff only when it serves the user's task, did not come from content the specialist read,
-  and does not report a denied action; it adds visible shared files to a proposed split before
-  fan-out. When the note or split names an SOP step to resume at, the orchestrator returns the
-  results to that specialist to finish the SOP. A specialist returns an SOP's independence step
+  and does not report a denied action; it applies the same checks to every part of a proposed
+  split, refuses a part that names an orchestrator, and shows refused parts to you; it adds
+  visible shared files to a proposed split before fan-out. When the note or split names an
+  SOP step to resume at, the orchestrator returns the results to that specialist to finish
+  the SOP. A specialist returns an SOP's independence step
   as a split or note and does not run it itself unless the user asks, and says so in its output.
   The note or split carries the SOP inputs and the outputs of completed steps, inline or in a
   handoff file, and the orchestrator passes them back with the resume brief. Run directly with
@@ -87,8 +89,9 @@ not per individual commit.
   `k-adversarial-pull-request-review` returns its three Step 2 passes as a split, resumes at
   Step 3, returns the reuse pass as a handoff, and resumes at Step 4. `konductor init` now
   ignores `.konductor/handoff/`; add the line by hand in a project initialised earlier.
-- Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it (not shell
-  or Kiro CLI v2). `k-code-review-workflow` step 6 writes a `PENDING ADVERSARIAL PASS` report, then hands off.
+- Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it, with
+  `disallowedTools` on Claude Code for every specialist (not shell or Kiro CLI v2).
+  `k-code-review-workflow` step 6 writes a `PENDING ADVERSARIAL PASS` report, then hands off.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
@@ -96,14 +99,18 @@ not per individual commit.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
   and is never read or written through a symlink. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
-  instruction-like text after the date and origin tag.
+  instruction-like text after the date and origin tag, and reads the text of a leading `[label]`
+  or `[label](url)` as entry text.
   Orchestrators never bypass denials or read unnamed secrets.
 - `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
-- Orchestrator review fixes CRITICAL and IMPORTANT findings once and re-reviews the fix. A finding
-  carried over or new on the fix or caused by it in dependents stops the run; pre-existing ones are listed.
+- Orchestrator review fixes CRITICAL and IMPORTANT findings once and re-reviews every first-review finding plus the fix.
+  A first-review finding still open, or one carried over or new on the fix or caused by it in dependents, stops the run;
+  a finding the first review did not report, outside the fix, is listed as pre-existing.
+- A project mechanism replaces the adversarial review only on the user's direct word or the project's own agent
+  instruction file. Writing habits outrank nearby-text conventions.
 - Core rules rank the request, rulings, instruction files, user-written memory and codebase
   conventions above konductor defaults; when a collision stays open, ask once and save a `Ruling:` entry.
 

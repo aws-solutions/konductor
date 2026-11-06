@@ -320,6 +320,42 @@ fn a_session_inside_a_symlinked_home_gets_the_logical_pointer_and_fallback() {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn a_parent_of_project_install_under_a_symlinked_home_gets_the_logical_pointer() {
+    let physical_home = scratch_dir("home-physical-parent");
+    let links = scratch_dir("home-links-parent");
+    let logical_home = links.join("home-link");
+    std::os::unix::fs::symlink(&physical_home, &logical_home).unwrap();
+    set_mode(&physical_home, "orchestration:\n  mode: coordinator\n");
+    let logical_work = logical_home.join("work");
+    std::fs::create_dir_all(&logical_work).unwrap();
+    install_into(&physical_home, &logical_work, &["konductor"]);
+    let project = logical_work.join("proj");
+    std::fs::create_dir_all(&project).unwrap();
+    let payload = claude_payload(Some("konductor"), "startup");
+    let physical_prefix = physical_home.display().to_string();
+
+    let stdout = fire(&logical_home, &project, &[], &[], &payload);
+    let logical_dir = logical_work.join(".kiro/context/");
+    assert!(
+        stdout.contains(&logical_dir.display().to_string()),
+        "{stdout}"
+    );
+    assert!(!stdout.contains(&physical_prefix), "{stdout}");
+
+    std::fs::remove_file(logical_dir.join("k-orchestrator-routing-rules.md")).unwrap();
+    let stdout = fire(&logical_home, &project, &[], &[], &payload);
+    assert!(
+        stdout.starts_with("Orchestration: auto (fallback: "),
+        "{stdout}"
+    );
+    assert!(!stdout.contains(&physical_prefix), "{stdout}");
+    for dir in [&physical_home, &links] {
+        std::fs::remove_dir_all(dir).ok();
+    }
+}
+
 #[test]
 fn a_subdirectory_session_of_a_git_project_outside_the_home_gets_the_digest() {
     let home = scratch_dir("project-home");
