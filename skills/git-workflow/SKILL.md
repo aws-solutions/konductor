@@ -58,10 +58,10 @@ Examples:
 
 ## Branch Management
 
-- Branch from `main` for new work
+- Branch from `<default-branch>` for new work
 - Naming: `<type>/<short-description>` (e.g., `feat/network-monitoring`, `fix/throttling-retry`)
 - Keep branches short-lived — merge within days, not weeks
-- Rebase on main before submitting a PR
+- Merge `<default-branch>` into the branch before opening a PR. Merge rather than rebase, so pushed commits keep their SHAs and the branch never needs a force-push (see `git-merge`)
 
 ## History Operations
 
@@ -85,6 +85,6 @@ Use `git status` and `git diff` first to get current status, then targeted git c
 
 **CRITICAL:** Non-atomic commit mixing unrelated changes. Commit that breaks compilation or tests. Committing secrets or credentials.
 
-**IMPORTANT:** Commit message not following conventional format. Branch not rebased before PR. Feature branch older than 2 weeks without merge.
+**IMPORTANT:** Commit message not following conventional format. Branch not updated from `<default-branch>` before PR. Feature branch older than 2 weeks without merge.
 
 **SUGGESTION:** Could improve commit message description. Could split large commit further.
