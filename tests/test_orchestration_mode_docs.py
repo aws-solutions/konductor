@@ -2,6 +2,7 @@
 """Docs qualify 'konductor edits files itself' by orchestration mode and state
 the hook-location rule in one place (cli/README.md)."""
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -18,9 +19,49 @@ def _flat(path):
     return " ".join(path.read_text().split())
 
 
-def test_mode_clause_in_every_page_that_says_konductor_edits_itself():
-    for name in ["troubleshooting", "faq", "agents", "glossary", "quick-start"]:
-        assert CLAUSE in _flat(GUIDE / f"{name}.md"), name
+SELF_WORK_PHRASES = [
+    "does the work itself",
+    "edits files itself",
+    "writes and runs commands itself",
+    "commits itself",
+]
+EXEMPT_LINE_PREFIXES = ("|", "#", "- [")
+
+
+def _paragraphs(path):
+    paragraph = []
+    for line in path.read_text().splitlines() + [""]:
+        if line.strip():
+            if not line.lstrip().startswith(EXEMPT_LINE_PREFIXES):
+                paragraph.append(line)
+        elif paragraph:
+            yield " ".join(" ".join(paragraph).split())
+            paragraph = []
+
+
+def test_mode_clause_in_every_paragraph_that_says_konductor_edits_itself():
+    missing = []
+    for path in sorted(GUIDE.rglob("*.md")):
+        for paragraph in _paragraphs(path):
+            if "konductor" in paragraph and any(p in paragraph for p in SELF_WORK_PHRASES):
+                if "coordinator" not in paragraph:
+                    missing.append(f"{path.relative_to(GUIDE)}: {paragraph[:80]}")
+    assert not missing, missing
+
+
+def _github_slug(heading):
+    text = heading.replace("`", "").lower()
+    text = re.sub(r"[^\w\s-]", "", text)
+    return text.strip().replace(" ", "-")
+
+
+def test_faq_coordinator_pointer_is_a_link_to_a_real_heading():
+    text = (GUIDE / "faq.md").read_text()
+    slugs = {_github_slug(m.group(1)) for m in re.finditer(r"^#{1,6} (.+)$", text, re.M)}
+    anchors = re.findall(r"\]\(#([^)]+)\)", text)
+    assert "how-do-i-make-konductor-hand-every-change-to-a-specialist" in anchors
+    assert [a for a in anchors if a not in slugs] == []
+    assert "see Coordinator mode below" not in text
 
 
 def test_hook_location_has_one_owner():

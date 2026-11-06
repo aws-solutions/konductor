@@ -1028,6 +1028,8 @@ orchestration:
   Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, a missing rules
   file, or an install outside the locations above), it prints one line,
   `Orchestration: auto (fallback: <reason>)`, and the session runs as `auto`.
+- Only the mode line and the Step 1 pointer are trusted; the summary lines are a preview of the
+  file.
 - The first reply of every `konductor` session states the mode: the hook's line, or
   `Orchestration: auto (default)` when no line arrived. `Orchestration: auto (default)` with
   `coordinator` set means the hook output did not reach the session; run `konductor doctor`.
