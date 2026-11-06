@@ -133,7 +133,7 @@ hold:
 | Check | Threshold |
 | --- | --- |
 | `design-doc-guidelines` maker-checker | 0 CRITICAL findings |
-| `doc-accuracy-analyzer` | 0 INCORRECT findings, each corrected in the text — UNVERIFIED is acceptable with callouts |
+| `doc-accuracy-analyzer` | 0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts) |
 | Adversarial review | 0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR |
 | `design-evaluation` confidence score | ≥ 3.0 average across all sections |
 
