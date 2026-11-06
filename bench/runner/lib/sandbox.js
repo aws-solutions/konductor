@@ -11,6 +11,7 @@ const { ANSWER_KEY } = require('./check-matcher.js');
 const armSource = require('./arm-source.js');
 const { kiroInstallHarness } = require('./harness/runtime.js');
 const { realHomes } = require('./isolate.js');
+const { tryMark } = require('./owned.js');
 
 function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts });
@@ -27,7 +28,9 @@ function sha256File(file) {
 
 // Neutral name: the agent sees this path in its prompts, env and tool output.
 function makeScratchRoot() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
+  tryMark(dir, 'scratch');
+  return dir;
 }
 
 // Writes the tree of `sha` into dir. The working tree and index are never read.

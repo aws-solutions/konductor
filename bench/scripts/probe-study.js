@@ -18,6 +18,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { forcedPrefix } = require('../cap/forced.js');
+const { tryMark } = require('../runner/lib/owned.js');
 
 const BENCH = path.resolve(__dirname, '..');
 const REPO = path.resolve(BENCH, '..');
@@ -398,10 +399,12 @@ function main(args) {
   }
   if (cmd === 'token') { const rec = armsRecord(base); console.log(rec.canary.token); return; }
   if (cmd === 'driver') {
+    const baseExisted = fs.existsSync(base);
     writeFile(path.join(base, 'run-all.sh'), renderDriver({ base, repo }));
     writeFile(path.join(base, 'status.sh'), renderStatusScript({ base, repo }));
     fs.chmodSync(path.join(base, 'run-all.sh'), 0o755);
     fs.chmodSync(path.join(base, 'status.sh'), 0o755);
+    if (!baseExisted) tryMark(base, 'study-driver-dir', { id: path.basename(base) });
     console.log(`wrote ${path.join(base, 'run-all.sh')} and ${path.join(base, 'status.sh')}`);
     return;
   }

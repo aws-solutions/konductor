@@ -17,6 +17,7 @@ Jump to: [Which command answers my question](#which-command-answers-my-question)
 [Run it against a skill or an agent](#run-it-against-a-skill-or-an-agent) |
 [Evaluate one skill](#evaluate-one-skill-step-by-step) |
 [Read the answer](#read-the-answer) |
+[Cleaning up](#cleaning-up) |
 [What it cannot tell you yet](#what-it-cannot-tell-you-yet) |
 [Reference](#reference)
 
@@ -58,6 +59,7 @@ Credits are Kiro credits; the opencode and Claude Code harnesses and the opencod
 | Why did this run get this quality number? Which check or judge verdict cost the points? | `explain --run $RUNS --arm A --task T --rep N` (`--brief` for one line per run) | finished runs | free | checks with what was observed, hidden tests, the rubric per judge with evidence and downgrade notes, weights, the renormalised sum, and the number if checks were scored as a fraction |
 | Why did konductor behave this way in this run: what it read, which skills it looked up and loaded, whom it delegated to with what brief, what came back? | `trace --run $RUNS --arm A --task T --rep N` (`--instructions` adds the installed instruction lines that mention each skill or agent) | one finished kiro-cli or Claude Code run | free | a timeline plus a header: entry agent, skills listed against loaded, spawn tree, wall time, credits, flags and what the run directory cannot show |
 | Does the answer depend on the harness (Kiro CLI against Claude Code)? | `bash bench/scripts/pilot-2x2.sh`, then `report-2x2` | both harnesses and Bedrock credentials | credits on Kiro, USD on Claude Code and the judge | `factorial-2x2.md` and `charts/`: quality per cell, the konductor effect per harness, cost ratios inside each harness |
+| What is taking my disk, and what can I safely delete? Can I shrink a finished run and still re-score it? | `gc` (dry run), then `gc --apply`; `archive --run $RUNS --apply [--remove-originals]`, later `archive --restore $RUNS` | Node, `tar`, optionally `zstd` | free | the plan: kind, size, age and why each directory is kept or deleted; `ARCHIVE.md` and `archive-manifest.json` for an archive |
 
 ### Start each process
 
@@ -221,6 +223,40 @@ The header lists the entry agent, how many skills its installed filter offered a
 `--instructions` adds, under each skill load and delegation, the lines of installed instruction text that mention the skill or agent. It reads the installed agent's prompt from the run, and the agent spec, the contexts it lists and the delegation skill from the arm's commit in `--repo-root` (default: this repository). Each result is marked INFERRED. A match shows what the instructions say about the name; it does not prove the instruction caused the call. Add `--full` to print briefs, results and thoughts without shortening.
 
 A run's quality can also be read in the report (`report --run $RUNS`); `explain` is for one run. For skills, `cap prune-report` and `skills --run DIR` count loads over many runs; `trace` is for one.
+
+## Cleaning up
+
+Runs leave a lot behind: the run output, the shared build cache, the cargo target, scratch homes, and a copy of every workspace. Two commands reclaim that space. Both are dry runs until you add `--apply`, and neither deletes anything it did not find a marker for.
+
+**What the bench removes by itself.** The scratch home of a run (it holds a copy of the login database) is deleted when the run ends or is interrupted. `cap variant` removes its temporary build directory, and `pilot-2x2.sh` removes its scratch directory on exit unless you pass `--keep`. Run output, caches and cargo targets stay until you clean them.
+
+**The marker.** Every directory the bench creates and may later reclaim gets a file, `.bench-owner.json`: the run output (`--out`), `--cache`, `--cargo-target`, the scratch root, the directories of the pilot, probe and references drivers, and `cap variant` scratch directories. It records the kind (`run-out`, `cache`, `cargo-target`, `scratch`, `archive`, `study-driver-dir`), when it was made and last used, the bench commit, the command line (a value after a flag that looks like a credential is replaced), the process id, and `protect: false`. It holds no environment and no secrets. A directory that already existed when a command asked for it is not marked, so a cache you pointed `--cache` at stays yours.
+
+**gc.** `node bench/runner/bench.js gc` scans `/var/tmp` and the system temp directory (three levels deep; repeat `--root DIR` to choose others) and lists every marked directory with its kind, size, age, last change and the reason it is kept or eligible. It does nothing else without `--apply`. The default kinds are `scratch`, `cache` and `cargo-target`; `run-out` and `study-driver-dir` hold results that cost credits, so they need `--kind run-out` (or `--kind run-out,study-driver-dir`). Archives are never deleted. A directory is deleted only when all of this holds, checked again just before each deletion:
+
+- its marker is valid and says `protect: false`, and the directory is yours;
+- it is older than `--older-than` (default `7d`; with `--apply` at least `1h`), counting the newest file inside, not only the marker;
+- no protect entry covers it or lies inside it;
+- it is not a git worktree, not inside a checkout, has no `.git` at its top, holds no linked worktree at any depth, and is not the home directory, a temp directory, a scan root, the repository root or the working directory (a plain repository inside a run's `workspace/` does not block it);
+- no process has it as its working directory, an open file, or a path on its command line, and the process id in its marker is gone;
+- no symlink elsewhere points into it.
+
+`--keep-last N` spares the newest N directories of each kind. Deletions never follow a symlink, and each one is appended to `<root>/.bench-gc.log`. Where `/proc` cannot be read, nothing is eligible.
+
+**The protect file.** `~/.konductor/bench-gc-protect.txt` (change it with `--protect-file`) holds one path or glob per line, `#` starts a comment. `*` and `?` stay inside one path segment, `**` crosses segments. An entry protects the path, everything below it, and any directory that contains it. It is read on every run and wins over a marker. Edit it by hand or with `gc --protect add PATH`; `gc --protect list` prints it.
+
+**Directories made before markers existed.** They have no marker, so gc ignores them. To opt one in, name it and its kind: `gc --adopt DIR --kind cache` shows what it would write, and `--apply` writes it. The marker takes the directory's own age, so an old directory is eligible right away, and gc still applies every check above. Nothing is adopted automatically.
+
+**archive.** To keep a finished run but drop the bulk, `archive --run DIR --apply` packs each run's `workspace/` into `workspace.tar.zst` (zstd if installed, else `workspace.tar.gz`; `--compress` picks one) beside it, or under `--out DIR`, which also copies the evidence files. `result.json`, `stream.jsonl`, `installed-agent.json`, `run-config.json`, `judgments*.json`, `summary.json`, `credit-ledger.jsonl` and `session/` stay as plain files. It writes `ARCHIVE.md` and `archive-manifest.json` (size and sha256 of every archive), re-reads each archive, compares its entry list and checksum with the workspace, and marks the archive directory `kind archive`, `protect true`, so gc never deletes it. With `--remove-originals` it then deletes each uncompressed `workspace/`, but only after its archive verified. `archive --restore DIR` checks every archive against the manifest and extracts `workspace/` where it is missing; it never overwrites one. `recheck` and `judge` need the workspaces, so on an archived run restore first; `recheck` prints that hint itself.
+
+```sh
+node bench/runner/bench.js gc                              # what could go, and why not the rest
+node bench/runner/bench.js gc --older-than 14d --keep-last 2 --apply
+node bench/runner/bench.js gc --adopt /var/tmp/old-cache --kind cache --apply
+node bench/runner/bench.js archive --run $RUNS             # plan
+node bench/runner/bench.js archive --run $RUNS --apply --remove-originals
+node bench/runner/bench.js archive --restore $RUNS
+```
 
 ## What it cannot tell you yet
 

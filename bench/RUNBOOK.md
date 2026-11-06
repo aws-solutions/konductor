@@ -17,6 +17,8 @@ All commands are `bash <script>` from any directory. Nothing needs `sudo`. The s
 
 Every script takes `--help`.
 
+A study fills the disk. `node bench/runner/bench.js gc` lists what the bench made and may reclaim (a dry run; `--apply` deletes), and `archive --run DIR` packs finished workspaces. Directories under a protect entry in `~/.konductor/bench-gc-protect.txt` are never touched. See "Cleaning up" in `bench/README.md`.
+
 ## What the chain runs
 
 `run-after-capability.sh` runs six phases one after another and records each result in `after-capability.state`:

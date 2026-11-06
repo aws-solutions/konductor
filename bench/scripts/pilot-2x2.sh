@@ -187,6 +187,7 @@ case "$INIT" in fresh | resume) ;; *) die "${INIT#FAIL }" ;; esac
 # ---------------------------------------------------------------- scratch and cleanup
 SCRATCH="$(mktemp -d "$SCRATCH_ROOT/pilot-2x2.XXXXXX")"
 SCRATCH_SLUG="$(cd "$SCRATCH" && pwd -P | sed 's/[^A-Za-z0-9]/-/g')"
+node "$REPO/bench/runner/lib/owned.js" mark "$SCRATCH" scratch --id pilot-2x2 >/dev/null 2>&1 || true
 mkdir -p "$SCRATCH/home" "$SCRATCH/tmp"
 
 own_claude_tmp() {
