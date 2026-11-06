@@ -189,6 +189,8 @@ Ask discovery questions:
 - Encrypt all secrets with KMS customer-managed keys
 - Implement least privilege access to secrets
 
+Then go to [Final Step: Validate Compliance](#final-step-validate-compliance).
+
 ## Integrated Mode Workflow
 
 ### STEP 1: Artifact Analysis
@@ -218,10 +220,11 @@ Extract and document:
 1. Validate extracted requirements (confirm understanding, ask clarifying questions, state assumptions)
 2. Proceed with security design (follow STEP 3 and STEP 4 from Standalone Mode)
 3. Reference source artifacts (indicate which requirements came from which artifacts)
+4. Go to [Final Step: Validate Compliance](#final-step-validate-compliance)
 
-### STEP 4: Validate Compliance
+## Final Step: Validate Compliance
 
-Both modes end here. In Standalone Mode, run this after Standalone STEP 4. Map security controls to compliance requirements:
+Both modes end here. Map security controls to compliance requirements:
 
 **GDPR:** Data encryption (at rest/in transit), access controls with audit logging, data deletion capabilities, data residency (EU regions), data portability, data processing agreements
 

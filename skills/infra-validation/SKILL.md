@@ -401,7 +401,17 @@ Check EVERY IAM policy statement for:
    - Check for `Principal` with external account IDs
    - Verify trust relationships are intentional
 
-For policy-level depth (condition keys, permission boundaries, KMS key policies, a policy score), run `policy-validation`.
+**Validation Command Examples**:
+
+```bash
+# CloudFormation: Find all wildcard resources
+jq '.Resources | to_entries[] | select(.value.Type == "AWS::IAM::Policy") | select(.value.Properties.PolicyDocument.Statement[].Resource == "*")' template.json
+
+# CloudFormation: Find all wildcard actions
+jq '.Resources | to_entries[] | select(.value.Type == "AWS::IAM::Policy") | select(.value.Properties.PolicyDocument.Statement[].Action == "*")' template.json
+```
+
+This skill covers wildcards and cross-account trust. Policy-level depth (condition keys, permission boundaries, KMS key policies, a policy score) belongs to `policy-validation`, which `k-architect` loads. If your agent doesn't have it, list those checks as out of scope in the report.
 
 #### 2.2 Encryption Validation (MANDATORY)
 
@@ -857,8 +867,8 @@ Good practice: [What's done well]
 **Status**: NEEDS REVISION
 **Confidence Level**: HIGH
 **CRITICAL**: 2
-**IMPORTANT**: 5
-**SUGGESTION**: 10
+**IMPORTANT**: 3
+**SUGGESTION**: 5
 
 ### CRITICAL
 

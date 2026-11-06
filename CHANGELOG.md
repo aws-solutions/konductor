@@ -38,8 +38,9 @@ not per individual commit.
 - `infra-validation` and `iam-policy-design` read as one instruction set each, without a pasted
   second prompt and role. `infra-validation` asks for scope once, and skips the questions when
   the caller passes the type, path and environment or `scope_confirmed`. It rates findings
-  CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate, and sends policy-level IAM checks
-  to `policy-validation`.
+  CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate, and names `policy-validation` as
+  the home for policy-level IAM checks. `iam-policy-design` ends both modes with one compliance
+  step.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
