@@ -44,7 +44,7 @@ A few things stand out and are worth knowing before you pick an agent:
 
 - **Every agent runs the same model**: `claude-sonnet-5.5` on Kiro CLI, `claude-sonnet-5-5` on
   Claude Code. Agents differ by what they carry, not by what powers them.
-- **`k-architect` carries by far the most skills** — **38 of the 82** in the library, close
+- **`k-architect` carries by far the most skills** — **38 of the 84** in the library, close
   to half. Design work routed anywhere else comes back thinner.
 - **`konductor`'s skill list is runtime-dependent.** Twelve of its skills are on both
   runtimes. `claude-teams-behavior` is only in the spec's `clientConfig.claudeCli` block,
@@ -287,7 +287,7 @@ followed by `Fix these issues? [y/n]`.
 | | |
 | --- | --- |
 | **SOPs** | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` |
-| **Skills** | 27 — backend and frontend development and review, `infra-validation`, `code-review`, `git-workflow`, `asdlc-code-simplifier`, `design-impact-review`, `find-aws-skills`, `security-remediation`, the three `adversarial-code-review-pass-*` skills, `verification`, and others |
+| **Skills** | 27 — backend and frontend development and review, `infra-validation`, `code-review`, `git-workflow`, `k-code-simplifier`, `design-impact-review`, `find-aws-skills`, `security-remediation`, the three `adversarial-code-review-pass-*` skills, `verification`, and others |
 | **MCP** | `aws-mcp`, same as the architect |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | `k-quality-assurance` (Kiro CLI only) |
@@ -309,7 +309,7 @@ lands here. It owns the only source-modifying SOP, `k-code-cleanup`.
 | | |
 | --- | --- |
 | **SOPs** | **none** — skill-driven |
-| **Skills** | 16 — `user-story-writing`, `requirements-extraction`, `decision-research`, `sprint-planning`, `asana-sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
+| **Skills** | 16 — `user-story-writing`, `requirements-extraction`, `decision-research`, `doc-accuracy-analyzer`, `sprint-planning`, `task-decomposition`, `legacy-to-agentic-estimate`, `humanize-writing`, `deliberation-panel`, `kiro-requirements-generation`, and others |
 | **Can mutate?** | Write pre-approved in Kiro CLI and granted in Claude Code; shell asks first in Kiro CLI and is granted in Claude Code |
 | **Can delegate to** | nothing — has the `subagent` tool with an empty target list |
 
@@ -333,7 +333,7 @@ Owns `legacy-to-agentic-estimate` and its `convert_estimates.py` script, which i
 | | |
 | --- | --- |
 | **SOPs** | **none** — skill-driven |
-| **Skills** | 8 — `external-research`, `sdlc-navigator`, `document-formats`, `deliberation-panel`, `socratic-elicitation`, `persistent-memory`, `workspace-skills`, `constraints` |
+| **Skills** | 8 — `external-research`, `sdlc-navigator`, `docx-conversion`, `deliberation-panel`, `socratic-elicitation`, `persistent-memory`, `workspace-skills`, `constraints` |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` only |
 | **Claude Code tools** | `WebFetch`, `WebSearch`, `TodoWrite`, `Read`, `Skill` — the narrowest tool list of any agent, and the only one with no write or shell tool |
 | **Can mutate?** | **Not in Claude Code** — no write or shell tool is granted at all. In Kiro CLI it pre-approves `fs_read` only, so anything more asks first |
@@ -393,7 +393,7 @@ and `k-tpm` have Kiro targets but no `Agent(...)` tool at all.
 
 ## Related
 
-- [Skills catalog](skills.md) — all 82 skills, and which agents declare each
+- [Skills catalog](skills.md) — all 84 skills, and which agents declare each
 - [SOP workflows](sop-workflows/README.md) — the 19 procedures and which agent owns each
 - [Core concepts → agent](concepts.md#agent) — what an agent is
 - [Install for Kiro CLI](tasks/install-kiro-cli.md) · [Install for Claude Code](tasks/install-claude-code.md)

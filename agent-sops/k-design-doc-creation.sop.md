@@ -63,9 +63,9 @@ Run automated quality gates against the draft. This phase requires no user inter
 
 **Constraints:**
 
-- You MUST run the `doc-accuracy-analyzer` skill to verify all technical claims against the codebase. Flag any INCORRECT or UNVERIFIED findings in the draft with inline `> ⚠️` callouts.
+- You MUST run the `doc-accuracy-analyzer` skill to verify all technical claims against primary sources. It routes AWS feature, limit, pricing, and Region claims to `aws-service-validator`. Flag any INCORRECT or UNVERIFIED findings in the draft with inline `> ⚠️` callouts.
 - You MUST NOT block doc creation on UNVERIFIED claims — mark them and proceed.
-- You MUST run the `aws-service-validator` skill against all AWS service and feature claims in the draft. For each claim, call `aws___search_documentation` and `aws___read_documentation` (aws-mcp) to confirm or deny the assertion; call `aws___get_regional_availability` for any regional availability claim. Classify each claim as CONFIRMED, UNVERIFIED, or INCORRECT. Flag INCORRECT claims with `> ⚠️ INCORRECT: <correction>` callouts and UNVERIFIED claims with `> ⚠️ UNVERIFIED: <what was searched>` callouts. Write the full validation report to `validation_output_dir/<name>-aws-validation.md`.
+- You MUST make sure every AWS service and feature claim in the draft goes through `aws-service-validator`, via that routing or a direct run. Flag INCORRECT claims with `> ⚠️ INCORRECT: <correction>` callouts and UNVERIFIED claims with `> ⚠️ UNVERIFIED: <what was searched>` callouts. Write the full validation report to `validation_output_dir/<name>-aws-validation.md`.
 - You MUST NOT block doc creation on UNVERIFIED AWS claims — mark them and proceed.
 - You MUST run the `trade-off-evaluator` skill for every significant design decision that has multiple options. Score each option 1–5 across cost, latency, complexity, scalability, and operability. Embed the scored table in the relevant ADR's Alternatives section and write the full trade-off report to `validation_output_dir/<name>-tradeoffs.md`.
 - You MUST run the `adr-generator` skill to verify every Phase 2 ADR is embedded under the `## Architecture Decision Records` section. Do NOT regenerate ADRs already created in Phase 2 — enrich them only (the `trade-off-evaluator` bullet above owns score embedding).
@@ -79,11 +79,11 @@ Challenge every major design decision before presenting the doc to the engineer.
 
 **Constraints:**
 
-- You MUST apply the `adversarial-design-review` skill to challenge every major architectural decision, trade-off, and AWS service choice, classifying each finding as CRITICAL, IMPORTANT, or MINOR.
+- You MUST apply the `adversarial-design-review` skill to challenge every major architectural decision, trade-off, and AWS service choice, classifying each finding as CRITICAL, IMPORTANT, or SUGGESTION.
 - You MUST run up to 5 adversarial rounds.
 - After round 2: if any finding is classified CRITICAL (architectural), You MUST stop the loop immediately, present the finding to the engineer, and ask whether to redesign or override.
 - You MUST apply corrections from each round and re-run the `design-doc-guidelines` maker-checker before the next round.
-- You MUST exit the loop early when: 0 CRITICAL findings, 0 IMPORTANT findings, and fewer than 3 MINOR findings.
+- You MUST exit the loop early when: 0 CRITICAL findings, 0 IMPORTANT findings, and fewer than 3 SUGGESTION findings.
 - If the exit condition is not met after 5 rounds, You MUST present the remaining issues to the engineer for manual resolution before proceeding to Phase 5.
 - You MUST NOT silently discard findings — every finding must either be fixed or explicitly noted as "engineer override".
 
@@ -108,8 +108,8 @@ Produce the final artifact and present it to the engineer.
 The document is ready for principal engineer review when all of the following are true:
 
 - `design-doc-guidelines` maker-checker: **0 CRITICAL findings**
-- `doc-accuracy-analyzer`: **0 INCORRECT findings** (UNVERIFIED is acceptable with callouts)
-- Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR findings**
+- `doc-accuracy-analyzer`: **0 INCORRECT findings**, each corrected in the text (UNVERIFIED is acceptable with callouts)
+- Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION findings**
 - `design-evaluation` confidence score: **≥ 3.0 average** across all sections
 
 If any condition is not met, the SOP MUST NOT present the doc as ready for principal engineer review. Present remaining issues to the engineer and ask: "Fix these before submission? [y/n]"

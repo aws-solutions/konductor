@@ -185,7 +185,7 @@ Where to go next:
 | Follow a complete worked example | [Use cases](use-cases/README.md) |
 | Understand the vocabulary — agent, skill, SOP, runtime | [Core concepts](concepts.md) |
 | See what each agent can do and access | [Agents reference](agents.md) |
-| Browse all 82 skills and when to use them | [Skills catalog](skills.md) |
+| Browse all 84 skills and when to use them | [Skills catalog](skills.md) |
 | See every workflow, step by step | [SOP workflows](sop-workflows/README.md) |
 | Look up a command, flag, or config key | [CLI reference](reference.md) |
 | Fix something that went wrong | [Troubleshooting](troubleshooting.md) |

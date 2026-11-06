@@ -1,18 +1,8 @@
----
-name: asana-sprint-planning
-description: Sprint planning with Asana — task hierarchy, story point sizing, capacity tracking, and sprint workflow. Requires an Asana MCP server (see docs/guides/asana-integration.md). Use when planning sprints, creating tasks, estimating work, or managing sprint capacity in Asana.
-version: 2.1.0
-tags:
-  [skill, sprint-planning, asana-sprint-planning, asana, scrum, agile, capacity]
----
+# Sprint planning in Asana
 
-# Sprint Planning (Asana)
+Read this when the team tracks sprints in Asana. It adds the Asana steps to the workflow in `SKILL.md`; where a rule here differs from a rule there, this one applies. It requires an Asana MCP server (see `docs/guides/asana-integration.md`).
 
-Extends the `sprint-planning` skill — load it for sprint parameters, task hierarchy, story-point sizing, and capacity tracking. The steps below are Asana-specific.
-
-## Instructions
-
-### Asana MCP Detection
+## Asana MCP Detection
 
 Before starting, verify Asana tools are available:
 
@@ -20,22 +10,19 @@ Before starting, verify Asana tools are available:
 2. If the call fails or the capability is not found, STOP and inform the user:
    > "Asana MCP is not configured. See `docs/guides/asana-integration.md` for setup instructions."
 
-### Session Start
+## Session Start
+
+Run these before the Session Start steps in `SKILL.md`:
 
 1. Use the **workspace GID** obtained during Asana MCP Detection above
 2. Ask the user which project to plan the sprint in. Then use the Asana search capability (search projects/tasks in the workspace) with the project name and resource type `project` to find matching projects. Alternatively, browse portfolios and their items to let the user select.
 3. List the project's sections (columns) for the target project
-4. Confirm sprint parameters with user:
-   - Sprint capacity: **10 points per person** (default)
-   - Sprint duration: **2 weeks** (default)
-   - 1 point = **1 work day** (default)
-5. Ask for the number of team members in the sprint
-6. Calculate total sprint capacity: `capacity_per_person × team_size` (e.g., 10 pts × 3 people = 30 pts)
-7. Present project/section/capacity summary for confirmation
+
+Then confirm the sprint parameters and team size as `SKILL.md` describes, and present a project/section/capacity summary for confirmation.
 
 **Note:** Asana sprint/iteration setup (date ranges, custom fields for story points) must be configured in the Asana UI. Use the capabilities to read project details and list the project's sections to discover existing sprint sections.
 
-### Task Hierarchy
+## Task Hierarchy
 
 Asana supports: **Project > Section > Task > Subtask**
 
@@ -54,40 +41,24 @@ Rules:
 
 - Create parent tasks first, then nest children by creating a task with a parent GID or by nesting the task under a parent (subtask)
 - Use **sections** to group tasks by epic, sprint, or workflow stage (sections are flat — they cannot be nested)
-- Only leaf-level tasks (Tasks/Subtasks) should carry story point estimates
-- Asana has no explicit task "type" field — hierarchy is controlled via sections and parent/subtask relationships, not a type attribute
-- Always set an explicit assignee and due date when available
+- Asana has no explicit task "type" field — hierarchy is controlled via sections and parent/subtask relationships, not a type attribute. The `SKILL.md` rule to always set a type does not apply.
 
-### Story Point Sizing
+## Story Points
 
-- Tasks above 5 points should be broken down
-- Set story points via Asana custom fields (use the capability to update the task's fields/custom fields to set custom field values)
+- Set story points via Asana custom fields (use the capability to update the task's fields/custom fields to set custom field values), not an Estimate attribute
 - To check if a story points custom field exists, read project details with `opt_fields=custom_fields` and look for a numeric field named "Story Points" or similar
 - If no story point custom field exists on the project, note this to the user and track points locally
 
-### Capacity Tracking
-
-- Compute total sprint capacity from team size × per-person capacity
-- Track running total of points as tasks are added
-- Warn when approaching capacity (≥80%)
-- Alert when exceeding capacity
-- Display remaining capacity after each task added: `Sprint: {used}/{capacity} pts ({remaining} remaining)`
-
-### Task Creation Rules
+## Task Creation Rules
 
 - Create a task via the Asana MCP with: project GID, section GID, name, notes, assignee, due date
-- Tag tasks with source ticket ID in the description when applicable
 - Apply a tag/label to the task for categorization
-- For tasks sourced from external tickets: include the ticket ID and URL in the Asana task description
 - Add a comment to the task to link to source tickets or context
+- To link a task to a code review, use the Asana task URL
 
-### CR Integration
+## Sprint Rollover
 
-Link tasks to code reviews by including the Asana task URL in the commit message or pull request description.
-
-### Sprint Rollover
-
-To roll over incomplete work to the next sprint:
+This replaces the rollover steps in `SKILL.md`, because the Asana MCP cannot move a task to another section.
 
 <!-- prettier-ignore -->
 1. Use the Asana search capability (search projects/tasks in the workspace) with filters for the current project, current sprint section, and `completed=false` to find incomplete tasks in the current sprint section
@@ -112,7 +83,3 @@ To roll over incomplete work to the next sprint:
 6. Recalculate capacity for the new sprint based on carried-over points
 
 **Note:** The Asana API supports moving tasks between sections, but the Asana MCP tool sets available today do not consistently expose this endpoint. The workaround above recreates tasks in the target section. Be aware this loses task history, comments, attachments, subtasks, followers, tags, and other custom fields from the original task.
-
-### Batch Approval
-
-Present the full create plan for batch approval before executing writes. Users can approve the batch rather than being prompted for each individual write operation.

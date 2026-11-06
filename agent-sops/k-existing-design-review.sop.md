@@ -77,18 +77,8 @@ Apply the design-evaluation skill to evaluate all artifacts across 10 dimensions
 **Constraints:**
 
 - You MUST use the `design-evaluation` skill for this step
-- You MUST evaluate across all 10 dimensions:
-  1. Template adherence and completeness
-  2. Scalability and performance
-  3. Security and threat coverage
-  4. Maintainability and code quality
-  5. Resilience and fault tolerance
-  6. Testability
-  7. Operational readiness
-  8. Cost optimization
-  9. API design quality
-  10. Data model quality
-- You MUST assign a numeric score of 1–5 for each dimension; a dimension scoring below 3 MUST be flagged for revision
+- You MUST evaluate all 10 dimensions defined in `design-evaluation` Step 1
+- You MUST assign a numeric score of 1-5 for each dimension; a dimension scoring below 3 MUST be flagged for revision
 - You MUST identify CRITICAL issues (block implementation) vs IMPORTANT issues (should fix) vs SUGGESTIONS
 
 **Expected Output:**
@@ -184,7 +174,7 @@ Artifacts found:
 ✅ smithy-model/
 ✅ dynamodb-table-design.md
 
-Proceeding with review. Note: the Security and threat coverage dimension will be limited.
+Proceeding with review. Note: the Security dimension is capped at 3 without a threat model.
 Consider generating a threat model first using the k-architect agent with the threat-modeling skill.
 ```
 

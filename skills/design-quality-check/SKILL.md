@@ -1,6 +1,6 @@
 ---
 name: design-quality-check
-description: 'Scores a design document for writing quality, structural completeness, and KISS/YAGNI compliance. Detects slop (filler phrases, hedge words, unsupported claims, passive-voice overuse, circular reasoning) and flags complexity violations. Trigger phrases: "check doc quality", "slop detection", "quality gate before design review", "is this doc ready", "check for filler language".'
+description: 'Scores a design document for writing quality, structural completeness, and KISS/YAGNI compliance. Use when asked whether a design doc is ready for review, to check it for filler or hedging, or to score its structure and KISS/YAGNI fit. Detects slop (filler phrases, hedge words, unsupported claims, passive-voice overuse, circular reasoning) and flags complexity violations. Trigger phrases: "check doc quality", "slop detection", "quality gate before design review", "is this doc ready".'
 version: 1.0.0
 tags: [skill, design, quality, slop-detection, completeness, clarity, checker]
 ---
@@ -14,6 +14,11 @@ Use this skill when:
 - Running the final quality gate before design review submission
 - Invoked as the first quality gate step in design review workflows
 - Engineer asks to check doc quality, detect filler language, or verify KISS/YAGNI compliance
+
+Do NOT use when:
+
+- Writing or restructuring the doc, or reviewing its outside-in structure and diagrams → use `design-doc-guidelines`
+- Rewriting prose to remove AI writing patterns → use `humanize-writing`
 
 ## Steps
 
@@ -31,15 +36,15 @@ Use this skill when:
 
 3. **Slop detection** — Scan every paragraph for the following issue types:
 
-   | Type                    | Examples                                                                                                   | Severity  |
-   | ----------------------- | ---------------------------------------------------------------------------------------------------------- | --------- |
-   | `filler_phrases`        | "it is worth noting", "needless to say", "as mentioned above", "in order to", "it should be noted that"    | MINOR     |
-   | `hedge_words`           | "might", "could potentially", "may or may not", "somewhat", "fairly" (when used to avoid commitment)       | MINOR     |
-   | `unsupported_claims`    | Performance/latency/cost assertions with no evidence URL or measurement                                    | IMPORTANT |
-   | `passive_voice_overuse` | >30% passive constructions in a section                                                                    | MINOR     |
-   | `circular_reasoning`    | Justification restates the claim without adding evidence (e.g., "we chose X because X is the best choice") | IMPORTANT |
-   | `yagni_violation`       | Features, abstractions, or extensibility points not required by stated requirements                        | IMPORTANT |
-   | `missing_section`       | Required section absent                                                                                    | IMPORTANT |
+   | Type                    | Examples                                                                                                   | Severity   |
+   | ----------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- |
+   | `filler_phrases`        | "it is worth noting", "needless to say", "as mentioned above", "in order to", "it should be noted that"    | SUGGESTION |
+   | `hedge_words`           | "might", "could potentially", "may or may not", "somewhat", "fairly" (when used to avoid commitment)       | SUGGESTION |
+   | `unsupported_claims`    | Performance/latency/cost assertions with no evidence URL or measurement                                    | IMPORTANT  |
+   | `passive_voice_overuse` | >30% passive constructions in a section                                                                    | SUGGESTION |
+   | `circular_reasoning`    | Justification restates the claim without adding evidence (e.g., "we chose X because X is the best choice") | IMPORTANT  |
+   | `yagni_violation`       | Features, abstractions, or extensibility points not required by stated requirements                        | IMPORTANT  |
+   | `missing_section`       | Required section absent                                                                                    | IMPORTANT  |
 
 4. **Complexity scoring** — For each decision or design choice, check:
    - Is the simplest option chosen, or is complexity justified by a stated requirement?
@@ -49,8 +54,8 @@ Use this skill when:
 
 5. **Score** — Compute overall score 1–5:
    - 5: No issues
-   - 4: Only MINOR issues (≤3)
-   - 3: MINOR issues (>3) or IMPORTANT issues (1–2)
+   - 4: Only SUGGESTION issues (≤3)
+   - 3: SUGGESTION issues (>3) or IMPORTANT issues (1-2)
    - 2: IMPORTANT issues (3+), no missing required sections
    - 1: IMPORTANT issues (3+) AND one or more missing sections (structural gaps)
 
@@ -58,17 +63,17 @@ Use this skill when:
 
    ```
    Quality Score: N/5
-   Issues: {N} IMPORTANT, {N} MINOR
+   Issues: {N} IMPORTANT, {N} SUGGESTION
    [For each issue: location (section + approximate line), type, suggestion]
    ```
 
 ## Rubric
 
-| Score | Meaning                                           | Gate                        |
-| ----- | ------------------------------------------------- | --------------------------- |
-| 5     | No issues                                         | Review-ready                |
-| 4     | Only MINOR issues (3 or fewer)                    | Review-ready with notes     |
-| 3     | More than 3 MINOR issues, or 1–2 IMPORTANT issues | Advance with revision notes |
+| Score | Meaning                                                      | Gate                        |
+| ----- | ------------------------------------------------------------ | --------------------------- |
+| 5     | No issues                                                    | Review-ready                |
+| 4     | Only SUGGESTION issues (3 or fewer)                          | Review-ready with notes     |
+| 3     | More than 3 SUGGESTION issues, or 1-2 IMPORTANT issues       | Advance with revision notes |
 | 2     | 3 or more IMPORTANT issues, no missing required sections     | Significant revision needed |
 | 1     | 3 or more IMPORTANT issues plus one or more missing sections | Rewrite required            |
 

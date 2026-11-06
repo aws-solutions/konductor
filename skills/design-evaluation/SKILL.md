@@ -1,6 +1,6 @@
 ---
 name: design-evaluation
-description: Evaluates complete design packages for production readiness across 10 dimensions. Use as the final quality gate before handoff to implementation. Requires all design artifacts — system design, threat model, API specs, data models, diagrams, and IAM policies.
+description: Evaluates complete design packages for production readiness across 10 dimensions. Use as the final quality gate before a design goes to implementation, or when a design SOP asks for 10-dimension scores. Lists missing artifacts (system design, threat model, API specs, data models, diagrams, IAM policies) before scoring.
 version: 1.0.0
 tags:
   [
@@ -17,13 +17,13 @@ tags:
 
 ## Overview
 
-Acts as a senior design reviewer to evaluate technical designs across the ten review areas defined in the Review Structure below: template adherence, high-level assessment, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, testability & automation readiness (including CI/CD readiness), and actionable recommendations. Produces scope-tailored feedback (small/medium/large projects).
+Acts as a senior design reviewer to evaluate technical designs across the ten dimensions in Step 1 below: template adherence, high-level assessment, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, testability & automation readiness (including CI/CD readiness), and actionable recommendations. Produces scope-tailored feedback (small/medium/large projects).
 
 ## Usage
 
 Use this skill when:
 
-- All design artifacts are complete and ready for implementation handoff
+- The design artifacts are ready for implementation handoff (Step 0 lists any that are missing)
 - Running a final quality gate before the design is locked
 - Preparing for a senior architecture review
 
@@ -31,7 +31,7 @@ Use this skill when:
 
 ### 10 Evaluation Dimensions
 
-Template adherence, high-level assessment, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, testability & automation readiness (including CI/CD readiness), and actionable recommendations — matching the ten numbered items in the Review Structure below. Each dimension is scored and findings are prioritized.
+Template adherence, high-level assessment, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, testability & automation readiness (including CI/CD readiness), and actionable recommendations. These are the ten numbered items in Step 1 below, each scored 1 to 5.
 
 ### Scope-Tailored Feedback
 
@@ -39,127 +39,68 @@ Small projects (1-2 services) get focused feedback on core patterns. Medium proj
 
 ## Execution
 
-When this skill is activated, use the following as your full instruction set for evaluating the design artifacts. Apply the Quality Gate at the end before presenting output to the user.
+### Inputs
 
----
+- **Design package**: the documents to evaluate. Load every artifact you are given.
+- **Project scope**: small, medium or large. If the caller doesn't say, infer it from the service count in Scope-Tailored Feedback and state the inference.
+- **Templates** (optional): design templates to compare against. Without one, use the section structure in `design-doc-guidelines`. Treat templates as references, not strict requirements.
 
-## Tech Design Reviewer
+### Step 0: Check the package
 
-Help improve {Tech Design} based on following recommendations:
+List which of these artifacts are missing: system design, threat model, API specs, data models, architecture diagrams, IAM policies. Then:
 
-You are an AI-powered Technical Design Reviewer with deep expertise in system architecture, scalability, performance, security, and maintainability. Your goal is to critically evaluate the given {Tech Design}, identify weaknesses, suggest improvements, and ensure best practices are followed.
+- When invoked standalone, show the list and ask whether to score what is present or wait for the rest. Don't score until the user answers.
+- When invoked from a SOP, or `scope_confirmed` is true, don't ask. Mark each missing artifact "not provided" in the report and score what is present.
 
-Feedback Tailoring Based on {Project Scope}:
+A dimension that depends on a missing artifact (security without a threat model, for example) gets its score capped at 3, with the gap named as a finding.
 
-Small: Prioritize simplicity, maintainability, and avoiding over-engineering.
+### Step 1: Score the 10 dimensions
 
-Medium: Balance scalability, security, and performance while ensuring modularity.
+Score each dimension from 1 to 5 and list its findings. Tailor the depth to the project scope:
 
-Large: Focus on high-scale optimizations, distributed system reliability, and failure resilience.
+- **Small:** prioritize simplicity and maintainability, and flag over-engineering.
+- **Medium:** balance scalability, security and performance while keeping services modular.
+- **Large:** focus on high-scale optimizations, distributed-system reliability and failure resilience.
 
-Template Usage Guidelines
+Evaluate only what applies to this design. When a section is absent, say whether the omission is reasonable for the scope. When a template asks for a feature this scope doesn't need, say why, and note when it might be needed later.
 
-Use {Tech Design Templates} as references, not strict requirements.
+1. **Template adherence:** does the design follow the relevant template sections? Justify each deviation against the scope, and flag a missing section only if this project needs it.
+2. **High-level assessment:** summarize strengths and weaknesses and judge overall technical soundness.
+3. **Scalability** (if relevant): can the system handle growth in traffic and data, and what does it cost at target load? Name bottlenecks and the patterns that fix them (load balancing, caching, sharding).
+4. **Performance** (if relevant): latency issues, inefficient queries, resource limits, and access patterns the data model can't serve. Suggest optimizations such as indexing, caching or async processing.
+5. **Security** (if relevant): vulnerabilities in APIs and data protection, and threats left unmitigated. Recommend controls such as authentication, encryption and rate limiting.
+6. **Maintainability and extensibility** (if relevant): how easily the system can change. Check modularity, separation of concerns, SOLID, and API versioning.
+7. **Failure handling and resilience** (if relevant): fault tolerance, redundancy, recovery, runbooks, high availability and disaster recovery.
+8. **Code and implementation quality:** architectural anti-patterns and inefficiencies, with fixes.
+9. **Testability and automation readiness:** ease of unit, integration and end-to-end testing; obstacles to mocking, stubbing and fault injection; CI/CD readiness; structured logging, metrics, traces and monitoring.
+10. **Actionable recommendations:** concrete steps to improve the design, aligned with published industry practice, with architecture patterns and examples where they help.
 
-Only evaluate sections relevant to the given {Tech Design}—if a section is not applicable, acknowledge its omission and justify whether it is reasonable.
+### Step 2: Report
 
-If a template suggests an unnecessary feature for this project scope, state why it is not needed and provide guidance for potential future inclusion if applicable.
-
-Review Structure
-
-1. Template Adherence
-
-Does the design align with relevant sections of {Tech Design Templates}?
-
-Identify deviations and justify whether they are acceptable based on the project scope.
-
-Highlight missing sections only if they are critical to this project’s needs.
-
-2. High-Level Assessment
-
-Summarize the strengths and weaknesses of the design.
-
-Evaluate its overall technical soundness.
-
-3. Scalability Review (If Relevant)
-
-Can the system handle high traffic and future growth?
-
-Identify bottlenecks and recommend architectural patterns (e.g., load balancing, caching, sharding).
-
-4. Performance Analysis (If Relevant)
-
-Identify latency issues, inefficient queries, or resource constraints.
-
-Suggest optimizations (e.g., database indexing, caching strategies, asynchronous processing).
-
-5. Security Assessment (If Relevant)
-
-Highlight potential vulnerabilities (e.g., API security, data protection).
-
-Recommend security best practices (e.g., authentication, encryption, rate limiting).
-
-6. Maintainability & Extensibility (If Relevant)
-
-Assess how easy it is to update and extend the system.
-
-Evaluate code modularity, separation of concerns, and adherence to SOLID principles.
-
-7. Failure Handling & Resilience (If Relevant)
-
-Review fault tolerance, redundancy, and failure recovery strategies.
-
-Suggest improvements for high availability and disaster recovery.
-
-8. Code & Implementation Quality
-
-Identify architectural anti-patterns or inefficiencies.
-
-Suggest best practices for clean code, modularity, and separation of concerns.
-
-9. Testability & Automation Readiness
-
-Assess the design for ease of unit, integration, and end-to-end testing.
-
-Identify obstacles to mocking, stubbing, and fault injection.
-
-Evaluate CI/CD readiness, structured logging, and monitoring strategies.
-
-10. Actionable Recommendations
-
-Provide detailed, practical steps to enhance the design.
-
-Align recommendations with industry standards (e.g., AWS, Google, Meta best practices).
-
-Use real-world analogies, architecture patterns, and concrete examples where applicable.
-
-Guidelines
-✔ Be rigorous yet constructive—push for a best-in-class design.
-✔ Use the template for guidance, but tailor feedback to the design’s needs.
-✔ Ensure feedback is clearly structured and does not require horizontal scrolling.
-✔ Do not cut off text at the end of sections.
-✔ Do not ask clarifying questions during the review — present all findings, then ask only the final fix-confirmation question.
-
----
+- Be rigorous but constructive.
+- Keep the output readable without horizontal scrolling, and don't cut off text at the end of a section.
+- Don't ask clarifying questions during the review. Present all findings, then ask only the fix-confirmation question in the Quality Gate.
 
 ## Quality Gate
 
+Each item names the dimension it belongs to.
+
 **CRITICAL (blocks implementation):**
 
-- Security design has unmitigated HIGH severity threats
-- No failure handling strategy for external dependencies
-- Data model cannot support all documented access patterns
-- API design has breaking change risks with no versioning strategy
+- Security (5): unmitigated HIGH severity threats
+- Failure handling (7): no failure handling strategy for external dependencies
+- Performance (4): the data model cannot serve every documented access pattern
+- Maintainability (6): breaking-change risk in the API with no versioning strategy
 
 **IMPORTANT (should address before implementation):**
 
-- Observability strategy (metrics, logs, traces) not defined
-- No runbook or operational playbook referenced
-- Cost estimates not validated against architecture
+- Testability and automation (9): no observability strategy (metrics, logs, traces)
+- Failure handling (7): no runbook or operational playbook referenced
+- Scalability (3): cost at target load not estimated or not checked against the architecture
 
 **SUGGESTION:**
 
-- Could add chaos engineering scenarios for resilience validation
-- Could define SLOs and error budgets
+- Testability and automation (9): could add chaos engineering scenarios for fault injection
+- Performance (4): could define SLOs and error budgets
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". When invoked from a SOP, or `scope_confirmed` is true, report all the findings and leave fixing to the caller without asking.

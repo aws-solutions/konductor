@@ -1,6 +1,6 @@
 ---
 name: humanize-writing
-description: Rewrites text to remove AI-generated writing patterns (34 tell categories spanning content, language, style, and communication) while preserving meaning, coverage, and the author's voice. Use when writing or editing a design document, README, code comment or docstring, user guide, PR or CR description, commit message, user story, or business case, or when such text sounds like AI and needs to read like a real person wrote it.
+description: 'Rewrites text to remove AI-generated writing patterns while preserving meaning, coverage, and the author''s voice. Use when writing or editing a design document, README, code comment or docstring, user guide, PR or CR description, commit message, user story, or business case, or when such text sounds like AI and needs to read like a real person wrote it.'
 version: 1.0.0
 tags: [skill, writing, editing, prose, style, humanize, documentation, readme]
 ---
@@ -28,15 +28,13 @@ When given text to humanize:
 
 ### Step 1: Get the input
 
--   **Mode**: `agentic`
 -   **Input**: `{{text}}` (inline) or `{{file_path}}` (a document to read)
 -   **Output**: The raw text to be rewritten
 -   **Validate**: You have non-empty text to work with
--   **On failure**: If `{{file_path}}` is given, read it with `file_read` (or `file_read_docx`/`file_read_pdf` for those formats). If neither input is present, ask the user to paste the text or point at a file.
+-   **On failure**: If `{{file_path}}` is given, read the file (for .docx or .pdf, use whatever reader the environment provides). If neither input is present, ask the user to paste the text or point at a file.
 
 ### Step 2: Calibrate voice (optional)
 
--   **Mode**: `agentic`
 -   **Input**: `{{voice_sample}}` (inline text or a file path)
 -   **Output**: Notes on the author's sentence length, word choice, punctuation habits, and transitions
 -   **Validate**: A sample was provided; if so, your rewrite should echo its patterns
@@ -46,7 +44,6 @@ Read the sample first and note: sentence-length patterns, word-choice level (cas
 
 ### Step 3: Draft rewrite
 
--   **Mode**: `agentic`
 -   **Input**: The raw text + voice notes
 -   **Output**: A first-pass rewrite
 -   **Validate**: Reads naturally aloud, varies sentence length, prefers specific detail and simple constructions (is/are/has), keeps the appropriate register, and covers everything the original covered
@@ -54,15 +51,13 @@ Read the sample first and note: sentence-length patterns, word-choice level (cas
 
 ### Step 4: Self-audit
 
--   **Mode**: `agentic`
 -   **Input**: The draft from Step 3
 -   **Output**: A short list of remaining tells, answering "What makes this so obviously AI generated?"
--   **Validate**: Run `ripgrep` (or a scan) for em dashes and en dashes; any `—` or `–` hit means the draft isn't done
+-   **Validate**: Grep for `—` and `–`; any hit means the draft isn't done
 -   **On failure**: Note each remaining tell explicitly so Step 5 can address it.
 
 ### Step 5: Final rewrite
 
--   **Mode**: `agentic`
 -   **Input**: The draft + self-audit bullets
 -   **Output**: A final rewrite that addresses every flagged tell and contains no em or en dashes (see §14)
 -   **Validate**: No `—`/`–`, no curly quotes, register matches, coverage matches the original
@@ -70,10 +65,9 @@ Read the sample first and note: sentence-length patterns, word-choice level (cas
 
 ### Step 6: Deliver (and optionally save)
 
--   **Mode**: `agentic`
 -   **Input**: Draft, "still-AI" bullets, final rewrite
 -   **Output**: The deliverable (see Output section)
--   **Validate**: If a `{{file_path}}` was the source and the user asked to save, write the final rewrite back with `file_write`/`file_edit`, only after confirming.
+-   **Validate**: If a `{{file_path}}` was the source and the user asked to save, write the final rewrite back to the file, only after confirming.
 -   **On failure**: If unsure whether to overwrite the source file, ask first.
 
 ## Voice Calibration — how to provide a sample

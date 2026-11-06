@@ -13,7 +13,7 @@ Configuration, registered with your runtime. Specifically:
 | | Count | What it is |
 | --- | --- | --- |
 | Agents | 11 | Three orchestrators plus eight specialists |
-| Skills | 82 | On-demand knowledge modules |
+| Skills | 84 | On-demand knowledge modules (3 are rename stubs) |
 | SOPs | 19 | Written multi-step procedures |
 | Context files | 2 | The core rules for every agent and the orchestrator routing rules, always active |
 
@@ -115,7 +115,7 @@ so a typo can never be mistaken for a real gate failure. Full table:
 | Lives at | `skills/<name>/SKILL.md` | `agent-sops/<name>.sop.md` |
 | Structure | YAML frontmatter plus guidance | Overview, Parameters, numbered Steps with MUST/MUST NOT constraints |
 | Loaded | On demand — name and description at session start, full content when relevant | On demand, and only for agents whose spec declares it |
-| Count | 82 | 19 |
+| Count | 81 | 19 |
 
 A SOP usually *invokes* skills. `k-test-coverage-review` is a good example: the SOP is the
 sequence and the gates, while `test-coverage-analysis`, `e2e-test-strategy`, and

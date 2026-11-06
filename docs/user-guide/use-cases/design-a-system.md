@@ -106,8 +106,9 @@ fixed and the pass re-run before Phase 3. This can loop a few times without aski
 
 Three automated passes, with no user interaction permitted:
 
-- **`doc-accuracy-analyzer`** checks every technical claim against the codebase. INCORRECT and
-  UNVERIFIED findings get inline `> ⚠️` callouts but do not block.
+- **`doc-accuracy-analyzer`** checks every technical claim against primary sources and routes AWS
+  claims to `aws-service-validator`. INCORRECT and UNVERIFIED findings get inline `> ⚠️` callouts
+  but do not stop the phase. Phase 5 corrects the INCORRECT ones.
 - **`aws-service-validator`** checks every AWS service and feature claim against live AWS
   documentation, classifying each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
   `docs/design/pennywise-aws-validation.md`.
@@ -118,12 +119,12 @@ Three automated passes, with no user interaction permitted:
 ### Phase 4 — Adversarial review loop *(can pause once)*
 
 The architect challenges its own design across up to 5 rounds, classifying findings CRITICAL
-(architectural or factual) / IMPORTANT / MINOR.
+(architectural or factual) / IMPORTANT / SUGGESTION.
 
 **If a CRITICAL architectural finding survives past round 2, the loop stops immediately** and you
 are asked whether to redesign or override. That is the one hard pause in Phases 2–4.
 
-Otherwise it exits early once a round produces 0 CRITICAL, 0 IMPORTANT, and fewer than 3 MINOR
+Otherwise it exits early once a round produces 0 CRITICAL, 0 IMPORTANT, and fewer than 3 SUGGESTION
 findings, applying corrections and re-running the guidelines check between rounds. No finding is
 silently dropped — each is either fixed or recorded as an engineer override.
 
@@ -152,8 +153,8 @@ document into the chat.
 The SOP will not claim the doc is ready for principal-engineer review unless **all four** hold:
 
 - [ ] `design-doc-guidelines` maker-checker: **0 CRITICAL**
-- [ ] `doc-accuracy-analyzer`: **0 INCORRECT** (UNVERIFIED is acceptable with callouts)
-- [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR**
+- [ ] `doc-accuracy-analyzer`: **0 INCORRECT**, each corrected in the text (UNVERIFIED is acceptable with callouts)
+- [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION**
 - [ ] `design-evaluation` confidence score: **≥ 3.0 average**
 
 If any fails, it presents what is left and asks: `Fix these before submission? [y/n]`.
@@ -176,9 +177,9 @@ Review the design package in design/pennywise/.
    hard pause; it will not continue without an answer.
 3. **Read all artifacts** — in order: system design → threat model → API specs → data models →
    security policies → diagrams.
-4. **Run `design-evaluation`** — scores all 10 dimensions 1–5: template adherence, scalability,
-   security and threat coverage, maintainability, resilience, testability, operational readiness,
-   cost, API quality, data model quality. Below 3 is flagged for revision.
+4. **Run `design-evaluation`**: scores all 10 dimensions 1 to 5: template adherence, high-level
+   assessment, scalability (including cost), performance, security, maintainability, resilience,
+   code quality, testability, and actionable recommendations. Below 3 is flagged for revision.
 5. **Generate report** — writes `design-review-report.md` (or your `output_file`) with dimension
    scores and Critical / Important / Suggestion findings.
 6. **Present recommendation** — **READY FOR IMPLEMENTATION** or **NOT READY**, plus the blockers if

@@ -1,6 +1,6 @@
 ---
 name: trade-off-evaluator
-description: 'Scores design trade-offs across five dimensions — cost, latency, complexity, scalability, operability — producing a structured comparison matrix and a recommendation. Use when a design decision has multiple options, when an engineer asks to evaluate trade-offs, or when the k-design-doc-creation SOP reaches its trade-off evaluation step. Trigger phrases — "evaluate the trade-offs between X and Y", "score these options", "which is better: SQS or EventBridge for this use case", "compare these alternatives".'
+description: 'Scores design trade-offs across five dimensions (cost, latency, complexity, scalability, operability), producing a structured comparison matrix and a recommendation. Use when a design decision has multiple options or an engineer asks to evaluate trade-offs. Trigger phrases: "evaluate the trade-offs between X and Y", "score these options", "which is better: SQS or EventBridge for this use case", "compare these alternatives".'
 version: 1.0.0
 tags: [skill, design, trade-offs, evaluation, decision, architecture]
 ---
@@ -79,7 +79,7 @@ requirement.
 
 ### Step 5: Write Report
 
-Write the full trade-off report to `docs/design/<name>-tradeoffs.md`. If called during the creation SOP, embed the table in the relevant ADR's Alternatives section.
+When a caller asks for a report file, write it to `<name>-tradeoffs.md` in the caller's output dir (default `docs/design/`); `k-design-doc-creation` passes `validation_output_dir`. During that SOP, also embed the table in the relevant ADR's Alternatives section. When invoked standalone, report inline and write a file only if the user asks for one.
 
 ## Pitfalls
 
@@ -104,4 +104,4 @@ The trade-off evaluation passes when:
 - At least 2 options are scored
 - All five dimensions are addressed (or explicitly excluded with justification)
 - The recommendation names the chosen option and references at least 2 dimension scores
-- The report is written to `docs/design/<name>-tradeoffs.md` or embedded in the ADR
+- The report is delivered where the caller asked: inline, written to the caller's output dir (default `docs/design/`), or embedded in the ADR

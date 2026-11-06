@@ -1,6 +1,6 @@
 ---
 name: cmux-dispatch
-description: Delegate tasks to parallel agent sessions via cmux. Use when the user asks to delegate, spawn, or run a task in a separate cmux surface with a specific agent. Handles surface creation, readiness polling, prompt delivery, and completion notification.
+description: Delegate tasks to parallel agent sessions via cmux. Use when cmux is running and the work should be visible in its own pane, or to delegate to a specific agent. Claude Code panes skip permission prompts. Handles surface creation, readiness polling, prompt delivery, and completion notification.
 ---
 
 # cmux Dispatch
@@ -20,10 +20,11 @@ Spawn agent sessions in cmux surfaces so delegated work is visible, interactive,
 
 Use this skill when:
 
-- User asks you to do ANY implementation, design, QA, documentation, or operations work
+- cmux is running and the work should be visible in its own pane, so the user can watch and correct it as it runs
 - User says "delegate", "spawn", "run this in a new tab/pane", "have X agent investigate"
 - User wants parallel work visible in cmux rather than hidden sub-agents
-- **NEVER** use `use_subagent` when cmux is available — always use this skill instead
+
+On Claude Code, the pane runs `claude -p` with `--dangerously-skip-permissions`: print mode can't stop for a permission prompt, so tool calls run without approval. Dispatch only tasks you would approve unattended.
 
 **You MUST immediately run the dispatch script without pre-checking the environment.** The script handles all validation (cmux availability, CMUX_WORKSPACE_ID) and exits with a clear error if anything is missing.
 
@@ -151,7 +152,7 @@ bash "<CMUX_DISPATCH_DIR>/cmux-dispatch.sh" \
           [OR: Work directly on branch <branch> in this shared working tree
           — no worktree for this task.]
           Implement the feature; commit and push the branch you're on; open
-          a draft CR to mainline."
+          a draft PR to main."
 ```
 
 **Read-only agents** (research, investigation, review) need no worktree

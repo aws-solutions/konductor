@@ -1,6 +1,6 @@
 ---
 name: legacy-to-agentic-estimate
-description: Convert legacy all-human-coding effort estimates into agentic SDLC estimates that account for AI toolchains and agents. Use to convert legacy estimate(s), produce an agentic estimate, re-baseline LOE for AI, build an AI-assisted estimate, or do effort estimation from a legacy value plus a task description (single item or a batch/table). The tier is always inferred from the description (keyword first, model fallback for ambiguous cases); output is a banded low/mid/high Markdown table with a roll-up.
+description: 'Convert legacy all-human-coding effort estimates into agentic SDLC estimates that account for AI toolchains and agents. Use to convert legacy estimate(s), produce an agentic estimate, re-baseline LOE for AI, build an AI-assisted estimate, or do effort estimation from a legacy value plus a task description (single item or a batch/table).'
 version: 1.0.0
 tags: [skill, estimation, agentic-sdlc, loe, re-baseline, planning]
 ---
@@ -22,9 +22,7 @@ hand.
 > **The most important output is not the converted number** — it is that
 > **capability maturity is the dominant lever**. Every mature, evaluator-backed
 > capability you ship raises realized leverage (`L_eff`) and lowers the
-> verification tax (`τ`). Treat this skill as a **transitional tool**, not an
-> oracle: its credibility rests entirely on parameters measured from your own
-> history.
+> verification tax (`τ`).
 
 ## Input contract
 
@@ -307,6 +305,9 @@ Treat the presets as a starting point and calibrate against reality:
 
 ## Guardrails
 
+- **Not an oracle.** Treat this skill as a transitional tool: its credibility
+  rests entirely on `L`, `τ`, `v`, and `C` measured from your own cycle-time
+  telemetry.
 - **Weight the tail.** Agents accelerate the first ~90%; the last 10%
   (integration, edge cases, prod-hardening) can grow. That growth lives in `τ` —
   don't zero it out.
@@ -329,8 +330,6 @@ Treat the presets as a starting point and calibrate against reality:
 - Treat **capability maturity (`C`)** as the dominant lever — the same task swings
   from big savings (−42%) to **nearly break-even (−2%)** purely by dropping `C`,
   with τ still held at the tier default.
-- Always include the caveat that `L`, `τ`, `v`, and `C` must be **measured from
-  your own cycle-time telemetry** to be credible.
 
 ### Don't
 
@@ -344,8 +343,6 @@ Treat the presets as a starting point and calibrate against reality:
   security) — it doesn't shrink.
 - Don't present low-leverage increases as errors — a novel/security task costing
   more is a correct result.
-- Don't treat the output as an oracle — its credibility rests entirely on
-  parameters measured from your own history.
 
 ### Common Failures
 
