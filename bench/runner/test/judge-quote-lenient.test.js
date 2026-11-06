@@ -70,14 +70,22 @@ test('class b: verbatim fragments joined by a space, a new line or a semicolon, 
   assert.equal(strict(joined[0]), false);
 });
 
-test('class b2: a verbatim quoted sentence of 40 letters or more inside the judge\'s prose', () => {
+test('class b2: a verbatim quoted sentence of 40 letters or more inside the judge\'s prose, with fewer than 20 unsupported letters', () => {
   const wrapped = [
-    'The plan says "The migration is additive and idempotent, so the old version keeps working after it runs" which covers the trap.',
-    'The text states \u201cFifty reserve requests fire at the same moment and exactly ten succeed\u201d, so the race is tested.',
-    'Evidence: `The migration is additive and idempotent, so the old version keeps working after it runs` appears, and the judge notes it is good for the trap they planted.',
+    'The plan says "The migration is additive and idempotent, so the old version keeps working after it runs" fine.',
+    'The text states \u201cFifty reserve requests fire at the same moment and exactly ten succeed\u201d.',
+    'Evidence: `The migration is additive and idempotent, so the old version keeps working after it runs` appears.',
   ];
   for (const q of wrapped) assert.equal(lenient(q), true, q);
   for (const q of wrapped) assert.equal(strict(q), false, q);
+});
+
+test('class b2 with long prose around the span is refused since the tightening (20 or more unsupported letters)', () => {
+  const chatty = [
+    'The plan says "The migration is additive and idempotent, so the old version keeps working after it runs" which covers the trap.',
+    'Evidence: `The migration is additive and idempotent, so the old version keeps working after it runs` appears, and the judge notes it is good for the trap they planted.',
+  ];
+  for (const q of chatty) assert.equal(lenient(q), false, q);
 });
 
 // ---- refused ----
