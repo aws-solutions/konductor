@@ -366,6 +366,60 @@ EDITS = [
      '"h1":"OLD NAME","h2":"LOAD INSTEAD","rows":[{"k":"asdlc-aspect-review","v":"k-aspect-review"},'
      '{"k":"asdlc-code-simplifier","v":"k-code-simplifier"},{"k":"document-formats","v":"docx-conversion"}]}),\n'
      '      sec("sk-coverage", "Coverage", "Coverage", {'),
+    # ---- design reviews grade CRITICAL / IMPORTANT / SUGGESTION ------------
+    # agent-sops/k-design-doc-creation.sop.md,
+    # agent-sops/k-principal-engineer-design-review.sop.md and
+    # skills/adversarial-design-review/SKILL.md name SUGGESTION as the lowest tier.
+    ("design gate: adversarial review (prose)",
+     'Adversarial review: <strong style="color:var(--tx);font-weight:600">0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR</strong>',
+     'Adversarial review: <strong style="color:var(--tx);font-weight:600">0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION</strong>'),
+    ("design use case: phase 4 tiers",
+     "CRITICAL (architectural or factual) / IMPORTANT / MINOR. If a CRITICAL architectural",
+     "CRITICAL (architectural or factual) / IMPORTANT / SUGGESTION. If a CRITICAL architectural"),
+    ("design use case: phase 4 exit",
+     "0 CRITICAL, 0 IMPORTANT, and fewer than 3 MINOR findings. No finding",
+     "0 CRITICAL, 0 IMPORTANT, and fewer than 3 SUGGESTION findings. No finding"),
+    ("design-doc-creation node: path B tiers",
+     "CRITICAL (architectural) · CRITICAL (factual) · IMPORTANT · MINOR. Up to 5 rounds",
+     "CRITICAL (architectural) · CRITICAL (factual) · IMPORTANT · SUGGESTION. Up to 5 rounds"),
+    ("design-doc-creation node: circuit-breaker exit",
+     "fewer than 3 MINOR — or presents remaining issues",
+     "fewer than 3 SUGGESTION, or presents remaining issues"),
+    ("design-doc-creation gate row: adversarial review",
+     '{ k: "Adversarial review", v: "0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR" }',
+     '{ k: "Adversarial review", v: "0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION" }'),
+    # The next three rewrite text that html_sop_edits._PE_REVIEW appended. That
+    # fragment carries the same new wording, so its append stays satisfied.
+    ("pe-review output: finding order",
+     "every adversarial round, ordered CRITICAL → IMPORTANT → MINOR.",
+     "every adversarial round, ordered CRITICAL → IMPORTANT → SUGGESTION."),
+    ("pe-review know: loop exit",
+     "0 IMPORTANT and fewer than 3 MINOR findings remain.",
+     "0 IMPORTANT and fewer than 3 SUGGESTION findings remain."),
+    ("pe-review know: PE-READY threshold",
+     "0 IMPORTANT, fewer than 3 MINOR), REVISIONS NEEDED",
+     "0 IMPORTANT, fewer than 3 SUGGESTION), REVISIONS NEEDED"),
+    ("skills catalog: adversarial-design-review tiers",
+     "classifying CRITICAL / IMPORTANT / MINOR. Path B fallback",
+     "classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback"),
+    # ---- design-evaluation's 10 dimensions, as numbered in its Step 1 -------
+    ("design review use case: step 04 dimensions",
+     "Scores all 10 dimensions 1–5: template adherence, scalability, security and threat coverage, "
+     "maintainability, resilience, testability, operational readiness, cost, API quality, data model "
+     "quality. Below 3 is flagged for revision.",
+     "Scores all 10 dimensions 1 to 5: template adherence, high-level assessment, scalability "
+     "(including cost), performance, security, maintainability, resilience, code quality, testability, "
+     "and actionable recommendations. Below 3 is flagged for revision."),
+    ("design review row: the 10 dimensions",
+     '{ k: "The 10 dimensions", v: "Template adherence and completeness · scalability and performance · '
+     'security and threat coverage · maintainability and code quality · resilience and fault tolerance · '
+     'testability · operational readiness · cost optimization · API design quality · data model quality" }',
+     '{ k: "The 10 dimensions", v: "Template adherence · high-level assessment · scalability (including cost) · '
+     'performance · security · maintainability and extensibility · failure handling and resilience · '
+     'code and implementation quality · testability and automation readiness · actionable recommendations" }'),
+    ("design review row: missing threat model",
+     "but degrades rather than blocks (the security and threat coverage dimension is limited)",
+     "but degrades rather than blocks (the Security dimension is capped at 3)"),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
