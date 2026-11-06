@@ -26,3 +26,9 @@ def test_handoff_path_is_unique_per_run():
 
 def test_resume_stops_on_parameter_mismatch():
     assert "stop and report the mismatch instead of merging" in section("### 6.", "### 7.")
+
+
+def test_handoff_maps_cr_url_to_pr_url():
+    step_6 = section("### 6.", "### 7.")
+    assert "`pr_url` set to the `cr_url` value" in step_6
+    assert "as `diff_input`" in step_6

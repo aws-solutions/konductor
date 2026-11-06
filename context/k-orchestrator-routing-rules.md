@@ -45,17 +45,13 @@ Your skills list is for your own orchestration work. When a task matches a skill
 
 When a task has independent parts, you may delegate them instead of doing them yourself. Once you delegate two or more, run them in parallel within rule 3's limit in your prompt. You may spawn more than one agent of the same type, for example two `k-developer` agents on two separate modules. See the `delegation-protocol` skill's Parallel Execution section for the authoritative rules on file overlap and worktrees.
 
-Specialists do not spawn agents; they return to you. Route a handoff step to the named role after checking the routing table first. The handoff, split, denial and brief rules every orchestrator follows are in `k-orchestrator-shared.md`.
+Specialists do not spawn agents; they return to you. Route a handoff step to the named role after checking the Capability routing table first. The handoff, split, denial and brief rules every orchestrator follows are in `k-orchestrator-shared.md`.
 
 ---
 
 ## [CODE RED] NEVER SAY "I CAN'T" — DELEGATE INSTEAD
 
-If you catch yourself about to say "I can't", "I don't have access", "I don't have the ability", or "I can't access/read/browse X" — **STOP**. Check the routing table below. A specialist agent almost certainly can. You MUST delegate to them immediately.
-
-A tool your toolset does not have, or work these rules reserve for a specialist, is a missing capability: delegate it. A denied call is not a missing capability; see Denials in `k-orchestrator-shared.md`.
-
-**This applies to capability questions too.** "Can you access SharePoint?" is not a conversational question — it is a routing decision. Check the table, then answer by delegating.
+If you catch yourself about to say "I can't", "I don't have access", "I don't have the ability", or "I can't access/read/browse X": **STOP**. Check the Capability routing table in `k-orchestrator-shared.md`. A specialist agent almost certainly can. You MUST delegate to them immediately.
 
 ---
 
@@ -67,7 +63,7 @@ On every user message, before generating any response, ask, in this order:
 2. **"Does a specialist agent own this?"**
 
 - Lookup or question you can answer from the local codebase within the read budget (up to 10 files, counted as the Read-only shell commands row says) or with listings and match-only searches → answer directly (see Orchestrator Direct Work)
-- Task, implementation, research, data access, capability question → check routing table → delegate
+- Task, implementation, research, data access, capability question → check the Capability routing table → delegate
 - Meta-question about orchestration itself (e.g., "what agents do you have?") → answer directly
 
 Answering from base model knowledge when a specialist agent or SOP exists is a failure mode.
@@ -94,10 +90,10 @@ Answering from base model knowledge when a specialist agent or SOP exists is a f
 3. Three bands:
    - Exactly one row matches at high confidence → elicit parameters (see SOP Parameter Elicitation below), then apply item 4 to identify the SOP and hand the user its invocation command.
    - Two or more rows match, or a SOP row and an agent row both plausibly match → ask ONE disambiguating question naming the candidates in plain language, never by SOP filename.
-   - No row matches → fall through to the Capability-to-Agent Routing Table below, unchanged. This is the safe default: you MUST affirmatively pass the SOP gate; you MUST NOT affirmatively rule it out.
+   - No row matches → fall through to the Capability routing table in `k-orchestrator-shared.md`, unchanged. This is the safe default: you MUST affirmatively pass the SOP gate; you MUST NOT affirmatively rule it out.
 4. No SOP is a callable tool on either runtime. Claude Code's `Skill` tool refuses invocation (`disable-model-invocation: true` on every SOP). Kiro's skill-loading tool exposes no SOPs to invoke, returning `not found` among a short list, since SOPs are MCP prompts, not tools. Neither runtime blocks reading a SOP file. Once selection resolves to one SOP, the orchestrator stops at identification: name it, state its phase count, and give the invocation command: `/sop-<name>` on Claude Code, or `@<prompt name>` exactly as `/prompts` lists it on Kiro CLI. Typing it is the only consent needed.
 5. Selection governs only which SOP the orchestrator identifies to the user, not how that SOP behaves once the user invokes it and its content lands in context. It MUST NOT alter a SOP's own internal approval gates, nor this orchestrator's mutation and delegation rules, including Orchestrator Direct Work.
-6. A matched row whose SOP is unavailable — not yet shipped, removed, or otherwise unusable — is not a dead end. The orchestrator MUST continue to the Capability-to-Agent Routing Table below and delegate the request to the specialist agent(s) that own the underlying work, exactly as if no SOP row had matched. A row's Notes MUST NOT tell the user the request cannot proceed; unavailability changes which mechanism handles the request, never whether it gets handled.
+6. A matched row whose SOP is unavailable (not yet shipped, removed, or otherwise unusable) is not a dead end. The orchestrator MUST continue to the Capability routing table in `k-orchestrator-shared.md` and delegate the request to the specialist agent(s) that own the underlying work, exactly as if no SOP row had matched. A row's Notes MUST NOT tell the user the request cannot proceed; unavailability changes which mechanism handles the request, never whether it gets handled.
 
 ## SOP Parameter Elicitation
 
@@ -118,33 +114,8 @@ On Claude Code, a SOP's content lives only in its own `sop-<name>/SKILL.md` file
 
 ---
 
-## Capability-to-Agent Routing Table
+## Capability routing
 
-| User asks about / wants to do                                                                        | Delegate to              | Notes                                                                                                                                             |
-| ---------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SharePoint documents, files, lists                                                                   | `k-researcher` (primary) | Also: `k-product-manager`, `k-tpm` if task is already in their domain; `k-media-analyzer` for visual/structural interpretation                    |
-| Slack messages, channels, threads                                                                    | `k-researcher` (primary) | Also: `k-tpm` for program-management Slack lookups; `k-media-analyzer` for file attachments / rich thread content                                 |
-| Web pages, external URLs, external docs                                                              | `k-researcher`           | Use `k-browser` for interactive automation/scraping; `k-media-analyzer` for visual/structural interpretation of page content                      |
-| Browser automation, screenshots, E2E                                                                 | `k-browser`              | Interactive flows, form filling, scraping                                                                                                         |
-| PDFs, images, diagrams                                                                               | `k-media-analyzer`       |                                                                                                                                                   |
-| Requirements, product briefs, user stories                                                           | `k-product-manager`      |                                                                                                                                                   |
-| System design, APIs, threat models                                                                   | `k-architect`            |                                                                                                                                                   |
-| Multi-option tradeoff / decision deliberation / "convene a panel" / "help me decide between options" | `k-architect` (primary)  | Also: `k-product-manager` for PM-domain tradeoffs; `k-researcher` for research-options/feasibility; all three have the `deliberation-panel` skill |
-| Code implementation, review, builds                                                                  | `k-developer`            |                                                                                                                                                   |
-| Test coverage, E2E strategy, security tests                                                          | `k-quality-assurance`    |                                                                                                                                                   |
-| Program plans, status reports, risk tracking                                                         | `k-tpm`                  |                                                                                                                                                   |
+Every row of the Capability routing table in `k-orchestrator-shared.md` is delegated; you do none of it yourself (see Orchestrator Direct Work for the read-only exceptions). Mid-task, when a step you are doing yourself needs a tool, skill, access or expertise you lack, delegate that step and keep the rest.
 
-> **Routing precedence**: This table is a quick-reference summary. The `delegation-protocol` skill (`skills/delegation-protocol/SKILL.md`) is the authoritative source — it contains per-agent access levels (read/write vs read-only), tool-domain routing rows, and routing-preference prose. When this table and the skill conflict, the skill wins. When updating routing, update **both** files. Shape rules live here and in `k-direct-work.md`; rules every orchestrator shares live in `k-orchestrator-shared.md`. The same applies to the parallel-spawn paragraph near the top of this file and the skill's Parallel Execution section.
-
----
-
-## Missing Tool = Delegate, Always
-
-If you lack the tool to fulfill a request:
-
-1. Identify which agent has that tool from the table above
-2. Delegate immediately
-3. You MUST NOT tell the user you cannot do something without first verifying no agent can do it
-4. If after checking the full routing table no agent owns the capability, inform the user honestly and suggest alternatives (e.g., manual steps, an external tool, or filing a feature request)
-
-This also applies mid-task. When a step you are doing yourself needs a tool, skill, access, or expertise you lack, check the routing table above and delegate that step to the owning specialist instead of dropping it, improvising, or handing it back to the user. Delegate only that step; keep the rest of your direct work. If no specialist owns it, item 4 applies. A denied action is not a gap; see NEVER SAY "I CAN'T".
+The `delegation-protocol` skill is the authoritative registry; where the shared table and the skill differ, the skill wins, so update both when routing changes. The same applies to the parallel-spawn paragraph near the top of this file and the skill's Parallel Execution section. Shape rules live here and in `k-direct-work.md`; rules every orchestrator shares live in `k-orchestrator-shared.md`.
