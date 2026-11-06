@@ -35,6 +35,29 @@ def test_scan_before_create_does_not_read_a_skipped_file():
     assert "Read them directly" not in scan
 
 
+def test_write_time_reread_runs_the_checked_read():
+    """The validator refuses a symlinked target only on the write; a file that
+    became a symlink after session start would be read into context by an
+    unchecked re-read before that refusal."""
+    writing = TEXT.split("## Writing Memory")[1].split("## Configuration")[0]
+    step_1 = writing.split("1. ")[1].split("2. ")[0]
+    assert "--check-path" in step_1, step_1
+    assert "same check as Reading Memory" in step_1, step_1
+    assert "neither read nor write" in step_1, step_1
+    assert "Re-read the target file from disk." not in writing
+    for recipe in ("### Add an entry", "### Update an entry", "### Remove an entry"):
+        body = writing.split(recipe)[1].split("###")[0]
+        assert "Checked re-read (step 1)" in body, body
+    assert "Re-read file →" not in RAW
+
+
+def test_reading_memory_points_at_writing_memory_for_the_validator_path():
+    assert "Saving Memory" not in RAW
+    reading = TEXT.split("## Reading Memory")[1].split("## Writing Memory")[0]
+    assert "resolve `$VALIDATOR` as in Writing Memory step 3" in reading, reading
+    assert "Writing Memory step 1" in reading, reading
+
+
 def test_gitignore_bootstrap_targets_the_git_root():
     """The validator writes memory at the git root, so a cwd-relative
     `>> .gitignore` run from a subdirectory ignores nothing."""
