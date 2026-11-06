@@ -1,0 +1,143 @@
+{
+  "id": "rc-req-to-design",
+  "class": "design",
+  "target": "k-architect",
+  "prompt": "product/requirements.md and product/user-stories.md are the output of the product phase for a community tool library. The architect starts the system design next. First prepare the handoff: write what the design needs from them as markdown files in design/ (the business context, the requirements and constraints with their ids, and the user stories boiled down), keeping every number and dropping the marketing language. Then write the system design to design/system-design.md: the components, the data and where it is stored, how each requirement is met (use the requirement ids), the risks, and the open questions. Do not change the product documents. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-product-handoff",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "design/system-design.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls design/*.md 2>/dev/null | wc -l)\" -ge 2 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' design/system-design.md)\" -ge 25 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ -s design/system-design.md ] && [ \"$(cat design/*.md | grep -c '[^[:space:]]')\" -le 500 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "design/system-design.md",
+      "pattern": "\\bREQ-?\\d{1,2}\\b",
+      "min": 10
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"design/system-design.md\",\"utf8\");/*RQ10*/const s=new Set([...t.matchAll(/\\bREQ-?(\\d{1,2})\\b/gi)].map(m=>Number(m[1])).filter(n=>n>=1&&n<=12));process.exit(s.size>=10?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const F=require(\"fs\"),D=\"design\",t=F.readdirSync(D).filter(f=>f.endsWith(\".md\")).sort().map(f=>F.readFileSync(D+\"/\"+f,\"utf8\")).join(\"\\n\");/*RQ1*/const A=new RegExp(\"150|2\\\\.5 (?:a|per) minute|peak|saturday\",\"gi\"),R=[new RegExp(\"4,?000|1,?200|checkouts? (?:an|per|a) hour|150\",\"i\"),new RegExp(\"size|load|small|simple|capacity|scale|peak\",\"i\")],W=600;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const F=require(\"fs\"),D=\"design\",t=F.readdirSync(D).filter(f=>f.endsWith(\".md\")).sort().map(f=>F.readFileSync(D+\"/\"+f,\"utf8\")).join(\"\\n\");/*RQ2*/const A=new RegExp(\"offline|without (?:a |the )?(?:network|internet|connection)|network is down|internet is down\",\"gi\"),R=[new RegExp(\"kiosk\",\"i\"),new RegExp(\"8 hours|eight hours|sync|local|queue|store|later|returns\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const F=require(\"fs\"),D=\"design\",t=F.readdirSync(D).filter(f=>f.endsWith(\".md\")).sort().map(f=>F.readFileSync(D+\"/\"+f,\"utf8\")).join(\"\\n\");/*RQ3*/const A=new RegExp(\"reserv\",\"gi\"),R=[new RegExp(\"30 days|30-day|thirty days\",\"i\"),new RegExp(\"next.?day|1 day ahead|one day|conflict|differ|disagree|contradict|inconsisten|open question|ambig|clarif|assum\",\"i\")],W=500;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const F=require(\"fs\"),D=\"design\",t=F.readdirSync(D).filter(f=>f.endsWith(\".md\")).sort().map(f=>F.readFileSync(D+\"/\"+f,\"utf8\")).join(\"\\n\");/*RQ4*/const A=new RegExp(\"delet|erasure|personal data|photo id|privacy\",\"gi\"),R=[new RegExp(\"30 days|thirty days\",\"i\"),new RegExp(\"photo id|never stored|not stored|apart|separate|identity|history|name\",\"i\")],W=500;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const F=require(\"fs\"),D=\"design\",t=F.readdirSync(D).filter(f=>f.endsWith(\".md\")).sort().map(f=>F.readFileSync(D+\"/\"+f,\"utf8\")).join(\"\\n\");/*RQ5*/const A=new RegExp(\"csv|membership list\",\"gi\"),R=[new RegExp(\"nightly|every night|city|import\",\"i\"),new RegExp(\"sms|text message\",\"i\")],W=1500;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const F=require(\"fs\"),D=\"design\",t=F.readdirSync(D).filter(f=>f.endsWith(\".md\")).sort().map(f=>F.readFileSync(D+\"/\"+f,\"utf8\")).join(\"\\n\");/*RQ6*/const A=new RegExp(\"payment|pay |fees?\",\"gi\"),R=[new RegExp(\"out of scope|not in scope|desk|first release|excluded|no payment|not included|deferred|manual|staff record\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "not_contains",
+      "path": "design/system-design.md",
+      "pattern": "\\b(?:payment gateway|stripe|card processor|payment processor|checkout session|online payment service)\\b(?![^.\\n]{0,120}\\b(?:no|not|out of scope|without|excluded|never|instead)\\b)"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const F=require(\"fs\"),D=\"design\",t=F.readdirSync(D).filter(f=>f.endsWith(\".md\")).sort().map(f=>F.readFileSync(D+\"/\"+f,\"utf8\")).join(\"\\n\");/*RQ7*/const A=new RegExp(\"wcag|accessib|touch target|44\",\"gi\"),R=[new RegExp(\"kiosk|2\\\\.1|aa\\\\b|44|pixel|px\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const F=require(\"fs\"),D=\"design\",t=F.readdirSync(D).filter(f=>f.endsWith(\".md\")).sort().map(f=>F.readFileSync(D+\"/\"+f,\"utf8\")).join(\"\\n\");/*RQ8*/const A=new RegExp(\"fee\",\"gi\"),R=[new RegExp(\"rate|amount|decid|board|undecided|open question|tbd|to be|setting|configur|not (?:yet )?(?:set|known|defined)\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const F=require(\"fs\"),L=F.readdirSync(\"design\").filter(f=>f.endsWith(\".md\")&&f!==\"system-design.md\");let bad=false;for(const f of L){const t=F.readFileSync(\"design/\"+f,\"utf8\");if(/revolutionary|game-?changing|best-in-class|delighted early member|never looked back/i.test(t))bad=true}process.exit(L.length>0&&!bad?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"design/system-design.md\",\"utf8\");/*RQ-OQ*/const m=/open questions?|unresolved|to decide|to confirm|assumptions?/i.exec(t);if(!m)process.exit(1);const tail=t.slice(m.index);const items=(tail.match(/^[ \\t]*(?:[-*+]|\\d+[.)])[ \\t]+\\S/gm)||[]).length;process.exit(items>=3?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "design/system-design.md",
+      "pattern": "\\b(?:component|service|database|store|queue|job|api|kiosk|web app)\\b",
+      "min": 8
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "product/requirements.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "product/user-stories.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "handoff-keeps-the-facts",
+      "criterion": "The design inputs keep the numbers (4,000 members, 1,200 tools, 150 checkouts an hour on Saturday morning, 2 minutes, 7 days) and the constraints, and drop the marketing language and the testimonial (RQ1, RQ9).",
+      "weight": 2
+    },
+    {
+      "id": "hidden-requirements",
+      "criterion": "Finds the offline requirement that sits in the acceptance criteria of US-4 and designs for it with a local store and a sync rule (RQ2), and carries the privacy and accessibility rules (RQ4, RQ7).",
+      "weight": 3
+    },
+    {
+      "id": "conflicts-and-gaps",
+      "criterion": "Flags the conflict between REQ-6 and US-3 and the undecided late fee as open questions instead of resolving them silently (RQ3, RQ8).",
+      "weight": 3
+    },
+    {
+      "id": "scope-and-integrations",
+      "criterion": "Names the nightly CSV and the SMS provider as integrations (RQ5), keeps online payments out of the design (RQ6) and sizes the design to the real peak.",
+      "weight": 2
+    },
+    {
+      "id": "traceability-and-no-false-claims",
+      "criterion": "The system design ties most REQ ids to a component or decision (RQ10), invents no fee amount or payment service, and the product documents are unchanged.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

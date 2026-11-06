@@ -1,0 +1,133 @@
+{
+  "id": "rc-legacy-estimate",
+  "class": "sop",
+  "target": "k-tpm",
+  "prompt": "docs/legacy-estimates.md is the backlog of a product with effort estimates in person-days, made before the team used AI coding assistants. Estimate the same backlog for a team that works with AI coding assistants and agents. Write the result to docs/agentic-estimates.md: one row per item with the legacy value, a low, a mid and a high estimate and the reason, a total with the change against the legacy total, and a list of rows you could not convert and why. Do not change the input. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "rc-legacy-table",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "docs/agentic-estimates.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/agentic-estimates.md)\" -ge 12 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' docs/agentic-estimates.md)\" -le 120 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "docs/agentic-estimates.md",
+      "pattern": "\\bE-?[1-5]\\b",
+      "min": 5
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES1a*/const R=new RegExp(\"crud|venue settings\",\"i\"),S=[10];let ok=false;for(const l of t.split(/\\r?\\n/)){if(!R.test(l))continue;for(const m of l.matchAll(/(?<![\\w.-])(\\d+(?:\\.\\d+)?)(?![\\w-])/g)){const n=Number(m[1]);if(!S.includes(n)&&n>=3&&n<=8)ok=true}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES1b*/const R=new RegExp(\"scaffold|dashboard\",\"i\"),S=[8];let ok=false;for(const l of t.split(/\\r?\\n/)){if(!R.test(l))continue;for(const m of l.matchAll(/(?<![\\w.-])(\\d+(?:\\.\\d+)?)(?![\\w-])/g)){const n=Number(m[1]);if(!S.includes(n)&&n>=2.5&&n<=6.5)ok=true}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES2*/const R=new RegExp(\"webhook|payment provider|refund\",\"i\"),S=[12];let ok=false;for(const l of t.split(/\\r?\\n/)){if(!R.test(l))continue;for(const m of l.matchAll(/(?<![\\w.-])(\\d+(?:\\.\\d+)?)(?![\\w-])/g)){const n=Number(m[1]);if(!S.includes(n)&&n>=8&&n<=13)ok=true}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES3*/const R=new RegExp(\"failover|multi-region|security architecture\",\"i\"),S=[20];let ok=false;for(const l of t.split(/\\r?\\n/)){if(!R.test(l))continue;for(const m of l.matchAll(/(?<![\\w.-])(\\d+(?:\\.\\d+)?)(?![\\w-])/g)){const n=Number(m[1]);if(!S.includes(n)&&n>=17&&n<=28)ok=true}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES4*/const R=new RegExp(\"migrat|report tables\",\"i\"),S=[6];let ok=false;for(const l of t.split(/\\r?\\n/)){if(!R.test(l))continue;for(const m of l.matchAll(/(?<![\\w.-])(\\d+(?:\\.\\d+)?)(?![\\w-])/g)){const n=Number(m[1]);if(!S.includes(n)&&n>=2.2&&n<=4.8)ok=true}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES5*/const A=new RegExp(\"tier|high|medium|low|patterned|boilerplate|novel|integration|architecture\",\"gi\"),R=[new RegExp(\"crud|scaffold|boilerplate|migrat\",\"i\"),new RegExp(\"failover|architecture|security|novel|webhook|integration\",\"i\")],W=700;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES6*/let ok=0;for(const l of t.split(/\\r?\\n/)){if(!/crud|venue settings|scaffold|dashboard|webhook|payment provider|failover|multi-region|migrat|report tables/i.test(l))continue;const n=[...l.matchAll(/(?<![\\w.-])(\\d+(?:\\.\\d+)?)(?![\\w-])/g)].map(m=>Number(m[1]));if(n.length>=4&&new Set(n).size>=4)ok++}process.exit(ok>=4?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES7a*/const A=new RegExp(\"total|roll-?up|sum|overall|altogether\",\"gi\"),R=[new RegExp(\"\\\\b56\\\\b|\\\\b65\\\\b\",\"i\"),new RegExp(\"\\\\b(?:3[89]|4\\\\d|5[0-4])(?:\\\\.\\\\d+)?\\\\b\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES7b*/const A=new RegExp(\"total|roll-?up|overall|change|delta|lower|reduction|saving|\\\\u0394\",\"gi\"),R=[new RegExp(\"-?\\\\+?\\\\d{1,2}(?:\\\\.\\\\d+)?\\\\s?%|percent\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES8*/const A=new RegExp(\"E-?6|about two weeks|two weeks|export\",\"gi\"),R=[new RegExp(\"not (?:converted|included|estimated)|cannot|can.?t|unable|flag|clarif|assum|excluded|exclude|unconverted|ask|please (?:give|provide|confirm)|needs? a (?:number|value)|non-?numeric|not a number|apart|separate\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES9*/const A=new RegExp(\"E-?7|no description|missing description|without a description|empty description|blank\",\"gi\"),R=[new RegExp(\"not (?:converted|included|estimated)|cannot|can.?t|unable|flag|clarif|excluded|exclude|unconverted|ask|please (?:give|provide|say|describe)|needs? a description|no tier|unknown|skipped|no description\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"docs/agentic-estimates.md\",\"utf8\");/*ES10*/const A=new RegExp(\"review|verif|oversight|invariant|does not (?:shrink|compress)|not (?:shrink|compress)|integration\",\"gi\"),R=[new RegExp(\"calibrat|history|own data|telemetry|assum|default|measured|baseline|factors|do not shrink|does not shrink|stay|remain|unchanged|not compress\",\"i\")],W=900;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "not_contains",
+      "path": "docs/agentic-estimates.md",
+      "pattern": "\\b(?:flat|blanket|uniform|across the board|same)\\s+(?:\\d{1,2}\\s?%\\s+)?(?:discount|reduction|cut|saving|factor)\\b(?![^.\\n]{0,80}\\b(?:would|wrong|avoid|not|never|instead|rather|undercount|anti))"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs/legacy-estimates.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tiered-conversion",
+      "criterion": "Compresses patterned authoring the most (E-1, E-2, E-5 mid between 40 and 60 percent of legacy) and integration much less (E-3), and keeps the failover and security architecture at or above its legacy value (E-4) (ES1 to ES4).",
+      "weight": 3
+    },
+    {
+      "id": "no-blanket-discount",
+      "criterion": "Treats rows differently by kind of work and says why, and does not apply one percentage to the whole backlog (ES5, ES10).",
+      "weight": 3
+    },
+    {
+      "id": "bands-and-rollup",
+      "criterion": "Gives a low, a mid and a high for every converted row in order, and a total of the converted rows with the change in percent against the legacy total of 56 (ES6, ES7).",
+      "weight": 2
+    },
+    {
+      "id": "bad-rows",
+      "criterion": "Flags E-6 (not a number) and E-7 (no description) instead of converting them, keeps them out of the total or shows them apart, and does not invent a task for E-7 (ES8, ES9).",
+      "weight": 3
+    },
+    {
+      "id": "caveats-and-no-false-claims",
+      "criterion": "Says that the saving is in the authoring part, that review and verification stay, and that the factors need calibration. Totals match the rows and no input file changed.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

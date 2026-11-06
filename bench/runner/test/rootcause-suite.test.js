@@ -25,7 +25,7 @@ test('the suite resolves its extra task directory without the flag, and every su
   assert.deepEqual(dirs, [ROOTCAUSE]);
   const tasks = loadTasks(BENCH_DIR, { extraDirs: dirs });
   const s = loadSuite('rootcause', tasks, BENCH_DIR);
-  assert.equal(s.taskIds.length, 16);
+  assert.equal(s.taskIds.length, 20);
   for (const id of s.taskIds) assert.ok(tasks.has(id), id);
   assert.deepEqual([...s.taskIds].sort(), Object.values(manifest.tasksByEntryAgent).flat().filter((id, i, a) => a.indexOf(id) === i).sort());
 });

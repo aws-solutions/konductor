@@ -1,0 +1,314 @@
+{
+  "loosened": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "cases": [
+    {
+      "name": "ES1a phrased differently",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "| E-1 | CRUD pages for venue settings | 10 | 4.9 | 5.8 | 6.9 |\n"
+      }
+    },
+    {
+      "name": "ES1a near miss 1",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "| E-1 | CRUD pages for venue settings | 10 | 9 | 10 | 11 |\n"
+      }
+    },
+    {
+      "name": "ES1a near miss 2",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "| E-1 | CRUD pages for venue settings | 10 | 1 | 1.5 | 2.5 |\n"
+      }
+    },
+    {
+      "name": "ES3 phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "Failover and security architecture: legacy 20, agentic 21 to 25 (mid 22.7).\n"
+      }
+    },
+    {
+      "name": "ES3 near miss 1",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Failover architecture: legacy 20, agentic 10 to 14 (mid 12).\n"
+      }
+    },
+    {
+      "name": "ES3 near miss 2",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Failover architecture: legacy 20, agentic 20.\n"
+      }
+    },
+    {
+      "name": "ES2 phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "Webhook for refunds: 12 down to 11.1 at the mid.\n"
+      }
+    },
+    {
+      "name": "ES2 near miss 1",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Webhook for refunds: 12 down to 6.\n"
+      }
+    },
+    {
+      "name": "ES2 near miss 2",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Webhook for refunds: 12 unchanged.\n"
+      }
+    },
+    {
+      "name": "ES4 phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "Migrating the report tables: 6 becomes 3.5.\n"
+      }
+    },
+    {
+      "name": "ES4 near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Migrating the report tables: 6 becomes 6.\n"
+      }
+    },
+    {
+      "name": "ES4 near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Migrating the report tables: 6 becomes 1.\n"
+      }
+    },
+    {
+      "name": "ES1b phrased differently",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "Dashboard scaffolding: 8 to about 4.6.\n"
+      }
+    },
+    {
+      "name": "ES1b near miss 1",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Dashboard scaffolding: 8 to 8.\n"
+      }
+    },
+    {
+      "name": "ES1b near miss 2",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Dashboard scaffolding: 8 to 1.\n"
+      }
+    },
+    {
+      "name": "ES6 phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "Venue settings CRUD: legacy 10, low 5.0, mid 5.8, high 6.7.\nAdmin dashboard scaffold: legacy 8, low 4.0, mid 4.6, high 5.3.\nWebhook for refunds: legacy 12, low 10.5, mid 11.1, high 11.8.\nFailover architecture: legacy 20, low 22.0, mid 22.7, high 23.5.\n"
+      }
+    },
+    {
+      "name": "ES6 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Venue settings CRUD: 10 to 6.\nAdmin dashboard scaffold: 8 to 5.\nWebhook for refunds: 12 to 7.\nFailover architecture: 20 to 12.\n"
+      }
+    },
+    {
+      "name": "ES6 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "The backlog has CRUD, scaffold, webhook and failover items.\n"
+      }
+    },
+    {
+      "name": "ES7a phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "Total: legacy 56, agentic mid 47.7 person-days.\n"
+      }
+    },
+    {
+      "name": "ES7a near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Total: legacy 56, agentic mid 30.\n"
+      }
+    },
+    {
+      "name": "ES7a near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Total agentic 47.7.\n"
+      }
+    },
+    {
+      "name": "ES7b phrased differently",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "Overall change: about 15 percent lower.\n"
+      }
+    },
+    {
+      "name": "ES7b near miss 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Overall the backlog is smaller.\n"
+      }
+    },
+    {
+      "name": "ES7b near miss 2",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "The total is 47.7.\n"
+      }
+    },
+    {
+      "name": "ES8 phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "E-6 (\"about two weeks\") is not a number, so it is not converted. Please give a value.\n"
+      }
+    },
+    {
+      "name": "ES8 near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "E-6 converts to 7 days.\n"
+      }
+    },
+    {
+      "name": "ES8 near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "The nightly report export is slow.\n"
+      }
+    },
+    {
+      "name": "ES9 phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "E-7 has no description, so it is not converted. Please say what it is.\n"
+      }
+    },
+    {
+      "name": "ES9 near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "E-7 converts to 5 days.\n"
+      }
+    },
+    {
+      "name": "ES9 near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "The last row is nine days.\n"
+      }
+    },
+    {
+      "name": "ES10 phrased differently",
+      "check": 15,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/agentic-estimates.md": "Review and verification do not shrink. Calibrate the factors against the team history.\n"
+      }
+    },
+    {
+      "name": "ES10 near miss 1",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "AI makes everything faster.\n"
+      }
+    },
+    {
+      "name": "ES10 near miss 2",
+      "check": 15,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/agentic-estimates.md": "Review is needed.\n"
+      }
+    }
+  ]
+}
