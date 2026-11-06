@@ -1158,7 +1158,7 @@ SOP_EDITS += [
      "Delegates to nothing; it returns to its caller."),
     ("install prerequisites: kiro-cli minimum version",
      "Kiro CLI installed</div>",
-     "Kiro CLI 2.36.0 or later</div>"),
+     "Kiro CLI 2.36.0 or later (v2 tool list checked on 2.36.0 and 3.0.0)</div>"),
 ]
 
 # The published page's "adversarial handoff never fires" section and index row,
