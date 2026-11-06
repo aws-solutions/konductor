@@ -4,7 +4,8 @@
 // writes the orchestration session-start hook, and how `doctor` reads its
 // commands back. The writers live in `telemetry_hook_pass.rs` and
 // `claude_settings.rs`; this module shares their path constants, the v2 and
-// v3 trigger names and `command_is_hook`. The Claude event key is a literal
+// v3 trigger names and `command_is_hook`, and builds the v2 agent path with
+// the installer's `content_manifest_path`. The Claude event key is a literal
 // here, pinned by `claude_writer_output_reads_back`.
 
 use std::path::{Path, PathBuf};
@@ -16,6 +17,7 @@ use super::telemetry_hook_pass::{AGENT_SPAWN_TRIGGER_V2, V3_SESSION_START_TRIGGE
 use super::{claude_hooks_settings_relative_path, V3_ORCHESTRATION_HOOKS_RELATIVE_PATH};
 use crate::cli::install::manifest::StrategyManifest;
 use crate::cli::install::{claude, kiro_cli, kiro_cli_v3};
+use crate::cli::synth::kiro_cli_v2::AGENTS_CONTENT_TYPE_DIR;
 
 /// Where a strategy slot's orchestration hook lives, and the hook
 /// commands found there (or why none could be read).
@@ -30,9 +32,10 @@ pub(crate) fn orchestration_hook_wiring(
     destination: &Path,
     slot: &StrategyManifest,
 ) -> Option<HookWiring> {
-    let v2_agent_file = format!(
-        ".kiro/agents/{}.json",
-        crate::cli::orchestration_hook::MODE_AGENT
+    let v2_agent_file = kiro_cli::content_manifest_path(
+        kiro_cli::KIRO_DESTINATION_ROOT,
+        AGENTS_CONTENT_TYPE_DIR,
+        &format!("{}.json", crate::cli::orchestration_hook::MODE_AGENT),
     );
     let (relative, commands): (&str, fn(&Value) -> Vec<String>) = match slot.strategy.as_str() {
         kiro_cli_v3::STRATEGY_NAME => (V3_ORCHESTRATION_HOOKS_RELATIVE_PATH, v3_commands),
@@ -44,9 +47,10 @@ pub(crate) fn orchestration_hook_wiring(
         _ => return None,
     };
     let file = destination.join(relative);
-    // A v3 document the slot does not list is a leftover or hand-placed
-    // file, not one this install wrote.
-    let unlisted = slot.strategy == kiro_cli_v3::STRATEGY_NAME
+    // A v2 or v3 document the slot does not list is a leftover or
+    // hand-placed file, not one this install wrote.
+    let unlisted = (slot.strategy == kiro_cli_v3::STRATEGY_NAME
+        || slot.strategy == kiro_cli::STRATEGY_NAME)
         && !slot.files.iter().any(|f| f.path == relative);
     let commands = if unlisted {
         Err("the file is not listed in the install manifest".to_string())
@@ -192,16 +196,67 @@ mod tests {
             let destination = scratch_dir("v2");
             let mut agent = serde_json::json!({"name": crate::cli::orchestration_hook::MODE_AGENT});
             wire_v2_orchestration_hook(&mut agent, exe, Some(&destination));
-            let file = destination.join(format!(
-                ".kiro/agents/{}.json",
-                crate::cli::orchestration_hook::MODE_AGENT
-            ));
+            let listed = v2_agent_manifest_path();
+            let file = destination.join(&listed);
             fs::create_dir_all(file.parent().unwrap()).unwrap();
             fs::write(&file, agent.to_string()).unwrap();
-            let slot = slot(kiro_cli::STRATEGY_NAME, &destination, &[]);
+            let slot = slot(kiro_cli::STRATEGY_NAME, &destination, &[listed.as_str()]);
             assert_reads_back(&destination, &slot, exe);
             fs::remove_dir_all(&destination).ok();
         }
+    }
+
+    fn v2_agent_manifest_path() -> String {
+        kiro_cli::content_manifest_path(
+            kiro_cli::KIRO_DESTINATION_ROOT,
+            AGENTS_CONTENT_TYPE_DIR,
+            &format!("{}.json", crate::cli::orchestration_hook::MODE_AGENT),
+        )
+    }
+
+    #[test]
+    fn v2_reader_path_equals_the_installer_manifest_entry() {
+        let root = scratch_dir("v2-plan");
+        let harness_dir = root.join("dist").join(kiro_cli::STRATEGY_NAME);
+        let agents_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
+        fs::create_dir_all(&agents_dir).unwrap();
+        let agent_name = format!("{}.json", crate::cli::orchestration_hook::MODE_AGENT);
+        fs::write(agents_dir.join(&agent_name), r#"{"name":"konductor"}"#).unwrap();
+        let target = root.join("target");
+        fs::create_dir_all(&target).unwrap();
+
+        let planned = kiro_cli::plan_all_files(&harness_dir, &target, None).unwrap();
+        let agent_entry = planned
+            .iter()
+            .find(|entry| entry.manifest_path.ends_with(&agent_name))
+            .expect("the installer plans the mode agent file");
+        let slot = slot(
+            kiro_cli::STRATEGY_NAME,
+            &target,
+            &[agent_entry.manifest_path.as_str()],
+        );
+        let wiring = orchestration_hook_wiring(&target, &slot).expect("a hook strategy");
+        assert_eq!(wiring.file, target.join(&agent_entry.manifest_path));
+        assert_ne!(
+            wiring.commands.as_ref().err().map(String::as_str),
+            Some("the file is not listed in the install manifest")
+        );
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn v2_unlisted_agent_file_is_reported() {
+        let destination = scratch_dir("v2-unlisted");
+        let file = destination.join(v2_agent_manifest_path());
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(&file, r#"{"hooks":{}}"#).unwrap();
+        let slot = slot(kiro_cli::STRATEGY_NAME, &destination, &[]);
+        let wiring = orchestration_hook_wiring(&destination, &slot).expect("a hook strategy");
+        assert_eq!(
+            wiring.commands.unwrap_err(),
+            "the file is not listed in the install manifest"
+        );
+        fs::remove_dir_all(&destination).ok();
     }
 
     #[test]
