@@ -38,6 +38,6 @@ test('passing the same directory with --extra-tasks does not load it twice', () 
 
 test('the extra directory is hidden from the agent, and suites without extraTasks add nothing', () => {
   assert.ok(benchMask(BENCH_DIR, suiteExtraDirs('rootcause', BENCH_DIR)).includes(ROOTCAUSE));
-  for (const name of SUITE_NAMES.filter((n) => n !== 'rootcause')) assert.deepEqual(suiteExtraDirs(name, BENCH_DIR), [], name);
+  for (const name of SUITE_NAMES.filter((n) => !['rootcause', 'references-read'].includes(n))) assert.deepEqual(suiteExtraDirs(name, BENCH_DIR), [], name);
   assert.deepEqual(suiteExtraDirs('no-such-suite', BENCH_DIR), []);
 });

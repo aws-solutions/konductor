@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "suite": "references-read",
+  "suiteFile": "bench/suites/references-read.json",
+  "extraTasksDir": "bench/refs",
+  "purpose": "Skills are moving detail into references/*.md. Install copies those files, but get_skill returns only the SKILL.md body and its path, so the agent must read references/x.md itself from the skills root outside its workspace. Does a Kiro agent read it, is the read refused, or does the agent skip it? Scored by script from the stream, see bench/REFERENCES-READ.md.",
+  "refs": {
+    "main": { "sha": "ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c", "requires": ["skills/dynamodb-design/SKILL.md", "skills/asana-sprint-planning/SKILL.md"], "note": "origin/main when the study was written; the skill bodies are inline" },
+    "pr155": { "sha": "5ecf044b3cddaed1c8875b5bde520627b1377d6f", "requires": ["skills/dynamodb-design/SKILL.md", "skills/dynamodb-design/references/aws-best-practices.md"], "note": "head of PR 155 (slim dynamodb-design); references/aws-best-practices.md and three more files" },
+    "asana": { "sha": "87ce9008c2a3a69047eb0381533b188ca764df85", "requires": ["skills/sprint-planning/SKILL.md", "skills/sprint-planning/references/asana.md"], "note": "fold of the Asana skill into sprint-planning (references/asana.md); built on the main commit above, local branch refactor/fold-asana-into-sprint-planning" }
+  },
+  "tasks": {
+    "refs-dynamodb-design": {
+      "skill": "dynamodb-design",
+      "controlSkills": [],
+      "owner": "k-architect",
+      "artifact": "docs/data-model.md",
+      "reference": "references/aws-best-practices.md",
+      "planted": [
+        { "id": "shard-range-200", "primary": true, "pattern": "(?:shard|suffix|bucket|salt|hash)[^.\\n]{0,120}\\b200\\b|\\b200\\b[^.\\n]{0,120}(?:shard|suffix|bucket|salt|hash)|%\\s*200\\b" },
+        { "id": "gsi-max-5", "pattern": "(?:at most|max(?:imum)?|no more than|up to|limit(?: of)?|cap(?:ped)?(?: at)?|within|inside|under|\\u2264|<=)[^.\\n]{0,30}\\b(?:5|five)\\b[^.\\n]{0,30}(?:GSIs?|indexes)|\\b(?:5|five)\\b[^.\\n]{0,30}(?:GSIs?|indexes)\\b" }
+      ]
+    },
+    "refs-dynamodb-readable": {
+      "skill": "dynamodb-design",
+      "controlSkills": [],
+      "owner": "k-architect",
+      "artifact": "docs/data-model.md",
+      "reference": "references/aws-best-practices.md",
+      "workspaceReference": true,
+      "planted": [
+        { "id": "shard-range-200", "primary": true, "pattern": "(?:shard|suffix|bucket|salt|hash)[^.\\n]{0,120}\\b200\\b|\\b200\\b[^.\\n]{0,120}(?:shard|suffix|bucket|salt|hash)|%\\s*200\\b" },
+        { "id": "gsi-max-5", "pattern": "(?:at most|max(?:imum)?|no more than|up to|limit(?: of)?|cap(?:ped)?(?: at)?|within|inside|under|\\u2264|<=)[^.\\n]{0,30}\\b(?:5|five)\\b[^.\\n]{0,30}(?:GSIs?|indexes)|\\b(?:5|five)\\b[^.\\n]{0,30}(?:GSIs?|indexes)\\b" }
+      ]
+    },
+    "refs-sprint-capacity": {
+      "skill": "sprint-planning",
+      "controlSkills": ["asana-sprint-planning"],
+      "owner": "k-product-manager",
+      "artifact": "docs/rollover-plan.md",
+      "reference": "references/asana.md",
+      "planted": [
+        {
+          "id": "subtasks-lost-board-22",
+          "primary": true,
+          "all": [
+            "subtasks?[^.\\n]{0,160}(?:lost|lose|loses|dropped|not (?:carried|copied|moved|kept|preserved)|do(?:es)? not (?:come|carry|move|keep|survive)|gone|disappear|missing|recreat|re-?creat)|(?:lost|lose|loses|dropped|gone|disappear|recreat|re-?creat)[^.\\n]{0,160}subtasks?",
+            "\\b22\\b"
+          ]
+        }
+      ]
+    }
+  },
+  "plantedNote": "The primary fact decides usedReference. dynamodb-design: the write-sharding suffix range of 200 (hash(id) % 200), in references/aws-best-practices.md only. sprint-planning: a rollover recreates tasks, so the subtasks and their points are lost and the board shows 22, in references/asana.md only. On origin/main both facts are inline in the skill body.",
+  "arms": {
+    "refs-main": { "role": "control", "ref": "main", "forced": false, "treatment": "origin/main as installed, skill bodies inline, skill on demand" },
+    "refs-main-forced": { "role": "control", "ref": "main", "forced": true, "treatment": "refs-main plus the forced-load prefix; shows whether the fact reaches the answer when the body carries it" },
+    "refs-pr155": { "role": "reference", "ref": "pr155", "forced": false, "treatment": "head of PR 155 as installed; the detail moved to references/" },
+    "refs-pr155-forced": { "role": "reference", "ref": "pr155", "forced": true, "treatment": "refs-pr155 plus the forced-load prefix, so the skill reliably loads" },
+    "refs-asana": { "role": "reference", "ref": "asana", "forced": false, "treatment": "Asana fold as installed; the rollover moved to references/asana.md" },
+    "refs-asana-forced": { "role": "reference", "ref": "asana", "forced": true, "treatment": "refs-asana plus the forced-load prefix" },
+    "refs-readable": { "role": "readable", "ref": "pr155", "forced": true, "treatment": "positive control: PR 155 tree, forced load, and an excerpt of the reference inside the workspace at references/aws-best-practices.md (task refs-dynamodb-readable)" }
+  },
+  "groups": [
+    { "arm": "refs-main", "entry": "k-architect", "tasks": ["refs-dynamodb-design"], "prefixSkill": null },
+    { "arm": "refs-main", "entry": "k-product-manager", "tasks": ["refs-sprint-capacity"], "prefixSkill": null },
+    { "arm": "refs-main-forced", "entry": "k-architect", "tasks": ["refs-dynamodb-design"], "prefixSkill": "dynamodb-design" },
+    { "arm": "refs-main-forced", "entry": "k-product-manager", "tasks": ["refs-sprint-capacity"], "prefixSkill": "asana-sprint-planning" },
+    { "arm": "refs-pr155", "entry": "k-architect", "tasks": ["refs-dynamodb-design"], "prefixSkill": null },
+    { "arm": "refs-pr155-forced", "entry": "k-architect", "tasks": ["refs-dynamodb-design"], "prefixSkill": "dynamodb-design" },
+    { "arm": "refs-asana", "entry": "k-product-manager", "tasks": ["refs-sprint-capacity"], "prefixSkill": null },
+    { "arm": "refs-asana-forced", "entry": "k-product-manager", "tasks": ["refs-sprint-capacity"], "prefixSkill": "sprint-planning" },
+    { "arm": "refs-readable", "entry": "k-architect", "tasks": ["refs-dynamodb-readable"], "prefixSkill": "dynamodb-design" }
+  ],
+  "creditEstimate": {
+    "unit": "credits per run, mid estimate",
+    "basis": "About 3 credits a run for a single-agent document task on this model (earlier runs: k-product-manager alone 2.9, n=6; k-tpm alone 5.1, n=7). The architect is set a little higher because its skill and reference are long.",
+    "lowFactor": 0.6,
+    "highFactor": 1.6,
+    "budgetFactor": 1.5,
+    "perRun": { "k-architect": 3.5, "k-product-manager": 3 }
+  }
+}

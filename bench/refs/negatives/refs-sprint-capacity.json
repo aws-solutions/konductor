@@ -1,0 +1,314 @@
+{
+  "loosened": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "cases": [
+    {
+      "name": "RS1 phrased differently",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "Sprint 15 capacity: 3 x 10 minus 3 days of leave = 27 points.\n"
+      }
+    },
+    {
+      "name": "RS1 near miss 1",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Sprint 15 capacity: 30 points.\n"
+      }
+    },
+    {
+      "name": "RS1 near miss 2",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "The plan carries 27 tasks.\n"
+      }
+    },
+    {
+      "name": "RS1b phrased differently",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "Chi is on leave for 3 days, which takes capacity down to 27.\n"
+      }
+    },
+    {
+      "name": "RS1b near miss 1",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Chi is on leave.\n"
+      }
+    },
+    {
+      "name": "RS1b near miss 2",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Capacity is 30 points for 3 people.\n"
+      }
+    },
+    {
+      "name": "RS2a phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "T-101 is now due 27 March 2026.\n"
+      }
+    },
+    {
+      "name": "RS2a near miss 1",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "T-101 keeps its due date of 2026-03-13.\n"
+      }
+    },
+    {
+      "name": "RS2a near miss 2",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Sprint 15 ends 2026-03-27.\n"
+      }
+    },
+    {
+      "name": "RS2b phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "Billing report moves to Mar 26.\n"
+      }
+    },
+    {
+      "name": "RS2b near miss 1",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "T-102 is due 2026-03-12.\n"
+      }
+    },
+    {
+      "name": "RS2b near miss 2",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Billing report moves to the next sprint.\n"
+      }
+    },
+    {
+      "name": "RS3 phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "Once the rollover runs, the board shows 22 of 27 points.\n"
+      }
+    },
+    {
+      "name": "RS3 near miss 1",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Once the rollover runs, the board shows 27 of 27 points.\n"
+      }
+    },
+    {
+      "name": "RS3 near miss 2",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "There are 22 days left in March.\n"
+      }
+    },
+    {
+      "name": "RS4 phrased differently",
+      "check": 9,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "The actual load is 27 of 27, exactly full.\n"
+      }
+    },
+    {
+      "name": "RS4 near miss 1",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "The real load is 22 of 27.\n"
+      }
+    },
+    {
+      "name": "RS4 near miss 2",
+      "check": 9,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "The total capacity is 27 points.\n"
+      }
+    },
+    {
+      "name": "RS5 phrased differently",
+      "check": 10,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "The recreated task does not keep its subtasks.\n"
+      }
+    },
+    {
+      "name": "RS5 near miss 1",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "T-103 has two subtasks.\n"
+      }
+    },
+    {
+      "name": "RS5 near miss 2",
+      "check": 10,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "The subtasks move along with the parent task.\n"
+      }
+    },
+    {
+      "name": "RS5b phrased differently",
+      "check": 11,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "T-103 arrives with no points, so the 5 points on its subtasks vanish.\n"
+      }
+    },
+    {
+      "name": "RS5b near miss 1",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "T-103 is the audit log migration.\n"
+      }
+    },
+    {
+      "name": "RS5b near miss 2",
+      "check": 11,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "The audit task keeps all 5 points.\n"
+      }
+    },
+    {
+      "name": "RS6 phrased differently",
+      "check": 12,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "Recreate the subtasks by hand under the new T-103.\n"
+      }
+    },
+    {
+      "name": "RS6 near miss 1",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "The subtasks are mentioned in the plan.\n"
+      }
+    },
+    {
+      "name": "RS6 near miss 2",
+      "check": 12,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Nothing needs doing for T-103.\n"
+      }
+    },
+    {
+      "name": "RS6b phrased differently",
+      "check": 13,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "Warn the team about the lost subtasks and get a yes before running it.\n"
+      }
+    },
+    {
+      "name": "RS6b near miss 1",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Run the rollover now.\n"
+      }
+    },
+    {
+      "name": "RS6b near miss 2",
+      "check": 13,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Please confirm the due dates.\n"
+      }
+    },
+    {
+      "name": "RS7 phrased differently",
+      "check": 14,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "docs/rollover-plan.md": "The sprint is exactly full at 27 points, with no headroom.\n"
+      }
+    },
+    {
+      "name": "RS7 near miss 1",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "The plan has three tasks.\n"
+      }
+    },
+    {
+      "name": "RS7 near miss 2",
+      "check": 14,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "docs/rollover-plan.md": "Ana owns T-101.\n"
+      }
+    }
+  ]
+}
