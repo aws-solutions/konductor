@@ -68,7 +68,8 @@ not per individual commit.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
   and is never read or written through a symlink. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
-  instruction-like text after the date and origin tag.
+  instruction-like text after the date and origin tag, and reads the text of a leading `[label]`
+  or `[label](url)` as entry text.
   Orchestrators never bypass denials or read unnamed secrets.
 - `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
