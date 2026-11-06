@@ -6,7 +6,7 @@
 //! - Claude Code: `.claude/agents/<id>.md`, and the tools in the `tools` key of its front matter, as written there. A
 //!   definition with no `tools` key makes every tool available and pre-approves none.
 //!
-//! The order on Kiro is assumed until step 1f records it. An install made with another `--target` is seen only when
+//! The order on Kiro is assumed until step 1f-1 records it. An install made with another `--target` is seen only when
 //! that folder is the project root or the home folder.
 
 use std::fs;
