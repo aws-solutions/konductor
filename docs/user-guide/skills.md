@@ -175,8 +175,8 @@ Writing and reviewing code.
 | `adversarial-code-review-pass-integrity` | One parallel pass, scoped to data integrity: multi-item mutations, atomicity, ordering, idempotency. | Same — spawned by the coordinator, not called on its own. | `k-architect`, `k-developer` |
 | `adversarial-code-review-pass-schema` | One parallel pass, scoped to schema and contract: API/schema/type changes, backward compatibility, validation completeness. | Same — spawned by the coordinator, not called on its own. | `k-architect`, `k-developer` |
 | `historical-issues-registry` | Loads prior review state for a pull request, then filters new findings that duplicate ones already fixed or already declined by a human reviewer. | Reviewing a second or third revision of the same change, to stop the same comment reappearing. | `k-architect` |
-| `code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
-| `aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
+| `k-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
+| `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
 | `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer` |
 | `git-merge` | Branch merges — feature into mainline, dev into mainline, release merges. | Merging anything. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
 | `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-developer` |
@@ -233,8 +233,8 @@ points to the new name.
 
 | Old name | Load instead |
 | --- | --- |
-| `asdlc-aspect-review` | `aspect-review` |
-| `asdlc-code-simplifier` | `code-simplifier` |
+| `asdlc-aspect-review` | `k-aspect-review` |
+| `asdlc-code-simplifier` | `k-code-simplifier` |
 | `document-formats` | `docx-conversion` |
 
 ---

@@ -287,7 +287,7 @@ followed by `Fix these issues? [y/n]`.
 | | |
 | --- | --- |
 | **SOPs** | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` |
-| **Skills** | 27 — backend and frontend development and review, `infra-validation`, `code-review`, `git-workflow`, `code-simplifier`, `design-impact-review`, `find-aws-skills`, `security-remediation`, the three `adversarial-code-review-pass-*` skills, `verification`, and others |
+| **Skills** | 27 — backend and frontend development and review, `infra-validation`, `code-review`, `git-workflow`, `k-code-simplifier`, `design-impact-review`, `find-aws-skills`, `security-remediation`, the three `adversarial-code-review-pass-*` skills, `verification`, and others |
 | **MCP** | `aws-mcp`, same as the architect |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | `k-quality-assurance` (Kiro CLI only) |

@@ -82,10 +82,11 @@ not per individual commit.
 - `architecture-diagram-generation` now targets plain draw.io (diagrams.net) XML and drops the
   rules that served one draw.io-based tool. It places S3 with the regional services, since each
   bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
-- Two review skills drop a legacy prefix and are now `aspect-review` and `code-simplifier`.
-  `document-formats` only ever handled Word files, so it is now `docx-conversion` and its
-  description names `.docx`. A stub under each old name says which skill to load instead; the
-  stubs are removed in the next release (84 skills, 3 of them stubs).
+- Two review skills swap a legacy prefix for `k-` and are now `k-aspect-review` and
+  `k-code-simplifier`. `document-formats` only ever handled Word files, so it is now
+  `docx-conversion` and its description names `.docx`. A stub under each old name says
+  which skill to load instead; the stubs are removed in the next release (84
+  skills, 3 of them stubs).
 - The user-guide HTML sync tool's verify-run exit-code edits now carry their final text, so the
   tool can write the bundles again.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
@@ -163,7 +164,7 @@ not per individual commit.
 - Skill bodies no longer contradict themselves or the codebase. `backend-development` and
   `backend-review` keep a facade, factory or repository layering only when the codebase already
   uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
-  TDD's RED phase to code changes, and `code-simplifier` runs the tests before and after
+  TDD's RED phase to code changes, and `k-code-simplifier` runs the tests before and after
   and reports each change with its reason. The deliberation panel offer is defined once, in
   `deliberation-panel`, and repeated paragraphs and tables are cut from several skills.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID

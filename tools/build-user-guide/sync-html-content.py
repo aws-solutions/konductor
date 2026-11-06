@@ -341,18 +341,18 @@ EDITS = [
     # ---- skill renames, with one-release stubs under the old names ----------
     # Done here, not in naming.py: the stubs keep the old names shipped, and the
     # catalog must still list them.
-    ("skills catalog: code-simplifier row",
+    ("skills catalog: k-code-simplifier row",
      '{"k":"asdlc-code-simplifier","v":"Simplifies code',
-     '{"k":"code-simplifier","v":"Simplifies code'),
-    ("skills catalog: aspect-review row",
+     '{"k":"k-code-simplifier","v":"Simplifies code'),
+    ("skills catalog: k-aspect-review row",
      '{"k":"asdlc-aspect-review","v":"Parallel n-aspect review',
-     '{"k":"aspect-review","v":"Parallel n-aspect review'),
+     '{"k":"k-aspect-review","v":"Parallel n-aspect review'),
     ("skills catalog: docx-conversion row",
      '{"k":"document-formats","v":"Reads and writes .docx via pandoc. —',
      '{"k":"docx-conversion","v":"Converts .docx files to and from Markdown with pandoc. —'),
     ("agents card: developer skills",
      "git-workflow, asdlc-code-simplifier, design-impact-review",
-     "git-workflow, code-simplifier, design-impact-review"),
+     "git-workflow, k-code-simplifier, design-impact-review"),
     ("agents card: researcher skills",
      "sdlc-navigator, document-formats, deliberation-panel",
      "sdlc-navigator, docx-conversion, deliberation-panel"),
@@ -363,8 +363,8 @@ EDITS = [
      'sec("sk-coverage", "Coverage", "Coverage", {',
      'sec("sk-renamed", "Renamed skills — 3", "Renamed skills — 3", {"paras":["Each stub keeps an old '
      'name loadable for one release and is removed in the next. Its body only points to the new name."],'
-     '"h1":"OLD NAME","h2":"LOAD INSTEAD","rows":[{"k":"asdlc-aspect-review","v":"aspect-review"},'
-     '{"k":"asdlc-code-simplifier","v":"code-simplifier"},{"k":"document-formats","v":"docx-conversion"}]}),\n'
+     '"h1":"OLD NAME","h2":"LOAD INSTEAD","rows":[{"k":"asdlc-aspect-review","v":"k-aspect-review"},'
+     '{"k":"asdlc-code-simplifier","v":"k-code-simplifier"},{"k":"document-formats","v":"docx-conversion"}]}),\n'
      '      sec("sk-coverage", "Coverage", "Coverage", {'),
 ]
 

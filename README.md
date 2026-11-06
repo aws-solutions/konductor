@@ -340,7 +340,7 @@ agent's `skills:` frontmatter is injected in full at session start; other skills
 | Documentation & writing | 4 | `docx-conversion`, `doc-accuracy-analyzer`, `humanize-writing`, `agents-md-authoring` |
 | Research & security | 4 | `external-research`, `security-remediation`, `find-aws-skills`, `about-konductor` |
 | Kiro spec generation | 3 | `kiro-requirements-generation`, `kiro-design-generation`, `kiro-task-generation` |
-| Rename stubs (removed next release) | 3 | old names that point to `aspect-review`, `code-simplifier` and `docx-conversion` |
+| Rename stubs (removed next release) | 3 | old names that point to `k-aspect-review`, `k-code-simplifier` and `docx-conversion` |
 
 Browse them all in the [skills catalog](docs/user-guide/skills.md).
 
