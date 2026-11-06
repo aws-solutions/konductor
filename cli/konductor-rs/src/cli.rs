@@ -4,10 +4,9 @@
 // spec file). The hidden `__dump_schema` command (see cli/schema.rs) dumps
 // the live command tree as JSON for external validation.
 //
-// `metrics` is a stub: it parses and exits 0 but has no real logic yet.
-// Every other command has real behavior in its own module (cli/install.rs,
+// Every command has real behavior in its own module (cli/install.rs,
 // cli/update.rs, cli/uninstall.rs, cli/synth/mod.rs, cli/config.rs,
-// cli/init.rs, cli/doctor.rs).
+// cli/init.rs, cli/doctor.rs, cli/metrics/).
 //
 // ── Exit-code contract (Engineering Design §6) ─────────────────────────────
 //   0 = all passed        1 = halted        2 = unresolved CRITICAL gate
@@ -32,6 +31,7 @@ pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
 mod logging;
+mod metrics;
 pub(crate) mod output;
 pub(crate) mod report;
 pub(crate) mod schema;
@@ -401,15 +401,18 @@ pub enum Commands {
         action: ConfigAction,
     },
 
-    /// Show Konductor usage/run metrics (stub).
+    /// Show token and credit usage of Konductor agent sessions.
     ///
-    /// Hidden from normal --help since it has no real implementation yet;
-    /// stays fully invokable, only its --help listing is suppressed.
-    #[command(hide = true)]
+    /// Scans local Claude Code and Kiro session files, keeps sessions run
+    /// by agents Konductor installed, and reports each harness in its
+    /// native unit (tokens or credits). Local only; nothing is sent.
     Metrics {
-        /// Time window to report metrics for, e.g. "7d", "24h".
+        /// Time window, e.g. "24h", "7d", "4w". Defaults to 7d.
         #[arg(long)]
         since: Option<String>,
+        /// How to group rows.
+        #[arg(long, value_enum, default_value = "agent")]
+        by: metrics::GroupBy,
     },
 
     /// Dump the live command tree as JSON (internal, for schema tooling).
@@ -1683,37 +1686,38 @@ mod tests {
         }
     }
 
-    // ── `metrics` hidden-from-help regression ──────────────────────────
+    // ── `metrics` ──────────────────────────────────────────────────────
 
-    /// Pins `#[command(hide = true)]` on `Commands::Metrics`.
     #[test]
-    fn metrics_does_not_appear_in_top_level_help() {
+    fn metrics_appears_in_top_level_help() {
         let help_text = Cli::command().render_help().to_string();
-        assert!(
-            !help_text.contains(Commands::METRICS),
-            "konductor --help must not list 'metrics' -- it has no real \
-             implementation yet, got:\n{help_text}"
-        );
+        assert!(help_text.contains(Commands::METRICS), "got:\n{help_text}");
     }
 
-    /// Hiding `metrics` from `--help` must never silently become removing
-    /// it: `konductor metrics` still parses to `Commands::Metrics` and
-    /// still dispatches to its not-implemented stub, exiting 0.
     #[test]
-    fn metrics_still_parses_and_dispatches() {
-        let cli = Cli::try_parse_from(["konductor", Commands::METRICS])
-            .expect("`konductor metrics` must still parse even though it is hidden from --help");
-        let command = cli
-            .command
-            .expect("a command must be present for `konductor metrics`");
-        assert!(
-            matches!(command, Commands::Metrics { since: None }),
-            "expected Commands::Metrics {{ since: None }}, got {command:?}"
-        );
+    fn metrics_parses_since_and_by() {
+        let cli = Cli::try_parse_from([
+            "konductor",
+            Commands::METRICS,
+            "--since",
+            "24h",
+            "--by",
+            "model",
+        ])
+        .expect("metrics flags must parse");
+        assert!(matches!(
+            cli.command,
+            Some(Commands::Metrics { since: Some(ref s), by: metrics::GroupBy::Model }) if s == "24h"
+        ));
+    }
+
+    #[test]
+    fn metrics_rejects_bad_since_with_usage_exit() {
+        let command = Commands::Metrics {
+            since: Some("7x".into()),
+            by: metrics::GroupBy::Agent,
+        };
         let exit_code = dispatch::dispatch(command, false, false, output::ColorMode::disabled());
-        assert_eq!(
-            exit_code, 0,
-            "`konductor metrics` must still dispatch and exit 0 (its stub behavior is unchanged)"
-        );
+        assert_eq!(exit_code, EXIT_USAGE_ERROR);
     }
 }
