@@ -687,3 +687,27 @@ fn a_claude_agent_that_sets_permission_hooks_or_servers_shows_the_key_names_and_
     assert!(text.contains("also sets: permissionMode, hooks, mcpServers\n"));
     assert!(!text.contains("bypassPermissions"));
 }
+
+#[test]
+fn the_lenient_reader_rejects_a_number_too_large_for_an_f64_and_the_strict_reader_is_unchanged() {
+    use workflow_core::json::{parse, parse_lenient};
+    for number in ["1e999", "1e400", "1E+309", "-1e999", "1.0e309"] {
+        let text = format!(r#"{{"name":"k-a","x":{number}}}"#);
+        assert!(parse_lenient(&text).is_err(), "{number}");
+        // The strict reader, used for the workflow files, keeps accepting it.
+        assert!(parse(&text).is_ok(), "{number}");
+    }
+    // A number that fits stays readable, whatever its form.
+    for number in [
+        "1e308",
+        "1.7e308",
+        "1e-999",
+        "0.5",
+        "-0",
+        "18446744073709551616",
+        "12345678901234567890",
+    ] {
+        let text = format!(r#"{{"name":"k-a","x":{number}}}"#);
+        assert!(parse_lenient(&text).is_ok(), "{number}");
+    }
+}

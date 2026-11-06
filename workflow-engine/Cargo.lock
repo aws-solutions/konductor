@@ -160,6 +160,7 @@ name = "workflow-adapters"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "saphyr-parser",
  "workflow-core",
 ]
 
