@@ -82,3 +82,18 @@ def test_spawned_writer_worktrees_are_merged_before_the_gate():
     assert "integrated tree" in _direct_work()
     protocol = (ROOT / "skills" / "delegation-protocol" / "SKILL.md").read_text(encoding="utf-8")
     assert "integration tree" in protocol
+
+
+ROUTING_SENTENCE = "route it to that specialist instead of doing it yourself"
+
+
+def test_routing_rules_carry_the_specialist_skill_routing_sentence():
+    text = (ROOT / "context" / "k-orchestrator-routing-rules.md").read_text(encoding="utf-8")
+    assert ROUTING_SENTENCE in text
+
+
+def test_direct_work_never_routes_a_listed_skill_away():
+    text = _direct_work()
+    assert ROUTING_SENTENCE not in text
+    assert "Load a skill yourself when your skill tool lists it" in text
+    assert "A skill you can load is never a reason to delegate" in text
