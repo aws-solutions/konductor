@@ -127,3 +127,20 @@ def test_unparsable_pin_fails_the_section(repo_copy):
     section = lint_section_output(repo_copy, "          RUST_LINT_TOOLCHAIN: stable\n")
     assert f"FAIL  RUST_LINT_TOOLCHAIN in validate-pr.yml is 'stable'; it {EXPECTED_SHAPE}" in section
     assert "ok" not in section
+
+
+CLI_RS = REPO_ROOT / "cli" / "konductor-rs" / "src" / "cli.rs"
+
+
+def test_config_stays_withdrawn_and_is_found_as_a_hidden_command():
+    assert "config" in check_guide_facts.WITHDRAWN_COMMANDS
+    assert "config" in check_guide_facts.hidden_commands(CLI_RS.read_text(encoding="utf-8"))
+
+
+def test_existence_check_accepts_a_hidden_command_missing_from_the_readme():
+    assert check_guide_facts.withdrawn_command_problem("config", ["init"], {"config"}) is None
+
+
+def test_existence_check_fails_for_a_name_in_neither_source():
+    problem = check_guide_facts.withdrawn_command_problem("nosuchcmd", ["init"], {"config"})
+    assert "cli/README.md does not declare it and cli.rs has no hidden command of that name" in problem

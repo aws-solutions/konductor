@@ -207,8 +207,8 @@ SOP_EDITS += [
      '{"k":"2 (EXIT_CRITICAL_GATE)","v":"Unresolved gating finding: an open finding at or above the effective threshold. Emitted by verify-run; a bad invocation never exits 2"},'
      '{"k":"3 (EXIT_BUDGET_EXCEEDED)","v":"Budget exceeded. Emitted by verify-run when a feature\'s fix cycles go above the cap"},'
      '{"k":"6 (EXIT_SUCCESS_WITH_WARNINGS)","v":"Everything the command was responsible for succeeded, but something peripheral did not \u2014 today, uninstall when a tracked --link-bin symlink could not be removed, or verify-run when a run passed with a skipped gate phase"},'
-     '{"k":"64 (EXIT_USAGE_ERROR)","v":"Usage error (EX_USAGE) \u2014 a bad flag, unknown command, missing argument, invalid value, or an invalid config. For verify-run, argument problems only (including a --root that is not a directory)"},'
-     '{"k":"65 (EXIT_VERIFY_FAILED)","v":"A verification failed \u2014 a checksum mismatch on a fetched install source, or an unsupported ~/.konductor/installs schema version. For verify-run, any content failure: an unusable session file (unreadable, not UTF-8, invalid YAML, a rejected tag or key, a symlink, outside --root, over 1 MiB) or config, a missing gate fact, an inconsistent session record, or a run still in progress without --allow-running"},'),
+     '{"k":"64 (EXIT_USAGE_ERROR)","v":"Usage error (EX_USAGE) \u2014 a bad flag, unknown command, missing argument, invalid value, or an invalid config. For verify-run, argument problems only (including a --root that is not a directory, or a --max-fix-cycles value that is not a non-negative integer)"},'
+     '{"k":"65 (EXIT_VERIFY_FAILED)","v":"A verification failed \u2014 a checksum mismatch on a fetched install source, or an unsupported ~/.konductor/installs schema version. For verify-run, any content failure: an unusable session file (unreadable, not UTF-8, invalid YAML, a rejected tag or key, a symlink, outside --root, over 1 MiB) or config, a missing gate fact, an inconsistent session record (including a started or completed phase after an earlier phase still PENDING), a recorded max_fix_cycles above a pinned --max-fix-cycles (reason CAP_RAISED), or a run still in progress without --allow-running"},'),
     ("exit codes: config errors under verify-run",
      '"paras":["All exit 64."]',
      '"paras":["All exit 64, except under verify-run, where an invalid config exits 65."]'),
@@ -1089,21 +1089,4 @@ SOP_EDITS += [
     ("reference: policy tree lists the SOP list file",
      'Declarative policy shipped with the CLI\\n│       ├── config.yml            Default configuration\\n│       ├── severity-schema.yml   Finding severities\\n│       └── scope-table.yml       Change tiers',
      'Declarative policy; the CLI embeds config.yml only\\n│       ├── config.yml            Default configuration\\n│       ├── severity-schema.yml   Finding severities\\n│       ├── scope-table.yml       Change tiers\\n│       └── sop-orchestration.yml Gated SOP list, repository lint input'),
-]
-
-# verify-run --max-fix-cycles: append-style edits on top of the verify-run rows above.
-SOP_EDITS += [
-    ("exit codes: 64 pinned cap",
-     "argument problems only (including a --root that is not a directory)",
-     "argument problems only (including a --root that is not a directory, or a --max-fix-cycles value that is not a non-negative integer)"),
-    ("exit codes: 65 pinned cap",
-     "an inconsistent session record, or a run still in progress without --allow-running",
-     "an inconsistent session record, a recorded max_fix_cycles above a pinned --max-fix-cycles (reason CAP_RAISED), or a run still in progress without --allow-running"),
-]
-
-# verify-run phase order: a started or completed phase after an unstarted one.
-SOP_EDITS += [
-    ("exit codes: 65 phase order",
-     "an inconsistent session record, a recorded max_fix_cycles above a pinned",
-     "an inconsistent session record (including a started or completed phase after an earlier phase still PENDING), a recorded max_fix_cycles above a pinned"),
 ]
