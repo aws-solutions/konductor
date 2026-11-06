@@ -60,6 +60,10 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- `about-konductor` and `design-doc-guidelines` load less up front. CLI, install-check, and model
+  detail, and the rules for multi-document designs and renames, now live under each skill's
+  `references/` and load only when the task needs them. `design-doc-guidelines` uses generic
+  examples for technical accuracy and threat models.
 
 ### Fixed
 
