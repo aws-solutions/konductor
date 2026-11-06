@@ -59,7 +59,7 @@ Output a markdown report in this format:
 
 | Claim                                         | Service           | Status     | Evidence                                       | Correction                                                       |
 | --------------------------------------------- | ----------------- | ---------- | ---------------------------------------------- | ---------------------------------------------------------------- |
-| "DynamoDB Streams filter patterns support OR" | DynamoDB Streams  | INCORRECT  | https://docs.aws.amazon.com/...                | Filter patterns do not support OR — use multiple Lambda triggers |
+| "S3 event notifications deliver to SQS FIFO"  | S3                | INCORRECT  | https://docs.aws.amazon.com/...                | FIFO queues aren't a supported destination; route via EventBridge |
 | "Lambda max timeout is 15 minutes"            | Lambda            | CONFIRMED  | https://docs.aws.amazon.com/...                | —                                                                |
 | "EventBridge Pipes GA in ap-south-2"          | EventBridge Pipes | UNVERIFIED | Searched regional table; ap-south-2 not listed | Flag for human review                                            |
 

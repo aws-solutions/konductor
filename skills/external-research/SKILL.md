@@ -58,9 +58,9 @@ Always prefer Tier 1–2 sources. Use Tier 3–4 only to supplement or when high
 Example:
 
 ```
-### Finding: S3 Event Notifications support SQS FIFO queues (since Nov 2023)
+### Finding: S3 Event Notifications can't target SQS FIFO queues directly; route them through EventBridge
 - **Source:** https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html
-- **Version:** Current (verified May 2025)
+- **Version:** Current (verified Nov 2026)
 - **Confidence:** High (official AWS docs)
 ```
 
