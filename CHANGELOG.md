@@ -77,6 +77,8 @@ not per individual commit.
 - `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
   `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
   introduction is now one overview.
+- `e2e-test-strategy` keeps its Stage 9 report template in `references/report-template.md` and
+  opens it only when writing the report.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
