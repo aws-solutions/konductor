@@ -911,8 +911,6 @@ Based on architecture:
 
 **Objective:** Create E2E test strategy document with all analysis and recommendations, including detailed test specifications in appendix.
 
-**Report Structure:**
-
 Open `references/report-template.md` (relative to this file) when you write the Stage 9 report.
 
 **Save Report:**
@@ -981,4 +979,3 @@ Next Steps:
 - Could define retry strategy for flaky network-dependent tests
 
 Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
-```
