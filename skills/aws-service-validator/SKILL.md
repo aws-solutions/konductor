@@ -81,7 +81,6 @@ After producing the report, confirm:
 
 The fact-check gate passes when:
 
-- **0 INCORRECT findings** remain unaddressed in the document
-- All INCORRECT findings are either corrected inline or flagged with `> ⚠️ INCORRECT: <correction>` callouts
+- **0 INCORRECT findings** remain: each one is corrected inline. A `> ⚠️ INCORRECT: <correction>` callout marks a fix still owed, not a pass
 - UNVERIFIED findings are flagged with `> ⚠️ UNVERIFIED: <what was searched>` callouts
 - The validation report is written to `docs/design/<name>-aws-validation.md`, or to the path the caller gives

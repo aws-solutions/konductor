@@ -108,7 +108,7 @@ Produce the final artifact and present it to the engineer.
 The document is ready for principal engineer review when all of the following are true:
 
 - `design-doc-guidelines` maker-checker: **0 CRITICAL findings**
-- `doc-accuracy-analyzer`: **0 INCORRECT findings** (UNVERIFIED is acceptable with callouts)
+- `doc-accuracy-analyzer`: **0 INCORRECT findings**, each corrected in the text (UNVERIFIED is acceptable with callouts)
 - Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR findings**
 - `design-evaluation` confidence score: **≥ 3.0 average** across all sections
 

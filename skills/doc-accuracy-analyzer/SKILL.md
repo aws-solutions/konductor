@@ -1,6 +1,6 @@
 ---
 name: doc-accuracy-analyzer
-description: Use before submitting a design doc for review, after major revisions to a design doc, or when a reviewer flags factual concerns. The entry point for fact-checking a document. Extracts verifiable claims, routes AWS feature, limit, pricing and Region claims to aws-service-validator, investigates the rest against primary sources, and produces a structured accuracy report.
+description: Use to fact-check a document before submitting a design doc for review, after major revisions, or when a reviewer flags factual concerns. Extracts verifiable claims, routes AWS feature, limit, pricing and Region claims to aws-service-validator, investigates the rest against primary sources, and produces a structured accuracy report.
 version: 1.0.0
 ---
 
@@ -46,14 +46,14 @@ Search the source. Do not accept the document's assertion as evidence.
 
 ### Step 4: Classify Findings
 
-For each claim, assign a classification. Severity uses the same scale as the other checkers, so a gate can read it directly.
+For each claim, assign a classification. Severity uses the same scale as the other checkers, so a gate can read it directly. An IMPORTANT finding counts as resolved once it is corrected or flagged with a callout. A CRITICAL finding is resolved only by correcting the text.
 
 | Classification  | Definition                            | Severity   |
 | --------------- | ------------------------------------- | ---------- |
 | CONFIRMED       | Confirmed by primary source           | -          |
 | INCORRECT       | Contradicted by primary source        | CRITICAL   |
 | OVERSTATED      | True but exaggerated                  | IMPORTANT  |
-| UNVERIFIED      | No primary source found               | IMPORTANT  |
+| UNVERIFIED      | No primary source found               | SUGGESTION |
 | MISSING CONTEXT | True but incomplete without qualifier | SUGGESTION |
 
 The CONFIRMED, UNVERIFIED, and INCORRECT rows from `aws-service-validator` keep their status.
@@ -103,8 +103,8 @@ For each INCORRECT or OVERSTATED finding, provide:
 The document passes when:
 
 - 0 INCORRECT (CRITICAL) findings remain, including the routed AWS claims. A `> ⚠️ INCORRECT: <correction>` callout marks a fix still owed; the document passes once the text is corrected.
-- Every OVERSTATED finding is corrected or flagged with a callout.
-- Every UNVERIFIED finding carries a `> ⚠️ UNVERIFIED: <what was searched>` callout. UNVERIFIED never blocks on its own, because new services and internal facts often have no public source.
+- Every OVERSTATED (IMPORTANT) finding is corrected or flagged with a callout.
+- Every UNVERIFIED finding carries a `> ⚠️ UNVERIFIED: <what was searched>` callout. It is rated SUGGESTION, because new services and internal facts often have no public source.
 
 SUGGESTION findings never block.
 
