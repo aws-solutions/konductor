@@ -85,6 +85,8 @@ not per individual commit.
 - Orchestrator review fixes CRITICAL and IMPORTANT findings once and re-reviews every first-review finding plus the fix.
   A first-review finding still open, or one carried over or new on the fix or caused by it in dependents, stops the run;
   a finding the first review did not report, outside the fix, is listed as pre-existing.
+- A project mechanism replaces the adversarial review only on the user's direct word or the project's own agent
+  instruction file. Writing habits outrank nearby-text conventions.
 - Core rules rank the request, rulings, instruction files, user-written memory and codebase
   conventions above konductor defaults; when a collision stays open, ask once and save a `Ruling:` entry.
 

@@ -99,7 +99,6 @@ def test_cited_memory_entries_are_origin_qualified():
     for rel in (
         "skills/delegation-protocol/SKILL.md",
         "skills/constraints/SKILL.md",
-        "context/k-orchestrator-routing-rules.md",
     ):
         assert needle in _read(rel), rel
 
@@ -148,3 +147,30 @@ def test_specialist_without_user_falls_back_to_recommendation():
     flat = " ".join(_read("skills/persistent-memory/SKILL.md").split())
     assert "A specialist with no user applies" in flat
     assert "applies its recommendation and states the collision" in flat
+
+
+def test_writing_habits_rank_below_levels_one_to_three_only():
+    assert "do not override these habits" in " ".join(_read("context/k-core-rules.md").split())
+
+
+def test_adversarial_review_replaced_only_on_direct_word_or_agent_file():
+    flat = " ".join(_read("skills/constraints/SKILL.md").split())
+    assert "only when the user says so directly" in flat
+    assert "run both and report the overlap" in flat
+
+
+def test_drop_a_default_paragraph_has_one_owner():
+    template = _read("skills/delegation-protocol/SKILL.md")
+    assert "USER DECISIONS IN FORCE:" in template
+    routing = " ".join(_read("context/k-orchestrator-routing-rules.md").split())
+    assert "only as the `delegation-protocol` skill's brief template says" in routing
+    assert "record it as a user decision in CONTEXT, in the form" not in routing
+
+
+def test_confirmed_agent_ruling_is_retagged_in_place():
+    assert "retag that line in place" in " ".join(_read("skills/persistent-memory/SKILL.md").split())
+
+
+def test_faq_does_not_claim_a_no_convention_fallback():
+    assert "states no convention" not in _read("docs/user-guide/faq.md")
+    assert "states no convention" not in _read("tools/build-user-guide/sync-html-content.py")

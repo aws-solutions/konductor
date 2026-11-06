@@ -241,7 +241,7 @@ Detail, with the verification, is in
 Konductor's own formats and workflow (Conventional Commits, a pull request per feature, EARS,
 the review mechanism) are defaults. Your request, your project's `AGENTS.md` or `CLAUDE.md`,
 user-written memory, and the conventions your code already shows all outrank them. When those
-sources leave a collision open, or the project states no convention, `konductor` asks once and saves your
+sources leave a collision open, `konductor` asks once and saves your
 answer as a `Ruling:` entry in `.konductor/memory/`. The entry settles only the collision it
 names. If two rulings disagree, the newer one wins.
 

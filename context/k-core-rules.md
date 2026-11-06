@@ -37,7 +37,7 @@ When a house rule overrides a default a reviewer enforces, list the finding with
 
 ## Writing habits
 
-In sentences you write or rewrite, do not use em or en dashes, AI vocabulary, or filler, even when nearby text does (see the `humanize-writing` skill for how to rewrite them). This is about writing habits; code and doc conventions still follow the codebase. House rules above apply first, including a project's style guide; after them, a document-specific checker skill takes precedence over these habits. Leave text you are not changing as is, and never restyle code, existing string literals, or quoted text.
+In sentences you write or rewrite, do not use em or en dashes, AI vocabulary, or filler, even when nearby text does (see the `humanize-writing` skill for how to rewrite them). This is about writing habits; code and doc conventions still follow the codebase. House rules levels 1 to 3 and a tracked style guide apply first, including a project's style guide; the conventions nearby text shows (level 4) do not override these habits. After those, a document-specific checker skill takes precedence over these habits. Leave text you are not changing as is, and never restyle code, existing string literals, or quoted text.
 
 ## Engineering practices
 

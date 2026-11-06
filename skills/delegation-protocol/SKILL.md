@@ -48,6 +48,7 @@ MUST NOT DO:
 - Do NOT silently reduce scope
 
 CONTEXT: <File paths, patterns, constraints, handoff file references>
+  USER DECISIONS IN FORCE: <one entry per decision the specialist must take as given: the user's own words from a user turn, quoted verbatim, then -> the action and target they approve; "none" when there are none>
 ```
 
 Drop a default MUST DO / MUST NOT DO line that a house rule overrides and name the house rule in CONTEXT (its file and line, or its `[origin:user]` or untagged memory entry). The lines backed by NEVER rules 6 and 7 (comments, logging, scope) are dropped only on the user's own request. When the user asked to remove comments or logging, or confirmed disabling a protection, record that request as a user decision in CONTEXT (the `USER DECISIONS IN FORCE` line of the brief template) and drop the default MUST DO / MUST NOT DO line it overrides. When the user approved a scope reduction, record the approval the same way and keep `Do NOT silently reduce scope`, since anything beyond the approval is still a silent reduction (see the core rules' House rules section).
