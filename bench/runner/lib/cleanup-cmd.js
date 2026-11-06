@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-// The `gc` command of bench.js. It is a dry run until --apply is given.
+// The `gc` and `archive` commands of bench.js. Both are dry runs until --apply is given.
 
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const gc = require('./gc.js');
-const { KINDS } = require('./owned.js');
+const archive = require('./archive.js');
+const { KINDS, benchCommit } = require('./owned.js');
 
 const MIN_APPLY_AGE_MS = 3600 * 1000;
 
@@ -145,4 +146,44 @@ function cmdGc(opts) {
   }
 }
 
-module.exports = { cmdGc, formatPlan, entryView };
+async function cmdArchive(opts) {
+  try {
+    if (opts.restore !== undefined) {
+      const dir = str(opts.restore);
+      if (!dir) return fail('--restore needs a directory: bench.js archive --restore DIR');
+      const r = await archive.restoreArchives({ dir, apply: !opts['dry-run'], log: (m) => console.error(m) });
+      for (const x of r.results) console.log(`${x.status.padEnd(14)} ${x.rel}${x.note ? `  (${x.note})` : ''}`);
+      if (!r.results.length) console.log('no workspace archives found');
+      console.log(opts['dry-run'] ? 'dry run: nothing was extracted' : `restored ${r.results.filter((x) => x.status === 'restored').length} of ${r.results.length}`);
+      if (r.results.some((x) => x.status === 'refused' || x.status === 'failed')) process.exitCode = 1;
+      return;
+    }
+    const run = str(opts.run);
+    if (!run) return fail('archive needs --run DIR (or --restore DIR)');
+    const apply = Boolean(opts.apply);
+    if (opts['remove-originals'] && !apply) return fail('--remove-originals only works with --apply');
+    const plan = await archive.archiveRuns({
+      run, out: str(opts.out), compress: str(opts.compress) || 'auto', apply, removeOriginals: Boolean(opts['remove-originals']),
+      benchCommit: benchCommit(), log: (m) => console.error(m),
+    });
+    if (plan.refused) { console.error(`bench: archive refuses: ${plan.refused}`); process.exitCode = 1; return; }
+    console.log(apply ? 'bench archive: done' : 'bench archive: dry run, nothing is written or removed');
+    console.log(`run: ${plan.root}`);
+    console.log(`mode: ${plan.out ? `copy evidence and archives to ${plan.out}` : 'archives next to each workspace'}; compression: ${plan.algo}`);
+    let total = 0;
+    for (const r of plan.runs) {
+      total += r.workspaceBytes;
+      console.log(`  ${r.rel.padEnd(40)} ${String(r.entries).padStart(7)} entries  ${gc.formatBytes(r.workspaceBytes).padStart(9)}  ->  ${path.relative(plan.out || plan.root, r.archive)}`);
+    }
+    console.log(`${plan.runs.length} runs, ${gc.formatBytes(total)} of workspaces.`);
+    if (apply) {
+      const t = plan.manifest.totals;
+      console.log(`archives: ${gc.formatBytes(t.archiveBytes)}; all verified (listing and sha256). Manifest and ARCHIVE.md are in ${plan.out || plan.root}.`);
+      console.log(opts['remove-originals'] ? `removed ${plan.manifest.runs.filter((r) => r.originalRemoved).length} workspace directories` : 'workspaces kept; add --remove-originals to delete them after verification (needs --apply)');
+    } else console.log('Add --apply to write the archives. Add --remove-originals with it to delete the uncompressed workspaces once each archive is verified.');
+  } catch (e) {
+    fail(e.message);
+  }
+}
+
+module.exports = { cmdGc, cmdArchive, formatPlan, entryView };

@@ -33,6 +33,7 @@ const FLAGS = {
   'calibrate score': ['labels', 'key', 'kappa-min', 'agreement-min', 'spearman-min', 'save', 'criteria-pack'],
   'list-arms': ['arms', 'repo-root'],
   gc: ['root', 'older-than', 'kind', 'keep-last', 'apply', 'json', 'protect-file', 'protect', 'adopt'],
+  archive: ['run', 'out', 'compress', 'remove-originals', 'apply', 'restore', 'dry-run'],
   'cap list': ['cap', 'kind', 'all', 'base', 'repo-root', 'bench-dir', 'extra-tasks', 'init', 'json'],
   'cap audit': ['cap', 'kind', 'all', 'base', 'harness', 'repo-root', 'bench-dir', 'extra-tasks', 'out', 'public', 'json', 'update-baseline', 'force'],
   'cap variant': [
@@ -71,7 +72,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'va
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'allow-unisolated', 'gate-strict', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'apply',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'apply', 'remove-originals',
 ]);
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];

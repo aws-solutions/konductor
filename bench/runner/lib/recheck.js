@@ -17,6 +17,7 @@ const { loadTasks, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
 const { makeIsolation, workingMode } = require('./isolate.js');
 const { loadRun } = require('../../report/load.js');
+const { archivedWorkspace } = require('./archive.js');
 
 const checksRevision = (task) => crypto.createHash('sha256').update(JSON.stringify(task.checks)).digest('hex').slice(0, 12);
 
@@ -24,7 +25,9 @@ function skipReason(result, dir) {
   if (result.status === 'budget_skipped') return 'budget-skipped run';
   if (result.infraError) return 'infrastructure error';
   if (!result.checks?.length && !result.checksOriginal?.length) return 'run has no checks';
-  if (!fs.existsSync(path.join(dir, 'workspace'))) return 'no workspace snapshot';
+  if (!fs.existsSync(path.join(dir, 'workspace'))) {
+    return archivedWorkspace(dir) ? `workspace is archived (run: node bench/runner/bench.js archive --restore ${dir})` : 'no workspace snapshot';
+  }
   return null;
 }
 

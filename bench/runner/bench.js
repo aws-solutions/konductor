@@ -8,7 +8,7 @@
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
- *   node bench/runner/bench.js gc [--apply]   (reclaim what the bench made; dry run by default)
+ *   node bench/runner/bench.js gc [--apply] | archive --run DIR [--apply]   (reclaim what the bench made; dry run by default)
  *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
@@ -141,6 +141,13 @@ const USAGE = `Usage:
        and the study pid in its marker is gone. Every condition is checked again just before each deletion. Deletions are appended to <root>/.bench-gc.log.
        --keep-last N spares the newest N directories of each kind. --adopt writes a marker into an older directory you name, so it can be reclaimed later (a dry run unless --apply);
        nothing is ever adopted on its own. --protect add appends a path or glob to the protect file; --protect list prints it)
+  node bench/runner/bench.js archive --run DIR [--out DIR] [--compress auto|gzip|zstd] [--remove-originals] [--apply]
+  node bench/runner/bench.js archive --restore DIR [--dry-run]
+       (packs the workspace/ of every finished run under DIR into one workspace.tar.zst (zstd if installed) or workspace.tar.gz beside it, or under --out. result.json, stream.jsonl,
+       installed-agent.json, run-config.json, judgments*.json, summary.json, credit-ledger.jsonl and session/ stay as plain files (copied when --out is given). It writes ARCHIVE.md and
+       archive-manifest.json (sizes and sha256), re-reads every archive and compares its entry list and checksum with the workspace, and marks the archive directory kind archive, protect true,
+       so gc never deletes it. A dry run unless --apply. --remove-originals, with --apply, deletes each uncompressed workspace/ only after its archive is verified.
+       --restore checks each archive against archive-manifest.json and extracts workspace/ again where it is missing, so recheck works; it never overwrites an existing workspace/)
   node bench/runner/bench.js backfill --run DIR [--credits] [--skills] [--write] [--bench-dir DIR] [--repo-root DIR] [--extra-tasks DIR,DIR]
        (repairs finished runs from their stream.jsonl with the runner's own parsers. DIR is one results cell, for example <study>/claude.
        --credits (the default when no mode is given): engine v3 runs saved before the runner could read v3; rewrites credits, turn duration,
@@ -350,6 +357,7 @@ async function main(argv) {
   if (cmd === 'calibrate') return evalCommands.cmdCalibrate(opts);
   if (cmd === 'cap') return cmdCap(opts);
   if (cmd === 'gc') return cleanup.cmdGc(opts);
+  if (cmd === 'archive') return cleanup.cmdArchive(opts);
   console.error(USAGE);
   process.exitCode = cmd ? 2 : 0;
 }
