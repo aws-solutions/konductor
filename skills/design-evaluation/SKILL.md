@@ -103,4 +103,4 @@ Each item names the dimension it belongs to.
 - Testability and automation (9): could add chaos engineering scenarios for fault injection
 - Performance (4): could define SLOs and error budgets
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". If `scope_confirmed` is true, report all the findings and leave fixing to the caller without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". When invoked from a SOP, or `scope_confirmed` is true, report all the findings and leave fixing to the caller without asking.

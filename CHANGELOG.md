@@ -66,9 +66,10 @@ not per individual commit.
 - Design and planning skills no longer contradict themselves or point at sections that don't
   exist. The design review skills and their SOPs call the lowest finding tier SUGGESTION, as the
   other checkers do. `design-evaluation` lists missing artifacts before it scores and its gate
-  items map to its 10 dimensions, `plan-review` has a SHIP IT template and star rules that don't
-  overlap, and `trade-off-evaluator` writes to the caller's output directory or reports inline.
-  Two AWS examples that stated wrong facts now state checked ones.
+  items map to its 10 dimensions, which both design review SOPs now use. `plan-review` has a SHIP
+  IT template and star rules that don't overlap, and `trade-off-evaluator` writes to the caller's
+  output directory or reports inline. Two AWS examples that stated wrong facts now state checked
+  ones.
 
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
