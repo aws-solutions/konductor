@@ -165,10 +165,6 @@ fn persona_reason(error: &PersonaError) -> String {
     }
 }
 
-/// Rule 11 trusts a rules file under the home directory or at the
-/// project root. Outside the home, the install root is the project root
-/// when it is the working directory itself or a git checkout root that
-/// contains it.
 fn canonical(path: &Path) -> PathBuf {
     std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
@@ -185,6 +181,10 @@ fn logical_root(owning_root: &Path, home: Option<&Path>) -> PathBuf {
     .unwrap_or_else(|| owning_root.to_path_buf())
 }
 
+/// Rule 11 trusts a rules file under the home directory or at the
+/// project root. Outside the home, the install root is the project root
+/// when it is the working directory itself or a git checkout root that
+/// contains it.
 fn is_trusted_location(owning_root: &Path, home: Option<&Path>, cwd: &Path) -> bool {
     let root = canonical(owning_root);
     home.is_some_and(|home| root.starts_with(canonical(home)))
