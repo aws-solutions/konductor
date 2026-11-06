@@ -74,6 +74,12 @@ not per individual commit.
   or rough ask with no requirements document yet. `requirements-extraction` and
   `kiro-requirements-generation` say they need existing requirements or user stories, and that
   a bare request needs its user stories written first.
+- 26 more skill descriptions name the requests they cover in a "Use ..." sentence that fits
+  within the 160 characters the Kiro skill index keeps. `verification` and `git-merge` replace
+  "MUST USE" with a concrete trigger, and `adversarial-design-review`, `design-quality-check`,
+  `dom-inspection` and `socratic-elicitation`, which had none, gain one. `git-merge` now says
+  the default branch instead of `mainline`, and long descriptions such as
+  `historical-issues-registry` and `legacy-to-agentic-estimate` are shorter.
 
 ### Fixed
 
