@@ -38,6 +38,7 @@ not per individual commit.
   session-start hook, even under `--no-telemetry`, that points it at the routing rules, or prints a
   fallback when the install that wired it is outside your home directory and is not the project root.
   Only the mode line and the Step 1 pointer in the hook's output are instructions; the summary lines are a preview of the named rules file.
+  The pointer names an install under a symlinked home through the logical home for project and parent-of-project installs too.
 
 ### Changed
 

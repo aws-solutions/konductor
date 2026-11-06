@@ -169,9 +169,23 @@ fn persona_reason(error: &PersonaError) -> String {
 /// project root. Outside the home, the install root is the project root
 /// when it is the working directory itself or a git checkout root that
 /// contains it.
+fn canonical(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// `current_dir()` is physical; name an install under the home as the session knows the home.
+fn logical_root(owning_root: &Path, home: Option<&Path>) -> PathBuf {
+    home.and_then(|home| {
+        let rest = canonical(owning_root)
+            .strip_prefix(canonical(home))
+            .ok()
+            .map(Path::to_path_buf)?;
+        Some(home.join(rest))
+    })
+    .unwrap_or_else(|| owning_root.to_path_buf())
+}
+
 fn is_trusted_location(owning_root: &Path, home: Option<&Path>, cwd: &Path) -> bool {
-    let canonical =
-        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
     let root = canonical(owning_root);
     home.is_some_and(|home| root.starts_with(canonical(home)))
         || root == canonical(cwd)
@@ -372,18 +386,14 @@ pub(crate) fn dispatch_orchestration_hook(
     if own_install.is_some_and(|own| !same_dir(own, owning_root)) {
         return;
     }
-    // `current_dir()` is physical; name the home as the session knows it.
-    let persona_root = home
-        .as_deref()
-        .filter(|home| same_dir(owning_root, home))
-        .unwrap_or(owning_root);
+    let persona_root = logical_root(owning_root, home.as_deref());
     let output = decide(&resolve_user_mode(home.as_deref()), || {
         if !is_trusted_location(owning_root, home.as_deref(), cwd) {
             return Err(PersonaError::OutsideTrustedLocations {
-                install_root: persona_root.to_path_buf(),
+                install_root: persona_root.clone(),
             });
         }
-        load_persona(persona_root)
+        load_persona(&persona_root)
     });
     write_stdout(&render(&output));
 }
@@ -863,6 +873,27 @@ mod tests {
         );
         let pointer = pointer_line(Path::new(&long_path));
         assert!(HEADER.len() + pointer.len() + digest.len() <= MAX_PERSONA_BYTES);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_root_under_a_symlinked_home_is_named_through_the_logical_home() {
+        let scratch =
+            std::env::temp_dir().join(format!("konductor-logical-root-{}", std::process::id()));
+        let physical = scratch.join("physical");
+        std::fs::create_dir_all(physical.join("work")).unwrap();
+        let logical = scratch.join("logical");
+        std::os::unix::fs::symlink(&physical, &logical).unwrap();
+
+        assert_eq!(
+            logical_root(&physical.join("work"), Some(&logical)),
+            logical.join("work")
+        );
+        assert_eq!(logical_root(&physical, Some(&logical)), logical);
+        let elsewhere = scratch.join("elsewhere");
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        assert_eq!(logical_root(&elsewhere, Some(&logical)), elsewhere);
+        std::fs::remove_dir_all(&scratch).ok();
     }
 
     #[test]
