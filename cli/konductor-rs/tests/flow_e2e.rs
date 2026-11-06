@@ -112,6 +112,38 @@ fn codes_of(output: &Output) -> Vec<String> {
         .collect()
 }
 
+/// The text of a `flow check` with its `trust_hash`, which hashes the bytes of the file, taken out. Panics if the field
+/// is not there or is not 64 lowercase hex digits.
+fn without_trust_hash(text: &str) -> String {
+    let marker = "\"trust_hash\":\"";
+    let at = text.find(marker).expect("a trust_hash field");
+    let digits = &text[at + marker.len()..at + marker.len() + 64];
+    assert!(
+        digits
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
+        "{digits}"
+    );
+    assert_eq!(
+        &text[at + marker.len() + 64..at + marker.len() + 66],
+        "\",",
+        "{text}"
+    );
+    format!("{}{}", &text[..at], &text[at + marker.len() + 66..])
+}
+
+/// The two lines of a good plain `flow check`: the ok line, and the trust hash.
+fn ok_lines(output: &Output) -> (String, String) {
+    let text = stdout(output);
+    let mut lines = text.lines();
+    let ok = lines.next().expect("ok line").to_string();
+    let hash = lines.next().expect("hash line").to_string();
+    assert_eq!(lines.next(), None, "{text}");
+    let digits = hash.strip_prefix("trust hash: ").expect("trust hash line");
+    assert_eq!(digits.len(), 64, "{hash}");
+    (ok, hash)
+}
+
 // --- flow check ------------------------------------------------------------------------------------------------------
 
 #[test]
@@ -120,12 +152,12 @@ fn check_passes_on_the_hello_plan_example() {
     project.write("hello-plan.yml", &hello_plan());
     let output = project.flow(&["check", "hello-plan"]);
     assert_eq!(exit(&output), 0, "{}", stderr(&output));
-    assert_eq!(stdout(&output), "ok: hello-plan (project, 2 stages)\n");
+    assert_eq!(ok_lines(&output).0, "ok: hello-plan (project, 2 stages)");
 
     let output = project.flow(&["check", "hello-plan", "--json"]);
     assert_eq!(exit(&output), 0);
     assert_eq!(
-        stdout(&output),
+        without_trust_hash(&stdout(&output)),
         "{\"diagnostics\":[],\"errors\":0,\"infos\":0,\"name\":\"hello-plan\",\"scope\":\"project\",\"skipped\":[],\"summary\":{\"counts\":{\"stages\":2},\"valid\":true},\"warnings\":0}\n"
     );
 }
@@ -343,7 +375,7 @@ fn check_says_which_folder_the_workflow_came_from() {
     project.write_user("hello-plan.yml", &hello_plan());
     let output = project.flow(&["check", "hello-plan"]);
     assert_eq!(exit(&output), 0);
-    assert_eq!(stdout(&output), "ok: hello-plan (user, 2 stages)\n");
+    assert_eq!(ok_lines(&output).0, "ok: hello-plan (user, 2 stages)");
 }
 
 #[test]
@@ -353,7 +385,7 @@ fn a_project_file_that_is_passed_over_is_named_in_the_note_and_in_the_json() {
     project.write_user("hello-plan.yml", &hello_plan());
     let output = project.flow(&["check", "hello-plan"]);
     assert_eq!(exit(&output), 0);
-    assert_eq!(stdout(&output), "ok: hello-plan (user, 2 stages)\n");
+    assert_eq!(ok_lines(&output).0, "ok: hello-plan (user, 2 stages)");
     assert_eq!(
         stderr(&output),
         "note: Skipped the project file hello-plan.yml because it is over 256 KiB.\n"
@@ -419,7 +451,7 @@ fn an_unreadable_project_file_falls_through_to_the_user_file_and_says_so() {
     }
     let output = project.flow(&["check", "hello-plan"]);
     assert_eq!(exit(&output), 0, "{}", stderr(&output));
-    assert_eq!(stdout(&output), "ok: hello-plan (user, 2 stages)\n");
+    assert_eq!(ok_lines(&output).0, "ok: hello-plan (user, 2 stages)");
     assert_eq!(
         stderr(&output),
         "note: Skipped the project file hello-plan.yml because it could not be read.\n"
@@ -656,7 +688,12 @@ fn show_is_stable_across_two_key_orders() {
     assert_eq!(stdout(&shown_a), HELLO_PLAN_SHOWN);
     let checked_a = a.flow(&["check", "hello-plan", "--json"]);
     let checked_b = b.flow(&["check", "hello-plan", "--json"]);
-    assert_eq!(stdout(&checked_a), stdout(&checked_b));
+    // The trust hash is the one field that follows the bytes of the file.
+    assert_ne!(stdout(&checked_a), stdout(&checked_b));
+    assert_eq!(
+        without_trust_hash(&stdout(&checked_a)),
+        without_trust_hash(&stdout(&checked_b))
+    );
 }
 
 #[test]
@@ -687,15 +724,22 @@ fn show_names_no_machine_path() {
 }
 
 #[test]
-fn show_does_not_print_a_trust_hash() {
+fn only_check_prints_a_trust_hash() {
     let project = Project::new("no-trust");
     project.write("hello-plan.yml", &hello_plan());
     for args in [
         &["show", "hello-plan"][..],
-        &["check", "hello-plan", "--json"],
+        &["show", "hello-plan", "--json"],
     ] {
         assert!(!stdout(&project.flow(args)).contains("trust"), "{args:?}");
     }
+    let json = stdout(&project.flow(&["check", "hello-plan", "--json"]));
+    let plain = project.flow(&["check", "hello-plan"]);
+    let hash = ok_lines(&plain).1;
+    assert!(json.contains(&format!(
+        "\"trust_hash\":\"{}\"",
+        &hash["trust hash: ".len()..]
+    )));
 }
 
 #[test]
