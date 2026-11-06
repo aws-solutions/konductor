@@ -60,6 +60,9 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- `policy-validation` reads as one instruction set, without a pasted second prompt and role. It
+  keeps one Rules section, one IAM score rubric and one Iteration Progress template, and rates
+  findings CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate.
 
 ### Fixed
 
