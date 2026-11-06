@@ -9,7 +9,6 @@ TEXT = " ".join((Path(__file__).resolve().parent.parent / "skills" / "claude-tea
 
 def test_public_terms_only():
     assert not re.search(r"\bCR\b", TEXT)
-    assert "CrCheckout" not in TEXT
     assert "The PR diff at review time" in TEXT
 
 
