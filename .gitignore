@@ -46,3 +46,11 @@ browser-output/
 # see generated/claude-plugin/README.md.
 generated/claude-plugin/agents/
 generated/claude-plugin/skills/
+
+.worktree
+.agents
+node_modules/
+.DS_Store
+playwright-report/
+test-results/
+k-verify.workflow.json
