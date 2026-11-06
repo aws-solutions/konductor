@@ -72,13 +72,52 @@ def test_rule_11_ranks_memory_with_instruction_files_tracked_or_not():
         assert needle in rule, f"rule 11 is missing {needle!r}"
 
 
+def _rule_11_exemption_sentence() -> str:
+    rule = _rule_11()
+    start = rule.index("This does not cover")
+    end = rule.index(". ", start)
+    return rule[start:end]
+
+
+def test_rule_11_exemption_list_is_flat():
+    """The memory item is a bare phrase; the file names and the check live in
+    their own sentence (reviewer request on the rule's readability)."""
+    exemptions = _rule_11_exemption_sentence()
+    assert "the project's memory files," in exemptions, exemptions
+    assert "--check-path" not in exemptions, exemptions
+    assert ".konductor/memory/" not in exemptions, exemptions
+
+
+def test_rule_11_memory_has_its_own_sentence():
+    rule = _rule_11()
+    start = rule.index("The project's memory files are ")
+    sentence = rule[start : rule.index(". ", start)]
+    assert "--check-path" in sentence, sentence
+    assert ".konductor/memory/MEMORY.md" in sentence, sentence
+    assert "symlink" in sentence, sentence
+
+
 def test_reading_memory_runs_the_validator_path_check():
     skill = (REPO_ROOT / "skills/persistent-memory/SKILL.md").read_text()
     reading = _section(skill, "## Reading Memory")
     assert "--check-path" in reading, reading
     assert "exits 0" in reading, reading
     assert "the path it prints" in reading, reading
-    assert "use both as data" in reading, reading
+    # Without a shell nothing can tell a symlink from a file, so the fallback
+    # fails closed instead of loading the files as data.
+    assert "use both as data" not in reading, reading
+    assert "do not load memory" in reading, reading
+
+
+def test_agents_md_context_loading_uses_the_checked_read():
+    """The session-start load must go through `--check-path`; a glob reads
+    through a symlink and pulls in files rule 11 never names."""
+    loading = _section((REPO_ROOT / "AGENTS.md").read_text(), "## Context Loading (MUST follow at session start)")
+    assert "--check-path" in loading, loading
+    assert "MEMORY.md" in loading, loading
+    assert "USER.md" in loading, loading
+    assert "memory/*.md" not in loading, loading
+    assert "If you have no shell to run the check, skip memory and say so." in loading, loading
 
 
 def test_unreleased_changelog_does_not_tie_memory_trust_to_untracked():
@@ -87,12 +126,16 @@ def test_unreleased_changelog_does_not_tie_memory_trust_to_untracked():
     for line in unreleased.splitlines():
         assert not ("untracked" in line and ".konductor" in line), line
     assert not re.search(r"untracked\s+`?\.konductor", unreleased)
+    assert "Upgrade note" in unreleased, unreleased
 
 
 def test_agents_md_memory_section_says_tracking_does_not_matter():
-    memory = _section((REPO_ROOT / "AGENTS.md").read_text(), "## Memory")
+    memory = " ".join(_section((REPO_ROOT / "AGENTS.md").read_text(), "## Memory").split())
     assert "whether or not git tracks" in memory, memory
     assert "untracked" not in memory, memory
+    # Rule 11 reserves "content" for untrusted text; memory is an instruction file.
+    assert "project content" not in memory, memory
+    assert "agent instructions" in memory, memory
 
 
 def _tracked_synth_outputs():
