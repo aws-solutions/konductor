@@ -29,24 +29,16 @@ Authentication (login, MFA, session), Input Validation (injection, XSS, CSRF), A
 
 Frontend (browser-based attacks, client-side validation bypass), Backend (API-level attacks, business logic bypass), and Infrastructure (misconfiguration, network exposure).
 
-## Execution
-
-When this skill is activated, use the following as your full instruction set for generating security tests. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Security Test Generator
-
 ## Execution Flow
 
-Follow stages sequentially. Each stage builds on previous outputs.
+Follow stages sequentially. Each stage builds on previous outputs. Apply the Quality Gate before presenting output.
 
 ## Task List Configuration
 
 **Task List Directory:** `{output_dir}`, optional and defaulting to `.kiro/specs/security-testing/` — this default applies to the Kiro branch of Stage 8 (`tool_type == "kiro"`). The non-Kiro branch of Stage 8 defaults `output_dir` to `security-test-plans/` instead.
 **Task List File:** `{output_dir}/tasks.md`
 
-`output_dir` lets a calling SOP place the task list alongside its other artifacts. Callers that pass nothing get the default, so existing behavior is unchanged. These paths are used throughout the prompt for task list generation and tracking.
+`output_dir` lets a calling SOP place the task list alongside its other artifacts. Callers that pass nothing get the default, so existing behavior is unchanged. These paths are used throughout this skill for task list generation and tracking.
 
 ## Unattended and Parallel Callers
 
