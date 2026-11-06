@@ -1,6 +1,6 @@
 ---
 name: backend-review
-description: Reviews backend code changes for architectural pattern compliance, type safety, DynamoDB correctness, and test quality. Use after implementing backend changes to catch issues before code review. Produces CRITICAL/IMPORTANT/SUGGESTION findings.
+description: 'Reviews backend code changes for architectural pattern compliance, type safety, DynamoDB correctness, and test quality. Use when reviewing a backend diff or PR (TS Lambda handlers, services, DynamoDB access), or asked to check backend code before review. Produces CRITICAL/IMPORTANT/SUGGESTION findings.'
 version: 1.0.0
 tags: [skill, backend, code-review, lambda, dynamodb, typescript, checker]
 ---

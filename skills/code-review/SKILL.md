@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Use when creating or submitting a pull request, reviewing a diff or PR from another developer, addressing PR feedback, or running a post-implementation review cycle on local changes. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
+description: Use when reviewing code in a folder, repository, diff or PR for correctness, security and error handling, including a source tree with no git history. Also use when creating or submitting a pull request, addressing PR feedback, or running a post-implementation review of local changes. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
 version: 1.3.3
 tags: [skill, code-review, pr, git, workflow, humanize-writing]
 ---
@@ -98,6 +98,14 @@ event=COMMENT` (or `APPROVE` / `REQUEST_CHANGES`).
    - `gh pr review <number> --comment --body "..."` submits right away and
      has no pending option. Prefer the pending-review calls above so the
      findings can be checked before anyone else sees them.
+
+### Review a Source Tree
+
+When the code to review is a folder or repository with no PR, or with no git
+history, there is no diff to capture. Read every source file in scope, apply
+the Review Checklist below to each one, and report findings by severity with
+file and line. Skip the checkout and pending-review steps, since there is no
+PR to post to.
 
 ### Address Feedback
 

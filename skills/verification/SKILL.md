@@ -1,6 +1,6 @@
 ---
 name: verification
-description: 'Use whenever a task producing a testable outcome (code, build artifacts, generated documents, or infrastructure changes) is about to be declared complete. MUST USE before presenting any such result: run the TDD workflow and show evidence it works, integrated with the maker-checker pattern.'
+description: 'Evidence collection protocol that ensures no task is declared complete without proof it works. Use before saying a code, build, document, or infrastructure task is done: run it, show the command and output as evidence, and run the matching checker skill. Covers the TDD workflow and the maker-checker pattern.'
 version: 1.0.0
 tags: [skill, behavioral, verification, tdd, evidence, quality]
 ---

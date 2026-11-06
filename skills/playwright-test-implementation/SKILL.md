@@ -27,7 +27,7 @@ Do NOT use for: scaffolding a new Playwright project from scratch, planning whic
 
 ### Playwright is a prerequisite, not something this skill installs
 
-This skill assumes Playwright is already part of the project. It does not install Playwright, run installers, or shell out to set it up automatically — installation is the customer's own step, done once per project.
+This skill assumes Playwright is already part of the project. It does not install Playwright, run installers, or shell out to set it up automatically — installation is the user's own step, done once per project.
 
 **Check first, before assuming it's missing:**
 
@@ -37,7 +37,7 @@ npx --no-install playwright --version
 
 If that resolves, Playwright is already installed in this project — move on to authoring. `--no-install` is required: a bare `npx playwright --version` silently fetches `@playwright/test` from the registry when it's absent (in a non-interactive shell it installs without prompting), so the check passes against a project that can't actually run a spec — and the auto-fetch is itself the exact behavior the CRITICAL gate at the bottom of this file forbids the skill from triggering. Also check `package.json` for `@playwright/test` under `dependencies` or `devDependencies` as a second signal.
 
-**If it's missing, tell the customer how to add it — do not install it on their behalf:**
+**If it's missing, tell the user how to add it — do not install it on their behalf:**
 
 ```bash
 npm install -D @playwright/test
@@ -54,7 +54,7 @@ If a project needs only one browser, `npx playwright install chromium` is enough
 
 _Applies when adding specs to an existing Playwright project. Skip on a fresh/bootstrap project where no specs exist yet — `playwright test --list` exits non-zero with "no tests found" in that state, which is expected, not a setup problem._
 
-Before writing any spec content, run `npx playwright test --list` in the project root. An error here means something in the project setup — not the spec you're about to write — needs fixing first (see Prerequisites, or `tsconfig.json` if it's a compilation error). The `--list` check that actually matters on a fresh project is the one run _after_ specs are written (Verification section, and the SOP's Step 5) — that's the point at which a failure means something real.
+Before writing any spec content, run `npx playwright test --list` in the project root. An error here means something in the project setup — not the spec you're about to write — needs fixing first (see Prerequisites, or `tsconfig.json` if it's a compilation error). The `--list` check that actually matters on a fresh project is the one run _after_ specs are written (see Verification) — that's the point at which a failure means something real.
 
 ### Step 2: Set up the authenticated session (`global-setup.ts` + `storageState`)
 
@@ -171,7 +171,7 @@ An alternative to opting out per-spec: define a separate Playwright project in `
 - Hardcoded credentials in any spec file or in `global-setup.ts`
 - `fixtures/auth/` (or wherever `storageState` writes to) not in `.gitignore`
 - A login-flow spec does not opt out of the global `storageState`
-- Playwright installation attempted or scripted by this skill's own procedure instead of directed to the customer
+- Playwright installation attempted or scripted by this skill's own procedure instead of directed to the user
 
 **IMPORTANT (should fix):**
 

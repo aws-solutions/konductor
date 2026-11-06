@@ -35,6 +35,48 @@ not per individual commit.
 
 ### Changed
 
+- `asana-sprint-planning` is folded into `sprint-planning` as
+  `skills/sprint-planning/references/asana.md`, which the skill opens when the team uses Asana
+  (81 skills). `sprint-planning` now also covers team-size capacity, sprint rollover, batch
+  approval, and linking tasks to tickets and code reviews.
+- `historical-issues-registry`, `sop-state-management`, and `dom-inspection` moved detail that only
+  some runs need into `references/`: the multi-match precedence rule, the per-operation steps, and
+  the report schema, test-oracle table, and Cloudscape notes. Each `SKILL.md` says when to open
+  each file.
+- The `security-remediation`, `security-test-generation`, `threat-modeling` and
+  `ui-text-validation` skills read as one set of instructions, without a pasted second prompt
+  and role. `security-remediation` asks for the finding text or ticket instead of an unfilled
+  placeholder, and its plan now includes the effort estimates, verification steps and rollback
+  plan it promised. `threat-modeling` uses its built-in template by default and drops the
+  tool-check step. `ui-text-validation` reports inline unless the audit spans several pages or
+  the user asks for a file, and checks headings for sentence case.
+- `progress-tracking` moved its final-mode stages (code analysis, pattern matching, traceability)
+  into `references/final-mode.md`, and `security-test-generation` moved its Kiro and other-tool
+  output steps into `references/output-kiro.md` and `references/output-generic.md`. Each skill
+  opens the file only when the mode or tool type needs it.
+- `smithy-modeling` and `smithy-validation` now share one Smithy file-organization guide in
+  `skills/smithy-modeling/references/file-organization.md`, loaded only when a model spans more
+  than one file. Its validator example now nests the selector under `configuration`, and its
+  service example no longer sets a doc comment and a `@documentation` trait together, which
+  Smithy rejects.
+- `iam-policy-design` and `policy-validation` now share one set of GDPR, HIPAA, PCI-DSS and SOC 2
+  checklists in `skills/iam-policy-design/references/compliance-checklists.md`, loaded only when
+  the user names a compliance framework. Audit-control findings now cite HIPAA §164.312(b), and
+  the GDPR checklist no longer claims a fixed 3-year log retention. `smithy-validation` loads its
+  example review only when writing a report.
+- `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
+  `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
+- `cost-estimation` keeps only the context-gathering steps of a new estimate in `SKILL.md`. The
+  pricing research, scenarios, growth modeling, optimization and report steps moved to
+  `references/create-analysis.md`, which the skill opens once the context is confirmed.
+- `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
+  gathering and clarifying questions are in `references/create-context.md`, which the skill opens
+  when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
+  report steps are in `references/create-analysis.md`, which it opens once the context is
+  confirmed.
+- `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
+  `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
+  introduction is now one overview.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
@@ -60,6 +102,35 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- The `code-review`, `non-functional-requirements`, `risk-management` and
+  `system-design-patterns` descriptions now name the tasks they cover, so they load on
+  ordinary task prompts: reviewing a folder or repository, adding measurable targets to a
+  requirements or design document, listing a plan's risks, and writing a system design.
+  `code-review` gains a step for reviewing a source tree with no diff, and
+  `system-design-patterns` gains a no-questions mode that works from documents the user
+  already gave.
+- The `kiro-requirements-generation`, `kiro-design-generation` and `kiro-task-generation`
+  descriptions each name their own input and output and the spec step before and after, so
+  the model picks the right one of the three.
+- The `user-story-writing` description now matches requests that start from a feature idea
+  or rough ask with no requirements document yet. `requirements-extraction` and
+  `kiro-requirements-generation` say they need existing requirements or user stories, and that
+  a bare request needs its user stories written first.
+- 26 more skill descriptions name the requests they cover in a "Use ..." sentence that fits
+  within the 160 characters the Kiro skill index keeps. `verification` and `git-merge` replace
+  "MUST USE" with a concrete trigger, and `adversarial-design-review`, `design-quality-check`,
+  `dom-inspection` and `socratic-elicitation`, which had none, gain one. `git-merge` now says
+  the default branch instead of `mainline`, and long descriptions such as
+  `historical-issues-registry` and `legacy-to-agentic-estimate` are shorter.
+- `about-konductor` and `design-doc-guidelines` load less up front. CLI, install-check, and model
+  detail, and the rules for multi-document designs and renames, now live under each skill's
+  `references/` and load only when the task needs them. `design-doc-guidelines` uses generic
+  examples for technical accuracy and threat models.
+- `requirements-extraction`, `user-story-writing`, and `system-design-patterns` now read as one
+  set of instructions each, without a pasted prompt and its separate role. Repeated rules are
+  stated once. `system-design-patterns` lists its real five interview phases and four
+  documents, adds a non-functional requirements section to the design document, and points
+  follow-up work at konductor skills instead of prompts that don't exist.
 
 ### Fixed
 
@@ -101,6 +172,13 @@ not per individual commit.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
+- Nine skills no longer name tools, templates or steps that don't exist where they run.
+  `humanize-writing`, `mux-dispatch` and `workspace-skills` use harness-neutral wording, and
+  `workspace-skills` says where Claude Code keeps workspace skills. `cost-estimation` names the
+  AWS Pricing MCP server and how to install it, and says why it waits for load figures before
+  pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
+  that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
+  `external-research` drop terms that do not apply in this repo.
 
 ### Security
 
