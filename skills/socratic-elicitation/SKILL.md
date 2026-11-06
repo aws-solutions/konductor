@@ -105,41 +105,7 @@ This skill stops as soon as ANY of these is true:
 
 ## Escalation to Deliberation Panel
 
-When this skill reaches an unresolved ambiguity or a significant tradeoff where:
-
-- The user's answer reveals 2+ viable paths with non-trivial trade-offs, AND
-- No clear winner emerges from the user's stated preference
-
-this skill OFFERS (never auto-runs) a deliberation panel. Present the offer with a cost/time note:
-
-```
-I've identified a significant tradeoff:
-
-  [Option A]: <description> — favors <dimension>
-  [Option B]: <description> — favors <dimension>
-  [Option C]: <description> (if applicable)
-
-How would you like to proceed?
-
-  1. Answer directly (tell me your preference and we'll keep going)
-  2. Convene a deliberation panel (~2-3 minutes) — independent
-     perspectives derived from this specific tradeoff's own axes
-     argue it out, then an arbiter synthesizes a confidence-scored
-     recommendation
-```
-
-**When the user opts in:**
-
-1. This skill pauses its question sequence.
-2. Invoke the `deliberation-panel` skill directly with `decision_domain` inferred from context (default `general-tradeoff`), `stance=evaluative`, and `consent_confirmed=true` (the user's opt-in above satisfies the panel's consent gate — pass it through explicitly rather than making the panel ask again). Pass the specific tradeoff as the subject.
-3. Present the panel's recommendation to the user.
-4. Resume elicitation with the user's decision incorporated into the requirements summary.
-
-**Rules:**
-
-- Offer the panel at MOST once per session per topic. Subsequent tradeoffs get a lighter prompt: "I found another tradeoff — same treatment?"
-- Never auto-run the panel without the user's explicit opt-in.
-- If the `deliberation-panel` skill is not available in the current environment, offer the user the option to think it through together instead: "I found a significant tradeoff — would you like to reason through it together, or decide directly?"
+When an answer leaves 2+ viable paths with non-trivial trade-offs and the user's stated preference picks no winner, offer a deliberation panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain` inferred from context (default `general-tradeoff`), then resume elicitation with the user's decision in the requirements summary. If `deliberation-panel` isn't available, offer to reason through the tradeoff together or decide directly.
 
 ---
 

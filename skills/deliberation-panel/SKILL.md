@@ -148,11 +148,36 @@ The arbiter's synthesis is the panel's final output — a scorecard, not a six-p
 
 ---
 
+## Offering the Panel from a Host Skill
+
+A host skill (`socratic-elicitation`, `aspect-review`) offers the panel when a decision has 2+ viable options with non-trivial trade-offs, or a significant ambiguity, and no clear winner. It never runs the panel without the user's explicit opt-in. Present the options and the cost:
+
+```
+I've found a decision with no clear winner:
+
+  [Option A]: <description> (favors <dimension>)
+  [Option B]: <description> (favors <dimension>)
+  [Option C]: <description> (if applicable)
+
+How would you like to proceed?
+
+  1. Answer directly (tell me your preference and we'll keep going)
+  2. Convene a deliberation panel (~2-3 minutes): it derives 3-6 axes
+     specific to this decision, argues each independently,
+     cross-examines the arguments, and returns a scored recommendation
+```
+
+- **Decides directly:** fold the user's answer into the host's work and continue.
+- **Opts in:** pause the host's flow, invoke this skill with the host's `decision_domain`, `stance=evaluative`, and `consent_confirmed=true` (the opt-in is the consent, so the panel doesn't ask again), and pass the specific tradeoff as the subject. Present the scorecard, let the user decide, then resume the host with that decision.
+- **Once per session per topic:** a later tradeoff on the same topic gets a lighter prompt, "I found another decision point. Same treatment?", without repeating the cost note.
+
+---
+
 ## Rules
 
 - **Consent is explicit, not inferred.** See Consent Gate — `consent_confirmed` is the only signal this skill acts on.
 - **Axes are re-derived every invocation.** Never carry over a prior decision's axis list, and never default to a fixed named roster regardless of domain.
-- **Once-per-session-per-topic guard (when called from `socratic-elicitation` or `aspect-review`).** The host skill enforces this guard; the panel itself does not duplicate it.
+- **Once-per-session-per-topic guard (when called from `socratic-elicitation` or `aspect-review`).** The host skill enforces this guard (see Offering the Panel from a Host Skill); the panel itself does not duplicate it.
 - **Graceful degradation.** If the panel cannot spawn the subagents Phase 1/2 require (environment limitation, token budget, or tool unavailability), offer the user the option to deliberate inline instead: "A full deliberation panel isn't available right now — would you like to reason through the axes together directly?"
 - **Parameter contract is fixed.** `decision_domain`, `stance`, and `consent_confirmed` must not be renamed or aliased by callers.
 
