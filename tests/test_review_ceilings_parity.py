@@ -103,9 +103,10 @@ def test_sop_round_limit_does_not_block_on_pre_existing_findings():
 
 def test_item_6_re_reviews_every_first_review_finding():
     assert RE_REVIEW_SCOPE_WORDING in _item_6("konductor")
-    for rel in ["skills/delegation-protocol/SKILL.md", "agent-sops/k-delegate.sop.md"]:
-        assert "every" in (ROOT / rel).read_text() and "first review" in (ROOT / rel).read_text(), rel
     assert RE_REVIEW_SCOPE_WORDING in (ROOT / "skills/delegation-protocol/SKILL.md").read_text()
+    assert "every first-review CRITICAL or IMPORTANT finding plus what the fix changed" in (
+        ROOT / "agent-sops/k-delegate.sop.md"
+    ).read_text()
 
 
 def test_open_first_review_finding_blocks_done():
