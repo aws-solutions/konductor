@@ -35,6 +35,10 @@ not per individual commit.
 
 ### Changed
 
+- `historical-issues-registry`, `sop-state-management`, and `dom-inspection` moved detail that only
+  some runs need into `references/`: the multi-match precedence rule, the per-operation steps, and
+  the report schema, test-oracle table, and Cloudscape notes. Each `SKILL.md` says when to open
+  each file.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
