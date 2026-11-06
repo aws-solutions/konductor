@@ -163,13 +163,6 @@ state of the change, not the history of how it got there.
 - Documentation or comment improvements
 - Naming convention refinements
 
-## Related
-
-`humanize-writing` isn't background reading here; the PR Description
-Concision section above requires applying it to every PR description and
-commit message this skill produces, with no em dashes and none of the
-AI-boilerplate tells that skill catalogs.
-
 ## Quality Gate
 
 **CRITICAL:** Review submitted without reading all changed files. CRITICAL finding missed in review. Post-implementation review skipped after task completion. Any action that publishes or notifies beyond a draft (a PR created ready for review, a pending review submitted, or a standalone comment reply posted) without the user's explicit authorization in that exact turn. See Explicit Publish Authorization above.

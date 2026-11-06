@@ -75,12 +75,6 @@ Examples:
 
 Use `git status` and `git diff` first to get current status, then targeted git commands for deeper investigation.
 
-## Tools
-
-| Tool          | Purpose                                        |
-| ------------- | ---------------------------------------------- |
-| Shell (`git`) | Direct git commands for history, blame, bisect |
-
 ## Quality Gate
 
 **CRITICAL:** Non-atomic commit mixing unrelated changes. Commit that breaks compilation or tests. Committing secrets or credentials.
