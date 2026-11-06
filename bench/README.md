@@ -501,8 +501,9 @@ bash bench/scripts/pilot-2x2.sh --cells report --out /var/tmp/pilot-2x2
 ## Skills actually used
 Which skills and SOPs a run loaded is read after the fact from `stream.jsonl`; nothing is added to the runs (no hooks, no
 extra servers, no config change). New runs write these `result.json` fields (all nullable): `skillsLoaded`
-(`{name, via: get_skill|skill-tool, count}`), `skillQueries` (strings passed to `find_skills`), `sopsLoaded` (the SOP subset),
+(`{name, via: get_skill|skill-tool|disclose_context, count}`), `skillQueries` (strings passed to `find_skills`), `sopsLoaded` (the SOP subset),
 `skillBytesLoaded` (bytes of text the load calls returned), `skillCallsFailed` (errors, empty results, calls with no answer),
+`skillCallsFailedByTool` (the same count split as `{get_skill, load_resource, find_skills}`; the opencode and Claude Code skill tool counts under `get_skill`),
 `findSkillsCalls`/`findSkillsEmpty`, `startupResourceCount`, `targetLoaded`, `targetAttempted`, `targetReachable`, `sopNameSource`
 and `skillsScope`. `report` appends a "Skills actually used" section when any run has them.
 ```bash
@@ -608,8 +609,20 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
     budget skip or an opencode run is skipped. `--bench-dir` and `--repo-root` work as for `skills`. A run whose copy exists and differs is refused.
 - Skill loads on engine v3: a loaded skills-server call is titled `@konductor-skills/get_skill` with the name in `rawInput.arguments.name`. A call
   made before the tool was loaded is refused (`Tool Call` failed, or a bare `get_skill` title with no input) and counts in `skillCallsFailed`, never as a
-  load; the model then loads the tool and retries. `--stop-on` ignores refused calls too. The skill fields in `result.json` are written when the run
+  load; the model then loads the tool and retries. A refused `load_resource` call with a `skill::<name>` id, the model treating a server skill as a
+  native resource, also counts in `skillCallsFailed` (under `load_resource` in `skillCallsFailedByTool`) and names the skill as requested. The
+  extraction's `failedCalls` lists each failed `get_skill` or `load_resource` call, and names a bare call the stream recorded no arguments for
+  `(args not recorded)`. A refused `load_resource` is also the run's first decision, as a refused `get_skill` is (`firstDecision.kind` is
+  `get_skill`), so a run whose only attempt was refused is not `none`. `--stop-on` ignores refused calls too. The skill fields in `result.json` are written when the run
   ends, so runs saved by an older runner keep empty `skillsLoaded`; `bench.js skills` recomputes from `stream.jsonl` without writing, `backfill --skills` writes the recomputed fields, and `report` reads `result.json`.
+- SOP activations on engine v3: a successful `skill::sop-<name>` load is not a `load_resource` call in the stream. It is titled
+  `Load skill: sop-<name>` (`Loaded skill:` when it finishes) with `_meta.kiro.toolId` `disclose_context`, and the answer carries
+  `contentLength`. It counts as a load with `via: disclose_context` in `skillsLoaded` and `sopsLoaded`, sets `targetLoaded` and
+  `targetAttempted`, and is the first decision (`skill`) when it comes first. A denied or empty one counts as a failed `load_resource` call.
+  Tool counts do not change (`toolNameOf` still returns null for this call). Runs saved before this existed keep their numbers until
+  `bench.js skills --run` recomputes them or `backfill --skills` writes them; `backfill --skills` leaves a result unchanged when it
+  recorded no failed skill calls and nothing else differs, so it does not rewrite old runs just to add a split of zeros. `report` tables are
+  unchanged. `trace` adds a `failed skill calls` line, and `skillCallsFailedByTool` in the JSON header, when the run recorded any.
 - `workToolCalls` leaves out the `subagent` call and the subagent `summary` pseudo-tool. Transcript
   size sums the parent and subagent sessions (`transcriptPartial` if one is missing). Session files are copied to `<run>/session/`
   from the run's scratch home: engine v2 writes `~/.kiro/sessions/cli/<id>.json` and `.jsonl`; engine v3 (kiro-cli 3.x) writes

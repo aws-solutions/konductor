@@ -541,7 +541,8 @@
           "via": {
             "enum": [
               "get_skill",
-              "skill-tool"
+              "skill-tool",
+              "disclose_context"
             ]
           },
           "count": {
@@ -579,7 +580,8 @@
           "via": {
             "enum": [
               "get_skill",
-              "skill-tool"
+              "skill-tool",
+              "disclose_context"
             ]
           },
           "count": {
@@ -600,6 +602,32 @@
         "integer",
         "null"
       ]
+    },
+    "skillCallsFailedByTool": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "get_skill",
+        "load_resource",
+        "find_skills"
+      ],
+      "properties": {
+        "get_skill": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "load_resource": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "find_skills": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     },
     "findSkillsCalls": {
       "type": [

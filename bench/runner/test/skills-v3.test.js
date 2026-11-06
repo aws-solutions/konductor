@@ -10,8 +10,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { tmp } = require('./helpers.js');
-const { parseStream, skillsCallOf, mcpInputOf } = require('../lib/stream.js');
-const { extractSkills, targetOutcome, catalogFrom } = require('../lib/skills.js');
+const { parseStream, skillsCallOf, skillResourceCallOf, mcpInputOf } = require('../lib/stream.js');
+const { ARGS_NOT_RECORDED, extractSkills, targetOutcome, catalogFrom } = require('../lib/skills.js');
 const { makeStopWatcher } = require('../lib/stop-watch.js');
 const { scanStream } = require('../lib/contamination.js');
 
@@ -173,7 +173,11 @@ test('v2 is unchanged: skills and contamination output of the v2 fixtures equal 
   assert.deepEqual(Object.keys(snap).sort(), ['delegating-smoke.stream.jsonl', 'kiro-find-skills.stream.jsonl', 'kiro-main-orch-input-validation.stream.jsonl', 'v2-skills-mixed.stream.jsonl']);
   for (const [name, want] of Object.entries(snap)) {
     const ev = eventsOf(name);
-    assert.deepEqual(JSON.parse(JSON.stringify(extractSkills(ev, 'kiro-cli'))), want.skills, name);
+    // failedCalls and failedByTool were added after the snapshot; every field the snapshot has must still match.
+    const { failedCalls, failedByTool, ...skills } = JSON.parse(JSON.stringify(extractSkills(ev, 'kiro-cli')));
+    assert.ok(Array.isArray(failedCalls) && failedCalls.length <= skills.skillCallsFailed, name);
+    assert.equal(Object.values(failedByTool).reduce((a, b) => a + b, 0), skills.skillCallsFailed, name);
+    assert.deepEqual(skills, want.skills, name);
     assert.deepEqual(scanStream(ev, null), want.contamination, name);
   }
 });
@@ -239,4 +243,78 @@ test('v3 contamination: a web tool reached through a server title is scanned, a 
   const read = up({ sessionUpdate: 'tool_call', toolCallId: 'r', title: 'Read File', kind: 'read', rawInput: { path: 'https://github.com/o/r' } });
   const found = scanStream([web, read], ENTRY);
   assert.deepEqual(found.map((f) => f.tool), ['web_fetch']);
+});
+
+// ---- load_resource with a skill:: id, and calls with no recorded arguments ----
+
+const loadResource = (id, resourceId, sub) => up({ sessionUpdate: 'tool_call', toolCallId: id, title: 'Load Resource', status: 'in_progress', rawInput: { id: resourceId } }, sub);
+const loadResourceDone = (id, status, message, sub) => up({ sessionUpdate: 'tool_call_update', toolCallId: id, status, rawOutput: { message } }, sub);
+
+test('skillResourceCallOf reads the skill name from a v3 load_resource call with a skill:: id', () => {
+  assert.deepEqual(skillResourceCallOf({ title: 'Load Resource', rawInput: { id: 'skill::delegation-protocol' }, _meta: { kiro: {} } }), { name: 'delegation-protocol' });
+  for (const u of [
+    { title: 'Load Resource', rawInput: { id: TOOL_ID('get_skill') } },
+    { title: 'Load Resource', rawInput: {} },
+    { title: 'Tool Load', rawInput: { id: 'skill::delegation-protocol' } },
+    { title: 'Load Resource', rawInput: { id: 'skill::konductor-skills::get_skill' } },
+    { title: 'Load Resource', rawInput: { id: 'skill::delegation-protocol' }, _meta: { kiro: { toolName: 'load_resource' } } },
+    {}, null, undefined,
+  ]) assert.equal(skillResourceCallOf(u), null, JSON.stringify(u));
+});
+
+test('v3: a refused load_resource(skill::*) call is a failed skill call that names the skill', () => {
+  const x = extractSkills([
+    loadResource('r1', 'skill::delegation-protocol'),
+    loadResourceDone('r1', 'failed', 'Use one exact resource ID from the current load_resource catalogue.'),
+  ], 'kiro-cli');
+  assert.deepEqual(x.skillsLoaded, []);
+  assert.equal(x.skillCallsFailed, 1);
+  assert.deepEqual(x.requested, ['delegation-protocol']);
+  assert.deepEqual(x.failedCalls, [{ tool: 'load_resource', name: 'delegation-protocol' }]);
+});
+
+test('v3: a load_resource(skill::*) call that succeeded (an SOP resource) is neither a load nor a failure', () => {
+  const x = extractSkills([
+    loadResource('r1', 'skill::sop-k-plan'),
+    loadResourceDone('r1', 'completed', '# k-plan\nsteps'),
+  ], 'kiro-cli');
+  assert.deepEqual(x.skillsLoaded, []);
+  assert.equal(x.skillCallsFailed, 0);
+  assert.deepEqual(x.requested, []);
+  assert.deepEqual(x.failedCalls, []);
+});
+
+test('v3: load_resource for a tool schema is not a skill call', () => {
+  const x = extractSkills([loadResource('r1', TOOL_ID('get_skill')), loadResourceDone('r1', 'failed', 'nope')], 'kiro-cli');
+  assert.equal(x.skillCallsFailed, 0);
+  assert.deepEqual(x.failedCalls, []);
+});
+
+test('v3: a refused load_resource attempt then a get_skill load counts one failure and one load', () => {
+  const args = { name: 'delegation-protocol' };
+  const x = extractSkills([
+    loadResource('r1', 'skill::delegation-protocol'), loadResourceDone('r1', 'failed', 'not in catalogue'),
+    serverCall('c1', 'get_skill', args), serverDone('c1', 'get_skill', args, body('delegation-protocol')),
+  ], 'kiro-cli');
+  assert.deepEqual(loaded(x), ['delegation-protocol:get_skill:1']);
+  assert.equal(x.skillCallsFailed, 1);
+  assert.deepEqual(x.requested, ['delegation-protocol']);
+});
+
+test('v3: a bare deferred call with no recorded arguments is listed as args not recorded', () => {
+  const x = extractSkills([
+    bareCall('b1'), bareRefused('b1'),
+    wrapperCall('w1', 'get_skill', { name: 'backend-review' }), refused('w1', 'not loaded', 'Tool Call'),
+  ], 'kiro-cli');
+  assert.equal(x.skillCallsFailed, 2);
+  assert.deepEqual(x.failedCalls, [
+    { tool: 'get_skill', name: ARGS_NOT_RECORDED },
+    { tool: 'get_skill', name: 'backend-review' },
+  ]);
+  assert.equal(ARGS_NOT_RECORDED, '(args not recorded)');
+});
+
+test('v3: a failed call with arguments but no name is not labelled args not recorded', () => {
+  const x = extractSkills([wrapperCall('w1', 'get_skill', { other: 'x' }), refused('w1', 'not loaded', 'Tool Call')], 'kiro-cli');
+  assert.deepEqual(x.failedCalls, [{ tool: 'get_skill', name: null }]);
 });

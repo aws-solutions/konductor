@@ -308,6 +308,12 @@ function mentionsOf(sources, name, { limit = 4 } = {}) {
 
 // ---- assembly ----
 
+// The split of failed skill calls by tool, as the runner saved it; null when the run has none or predates the field.
+function failedSkillSplit(result) {
+  const split = result?.skillCallsFailedByTool;
+  return split && Object.values(split).some((n) => n > 0) ? split : null;
+}
+
 /**
  * The trace of one run directory (the one holding result.json and stream.jsonl).
  * opts.instructions adds inferred pointers to instruction text; opts.repoRoot says where the arm's commit can be read.
@@ -345,6 +351,7 @@ function buildTrace(runDir, { instructions = false, repoRoot = null } = {}) {
       skillsListed: { summary: listedNote, names: filter },
       skillsLoaded: [...new Set(loaded)],
       skillFindCalls: entries.filter((e) => e.kind === 'skill-find').length,
+      ...(failedSkillSplit(result) ? { skillCallsFailedByTool: failedSkillSplit(result) } : {}),
       spawnTree: spawnTreeOf(entries),
       wallClockMs: result?.wallClockMs ?? null,
       credits: result?.credits ?? null,
@@ -373,6 +380,7 @@ function renderMarkdown(trace, { full = false } = {}) {
   L.push(`- status: ${h.status ?? 'n/a'}; wall time: ${h.wallClockMs != null ? `${(h.wallClockMs / 1000).toFixed(1)} s` : 'n/a'}; ${h.costUsd != null && h.credits == null ? `cost: $${Number(h.costUsd).toFixed(4)}` : `credits: ${h.credits != null ? Number(h.credits).toFixed(3) : 'n/a'}`}`);
   L.push(`- skills listed to the entry agent: ${h.skillsListed.summary}`);
   L.push(`- skills loaded: ${h.skillsLoaded.length ? h.skillsLoaded.join(', ') : 'none'}; find_skills calls: ${h.skillFindCalls}`);
+  if (h.skillCallsFailedByTool) L.push(`- failed skill calls: ${Object.entries(h.skillCallsFailedByTool).filter(([, n]) => n > 0).map(([tool, n]) => `${tool} ${n}`).join(', ')}`);
   L.push(`- spawn tree: ${h.spawnTree.length ? h.spawnTree.map((s) => `${s.parent} -> ${s.target} (${s.toolCalls} tool calls)`).join('; ') : 'no delegation'}`);
   L.push(`- files written: ${h.filesWritten.length ? [...new Set(h.filesWritten.map((f) => f.path))].join(', ') : 'none seen'}`);
   L.push(`- flags: ${h.flags.length ? h.flags.join(', ') : 'none'}`);
