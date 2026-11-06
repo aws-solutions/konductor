@@ -63,10 +63,11 @@ test('a fabricated quote and reordered segments are downgraded one level; raw an
       c1: { verdict: 'pass', evidence: 'The member is told by SMS, which the output never says.' },
       c2: { verdict: 'partial', evidence: '5 in REQ-6 ... The reservation is 7 days' },
     }));
-    const j = await runJudging({ ...common, caller });
+    const j = await runJudging({ ...common, caller, quoteRule: 'strict' });
     const [c1, c2] = j.rubric[0].criteria;
     assert.deepEqual([c1.verdictRaw, c1.verdictScored, c1.evidenceDowngraded], ['pass', 'partial', true]);
     assert.deepEqual([c2.verdictRaw, c2.verdictScored, c2.evidenceDowngraded], ['partial', 'fail', true]);
+    assert.equal(c2.verdictLenient, 'partial', 'the lenient rule accepts the two segments, each short of 20 unsupported letters');
     assert.equal(j.rubric[0].score, (1 * 0.5 + 3 * 0) / 4);
     assert.equal(j.rubric[0].scoreRaw, (1 * 1 + 3 * 0.5) / 4);
   } finally { rm(root); }

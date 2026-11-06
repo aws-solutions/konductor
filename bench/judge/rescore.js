@@ -4,7 +4,8 @@
 // `judge --rescore-quotes`: recompute the evidence check of stored rubric verdicts without calling a model. Each judged
 // output bundle is rebuilt from the run directory, each stored quote is matched again (strictly, or leniently), and the
 // scored verdicts and per-judge scores follow. The result goes to a new file, judgments-lenient.json; judgments.json is
-// never read for writing. A report built with `"quotes": "lenient"` in its scoring file reads that new file.
+// never read for writing. Newer judgments carry both views already (see views.js); this path serves older ones, and
+// a report rebuilds the lenient view of an old record in memory on its own.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,7 +13,7 @@ const { loadTasks } = require('../runner/lib/tasks.js');
 const { loadRun } = require('../report/load.js');
 const { effectiveLimits } = require('./config.js');
 const { buildBundle } = require('./bundle.js');
-const { makeQuoteMatcher } = require('./quote.js');
+const { makeQuoteMatcher, MAX_UNSUPPORTED_LETTERS } = require('./quote.js');
 const { rubricScore, DOWNGRADE } = require('./score.js');
 
 const LENIENT_FILE = 'judgments-lenient.json';
@@ -27,7 +28,7 @@ function rescoredCriteria(criteria, found) {
     const raw = c.verdictRaw ?? c.judgeVerdict ?? c.verdict;
     const evidenceFound = NO_EVIDENCE.test(c.evidence ?? '') ? false : found(c.evidence ?? '');
     const downgraded = evidenceFound === false && raw !== 'fail';
-    const { evidenceDowngraded, ...rest } = c;
+    const { evidenceDowngraded, quoteFound, verdictStrict, verdictLenient, ...rest } = c;
     return { ...rest, verdict: downgraded ? DOWNGRADE[raw] : raw, verdictRaw: raw, verdictScored: downgraded ? DOWNGRADE[raw] : raw, evidenceFound, ...(downgraded ? { evidenceDowngraded: true } : {}) };
   });
 }
@@ -90,14 +91,15 @@ function rescoreQuotes({ runDir, benchDir, extraDirs = [], redactions, mode = 'l
     const criteria = rescoredCriteria(rec.criteria, found);
     const score = rubricScore(task.rubric, criteria);
     if (criteria.some((c, i) => c.evidenceDowngraded !== rec.criteria[i].evidenceDowngraded)) changed++;
-    return { ...rec, criteria, score };
+    const { scoreStrict, scoreLenient, quoteViews, ...base } = rec;
+    return { ...base, criteria, score };
   });
   const before = summarize(j.rubric);
   const after = summarize(rubric);
   const result = { before, after, armBefore: perArm(j.rubric), armAfter: perArm(rubric), changed, skipped, mode, file: null };
   if (mode === 'lenient' && write) {
     const file = path.join(run.dir, LENIENT_FILE);
-    const quoteMatch = { mode: 'lenient', rescoredFrom: 'judgments.json', createdAt: new Date().toISOString(), before, after, recordsChanged: changed };
+    const quoteMatch = { mode: 'lenient', maxUnsupportedLetters: MAX_UNSUPPORTED_LETTERS, rescoredFrom: 'judgments.json', createdAt: new Date().toISOString(), before, after, recordsChanged: changed };
     fs.writeFileSync(file, `${JSON.stringify({ ...j, quoteMatch, rubric }, null, 2)}\n`);
     result.file = file;
   }
@@ -124,4 +126,4 @@ function formatRescore(r) {
   return lines.join('\n');
 }
 
-module.exports = { rescoreQuotes, readLenientJudgments, formatRescore, LENIENT_FILE };
+module.exports = { rescoreQuotes, readLenientJudgments, formatRescore, rescoredCriteria, LENIENT_FILE };

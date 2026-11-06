@@ -10,10 +10,11 @@ const { checkJudgeModel, checkPanel, families, effectiveLimits } = require('./co
 const { buildBundle } = require('./bundle.js');
 const { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix } = require('./prompts.js');
 const { parseJsonStrict, validateRubricReply, validatePairReply, validateGradedReply } = require('./validate.js');
-const { rubricScore, pairOutcome, combineOrderings, combineGraded, DOWNGRADE } = require('./score.js');
+const { rubricScore, pairOutcome, combineOrderings, combineGraded } = require('./score.js');
 const { withCache, hasCachedReply } = require('./model.js');
 const { cacheSaltOf } = require('./opencode.js');
-const { makeQuoteMatcher } = require('./quote.js');
+const { DEFAULT_QUOTE_RULE } = require('./quote.js');
+const { dualCriteria, dualScores, matchersFor, checkRule } = require('./views.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
@@ -206,6 +207,7 @@ async function runJudging(o) {
   if (o.plan) throw new Error('runJudging makes model calls and cannot honor --plan; call planJudging instead');
   const { concurrency, budgetCredits, budgetUsd = null, judges, modes, baseline, limits, redactions, log = () => {} } = o;
   const backendInfo = o.backendInfo ?? null;
+  const quoteRule = checkRule(o.quoteRule ?? DEFAULT_QUOTE_RULE);
   const { run, tasks, backend, usdMode, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf } = prepareJudging(o);
   // Kiro keeps the original cache key. Any other backend adds itself (and what its caller says matters) to the key.
   const salt = o.cacheSalt ?? (usdMode ? (model) => `${backend}\n${model}` : null);
@@ -248,17 +250,13 @@ async function runJudging(o) {
     const common = { judge: u.judge, armId: u.run.armId, taskId: u.run.taskId, replicate: u.run.replicate };
     if (u.kind === 'rubric') {
       const task = tasks.get(u.run.taskId);
-      const found = makeQuoteMatcher(bundle.text);
-      const criteria = out.error ? [] : out.value.criteria.map((c) => {
-        // "(nothing in the output)" cites no evidence, so a pass or partial that rests on it drops a level like an unfound quote.
-        const evidenceFound = /^\(nothing in the output\)/i.test(c.evidence) ? false : found(c.evidence);
-        const downgraded = evidenceFound === false && c.verdict !== 'fail';
-        const verdictScored = downgraded ? DOWNGRADE[c.verdict] : c.verdict;
-        return { id: c.id, verdict: verdictScored, verdictRaw: c.verdict, verdictScored, evidence: c.evidence, evidenceFound, ...(downgraded ? { evidenceDowngraded: true } : {}) };
-      });
+      const matchers = matchersFor(bundle.text);
+      // Both quote rules are applied to every criterion; the fields older readers use carry the rule this pass ran with.
+      const criteria = out.error ? [] : dualCriteria(out.value.criteria, matchers, quoteRule);
+      const views = out.error ? null : dualScores(task.rubric, criteria);
       rubric.push({
-        kind: 'rubric', ...common, taskRevision: revisions.get(task.id),
-        score: out.error ? null : rubricScore(task.rubric, criteria),
+        kind: 'rubric', ...common, taskRevision: revisions.get(task.id), quoteRule,
+        score: views ? views[quoteRule] : null, scoreStrict: views ? views.strict : null, scoreLenient: views ? views.lenient : null,
         scoreRaw: out.error ? null : rubricScore(task.rubric, criteria.map((c) => ({ id: c.id, verdict: c.verdictRaw }))), criteria,
         judgeError: out.error ?? null, parseFailures: out.parseFailures, calls: out.calls,
         redactionsFired: bundle.fired, truncatedFiles: bundle.meta.truncatedFiles,

@@ -19,6 +19,8 @@ const oc = require('./lib/harness/opencode.js');
 const { readProfile } = require('./lib/harness/opencode-creds.js');
 const { runJudging, planJudging } = require('../judge/run.js');
 const { rescoreQuotes, formatRescore } = require('../judge/rescore.js');
+const { checkRule } = require('../judge/views.js');
+const { DEFAULT_QUOTE_RULE, RULE_TEXT } = require('../judge/quote.js');
 const { loadPack } = require('../judge/pack/index.js');
 const { runPackJudging, describePackPlan, FILE } = require('../judge/packrun.js');
 const { exportSheet, scoreLabels, scorePackLabels, formatCalibration, formatPackCalibration } = require('../judge/calibrate.js');
@@ -191,10 +193,13 @@ const packOf = (opts) => (opts['criteria-pack'] === undefined ? null : loadPack(
 
 async function cmdJudge(opts) {
   if (opts['rescore-quotes']) return cmdRescoreQuotes(opts);
-  if (opts['quote-match'] !== undefined) throw new Error('--quote-match goes with --rescore-quotes');
+  const quoteRule = checkRule(flagValue(opts, 'quote-match') ?? DEFAULT_QUOTE_RULE);
   const { runDir, benchDir, run, judges, small } = judgePanelFor(opts);
   const packName = opts['criteria-pack'];
-  if (packName !== undefined) return cmdJudgePack(opts, { runDir, benchDir, run, judges, small });
+  if (packName !== undefined) {
+    if (opts['quote-match'] !== undefined) throw new Error('--quote-match does not apply with --criteria-pack: the pack pass always matches quotes strictly');
+    return cmdJudgePack(opts, { runDir, benchDir, run, judges, small });
+  }
   const profile = optionalProfile(opts.profile);
   const modes = String(opts.mode || (profile ? profile.judging.modes.join(',') : 'rubric,pairwise')).split(',');
   if (modes.some((m) => !JUDGE_MODES.includes(m))) throw new Error(`--mode takes ${JUDGE_MODES.join(', ')}`);
@@ -212,7 +217,7 @@ async function cmdJudge(opts) {
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
-      backend, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
+      backend, quoteRule, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
       limits: limitsOf(opts), explicitLimits: explicitLimitsOf(opts), redactions: loadRedactions(opts['redact-file']), log,
     });
   } finally {
@@ -232,6 +237,7 @@ async function cmdJudge(opts) {
       : 'credit guard: HARD STOP, this command spent past 100% of --budget-credits; calls in flight were counted, and no further call started');
     process.exitCode = 3;
   }
+  console.log(`evidence-quote rule recorded as the default: ${RULE_TEXT[quoteRule]}; the other rule's verdicts are recorded beside it`);
   console.log(`wrote ${path.join(runDir, 'judgments.json')}`);
 }
 
@@ -309,7 +315,7 @@ async function cmdJudgePack(opts, { runDir, benchDir, run, judges, small }) {
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       budgetUsd: opts['budget-usd'] === undefined ? null : numOpt(opts, 'budget-usd', null),
-      backend, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
+      backend, quoteRule, ...(viaOpencode ? { backendInfo: { ...caller.info, models: caller.info.models(judges) }, cacheSalt: caller.cacheSalt } : {}),
       limits, explicitLimits, redactions, log,
     });
   } finally {

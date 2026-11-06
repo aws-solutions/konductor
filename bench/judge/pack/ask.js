@@ -67,8 +67,9 @@ function evidenceFound(criterion, evidence, found, foundInKey = () => false) {
 
 /** Judged criteria from one reply, with the verdict dropped a level when the evidence is not found. */
 function scoreReply(replyCriteria, judgedCriteria, bundleText, answerKey = null) {
-  const found = makeQuoteMatcher(bundleText);
-  const foundInKey = answerKey ? makeQuoteMatcher(answerKey) : () => false;
+  // The pack pass always matches strictly, whatever rule the rubric pass uses; its tables say "quality pack quotes: strict".
+  const found = makeQuoteMatcher(bundleText, { lenient: false });
+  const foundInKey = answerKey ? makeQuoteMatcher(answerKey, { lenient: false }) : () => false;
   const byId = new Map(judgedCriteria.map((c) => [c.id, c]));
   return replyCriteria.map((r) => {
     const c = byId.get(r.id);
