@@ -60,7 +60,7 @@ Use this skill when:
 
 **Ensure:**
 
-- All public shapes have @documentation
+- All public shapes have a `///` doc comment or `@documentation`, never both on one shape
 - Documentation explains purpose and usage
 - Constraints and validation rules are documented
 - Business logic and edge cases are explained

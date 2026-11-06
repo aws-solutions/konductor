@@ -64,8 +64,10 @@ not per individual commit.
   instructions instead of a summary followed by a pasted prompt. `smithy-validation`'s output
   format uses its Quality Gate's severity names, and it flags operations left callable without
   authentication instead of operations missing `@auth`. `smithy-modeling`'s service templates
-  carry an auth scheme trait. `progress-tracking` takes `plan_path`, per-feature `spec_dir`, and
-  `history_dir`, defaulting to the `.kiro/specs/` paths it used before.
+  carry an auth scheme trait and no longer set a doc comment and `@documentation` on the same
+  shape, which Smithy rejects as a trait conflict. `progress-tracking` takes `plan_path`,
+  per-feature `spec_dir`, and `history_dir`, defaulting to the `.kiro/specs/` paths it used
+  before.
 
 ### Fixed
 

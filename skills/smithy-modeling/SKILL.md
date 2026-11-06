@@ -87,7 +87,6 @@ namespace [appropriate.namespace]
 
 /// Service documentation
 @title("[Service Title]")
-@documentation("[Detailed service description]")
 @httpBearerAuth
 service [ServiceName] {
     version: "[YYYY-MM-DD]"
@@ -143,7 +142,7 @@ structure [ErrorName] {
 
 ### Documentation Standards
 
-- Add @documentation to all public shapes
+- Document all public shapes with a `///` doc comment or `@documentation`, not both on one shape
 - Explain constraints and validation rules
 - Document business logic and edge cases
 - Provide examples where helpful
@@ -343,7 +342,6 @@ namespace com.example.todo
 
 /// Todo Service provides task management capabilities
 @title("Todo Service")
-@documentation("RESTful service for managing todo items")
 @httpBearerAuth
 service TodoService {
     version: "2024-11-14"
