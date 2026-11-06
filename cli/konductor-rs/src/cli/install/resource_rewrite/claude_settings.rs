@@ -467,7 +467,6 @@ pub(super) fn apply_claude_settings_grant(
 // `remove_claude_konductor_hooks` once no remaining strategy tracks the
 // hooks file. Kiro's own hooks live in `telemetry_hook_pass.rs`.
 
-/// A Konductor telemetry hook to keep in the hooks settings file.
 /// Which Konductor hook a command is. A telemetry hook's event argument
 /// comes from `telemetry_hook.rs`'s constants, so a rename there is a
 /// compile error here. A hook is identified by its subcommand (and event
