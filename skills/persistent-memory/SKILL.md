@@ -1,18 +1,20 @@
 ---
 name: persistent-memory
-description: Use after an error-recovery sequence, when the user corrects your approach and the correction is durable, or when a non-obvious project or environment convention or preference is discovered. Persists the fact to bounded memory files that survive across sessions.
+description: Use when the user says "remember this", "save this" or "forget that", when a correction is durable, or when a non-obvious project convention appears. Also use after an error-recovery sequence. Persists the fact to bounded memory files that survive across sessions.
 ---
 
 # Skill: Persistent Memory
 
 Project memory (`.konductor/memory/` under the project root): facts about this project and how its user works. It is part of the project, like AGENTS.md: agents follow user-written entries here at the level of the project's agent instruction files (core rule 11), whether or not git tracks the files. It is ignored by git by default so each clone keeps its own copy; a project may remove that ignore to share it.
 
-## Local Scratchpad Files
+## Memory Files
 
 | File                          | Purpose                                | Default limit |
 | ----------------------------- | -------------------------------------- | ------------- |
 | `.konductor/memory/MEMORY.md` | Project/codebase/environment facts     | 2,200 chars   |
 | `.konductor/memory/USER.md`   | Personal preferences and working style | 1,375 chars   |
+
+Ignored by git by default once the first write adds `.konductor/memory/` to `.gitignore`; remove that line to share memory.
 
 **Semantic rule:** If it describes the project, repo, or environment → `MEMORY.md`. If it describes how the user likes to work → `USER.md`.
 
@@ -129,7 +131,7 @@ Every 5–10 turns, self-evaluate: _Is there anything worth persisting?_
 
 ---
 
-## Routing Note (§6.2.2)
+## Routing Note
 
 This skill handles **declarative facts, preferences, decisions, and conventions only**. Route
 reusable multi-step procedures to `workspace-skills` instead.
@@ -142,7 +144,7 @@ reusable multi-step procedures to `workspace-skills` instead.
 
 ---
 
-## Proactive Capture Triggers (§6.2.3 — do not wait to be asked)
+## Proactive Capture Triggers (do not wait to be asked)
 
 ### Primary triggers (act on any one)
 
@@ -164,7 +166,7 @@ reusable multi-step procedures to `workspace-skills` instead.
 
 ---
 
-## Scan-Before-Create (§6.2.4 — hard gate)
+## Scan-Before-Create (hard gate)
 
 **BEFORE creating a new memory entry, you MUST check for overlap.**
 
@@ -182,7 +184,7 @@ Duplicates dilute memory quality and degrade recall.
 
 ---
 
-## Provenance Markers (§6.2.5 — user entries are immutable to agents)
+## Provenance Markers (user entries are immutable to agents)
 
 Every agent-created memory entry **MUST** carry `[origin:agent]` inline after the timestamp.
 Write `[origin:user]` only when the user dictates what to remember, or confirms an implicit
@@ -213,7 +215,7 @@ the original.
 
 ---
 
-## Notification & Reduced Friction (§7.2)
+## Notification & Reduced Friction
 
 | Capture type              | Confirmation?                                       | Notification?             |
 | ------------------------- | --------------------------------------------------- | ------------------------- |

@@ -41,7 +41,7 @@ Author AGENTS.md with these sections, adapted to the project as follows: infer w
 4. **Setup & Commands** — build, test, install commands
 5. **Code Style & Conventions** — formatting, naming, language rules; if a `.kiro/steering/*.md` file already documents these, reference it (`See .kiro/steering/<file>.md`) rather than duplicating its content
 6. **Testing** — how to run tests
-7. **Workflow** — git/PR/CR conventions
+7. **Workflow** — git and pull request conventions
 8. **Domain Knowledge** (optional) — durable project-specific facts
 
 ## Context-loading instruction block (always include)
@@ -56,12 +56,12 @@ Before starting work, load available project context:
 
 - You MUST read `.kiro/steering/**/*.md` if present — workspace steering rules.
 - You MUST read `<workspace>/memory/*.md` if present — persistent facts and preferences.
-- Workspace-specific skills may exist at `.kiro/skills/**/ws-*.md` — be aware and load when relevant.
+- Workspace-specific skills may exist at `.kiro/skills/ws-*/SKILL.md` — be aware and load when relevant.
 
 If a path does not exist, skip it silently and continue.
 ```
 
-Replace `<workspace>` with the project root (e.g., `.konductor`), so `<workspace>/memory/*.md` -> `.konductor/memory/*.md`.
+Replace `<workspace>` with the workspace state directory (`.konductor`), so `<workspace>/memory/*.md` -> `.konductor/memory/*.md`.
 
 ## Rules
 
