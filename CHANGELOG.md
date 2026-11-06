@@ -91,7 +91,7 @@ not per individual commit.
   ignores `.konductor/handoff/`; add the line by hand in a project initialised earlier.
 - Specialist specs grant no spawn tool, and Kiro CLI v2, Kiro CLI v3 and Claude Code configs block it,
   with `disallowedTools` on Claude Code for every specialist. Kiro CLI v2 gets an explicit tool list
-  in place of `@builtin` (checked with kiro-cli 2.36.0).
+  in place of `@builtin` (checked with kiro-cli 2.36.0 and 3.0.0).
   `k-code-review-workflow` step 6 writes a `PENDING ADVERSARIAL PASS` report, then hands off.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
