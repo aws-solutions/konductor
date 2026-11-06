@@ -40,18 +40,23 @@ if [ ! -f README.md ] || [ ! -f LICENSE.txt ] || [ ! -f NOTICE.txt ]; then
   exit 1
 fi
 
-"$REPO_ROOT/scripts/generate-claude-plugin.sh"
+# Generator output is staged outside the repository and removed on exit.
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+"$REPO_ROOT/scripts/generate-claude-plugin.sh" --out "$STAGE"
 
 mkdir -p "$OUT/agents" "$OUT/skills" "$OUT/.claude-plugin"
-cp generated/claude-plugin/agents/*.md "$OUT/agents/"
+cp "$STAGE"/agents/*.md "$OUT/agents/"
 
 # Fails if a native skill and an SOP-derived skill share a name.
 "$REPO_ROOT/scripts/copy-skills-with-collision-guard.sh" \
   --native "$REPO_ROOT/skills" \
-  --sop "$REPO_ROOT/generated/claude-plugin/skills" \
+  --sop "$STAGE/skills" \
   --out "$OUT/skills"
 
 cp README.md "$OUT/README.md"
+# The plugin directory's listing icon, a 1024 px render of docs/assets/konductor-logo.svg.
+cp "$REPO_ROOT/docs/assets/konductor-icon.png" "$OUT/.claude-plugin/icon.png"
 cp LICENSE.txt "$OUT/LICENSE.txt"
 cp NOTICE.txt "$OUT/NOTICE.txt"
 python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-readme-links.py" \
@@ -85,10 +90,11 @@ python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-agent-grants.py" \
   --agents-dir "$OUT/agents" \
   --plugin-json "$OUT/.claude-plugin/plugin.json"
 
-# Telemetry hook. hooks.json is generated from the assembled agents/ so the
-# SubagentStart matcher covers every agent shipped.
+# Telemetry and dispatch-environment hooks. hooks.json is generated from the
+# assembled agents/ so the SubagentStart matcher covers every agent shipped.
 mkdir -p "$OUT/hooks" "$OUT/docs"
 cp "$REPO_ROOT/scripts/claude-plugin-telemetry-hook.js" "$OUT/hooks/konductor-telemetry.js"
+cp "$REPO_ROOT/scripts/claude-plugin-dispatch-env-hook.sh" "$OUT/hooks/konductor-dispatch-env.sh"
 cp "$REPO_ROOT/docs/telemetry-schema.json" "$OUT/docs/telemetry-schema.json"
 python3 "$REPO_ROOT/scripts/render-claude-plugin-hooks-json.py" \
   --agents-dir "$OUT/agents" \

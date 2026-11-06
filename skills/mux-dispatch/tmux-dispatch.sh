@@ -4,14 +4,15 @@
 # Usage: bash tmux-dispatch.sh --agent <name> --task "description" [options]
 #
 # Modes: split right (default), --split down, --tab (new window)
-# Flags: --name, --cwd, --close, --interactive
+# Flags: --name, --cwd, --close, --interactive, --brief <file> (instead of --task)
 set -euo pipefail
 
-AGENT="" TASK="" CWD="" NAME="" MODE="split" SPLIT_DIR="right" CLOSE=false INTERACTIVE=false
+AGENT="" TASK="" BRIEF="" CWD="" NAME="" MODE="split" SPLIT_DIR="right" CLOSE=false INTERACTIVE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --agent)       AGENT="$2"; shift 2 ;;
     --task)        TASK="$2"; shift 2 ;;
+    --brief)       BRIEF="$2"; shift 2 ;;
     --name)        NAME="$2"; shift 2 ;;
     --cwd)         CWD="$2"; shift 2 ;;
     --tab)         MODE="tab"; shift ;;
@@ -29,13 +30,85 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "$AGENT" ]] && { echo "ERROR: --agent required" >&2; exit 1; }
-[[ -z "$TASK" ]]  && { echo "ERROR: --task required" >&2; exit 1; }
+if [[ -n "$TASK" && -n "$BRIEF" ]]; then
+  echo "ERROR: pass --task or --brief, not both" >&2; exit 1
+fi
+if [[ -n "$BRIEF" ]]; then
+  [[ -f "$BRIEF" && -r "$BRIEF" ]] || { echo "ERROR: --brief file not found or unreadable: $BRIEF" >&2; exit 1; }
+  [[ "$(wc -c < "$BRIEF")" -le 1048576 ]] || { echo "ERROR: --brief file is over 1 MB: $BRIEF" >&2; exit 1; }
+  TASK_TEXT="$(head -c 100 "$BRIEF")"
+else
+  [[ -z "$TASK" ]] && { echo "ERROR: --task or --brief required" >&2; exit 1; }
+  TASK_TEXT="$TASK"
+fi
 [[ -z "$CWD" ]]   && { echo "ERROR: --cwd required" >&2; exit 1; }
 [[ -z "${TMUX:-}" ]]  && { echo "ERROR: Not running inside a tmux session" >&2; exit 1; }
 [[ "$SPLIT_DIR" == "stacked" ]] && { echo "ERROR: tmux does not support stacked panes (see tmux#2770); use zellij for stacked, or --split right|down" >&2; exit 1; }
 # AGENT is the name from the orchestrator routing table (e.g. 'k-developer'),
 # or one qualified with this plugin's name ('konductor:k-developer').
 [[ "$AGENT" =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only, optionally prefixed with '<plugin>:'" >&2; exit 1; }
+
+# Permission mode for a Claude Code child session, from
+# KONDUCTOR_DISPATCH_PERMISSION_MODE. Kiro CLI children ignore it.
+quote_args() {
+  local out="" a
+  for a in "$@"; do out+=" $(printf '%q' "$a")"; done
+  printf '%s' "$out"
+}
+CLAUDE_PERMISSION_ARGS=""
+if [[ -n "${CLAUDECODE:-}" ]]; then
+  case "${KONDUCTOR_DISPATCH_PERMISSION_MODE:-interactive}" in
+    interactive) ;;
+    headless) CLAUDE_PERMISSION_ARGS="$(quote_args -p --permission-mode acceptEdits --permission-prompts none)" ;;
+    bypass)
+      CLAUDE_PERMISSION_ARGS="$(quote_args --dangerously-skip-permissions -p)"
+      echo "WARNING: KONDUCTOR_DISPATCH_PERMISSION_MODE=bypass: the child session skips every permission check. Use it only in an isolated environment." >&2
+      ;;
+    *)
+      echo "ERROR: KONDUCTOR_DISPATCH_PERMISSION_MODE must be interactive, headless or bypass (got '${KONDUCTOR_DISPATCH_PERMISSION_MODE}')" >&2
+      # The plugin's SessionStart hook writes "invalid" for a mistyped option.
+      if [[ "$KONDUCTOR_DISPATCH_PERMISSION_MODE" == invalid ]]; then
+        echo "ERROR: check the Claude Code plugin's dispatch_permission_mode option; it must be interactive, headless or bypass (case-sensitive)." >&2
+      fi
+      exit 1
+      ;;
+  esac
+fi
+
+# Run by the launcher after the child exits. It keeps a .done the child
+# wrote itself (the completion signal) and adds the exit code, so an early
+# .done can't hide a crash: a non-zero exit always ends as status "error".
+# It reads only a regular file of at most 64 KiB, never through a symlink and
+# never blocking on a FIFO, and replaces it through a fresh temp file.
+RECORD_DONE_PY='import json, os, stat, sys, tempfile
+path, ws, code, default = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+data = None
+try:
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        st = os.fstat(fd)
+        if stat.S_ISREG(st.st_mode) and st.st_size <= 65536:
+            data = json.loads(os.read(fd, 65537).decode("utf-8"))
+    finally:
+        os.close(fd)
+except (OSError, ValueError):
+    data = None
+if not isinstance(data, dict):
+    data = {"workspace_id": ws, "summary": default}
+data.setdefault("workspace_id", ws)
+if data.get("status") not in ("done", "error"):
+    data["status"] = "done" if code == 0 else "error"
+data["exit_code"] = code
+if code != 0:
+    data["status"] = "error"
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".done-")
+try:
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f)
+    os.replace(tmp, path)
+except BaseException:
+    os.unlink(tmp)
+    raise'
 
 # In a Claude Code plugin this skill sits at <plugin root>/skills/mux-dispatch/,
 # and Claude Code names the plugin's agents <plugin>:<agent>.
@@ -47,7 +120,7 @@ if [[ -f "$PLUGIN_ROOT/.claude-plugin/plugin.json" ]]; then
   [[ "$PLUGIN_NAME" =~ ^[a-z0-9-]+$ ]] || PLUGIN_NAME=""
 fi
 
-LABEL="${NAME:-$AGENT: $(printf '%s' "$TASK" | head -c 40)}"
+LABEL="${NAME:-$AGENT: $(printf '%s' "$TASK_TEXT" | head -c 40 | tr '\n' ' ')}"
 # Fix: python3 uuid is portable across macOS and Linux (date +%s%N and md5sum are GNU-only)
 WS_ID="tmux-$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")"
 # KONDUCTOR_MUX_REGISTRY_DIR lets tests point at an isolated directory
@@ -61,11 +134,44 @@ REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"
 # path (flock creates it on demand; the lock is released when the wrapped
 # process exits).
 REGISTRY_LOCK="$REGISTRY_FILE.lock"
-mkdir -p "$REGISTRY_DIR"
+# The registry holds every dispatch's files, so it must be a real directory
+# owned by this user that no one else can write to. Prints the problem and
+# fails when it isn't.
+registry_problem() {
+  python3 - "$1" "$(id -u)" <<'PY'
+import os, stat, sys
+path, uid = sys.argv[1], int(sys.argv[2])
+try:
+    st = os.lstat(path)
+except OSError as e:
+    sys.exit(f"cannot be read ({e.strerror})")
+if stat.S_ISLNK(st.st_mode):
+    sys.exit("is a symlink")
+if not stat.S_ISDIR(st.st_mode):
+    sys.exit("is not a directory")
+if st.st_uid != uid:
+    sys.exit(f"is owned by uid {st.st_uid}, not {uid}")
+if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+    sys.exit("is group- or world-writable")
+PY
+}
+
+[[ -e "$REGISTRY_DIR" || -L "$REGISTRY_DIR" ]] || { mkdir -p "$(dirname "$REGISTRY_DIR")" && mkdir -m 700 "$REGISTRY_DIR"; }
+if ! problem="$(registry_problem "$REGISTRY_DIR" 2>&1)"; then
+  echo "ERROR: dispatch registry $REGISTRY_DIR $problem; it must be a directory you own that no one else can write to (chmod 700 it, or set KONDUCTOR_MUX_REGISTRY_DIR to a private directory)" >&2
+  exit 1
+fi
 
 # Write launcher script — task stored in separate file to avoid all quoting issues
 LAUNCHER="$REGISTRY_DIR/launcher-${WS_ID}.sh"
-TASK_FILE="$REGISTRY_DIR/task-text-${WS_ID}.txt"
+# Each dispatch gets its own 0700 directory holding its brief, its result and
+# its .done. It is the only directory the child is granted; the shared
+# registry, the launchers and other dispatches stay outside that grant.
+DISPATCH_DIR="$REGISTRY_DIR/$WS_ID"
+mkdir -m 700 "$DISPATCH_DIR"
+TASK_FILE="$DISPATCH_DIR/task.md"
+RESULT_FILE="$DISPATCH_DIR/result.md"
+DONE_FILE="$DISPATCH_DIR/$WS_ID.done"
 
 if [[ "$INTERACTIVE" == true ]]; then
   FLAGS="--trust-all-tools"
@@ -73,8 +179,15 @@ else
   FLAGS="--no-interactive --trust-all-tools"
 fi
 
-# Write task text to its own file — no escaping needed
-printf '%s' "$TASK" > "$TASK_FILE"
+# The brief goes in its own file, so its text never passes through a shell.
+if [[ -n "$BRIEF" ]]; then
+  cp "$BRIEF" "$TASK_FILE"
+else
+  printf '%s' "$TASK" > "$TASK_FILE"
+fi
+# The child's prompt names its files by literal path: a headless child can't
+# run a shell to read them from the environment.
+PROMPT="Read and execute the task in $TASK_FILE. Write your full result to $RESULT_FILE. As your last step, write {\"status\": \"done\", \"summary\": \"<one line>\"} to $DONE_FILE, with \"error\" as the status if you could not finish."
 
 # Detect runtime at dispatch time (parent has the env var; child pane won't)
 if [[ -n "${CLAUDECODE:-}" ]]; then
@@ -92,7 +205,8 @@ fi
   # this env var does not otherwise cross into the new tmux window/split.
   [[ -n "${WORKTREE_PROVISION_CMD:-}" ]] && printf 'export WORKTREE_PROVISION_CMD=%q\n' "$WORKTREE_PROVISION_CMD"
   [[ -n "$CWD" ]] && printf 'cd %q || exit 1\n' "$CWD"
-  echo "TASK=\$(cat \"${TASK_FILE}\")"
+  printf 'TASK=%q\n' "$PROMPT"
+  printf 'export KONDUCTOR_DONE_FILE=%q\n' "$DONE_FILE"
   if [[ "$RUNTIME" == "claude" ]]; then
     # Claude Code: resolve agent prefix and invoke claude CLI. No package name
     # is hardcoded -- search for any locally-installed agent file ending in
@@ -156,7 +270,10 @@ fi
     printf '  echo "ERROR: claude agent %s not installed under ~/.claude/agents or in this plugin; not dispatching"\n' "$AGENT"
     printf '  EXIT_CODE=1\n'
     printf 'else\n'
-    printf '  claude --agent "${PREFIX}%s" --dangerously-skip-permissions -p "$TASK"\n' "$AGENT"
+    # --add-dir grants this dispatch's own directory, outside the child's
+    # working directory. It takes a list, so it goes before --agent and can
+    # never swallow the prompt.
+    printf '  claude --add-dir %q --agent "${PREFIX}%s"%s "$TASK"\n' "$DISPATCH_DIR" "$AGENT" "$CLAUDE_PERMISSION_ARGS"
     echo '  EXIT_CODE=$?'
     printf 'fi\n'
   else
@@ -167,15 +284,11 @@ fi
     printf 'kiro-cli chat --agent %s %s "$TASK"\n' "$AGENT" "$FLAGS"
     echo "EXIT_CODE=\$?"
   fi
-  # Write .done only if hook hasn't already written it. Derived from
-  # $REGISTRY_DIR (already resolved from KONDUCTOR_MUX_REGISTRY_DIR at
-  # generation time above) so a test pointed at an isolated registry dir
-  # never leaks a .done file into the real /tmp/konductor-mux.
-  echo "DONE_FILE=\"${REGISTRY_DIR}/${WS_ID}.done\""
-  echo "if [ ! -f \"\$DONE_FILE\" ]; then"
-  printf '  mkdir -p %q\n' "$REGISTRY_DIR"
-  echo "  python3 -c \"import json; json.dump({'workspace_id': '${WS_ID}', 'status': 'done' if \$EXIT_CODE == 0 else 'error', 'summary': 'shell fallback'}, open('\$DONE_FILE', 'w'))\""
-  echo "fi"
+  # Record the exit: keep a .done the child or its hook wrote and add the exit
+  # code, or write a fallback .done. The path derives from $REGISTRY_DIR, so a
+  # test pointed at an isolated registry dir never touches /tmp/konductor-mux.
+  printf 'mkdir -p -m 700 %q\n' "$DISPATCH_DIR"
+  printf 'python3 -c %q %q %q "$EXIT_CODE" %q || true\n' "$RECORD_DONE_PY" "$DONE_FILE" "$WS_ID" "shell fallback"
   if [[ "$CLOSE" == true ]]; then
     echo "tmux kill-pane -t \$TMUX_PANE 2>/dev/null || true"
   fi
@@ -210,10 +323,10 @@ esac
 # read-modify-write below against concurrent dispatches from this script,
 # zellij-dispatch.sh, and mux-close-pane.sh -- all three read, mutate, and
 # rewrite the same $REGISTRY_FILE with no other coordination.
-TASK_SUMMARY=$(printf '%s' "$TASK" | head -c 100)
+TASK_SUMMARY=$(printf '%s' "$TASK_TEXT" | head -c 100)
 WS_ID="$WS_ID" PANE_ID="${PANE_ID:-unknown}" AGENT="$AGENT" \
 TASK_SUMMARY="$TASK_SUMMARY" MODE="$MODE" CWD="${CWD:-}" \
-REGISTRY_FILE="$REGISTRY_FILE" REGISTRY_LOCK="$REGISTRY_LOCK" \
+REGISTRY_FILE="$REGISTRY_FILE" REGISTRY_LOCK="$REGISTRY_LOCK" DISPATCH_DIR="$DISPATCH_DIR" \
 DISPATCHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 python3 -c "
 import json, os, sys, fcntl, tempfile
@@ -225,6 +338,7 @@ entry = {
     'mode': os.environ['MODE'],
     'cwd': os.environ['CWD'],
     'backend': 'tmux',
+    'dispatch_dir': os.environ['DISPATCH_DIR'],
     'dispatched_at': os.environ['DISPATCHED_AT'],
 }
 reg_file = os.environ['REGISTRY_FILE']
@@ -285,4 +399,4 @@ elif [[ "$reg_write_rc" -ne 0 ]]; then
   echo "WARNING: Failed to record dispatch in registry" >&2
 fi
 
-echo "DISPATCHED workspace=$WS_ID pane=${PANE_ID:-unknown} agent=$AGENT mode=$MODE backend=tmux"
+echo "DISPATCHED workspace=$WS_ID pane=${PANE_ID:-unknown} agent=$AGENT mode=$MODE backend=tmux dispatch_dir=$DISPATCH_DIR done_file=$DONE_FILE"

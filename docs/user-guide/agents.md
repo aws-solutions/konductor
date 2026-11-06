@@ -102,11 +102,17 @@ names `fs_write` or `shell`. Claude Code values come from `clientConfig.claudeCl
 (`Write`/`Edit`, `Bash`) — the ceiling, not the prompting behaviour.
 
 These rows describe agents started by `konductor`. `konductor-mux-orchestrator` and
-`konductor-cmux-orchestrator` start each specialist with permission checks off
-(`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so under them
-every granted tool runs without asking, MCP tools included. On Claude Code, deny rules in your
-`settings.json` still block, and an ask rule denies the call, because each specialist runs with `-p`
-and can't prompt. Add deny rules for anything a dispatched agent must never do.
+`konductor-cmux-orchestrator` start each specialist in its own pane. On Kiro CLI it runs with
+`--trust-all-tools`, so every granted tool runs without asking, MCP tools included. On Claude Code,
+`KONDUCTOR_DISPATCH_PERMISSION_MODE` (or the plugin's `dispatch_permission_mode` option) decides:
+`interactive`, the default, asks you in the pane; `headless` runs with `-p`, accepts file edits and
+denies any other call that would prompt unless your `permissions.allow` allows it; and the opt-in
+`bypass` runs with `--dangerously-skip-permissions`, for isolated environments only. In `headless`
+and `bypass`, deny rules in your `settings.json` still block, and in `headless` an ask rule denies
+the call. An `interactive` Claude Code child completes when it writes its `.done` file
+(`$KONDUCTOR_DONE_FILE`), but its session stays open until you type `/exit` in its pane. A mistyped `dispatch_permission_mode` value makes the dispatch stop with
+an error rather than fall back to `interactive`. Add deny rules for anything a dispatched agent must
+never do.
 
 Three observations that are not obvious and do affect what you should trust:
 

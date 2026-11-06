@@ -121,12 +121,23 @@ The plugin always sends to the default endpoint. It ignores
 See [Data Collection](../../../README.md#data-collection) for the full
 details and the event schema.
 
+## Dispatch permission mode
+
+The plugin's `dispatch_permission_mode` option sets how
+`konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each
+child session: `interactive` (the default, which asks you in the pane),
+`headless` (no prompts; it edits files and denies anything your
+`permissions.allow` doesn't allow), or `bypass` (skips every permission
+check, for isolated environments only). Change it in `/config`. An exported
+`KONDUCTOR_DISPATCH_PERMISSION_MODE` wins over the option. See
+[What the Claude Code plugin runs](../../../README.md#what-the-claude-code-plugin-runs).
+
 ## Related
 
 - [Install for Claude Code](install-claude-code.md)
 - [Install for Kiro CLI](install-kiro-cli.md)
 - [Install via Kiro Power](install-kiro-power.md)
-- [Plugin build output](../../../generated/claude-plugin/README.md)
+- [Plugin build and release](../../guides/claude-plugin-build.md)
 - <https://aws-solutions.github.io/konductor/>
 
 [← Install for Claude Code](install-claude-code.md) · [Task guides](README.md)

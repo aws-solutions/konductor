@@ -255,10 +255,15 @@ Every agent runs Claude Sonnet 5.5 (`claude-sonnet-5.5` on Kiro, `claude-sonnet-
 Code). Full details, including each agent's tools, are in the
 [agents reference](docs/user-guide/agents.md).
 
-`konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
-checks off (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so a
-dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. Use them
-only in a workspace and with AWS credentials you are willing to let an agent act on. With
+`konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist in its own
+pane. On Kiro CLI the specialist runs with `--trust-all-tools`, so it runs shell commands and MCP
+tools, AWS API calls included, without asking. On Claude Code,
+`KONDUCTOR_DISPATCH_PERMISSION_MODE` (or the plugin's `dispatch_permission_mode` option) decides:
+`interactive` (the default) asks you in the pane, `headless` runs without prompts and denies what
+your permission settings don't allow, and the opt-in `bypass` skips every permission check (see
+[What the Claude Code plugin runs](#what-the-claude-code-plugin-runs)). Use the multiplexer
+orchestrators only in a workspace and with AWS credentials you are willing to let an agent act on.
+With
 `konductor`, Claude Code specialists follow your `~/.claude/settings.json`; on Kiro CLI,
 `k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
 See [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).
@@ -408,7 +413,7 @@ Everything else is bring-your-own:
 
 The [source repository](https://github.com/aws-solutions/konductor) has the layout below. The Claude
 Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/telemetry-schema.json`, its manifests,
-the README, `LICENSE.txt` and `NOTICE.txt`.
+its icon, the README, `LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/
@@ -423,6 +428,84 @@ konductor/
 ├── scripts/       Install, release and plugin tooling
 └── tests/         Benchmark scenarios and script tests
 ```
+
+## Example prompts for the Claude Code plugin
+
+Start the plugin's orchestrator with `claude --agent konductor:konductor`, then ask for real work:
+
+```text
+Map this repository: its services, entry points, data stores and how a request flows through them.
+```
+
+```text
+Write user stories and a system design for adding SSO login to this web app, then review the design for security gaps.
+```
+
+```text
+Run /konductor:sop-k-code-review-workflow against my current branch and fix any CRITICAL findings.
+```
+
+## What the Claude Code plugin runs
+
+Installing the plugin adds agents, skills and the items below. The plugin starts nothing else on its
+own; servers such as Playwright MCP are yours to configure.
+
+- **Telemetry hooks.** `hooks/hooks.json` runs
+  `node ${CLAUDE_PLUGIN_ROOT}/hooks/konductor-telemetry.js agent-invocation` on `SessionStart`
+  (`startup` and `clear`) and `node ${CLAUDE_PLUGIN_ROOT}/hooks/konductor-telemetry.js
+  subagent-invocation` on `SubagentStart` for Konductor's own agents. Both run asynchronously. The
+  script prints nothing and always exits 0. It reads `.konductor/config.yml` and
+  `$HOME/.konductor/telemetry.json`, creates the latter if it is missing, and sends one event to AWS
+  unless telemetry is off. See [Data Collection](#data-collection) for what is sent and how to turn
+  it off.
+- **The bundled AWS MCP server.** `.mcp.json` launches
+  `uvx mcp-proxy-for-aws-cli==1.7.0 https://aws-mcp.us-east-1.api.aws/mcp --metadata AWS_REGION=us-east-1`.
+  `uvx` downloads that pinned package on first use. The proxy connects to the managed AWS MCP
+  endpoint `aws-mcp.us-east-1.api.aws` with the AWS credentials in your environment, which lets
+  `k-architect` and `k-developer` read AWS documentation and call AWS APIs.
+- **Child Claude Code sessions.** `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`
+  dispatch each specialist into a new tmux, zellij or cmux pane as a child `claude` session
+  ([`tmux-dispatch.sh`](skills/mux-dispatch/tmux-dispatch.sh),
+  [`zellij-dispatch.sh`](skills/mux-dispatch/zellij-dispatch.sh),
+  [`cmux-dispatch.sh`](skills/cmux-dispatch/cmux-dispatch.sh)). The permission mode decides how the
+  child starts:
+
+  | Mode | Child command | Effect |
+  | --- | --- | --- |
+  | `interactive` (default) | `claude --add-dir <dispatch dir> --agent <agent> "<prompt>"` | A normal session in the pane that asks you before using a tool that needs permission. Its task is complete when it writes its `.done`; type `/exit` only to close the pane |
+  | `headless` | `claude --add-dir <dispatch dir> --agent <agent> -p --permission-mode acceptEdits --permission-prompts none "<prompt>"` | Runs once without prompts and skips the workspace trust dialog, because of `-p`. It can edit files in its working directory and its dispatch dir; Bash, network and other calls that would prompt are denied unless `permissions.allow` in your `settings.json` (or `--allowedTools`) allows them, so `acceptEdits` alone does not allow build or test commands |
+  | `bypass` | `claude --add-dir <dispatch dir> --agent <agent> --dangerously-skip-permissions -p "<prompt>"` | Opt-in. Skips every permission check, AWS API calls included. Use it only in an isolated environment |
+
+  `<dispatch dir>` is a 0700 directory of its own under `/tmp/konductor-mux` or
+  `/tmp/konductor-cmux`, holding that dispatch's brief, result and `.done`. It is the only directory
+  the child is granted; the shared registry and other dispatches' files stay outside it. `<prompt>`
+  is a fixed instruction naming those files: the child writes its result there and, as its last
+  step, its `.done` (`$KONDUCTOR_DONE_FILE`). That `.done` is the completion signal, and the launcher
+  adds the exit code when the session ends, so a later crash still shows as `"error"`: a `.done` the
+  child wrote can turn into `error` after it is first read. The registry must be private to you; the
+  scripts refuse one that is a symlink, owned by someone else, or writable by others. Dispatch
+  directories are removed only through the skills' cleanup helpers.
+
+  **Behavior change:** Claude Code children used to start with every permission check skipped (what
+  is now `bypass`). The default is now `interactive`. For unattended runs, set
+  `KONDUCTOR_DISPATCH_PERMISSION_MODE=headless` and allowlist your build and test commands in
+  `permissions.allow`, or use `bypass` only in an isolated environment.
+
+  Set the mode with the plugin's `dispatch_permission_mode` option, or export
+  `KONDUCTOR_DISPATCH_PERMISSION_MODE` in the shell that starts Claude Code; the variable wins.
+  A third hook, `bash ${CLAUDE_PLUGIN_ROOT}/hooks/konductor-dispatch-env.sh`, runs synchronously on
+  every `SessionStart` and copies the option into the session environment. It prints nothing and
+  writes only to the environment file Claude Code gives it. A mistyped option value is written as
+  `invalid`, so dispatch stops with an error instead of quietly running `interactive`. The scripts
+  write each task and its `.done` status file under `/tmp/konductor-mux` or `/tmp/konductor-cmux`.
+  The `konductor` orchestrator does not dispatch this way; its specialists follow your Claude Code
+  permission settings.
+
+## Support
+
+Report bugs, ask questions and request features in
+[GitHub issues](https://github.com/aws-solutions/konductor/issues). For a security vulnerability,
+follow [SECURITY.md](SECURITY.md) instead.
 
 ## Contributing
 
@@ -444,6 +527,9 @@ Apache License 2.0. See [LICENSE.txt](LICENSE.txt); third-party attributions are
 Konductor sends usage metrics to AWS. They are **not anonymous**: every event carries an identifier
 that stays the same across all projects on your machine.
 
+**Telemetry is on by default**, for the CLI install and for the Claude Code plugin. To turn it off,
+see [Opting out](#opting-out).
+
 **What's sent**
 
 - **Seven event types:** `agent_invocation`, `subagent_invocation`, `mcp_tool_call`, `cli_error`,
@@ -464,12 +550,39 @@ that stays the same across all projects on your machine.
 UUID and stores it in `$HOME/.konductor/telemetry.json`. Every project on that machine sends the same
 UUID, so events from different projects can be linked to one machine, though not to which projects.
 
-**Claude Code plugin.** The marketplace plugin sends `agent_invocation` and
-`subagent_invocation` the same way, through a plugin hook, with `claude-plugin` as the runtime. It
-shares the machine identifier in `$HOME/.konductor/telemetry.json` with the CLI. See
+**Claude Code plugin.** The marketplace plugin sends `agent_invocation` when a session starts
+with a Konductor agent and `subagent_invocation` when a Konductor agent is delegated to, through
+the hook `hooks/konductor-telemetry.js`. It shares the machine identifier in
+`$HOME/.konductor/telemetry.json` with the CLI and creates that file if it is missing. Telemetry is
+on by default through the plugin's `telemetry_enabled` option (`userConfig.telemetry_enabled`,
+default `true`).
+
+Each event is one HTTPS `POST` of JSON to `https://metrics.awssolutionsbuilder.com/generic`, with a
+3-second timeout. As with any HTTPS request, the endpoint sees the sender's IP address. The plugin
+always uses that endpoint and ignores `KONDUCTOR_METRICS_ENDPOINT` and `telemetry.endpoint`. The
+payload has these fields:
+
+- `Solution` (`SO0370`), `Version` (the plugin version), `UUID` (the machine identifier) and
+  `TimeStamp`.
+- `Data.eventType`, `Data.targetName` (the Konductor agent's name), `Data.parentAgentName` (the
+  delegating Konductor agent, when Claude Code exposes it), `Data.sessionId` and
+  `Data.parentSessionId` (both hashed), `Data.harness` (`claude-plugin`), `Data.eventId` (a hash of
+  the send time and process ID), `Data.TimeStamp`, and `Data.errorCode` and `Data.agentVersion`,
+  which the plugin always sends as `null`.
+
+To turn off telemetry for the Claude Code plugin, do any one of these:
+
+1. Turn off the plugin's `telemetry_enabled` option in `/config`.
+2. Set `KONDUCTOR_TELEMETRY=off` in the environment Claude Code runs in.
+3. Set `telemetry.enabled: false` in `.konductor/config.yml` in the project, any directory above
+   it, or `$HOME`.
+4. Set `"telemetry_consent": false` in `$HOME/.konductor/telemetry.json`. This also stops the CLI
+   from reporting on this machine.
+
+See also
 [Install via the Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md#telemetry).
 
-**Opting out**
+### Opting out
 
 | To stop reporting for | Do this |
 | --- | --- |
