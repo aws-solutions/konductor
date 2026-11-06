@@ -392,8 +392,8 @@ Calculate scores using the following rubric:
 
 Start with 100 points, deduct for issues:
 
-- **Wildcard actions** (`Action: "*"`): -30 points per policy
-- **Wildcard resources** (`Resource: "*"`): -30 points per policy
+- **Wildcard actions without justification** (`Action: "*"`): -30 points per policy
+- **Wildcard resources without justification** (`Resource: "*"`): -30 points per policy
 - **Missing IAM conditions** (no condition block): -10 points per policy
 - **Over-permissive managed policies** (e.g., `PowerUserAccess`): -15 points
 - **Missing permission boundaries** (for delegated admin roles): -20 points
@@ -844,7 +844,7 @@ Generate output in this format:
 
 **Iteration Strategy**:
 
-- **Iteration 1** (Before Production): Fix all CRITICAL and IMPORTANT findings with ROI > 2.0
+- **Iteration 1** (Before Production): Fix all CRITICAL findings, and IMPORTANT findings with ROI > 2.0
 - **Iteration 2** (Post-Launch): Fix SUGGESTION findings with ROI > 1.0
 - **Optional**: Fix the remaining SUGGESTION findings when time permits
 ```
