@@ -15,3 +15,5 @@ workspace = true
 
 [dependencies]
 saphyr-parser = "=0.3.3"
+# SHA-256 for the trust hash. Pure computation, no IO.
+sha2 = "=0.10.8"
