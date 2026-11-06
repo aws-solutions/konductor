@@ -107,7 +107,7 @@ A skill lives at `skills/<name>/SKILL.md` and starts with YAML frontmatter:
 ```yaml
 ---
 name: delegation-protocol
-description: Use when spawning any subagent, deciding which agent should handle a piece of work, coordinating parallel or sequential agent execution, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.
+description: Use when spawning a subagent, choosing the agent for a piece of work, running agents in parallel or in sequence, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.
 version: 1.4.0
 tags: [skill, behavioral, orchestration, delegation, multi-agent]
 ---

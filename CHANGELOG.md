@@ -59,6 +59,12 @@ not per individual commit.
   From a file the user names, an agent reports key names or redacted values only, never the
   secret values, in replies, briefs, commits or logs.
   A `credentials_file` that `k-light-ui-testing` or `k-e2e-test-generation` passes in a brief counts as user-named.
+- constraints: the IMPORTANT tier header is one line again; the review-ceilings summary sits in a paragraph under it.
+- sdlc-navigator lists `konductor` (orchestrator, routing) in its agent table and shows the Claude Code invocation beside the Kiro ones.
+- delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
+- persistent-memory: the ruling mechanics are their own "Ruling entries" subsection with numbered steps.
+- persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
+- app-discovery, claude-teams-behavior and pre-planning-analysis state when to use them in one sentence that fits the Kiro skill index; claude-teams-behavior uses "PR diff" and "read-only checkout" and points at delegation-protocol for the worktree rule; pre-planning-analysis names an Owner per intent.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
