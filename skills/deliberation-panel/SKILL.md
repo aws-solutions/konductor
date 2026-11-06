@@ -170,7 +170,6 @@ How would you like to proceed?
 - **Decides directly:** fold the user's answer into the host's work and continue.
 - **Opts in:** pause the host's flow, invoke this skill with the host's `decision_domain`, `stance=evaluative`, and `consent_confirmed=true` (the opt-in is the consent, so the panel doesn't ask again), and pass the specific tradeoff as the subject. Present the scorecard, let the user decide, then resume the host with that decision.
 - **Once per session per topic:** a later tradeoff on the same topic gets a lighter prompt, "I found another decision point. Same treatment?", without repeating the cost note.
-- **Panel unavailable:** offer instead: "I found a significant tradeoff. Would you like to reason through it together, or decide directly?"
 
 ---
 

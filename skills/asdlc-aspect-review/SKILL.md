@@ -133,4 +133,4 @@ The orchestrator's job is logistics, not opinion. When framing the review for su
 
 ## Deliberation Panel Mode (Design Context)
 
-For a design artifact only (system design, ADR, design doc), when the review finds multiple viable options or a significant ambiguity, offer a deliberation panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain=design`; note it costs about 2-3 times a standard 4-aspect review, and review the rest of the artifact with the standard aspects. Other artifacts use the standard aspects only.
+For a design artifact only (system design, ADR, design doc), when the review finds multiple viable options or a significant ambiguity, offer a deliberation panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain=design`; note it costs about 2-3 times a standard 4-aspect review, and review the rest of the artifact with the standard aspects. If `deliberation-panel` isn't available, offer to reason through the tradeoff together or decide directly. Other artifacts use the standard aspects only.
