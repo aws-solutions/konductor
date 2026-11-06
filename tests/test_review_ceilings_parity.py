@@ -11,12 +11,22 @@ ORCHESTRATORS = ["konductor", "konductor-mux-orchestrator", "konductor-cmux-orch
 ITEM_6_RE = re.compile(r"^6\. Review ceilings\..*$", re.MULTILINE)
 STOP_WORDING = "carried over or new"
 PREEXISTING_WORDING = "pre-existing"
+FIRST_REVIEW_WORDING = "the first review did not report"
+OPEN_WORDING = "still open"
+RE_REVIEW_SCOPE_WORDING = "every CRITICAL or IMPORTANT finding from the first review"
 SOP_LIMIT_WORDING = "a finding that blocks done under this rule still blocks it after the SOP's last re-review"
 RULE_5_ENDING = "no partial completion, except the stop Review ceilings requires."
 BREAKER_SENTENCE = (
     "For review findings the breaker applies only after the user chooses to continue "
     "past a Review ceilings stop."
 )
+
+SOP_LIMIT_MIRRORS = [
+    "skills/delegation-protocol/SKILL.md",
+    "agent-sops/k-delegate.sop.md",
+    "docs/user-guide/concepts.md",
+    "tools/build-user-guide/sync-html-content.py",
+]
 
 MIRRORS = [
     "skills/delegation-protocol/SKILL.md",
@@ -59,8 +69,11 @@ def test_mirrors_carry_the_re_review_stop_wording():
         text = (ROOT / rel).read_text()
         assert STOP_WORDING in text, rel
         assert PREEXISTING_WORDING in text, rel
-    assert STOP_WORDING in _unreleased_section()
-    assert PREEXISTING_WORDING in _unreleased_section()
+        assert FIRST_REVIEW_WORDING in text, rel
+        assert OPEN_WORDING in text, rel
+    unreleased = _unreleased_section()
+    for wording in (STOP_WORDING, PREEXISTING_WORDING, FIRST_REVIEW_WORDING, OPEN_WORDING):
+        assert wording in unreleased, wording
 
 
 def test_rule_5_and_breaker_defer_to_review_ceilings():
@@ -86,3 +99,28 @@ def test_product_manager_step_5_is_bounded():
 def test_sop_round_limit_does_not_block_on_pre_existing_findings():
     assert SOP_LIMIT_WORDING in _item_6("konductor")
     assert "finding in its last re-review" not in _item_6("konductor")
+
+
+def test_item_6_re_reviews_every_first_review_finding():
+    assert RE_REVIEW_SCOPE_WORDING in _item_6("konductor")
+    assert RE_REVIEW_SCOPE_WORDING in (ROOT / "skills/delegation-protocol/SKILL.md").read_text()
+    assert "every first-review CRITICAL or IMPORTANT finding plus what the fix changed" in (
+        ROOT / "agent-sops/k-delegate.sop.md"
+    ).read_text()
+
+
+def test_open_first_review_finding_blocks_done():
+    item = _item_6("konductor")
+    assert "Any first-review CRITICAL or IMPORTANT finding still open" in item
+    assert OPEN_WORDING in item
+
+
+def test_pre_existing_means_not_reported_by_the_first_review():
+    item = _item_6("konductor")
+    assert "A finding the first review did not report, outside what the fix changed and not caused by it, is listed for the user as pre-existing" in item
+    assert "unchanged code that the fix did not cause" not in item
+
+
+def test_sop_limit_wording_in_sop_mirrors():
+    for rel in SOP_LIMIT_MIRRORS:
+        assert SOP_LIMIT_WORDING in (ROOT / rel).read_text(), rel

@@ -153,7 +153,9 @@ For Kiro CLI v3 and Claude Code this is enforced in config, not just in the prom
   tested with kiro-cli 2.35.0; an older client that rejects unknown agent-file fields
   may fail to load the specialists.
 - Claude Code: synth drops `Agent(...)`, `Task` and `Workflow` from every specialist's `tools`
-  list. A specialist with no `tools` list gets them as `disallowedTools` instead.
+  list and denies them with `disallowedTools` as well, so a specialist with no `tools` list is
+  still blocked. The Kiro v3 exclusions were checked against kiro-cli 2.35.0; after an upgrade,
+  open a specialist and run `/tools` to confirm no new spawn-capable built-in appears.
 - Kiro CLI v2 is not covered. Its `@builtin` includes the `subagent` tool, and the v2 output does
   not remove it, so there only the prompt rule stops a specialist from spawning.
 

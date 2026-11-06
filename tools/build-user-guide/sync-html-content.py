@@ -84,7 +84,7 @@ EDITS = [
      "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains"),
     ("concepts: no repeat review",
      "k-delegate</span> step 8).</p>",
-     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of the fix and what uses or depends on it; any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, or that the fix caused in what depends on it, blocks done, and the orchestrator stops and reports it to you; a pre-existing finding in unchanged code is listed for you. An SOP can set its own limit on fix rounds; a finding that blocks done under this rule still blocks it after the SOP's last re-review. An artifact that passed review is not reviewed again unless it changes.</p>"),
+     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every CRITICAL or IMPORTANT finding from the first review plus the fix and what uses or depends on it; a first-review finding still open, any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, and any the fix caused in what depends on it, blocks done, and the orchestrator stops and reports it to you; a finding the first review did not report, outside the fix and not caused by it, is listed for you as pre-existing. An SOP can set its own limit on fix rounds; a finding that blocks done under this rule still blocks it after the SOP's last re-review. An artifact that passed review is not reviewed again unless it changes.</p>"),
     ("concepts: re-delegate sentence without a dash",
      "it re-delegates — <strong",
      "it re-delegates, <strong"),
@@ -375,8 +375,8 @@ ROSTER = [
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 26 · aws-mcp"}',
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 27 · aws-mcp"}'),
     # k-code-review-workflow was removed from k-quality-assurance's spec as
-    # unusable (it spawns k-architect, which QA cannot reach), so QA is down to
-    # one declared SOP.
+    # unusable (its step 6 hands off to k-architect, which QA cannot reach), so
+    # QA is down to one declared SOP.
     ("ref qa",
      '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review, k-code-review-workflow · 11 · —"}',
      '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review · 12 · —"}'),
