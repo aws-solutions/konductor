@@ -9,7 +9,7 @@ tags: [skill, smithy, api-design, validation, checker, code-review]
 
 ## Overview
 
-Reviews Smithy models against AWS best practices covering structure, naming conventions, documentation completeness, type safety, error handling, security traits, and code generation compatibility.
+Reviews Smithy models against AWS best practices covering structure, naming conventions, documentation completeness, type safety, error handling, security traits, and code generation compatibility. Each finding names its location and gives a concrete fix.
 
 ## Usage
 
@@ -18,26 +18,6 @@ Use this skill when:
 - Reviewing a Smithy model before handing off to implementation
 - Checking API design for security and type safety issues
 - Validating code generation compatibility
-
-## Core Concepts
-
-### Validation Categories
-
-Reviews cover structure (namespace, service definition), naming conventions (PascalCase shapes, camelCase members), documentation (`@documentation` traits), type safety (validation constraints), error handling (error shapes per operation), security (`@auth`, `@sensitive`), and code generation compatibility.
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for validating the Smithy model. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Smithy Expert (Checker)
-
-You are a Smithy API modeling expert specializing in validating, reviewing, and improving Smithy model definitions for quality, best practices, and production readiness.
-
-## Your Role
-
-Review Smithy models for correctness, completeness, and adherence to best practices. Identify issues, suggest improvements, and ensure models are ready for code generation and production deployment.
 
 ## Review Categories
 
@@ -173,7 +153,8 @@ Review Smithy models for correctness, completeness, and adherence to best practi
 **Check:**
 
 - Sensitive data marked with @sensitive
-- Authentication traits applied (@auth)
+- The service carries an auth scheme trait (for example `@httpBearerAuth`); operations inherit it unless they set `@auth`
+- Operations that must be authenticated are not marked `@optionalAuth` or `@auth([])`
 - Authorization patterns documented
 - Input validation prevents injection attacks
 - Rate limiting considerations documented
@@ -333,9 +314,9 @@ Identify and document:
 
 ## Output Format
 
-Provide structured feedback:
+Use the Quality Gate's three levels and add what the model does well:
 
-### Critical Issues (Must Fix)
+### CRITICAL (Must Fix)
 
 ```
  [Category] [Location]
@@ -345,7 +326,7 @@ Fix: [Specific recommendation]
 Example: [Code showing fix]
 ```
 
-### Warnings (Should Fix)
+### IMPORTANT (Should Fix)
 
 ```
  [Category] [Location]
@@ -354,7 +335,7 @@ Recommendation: [Suggested improvement]
 Example: [Code showing improvement]
 ```
 
-### Suggestions (Consider)
+### SUGGESTION (Consider)
 
 ```
  [Category] [Location]
@@ -375,7 +356,7 @@ Good practice: [What's done well]
 ````markdown
 ## Smithy Model Review: WeatherService
 
-### Critical Issues
+### CRITICAL
 
 **Type Safety** - WeatherData.temperature
 Issue: Temperature field is untyped String without constraints
@@ -408,7 +389,7 @@ operation GetForecast {
 }
 ```
 
-### Warnings
+### IMPORTANT
 
 **Documentation** - ListLocations operation
 Issue: Missing documentation on pagination behavior
@@ -436,7 +417,7 @@ structure User {
 }
 ```
 
-### Suggestions
+### SUGGESTION
 
 **Performance** - ListLocations operation
 Observation: No default page size specified
@@ -536,26 +517,12 @@ Before approving a model:
 5. **Acknowledge Good Practices**: Recognize what's done well
 6. **Consider Context**: Understand project constraints and requirements
 
-## Success Criteria
-
-A model passes review when:
--  No critical issues remain
--  Warnings addressed or documented as accepted
--  Validates without errors
--  Generates working code
--  Follows best practices consistently
--  Ready for production deployment
--  Documented sufficiently for maintenance
-
-Provide thorough, actionable feedback that improves model quality and ensures production readiness.
-
----
-
 ## Quality Gate
 
 **CRITICAL (must fix):**
 
-- Missing `@auth` traits on operations that require authentication
+- Model fails `smithy validate` with ERROR-level events
+- An operation that needs authentication can be called without it: no auth scheme trait on the service, or the operation is marked `@optionalAuth` or `@auth([])`
 - Sensitive data (PII, credentials) not marked with `@sensitive`
 - Breaking changes introduced to existing operations
 - Invalid Smithy syntax that blocks code generation
@@ -565,10 +532,13 @@ Provide thorough, actionable feedback that improves model quality and ensures pr
 - Inconsistent naming conventions across shapes
 - Missing error documentation
 - List operations without pagination support
+- Generated code for a target language does not compile
 
 **SUGGESTION:**
 
 - Could add deprecation notices for planned removals
 - Could strengthen input validation constraints
+
+A model passes review when no CRITICAL finding remains and each IMPORTANT finding is fixed or accepted with a recorded reason.
 
 Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
