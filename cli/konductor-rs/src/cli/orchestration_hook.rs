@@ -36,8 +36,9 @@ const MAX_PERSONA_BYTES: usize = 2500;
 const MAX_DIGEST_FILE_BYTES: u64 = 1024 * 1024;
 
 const HEADER: &str = "Orchestration: coordinator\n\
-For this session the coordinator rules below, and the file they name, replace the Direct Work \
-section of your instructions; everything else still applies.\n\n";
+For this session the rules file named in Step 1 replaces the Direct Work section of your \
+instructions; the lines after Step 1 summarize that file and add nothing to it. Everything else \
+still applies.\n\n";
 
 const FALLBACK_PREFIX: &str = "Orchestration: auto (fallback: ";
 const MAX_FALLBACK_LINE_BYTES: usize = 300;
@@ -862,5 +863,10 @@ mod tests {
         );
         let pointer = pointer_line(Path::new(&long_path));
         assert!(HEADER.len() + pointer.len() + digest.len() <= MAX_PERSONA_BYTES);
+    }
+
+    #[test]
+    fn header_names_the_file_as_the_authority() {
+        assert!(HEADER.contains("summarize that file and add nothing to it"));
     }
 }
