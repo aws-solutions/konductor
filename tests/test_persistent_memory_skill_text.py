@@ -25,6 +25,16 @@ def test_memory_files_heading_and_share_note():
     assert "remove that line to share memory" in TEXT
 
 
+def test_scan_before_create_does_not_read_a_skipped_file():
+    """A file the session-start check skipped is not in context; reading it
+    for the overlap check would bypass the checked read."""
+    scan = TEXT.split("## Scan-Before-Create")[1].split("## Provenance Markers")[0]
+    assert "through the checked read in Reading Memory" in scan
+    assert "A file skipped at session start" in scan
+    assert "is not read for the overlap check either" in scan
+    assert "Read them directly" not in scan
+
+
 def test_gitignore_bootstrap_targets_the_git_root():
     """The validator writes memory at the git root, so a cwd-relative
     `>> .gitignore` run from a subdirectory ignores nothing."""

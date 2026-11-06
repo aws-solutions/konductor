@@ -172,8 +172,10 @@ reusable multi-step procedures to `workspace-skills` instead.
 **BEFORE creating a new memory entry, you MUST check for overlap.**
 
 Scan `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md`. Both are loaded at session
-start (per AGENTS.md) and are already in your context. Read them directly for the overlap
-check; no file I/O needed when they are already in context.
+start through the checked read in Reading Memory and are then already in your context. Use that
+copy for the overlap check; no file I/O needed. A file skipped at session start (its
+`--check-path` exited 1, or you had no shell) is not read for the overlap check either, and you
+do not write to it.
 
 **Decision rules:**
 
