@@ -40,7 +40,9 @@ afterward to confirm everything registered — it inspects the install and
 prints remediation guidance for anything wrong instead of a bare error.
 
 See `cli/README.md` for the fully spelled-out walkthrough, prerequisites,
-and installing into a directory other than `$HOME`.
+and installing into a directory other than `$HOME`. If `doctor` reports a
+problem, a skill or SOP is missing after install, or the user asks about
+another subcommand or flag, open `references/cli-and-model.md`.
 
 ## 3. Start a session
 
@@ -62,7 +64,8 @@ package update, so you don't need to know the fleet exists, name one, or
 know how many there are ahead of time. Run `/prompts` (Kiro CLI) or `/help`
 (Claude Code) any time you want to see what your own install actually has —
 that's always current, unlike anything recalled from a prior session or
-another install. If you're curious which one handles a particular kind of
+another install. For where each kind of content lands on disk, see
+"Checking what's actually installed" in `references/cli-and-model.md`. If you're curious which one handles a particular kind of
 work, ask the orchestrator — it will route you without you needing to look
 anything up yourself.
 

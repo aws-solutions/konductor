@@ -44,13 +44,13 @@ Store the fingerprint list in memory for the filter phase. If the review has no 
 For each new candidate finding produced by the review passes:
 
 1. Compute the finding's fingerprint (same rules as load phase).
-2. Match against the historical fingerprint list.
+2. Match against the historical fingerprint list. If the candidate matches two or more historical threads, open `references/multi-match-precedence.md` (relative to this file) now and apply its precedence rules before going on to step 3.
 3. If a match exists AND its historical resolution is `rejected` or `wontfix`, **suppress** the new finding. Log the suppression with the matched historical thread id and reason. A reviewer already decided this pattern is not a real issue, so re-matching it is genuine noise regardless of whether it is a coincidental repeat or a literal reappearance.
 4. If a match exists AND its historical resolution is `fixed`, this is a **regression**, not a duplicate: the flagged code was changed to resolve the defect on a prior revision, and the fingerprint is matching again now only because that same defect pattern is present in the diff again — reverted, or reintroduced elsewhere. **Surface** the finding (do NOT suppress it) and tag it using the matched fingerprint's `revision` field: "regressed since a fix on/after revision {revision}" — the field records the revision the historical thread was POSTED on (see `Load phase` above), not necessarily the revision the fix itself landed on, since a thread can be resolved several revisions after it was first raised; the "on/after" wording reflects that uncertainty honestly instead of overclaiming precision. If that field is `null`, use the unqualified "regressed since a prior fix" instead — never invent a revision number. This is the one case where treating a `fixed` match as fully resolved would suppress exactly the finding a reviewer most needs to see.
 5. If a match exists AND its historical state is `unresolved` and the finding is still present, **surface** the new finding but tag it — reviewers should see it did not get addressed, not treated as new noise. Use the matched fingerprint's `revision` field to produce "carried over from revision {revision}"; if that field is `null` (the host platform recorded no revision), use the unqualified "carried over from a prior revision" instead — never invent a revision number.
 6. If no match exists, pass through unchanged.
 
-Open `references/multi-match-precedence.md` (relative to this file) when a candidate matches two or more historical threads, and resolve that before applying steps 3-6. It also holds the rule that `resolution` keeps exactly four values and `blocking` stays a separate field.
+`references/multi-match-precedence.md` also holds the rule that `resolution` keeps exactly four values and `blocking` stays a separate field.
 
 Return the filtered finding list plus the suppression log.
 

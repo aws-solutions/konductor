@@ -276,7 +276,7 @@ Use the Quality Gate's three levels and add what the model does well:
 ### CRITICAL (Must Fix)
 
 ```
- [Category] [Location]
+**[Category]** - [Location]
 Issue: [Description]
 Impact: [Why this matters]
 Fix: [Specific recommendation]
@@ -286,7 +286,7 @@ Example: [Code showing fix]
 ### IMPORTANT (Should Fix)
 
 ```
- [Category] [Location]
+**[Category]** - [Location]
 Issue: [Description]
 Recommendation: [Suggested improvement]
 Example: [Code showing improvement]
@@ -295,7 +295,7 @@ Example: [Code showing improvement]
 ### SUGGESTION (Consider)
 
 ```
- [Category] [Location]
+**[Category]** - [Location]
 Observation: [What could be better]
 Benefit: [Why this would help]
 Alternative: [Optional approach]
@@ -304,13 +304,13 @@ Alternative: [Optional approach]
 ### Positive Findings
 
 ```
- [Category]
+**[Category]**
 Good practice: [What's done well]
 ```
 
 ## Example Review Output
 
-Open `references/example-review.md` (relative to this file) when writing a review report and you want a filled-in example. It reviews a WeatherService model and shows CRITICAL, IMPORTANT, SUGGESTION, and positive findings in that format.
+Open `references/example-review.md` (relative to this file) before writing the review report. It reviews a WeatherService model and shows CRITICAL, IMPORTANT, SUGGESTION, and positive findings in that format.
 
 ## Anti-Patterns to Flag
 

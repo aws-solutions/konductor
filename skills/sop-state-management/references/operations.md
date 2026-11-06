@@ -5,7 +5,7 @@ Read this when implementing a specific operation. The Overview, Session Object, 
 ### Operation: Compute Identity Signature
 
 Input: `description` (free text), `path` (a filesystem path). Output: the `project_signature`
-string, per the algorithm above. Called once per invocation, before Resume Discovery.
+string, per Identity and the Resume Signature in `SKILL.md`. Called once per invocation, before Resume Discovery.
 
 ### Operation: Resume Discovery
 
@@ -13,8 +13,8 @@ Input: `output_dir`, `session_prefix`, this invocation's own computed `project_s
 whether a reply channel exists (attended vs. unattended).
 
 1. List `{output_dir}/sessions/` non-recursively — read only the entries directly inside it, and
-   never descend into a subdirectory (e.g. `.locks/`, `.tmp/`, see Concurrency scope and Write
-   Safety below); a subdirectory is excluded by this non-descent regardless of its own name or its
+   never descend into a subdirectory (e.g. `.locks/`, `.tmp/`, see Concurrency scope under Read/Increment a Counter
+   below and Write Safety in `SKILL.md`); a subdirectory is excluded by this non-descent regardless of its own name or its
    contents' names. Filter the remaining, non-directory entries to filenames matching
    `{session_prefix}-<digit>...` — the prefix followed immediately by a digit, not by any other
    character. This excludes a differently-suffixed file sharing the same leading substring, which
@@ -34,7 +34,7 @@ whether a reply channel exists (attended vs. unattended).
      absent, or present but not equal to this skill's own current value, the file's schema is not
      one this version of the skill understands — a signature match on such a file is not safe to
      trust, since the nested `counters`/`data` paths this skill reads may not exist in it (see the
-     Session Object's own note above for why this check exists). Skip it exactly as if it were
+     Session Object's own note in `SKILL.md` for why this check exists). Skip it exactly as if it were
      malformed, record it in this operation's output as a skipped-schema-mismatch path (naming the
      file and, if present, its `schema_version` value), and continue to the next-older candidate.
    - If the schema version matches, apply a value-validation check: `run.run_status` MUST be exactly
@@ -43,7 +43,7 @@ whether a reply channel exists (attended vs. unattended).
      guarantees only that these are plain scalars, not that their _values_ are valid — a hand-edited
      or externally-corrupted file can parse cleanly and match `schema_version` while still carrying
      an out-of-enum value (a typo, or a value borrowed from the wrong vocabulary — see the Session
-     Object's own note above on the two distinct status vocabularies). Treat any such violation
+     Object's own note in `SKILL.md` on the two distinct status vocabularies). Treat any such violation
      exactly like a schema mismatch: skip it, record it in this operation's output as a
      skipped-invalid-value path (naming the file and the offending field and value), and continue to
      the next-older candidate.
@@ -79,7 +79,7 @@ specific session file by exact path, resume that file, bypassing only the
 approximate the engineer's own explicit choice when they have not made one, and an explicit choice
 supersedes the approximation. The restricted-loader parse, the schema-version check, and the
 value-validation check still apply: a named file is still untrusted data in a shared,
-filesystem-writable directory (see the Overview and step 3 above), and adopting one that fails any
+filesystem-writable directory (see the Overview in `SKILL.md` and step 3 above), and adopting one that fails any
 of those checks is exactly the CRITICAL failure mode this operation's own Quality Gate exists to
 prevent. If the named file fails any of those checks, surface the failure rather than adopting it.
 Report its `project_signature` and `run_status` back regardless (once it has cleared those checks),
@@ -97,7 +97,7 @@ phase ids are already known to be skipped at mint time, each with its own reason
    second — Resume Discovery's `{session_prefix}-<digit>...` filter is unaffected, since it only
    anchors on the character immediately after the prefix. Populate it with:
    - `run.schema_version` set to this skill's current fixed value (see the Session Object's own note
-     above), `run.project_signature` set to the given signature, `run.run_status` set to
+     in `SKILL.md`), `run.project_signature` set to the given signature, `run.run_status` set to
      `in_progress`, `run.counters` and `run.data` empty — the caller populates the latter two via
      the counter and data operations below as its own fields become known.
    - `phases` populated with one entry per phase in the phase list, **before any phase has actually
@@ -107,7 +107,7 @@ phase ids are already known to be skipped at mint time, each with its own reason
      PENDING` with `skip_reason: null` and `summary: null`.
    - `features` empty — the caller adds entries via the feature-registration operation below once it
      discovers what features exist.
-2. Write it via the Write Safety mechanism above.
+2. Write it via the Write Safety mechanism in `SKILL.md`.
 
 ### Operation: Read/Write a Phase Entry
 

@@ -452,6 +452,8 @@ Follow the output file for the current `tool_type`:
 
 **Objective:** Provide completion summary and guidance.
 
+Show the completion message from the Stage 8 reference you followed (`references/output-kiro.md` or `references/output-generic.md`); its file list and workflow steps match the files that branch wrote. Add from the summary below only what that message leaves out, such as the application layers and the test execution order.
+
 **Summary:**
 
 ```

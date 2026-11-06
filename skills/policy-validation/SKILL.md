@@ -284,9 +284,7 @@ When the user names a compliance framework, open the `iam-policy-design` skill's
 **Compliance Gap Report Generation**:
 
 - For each compliance framework, create section with:
-  - Compliant controls ()
-  - Partial compliance () with specific gaps
-  - Non-compliant controls () with violations
+  - Each control marked compliant, partial (with the specific gap), or violated, as in the example gap analysis in `compliance-checklists.md`
   - Remediation priority (CRITICAL/IMPORTANT/SUGGESTION)
   - Estimated implementation effort (hours)
   - Regulatory citations for each requirement

@@ -78,7 +78,7 @@ When given requirements or specifications:
 
 ## Output Format
 
-Generate complete Smithy model files with:
+If step 2 found 10 or more operations, the model will pass 500 lines, or other services share its types, open `references/file-organization.md` (relative to this file) before writing files and split the model the way it shows. Otherwise write one file in this shape:
 
 ```smithy
 $version: "2"
@@ -298,7 +298,7 @@ Open `references/file-organization.md` (relative to this file) when a model span
 Provide:
 
 1. **Complete Smithy Model** with all shapes defined
-2. **Build Configuration** (smithy-build.json) if code generation is needed
+2. **Build Configuration** (smithy-build.json) if code generation is needed; for a split model, list every file under `sources` as `references/file-organization.md` shows
 3. **Validation Metadata** for linting and quality checks
 4. **Documentation** explaining design decisions
 5. **Example Usage** showing how to use generated code

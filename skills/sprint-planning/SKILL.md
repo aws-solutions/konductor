@@ -26,6 +26,8 @@ When users need to:
 
 ### Session Start
 
+If the user mentions Asana, links an Asana project, or the session has Asana MCP tools, open `references/asana.md` now and run its MCP check before step 1.
+
 1. Confirm sprint parameters with user:
    - Sprint capacity: **10 points** per person (default)
    - Sprint duration: **2 weeks** (default)
@@ -73,6 +75,8 @@ Rules:
 - To link a task to a code review, put the task URL in the commit message or pull request description
 
 ### Sprint Rollover
+
+For a sprint tracked in Asana, follow the rollover procedure in `references/asana.md` instead.
 
 1. Find the incomplete tasks in the current sprint
 2. Check that the next sprint exists; create it if it does not

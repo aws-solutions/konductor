@@ -102,8 +102,6 @@ S3 bucket names are global, but each bucket lives in one region, so draw it in t
 
 ## XML Generation Process
 
-Open `references/drawio-templates.md` (relative to this file) when generating the XML. It holds the single-account and multi-account templates, the AWS service icon styles, and the serverless web application and logical grouping patterns.
-
 ### 1. Review Use-Case Requirements
 
 - Review the use-case prompt thoroughly to understand system requirements
@@ -120,13 +118,15 @@ Open `references/drawio-templates.md` (relative to this file) when generating th
 
 ### 3. Start with Template
 
+Open `references/drawio-templates.md` (relative to this file) now, before writing any XML. It holds the single-account and multi-account templates, the AWS service icon styles, and the serverless web application and logical grouping patterns used in steps 4 and 5.
+
 - Choose appropriate template (single/multi-account)
 - Replace placeholder values with actual system information
 - Validate basic XML structure
 
 ### 4. Add AWS Services
 
-- Use official AWS service icons with proper styling
+- Use official AWS service icons, copying the icon styles from `references/drawio-templates.md`
 - Position services according to scope (global/regional/VPC)
 - Ensure consistent icon sizing and alignment
 

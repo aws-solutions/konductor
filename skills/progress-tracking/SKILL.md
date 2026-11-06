@@ -317,7 +317,7 @@ Store: validation_results.coverage
 
 **Report:** Use standard template. Summary: cycles count, ordering issues count. Circular Dependencies: list cycles with paths, impact, resolution options. Ordering Validation: list issues with current/suggested order, impact. Dependency Graph Summary: feature and task dependencies (top 3 features). Detailed mode: complete graphs, step-by-step resolution. Summary mode: cycles and critical issues only.
 
-**Decision:** No cycles: PASS → Stage 6 (Final) or complete (Initial) | Cycles: FAIL → block, require fixes | Ordering issues only: PASS with WARNINGS → recommend fixes, allow proceed.
+**Decision:** No cycles: PASS → Stage 6 (Final; open `references/final-mode.md`) or complete (Initial) | Cycles: FAIL → block, require fixes | Ordering issues only: PASS with WARNINGS → recommend fixes, allow proceed.
 
 Store: validation_results.dependencies
 

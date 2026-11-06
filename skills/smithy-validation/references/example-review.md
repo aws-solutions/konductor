@@ -1,6 +1,6 @@
 # Example Review Output
 
-Read this when writing a review report and you want to see the Output Format filled in for a real model.
+Read this before writing a review report: it is the Output Format in `SKILL.md` filled in for a real model.
 
 ````markdown
 ## Smithy Model Review: WeatherService

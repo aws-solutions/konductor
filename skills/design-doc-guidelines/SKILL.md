@@ -35,6 +35,7 @@ When reviewing a design doc, check:
 - [ ] No forward references (mentioning something before it's defined)?
 - [ ] Decision Requested framed as user outcomes, not feature names?
 - [ ] Features explained in terms of problems they solve, not what the tool does?
+- [ ] If the design spans several features, has a parent or companion doc, targets more than one runtime, or renames a file or config field: checked against `references/multi-doc-designs.md`?
 
 ## Anti-patterns
 

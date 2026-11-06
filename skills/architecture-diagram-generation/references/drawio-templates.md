@@ -89,21 +89,21 @@ Read this when generating the XML: it holds the single-account and multi-account
 <mxCell id="api_gateway" value="REST API"
        style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#FF4F8B;gradientDirection=north;fillColor=#BC1356;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;"
        vertex="1" parent="1">
-  <mxGeometry x="300" y="300" width="78" height="78" as="geometry"/>
+  <mxGeometry x="300" y="300" width="64" height="64" as="geometry"/>
 </mxCell>
 
 <!-- Lambda Function -->
 <mxCell id="lambda" value="Task Service"
        style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;"
        vertex="1" parent="1">
-  <mxGeometry x="500" y="300" width="78" height="78" as="geometry"/>
+  <mxGeometry x="500" y="300" width="64" height="64" as="geometry"/>
 </mxCell>
 
 <!-- DynamoDB -->
 <mxCell id="dynamodb" value="Tasks DB"
        style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb;"
        vertex="1" parent="1">
-  <mxGeometry x="700" y="300" width="78" height="78" as="geometry"/>
+  <mxGeometry x="700" y="300" width="64" height="64" as="geometry"/>
 </mxCell>
 
 <!-- Connection Arrow -->
@@ -126,14 +126,14 @@ Read this when generating the XML: it holds the single-account and multi-account
 <mxCell id="user" value="User"
        style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.user;"
        vertex="1" parent="1">
-  <mxGeometry x="100" y="200" width="78" height="78" as="geometry"/>
+  <mxGeometry x="100" y="200" width="64" height="64" as="geometry"/>
 </mxCell>
 
 <!-- CloudFront -->
 <mxCell id="cloudfront" value="CDN"
        style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=#945DF2;gradientDirection=north;fillColor=#5A30B5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;"
        vertex="1" parent="1">
-  <mxGeometry x="300" y="200" width="78" height="78" as="geometry"/>
+  <mxGeometry x="300" y="200" width="64" height="64" as="geometry"/>
 </mxCell>
 
 <!-- Connection -->
@@ -159,11 +159,11 @@ Read this when generating the XML: it holds the single-account and multi-account
 
 <!-- Services within cluster -->
 <mxCell id="api_gateway" value="API Gateway" parent="api_cluster" vertex="1">
-  <mxGeometry x="50" y="50" width="78" height="78" as="geometry"/>
+  <mxGeometry x="50" y="50" width="64" height="64" as="geometry"/>
 </mxCell>
 
 <mxCell id="lambda_service" value="Lambda" parent="api_cluster" vertex="1">
-  <mxGeometry x="172" y="50" width="78" height="78" as="geometry"/>
+  <mxGeometry x="172" y="50" width="64" height="64" as="geometry"/>
 </mxCell>
 
 <!-- Return traffic with dashed arrow -->
