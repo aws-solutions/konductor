@@ -35,6 +35,11 @@ not per individual commit.
 
 ### Changed
 
+- `smithy-modeling` and `smithy-validation` now share one Smithy file-organization guide in
+  `skills/smithy-modeling/references/file-organization.md`, loaded only when a model spans more
+  than one file. Its validator example now nests the selector under `configuration`, and its
+  service example no longer sets a doc comment and a `@documentation` trait together, which
+  Smithy rejects.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
