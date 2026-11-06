@@ -95,6 +95,13 @@ not per individual commit.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
+- Nine skills no longer name tools, templates or steps that don't exist where they run.
+  `humanize-writing`, `mux-dispatch` and `workspace-skills` use harness-neutral wording, and
+  `workspace-skills` says where Claude Code keeps workspace skills. `cost-estimation` names the
+  AWS Pricing MCP server and how to install it, and says why it waits for load figures before
+  pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
+  that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
+  `external-research` drop terms that do not apply in this repo.
 
 ### Security
 
