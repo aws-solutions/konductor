@@ -31,6 +31,24 @@ not per individual commit.
   valid `KONDUCTOR_RESULT` line, a blocked stage halts the run with exit 1, and the run state is kept in
   `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run is active per workspace, and a second one exits 75.
   The only harness so far is `fake`, which is test-only: it runs no agent, and the last line of its runs says so.
+- `konductor flow trust <name>` shows what a workflow will run and records that you trust it, and `--revoke` removes the
+  record. To confirm you type the first 8 characters of the trust hash, so a key pressed before the summary was on
+  screen cannot confirm it. `flow run` asks before it runs a project workflow, or any workflow in a repository that has
+  tool configuration files (`.claude/settings.json`, `.claude/settings.local.json`, `.mcp.json`,
+  `.kiro/settings/mcp.json`, and the files under `.kiro/agents/`, `.claude/agents/`, `.claude/commands/`,
+  `.claude/skills/` and `.claude/hooks/`). The tool configuration is read again before each stage starts, and a change
+  halts the run. Without a terminal it exits 77 and names `flow trust` and `--trust <hash>` (also `KONDUCTOR_TRUST`),
+  which must not come from a file the repository controls. `flow check` prints the `trust_hash`. A link to a folder, a
+  folder over the scan limits, a file over 1 MiB or a name that is not UTF-8 in the tool configuration has no hash and
+  refuses the run with exit 77, naming the path and the cause, whatever `--trust` or `--yes` says. A link to a file is
+  read as a file. The record is `~/.konductor/trust.json`, and `flow trust` and
+  `--revoke` exit 74 and name the file when it cannot be kept or changed. The tool configuration is searched from the
+  current directory up to the git root, and the install manifest is read once, when the run starts. The manifest leaves
+  out only files that cannot carry a hook, an MCP server, a permission mode or a tool grant. A Claude agent is
+  found by the exact `name` in its front matter, and two files with that name, or a declaring file whose name is not
+  `<id>.md`, refuse the run with exit 77. The summary names the file of each agent, the keys such as `hooks` and
+  `mcpServers` that a Claude agent file sets (by name only), and `tools: unreadable` with the reason for a list it
+  cannot read.
 
 ### Changed
 
