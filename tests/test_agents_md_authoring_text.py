@@ -21,3 +21,11 @@ def test_workspace_placeholder_is_the_state_directory():
 def test_workflow_bullet_uses_public_terms():
     assert "git and pull request conventions" in TEXT
     assert not re.search(r"\bCR\b", TEXT)
+
+
+def test_template_loads_memory_through_the_checked_read():
+    """A glob or an `@import` reads memory through a symlink and skips the
+    persistent-memory skill's `--check-path` gate."""
+    assert "--check-path" in TEXT
+    assert "memory/*.md" not in TEXT
+    assert "@.konductor/memory" not in TEXT

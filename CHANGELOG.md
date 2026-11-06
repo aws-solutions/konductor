@@ -57,7 +57,9 @@ not per individual commit.
   and is never read or written through a symlink. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
   instruction-like text after the date and origin tag, and reads the text of a leading `[label]`
-  or `[label](url)` as entry text.
+  or `[label](url)` as entry text. Upgrade note: if your repository commits `.konductor/memory/`,
+  review its untagged lines before upgrading and tag agent-written ones `[origin:agent]`; they are
+  followed as project instructions from this version.
   Orchestrators never bypass denials or read unnamed secrets.
 - `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
