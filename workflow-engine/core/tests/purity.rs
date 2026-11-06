@@ -11,7 +11,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// The crates the core may depend on. A crate is added here only if it does no IO.
-const ALLOWED_CRATES: &[&str] = &["saphyr-parser"];
+const ALLOWED_CRATES: &[&str] = &["saphyr-parser", "sha2"];
 
 /// Paths in `std` that touch the world. A `use` of one, or a use of anything under one, is a violation.
 const BANNED_PATHS: &[&str] = &[
