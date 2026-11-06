@@ -39,6 +39,12 @@ has). It is compared across all four cells. By default the checks part is 1 only
 tests, one failed check then costs 40 points. `--scoring bench/profiles/scoring-fractional.json` scores the checks part as
 passed / total instead, with the same weights; the report names the mode on its weights line.
 
+The rubric part of quality depends on the evidence-quote rule. The default is lenient (tightened: a quote with 20 or more
+unsupported letters is rejected); `--scoring bench/profiles/scoring-strict-quotes.json` selects strict, which reproduces the numbers
+of pilot tables made before lenient became the default. The 2x2 page names the rule on its first lines and shows the quality of
+each cell under both rules, with the rank under each and a warning when the order of the cells differs. A pilot table made
+before this change is strict and is not directly comparable with a new one. See the evidence-quote rule in `README.md`.
+
 Cost is credits on Kiro and list-price USD on Claude Code. The two are never compared. Cost appears only as a ratio of
 konductor over vanilla inside one harness, per run and per successful run. A ratio is marked `>=`, `<=` or `~` when timed-out
 runs left a side without a metered cost.

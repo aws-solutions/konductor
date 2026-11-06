@@ -64,14 +64,16 @@ const USAGE = `Usage:
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
        [--isolate auto|unshare|sandbox-exec|none] [--hide DIR,DIR] [--auth-db FILE] [--extra-tasks DIR,DIR] [--profile quick|detailed]
        [--judge-backend kiro|opencode] [--budget-usd X] [--aws-creds-file FILE] [--aws-profile bench] [--aws-region us-east-1] [--opencode-bin PATH] [--cache DIR]
-       [--criteria-pack quality] [--plan] [--rescore-quotes [--quote-match lenient|strict]]
+       [--criteria-pack quality] [--plan] [--quote-match lenient|strict] [--rescore-quotes]
        (--criteria-pack quality runs only the quality-dimensions pass over the finished runs and writes judgments-quality.json beside judgments.json; judgments.json is not read or changed.
-       Criteria that do not apply to a run are skipped and reported as n/a. See bench/QUALITY-PACK.md)
-       (--rescore-quotes matches the stored evidence quotes of --run again with no model call and writes judgments-lenient.json beside judgments.json (judgments.json is untouched),
-       then prints the share of verdicts downgraded per judge before and after and the mean rubric per arm. The lenient rule ignores table pipes, list markers and escapes, accepts
-       fragments joined by spaces, new lines or ellipses when every fragment of 20 or more letters is found in order, and accepts a verbatim quoted sentence of 40 or more letters
-       inside the judge's prose; a quote with a fragment the output does not hold is still lowered one level. --quote-match strict only checks that the default rule reproduces the stored values.
-       A report reads the new file when its scoring file sets "quotes": "lenient")
+       Criteria that do not apply to a run are skipped and reported as n/a. The pack pass always matches evidence quotes strictly and refuses --quote-match. See bench/QUALITY-PACK.md)
+       (--quote-match picks the evidence-quote rule that the older fields of judgments.json carry: lenient, the default, or strict. Both rules are applied to every criterion and both
+       verdicts are recorded (verdictStrict, verdictLenient, quoteFound), so a report shows either without rescoring. The lenient rule compares words only, accepts quotes joined from
+       fragments of 20 or more letters in order and a verbatim quoted span of 40 or more letters, and rejects a quote with 20 or more unsupported letters. Strict needs every segment
+       between ellipses in the output, in order. A scoring file picks the rule a report uses: "quotes": "strict" (profiles/scoring-strict-quotes.json) or "lenient")
+       (--rescore-quotes matches the stored evidence quotes of --run again with no model call, for judgments made before both views were recorded, and writes judgments-lenient.json beside
+       judgments.json (judgments.json is untouched), then prints the share of verdicts downgraded per judge before and after and the mean rubric per arm. With --quote-match strict it only
+       checks that the strict rule reproduces the stored values. Reports build the lenient view of old judgments in memory and no longer read that file)
        (--plan works in every mode: it prints the backend, the panel, the call count per mode, the calls the cache already holds and an estimated spend, calls no model and writes nothing.
        A real pass prints the backend and the panel before its first call)
        (--judge-backend opencode asks the panel through opencode run on Amazon Bedrock (tools off, a one-line system prompt, temperature 0 where the model takes one)
@@ -103,6 +105,8 @@ const USAGE = `Usage:
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
        (--criteria-pack quality adds a Quality dimensions table from judgments-quality.json; it is indicative and not part of quality /100.
        --scoring profiles/scoring-fractional.json scores the checks component as passed / total instead of 1 only when every check passed; the default is unchanged.
+       The evidence-quote rule is lenient (tightened) unless the scoring file says "quotes": "strict" (profiles/scoring-strict-quotes.json, which reproduces the numbers of earlier reports).
+       Every page names the rule on its first lines, and a full report, a contrast, report-2x2 and both verdicts show the other rule beside it.
        --profile sets the default detail (quick or full), adds a check of the run against the profile and, for detailed, writes calibration-sample.json and .md.
        --verdict platform writes verdict.md, verdict.html and verdict.json: one page with keep, discard or not enough evidence for each arm against the baseline,
        from one or more run directories (several need --out); it replaces the normal report for that call.

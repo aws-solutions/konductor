@@ -97,6 +97,8 @@ STUDY=/path/to/study bash run-judging.sh --status
 
 A budget stop exits 3. Raise the cap and rerun: `BUDGET_USD=25 bash run-judging.sh` (finished calls are cached and not paid again). `SMOKE` names an optional smoke script that makes a few real judge calls first.
 
+Evidence-quote rule. `judge` records the verdict under both quote rules for every criterion, so no extra pass is needed to read a study either way. Reports use the lenient rule (tightened) unless the scoring file says `"quotes": "strict"` (`bench/profiles/scoring-strict-quotes.json`), and every report names the rule on its first lines and shows the other rule beside it. Judgments made before this change are strict as stored; a report builds their lenient view from the saved output when the run directory still holds its workspace. See `bench/README.md`.
+
 ### Credentials (P4, P5 and run-judging.sh)
 
 `CREDS` (or `AC_CREDS` for the chain) names a scoped AWS credentials file. There is no default and a launch refuses without it. Only its path is used; no script here reads or prints its contents. The profile inside the file is `AWS_PROFILE_NAME` (default `bench`, which is also what `bench.js` and `run-skill-bench.sh` use) and the region is `AWS_REGION_NAME` (default `us-east-1`). `CREDS_EXPIRY_UTC` is an optional hint that the scripts print and warn about.
