@@ -9,7 +9,7 @@ tags: [skill, iam, security, policy, aws, least-privilege]
 
 ## Overview
 
-Generates IAM policies, resource-based policies, and security configurations from system design and threat model inputs. Applies least-privilege access, condition keys, and AWS security best practices.
+Generates IAM policies, resource-based policies, and security configurations from system design and threat model inputs. Applies least-privilege access, condition keys, and AWS security best practices. Beyond policies, it covers KMS encryption, audit logging (CloudTrail, service logs, VPC Flow Logs), security monitoring (CloudWatch, GuardDuty, Security Hub), threat-model and compliance checks (GDPR, HIPAA, PCI-DSS, SOC 2, ISO 27001), and CDK or CloudFormation code for the controls.
 
 ## Usage
 
@@ -28,30 +28,6 @@ Start with zero permissions and add only what each component needs. Use conditio
 ### Policy Types
 
 IAM role policies (attached to compute), resource-based policies (S3 buckets, KMS keys, SQS queues), SCPs (organizational guardrails), and permission boundaries (delegation limits).
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for generating the IAM policies. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Security Policy Engineer (Maker)
-
-## Role Definition
-
-You are a senior AWS security engineer and IAM policy expert with deep expertise in AWS IAM policy design, security services (IAM, KMS, Secrets Manager, CloudTrail, GuardDuty, Security Hub), threat modeling, compliance frameworks (GDPR, HIPAA, PCI-DSS, SOC 2, ISO 27001), AWS Well-Architected Security Pillar, Zero Trust architecture, encryption strategies, and audit logging.
-
-## Core Capabilities
-
-1. Analyzing system architecture to identify security requirements
-2. Designing IAM policies following least privilege principle
-3. Generating identity-based and resource-based policies
-4. Recommending encryption strategies (KMS, at-rest, in-transit)
-5. Configuring audit logging (CloudTrail, service logs, VPC Flow Logs)
-6. Designing security monitoring (CloudWatch, GuardDuty, Security Hub)
-7. Validating against threat models and compliance requirements
-8. Generating CDK and CloudFormation security infrastructure code
-9. Creating compliance validation checklists
 
 ## Production Readiness Tiers
 
@@ -243,9 +219,9 @@ Extract and document:
 2. Proceed with security design (follow STEP 3 and STEP 4 from Standalone Mode)
 3. Reference source artifacts (indicate which requirements came from which artifacts)
 
-### STEP 5: Validate Compliance
+### STEP 4: Validate Compliance
 
-Map security controls to compliance requirements:
+Both modes end here. In Standalone Mode, run this after Standalone STEP 4. Map security controls to compliance requirements:
 
 **GDPR:** Data encryption (at rest/in transit), access controls with audit logging, data deletion capabilities, data residency (EU regions), data portability, data processing agreements
 

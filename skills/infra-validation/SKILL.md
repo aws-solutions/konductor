@@ -9,7 +9,7 @@ tags: [skill, infrastructure, cdk, cloudformation, validation, security, aws]
 
 ## Overview
 
-Reviews CDK and CloudFormation code for security vulnerabilities, cost optimization opportunities, compliance gaps, and operational readiness issues. Covers IAM, encryption, logging, backup, and Well-Architected Framework alignment.
+Reviews CDK and CloudFormation code for security vulnerabilities, cost optimization opportunities, compliance gaps, and operational readiness issues. Covers IAM, encryption, logging, backup, and Well-Architected Framework alignment. Each finding names the resource, its impact, and a fix, and a rerun against a previous report tracks what was resolved.
 
 ## Usage
 
@@ -25,59 +25,11 @@ Use this skill when:
 
 Reviews against AWS Well-Architected Framework pillars: security (encryption, IAM, network), reliability (multi-AZ, backups, deletion protection), performance (right-sizing, caching), cost optimization (tagging, reserved capacity), and operational excellence (monitoring, logging, alarms).
 
-## Execution
+## Step 0: Confirm Scope
 
-When this skill is activated, use the following as your full instruction set for validating infrastructure code. Apply the Quality Gate at the end before presenting output to the user.
+Before reading any files, get three things: the infrastructure type, where the code is (a path such as `lib/`, `cdk.out/`, or `cloudformation/`, or pasted code), and the environment. A wrong environment changes which findings are critical (deletion protection, PITR), and a guessed type or path validates the wrong code. If the caller passes the type, path, and environment (or `scope_confirmed`), skip the questions.
 
----
-
-# Infrastructure Code Validator
-
----
-
-## CRITICAL: STOP AND READ THIS FIRST
-
-**BEFORE doing ANY analysis, you MUST collect this information from the user:**
-
-### Required Information (MANDATORY - Cannot proceed without these)
-
-1. **Infrastructure Type** (REQUIRED):
-   - CDK TypeScript
-   - CDK Python
-   - CloudFormation YAML
-   - CloudFormation JSON
-
-2. **Folder Path or File Location** (REQUIRED):
-   - Path to infrastructure code (e.g., `lib/`, `cdk.out/`, `cloudformation/`)
-   - OR user will paste code directly
-
-3. **Environment** (REQUIRED):
-   - Development
-   - Staging
-   - Production
-
-### Optional Information (Helpful but not required)
-
-4. **Compliance Requirements** (OPTIONAL):
-   - SOC 2, HIPAA, PCI-DSS, GDPR, or other standards
-   - Organizational security policies
-
-5. **Validation Focus** (OPTIONAL):
-   - Security review
-   - Cost optimization
-   - Compliance check
-   - Operational readiness
-   - General review (all categories)
-
-6. **Current Issues** (OPTIONAL):
-   - Known problems or concerns
-   - Previous validation reports for iteration tracking
-
----
-
-### How to Ask for Information
-
-Use this exact format:
+Until you have them, don't search the workspace for `*.ts` files, read `lib/` or `cdk.out/`, or assume CDK or CloudFormation. Ask with this template:
 
 ```
 To validate your infrastructure code, I need the following information:
@@ -95,84 +47,13 @@ To validate your infrastructure code, I need the following information:
 Please provide at least items 1-3 so I can start the validation.
 ```
 
----
-
-**DO NOT PROCEED WITH VALIDATION UNTIL YOU HAVE ITEMS 1-3 ABOVE**
-
-**DO NOT SEARCH FOR CODE IN THE WORKSPACE WITHOUT ASKING FIRST**
-
-**DO NOT ASSUME WHAT THE USER WANTS TO VALIDATE**
-
----
-
----
-
-## Role Definition
-
----
-
-### MANDATORY FIRST STEP - READ THIS
-
-**YOU MUST STOP AND ASK FOR INFORMATION BEFORE DOING ANYTHING ELSE**
-
-Before you read any files, search any directories, or analyze any code, you MUST:
-
-1. **CHECK**: Has the user provided Infrastructure Type, Folder Path, and Environment?
-2. **IF NO**: Stop immediately and ask using the template from the "CRITICAL: STOP AND READ THIS FIRST" section above
-3. **IF YES**: Proceed with validation
-
-**Examples of what NOT to do:**
-
-- Searching for `*.ts` files in the workspace
-- Reading `lib/` directory without asking
-- Analyzing `cdk.out/` without confirmation
-- Assuming the user wants CDK validation
-- Assuming the user wants CloudFormation validation
-
-**If the user has NOT provided items 1–3, the ONLY acceptable first response is:**
-
-```
-To validate your infrastructure code, I need the following information:
-
-**Required:**
-1. Infrastructure Type: [CDK TypeScript / CDK Python / CloudFormation YAML / CloudFormation JSON]
-2. Folder Path: [path to your infrastructure code, or type "I'll paste it"]
-3. Environment: [Development / Staging / Production]
-
-**Optional (helps me provide better feedback):**
-4. Compliance Requirements: [any specific standards, or "None"]
-5. Validation Focus: [Security / Cost / Compliance / Operational / General]
-6. Known Issues: [any concerns you have, or "None"]
-
-Please provide at least items 1-3 so I can start the validation.
-```
-
----
-
-### Your Role (After Receiving Required Information)
-
-You are an AWS infrastructure code reviewer and optimization expert with deep expertise in:
-
-- AWS CDK and CloudFormation best practices
-- AWS Well-Architected Framework (Security, Reliability, Performance, Cost, Operational Excellence)
-- Infrastructure as Code patterns and anti-patterns
-- Security and compliance validation
-- Cost optimization and resource right-sizing
-- Disaster recovery and operational excellence
-
-Your role is to:
-
-- Validate infrastructure code against AWS best practices
-- Identify security, cost, and operational issues
-- Provide specific, actionable remediation steps
-- Prioritize findings by impact and urgency
-- Track infrastructure quality improvements across iterations
+Optional answers sharpen the review: compliance requirements (SOC 2, HIPAA, PCI-DSS, GDPR, or organizational security policies), a focus area, and known issues or a previous report to track progress against.
 
 ## Validation Framework
 
 Validate infrastructure code across these 10 categories:
 
-### CATEGORY 1: SECURITY CONFIGURATION (Critical Priority)
+### CATEGORY 1: SECURITY CONFIGURATION (CRITICAL)
 
 Check for:
 
@@ -198,7 +79,7 @@ Check for:
 9. Validate CloudTrail is enabled for audit logging
 10. Verify VPC endpoints used for AWS service access where appropriate
 
-### CATEGORY 2: COST OPTIMIZATION (Medium Priority)
+### CATEGORY 2: COST OPTIMIZATION (SUGGESTION)
 
 Check for:
 
@@ -223,7 +104,7 @@ Check for:
 9. Verify CloudFront used for static content delivery to reduce data transfer costs
 10. Identify opportunities for S3 Intelligent-Tiering for unpredictable access patterns
 
-### CATEGORY 3: OPERATIONAL EXCELLENCE (High Priority)
+### CATEGORY 3: OPERATIONAL EXCELLENCE (IMPORTANT)
 
 Check for:
 
@@ -249,7 +130,7 @@ Check for:
 9. Verify auto-scaling configured for DynamoDB, ECS, Lambda concurrency
 10. Check resource tagging includes Environment, Application, Owner, CostCenter
 
-### CATEGORY 4: RELIABILITY & RESILIENCE (High Priority)
+### CATEGORY 4: RELIABILITY & RESILIENCE (IMPORTANT)
 
 Check for:
 
@@ -274,7 +155,7 @@ Check for:
 9. Verify SQS queues have dead letter queues configured
 10. Check for single points of failure (single NAT Gateway, single database)
 
-### CATEGORY 5: PERFORMANCE OPTIMIZATION (Medium Priority)
+### CATEGORY 5: PERFORMANCE OPTIMIZATION (SUGGESTION)
 
 Check for:
 
@@ -298,7 +179,7 @@ Check for:
 9. Verify CloudFront compression enabled for text-based content
 10. Check Lambda functions use ARM64 (Graviton) for cost and performance benefits
 
-### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES (Medium Priority)
+### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES (SUGGESTION)
 
 Check for:
 
@@ -324,7 +205,7 @@ Check for:
 9. Validate license headers present in all source files
 10. Verify unit tests exist for custom constructs
 
-### CATEGORY 7: COMPLIANCE & GOVERNANCE (Critical Priority)
+### CATEGORY 7: COMPLIANCE & GOVERNANCE (CRITICAL)
 
 Check for:
 
@@ -349,7 +230,7 @@ Check for:
 9. Validate backup retention meets compliance requirements
 10. Verify encryption algorithms meet organizational standards
 
-### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS (High Priority)
+### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS (IMPORTANT)
 
 Check for:
 
@@ -375,7 +256,7 @@ Check for:
 9. Detect missing retry logic for external service calls
 10. Identify missing dead letter queues for asynchronous processing
 
-### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION (High Priority)
+### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION (IMPORTANT)
 
 #### Lambda Functions
 
@@ -418,7 +299,7 @@ Check for:
 - **Request Validation**: Request validation enabled
 - **WAF Integration**: WAF attached for security
 
-### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT (Medium Priority)
+### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT (SUGGESTION)
 
 Check for:
 
@@ -446,27 +327,7 @@ Check for:
 
 ## Validation Process
 
-**⛔ STOP: You cannot proceed to Step 1 without completing Step 0 ⛔**
-
-### Step 0: Gather Requirements (MANDATORY FIRST STEP)
-
-**This step is NOT optional. You MUST complete this before any analysis.**
-
-**Before any validation work begins:**
-
-1. Verify you have received the required information:
-   - Infrastructure Type
-   - Folder Path or pasted code
-   - Environment (dev/staging/production)
-
-2. If missing, ask the user using the format from "CRITICAL: Start Here" section
-
-3. Clarify any optional details that would improve validation quality:
-   - Compliance requirements
-   - Validation focus areas
-   - Known issues or concerns
-
-**DO NOT proceed to Step 1 until you have this information.**
+Start only after [Step 0](#step-0-confirm-scope).
 
 ### Step 1: Initial Analysis and Resource Discovery
 
@@ -532,23 +393,15 @@ Check EVERY IAM policy statement for:
    - Search for: `"Action": "*"` or `actions: ["*"]`
    - Search for: `"Action": "service:*"` (e.g., `"s3:*"`)
 
-3. **Overly Permissive Actions** - Flag as HIGH
+3. **Overly Permissive Actions** - Flag as IMPORTANT
    - `dynamodb:*`, `s3:*`, `lambda:*`, `cognito-idp:*`
    - Should specify exact actions needed
 
-4. **Cross-Account Access** - Flag as HIGH
+4. **Cross-Account Access** - Flag as IMPORTANT
    - Check for `Principal` with external account IDs
    - Verify trust relationships are intentional
 
-**Validation Command Examples**:
-
-```bash
-# CloudFormation: Find all wildcard resources
-jq '.Resources | to_entries[] | select(.value.Type == "AWS::IAM::Policy") | select(.value.Properties.PolicyDocument.Statement[].Resource == "*")' template.json
-
-# CloudFormation: Find all wildcard actions
-jq '.Resources | to_entries[] | select(.value.Type == "AWS::IAM::Policy") | select(.value.Properties.PolicyDocument.Statement[].Action == "*")' template.json
-```
+For policy-level depth (condition keys, permission boundaries, KMS key policies, a policy score), run `policy-validation`.
 
 #### 2.2 Encryption Validation (MANDATORY)
 
@@ -915,7 +768,7 @@ Before finalizing report, verify you checked:
 - [ ] ALL network resources for TLS/SSL configuration
 - [ ] ALL resources for hardcoded secrets
 
-**Operational (HIGH)**:
+**Operational (IMPORTANT)**:
 
 - [ ] ALL Lambda functions for DLQ configuration
 - [ ] ALL Lambda functions for CloudWatch alarms
@@ -925,14 +778,14 @@ Before finalizing report, verify you checked:
 - [ ] ALL S3 buckets for access logging
 - [ ] ALL CloudFront distributions for logging
 
-**Cost (MEDIUM)**:
+**Cost (SUGGESTION)**:
 
 - [ ] ALL Lambda functions for memory/timeout optimization
 - [ ] ALL DynamoDB tables for GSI optimization
 - [ ] ALL S3 buckets for lifecycle policies
 - [ ] ALL resources for appropriate billing modes
 
-**Reliability (HIGH)**:
+**Reliability (IMPORTANT)**:
 
 - [ ] ALL stateful resources for backup configuration
 - [ ] ALL Lambda functions for retry configuration
@@ -944,19 +797,18 @@ Provide structured feedback with:
 
 - **Resource Inventory Summary** (from Step 6.1)
 - **Verification Checklist Status** (from Step 6.2)
-- Critical issues requiring immediate attention
-- High priority issues for near-term resolution
-- Medium priority optimizations
-- Low priority improvements
+- CRITICAL findings requiring immediate attention
+- IMPORTANT findings for near-term resolution
+- SUGGESTION findings: optimizations and minor improvements
 - Iteration progress tracking
 
 **IMPORTANT**: If you did not systematically check ALL resources of a type, explicitly state this limitation in the report.
 
 ## Output Format
 
-Provide structured feedback:
+Use the same CRITICAL, IMPORTANT, and SUGGESTION scale as the Quality Gate.
 
-### Critical Issues (Must Fix)
+### CRITICAL (Must Fix)
 
 ```
 [Category] [Resource/Location]
@@ -967,7 +819,7 @@ Example:
 [Code showing fix - before and after]
 ```
 
-### High Priority Issues (Should Fix)
+### IMPORTANT (Should Fix)
 
 ```
  [Category] [Resource/Location]
@@ -978,23 +830,15 @@ Example:
 [Code showing improvement]
 ```
 
-### Medium Priority Issues (Consider Fixing)
+### SUGGESTION (Consider Fixing)
 
 ```
 [Category] [Resource/Location]
 Observation: [What could be better]
-Benefit: [Cost savings estimate, performance improvement]
+Benefit: [Cost savings estimate, performance improvement, code quality, maintainability]
 Alternative: [Optional approach]
-Example:
+Example (optional):
 [Code showing optimization]
-```
-
-### Low Priority Issues (Optional)
-
-```
-[Category] [Resource/Location]
-Suggestion: [Minor improvement]
-Benefit: [Code quality, maintainability]
 ```
 
 ### Positive Findings
@@ -1013,12 +857,11 @@ Good practice: [What's done well]
 
 **Status**: NEEDS REVISION
 **Confidence Level**: HIGH
-**Critical Issues**: 3
-**High Priority Issues**: 5
-**Medium Priority Issues**: 8
-**Low Priority Issues**: 2
+**CRITICAL**: 3
+**IMPORTANT**: 5
+**SUGGESTION**: 10
 
-### Critical Issues
+### CRITICAL
 
 **Security** - S3 Bucket (DocumentsBucket)
 Issue: S3 bucket does not have encryption at rest enabled
@@ -1092,7 +935,7 @@ const table = new dynamodb.Table(this, 'TasksTable', {
 });
 ```
 
-### High Priority Issues
+### IMPORTANT
 
 **Operational Excellence** - Lambda Function (TaskProcessorFunction)
 Issue: No CloudWatch alarms configured for Lambda errors or throttling
@@ -1163,7 +1006,7 @@ const taskFunction = new lambda.Function(this, 'TaskProcessorFunction', {
 });
 ```
 
-### Medium Priority Issues
+### SUGGESTION
 
 **Cost Optimization** - Lambda Function (TaskProcessorFunction)
 Observation: Lambda function using default memory (128MB) without analysis
@@ -1234,8 +1077,6 @@ const bucket = new s3.Bucket(this, 'DocumentsBucket', {
 });
 ```
 
-### Low Priority Issues
-
 **Code Quality** - Stack Organization
 Suggestion: Consider extracting repeated patterns into reusable constructs
 Benefit: Improved code maintainability and reusability
@@ -1260,7 +1101,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 ## Validation Summary
 
-**Overall Recommendation**: Address 3 critical security issues before deployment. High priority operational issues should be resolved for production readiness.
+**Overall Recommendation**: Address 3 critical security issues before deployment. IMPORTANT operational issues should be resolved for production readiness.
 
 **Key Strengths**:
 
@@ -1276,7 +1117,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 **Estimated Cost Savings**: $150-200/month from lifecycle policies and Lambda optimization
 
-**Timeline Impact**: 2-3 days to address critical and high priority issues
+**Timeline Impact**: 2-3 days to address CRITICAL and IMPORTANT issues
 ````
 
 ## Validation Checklist
@@ -1312,8 +1153,8 @@ Before approving infrastructure code:
 
 Infrastructure code passes review when:
 
-- No critical security issues remain
-- High priority operational issues addressed or documented as accepted
+- No CRITICAL security issues remain
+- IMPORTANT operational issues addressed or documented as accepted
 - Compliance requirements met
 - Cost optimization opportunities identified
 - Follows AWS best practices consistently
