@@ -1023,8 +1023,8 @@ SOP_EDITS += [
 # 1.2.0 -- so it is now generated from skills/delegation-protocol/SKILL.md.
 SOP_EDITS += [
     ("concepts: frontmatter sample matches the shipped skill",
-     "---\nname: delegation-protocol\ndescription: Structured delegation format for the ASDLC orchestrator. Defines the\n  8-field prompt format (mandatory target agent + 7 sections), agent registry,\n  parallel execution rules, and handoff patterns.\nversion: 1.2.0\ntags: [skill, behavioral, orchestration, delegation, multi-agent]\n---",
-     "---\nname: delegation-protocol\ndescription: Use when spawning any subagent, deciding which agent should handle a piece of work, coordinating parallel or sequential agent execution, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.\nversion: 1.4.0\ntags: [skill, behavioral, orchestration, delegation, multi-agent]\n---"),
+     "---\nname: delegation-protocol\ndescription: Use when spawning any subagent, deciding which agent should handle a piece of work, coordinating parallel or sequential agent execution, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.\nversion: 1.4.0\ntags: [skill, behavioral, orchestration, delegation, multi-agent]\n---",
+     "---\nname: delegation-protocol\ndescription: Use when spawning a subagent, choosing the agent for a piece of work, running agents in parallel or in sequence, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.\nversion: 1.4.0\ntags: [skill, behavioral, orchestration, delegation, multi-agent]\n---"),
     ("plan-and-verify: eyebrow drops the retired SOP name",
      "ASDLC-ANALYZE SAYS THIS OUT LOUD",
      "THE SOP SAYS THIS OUT LOUD"),

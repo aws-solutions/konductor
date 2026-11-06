@@ -13,7 +13,7 @@ Reviews a diff through the lens of data integrity and failure modes. This is one
 
 ## Usage
 
-Runs from a split that an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) returns, as one of three parallel passes in separate `k-developer` sessions. May also be run directly against a diff.
+Runs from a split that an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) returns, as one of three parallel passes in separate `k-developer` sessions. The coordinator runs a pass itself only in the user-requested in-session mode its SOP describes, and its report says the checker step was not independent.
 
 ## What to look for
 
@@ -45,7 +45,7 @@ Before flagging a missing implementation, check whether the codebase already pro
 
 ## Checker handoff
 
-Findings produced by this pass are candidates, not verdicts. The coordinator forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything reaches the CR. Produce your honest read.
+Findings produced by this pass are candidates, not verdicts. The coordinator forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything is posted to the PR. Produce your honest read.
 
 ## Severity guidance
 

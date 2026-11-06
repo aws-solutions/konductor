@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-SKILLS = ["persistent-memory"]
+SKILLS = ["persistent-memory", "delegation-protocol"]
 TRIGGER_MAX_CHARS = 160
 ROOT = Path(__file__).resolve().parent.parent
 
