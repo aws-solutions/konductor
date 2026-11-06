@@ -131,7 +131,7 @@ Flag any identified fallacy as IMPORTANT with the fallacy name and the affected 
    Fallacy (if any): {fallacy name from argumentation-reference}
    ```
 
-8. **Summary** — Report: N CRITICAL (architectural), N CRITICAL (factual), N IMPORTANT, N SUGGESTION. Include axis attribution for all CRITICAL findings (or note "single-voice review — panel declined" if applicable).
+8. **Summary**: report N CRITICAL (architectural), N CRITICAL (factual), N IMPORTANT, N SUGGESTION. Include axis attribution for all CRITICAL findings (or note "single-voice review, panel declined" if applicable).
 
 ## Quality Gate
 

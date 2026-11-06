@@ -95,8 +95,8 @@ flowchart TD
     end
 
     P3 --> P4Start{"Adversarial-review<br/>subagent available?"}
-    P4Start -->|"Yes — Path A"| PA["Delegate the full doc to it:<br/>challenge every decision, trade-off,<br/>and AWS service choice"]
-    P4Start -->|"No — Path B"| PB["Adversarial self-review<br/>CRITICAL (architectural) ·<br/>CRITICAL (factual) ·<br/>IMPORTANT · SUGGESTION"]
+    P4Start -->|"Yes, Path A"| PA["Delegate the full doc to it:<br/>challenge every decision, trade-off,<br/>and AWS service choice"]
+    P4Start -->|"No, Path B"| PB["Adversarial self-review<br/>CRITICAL (architectural) ·<br/>CRITICAL (factual) ·<br/>IMPORTANT · SUGGESTION"]
 
     PA --> Loop
     PB --> Loop
