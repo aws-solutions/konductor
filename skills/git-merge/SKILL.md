@@ -1,8 +1,8 @@
 ---
 name: git-merge
-description: "MUST USE for merging branches. Feature branch into mainline, dev into mainline, release merges. Triggers: 'merge', 'merge branch', 'merge into mainline', 'release merge', 'merge dev'."
+description: "MUST USE for merging branches: a feature branch or dev into the default branch, or release merges, in repos that merge locally; otherwise open a PR via code-review. Triggers: 'merge', 'merge branch', 'merge into main', 'merge into mainline', 'release merge', 'merge dev'."
 version: 1.0.0
-tags: [skill, git, merge, branch, mainline, release]
+tags: [skill, git, merge, branch, default-branch, release]
 ---
 
 # Git Merge
@@ -20,7 +20,7 @@ Use this skill when:
 - Performing release merges
 - Any branch merge that should preserve history
 
-Trigger words: `merge`, `merge branch`, `merge into mainline`, `release merge`, `merge dev`
+Trigger words: `merge`, `merge branch`, `merge into main`, `merge into mainline`, `release merge`, `merge dev`
 
 ## Workflow
 

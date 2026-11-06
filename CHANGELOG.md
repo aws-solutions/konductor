@@ -98,9 +98,8 @@ not per individual commit.
 - `git-merge` pushes straight to the default branch only when the repo merges locally;
   otherwise it opens a PR. `git-workflow` now merges the default branch in before a PR instead
   of rebasing, matching `git-merge`.
-- `cmux-dispatch` and `mux-dispatch` say that Claude Code panes skip permission prompts, so
-  dispatch only tasks you would approve unattended. `cmux-dispatch` and `mux-dispatch` no longer
-  claim every task.
+- `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
+  skip permission prompts, so dispatch only tasks you would approve unattended.
 
 ### Security
 
