@@ -32,6 +32,7 @@ const FLAGS = {
   'calibrate export': ['run', 'n', 'seed', 'out', 'bench-dir', 'max-file-chars', 'max-bundle-chars', 'redact-file', 'criteria-pack'],
   'calibrate score': ['labels', 'key', 'kappa-min', 'agreement-min', 'spearman-min', 'save', 'criteria-pack'],
   'list-arms': ['arms', 'repo-root'],
+  gc: ['root', 'older-than', 'kind', 'keep-last', 'apply', 'json', 'protect-file', 'protect', 'adopt'],
   'cap list': ['cap', 'kind', 'all', 'base', 'repo-root', 'bench-dir', 'extra-tasks', 'init', 'json'],
   'cap audit': ['cap', 'kind', 'all', 'base', 'harness', 'repo-root', 'bench-dir', 'extra-tasks', 'out', 'public', 'json', 'update-baseline', 'force'],
   'cap variant': [
@@ -70,7 +71,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'va
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
   'cargo-online', 'allow-partial', 'allow-unisolated', 'gate-strict', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
-  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes',
+  'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'apply',
 ]);
 
 const COMMANDS = [...new Set(Object.keys(FLAGS).map((k) => k.split(' ')[0]))];
@@ -116,7 +117,7 @@ function checkArgs(cmd, opts) {
     const eq = name.includes('=') ? ` (a flag takes its value after a space: --${name.replace('=', ' ')})` : '';
     problems.push(`unknown flag --${name}${near && !eq ? ` (did you mean --${near}?)` : ''}${eq}`);
   }
-  for (const p of positional) problems.push(p.startsWith('-') ? `unknown flag ${p}; flags start with two dashes` : `unexpected argument "${p}"`);
+  for (const p of positional.slice(cmd === 'gc' && opts.protect === 'add' ? 1 : 0)) problems.push(p.startsWith('-') ? `unknown flag ${p}; flags start with two dashes` : `unexpected argument "${p}"`);
   if (!problems.length) return null;
   return `${problems.join('\n')}\nknown flags for ${key}: ${known.map((f) => `--${f}`).join(' ')}\nnothing was run; see: node bench/runner/bench.js ${cmd} --help`;
 }

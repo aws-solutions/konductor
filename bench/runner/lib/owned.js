@@ -98,7 +98,7 @@ function readMarker(dir) {
 }
 
 /**
- * Writes or refreshes `dir/.bench-owner.json`. extra: { id, protect, createdAt, adopted, adoptedAt, command, pid }.
+ * Writes or refreshes `dir/.bench-owner.json`. extra: { id, protect, createdAt, lastUsedAt, adopted, adoptedAt, command, pid }.
  * An existing marker keeps its createdAt, id and protect flag and gets a new lastUsedAt, pid and command. A marker that is
  * protected or of another kind is only touched (lastUsedAt), except that kind `archive` always takes over.
  */
@@ -117,7 +117,7 @@ function markOwned(dir, kind, extra = {}) {
       schemaVersion: SCHEMA_VERSION,
       kind,
       createdAt: prior?.createdAt ?? extra.createdAt ?? now,
-      lastUsedAt: now,
+      lastUsedAt: extra.lastUsedAt ?? now,
       benchCommit: prior?.benchCommit ?? benchCommit(),
       command: extra.command ?? sanitizedCommand(),
       pid,
@@ -158,6 +158,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  MARKER_FILE, SCHEMA_VERSION, KINDS, markOwned, readMarker, inspectMarker, tryMark, ensureOwnedDir, markerProblem,
+  MARKER_FILE, SCHEMA_VERSION, KINDS, benchCommit, markOwned, readMarker, inspectMarker, tryMark, ensureOwnedDir, markerProblem,
   sanitizedCommand, pidStartTicks, writeAtomic,
 };

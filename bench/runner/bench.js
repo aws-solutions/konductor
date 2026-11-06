@@ -8,6 +8,7 @@
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
  *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
+ *   node bench/runner/bench.js gc [--apply]   (reclaim what the bench made; dry run by default)
  *   node bench/runner/bench.js cap list|audit|variant|plan|draft|import|trigger|prune-report|scenarios|controls|skill-plan|skill-study|decide|review|review-import|criteria|forced-prefix ...   (capability benchmarking; draft, trigger and live runs cost credits)
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
@@ -21,6 +22,7 @@ const { planPr } = require('./lib/pr-plan.js');
 const evalCommands = require('./eval-commands.js');
 const { cmdCap } = require('../cap/cli.js');
 const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli-flags.js');
+const cleanup = require('./lib/cleanup-cmd.js');
 
 const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe [--arms a,b,c] [--tasks id,id]
@@ -127,6 +129,18 @@ const USAGE = `Usage:
   node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run] [--extra-tasks DIR,DIR]
        (re-evaluates the current task checks against each run's saved workspace; the first results are kept
        under checksOriginal in result.json; stream.jsonl and credit fields are never touched; safe to repeat)
+  node bench/runner/bench.js gc [--root DIR ...] [--older-than 7d] [--kind a,b] [--keep-last N] [--protect-file FILE] [--json] [--apply]
+  node bench/runner/bench.js gc --adopt DIR --kind KIND [--apply]
+  node bench/runner/bench.js gc --protect add PATH | --protect list [--protect-file FILE]
+       (reclaims directories the bench made. Only a directory with a valid .bench-owner.json marker is ever a candidate. kinds: run-out, cache, cargo-target, scratch, archive,
+       study-driver-dir. It lists each marked directory with kind, size, age, last change and why it is or is not eligible, and deletes nothing unless --apply is given.
+       Default roots: /var/tmp and the system temp directory, scanned 3 levels deep; repeat --root to choose others. Default --kind: scratch, cache, cargo-target
+       (run-out and study-driver-dir hold results that cost credits, so they need --kind). A directory is deleted only when its marker is not protect: true, it is older than --older-than
+       (default 7d, at least 1h with --apply), it is not covered by the protect file (default ~/.konductor/bench-gc-protect.txt, one path or glob per line, # comments), it is not a git worktree
+       or inside or holding one, holds no .git, is not the working directory, an open file or a command-line path of a running process, is not pointed at by a symlink, belongs to you,
+       and the study pid in its marker is gone. Every condition is checked again just before each deletion. Deletions are appended to <root>/.bench-gc.log.
+       --keep-last N spares the newest N directories of each kind. --adopt writes a marker into an older directory you name, so it can be reclaimed later (a dry run unless --apply);
+       nothing is ever adopted on its own. --protect add appends a path or glob to the protect file; --protect list prints it)
   node bench/runner/bench.js backfill --run DIR [--credits] [--skills] [--write] [--bench-dir DIR] [--repo-root DIR] [--extra-tasks DIR,DIR]
        (repairs finished runs from their stream.jsonl with the runner's own parsers. DIR is one results cell, for example <study>/claude.
        --credits (the default when no mode is given): engine v3 runs saved before the runner could read v3; rewrites credits, turn duration,
@@ -268,6 +282,9 @@ ${ARM_SYNTAX}
 
 An unknown flag is an error (exit 2) and nothing runs. --help and -h print this text.`;
 
+// Flags that may be given more than once; a repeated one becomes an array.
+const REPEATABLE_FLAGS = new Set(['root']);
+
 function parseArgs(argv) {
   const opts = { _: [] };
   for (let i = 0; i < argv.length; i++) {
@@ -278,6 +295,7 @@ function parseArgs(argv) {
     if (BOOLEAN_FLAGS.has(key)) { opts[key] = true; continue; }
     const next = argv[i + 1];
     if (next === undefined || next.startsWith('--') || next === '-h') opts[key] = true;
+    else if (REPEATABLE_FLAGS.has(key) && opts[key] !== undefined) { opts[key] = [].concat(opts[key], next); i++; }
     else { opts[key] = next; i++; }
   }
   return opts;
@@ -331,6 +349,7 @@ async function main(argv) {
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);
   if (cmd === 'calibrate') return evalCommands.cmdCalibrate(opts);
   if (cmd === 'cap') return cmdCap(opts);
+  if (cmd === 'gc') return cleanup.cmdGc(opts);
   console.error(USAGE);
   process.exitCode = cmd ? 2 : 0;
 }
