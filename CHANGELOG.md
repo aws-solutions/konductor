@@ -35,6 +35,11 @@ not per individual commit.
 
 ### Changed
 
+- `iam-policy-design` and `policy-validation` now share one set of GDPR, HIPAA, PCI-DSS and SOC 2
+  checklists in `skills/iam-policy-design/references/compliance-checklists.md`, loaded only when
+  the user names a compliance framework. Audit-control findings now cite HIPAA §164.312(b), and
+  the GDPR checklist no longer claims a fixed 3-year log retention. `smithy-validation` loads its
+  example review only when writing a report.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
