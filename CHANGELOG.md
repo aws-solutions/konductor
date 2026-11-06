@@ -35,6 +35,10 @@ not per individual commit.
 
 ### Changed
 
+- `progress-tracking` moved its final-mode stages (code analysis, pattern matching, traceability)
+  into `references/final-mode.md`, and `security-test-generation` moved its Kiro and other-tool
+  output steps into `references/output-kiro.md` and `references/output-generic.md`. Each skill
+  opens the file only when the mode or tool type needs it.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
