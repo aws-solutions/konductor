@@ -31,38 +31,19 @@ Use this skill when:
 
 ### Evaluation Categories
 
-Voice and tone, capitalization (sentence case for labels, title case for headings), content structure, terminology (service names, inclusive language), help panel content, field-specific guidelines (titles as noun phrases, descriptions explain purpose, hints show constraints), accessibility, and localization readiness (30% expansion allowance).
+Voice and tone, capitalization (sentence case everywhere, including headings), content structure, terminology (service names, inclusive language), help panel content, field-specific guidelines (titles as noun phrases, descriptions explain purpose, hints show constraints), accessibility, and localization readiness (30% expansion allowance).
 
-### Prohibited Terms
+## Report Output
 
-"Please", "thank you", "sorry", exclamation points, ellipsis, ampersand (except brand names), Latin phrases ("e.g.", "i.e.", "etc."), "just", "simply", and future tense contractions.
+Report findings inline in your response by default. Write a report file only for a multi-page audit or when the user asks for one. In that case:
 
-## Execution
+1. Ask for the file path (for example `ui-reviews/s3-bucket-wizard-audit.md`)
+2. Create the file with the progress tracker at the top
+3. Mark each section complete in the tracker and update "Last Updated" as you finish it
+4. Save after each major section so work is not lost
+5. Mark the evaluation complete when finished
 
-When this skill is activated, use the following as your full instruction set for validating UI text. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# AWS UI Text Quality Evaluator
-
-You are an expert AWS UI content reviewer specializing in evaluating user interface text across AWS consoles and applications. Your role is to ensure all UI text meets quality, consistency, accessibility, and customer experience standards.
-
-## Your Mission
-
-Evaluate UI text in console-style applications against Cloudscape design standards and general content quality best practices. Provide actionable feedback organized by priority to help teams deliver superior UX experiences.
-
-## CRITICAL: Output File Management
-
-**BEFORE starting your evaluation, ask the user:**
-
-"Where would you like me to save the UI text evaluation report? Please provide the full file path (e.g., `ui-audit-results/homepage-evaluation.md` or `docs/ui-reviews/2025-01-15-audit.md`)."
-
-**Once you have the file path:**
-
-1. Create the evaluation report file at the specified location
-2. Include a progress tracker at the top of the file
-3. Update the progress tracker as you complete each section
-4. Save incremental progress so work is not lost
+The file becomes a working document the team uses to assign, track, and verify fixes.
 
 ## Evaluation Framework
 
@@ -82,7 +63,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ### 1. Voice and Tone (CRITICAL)
 
-**✅ MUST HAVE:**
+**Must have:**
 
 - Active voice (not passive): "You can select" not "Can be selected"
 - Second person "you/your" to address customers
@@ -91,13 +72,14 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 - Direct and friendly tone (conversational yet professional)
 - Plain, everyday language (avoid jargon)
 
-**❌ NEVER USE:**
+**Never use:**
 
-- "Please" or "thank you"
+- "Please", "thank you", or "sorry"
 - Exclamation points
 - Ellipsis (...)
 - Ampersand (&) except in brand names
 - "e.g.", "i.e.", "etc."
+- "Just" or "simply"
 - Future tense contractions (I'll, you'll)
 - Passive voice constructions
 
@@ -115,14 +97,14 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ### 2. Capitalization and Punctuation
 
-**✅ REQUIRED:**
+**Required:**
 
 - Sentence case for all headers, buttons, labels (not title case)
 - Capitalize proper nouns and service names correctly
 - End punctuation in body text and descriptions
 - No end punctuation on headers, buttons, or labels
 
-**❌ AVOID:**
+**Avoid:**
 
 - Title Case Headers
 - Punctuation on buttons or headers
@@ -130,7 +112,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ### 3. Content Structure and Clarity
 
-**✅ BEST PRACTICES:**
+**Best practices:**
 
 - Keep text short and scannable (remember 30% expansion for localization)
 - Use simple sentences (one subject, one verb, one main clause)
@@ -147,7 +129,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ### 4. Terminology and Naming
 
-**✅ VERIFY:**
+**Verify:**
 
 - Consistent terminology within the application and with its public documentation
 - Correct capitalization of service and product names — no public equivalent exists for this checklist's
@@ -158,7 +140,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 - Acronyms follow standard technical-writing guidance (spell out on first use unless in exception list)
 - Inclusive terminology
 
-**❌ NEVER INCLUDE:**
+**Never include:**
 
 - Internal code names or project names
 - Employee email addresses or names
@@ -166,7 +148,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ### 5. Help Panel Content
 
-**✅ REQUIRED:**
+**Required:**
 
 - At least one Info link next to each console page title
 - Help panel provides additional helpful content (doesn't just repeat UI text)
@@ -206,7 +188,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ### 7. Accessibility
 
-**✅ ENSURE:**
+**Ensure:**
 
 - Text follows accessible language requirements
 - Content usable by customers with disabilities
@@ -216,7 +198,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ### 8. Localization Readiness
 
-**✅ VERIFY:**
+**Verify:**
 
 - Concise wording (allows 30% expansion)
 - Global English (appropriate for worldwide audience)
@@ -226,7 +208,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ### 9. Legal and Compliance
 
-**✅ CHECK:**
+**Check:**
 
 - No internal company information exposed
 - Fictitious names use legally approved examples only
@@ -235,7 +217,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ### 10. Technical Accuracy
 
-**✅ VALIDATE:**
+**Validate:**
 
 - Text accurately describes functionality
 - Instructions are correct and complete
@@ -244,7 +226,7 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 
 ## Output Format
 
-Create a file at the user-specified location with this structure:
+Use this structure for a report file. For an inline report, keep the Executive Summary, the three issue sections, and Strengths, and drop the tracking parts.
 
 ```markdown
 # UI Text Evaluation Report
@@ -256,7 +238,7 @@ Create a file at the user-specified location with this structure:
 
 ---
 
-## 📊 Progress Tracker
+## Progress Tracker
 
 - [x] Evaluation started
 - [ ] Voice and tone review complete
@@ -283,9 +265,9 @@ Create a file at the user-specified location with this structure:
 
 **Issue Count:**
 
-- 🚨 Critical: [X]
-- ⚠️ Warning: [X]
-- 💡 Suggestion: [X]
+- Critical: [X]
+- Warning: [X]
+- Suggestion: [X]
 
 **Key Themes:**
 
@@ -297,7 +279,7 @@ Create a file at the user-specified location with this structure:
 
 ---
 
-## 🚨 CRITICAL ISSUES (Must Fix Before Launch)
+## CRITICAL ISSUES (Must Fix Before Launch)
 
 Issues that violate core standards or create customer confusion.
 
@@ -311,7 +293,7 @@ Issues that violate core standards or create customer confusion.
 
 ---
 
-## ⚠️ WARNINGS (Should Fix)
+## WARNINGS (Should Fix)
 
 Issues that violate best practices or reduce quality.
 
@@ -325,7 +307,7 @@ Issues that violate best practices or reduce quality.
 
 ---
 
-## 💡 SUGGESTIONS (Consider Improving)
+## SUGGESTIONS (Consider Improving)
 
 Opportunities to enhance clarity, consistency, or customer experience.
 
@@ -338,7 +320,7 @@ Opportunities to enhance clarity, consistency, or customer experience.
 
 ---
 
-## ✅ STRENGTHS
+## STRENGTHS
 
 Highlight what the UI text does well:
 
@@ -348,7 +330,7 @@ Highlight what the UI text does well:
 
 ---
 
-## 📋 DEFINITION OF DONE CHECKLIST
+## DEFINITION OF DONE CHECKLIST
 
 Verify the UI meets minimum quality bar:
 
@@ -370,7 +352,7 @@ Verify the UI meets minimum quality bar:
 
 ---
 
-## 📚 REFERENCES
+## REFERENCES
 
 Guidelines referenced in this evaluation:
 
@@ -380,7 +362,7 @@ Guidelines referenced in this evaluation:
 
 ---
 
-## 📝 IMPLEMENTATION TRACKING
+## IMPLEMENTATION TRACKING
 
 ### Critical Issues
 
@@ -405,15 +387,6 @@ Guidelines referenced in this evaluation:
 
 ---
 
-## 🔄 REVISION HISTORY
-
-| Date   | Reviewer | Changes            | Version |
-| ------ | -------- | ------------------ | ------- |
-| [Date] | [Name]   | Initial evaluation | 1.0     |
-| [Date] | [Name]   | [Description]      | 1.1     |
-
----
-
 **Next Steps:**
 
 1. [Action item 1]
@@ -423,36 +396,17 @@ Guidelines referenced in this evaluation:
 **Follow-up Date:** [Date for re-evaluation]
 ```
 
-## File Creation Workflow
-
-1. **Ask for file path** before starting evaluation
-2. **Create file** with progress tracker at top
-3. **Update progress tracker** as you complete each section:
-
-   ```markdown
-   - [x] Voice and tone review complete
-   ```
-
-4. **Save incrementally** after completing each major section
-5. **Update "Last Updated" timestamp** with each save
-6. **Mark evaluation complete** when finished
-
 ## Evaluation Approach
 
-1. **Ask for file path** - Get the location where the report should be saved
-2. **Create report file** - Initialize with progress tracker and structure
-3. **Review systematically** - Go through each UI component type
-4. **Update progress tracker** - Mark sections complete as you finish them
-5. **Check against guidelines** - Use the evaluation checklist
-6. **Provide specific examples** - Include before/after text
-7. **Save incrementally** - Update the file after each major section
-8. **Prioritize issues** - Organize by customer impact
-9. **Reference official sources** - Link to design-system guidelines for each recommendation
-10. **Be constructive** - Highlight strengths as well as issues
-11. **Focus on customer experience** - How does this help customers complete tasks?
-12. **Create implementation tracking** - Add table with status checkboxes
-13. **Mark evaluation complete** - Update final progress tracker item
-14. **Review and clean up** - Remove any false positives or evaluation errors before finalizing
+1. **Review systematically** - Go through each UI component type
+2. **Check against guidelines** - Use the evaluation checklist
+3. **Provide specific examples** - Include before/after text
+4. **Prioritize issues** - Organize by customer impact
+5. **Reference official sources** - Link to design-system guidelines for each recommendation
+6. **Be constructive** - Highlight strengths as well as issues
+7. **Focus on customer experience** - How does this help customers complete tasks?
+8. **For a report file** - Follow Report Output and add the implementation tracking tables
+9. **Review and clean up** - Remove any false positives or evaluation errors before finalizing
 
 **CRITICAL: Quality Control Before Finalizing**
 
@@ -474,79 +428,31 @@ Use precise modal verbs:
 
 ## Common Patterns to Check
 
-**Before/After Examples:**
+**Before → after:**
 
-❌ **Passive:** "The instance can be stopped by clicking the button"
-✅ **Active:** "To stop the instance, choose Stop"
+- **Passive:** "The instance can be stopped by clicking the button" → **Active:** "To stop the instance, choose Stop"
+- **Title Case:** "Create New Resource" → **Sentence case:** "Create new resource"
+- **Jargon:** "Instantiate a new compute resource" → **Plain language:** "Create a new instance"
+- **Wordy:** "In order to be able to proceed with the configuration..." → **Concise:** "To configure..."
+- **Directional:** "Click the button below" → **Device-independent:** "Choose Create"
 
-❌ **Title Case:** "Create New Resource"
-✅ **Sentence case:** "Create new resource"
+## Deliverable
 
-❌ **Jargon:** "Instantiate a new compute resource"
-✅ **Plain language:** "Create a new instance"
+A UI text audit, inline or as a file, that:
 
-❌ **Wordy:** "In order to be able to proceed with the configuration..."
-✅ **Concise:** "To configure..."
-
-❌ **Directional:** "Click the button below"
-✅ **Device-independent:** "Choose Create"
-
-## Your Deliverable
-
-Provide a complete UI text audit file that:
-
-- **Lives at user-specified location** - Ask for file path first
-- **Includes progress tracker** - Shows evaluation status in real-time
 - **Identifies all issues** - With specific locations and examples
 - **Prioritizes by severity** - Critical → Warning → Suggestions with customer impact
 - **Provides actionable fixes** - Corrected text for each issue
 - **References official guidelines** - Design-system links for each recommendation
-- **Includes implementation tracking** - Tables with status checkboxes for team collaboration
-- **Shows definition of done** - Checklist with completion status
 - **Highlights strengths** - Positive patterns to reinforce
-- **Enables team workflow** - Status tracking, assignment, and verification columns
-- **Supports iteration** - Revision history and follow-up dates
+
+A report file also includes the progress tracker, the definition of done checklist with completion status, implementation tracking tables (status, assignment, and verification columns), and a follow-up date.
 
 ## Example Usage
 
-**Step 1: User provides UI content**
+A user asks: "Evaluate the UI text for our new S3 bucket creation wizard." Review the wizard section by section and report the findings inline.
 
-```
-User: "Please evaluate the UI text for our new S3 bucket creation wizard"
-```
-
-**Step 2: You ask for file location**
-
-```
-Assistant: "Where would you like me to save the UI text evaluation report?
-Please provide the full file path (e.g., `ui-reviews/s3-bucket-wizard-audit.md`)."
-```
-
-**Step 3: User provides path**
-
-```
-User: "Save it to docs/ui-audits/2025-01-15-s3-wizard.md"
-```
-
-**Step 4: You create and populate the file**
-
-- Create file at `docs/ui-audits/2025-01-15-s3-wizard.md`
-- Initialize with progress tracker
-- Perform evaluation section by section
-- Update progress tracker after each section
-- Save incrementally
-- Mark complete when finished
-
-**Step 5: Team uses the file**
-
-- Review issues and assign to team members
-- Check off status boxes as fixes are implemented
-- Update revision history with changes
-- Use for follow-up evaluations
-
-Remember: Your goal is to help deliver UI text that enables customers to complete their tasks with confidence and ease. Every word matters in creating a superior customer experience. The evaluation report you create becomes a living document that guides the team through implementation and verification.
-
----
+If the user asks for a report file ("Save it to docs/ui-audits/s3-wizard.md"), create it at that path, fill it section by section with the progress tracker updated as you go, and mark it complete when finished. The team then assigns issues, checks off status boxes as fixes land, and reuses the file for follow-up evaluations.
 
 ## Quality Gate
 
@@ -558,7 +464,7 @@ Remember: Your goal is to help deliver UI text that enables customers to complet
 
 **WARNING (should fix):**
 
-- Capitalization inconsistent with sentence case for labels, title case for headings
+- Capitalization not in sentence case (labels, buttons, and headings)
 - Jargon or acronyms used without explanation in customer-facing text
 - Help panel content missing for complex configuration options
 

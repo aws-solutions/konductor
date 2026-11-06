@@ -323,7 +323,7 @@ ls skills | wc -l
 ```
 
 ```text
-      82
+      81
 ```
 
 Compare that against the union of every spec's declared skills. A mismatch means a skill exists that
@@ -370,7 +370,7 @@ a security problem.
 ## Related
 
 - [Agents reference](../agents.md) — every agent's model, tools, access, and delegation targets
-- [Skills catalog](../skills.md) — all 82 skills and which agents declare each
+- [Skills catalog](../skills.md) — all 81 skills and which agents declare each
 - [SOP workflows](../sop-workflows/README.md) — the 19 procedures and their structure
 - [CLI reference](../reference.md) — the full command, flag, config, and exit-code contract
 
