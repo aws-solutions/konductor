@@ -243,21 +243,21 @@ test('nested marked directories are both removed without error', () => {
 test('the protect file wins over a marker: exact path, glob, a parent, and a protected path inside', () => {
   const root = scratchRoot();
   const exact = mk(root, 'exact');
-  mk(root, 'handoff-notes');
+  mk(root, 'keep-notes');
   mk(path.join(root, 'family-1'), 'inner');
   const holder = mk(root, 'holder');
   fs.writeFileSync(path.join(holder, 'keep.md'), 'precious');
   touchAll(holder, new Date(Date.now() - 10 * DAY));
   mk(root, 'free');
-  const protect = { entries: [exact, path.join(root, '*handoff*'), path.join(root, 'family-*'), path.join(holder, 'keep.md')], problems: [] };
+  const protect = { entries: [exact, path.join(root, '*keep-notes*'), path.join(root, 'family-*'), path.join(holder, 'keep.md')], problems: [] };
   const p = plan(root, { protect });
   assert.deepEqual(eligibleNames(p), ['free']);
   assert.match(byName(p, 'exact').reasons.join(), /protected by/);
-  assert.match(byName(p, 'handoff-notes').reasons.join(), /protected by/);
+  assert.match(byName(p, 'keep-notes').reasons.join(), /protected by/);
   assert.match(byName(p, 'inner').reasons.join(), /protected by/);
   assert.match(byName(p, 'holder').reasons.join(), /protected by/);
   gc.applyGc(p);
-  for (const n of ['exact', 'handoff-notes', 'holder']) assert.ok(fs.existsSync(path.join(root, n)), n);
+  for (const n of ['exact', 'keep-notes', 'holder']) assert.ok(fs.existsSync(path.join(root, n)), n);
   assert.ok(!fs.existsSync(path.join(root, 'free')));
 });
 
@@ -488,15 +488,15 @@ test('protect file: comments and blanks are ignored, ~ expands, relative entries
 });
 
 test('glob matching: * and ? stay inside a segment, ** crosses segments, and below-checks work', () => {
-  assert.equal(gc.globMatches('/var/tmp/*handoff*', '/var/tmp/old-handoff-2'), true);
-  assert.equal(gc.globMatches('/var/tmp/*handoff*', '/var/tmp/a/handoff'), false);
+  assert.equal(gc.globMatches('/var/tmp/*keep-notes*', '/var/tmp/old-keep-notes-2'), true);
+  assert.equal(gc.globMatches('/var/tmp/*keep-notes*', '/var/tmp/a/keep-notes'), false);
   assert.equal(gc.globMatches('/a/**/z', '/a/b/c/z'), true);
   assert.equal(gc.globMatches('/a/?x', '/a/bx'), true);
   assert.equal(gc.globMatches('/a/?x', '/a/bbx'), false);
   assert.equal(gc.globMatches('/a/b.c', '/a/bxc'), false);
   assert.equal(gc.patternReachesBelow('/var/tmp/x/keep/*', '/var/tmp/x'), true);
   assert.equal(gc.patternReachesBelow('/var/tmp/x/keep/*', '/var/tmp/y'), false);
-  assert.equal(gc.patternReachesBelow('/var/tmp/*handoff*', '/var/tmp/x'), false);
+  assert.equal(gc.patternReachesBelow('/var/tmp/*keep-notes*', '/var/tmp/x'), false);
 });
 
 test('parseDuration', () => {
