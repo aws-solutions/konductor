@@ -9,6 +9,9 @@
 # script applies, and the target must be a real directory, not a symlink.
 # Nothing outside <registry>/<id> is touched. Removing an id that is already
 # gone is not an error.
+#
+# The registry is per-user and private. On a multi-user host that shares the
+# default /tmp/konductor-mux, each user sets their own KONDUCTOR_MUX_REGISTRY_DIR.
 set -euo pipefail
 
 ID=""
@@ -26,10 +29,9 @@ REGISTRY_DIR="${KONDUCTOR_MUX_REGISTRY_DIR:-/tmp/konductor-mux}"
 
 # The registry holds every dispatch's files, so it must be a real directory
 # owned by this user that no one else can write to. Prints the problem and
-# fails when it isn't. KONDUCTOR_REGISTRY_OWNER_UID names the owner to expect
-# (default: this user); it cannot turn the check off.
+# fails when it isn't.
 registry_problem() {
-  python3 - "$1" "${KONDUCTOR_REGISTRY_OWNER_UID:-$(id -u)}" <<'PY'
+  python3 - "$1" "$(id -u)" <<'PY'
 import os, stat, sys
 path, uid = sys.argv[1], int(sys.argv[2])
 try:

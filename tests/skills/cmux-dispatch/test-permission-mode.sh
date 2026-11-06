@@ -30,6 +30,7 @@ MOCK_BIN="$WORKDIR/bin"
 mkdir -p "$MOCK_BIN"
 PANE_CMD_FILE="$WORKDIR/pane-cmd.txt"
 SURFACE_OPENED="$WORKDIR/surface-opened"
+SURFACE_CLOSED="$WORKDIR/surface-closed"
 # The claude and kiro-cli mocks write one argument per line, then the
 # KONDUCTOR_DONE_FILE they saw. MOCK_CHILD_WRITES_DONE makes them write that
 # .done themselves, as a child should; MOCK_EXIT sets their exit code.
@@ -39,7 +40,15 @@ DONE_RECORD="$WORKDIR/done-file.txt"
 cat > "$MOCK_BIN/cmux" <<MOCKEOF
 #!/usr/bin/env bash
 case "\$1" in
-  new-split) [ -n "\${MOCK_NO_SURFACE:-}" ] && exit 0; touch "${SURFACE_OPENED}"; echo "surface:1" ;;
+  new-split)
+    [ -n "\${MOCK_NO_SURFACE:-}" ] && { echo "surface:"; exit 0; }
+    touch "${SURFACE_OPENED}"
+    # MOCK_COLLIDE plants the directory this dispatch is about to claim.
+    if [ -n "\${MOCK_COLLIDE:-}" ]; then
+      for d in "\$KONDUCTOR_CMUX_REGISTRY_DIR"/.pending-*; do mkdir "\$KONDUCTOR_CMUX_REGISTRY_DIR/surface_1-\${d##*.pending-}"; done
+    fi
+    echo "surface:1" ;;
+  close-surface) touch "${SURFACE_CLOSED}" ;;
   read-screen) echo "ready" ;;
   send) printf '%s' "\${!#}" > "${PANE_CMD_FILE}" ;;
   *) exit 0 ;;
@@ -271,7 +280,7 @@ unset MOCK_PLANT
 head -c 1048577 /dev/zero > "$WORKDIR/big-brief.md"
 dispatch --brief "$WORKDIR/big-brief.md"
 check "a --brief over 1 MB is refused before a surface opens" \
-  '[[ "$RC" -ne 0 && ! -e "$$SURFACE_OPENED" ]] && grep -q "over 1 MB" "$WORKDIR/err"'
+  '[[ "$RC" -ne 0 && ! -e "$SURFACE_OPENED" ]] && grep -q "over 1 MB" "$WORKDIR/err"'
 
 # The shared registry must be private to this user.
 export KONDUCTOR_CMUX_REGISTRY_DIR="$WORKDIR/fresh/registry"
@@ -283,18 +292,21 @@ ln -s "$REG" "$WORKDIR/reg-link"
 export KONDUCTOR_CMUX_REGISTRY_DIR="$WORKDIR/reg-link"
 dispatch --task "do it"
 check "a symlinked registry is refused before a surface opens" \
-  '[[ "$RC" -ne 0 && ! -e "$$SURFACE_OPENED" ]] && grep -q "is a symlink" "$WORKDIR/err"'
+  '[[ "$RC" -ne 0 && ! -e "$SURFACE_OPENED" ]] && grep -q "is a symlink" "$WORKDIR/err"'
 export KONDUCTOR_CMUX_REGISTRY_DIR="$REG"
 chmod 777 "$REG"
 dispatch --task "do it"
 check "a world-writable registry is refused" \
-  '[[ "$RC" -ne 0 && ! -e "$$SURFACE_OPENED" ]] && grep -q "group- or world-writable" "$WORKDIR/err"'
+  '[[ "$RC" -ne 0 && ! -e "$SURFACE_OPENED" ]] && grep -q "group- or world-writable" "$WORKDIR/err"'
 chmod 700 "$REG"
-export KONDUCTOR_REGISTRY_OWNER_UID=$(( $(id -u) + 1 ))
-dispatch --task "do it"
-check "a registry owned by someone else is refused" \
-  '[[ "$RC" -ne 0 && ! -e "$$SURFACE_OPENED" ]] && grep -q "is owned by uid" "$WORKDIR/err"'
-unset KONDUCTOR_REGISTRY_OWNER_UID
+# / is owned by root, so it stands in for a registry someone else owns.
+if [[ "$(id -u)" -ne 0 ]]; then
+  export KONDUCTOR_CMUX_REGISTRY_DIR=/
+  dispatch --task "do it"
+  check "a registry owned by someone else is refused" \
+    '[[ "$RC" -ne 0 && ! -e "$SURFACE_OPENED" ]] && grep -q "is owned by uid 0" "$WORKDIR/err"'
+  export KONDUCTOR_CMUX_REGISTRY_DIR="$REG"
+fi
 dispatch --task "do it"
 check "an owned 700 registry passes" '[[ "$RC" -eq 0 ]]'
 
@@ -308,7 +320,18 @@ chmod 700 "$REG"
 export MOCK_NO_SURFACE=1
 dispatch --task "do it"
 check "a surface that fails to open leaves no pending directory" '[[ "$RC" -ne 0 ]] && ! ls -A "$REG" | grep -q "^\.pending-"'
+check "a surface that fails to open is reported" 'grep -q "ERROR: No surface" "$WORKDIR/err"'
 unset MOCK_NO_SURFACE
+rm -f "$SURFACE_CLOSED"
+mkdir -m 700 "$WORKDIR/collide"
+export KONDUCTOR_CMUX_REGISTRY_DIR="$WORKDIR/collide" MOCK_COLLIDE=1
+dispatch --task "do it"
+check "an existing dispatch directory is refused and its surface closed" \
+  '[[ "$RC" -eq 1 && -e "$SURFACE_CLOSED" ]] && grep -q "already exists" "$WORKDIR/err"'
+check "a refused dispatch leaves the existing directory untouched and no pending directory" \
+  '[[ "$(ls -A "$WORKDIR/collide" | grep -v "^dispatched\.json")" == surface_1-* && -z "$(ls -A "$WORKDIR"/collide/surface_1-*)" ]]'
+unset MOCK_COLLIDE
+export KONDUCTOR_CMUX_REGISTRY_DIR="$REG"
 
 # Kiro CLI ignores the mode, even an invalid one, and gets the same files.
 unset CLAUDECODE

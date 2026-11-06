@@ -296,7 +296,7 @@ ARGS
   head -c 1048577 /dev/zero > "$WORKDIR/big-brief.md"
   dispatch "$backend" --brief "$WORKDIR/big-brief.md"
   check "$backend a --brief over 1 MB is refused before a pane opens" \
-    '[[ "$RC" -ne 0 && ! -e "$$PANE_OPENED" ]] && grep -q "over 1 MB" "$WORKDIR/err"'
+    '[[ "$RC" -ne 0 && ! -e "$PANE_OPENED" ]] && grep -q "over 1 MB" "$WORKDIR/err"'
 
   # The shared registry must be private to this user.
   export KONDUCTOR_MUX_REGISTRY_DIR="$WORKDIR/fresh/registry"
@@ -308,18 +308,21 @@ ARGS
   export KONDUCTOR_MUX_REGISTRY_DIR="$WORKDIR/reg-link"
   dispatch "$backend" --task "do it"
   check "$backend a symlinked registry is refused before a pane opens" \
-    '[[ "$RC" -ne 0 && ! -e "$$PANE_OPENED" ]] && grep -q "is a symlink" "$WORKDIR/err"'
+    '[[ "$RC" -ne 0 && ! -e "$PANE_OPENED" ]] && grep -q "is a symlink" "$WORKDIR/err"'
   export KONDUCTOR_MUX_REGISTRY_DIR="$REG"
   chmod 777 "$REG"
   dispatch "$backend" --task "do it"
   check "$backend a world-writable registry is refused" \
-    '[[ "$RC" -ne 0 && ! -e "$$PANE_OPENED" ]] && grep -q "group- or world-writable" "$WORKDIR/err"'
+    '[[ "$RC" -ne 0 && ! -e "$PANE_OPENED" ]] && grep -q "group- or world-writable" "$WORKDIR/err"'
   chmod 700 "$REG"
-  export KONDUCTOR_REGISTRY_OWNER_UID=$(( $(id -u) + 1 ))
-  dispatch "$backend" --task "do it"
-  check "$backend a registry owned by someone else is refused" \
-    '[[ "$RC" -ne 0 && ! -e "$$PANE_OPENED" ]] && grep -q "is owned by uid" "$WORKDIR/err"'
-  unset KONDUCTOR_REGISTRY_OWNER_UID
+  # / is owned by root, so it stands in for a registry someone else owns.
+  if [[ "$(id -u)" -ne 0 ]]; then
+    export KONDUCTOR_MUX_REGISTRY_DIR=/
+    dispatch "$backend" --task "do it"
+    check "$backend a registry owned by someone else is refused" \
+      '[[ "$RC" -ne 0 && ! -e "$PANE_OPENED" ]] && grep -q "is owned by uid 0" "$WORKDIR/err"'
+    export KONDUCTOR_MUX_REGISTRY_DIR="$REG"
+  fi
   dispatch "$backend" --task "do it"
   check "$backend an owned 700 registry passes" '[[ "$RC" -eq 0 ]]'
 

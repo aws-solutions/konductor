@@ -78,8 +78,13 @@ for spec in "mux-dispatch/mux-cleanup-dispatch.sh KONDUCTOR_MUX_REGISTRY_DIR tmu
   run "$helper" "$var" --id "$other_id"
   check "$name: a world-writable registry is refused" '[[ "$RC" -ne 0 && -d "$REG/$other_id" ]] && grep -q "group- or world-writable" "$WORKDIR/err"'
   chmod 700 "$REG"
-  KONDUCTOR_REGISTRY_OWNER_UID=$(( $(id -u) + 1 )) run "$helper" "$var" --id "$other_id"
-  check "$name: a registry owned by someone else is refused" '[[ "$RC" -ne 0 && -d "$REG/$other_id" ]] && grep -q "is owned by uid" "$WORKDIR/err"'
+  # / is owned by root, so it stands in for a registry someone else owns.
+  if [[ "$(id -u)" -ne 0 ]]; then
+    REG=/
+    run "$helper" "$var" --id "$other_id"
+    REG="$REAL_REG"
+    check "$name: a registry owned by someone else is refused" '[[ "$RC" -ne 0 && -d "$REG/$other_id" ]] && grep -q "is owned by uid 0" "$WORKDIR/err"'
+  fi
 done
 
 echo ""

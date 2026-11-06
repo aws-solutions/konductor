@@ -75,7 +75,8 @@ not per individual commit.
 - Each dispatched child gets its own 0700 directory under the registry for its brief, result and
   `.done`, and is granted only that directory. A `.done` the child writes is kept, and the launcher
   adds the exit code when the session ends, so a non-zero exit is always recorded as `error`.
-  `--brief <file>` passes a long brief.
+  `--brief <file>` passes a long brief. An existing registry that is group- or world-writable, such
+  as one created under umask 002, is now refused with a message to `chmod 700` it.
 
 ### Fixed
 

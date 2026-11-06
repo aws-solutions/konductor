@@ -165,10 +165,9 @@ REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"
 REGISTRY_LOCK="$REGISTRY_FILE.lock"
 # The registry holds every dispatch's files, so it must be a real directory
 # owned by this user that no one else can write to. Prints the problem and
-# fails when it isn't. KONDUCTOR_REGISTRY_OWNER_UID names the owner to expect
-# (default: this user); it cannot turn the check off.
+# fails when it isn't.
 registry_problem() {
-  python3 - "$1" "${KONDUCTOR_REGISTRY_OWNER_UID:-$(id -u)}" <<'PY'
+  python3 - "$1" "$(id -u)" <<'PY'
 import os, stat, sys
 path, uid = sys.argv[1], int(sys.argv[2])
 try:
@@ -217,19 +216,19 @@ wait_for_shell() {
 case "$MODE" in
   workspace)
     WS_OUTPUT=$(cmux new-workspace --name "$LABEL" ${CWD:+--cwd "$CWD"} 2>&1)
-    WS_ID=$(echo "$WS_OUTPUT" | grep -o 'workspace:[0-9]*')
+    WS_ID=$(echo "$WS_OUTPUT" | { grep -o 'workspace:[0-9][0-9]*' || true; })
     [[ -z "$WS_ID" ]] && { echo "ERROR: Failed to create workspace: $WS_OUTPUT" >&2; exit 1; }
     SURFACE_OUTPUT=$(cmux list-pane-surfaces --workspace "$WS_ID" 2>&1)
-    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | grep -o 'surface:[0-9]*' | head -1)
+    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | { grep -o 'surface:[0-9][0-9]*' || true; } | head -1)
     ;;
   split)
     SURFACE_OUTPUT=$(cmux new-split "${SPLIT_DIR}" 2>&1)
-    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | grep -o 'surface:[0-9]*' | head -1)
+    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | { grep -o 'surface:[0-9][0-9]*' || true; } | head -1)
     cmux rpc workspace.equalize_splits '{}' >/dev/null 2>&1 || true
     ;;
   tab)
     SURFACE_OUTPUT=$(cmux new-surface 2>&1)
-    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | grep -o 'surface:[0-9]*' | head -1)
+    SURFACE_ID=$(echo "$SURFACE_OUTPUT" | { grep -o 'surface:[0-9][0-9]*' || true; } | head -1)
     cmux rename-tab --surface "$SURFACE_ID" "$LABEL" 2>/dev/null || true
     ;;
 esac
@@ -243,6 +242,13 @@ DONE_KEY="$(printf '%s' "$SURFACE_ID" | tr -c 'A-Za-z0-9._-' '_')-$DISPATCH_SUFF
 # its .done. It is the only directory the child is granted; the shared
 # registry and other dispatches stay outside that grant.
 DISPATCH_DIR="$REGISTRY_DIR/$DONE_KEY"
+# mv into an existing directory would nest the pending dir inside it, and
+# macOS mv has no -T, so refuse first.
+if [[ -e "$DISPATCH_DIR" || -L "$DISPATCH_DIR" ]]; then
+  echo "ERROR: dispatch directory $DISPATCH_DIR already exists; not dispatching" >&2
+  cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
+  exit 1
+fi
 if ! mv "$PENDING_DIR" "$DISPATCH_DIR"; then
   echo "ERROR: cannot create the dispatch directory $DISPATCH_DIR; not dispatching" >&2
   cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true

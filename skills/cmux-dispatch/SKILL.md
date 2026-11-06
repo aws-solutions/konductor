@@ -26,7 +26,7 @@ Any other value makes the dispatch script exit with an error before it opens a p
 
 `<dispatch dir>` is `<registry>/<id>/`, where `<registry>` is `/tmp/konductor-cmux` (or `$KONDUCTOR_CMUX_REGISTRY_DIR` when set) and `<id>` is the dispatch's own id. The script creates it with mode 0700 and prints it as `dispatch_dir=`. It holds that dispatch's brief (`task.md`), result (`result.md`) and `.done`, and it is the only directory `--add-dir` grants: the shared `dispatched.json`, the launchers and every other dispatch's directory stay outside it. Without the grant, `headless` denies reading the brief and writing the result. `--add-dir` comes before `--agent` because it takes a list and would otherwise swallow the prompt.
 
-The registry must be private to you. The dispatch script creates it with mode 700, and it refuses to dispatch, as the cleanup helper refuses to remove, when the registry is a symlink, is not owned by you, or is group- or world-writable. Fix an older registry with `chmod 700`, or point `KONDUCTOR_CMUX_REGISTRY_DIR` at a private directory.
+The registry must be private to you. The dispatch script creates it with mode 700, and it refuses to dispatch, as the cleanup helper refuses to remove, when the registry is a symlink, is not owned by you, or is group- or world-writable. Fix an older registry with `chmod 700`, or point `KONDUCTOR_CMUX_REGISTRY_DIR` at a private directory. The registry is per-user: on a host where several users share the default path, each user sets their own `KONDUCTOR_CMUX_REGISTRY_DIR`.
 
 ## Overview
 

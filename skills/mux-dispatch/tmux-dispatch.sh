@@ -136,10 +136,9 @@ REGISTRY_FILE="$REGISTRY_DIR/dispatched.json"
 REGISTRY_LOCK="$REGISTRY_FILE.lock"
 # The registry holds every dispatch's files, so it must be a real directory
 # owned by this user that no one else can write to. Prints the problem and
-# fails when it isn't. KONDUCTOR_REGISTRY_OWNER_UID names the owner to expect
-# (default: this user); it cannot turn the check off.
+# fails when it isn't.
 registry_problem() {
-  python3 - "$1" "${KONDUCTOR_REGISTRY_OWNER_UID:-$(id -u)}" <<'PY'
+  python3 - "$1" "$(id -u)" <<'PY'
 import os, stat, sys
 path, uid = sys.argv[1], int(sys.argv[2])
 try:
