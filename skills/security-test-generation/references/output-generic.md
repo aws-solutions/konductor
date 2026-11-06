@@ -6,7 +6,7 @@ Read this at Stage 8 when `tool_type == "other"`.
 
 **Generate:**
 
-1. Directory: `{output_dir}`, optional and defaulting to `security-test-plans/` — this default applies to this non-Kiro branch (`tool_type == "other"`). The Kiro branch (`references/output-kiro.md`) defaults `output_dir` to `.kiro/specs/security-testing/` instead.
+1. Directory: `{output_dir}`, optional and defaulting to `security-test-plans/`. This default applies to this non-Kiro branch (`tool_type == "other"`). The Kiro branch (`references/output-kiro.md`) defaults `output_dir` to `.kiro/specs/security-testing/` instead.
 2. Per category: `{output_dir}/[domain]-[layer].md` with description, test cases, best practices, references
 3. `{output_dir}/security-test-overview.md`: master view, all categories, testing framework, best practices
 4. `{output_dir}/best-practices-reference.md`: AWS, OWASP guidelines
