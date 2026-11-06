@@ -1,6 +1,6 @@
 ---
 name: claude-teams-behavior
-description: Claude Code Agent Teams patterns for the orchestrator. Loaded only in Claude Code sessions via claudeCli.skills. Provides hub-and-spoke contract, decision rules for SendMessage, background agent spawning, and agent name resolution.
+description: Claude Code Agent Teams patterns for the orchestrator. Use when orchestrating on Claude Code with SendMessage or background agents, for parallel specialists, mid-run context, or naming a write agent's worktree. Loaded only in Claude Code sessions via claudeCli.skills. Provides hub-and-spoke contract, decision rules for SendMessage, background agent spawning, and agent name resolution.
 version: 1.2.0
 tags: [skill, claude-code, agent-teams, orchestration]
 ---
@@ -29,13 +29,10 @@ What you do yourself is defined once, in your Direct Work rules: the context fil
 the orchestrator's own working directory. Working-tree isolation is
 established by prompt, not by parameter.
 
-**The rule: every write-agent dispatch prompt must explicitly name the
-exact target — never let the agent infer or default.** A silent default is
-the actual collision mechanism: two agents (from the same task or from
-different tasks) can each independently default into the same location and
-step on each other, even when neither dispatch looked "concurrent" from the
-orchestrator's own point of view. The named target is one of three
-legitimate forms:
+The rule itself lives in `delegation-protocol` (Parallel Execution): every
+write-agent dispatch prompt names its exact target, because a silent default
+is what lets two agents collide in one tree. On Claude Code the named target
+is one of three forms:
 
 1. A new dedicated worktree — `wt-<id>` on branch `wt-<id>` (worktree and
    branch share one flat name), for the agent to create.
@@ -88,7 +85,7 @@ after the fact:
 - The pre-commit hook (husky/lint-staged, or the equivalent for this
   project) runs inside the tree the agent actually committed from — edits
   made outside the named target simply will not surface in that commit.
-- The CR diff at review time shows exactly which files changed; a human
+- The PR diff at review time shows exactly which files changed; a human
   reviewer catches any file that should not have been touched before merge.
 
 **Sequential handoff** is the reuse case above, not a special case — a
@@ -98,8 +95,8 @@ second write agent continuing the same task gets the same named target
 **Concurrent collaboration on one target is not supported, by design** —
 that is the exact collision this mechanism exists to prevent, whether the
 target is a worktree or the shared tree. A maker/checker pair never shares a
-target; a checker gets its own separate read-only checkout (e.g.
-`CrCheckout`), never the maker's tree. Only sequential reuse of a named
+target; a checker gets its own separate read-only checkout, never the
+maker's tree. Only sequential reuse of a named
 target is legitimate; two write agents on the same target at the same time
 is always wrong.
 

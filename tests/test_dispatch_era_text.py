@@ -25,6 +25,8 @@ def test_sdlc_navigator_routes_through_the_orchestrator():
 def test_pre_planning_analysis_states_the_auto_mode_behavior():
     text = _read("skills/pre-planning-analysis/SKILL.md")
     assert "spawns the named agent only as `k-direct-work.md` allows" in text
+    assert "Route to: `" not in text
+    assert text.count("Owner: ") == 6
 
 
 def test_kiro_spec_workflow_orchestrator_does_not_load_the_skills():
