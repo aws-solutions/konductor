@@ -96,7 +96,7 @@ Flag any identified fallacy as IMPORTANT with the fallacy name and the affected 
    > 1. Convene the deliberation panel (recommended for high-stakes designs)
    > 2. Proceed without the panel — apply the Classification and Fallacy Checking sections above directly, single-voice
    - If the user opts in, proceed to Step 3 with `consent_confirmed=true`.
-   - If the user declines or gives no confirmation, skip the panel entirely: apply the Classification and Fallacy Checking sections (above) directly to each decision from Step 1 — evaluate each justification against the Toulmin model, flag fallacies via `argumentation-reference`, and classify findings directly using the Classification section under Core Concepts (CRITICAL architectural/factual, IMPORTANT, SUGGESTION). Then skip to Step 6 (Architecture stress test).
+   - If the user declines or gives no confirmation, skip the panel entirely: apply the Classification and Fallacy Checking sections (above) directly to each decision from Step 1. Evaluate each justification against the Toulmin model, flag fallacies via `argumentation-reference`, and classify findings directly using the Classification section under Core Concepts (CRITICAL architectural/factual, IMPORTANT, SUGGESTION). Then skip to Step 6 (Architecture stress test).
 
 3. **Adversarial Panel — Axis-Derived Challenge** (panel path only, per Step 2) — Invoke the `deliberation-panel` skill with `decision_domain=design, stance=adversarial, consent_confirmed=true`. Pass the parsed design decisions and tradeoffs as the subject. The panel derives 3–6 axes specific to this document's decisions (Phase 0), then runs the adversarial challenge per axis (Phase 1 — each axis argues why the currently-favored option fails on that axis), the anonymous cross-examination round (Phase 2), and the arbiter synthesis (Phase 3).
 
@@ -108,7 +108,7 @@ Flag any identified fallacy as IMPORTANT with the fallacy name and the affected 
 
    Confidence is the `deliberation-panel` skill's own Axis-Weighted Convergence output (`stance=adversarial`) — this skill does not define a separate scale, only reinterprets what convergence means in the adversarial stance: "the same option" that axes converge on is agreement that the currently-favored option fails. See `deliberation-panel`'s Axis-Weighted Convergence table for the HIGH/MEDIUM/LOW thresholds themselves.
 
-   **Severity mapping (panel path only — the single-voice path classifies via the Classification section under Core Concepts, not this mapping):**
+   **Severity mapping (panel path only; the single-voice path classifies via the Classification section under Core Concepts, not this mapping):**
    - HIGH-confidence architectural flaw → **CRITICAL (architectural)**
    - HIGH-confidence factual claim error → **CRITICAL (factual)**
    - MEDIUM-confidence architectural or factual flaw → **IMPORTANT** (not yet corroborated enough for CRITICAL, but too load-bearing to leave unclassified)

@@ -176,9 +176,9 @@ Review the design package in design/pennywise/.
    hard pause; it will not continue without an answer.
 3. **Read all artifacts** — in order: system design → threat model → API specs → data models →
    security policies → diagrams.
-4. **Run `design-evaluation`** — scores all 10 dimensions 1–5: template adherence, scalability,
-   security and threat coverage, maintainability, resilience, testability, operational readiness,
-   cost, API quality, data model quality. Below 3 is flagged for revision.
+4. **Run `design-evaluation`**: scores all 10 dimensions 1 to 5: template adherence, high-level
+   assessment, scalability (including cost), performance, security, maintainability, resilience,
+   code quality, testability, and actionable recommendations. Below 3 is flagged for revision.
 5. **Generate report** — writes `design-review-report.md` (or your `output_file`) with dimension
    scores and Critical / Important / Suggestion findings.
 6. **Present recommendation** — **READY FOR IMPLEMENTATION** or **NOT READY**, plus the blockers if

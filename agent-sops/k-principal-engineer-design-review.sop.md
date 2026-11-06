@@ -64,7 +64,7 @@ Run the `design-evaluation` skill across 10 production readiness dimensions.
 **Constraints:**
 
 - You MUST apply the `design-evaluation` skill
-- You MUST evaluate all 10 dimensions: template adherence, scalability, security, maintainability, resilience, testability, operational readiness, cost optimization, API design quality, data model quality
+- You MUST evaluate all 10 dimensions defined in `design-evaluation` Step 1
 - You MUST classify each finding as CRITICAL, IMPORTANT, or SUGGESTION using the same severity definitions as the adversarial review
 - You MUST compute a confidence score per section: average of the dimension scores (1–5 each)
 - Sections with average score < 3 are flagged for adversarial focus in Step 3

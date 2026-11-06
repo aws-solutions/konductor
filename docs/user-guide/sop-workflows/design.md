@@ -360,7 +360,7 @@ flowchart TD
 ### What you get
 
 A findings report at `output_file` covering the slop/quality gate, the architecture-principles
-evaluation, and every adversarial round, with findings ordered CRITICAL → IMPORTANT → SUGGESTION —
+evaluation, and every adversarial round, with findings ordered CRITICAL → IMPORTANT → SUGGESTION,
 headed by a **verdict**: `PE-READY`, `REVISIONS NEEDED`, or `FUNDAMENTAL REDESIGN REQUIRED`.
 The SOP reports the file path rather than printing the report.
 

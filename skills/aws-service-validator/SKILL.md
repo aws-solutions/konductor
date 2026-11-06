@@ -57,11 +57,11 @@ Output a markdown report in this format:
 ```markdown
 ## AWS Validation Report
 
-| Claim                                         | Service           | Status     | Evidence                                       | Correction                                                       |
-| --------------------------------------------- | ----------------- | ---------- | ---------------------------------------------- | ---------------------------------------------------------------- |
-| "S3 event notifications deliver to SQS FIFO"  | S3                | INCORRECT  | https://docs.aws.amazon.com/...                | FIFO queues aren't a supported destination; route via EventBridge |
-| "Lambda max timeout is 15 minutes"            | Lambda            | CONFIRMED  | https://docs.aws.amazon.com/...                | —                                                                |
-| "EventBridge Pipes GA in ap-south-2"          | EventBridge Pipes | UNVERIFIED | Searched regional table; ap-south-2 not listed | Flag for human review                                            |
+| Claim                                        | Service           | Status     | Evidence                                       | Correction                                                        |
+| -------------------------------------------- | ----------------- | ---------- | ---------------------------------------------- | ----------------------------------------------------------------- |
+| "S3 event notifications deliver to SQS FIFO" | S3                | INCORRECT  | https://docs.aws.amazon.com/...                | FIFO queues aren't a supported destination; route via EventBridge |
+| "Lambda max timeout is 15 minutes"           | Lambda            | CONFIRMED  | https://docs.aws.amazon.com/...                | None                                                              |
+| "EventBridge Pipes GA in ap-south-2"         | EventBridge Pipes | UNVERIFIED | Searched regional table; ap-south-2 not listed | Flag for human review                                             |
 
 **Summary:** N claims checked — N CONFIRMED, N UNVERIFIED, N INCORRECT.
 ```

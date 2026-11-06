@@ -36,15 +36,15 @@ Do NOT use when:
 
 3. **Slop detection** — Scan every paragraph for the following issue types:
 
-   | Type                    | Examples                                                                                                   | Severity  |
-   | ----------------------- | ---------------------------------------------------------------------------------------------------------- | --------- |
+   | Type                    | Examples                                                                                                   | Severity   |
+   | ----------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- |
    | `filler_phrases`        | "it is worth noting", "needless to say", "as mentioned above", "in order to", "it should be noted that"    | SUGGESTION |
    | `hedge_words`           | "might", "could potentially", "may or may not", "somewhat", "fairly" (when used to avoid commitment)       | SUGGESTION |
-   | `unsupported_claims`    | Performance/latency/cost assertions with no evidence URL or measurement                                    | IMPORTANT |
+   | `unsupported_claims`    | Performance/latency/cost assertions with no evidence URL or measurement                                    | IMPORTANT  |
    | `passive_voice_overuse` | >30% passive constructions in a section                                                                    | SUGGESTION |
-   | `circular_reasoning`    | Justification restates the claim without adding evidence (e.g., "we chose X because X is the best choice") | IMPORTANT |
-   | `yagni_violation`       | Features, abstractions, or extensibility points not required by stated requirements                        | IMPORTANT |
-   | `missing_section`       | Required section absent                                                                                    | IMPORTANT |
+   | `circular_reasoning`    | Justification restates the claim without adding evidence (e.g., "we chose X because X is the best choice") | IMPORTANT  |
+   | `yagni_violation`       | Features, abstractions, or extensibility points not required by stated requirements                        | IMPORTANT  |
+   | `missing_section`       | Required section absent                                                                                    | IMPORTANT  |
 
 4. **Complexity scoring** — For each decision or design choice, check:
    - Is the simplest option chosen, or is complexity justified by a stated requirement?
@@ -55,7 +55,7 @@ Do NOT use when:
 5. **Score** — Compute overall score 1–5:
    - 5: No issues
    - 4: Only SUGGESTION issues (≤3)
-   - 3: SUGGESTION issues (>3) or IMPORTANT issues (1–2)
+   - 3: SUGGESTION issues (>3) or IMPORTANT issues (1-2)
    - 2: IMPORTANT issues (3+), no missing required sections
    - 1: IMPORTANT issues (3+) AND one or more missing sections (structural gaps)
 
@@ -69,11 +69,11 @@ Do NOT use when:
 
 ## Rubric
 
-| Score | Meaning                                           | Gate                        |
-| ----- | ------------------------------------------------- | --------------------------- |
-| 5     | No issues                                         | Review-ready                |
-| 4     | Only SUGGESTION issues (3 or fewer)                    | Review-ready with notes     |
-| 3     | More than 3 SUGGESTION issues, or 1–2 IMPORTANT issues | Advance with revision notes |
+| Score | Meaning                                                      | Gate                        |
+| ----- | ------------------------------------------------------------ | --------------------------- |
+| 5     | No issues                                                    | Review-ready                |
+| 4     | Only SUGGESTION issues (3 or fewer)                          | Review-ready with notes     |
+| 3     | More than 3 SUGGESTION issues, or 1-2 IMPORTANT issues       | Advance with revision notes |
 | 2     | 3 or more IMPORTANT issues, no missing required sections     | Significant revision needed |
 | 1     | 3 or more IMPORTANT issues plus one or more missing sections | Rewrite required            |
 
