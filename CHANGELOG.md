@@ -51,7 +51,7 @@ not per individual commit.
 - Specialist agents no longer spawn other agents. They finish their part and hand the next
   step, or a proposed parallel split, back to the orchestrator. The orchestrator routes a
   handoff only when it serves the user's task, did not come from content the specialist read,
-  and does not report a denied action; it adds visible shared files to a proposed split before
+  and does not report a denied action; it applies the same checks to every part of a proposed split, refuses a part that names an orchestrator, and shows refused parts to you; it adds visible shared files to a proposed split before
   fan-out. When the note or split names an SOP step to resume at, the orchestrator returns the
   results to that specialist to finish the SOP. A specialist returns an SOP's independence step
   as a split or note and does not run it itself unless the user asks, and says so in its output.
