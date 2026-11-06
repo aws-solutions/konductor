@@ -21,6 +21,7 @@ use crate::rules::{
 };
 use crate::source::WorkflowSource;
 use crate::source_map::SourceMap;
+use crate::trust::TrustInputs;
 use crate::yaml::{load, Entry, Map, Node};
 
 /// The result of checking one workflow.
@@ -33,6 +34,8 @@ pub struct Checked {
     pub diagnostics: Vec<Diagnostic>,
     /// The number of entries in `stages`, counted even when the file has errors.
     pub stage_count: usize,
+    /// The bytes that were parsed, for the trust hash.
+    pub trust_inputs: TrustInputs,
 }
 
 impl Checked {
@@ -84,6 +87,7 @@ pub fn check_text(name: &str, text: &str, source: &dyn WorkflowSource) -> Checke
         problems: loaded.problems,
         stage_names: Vec::new(),
         check_ids: BTreeSet::new(),
+        prompt_bytes: BTreeMap::new(),
     };
     let mut workflow = None;
     if let Some(Node::Map(root)) = &loaded.root {
@@ -118,6 +122,7 @@ pub fn check_text(name: &str, text: &str, source: &dyn WorkflowSource) -> Checke
         workflow,
         diagnostics,
         stage_count,
+        trust_inputs: TrustInputs::new(text.as_bytes().to_vec(), checker.prompt_bytes),
     }
 }
 
@@ -164,6 +169,8 @@ struct Checker<'a> {
     problems: Vec<Problem>,
     stage_names: Vec<Option<String>>,
     check_ids: BTreeSet<String>,
+    // The bytes of each prompt file as read, for the trust hash.
+    prompt_bytes: BTreeMap<String, Vec<u8>>,
 }
 
 fn child(path: &[Seg], key: &str) -> Vec<Seg> {
@@ -719,6 +726,8 @@ impl<'a> Checker<'a> {
             self.report(Code::InvalidValue, at, entry.value_span(), message);
             return None;
         };
+        self.prompt_bytes
+            .insert(path.to_string(), text.as_bytes().to_vec());
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text).to_string();
         if !(1..=MAX_PROMPT_CHARS).contains(&code_points(&text)) {
             let message = format!("The text of the file named by `prompt_file` must have 1 to {MAX_PROMPT_CHARS} characters.");

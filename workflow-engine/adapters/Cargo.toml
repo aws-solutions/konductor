@@ -15,6 +15,8 @@ workspace = true
 
 [dependencies]
 workflow-core = { path = "../core" }
+# The advisory lock on the trust record. The same version as the CLI's lock file.
+fs2 = "=0.4.3"
 
 # The flags that keep an open from blocking on a pipe or following a link. The same version as the CLI's lock file.
 [target.'cfg(unix)'.dependencies]

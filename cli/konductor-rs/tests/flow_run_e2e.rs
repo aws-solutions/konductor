@@ -80,7 +80,7 @@ impl Project {
             .unwrap_or_else(|e| panic!("{relative}: {e}"))
     }
 
-    fn command(&self, args: &[&str]) -> Command {
+    fn command<S: AsRef<std::ffi::OsStr>>(&self, args: &[S]) -> Command {
         let mut command = Command::new(bin());
         command
             .args(args)
@@ -96,10 +96,28 @@ impl Project {
         command
     }
 
+    /// Runs `konductor flow <args>`. A `run` is given the trust hash of its workflow, since these tests are about the
+    /// run and not the trust gate (`flow_trust_e2e.rs` covers that). A test that passes `--trust` itself keeps it.
     fn flow(&self, args: &[&str]) -> Output {
-        let mut full = vec!["flow"];
-        full.extend_from_slice(args);
+        let mut full = vec!["flow".to_string()];
+        full.extend(args.iter().map(|a| a.to_string()));
+        if args.first() == Some(&"run") && !args.contains(&"--trust") {
+            if let Some(hash) = args.get(1).and_then(|name| self.trust_hash(name)) {
+                full.push("--trust".to_string());
+                full.push(hash);
+            }
+        }
         self.command(&full).output().expect("spawn konductor")
+    }
+
+    /// The trust hash `flow check` prints for a workflow, or `None` if it prints none.
+    fn trust_hash(&self, name: &str) -> Option<String> {
+        let output = self
+            .command(&["flow", "check", name, "--json"])
+            .output()
+            .expect("spawn konductor");
+        let report: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
+        Some(report.get("trust_hash")?.as_str()?.to_string())
     }
 
     /// `flow run hello-plan --harness fake --fake-script <script>`, plus `extra`.
@@ -333,6 +351,7 @@ fn start_held_run(project: &Project) -> (std::process::Child, std::fs::File) {
             "--fake-script",
             script.to_str().unwrap(),
         ])
+        .env("KONDUCTOR_TRUST", project.trust_hash("hello-plan").unwrap())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -484,6 +503,7 @@ fn a_lock_write_that_fails_is_a_runtime_error_and_the_next_run_starts() {
         .env_remove("NO_COLOR")
         .env_remove("KONDUCTOR_LOG")
         .env_remove("KONDUCTOR_FAKE_SCRIPT")
+        .env("KONDUCTOR_TRUST", project.trust_hash("hello-plan").unwrap())
         .stdin(Stdio::null());
     for var in project.sink.env_vars() {
         shell.env(var.name, var.value);
@@ -533,6 +553,7 @@ fn many_flow_runs_against_a_stale_record_leave_exactly_one_active() {
         let script = project.write("held.json", &held);
         let (sender, receiver) = mpsc::channel();
         let mut pids = Vec::new();
+        let trust = project.trust_hash("hello-plan").unwrap();
         for _ in 0..STARTERS {
             let child = project
                 .command(&[
@@ -545,6 +566,7 @@ fn many_flow_runs_against_a_stale_record_leave_exactly_one_active() {
                     script.to_str().unwrap(),
                     "--json",
                 ])
+                .env("KONDUCTOR_TRUST", &trust)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .spawn()
@@ -633,6 +655,7 @@ fn fake_needs_a_script_and_the_variable_works_in_place_of_the_flag() {
     let output = project
         .command(&["flow", "run", "hello-plan", "--harness", "fake"])
         .env("KONDUCTOR_FAKE_SCRIPT", &script)
+        .env("KONDUCTOR_TRUST", project.trust_hash("hello-plan").unwrap())
         .output()
         .unwrap();
     assert_eq!(exit(&output), 0, "{}", stderr(&output));

@@ -31,6 +31,11 @@ not per individual commit.
   is for tests. Each stage gets the stage prompt and passes on a valid `KONDUCTOR_RESULT` line, a blocked stage halts
   the run with exit 1, and the run state is kept in `.konductor/runs/`, which `.konductor/.gitignore` ignores. One run
   is active per workspace, and a second one exits 75.
+- `konductor flow trust <name>` shows what a workflow will run and records that you trust it, and `--revoke` removes the
+  record. `flow run` asks before it runs a project workflow, or any workflow in a repository that has tool
+  configuration files (`.claude/settings.json`, `.mcp.json`, `.kiro/agents/`, `.claude/agents/`). Without a terminal it
+  exits 77 and names `flow trust` and `--trust <hash>` (also `KONDUCTOR_TRUST`). `flow check` prints the `trust_hash`.
+  The record is `~/.konductor/trust.json`.
 
 ### Changed
 
