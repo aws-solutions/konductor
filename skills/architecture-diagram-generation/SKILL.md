@@ -42,7 +42,7 @@ The XML must be a valid draw.io `mxGraphModel`, so the file opens without errors
 
 **Regional Services** (inside region, outside VPC):
 
-- S3, DynamoDB, Lambda, API Gateway, Cognito, WAF web ACLs scoped to an ALB or API Gateway
+- S3, DynamoDB, Lambda, API Gateway, Cognito, WAF web ACLs with regional scope (for example on an ALB or API Gateway)
 
 S3 bucket names are global, but each bucket lives in one region, so draw it in that region.
 
@@ -192,7 +192,7 @@ Generate complete draw.io XML that includes:
 4. **Proper Boundaries**: Account, region, VPC boundaries clearly marked for threat modeling
 5. **Professional Formatting**: Consistent styling and layout following the standards above
 6. **Complete Documentation**: Service descriptions and relationships with security context
-7. **Editable Structure**: Services nested in their boundary containers through `parent`, so moving a boundary in draw.io moves its services
+7. **Editable Structure**: Valid parent-child relationships and unique IDs, so the diagram can be edited in draw.io
 8. **Trust Boundaries**: Clearly defined security zones for threat modeling workflows
 
 The generated diagram should open in draw.io without edits and represent a production-ready AWS architecture following all best practices and Well-Architected Framework principles.
