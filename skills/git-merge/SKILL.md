@@ -1,6 +1,6 @@
 ---
 name: git-merge
-description: 'Merges a feature or dev branch into the default branch with --no-ff --no-commit so the merge can be inspected and built before it is committed. Use when asked to merge a branch, do a release merge, or tag a release after a merge, in a repo that merges locally; otherwise open a PR via code-review.'
+description: 'Merges a feature or dev branch into the default branch with --no-ff --no-commit so the merge can be inspected and built before it is committed. Use for local merges: a branch or release merge, merge conflicts (lockfiles too), a half-finished merge, merge strategy, or a hotfix landing on two branches. In a repo that merges through PRs, open a PR via code-review instead.'
 version: 1.0.0
 tags: [skill, git, merge, branch, default-branch, release]
 ---
@@ -18,6 +18,8 @@ Use this skill when:
 - Merging a feature branch into `<default-branch>`
 - Merging dev into `<default-branch>`
 - Performing release merges
+- Resolving merge conflicts, including lockfiles and a merge left half-finished
+- Choosing a merge strategy, such as a merge commit versus a fast-forward, or landing a hotfix on both a release branch and `<default-branch>`
 - Any branch merge that should preserve history
 
 Trigger words: `merge`, `merge branch`, `merge into main`, `merge into mainline`, `release merge`, `merge dev`
