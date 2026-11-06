@@ -721,7 +721,7 @@ SOP_EDITS += [
      "Can delegate to the developer and the browser agent in both runtimes."),
     ("roster row: PM skills",
      "No SOPs — skill-driven. 16 skills: user-story-writing",
-     "No SOPs — skill-driven. 15 skills: user-story-writing"),
+     "No SOPs — skill-driven. 16 skills: user-story-writing"),
     ("roster row: researcher skills",
      "No SOPs — skill-driven. 7 skills: external-research",
      "No SOPs — skill-driven. 8 skills: external-research"),
