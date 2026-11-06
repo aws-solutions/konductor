@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { tmp, makeBench, makeRun } = require('./helpers.js');
-const { runJudging, planJudging, estimateSpend, FALLBACK_CREDITS_PER_CALL } = require('../../judge/run.js');
+const { runJudging, planJudging, estimateSpend } = require('../../judge/run.js');
 const { runPackJudging, describePackPlan } = require('../../judge/packrun.js');
 const { loadPack } = require('../../judge/pack/index.js');
 const { loadTasks } = require('../lib/tasks.js');
@@ -49,7 +49,7 @@ test('judge --plan in rubric mode prints backend, panel, call count and estimate
     assert.match(r.stdout, /panel: gpt-test, deepseek-test, glm-test \(3 model families\)/);
     assert.match(r.stdout, /calls: 6 \(rubric 6, pairwise 0, graded 0\)/);
     assert.match(r.stdout, /already cached: 0 of 6 \(free\); live calls: 6/);
-    assert.match(r.stdout, /estimated spend: about 1\.14 credits for 6 live call\(s\) at 0\.19 credits each/);
+    assert.match(r.stdout, /estimated spend: about 0\.95 credits for 6 live call\(s\) at 0\.16 credits each, from observed spend in 171 live calls of earlier studies/);
     assert.match(r.stdout, /nothing was called and nothing was written/);
     assertUntouched(s);
   } finally { cleanup(s.root); }
@@ -99,7 +99,7 @@ test('judge --plan does not need the kiro login or the opencode credentials file
     });
     assert.equal(oc.status, 0, oc.stderr);
     assert.match(oc.stdout, /backend: opencode \(opencode on Bedrock, spend in USD\)/);
-    assert.match(oc.stdout, /estimated spend: unknown: no earlier opencode judging/);
+    assert.match(oc.stdout, /estimated spend: low \$0\.\d{4} USD \(mean\), high \$0\.\d{4} USD \(every call at its p90, an upper bound\) for 6 live call\(s\), from observed spend in \d+ live calls of earlier studies/);
     assertUntouched(s);
   } finally { cleanup(s.root); }
 });
@@ -166,10 +166,13 @@ test('the plan counts calls the cache already holds and learns the per-call cost
   } finally { cleanup(s.root); }
 });
 
-test('the estimate falls back to the documented default when nothing was judged before, and is unknown in USD', () => {
-  assert.equal(estimateSpend({ judgments: null, usdMode: false, liveCalls: 23 }).total, 23 * FALLBACK_CREDITS_PER_CALL);
-  assert.equal(estimateSpend({ judgments: null, usdMode: true, liveCalls: 23 }).total, null);
+test('with no history the estimate comes from the observed data, and is unknown only when the data has nothing for the backend', () => {
+  const kiro = estimateSpend({ judgments: null, usdMode: false, liveCalls: 23 });
+  assert.equal(kiro.source, 'observed');
+  assert.ok(kiro.total > 0 && kiro.high === null);
+  assert.equal(estimateSpend({ judgments: null, usdMode: true, liveCalls: 23, observed: null }).total, null);
   const usd = estimateSpend({ judgments: { invocations: [{ calls: 10, cachedCalls: 2, spentUsd: 0.8 }] }, usdMode: true, liveCalls: 5 });
   assert.equal(usd.unit, 'usd');
+  assert.equal(usd.source, 'history');
   assert.ok(Math.abs(usd.total - 0.5) < 1e-9);
 });

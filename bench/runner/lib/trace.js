@@ -295,7 +295,7 @@ function instructionSources({ runDir, result, installed, entry, repoRoot }) {
 }
 
 function mentionsOf(sources, name, { limit = 4 } = {}) {
-  if (!name) return [];
+  if (!name) return { total: 0, hits: [], listed: [] };
   const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(`(?<![\\w-])${esc}(?![\\w-])`, 'i');
   const hits = [];
@@ -412,12 +412,18 @@ function renderMarkdown(trace, { full = false } = {}) {
       case 'final': L.push(`${idx}  ${who}  FINAL (${e.status ?? 'n/a'}${e.stopReason ? `, ${e.stopReason}` : ''}${e.costUsd != null ? `, $${Number(e.costUsd).toFixed(4)}` : ''}${e.elapsedMs != null ? `, ${(e.elapsedMs / 1000).toFixed(1)} s` : ''})  ${clip(e.text, n || 0)}`); break;
       default: L.push(`${idx}  ${who}  ${e.kind}`);
     }
-    if (e.instructions && (e.instructions.total || e.instructions.listed.length)) {
-      L.push(`      INFERRED, instruction text that mentions "${e.kind === 'delegate' ? e.target : e.input.name}" (${e.instructions.total} line(s)):`);
-      for (const l of e.instructions.listed) L.push(`        - ${l.source}: ${l.text}`);
-      for (const hit of e.instructions.hits) L.push(`        - ${hit.source}:${hit.line}  ${hit.text}`);
-    } else if (e.instructions) {
-      L.push(`      INFERRED, no installed instruction text mentions "${e.kind === 'delegate' ? e.target : e.input.name}"`);
+    if (e.instructions) {
+      const subject = e.kind === 'delegate' ? e.target : e.input?.name;
+      const { total = 0, hits = [], listed = [] } = e.instructions;
+      if (!subject) {
+        L.push('      INFERRED, the call recorded no name (a refused call), so no instruction text can be matched');
+      } else if (total || listed.length) {
+        L.push(`      INFERRED, instruction text that mentions "${subject}" (${total} line(s)):`);
+        for (const l of listed) L.push(`        - ${l.source}: ${l.text}`);
+        for (const hit of hits) L.push(`        - ${hit.source}:${hit.line}  ${hit.text}`);
+      } else {
+        L.push(`      INFERRED, no installed instruction text mentions "${subject}"`);
+      }
     }
   }
   if (!full && lastTurn) { L.push(''); L.push(`(${lastTurn} thought block(s) hidden; --full shows them)`); }

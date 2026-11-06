@@ -1,0 +1,254 @@
+{
+ "schemaVersion": 1,
+ "measuredOn": "2026-11-06",
+ "units": {
+  "opencode": "usd",
+  "kiro": "credits"
+ },
+ "provenance": "Spend per judge call measured over 15109 live opencode calls (4951 more were served from the cache at no cost) and 171 live kiro calls in earlier bench studies of the lite, pilot, requirements and rootcause suites. Failed live calls are kept because they cost money, so each mean already includes the single re-ask after a bad reply. kiro figures are credits; opencode figures are USD. The kiro pooled entry comes from the spend of whole judging invocations (mixed modes), so it has no per-call median or p90.",
+ "lookup": "exact (backend, judge, kind), then (backend, \"*\", kind), then (backend, \"*\", \"*\"). kind is rubric, pairwise, graded or pack.",
+ "entries": [
+  {
+   "backend": "kiro",
+   "judge": "gpt-5.6-luna",
+   "kind": "rubric",
+   "liveCalls": 23,
+   "cachedCalls": 0,
+   "failedLive": 0,
+   "mean": 0.19233,
+   "median": 0.17308,
+   "p90": 0.29335
+  },
+  {
+   "backend": "kiro",
+   "judge": "*",
+   "kind": "*",
+   "liveCalls": 171,
+   "cachedCalls": 0,
+   "failedLive": 0,
+   "mean": 0.15907,
+   "median": null,
+   "p90": null
+  },
+  {
+   "backend": "opencode",
+   "judge": "deepseek-3.2",
+   "kind": "graded",
+   "liveCalls": 1764,
+   "cachedCalls": 601,
+   "failedLive": 4,
+   "mean": 0.00677,
+   "median": 0.00645,
+   "p90": 0.0169
+  },
+  {
+   "backend": "opencode",
+   "judge": "deepseek-3.2",
+   "kind": "pack",
+   "liveCalls": 127,
+   "cachedCalls": 0,
+   "failedLive": 0,
+   "mean": 0.00695,
+   "median": 0.00807,
+   "p90": 0.0105
+  },
+  {
+   "backend": "opencode",
+   "judge": "deepseek-3.2",
+   "kind": "pairwise",
+   "liveCalls": 1788,
+   "cachedCalls": 604,
+   "failedLive": 9,
+   "mean": 0.00669,
+   "median": 0.00638,
+   "p90": 0.01677
+  },
+  {
+   "backend": "opencode",
+   "judge": "deepseek-3.2",
+   "kind": "rubric",
+   "liveCalls": 1290,
+   "cachedCalls": 478,
+   "failedLive": 6,
+   "mean": 0.00439,
+   "median": 0.00419,
+   "p90": 0.00773
+  },
+  {
+   "backend": "opencode",
+   "judge": "glm-5",
+   "kind": "graded",
+   "liveCalls": 1794,
+   "cachedCalls": 533,
+   "failedLive": 34,
+   "mean": 0.01022,
+   "median": 0.01001,
+   "p90": 0.02531
+  },
+  {
+   "backend": "opencode",
+   "judge": "glm-5",
+   "kind": "pack",
+   "liveCalls": 129,
+   "cachedCalls": 0,
+   "failedLive": 2,
+   "mean": 0.01065,
+   "median": 0.01217,
+   "p90": 0.01646
+  },
+  {
+   "backend": "opencode",
+   "judge": "glm-5",
+   "kind": "pairwise",
+   "liveCalls": 1810,
+   "cachedCalls": 537,
+   "failedLive": 30,
+   "mean": 0.01009,
+   "median": 0.0099,
+   "p90": 0.02527
+  },
+  {
+   "backend": "opencode",
+   "judge": "glm-5",
+   "kind": "rubric",
+   "liveCalls": 1349,
+   "cachedCalls": 477,
+   "failedLive": 80,
+   "mean": 0.00672,
+   "median": 0.00646,
+   "p90": 0.01463
+  },
+  {
+   "backend": "opencode",
+   "judge": "gpt-5.6-luna",
+   "kind": "graded",
+   "liveCalls": 1560,
+   "cachedCalls": 410,
+   "failedLive": 0,
+   "mean": 0.00376,
+   "median": 0.00356,
+   "p90": 0.00811
+  },
+  {
+   "backend": "opencode",
+   "judge": "gpt-5.6-luna",
+   "kind": "pack",
+   "liveCalls": 130,
+   "cachedCalls": 0,
+   "failedLive": 3,
+   "mean": 0.00479,
+   "median": 0.00545,
+   "p90": 0.00722
+  },
+  {
+   "backend": "opencode",
+   "judge": "gpt-5.6-luna",
+   "kind": "pairwise",
+   "liveCalls": 1580,
+   "cachedCalls": 412,
+   "failedLive": 0,
+   "mean": 0.00363,
+   "median": 0.00343,
+   "p90": 0.00753
+  },
+  {
+   "backend": "opencode",
+   "judge": "gpt-5.6-luna",
+   "kind": "rubric",
+   "liveCalls": 1219,
+   "cachedCalls": 350,
+   "failedLive": 24,
+   "mean": 0.00244,
+   "median": 0.00215,
+   "p90": 0.00424
+  },
+  {
+   "backend": "opencode",
+   "judge": "qwen3-coder-next",
+   "kind": "graded",
+   "liveCalls": 210,
+   "cachedCalls": 206,
+   "failedLive": 14,
+   "mean": 0.0033,
+   "median": 0.00379,
+   "p90": 0.00515
+  },
+  {
+   "backend": "opencode",
+   "judge": "qwen3-coder-next",
+   "kind": "pairwise",
+   "liveCalls": 219,
+   "cachedCalls": 211,
+   "failedLive": 27,
+   "mean": 0.00316,
+   "median": 0.00368,
+   "p90": 0.00514
+  },
+  {
+   "backend": "opencode",
+   "judge": "qwen3-coder-next",
+   "kind": "rubric",
+   "liveCalls": 140,
+   "cachedCalls": 132,
+   "failedLive": 23,
+   "mean": 0.00239,
+   "median": 0.00266,
+   "p90": 0.00353
+  },
+  {
+   "backend": "opencode",
+   "judge": "*",
+   "kind": "graded",
+   "liveCalls": 5328,
+   "cachedCalls": 1750,
+   "failedLive": 52,
+   "mean": 0.00691,
+   "median": 0.00452,
+   "p90": 0.01206
+  },
+  {
+   "backend": "opencode",
+   "judge": "*",
+   "kind": "pack",
+   "liveCalls": 386,
+   "cachedCalls": 0,
+   "failedLive": 5,
+   "mean": 0.00746,
+   "median": 0.00689,
+   "p90": 0.01451
+  },
+  {
+   "backend": "opencode",
+   "judge": "*",
+   "kind": "pairwise",
+   "liveCalls": 5397,
+   "cachedCalls": 1764,
+   "failedLive": 66,
+   "mean": 0.00679,
+   "median": 0.00435,
+   "p90": 0.01189
+  },
+  {
+   "backend": "opencode",
+   "judge": "*",
+   "kind": "rubric",
+   "liveCalls": 3998,
+   "cachedCalls": 1437,
+   "failedLive": 133,
+   "mean": 0.00451,
+   "median": 0.004,
+   "p90": 0.0081
+  },
+  {
+   "backend": "opencode",
+   "judge": "*",
+   "kind": "*",
+   "liveCalls": 15109,
+   "cachedCalls": 4951,
+   "failedLive": 256,
+   "mean": 0.00625,
+   "median": 0.00417,
+   "p90": 0.01139
+  }
+ ]
+}

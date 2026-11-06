@@ -591,9 +591,11 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   the arm's completed runs, or `--censored-floor` (default 1.0), stored as `creditsCharged`; reports use
   that value, never 0. Failure rates sit beside every cost figure. `turnDurationMs` is null without
   a `runFinished` event.
-- Engine v3 reports credits only at turn end (a `turn_completion` summary in the stream), never before. So on v3 a mid-run credit limit
-  (`--run-credit-limit`) cannot trip and the live total stays at 0 until each run finishes (`--budget-credits` still stops new runs between
-  runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
+- Engine v3 reports credits only at turn end (a `turn_completion` summary in the stream), never before. A single prompt is one turn, sub-agents
+  included, and the summary is written a few lines before `runFinished`. In four saved runs (8 to 15 minutes, 15.4 to 29.4 credits) it was the only
+  credit event; the session log's `usage_summary` is written at the same instant, and `context_usage` events carry context-window tokens, not spend.
+  So the live total stays at 0 until a run finishes, and `--run-credit-limit` cannot stop a one-shot v3 run (see the limit's contract below;
+  `--budget-credits` still stops new runs between runs). A killed or timed-out run has no credit data at all: it is censored, with a lower bound of 0. The summary also lists the tools the
   sub-agents used, so it appears to cover their spend (seen on one coordinator run). `modelCalls.meteringEntries` counts turns on v3, not model calls. v3 names a tool call by title, so tool names are mapped from the titles in `lib/stream.js` and unmapped
   titles count as `unknown`; a sub-agent call is "Sub-agent: <name>" with the target in `rawInput.name`.
 - `backfill --run DIR [--credits] [--skills] [--write]` repairs v3 runs saved before the runner could read this, from each `stream.jsonl` with
@@ -681,7 +683,7 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
 - Other flags: `--mode rubric,pairwise,graded`, `--profile`, `--concurrency 2`, `--budget-credits X` (per invocation; stops new calls at 90%), `--max-file-chars`,
   `--max-bundle-chars`, `--judge-cmd CMD` (test double: prompt on stdin, reply on stdout), `--auth-db`.
   `--judge-backend kiro|opencode` picks the program that asks the models (see "Judge backends" below).
-- Plan first. `judge --run DIR ... --plan` works in every mode (rubric, pairwise, graded, and `--criteria-pack`). It prints the backend, the panel, the number of calls per mode, how many the cache already holds, and an estimated spend. Then it stops: no model is called, no login or credentials file is read, and nothing is written. The estimate uses the mean live cost per call from the earlier judging in that directory, else 0.19 credits per call on kiro (unknown in USD on opencode). A real pass prints the backend and the panel on stderr before its first call. Without `--plan`, `--mode` and the other flags decide what runs, so check the plan's call count before a pass on the default backend.
+- Plan first. `judge --run DIR ... --plan` works in every mode (rubric, pairwise, graded, and `--criteria-pack`). It prints the backend, the panel, the number of calls per mode, how many the cache already holds, and an estimated spend. Then it stops: no model is called, no login or credentials file is read, and nothing is written. The estimate prints a low figure (the mean cost per call) and a high figure (every call at its p90, an upper bound), and names its source. The source is the earlier judging in that directory when there is any (the high figure then scales that mean by the observed p90 to mean ratio), else `profiles/judge-cost-observed.json`: spend per call measured by backend, judge and pass (rubric, pairwise, graded, pack) over about 15,000 live opencode calls and 171 live kiro calls, with the share of failed calls that were asked again included. Cached calls cost nothing and are not in the means. The kiro entries are credits and have no p90, so a kiro plan prints one figure; opencode entries are USD. A judge with no entry of its own uses the pooled figure for that pass. The estimate says unknown only when the data file is missing or has nothing for the backend. A real pass prints the backend and the panel on stderr before its first call. Without `--plan`, `--mode` and the other flags decide what runs, so check the plan's call count before a pass on the default backend.
 
 ### Judge backends
 `--judge-backend kiro` (the default) asks the panel through kiro-cli. `--judge-backend opencode` asks the same panel through `opencode run` on Amazon Bedrock.
@@ -911,7 +913,12 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
 - Runner additions: `contrast --by task`; `--extra-tasks DIR` on `run`, `judge`, `report`, `contrast`, `recheck`, `skills` (tasks in
   `DIR/<id>.json`, `DIR/fixtures`, `DIR/hidden`, masked from the agent; check with `validate-tasks.js --only-extra --extra-tasks DIR`);
   `run` stops launching at 90% of `--budget-credits` or when charged credits plus the largest run so far would pass it, and `--run-credit-limit X`
-  kills one run past X credits and records it as censored (on engine v3 it cannot trip, see Metrics notes).
+  limits one run to X credits. Engine v2 meters after every model call, so the run's process group is killed once the credits metered so far pass
+  X and the run is recorded as censored (flag `creditLimit`). Engine v3 reports a turn's spend only when the turn ends, so a one-shot run always
+  finishes: if it spent more than X it gets the flag `creditLimitExceeded` and nothing is killed. A conversation task (autonomy) is checked when each
+  turn ends, and over the limit the next turn is not started (flag `creditLimit`, an error naming the turn). With a limit, `result.json` records
+  `creditLimit` and `creditOvershoot` (credits above X, else null) for v2 and v3 alike, and the `done` line shows the overshoot. On v3 the
+  overshoot of a one-shot run can be the whole run, so `--budget-credits` is the only bound on total spend.
 - Reading the audit: tokens are bytes / 4, an estimate. "Unreachable" means no agent spec lists the capability, so no kiro agent can
   load it. A near-duplicate score is Jaccard on description words. Leakage fails above 5% shared 8-word shingles. Each `cap`
   command that builds hashes `~/.konductor/installs` before and after and exits 1 if it changed.

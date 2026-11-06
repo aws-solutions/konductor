@@ -2,8 +2,13 @@
 'use strict';
 
 // Sums the credits a running agent has metered so far by reading its event stream as it grows. Used for the per-run
-// credit limit; the final figure still comes from the stream parser after the run. Engine v3 reports spend only when a
-// turn ends, so on v3 the meter reads nothing until then and a limit cannot trip mid-run.
+// credit limit; the final figure still comes from the stream parser after the run.
+//
+// `poll()` is every credit seen, and `live()` is the part that arrived while the agent could still be stopped. Engine v2
+// meters after each model call, so its credits are live. Engine v3 reports a prompt turn's whole spend in one
+// turn_completion summary written when the turn ends, a few lines before the process exits, so v3 credits are counted
+// by `poll()` but never by `live()`: there is no earlier signal in the stream, and a kill at that point would only
+// risk the run's last events.
 
 const fs = require('node:fs');
 
@@ -11,6 +16,7 @@ function makeCreditMeter(file) {
   let offset = 0;
   let pending = '';
   let total = 0;
+  let liveTotal = 0;
   const countedTurns = new Set();
   return {
     /** Reads what was appended since the last call and returns the credits metered so far. */
@@ -31,7 +37,9 @@ function makeCreditMeter(file) {
             let ev;
             try { ev = JSON.parse(line); } catch { continue; }
             if (v2 && ev?.type === 'metadata') {
-              for (const m of ev.data?.meteringUsage ?? []) if (m.unit === 'credit') total += Number(m.value) || 0;
+              for (const m of ev.data?.meteringUsage ?? []) {
+                if (m.unit === 'credit') { total += Number(m.value) || 0; liveTotal += Number(m.value) || 0; }
+              }
             } else if (ev?.type === 'sessionUpdate' && ev.data?.update?._meta?.kiro?.kind === 'turn_completion') {
               const k = ev.data.update._meta.kiro;
               const turnKey = k.executionId ?? k.turnId;
@@ -43,6 +51,11 @@ function makeCreditMeter(file) {
         }
       } finally { fs.closeSync(fd); }
       return total;
+    },
+    /** poll(), then the credits that were metered mid-run (engine v2 only). */
+    live() {
+      this.poll();
+      return liveTotal;
     },
   };
 }
