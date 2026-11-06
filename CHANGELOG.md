@@ -60,6 +60,11 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- `smithy-modeling`, `smithy-validation`, and `progress-tracking` now read as one set of
+  instructions instead of a summary followed by a pasted prompt, with one severity scale per
+  skill. `progress-tracking` takes a `plan_path` and per-feature `spec_dir`, defaulting to the
+  `.kiro/specs/` paths it used before, and `smithy-validation` flags operations left callable
+  without authentication instead of operations missing `@auth`.
 
 ### Fixed
 
