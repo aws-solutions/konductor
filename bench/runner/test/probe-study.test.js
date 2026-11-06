@@ -129,7 +129,7 @@ test('the generated driver names the same flags as the root-cause driver and car
   const internal = new RegExp(pieces.map(([a, b]) => a + b).join('|') + '|\\b' + 'A' + 'IM\\b', 'i');
   assert.doesNotMatch(text, internal);
   assert.doesNotMatch(fs.readFileSync(STUDY, 'utf8'), internal);
-  assert.doesNotMatch(S.renderStatusScript({}), internal);
+  assert.doesNotMatch(S.renderStatusScript({ base: '/b', repo: '/r' }), internal);
 });
 
 function driverSandbox({ procs = '' } = {}) {
