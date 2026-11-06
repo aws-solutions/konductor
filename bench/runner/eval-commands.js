@@ -243,7 +243,10 @@ function planTail(d) {
   const lines = [];
   lines.push(`already cached: ${d.cached} of ${d.calls} (free); live calls: ${d.live}${d.tooLarge ? `; ${d.tooLarge} prompt(s) too large to send (they would be recorded as errors)` : ''}`);
   const e = d.estimate;
-  lines.push(e.total === null ? `estimated spend: ${e.basis}` : `estimated spend: about ${money(e, e.total)} for ${d.live} live call(s) at ${money(e, e.perCall)} each, from ${e.basis}; a reply that fails validation is asked once more`);
+  if (e.total === null) lines.push(`estimated spend: ${e.basis}`);
+  else if (d.live === 0) lines.push('estimated spend: none, there are no live calls to pay for');
+  else if (e.high === null || e.high <= e.low) lines.push(`estimated spend: about ${money(e, e.low)} for ${d.live} live call(s) at ${money(e, e.perCall)} each, from ${e.basis}; no spread is known; a reply that fails validation is asked once more`);
+  else lines.push(`estimated spend: low ${money(e, e.low)} (mean), high ${money(e, e.high)} (every call at its p90, an upper bound) for ${d.live} live call(s), from ${e.basis}; a reply that fails validation is asked once more, and observed figures include those asks`);
   lines.push('nothing was called and nothing was written');
   return lines.join('\n');
 }

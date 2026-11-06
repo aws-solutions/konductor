@@ -66,6 +66,7 @@ function describePackPlan(o) {
   const maxPromptBytes = usdMode ? Infinity : MAX_PROMPT_BYTES;
   let cached = 0;
   let tooLarge = 0;
+  const liveBy = new Map(judges.map((judge) => [judge, { judge, kind: 'pack', live: 0 }]));
   for (const p of base.plan.filter((x) => x.calls)) {
     const items = judgedItemsOf(p);
     const prompt = packPromptOf(p, redactions);
@@ -73,10 +74,11 @@ function describePackPlan(o) {
     for (const judge of judges) {
       if (Buffer.byteLength(prompt) > maxPromptBytes) tooLarge++;
       else if (hasCachedReply(cacheDir, { model: judge, prompt, salt, accept })) cached++;
+      else liveBy.get(judge).live++;
     }
   }
   const live = base.calls - cached - tooLarge;
-  return { ...base, backend, thePack, judges, cached, tooLarge, live, estimate: estimateSpend({ judgments: readQuality(run.dir), usdMode, liveCalls: live }) };
+  return { ...base, backend, thePack, judges, cached, tooLarge, live, estimate: estimateSpend({ judgments: readQuality(run.dir), usdMode, backend, liveCalls: live, liveUnits: [...liveBy.values()] }) };
 }
 
 async function runPackJudging(o) {

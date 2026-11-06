@@ -18,6 +18,7 @@ const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
 const { mergeRecords, addSpend } = require('./merge.js');
+const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
 
 const MAX_PROMPT_BYTES = 120000; // one argv string is capped near 128 KiB on Linux; the opencode backend reads the prompt from stdin
 
@@ -131,9 +132,6 @@ function prepareJudging(o) {
   return { run, tasks, backend, usdMode, judged, notJudged, bundles, revisions, units, pairErrors, gradedErrors, specOf };
 }
 
-// Credits a live kiro call cost when the run directory has no earlier judging to learn from (23 calls cost 4.42 in the pilot).
-const FALLBACK_CREDITS_PER_CALL = 0.19;
-
 /** Mean live cost of one call over the earlier invocations recorded in a judgments file, or null when none are usable. */
 function observedCostPerCall(judgments, usdMode) {
   let live = 0;
@@ -145,12 +143,31 @@ function observedCostPerCall(judgments, usdMode) {
   return live > 0 && spend > 0 ? spend / live : null;
 }
 
-/** The estimate for `liveCalls` calls, with where the per-call figure came from. */
-function estimateSpend({ judgments, usdMode, liveCalls }) {
-  const observed = observedCostPerCall(judgments, usdMode);
-  if (observed !== null) return { unit: usdMode ? 'usd' : 'credits', perCall: observed, total: observed * liveCalls, basis: 'the mean live call cost in this directory\'s earlier judging' };
-  if (usdMode) return { unit: 'usd', perCall: null, total: null, basis: 'unknown: no earlier opencode judging in this directory' };
-  return { unit: 'credits', perCall: FALLBACK_CREDITS_PER_CALL, total: FALLBACK_CREDITS_PER_CALL * liveCalls, basis: 'the default of 0.19 credits per call (no earlier judging in this directory)' };
+/**
+ * The estimate for `liveCalls` calls. `liveUnits` ([{ judge, kind, live }]) says which judge and pass each live call is.
+ * Source, in order: this run directory's own earlier judging (its mean per live call; the high end scales it by the observed
+ * p90 to mean ratio), the shipped observed-cost data, then unknown. `low` is the mean total and `high` the all-calls-at-p90 total.
+ */
+function estimateSpend({ judgments, usdMode, liveCalls, liveUnits = null, backend = null, observed }) {
+  const unit = usdMode ? 'usd' : 'credits';
+  const be = backend ?? (usdMode ? 'opencode' : 'kiro');
+  const data = observed === undefined ? loadObserved() : observed;
+  const units = liveUnits ?? [{ judge: '*', kind: '*', live: liveCalls }];
+  const fromData = liveCalls > 0 ? estimateFromObserved(data, be, units) : { low: 0, high: 0, measuredOn: null, observedCalls: 0 };
+  const own = observedCostPerCall(judgments, usdMode);
+  if (own !== null) {
+    const total = own * liveCalls;
+    const ratio = fromData && fromData.high !== null && fromData.low > 0 ? fromData.high / fromData.low : null;
+    return { unit, perCall: own, total, low: total, high: ratio === null ? null : total * ratio, source: 'history', basis: 'the mean live call cost in this directory\'s earlier judging' };
+  }
+  if (liveCalls === 0) return { unit, perCall: 0, total: 0, low: 0, high: 0, source: 'none', basis: 'no live calls to pay for' };
+  if (fromData) {
+    return {
+      unit, perCall: liveCalls ? fromData.low / liveCalls : 0, total: fromData.low, low: fromData.low, high: fromData.high, source: 'observed',
+      basis: `observed spend in ${fromData.observedCalls} live calls of earlier studies (measured ${fromData.measuredOn ?? 'on an unknown date'})`,
+    };
+  }
+  return { unit, perCall: null, total: null, low: null, high: null, source: 'none', basis: `unknown: no earlier judging in this directory and no observed cost for the ${be} backend` };
 }
 
 /**
@@ -166,19 +183,22 @@ function planJudging(o) {
   const byMode = { rubric: 0, pairwise: 0, graded: 0 };
   let cached = 0;
   let tooLarge = 0;
+  const liveBy = new Map();
   for (const u of p.units) {
-    byMode[u.kind === 'pair' ? 'pairwise' : u.kind]++;
+    const kind = u.kind === 'pair' ? 'pairwise' : u.kind;
+    byMode[kind]++;
     const { prompt, check } = p.specOf(u);
     if (Buffer.byteLength(prompt) > maxPromptBytes) { tooLarge++; continue; }
     const accept = (text) => { const parsed = parseJsonStrict(text); return parsed.ok && check(parsed.value).ok; };
     if (hasCachedReply(cacheDir, { model: u.judge, prompt, salt, accept })) cached++;
+    else liveBy.set(`${u.judge}|${kind}`, { judge: u.judge, kind, live: (liveBy.get(`${u.judge}|${kind}`)?.live ?? 0) + 1 });
   }
   const calls = p.units.length;
   return {
     backend: p.backend, judges: o.judges, modes: o.modes, baseline: o.baseline, runs: p.judged.length, notJudged: p.notJudged,
     calls, byMode, cached, live: calls - cached - tooLarge, tooLarge,
     unpaired: p.pairErrors.length + p.gradedErrors.length,
-    estimate: estimateSpend({ judgments: run.judgments, usdMode, liveCalls: calls - cached - tooLarge }),
+    estimate: estimateSpend({ judgments: run.judgments, usdMode, backend: p.backend, liveCalls: calls - cached - tooLarge, liveUnits: [...liveBy.values()] }),
   };
 }
 
@@ -318,4 +338,4 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
   return out;
 }
 
-module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, runKey, MAX_PROMPT_BYTES, FALLBACK_CREDITS_PER_CALL };
+module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, runKey, MAX_PROMPT_BYTES };
