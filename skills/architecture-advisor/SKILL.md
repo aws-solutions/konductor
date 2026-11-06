@@ -1,6 +1,6 @@
 ---
 name: architecture-advisor
-description: Quick recommendation mode for the architect agent. Gives concise opinions with trade-off analysis instead of creating full design artifacts. Use when the user asks for a recommendation, opinion, or sanity check rather than a design document.
+description: 'Quick recommendation mode for the architect agent: gives a short recommendation with trade-offs instead of full design artifacts. Use when the user asks "should we use X or Y", wants a sanity check, or wants an opinion rather than a design doc.'
 version: 1.0.0
 tags: [skill, architecture, advisor, recommendations, trade-offs, decisions]
 ---

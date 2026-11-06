@@ -1,6 +1,6 @@
 ---
 name: adversarial-design-review
-description: 'Takes an adversarial stance against a design document''s decisions, trade-offs, and architectural choices, classifying findings as CRITICAL/IMPORTANT/MINOR. Operates on design doc sections — not code diffs. Trigger phrases: "adversarial design review", "challenge my design", "devil''s advocate on design doc", "review design decisions".'
+description: 'Takes an adversarial stance against a design document''s decisions, trade-offs, and architectural choices, classifying findings as CRITICAL/IMPORTANT/MINOR. Use when asked to challenge, stress-test or play devil''s advocate on a design doc''s decisions, not a code diff. Trigger phrases: "adversarial design review", "challenge my design", "devil''s advocate on design doc", "review design decisions".'
 version: 1.0.0
 tags: [skill, design, adversarial, review, architecture, checker]
 ---

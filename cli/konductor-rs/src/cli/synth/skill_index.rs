@@ -22,7 +22,7 @@ Workspace skills named `ws-*` also count; read them from `.kiro/skills/<name>/SK
 
 // A skill whose "MUST USE" sentence starts with this marker (constraints)
 // claims every task, which contradicts the one-or-two rule above, so it is
-// left out of the index. A "MUST USE for <task>" skill (git-merge) stays.
+// left out of the index. A "MUST USE for <task>" skill stays.
 const EVERY_TASK_MARKER: &str = "MUST USE for every ";
 /// The one every-task skill synth expects; any other match gets a warning.
 const EXPECTED_EVERY_TASK_SKILL: &str = "constraints";
