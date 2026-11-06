@@ -5,10 +5,11 @@ import {
   PENDING_KEY,
   SESSION_KEY,
   sessionStorageMemory,
+  type SessionRecord,
 } from './session-memory';
 
-const RECORD = { token: 'token-1', harness: 'kiro-cli' };
-const OTHER = { token: 'token-2', harness: 'kiro-cli' };
+const RECORD: SessionRecord = { token: 'token-1', harness: 'kiro-cli' };
+const OTHER: SessionRecord = { token: 'token-2', harness: 'kiro-cli' };
 
 describe('sessionStorageMemory', () => {
   it('recalls nothing before anything is remembered', () => {
@@ -51,12 +52,28 @@ describe('sessionStorageMemory', () => {
     ['a record with no token', '{"harness":"kiro-cli"}'],
     ['a record with an empty token', '{"token":"","harness":"kiro-cli"}'],
     ['a record with no harness', '{"token":"token-1"}'],
+    ['a record with an empty harness', '{"token":"token-1","harness":""}'],
+    [
+      'a record whose harness is not a string',
+      '{"token":"token-1","harness":7}',
+    ],
   ])('recalls nothing from %s', (_name, stored) => {
     const sessionStorage = memoryStorage();
     sessionStorage.setItem(SESSION_KEY, stored);
 
     expect(sessionStorageMemory({ sessionStorage }).recall()).toBeUndefined();
   });
+
+  it.each(['kiro-cli', 'claude', 'fake', 'future-harness'])(
+    'recalls a session of the harness %s, as it is',
+    (harness) => {
+      const memory = sessionStorageMemory({ sessionStorage: memoryStorage() });
+
+      memory.remember({ token: 'token-1', harness });
+
+      expect(memory.recall()).toEqual({ token: 'token-1', harness });
+    },
+  );
 
   it('keeps nothing in a page with no storage', () => {
     const memory = sessionStorageMemory({});

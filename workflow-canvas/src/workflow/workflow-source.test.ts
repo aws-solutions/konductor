@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type WorkflowApi } from '../api/api';
 import { HELLO_DOCUMENT, HELLO_SESSION } from '../test-support/fixtures';
+import type { SessionRecord } from '../launch/session-memory';
 import { freshMemory } from '../test-support/memory-storage';
 import { createWorkflowSource } from './workflow-source';
 
@@ -139,14 +140,14 @@ describe('createWorkflowSource', () => {
     const listener = vi.fn();
     source.subscribe(listener);
 
-    answers[1]!({ ...HELLO_SESSION, harness: 'newer' });
+    answers[1]!({ ...HELLO_SESSION, harness: 'claude' });
     await newer;
-    answers[0]!({ ...HELLO_SESSION, harness: 'older' });
+    answers[0]!({ ...HELLO_SESSION, harness: 'fake' });
     await older;
 
     expect(listener).toHaveBeenCalledOnce();
     expect(await source.current()).toMatchObject({
-      workflow: { harness: 'newer' },
+      workflow: { harness: 'claude' },
     });
   });
 
@@ -169,11 +170,11 @@ describe('createWorkflowSource', () => {
     const newer = source.offer('third');
 
     await newer;
-    answers[0]!({ ...HELLO_SESSION, harness: 'older' });
+    answers[0]!({ ...HELLO_SESSION, harness: 'fake' });
     await older;
 
     expect(await source.current()).toMatchObject({
-      workflow: { harness: 'older' },
+      workflow: { harness: 'fake' },
     });
   });
 
@@ -334,9 +335,9 @@ describe('createWorkflowSource notice', () => {
 });
 
 describe('createWorkflowSource session memory', () => {
-  const KEPT = { token: 'token-1', harness: 'kiro-cli' };
+  const KEPT: SessionRecord = { token: 'token-1', harness: 'kiro-cli' };
 
-  function memoryWith(record?: typeof KEPT) {
+  function memoryWith(record?: SessionRecord) {
     const memory = freshMemory();
     if (record) memory.remember(record);
     return memory;
@@ -460,19 +461,19 @@ describe('createWorkflowSource session memory', () => {
     const source = createWorkflowSource(
       api,
       undefined,
-      memoryWith({ token: 'kept-token', harness: 'kept-harness' }),
+      memoryWith({ token: 'kept-token', harness: 'claude' }),
     );
 
     expect(await source.current()).toMatchObject({
       ok: true,
-      workflow: { harness: 'kept-harness' },
+      workflow: { harness: 'claude' },
     });
     expect(createSession).not.toHaveBeenCalled();
     expect(api.getWorkflow).toHaveBeenCalledWith('kept-token');
   });
 
   it('replaces the kept session with the one of a pasted code that works', async () => {
-    const memory = memoryWith({ token: 'old-token', harness: 'old' });
+    const memory = memoryWith({ token: 'old-token', harness: 'fake' });
     const createSession = vi
       .fn()
       .mockResolvedValue({ ...HELLO_SESSION, token: 'new-token' });
@@ -557,7 +558,7 @@ describe('createWorkflowSource session memory', () => {
   });
 
   it('keeps the session of a pasted code when the first open answers after it over a kept session', async () => {
-    const memory = memoryWith({ token: 'old-token', harness: 'old' });
+    const memory = memoryWith({ token: 'old-token', harness: 'fake' });
     let answerFirst!: (session: typeof HELLO_SESSION) => void;
     const createSession = vi
       .fn()
@@ -651,7 +652,10 @@ describe('createWorkflowSource session memory', () => {
 
   it('tells nothing on a reload, and holds the pending session, when it fails briefly and the kept one is shown', async () => {
     const memory = memoryWith(KEPT);
-    const pending = { token: 'pending-token', harness: 'kiro-cli' };
+    const pending: SessionRecord = {
+      token: 'pending-token',
+      harness: 'kiro-cli',
+    };
     memory.holdPending(pending);
     const api = apiWith(
       vi.fn(),

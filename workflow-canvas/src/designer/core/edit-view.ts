@@ -2,7 +2,7 @@
 import type { EditState } from './edit-state';
 import { sameStages, stagesOf } from './draft';
 import { hasErrors, withEchoes, type Problem } from './problems';
-import { withStages } from './stage-text';
+import { inPlaceBlocker, withStages, type Written } from './stage-text';
 
 /** The words that say why a read-only workflow cannot be changed. */
 export const READ_ONLY_REASON = 'The workflow is read-only.';
@@ -26,10 +26,38 @@ export function isDirty(state: EditState): boolean {
   return !sameStages(stagesOf(state.draft), state.saved.view.stages);
 }
 
-/** The text that a save would write: the saved text with the draft's stages. */
-export function textOf(state: EditState): string {
+/**
+ * What a save would write: the saved text with the draft's stages, each
+ * edited in place in the item of the stage it was, or the reason the change
+ * cannot be written in place.
+ */
+export function writtenOf(state: EditState): Written {
   const { text, view } = state.saved;
-  return withStages(text, view, stagesOf(state.draft));
+  const stages = state.draft.stages.map(({ id, name, agent }) => {
+    const from = state.bases.indexOf(id);
+    return from < 0 ? { name, agent } : { name, agent, from };
+  });
+  return withStages(text, view, stages);
+}
+
+/** The text that a save would write, or `undefined` when it cannot be written. */
+export function textOf(state: EditState): string | undefined {
+  const written = writtenOf(state);
+  return written.ok ? written.text : undefined;
+}
+
+/** Why the draft cannot be written in place, or `undefined` when it can. */
+export function writeBlocker(state: EditState): string | undefined {
+  const written = writtenOf(state);
+  return written.ok ? undefined : written.reason;
+}
+
+/**
+ * Why no change to the stages of the saved file can be written in place, or
+ * `undefined`: a file-wide reason, known before any change is made.
+ */
+export function fileBlocker(state: EditState): string | undefined {
+  return inPlaceBlocker(state.saved.text, state.saved.view);
 }
 
 // The findings that speak for the draft as it is now. After a change they are
@@ -67,6 +95,8 @@ export function saveBlocker(state: EditState): string | undefined {
       break;
   }
   if (!isDirty(state)) return 'There are no changes to save.';
+  const unwritable = writeBlocker(state);
+  if (unwritable !== undefined) return unwritable;
   return hasErrors(currentFindings(state))
     ? 'Fix the problems in the workflow first.'
     : undefined;

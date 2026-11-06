@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+import { isHarness } from '../api/parse';
+import type { Harness } from '../api/types';
 
 /** The key under which the session of the tab is kept in session storage. */
 export const SESSION_KEY = 'konductor-workflow-canvas-session';
@@ -9,7 +11,7 @@ export const PENDING_KEY = 'konductor-workflow-canvas-pending-session';
 /** What the page needs to open the workflow again: the token and the harness. */
 export interface SessionRecord {
   token: string;
-  harness: string;
+  harness: Harness;
 }
 
 /**
@@ -35,9 +37,7 @@ export interface SessionMemoryEnvironment {
 function isRecord(value: unknown): value is SessionRecord {
   if (typeof value !== 'object' || value === null) return false;
   const { token, harness } = value as Record<string, unknown>;
-  return (
-    typeof token === 'string' && token !== '' && typeof harness === 'string'
-  );
+  return typeof token === 'string' && token !== '' && isHarness(harness);
 }
 
 function parse(text: string | null | undefined): SessionRecord | undefined {

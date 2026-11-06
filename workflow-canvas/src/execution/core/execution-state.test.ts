@@ -97,6 +97,63 @@ describe('reduce', () => {
     });
   });
 
+  it('keeps the fix and the goal of a start refused for trust', () => {
+    const trust = { fix: 'Run `konductor flow trust hello`.', goal: 'Ship it' };
+
+    expect(
+      after(
+        { type: 'start' },
+        { type: 'failed', message: 'Not trusted.', trust },
+      ),
+    ).toEqual({
+      phase: 'error',
+      message: 'Not trusted.',
+      started: false,
+      trust: { ...trust, refusal: 1 },
+    });
+  });
+
+  describe('the count of trust refusals', () => {
+    const trust = { fix: 'Run `konductor flow trust hello`.', goal: 'Ship it' };
+    const refused: ExecutionEvent = {
+      type: 'failed',
+      message: 'Not trusted.',
+      trust,
+    };
+    const refusalOf = (state: ExecutionState) =>
+      state.phase === 'error' ? state.trust?.refusal : undefined;
+
+    it('goes up by one for each refusal in a row', () => {
+      const once = after({ type: 'start' }, refused);
+      const twice = reduce(reduce(once, { type: 'start' }), refused);
+      const thrice = reduce(reduce(twice, { type: 'start' }), refused);
+
+      expect([once, twice, thrice].map(refusalOf)).toEqual([1, 2, 3]);
+    });
+
+    it('is carried by the start after a refusal', () => {
+      expect(
+        reduce(after({ type: 'start' }, refused), { type: 'start' }),
+      ).toEqual({ phase: 'starting', trustRefusals: 1 });
+    });
+
+    it('starts again at one after a start that was not refused for trust', () => {
+      const other = reduce(
+        reduce(after({ type: 'start' }, refused), { type: 'start' }),
+        { type: 'failed', message: 'kiro-cli is not installed.' },
+      );
+
+      expect(other).toEqual({
+        phase: 'error',
+        message: 'kiro-cli is not installed.',
+        started: false,
+      });
+      expect(refusalOf(reduce(reduce(other, { type: 'start' }), refused))).toBe(
+        1,
+      );
+    });
+  });
+
   it('takes a failure that names no run for the start in progress', () => {
     // Why the caller runs one loop at a time: a second loop's failure with no
     // run id cannot be told from the failure of the start.

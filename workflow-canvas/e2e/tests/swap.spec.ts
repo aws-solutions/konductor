@@ -11,7 +11,7 @@ async function offerOtherSessions(page: Page): Promise<string[]> {
   await page.route('**/api/session', (route) => {
     sessions.push(route.request().postData() ?? '');
     return route.fulfill({
-      json: { ...sharedSession(), harness: 'other-harness' },
+      json: { ...sharedSession(), harness: 'claude' },
     });
   });
   await page.route('**/barrier', (route) => route.fulfill({ body: 'ok' }));
@@ -50,6 +50,6 @@ test('opens the pasted workflow when the person lets the changes go', async ({
 
   await pasteCode(designer.page, true);
 
-  await expect(designer.stage('draft')).toContainText('other-harness');
+  await expect(designer.stage('draft')).toContainText('claude');
   await expect(designer.name).toHaveValue('draft');
 });
