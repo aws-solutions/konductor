@@ -87,7 +87,7 @@ flowchart TD
 
     subgraph P3["Phase 3 — Quality gates (no user interaction)"]
         direction TB
-        Q1["doc-accuracy-analyzer<br/>verify claims vs codebase<br/>flag INCORRECT / UNVERIFIED inline"]
+        Q1["doc-accuracy-analyzer<br/>verify claims vs primary sources<br/>route AWS claims to aws-service-validator<br/>flag INCORRECT / UNVERIFIED inline"]
         Q2["aws-service-validator<br/>check every AWS claim via aws-mcp<br/>CONFIRMED / UNVERIFIED / INCORRECT<br/>report → docs/design/&lt;name&gt;-aws-validation.md"]
         Q3["trade-off-evaluator<br/>score 1–5: cost, latency, complexity,<br/>scalability, operability<br/>report → docs/design/&lt;name&gt;-tradeoffs.md"]
         Q4["adr-generator<br/>verify Phase 2 ADRs are embedded<br/>enrich only — do not regenerate"]
@@ -133,7 +133,7 @@ hold:
 | Check | Threshold |
 | --- | --- |
 | `design-doc-guidelines` maker-checker | 0 CRITICAL findings |
-| `doc-accuracy-analyzer` | 0 INCORRECT findings — UNVERIFIED is acceptable with callouts |
+| `doc-accuracy-analyzer` | 0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts) |
 | Adversarial review | 0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR |
 | `design-evaluation` confidence score | ≥ 3.0 average across all sections |
 

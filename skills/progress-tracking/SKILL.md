@@ -19,35 +19,18 @@ Use this skill when:
 - Progress mode: checking completion status during a sprint
 - Final mode: verifying code matches design before handoff to QA
 
-## Core Concepts
-
-### Three Modes
-
-Initial mode (pre-implementation) validates feature plan completeness, checks requirements coverage, and identifies dependency issues. Progress mode (during implementation) tracks task completion, identifies blockers, and monitors velocity. Final mode (post-implementation) verifies code matches design, validates traceability, and checks pattern compliance.
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for tracking progress. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Execution Plan Tracker
-
-## Purpose
-
-Validate feature plans for completeness, track implementation progress, and ensure code-level requirements traceability. Operates in three modes: initial (pre-implementation), progress (during implementation), and final (post-implementation with code verification).
-
 ## Target Personas
 
 - **Team Leads**: Pre-implementation validation and progress monitoring
 - **Developers**: Code-level verification and pattern alignment
 - **Product Managers**: Requirements traceability and coverage tracking
 
-## Prerequisites
+## Parameters
 
-1. **Feature Plan**: Task breakdown in `.kiro/specs/feature-implementation/tasks.md`
-2. **Feature Specs**: Individual feature directories with requirements.md, design.md, tasks.md
-3. **Validation Mode**: Initial, Progress, or Final
+- **mode**: `initial`, `progress`, or `final`. Stage 1 detects it from the request.
+- **plan_path** (optional): the feature plan's task breakdown. Defaults to `.kiro/specs/feature-implementation/tasks.md`. A caller that keeps its plan elsewhere passes its own path, and this skill reads that file instead.
+- **spec_dir** per feature: the directory holding that feature's requirements.md, design.md, and tasks.md. Taken from the plan's `_Spec: path_` reference, otherwise `.kiro/specs/{feature-name}/`, the same default the `kiro-*` skills use.
+- **history_dir** (optional): where saved validation history goes. Defaults to `.kiro/specs/validation-history/`, whatever `plan_path` is.
 
 ## Execution Flow
 
@@ -57,7 +40,7 @@ Follow stages sequentially based on selected mode:
 
 - **Initial**: Stages 1, 2, 3A, 4, 5 → Report
 - **Progress**: Stages 1, 2, 3B → Report
-- **Final**: Stages 1, 2, 3A, 4, 5, 6, 7, 8 → Report
+- **Final**: Stages 1, 2, 3A, 4, 5, 6, 7, 8 → Report (Stages 6-8 are in `references/final-mode.md`)
 
 ---
 
@@ -96,7 +79,7 @@ features_map: Map<
 ```typescript
 {
   mode: "initial"|"progress"|"final",
-  feature_plan_path, detailed_analysis, save_history,
+  plan_path, detailed_analysis, save_history,
   features_map, parsing_errors,
   validation_results: { structure?, coverage?, dependencies?, progress?, code_analysis?, pattern_analysis?, traceability? }
 }
@@ -182,18 +165,16 @@ Warnings (Should Address): [numbered list]
 
 If ambiguous, ask: "Which validation mode? (initial/progress/final)" with descriptions. Default: initial.
 
-**Locate Feature Plan:** Check `.kiro/specs/feature-implementation/tasks.md`. If not found, ask user for path. Validate exists and readable.
+**Locate Feature Plan:** Read `plan_path` (default `.kiro/specs/feature-implementation/tasks.md`). If it is missing or unreadable, ask the user for the path.
 
 **Gather Preferences:**
 
 1. Detail Level: "Detailed analysis?" (yes/no, default: no) → Yes: explanations, examples, paths | No: summary only
-2. Save History: "Save validation history?" (yes/no, default: no for initial, yes for progress/final) → Saves to `.kiro/specs/validation-history/[timestamp].json`
+2. Save History: "Save validation history?" (yes/no, default: no for initial, yes for progress/final) → Saves to `{history_dir}/[timestamp].json`
 
 **Output:** `✅ Configuration: Mode: [mode] | Plan: [path] | Detail: [level] | History: [yes/no]`
 
-Store: mode, feature_plan_path, detailed_analysis, save_history
-
-**Requirements:** 8.1, 8.2
+Store: mode, plan_path, detailed_analysis, save_history
 
 ---
 
@@ -203,7 +184,7 @@ Store: mode, feature_plan_path, detailed_analysis, save_history
 
 **Parse Feature Plan:** Extract feature names using patterns: task descriptions, task details (`_Spec: path_`), section headers, explicit refs. Build list with: featureName, specPath, displayName, discovered status.
 
-**Parse Spec Files:** For each feature:
+**Parse Spec Files:** For each feature, read from its `spec_dir`:
 
 **requirements.md:** Extract requirement sections, user stories, acceptance criteria. Build: `{ id, userStory, acceptanceCriteria: [{ id, text }] }`. Criteria IDs: requirement + item (e.g., "3.2").
 
@@ -230,8 +211,6 @@ Apply error handling patterns for missing files, malformed markdown, invalid for
 **Report:** `📋 Discovery Complete: [N] features | [W] warnings | [E] errors`. List per-feature with BOTH spec status AND implementation status. If ALL failed → stop, request path verification. If >50% missing → warn, ask to continue.
 
 Store: features_map, parsing_errors
-
-**Requirements:** 1.1, 1.2, 3.1
 
 ---
 
@@ -262,8 +241,6 @@ Store: features_map, parsing_errors
 
 Store: validation_results.structure
 
-**Requirements:** 1.2, 1.3
-
 ---
 
 ## Stage 3B: Task State Analysis (Progress Mode)
@@ -292,11 +269,9 @@ Store: validation_results.structure
 
 **Report:** Use standard template. Summary: overall %, task counts, feature counts, estimated remaining. Feature Progress: per-feature breakdown with progress bars, task lists, blockers. Blockers Analysis: critical and warning blockers with recommendations. Insights: strong progress, concerns, recommendations. Detailed mode: all tasks, dependency graphs, historical charts. Summary mode: stats, blocked tasks, critical issues.
 
-**Save History:** If enabled, save to `.kiro/specs/validation-history/progress-[timestamp].json` with: timestamp, mode, overall_percentage, features summary, blockers_count, estimated_remaining_days.
+**Save History:** If enabled, save to `{history_dir}/progress-[timestamp].json` with: timestamp, mode, overall_percentage, features summary, blockers_count, estimated_remaining_days.
 
 Store: validation_results.progress
-
-**Requirements:** 2.1, 2.2, 2.3, 2.4
 
 ---
 
@@ -323,8 +298,6 @@ Store: validation_results.progress
 
 Store: validation_results.coverage
 
-**Requirements:** 1.3, 5.1
-
 ---
 
 ## Stage 5: Dependency Validation (Initial & Final)
@@ -335,7 +308,7 @@ Store: validation_results.coverage
 
 **Extract Dependencies:**
 
-- Feature-level: From feature-implementation/tasks.md, extract order and cross-feature deps. Build graph: `{ featureA: [featureB, featureC] }`
+- Feature-level: From the plan at `plan_path`, extract order and cross-feature deps. Build graph: `{ featureA: [featureB, featureC] }`
 - Task-level: From tasks.md, extract explicit (`Depends on: 1.1`) and implicit (sub-tasks, sequential) deps. Build graph per feature: `{ taskId: [dependencyTaskIds] }`
 
 **Detect Cycles:** Use DFS to detect cycles. If node in recursion_stack visited again → cycle. Trace back to identify all nodes. Report as ordered list: [A → B → C → A]. Suggest breaking points: implicit weaker than explicit, cross-feature candidates.
@@ -348,71 +321,11 @@ Store: validation_results.coverage
 
 Store: validation_results.dependencies
 
-**Requirements:** 1.4, 6.1, 6.2
-
 ---
 
-## Stage 6: Code Analysis (Final Mode Only)
+## Stages 6-8: Final Mode Only
 
-**Objective:** Validate code matches design.
-
-**Mode:** Final only.
-
-**Identify Code Files:** Method 1: Git diff `git diff --name-only [base]` | Method 2: User input (comma-separated paths) | Method 3: File search (feature terms). Filter to feature-relevant, group by type.
-
-**Parse Code Structure:** Extract: functions (name, params, return, exported), classes (name, methods, properties, exported), interfaces (name, fields, exported), endpoints (route, method, handler), models (schema, fields). Build map: `{ filePath, language, elements: [{ type, name, signature, exported, lineNumber }] }`.
-
-**Match Components:** For each design component: Exact name match, Partial match, Type match, No match. Results: Found (file, line), Partial (multiple candidates), Missing (expected path).
-
-**Validate APIs:** Check: endpoint exists, request schema, response schema, status codes. Results: Matches, Partial (schema diffs), Missing, Mismatch.
-
-**Validate Data Models:** Check: model exists, required fields, field types, optional fields. Results: Complete, Missing Fields, Extra Fields (info), Type Mismatch.
-
-**Report:** Use standard template. Summary: files analyzed, components/APIs/models counts. Code Files: list by type. Component Verification: found/partial/missing. API Verification: matching/partial/missing. Data Model Verification: complete/incomplete/missing. Detailed mode: all elements, signatures, field comparisons, examples. Summary mode: counts, critical issues.
-
-Store: validation_results.code_analysis
-
-**Requirements:** 3.2, 3.3, 3.4, 3.5
-
----
-
-## Stage 7: Pattern Matching (Final Mode Only)
-
-**Objective:** Use MCP Code Search to find similar implementations and compare patterns.
-
-**Mode:** Final only.
-
-**Query MCP:** For each major component: query `[component-name] implementation [language]`, limit 10 results, cache 1 hour. Handle: MCP unavailable → skip, report warning | Timeout (>30s) → use partial | No results → report, continue.
-
-**Extract Patterns:** Analyze results for: Naming (camelCase, PascalCase, snake_case, kebab-case), Architecture (class-based, functional, DI, singleton), Structure (error handling, validation, logging, config). Count frequency.
-
-**Compare Implementation:** For each pattern category: identify user's approach, compare to dominant pattern, calculate deviation. Severity: Critical (opposite), Warning (minority), Info (acceptable).
-
-**Report:** Use standard template. Summary: searches count, patterns analyzed, overall alignment. Naming Conventions: functions/classes/files with user approach, pattern match, score. Architectural Patterns: error handling/validation/async with comparisons. Code Structure: logging/config with comparisons. Pattern Alignment Score: table with categories. Recommendations: critical/warnings/info with code examples. Detailed mode: all search results, code examples, refactoring guidance. Summary mode: deviations and recommendations only.
-
-Store: validation_results.pattern_analysis
-
-**Requirements:** 4.1, 4.2, 4.3, 4.4
-
----
-
-## Stage 8: Traceability Matrix (Final Mode Only)
-
-**Objective:** Build complete requirement-to-code traceability and identify gaps.
-
-**Mode:** Final only.
-
-**Build Matrix:** For each requirement, trace: Requirement → Design Components → Tasks → Code Files. Structure: `{ requirementId, requirementText, traceability: { design: [{ componentName, found }], tasks: [{ taskId, state, found }], code: [{ filePath, elements, found }] }, status, completeness }`. Status: Complete (has all 3, 100%), Partial (missing 1, 33-66%), Missing (missing 2+, 0-33%).
-
-**Validate Completeness:** Check: design coverage, task coverage, code coverage, state consistency. Completeness: `(elements_present / 3) * 100`.
-
-**Identify Gaps:** Design Gap (not in design.md) → Critical | Planning Gap (no tasks) → Critical | Implementation Gap (completed tasks, no code) → Critical | Traceability Gap (code not linked) → Warning. For each: requirementId, gapType, severity, description, impact, remediation.
-
-**Report:** Use standard template. Summary: overall traceability %, complete/partial/missing counts, gaps counts. Traceability Matrix: per-requirement with status, completeness, design/tasks/code details. Traceability Gaps: critical and warning gaps with remediation. Insights: strong traceability, concerns, recommendations. Detailed mode: full chains, all files, detailed remediation, table format. Summary mode: stats, gaps, high-level guidance.
-
-Store: validation_results.traceability
-
-**Requirements:** 5.1, 5.2, 5.3, 5.4
+Open `references/final-mode.md` (relative to this file) when mode is final, after Stage 5 passes. It holds Stage 6 (Code Analysis), Stage 7 (Pattern Matching), and Stage 8 (Traceability Matrix), which store `validation_results.code_analysis`, `pattern_analysis`, and `traceability`.
 
 ---
 
@@ -429,8 +342,6 @@ After completing mode-specific stages, generate consolidated report using standa
 **Next Steps:** Mode-specific guidance (Initial: fix issues, begin implementation | Progress: unblock, continue, re-run | Final: fix gaps, proceed to release).
 
 **History:** If enabled, note saved location.
-
-**Requirements:** 7.1, 7.2, 7.3, 7.4, 7.5
 
 ---
 

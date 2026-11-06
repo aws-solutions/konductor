@@ -9,7 +9,7 @@ tags: [skill, smithy, api-design, validation, checker, code-review]
 
 ## Overview
 
-Reviews Smithy models against AWS best practices covering structure, naming conventions, documentation completeness, type safety, error handling, security traits, and code generation compatibility.
+Reviews Smithy models against AWS best practices covering structure, naming conventions, documentation completeness, type safety, error handling, security traits, and code generation compatibility. Each finding names its location and gives a concrete fix.
 
 ## Usage
 
@@ -18,26 +18,6 @@ Use this skill when:
 - Reviewing a Smithy model before handing off to implementation
 - Checking API design for security and type safety issues
 - Validating code generation compatibility
-
-## Core Concepts
-
-### Validation Categories
-
-Reviews cover structure (namespace, service definition), naming conventions (PascalCase shapes, camelCase members), documentation (`@documentation` traits), type safety (validation constraints), error handling (error shapes per operation), security (`@auth`, `@sensitive`), and code generation compatibility.
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for validating the Smithy model. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Smithy Expert (Checker)
-
-You are a Smithy API modeling expert specializing in validating, reviewing, and improving Smithy model definitions for quality, best practices, and production readiness.
-
-## Your Role
-
-Review Smithy models for correctness, completeness, and adherence to best practices. Identify issues, suggest improvements, and ensure models are ready for code generation and production deployment.
 
 ## Review Categories
 
@@ -80,7 +60,7 @@ Review Smithy models for correctness, completeness, and adherence to best practi
 
 **Ensure:**
 
-- All public shapes have @documentation
+- All public shapes have a `///` doc comment or `@documentation`, never both on one shape
 - Documentation explains purpose and usage
 - Constraints and validation rules are documented
 - Business logic and edge cases are explained
@@ -173,7 +153,8 @@ Review Smithy models for correctness, completeness, and adherence to best practi
 **Check:**
 
 - Sensitive data marked with @sensitive
-- Authentication traits applied (@auth)
+- The service carries an auth scheme trait (for example `@httpBearerAuth`); operations inherit it unless they set `@auth`
+- Operations that must be authenticated are not marked `@optionalAuth` or `@auth([])`
 - Authorization patterns documented
 - Input validation prevents injection attacks
 - Rate limiting considerations documented
@@ -221,57 +202,14 @@ Review Smithy models for correctness, completeness, and adherence to best practi
 
 ### 11. File Organization and Structure
 
-**Check for:**
-
-- Logical grouping of related shapes
-- Appropriate file splitting for large models
-- Consistent file naming conventions
-- Clear separation of concerns
-- Proper namespace usage across files
-- No circular dependencies between files
-
-**Verify:**
-
-- Single file appropriate for small models (< 10 operations, < 500 lines)
-- Multi-file structure for larger models with clear organization
-- Related shapes grouped together (operations, types, errors)
-- Shared types properly separated for reuse
-- Build configuration references correct source directories
-
 **Flag:**
 
-- Single file exceeding 500 lines without logical splits
-- Too granular (files with only 1-2 shapes)
-- Mixed concerns in single file (operations + unrelated types)
-- Inconsistent file naming (mixing conventions)
-- Duplicate shape definitions across files
-- Different namespaces within same model
-- Circular dependencies between files
-- Poor file organization hindering collaboration
+- A single file over 500 lines, or with 10+ operations, and no logical split
+- Files with only 1-2 shapes, or one file mixing unrelated concerns
+- Duplicate shape definitions across files, or different namespaces within one model
+- `sources` in `smithy-build.json` that miss a model directory
 
-**Recommend:**
-
-For models with 10+ operations or multiple domains:
-
-```
-model/
-├── service.smithy      # Service definition only
-├── operations.smithy   # All operations
-├── types.smithy        # Data structures
-└── errors.smithy       # Error definitions
-```
-
-Or domain-based organization:
-
-```
-model/
-├── service.smithy
-├── user/
-│   ├── operations.smithy
-│   └── types.smithy
-└── common/
-    └── types.smithy
-```
+When the model spans more than one file, open the `smithy-modeling` skill's `smithy-modeling/references/file-organization.md` for the full review checks and the layouts to recommend. Skills install side by side, so it sits next to this skill's directory.
 
 ## Review Process
 
@@ -333,9 +271,9 @@ Identify and document:
 
 ## Output Format
 
-Provide structured feedback:
+Use the Quality Gate's three levels and add what the model does well:
 
-### Critical Issues (Must Fix)
+### CRITICAL (Must Fix)
 
 ```
  [Category] [Location]
@@ -345,7 +283,7 @@ Fix: [Specific recommendation]
 Example: [Code showing fix]
 ```
 
-### Warnings (Should Fix)
+### IMPORTANT (Should Fix)
 
 ```
  [Category] [Location]
@@ -354,7 +292,7 @@ Recommendation: [Suggested improvement]
 Example: [Code showing improvement]
 ```
 
-### Suggestions (Consider)
+### SUGGESTION (Consider)
 
 ```
  [Category] [Location]
@@ -372,109 +310,7 @@ Good practice: [What's done well]
 
 ## Example Review Output
 
-````markdown
-## Smithy Model Review: WeatherService
-
-### Critical Issues
-
-**Type Safety** - WeatherData.temperature
-Issue: Temperature field is untyped String without constraints
-Impact: Allows invalid values, breaks type safety in generated code
-Fix: Define specific type with validation
-Example:
-
-```smithy
-@documentation("Temperature in Celsius. Range: -273.15 to 1000")
-@range(min: -273.15, max: 1000)
-Double TemperatureCelsius
-```
-````
-
-**Error Handling** - GetForecast operation
-Issue: Only defines GenericError, missing specific error types
-Impact: Clients can't handle different failure scenarios appropriately
-Fix: Define specific error types for each failure case
-Example:
-
-```smithy
-operation GetForecast {
-    input: GetForecastInput
-    output: GetForecastOutput
-    errors: [
-        LocationNotFound
-        ServiceUnavailable
-        InvalidDateRange
-    ]
-}
-```
-
-### Warnings
-
-**Documentation** - ListLocations operation
-Issue: Missing documentation on pagination behavior
-Recommendation: Document pagination limits and token usage
-Example:
-
-```smithy
-@documentation("""
-Lists available weather locations with pagination support.
-Returns up to 100 locations per request. Use nextToken for additional pages.
-""")
-@paginated(inputToken: "nextToken", outputToken: "nextToken", pageSize: "maxResults")
-operation ListLocations { ... }
-```
-
-**Security** - User.email field
-Issue: Email field not marked as sensitive
-Recommendation: Mark PII with @sensitive trait
-Example:
-
-```smithy
-structure User {
-    @sensitive
-    email: String
-}
-```
-
-### Suggestions
-
-**Performance** - ListLocations operation
-Observation: No default page size specified
-Benefit: Prevents accidentally large responses
-Alternative: Add default value to maxResults
-Example:
-
-```smithy
-structure ListLocationsInput {
-    @range(min: 1, max: 100)
-    maxResults: Integer = 20
-}
-```
-
-**File Organization** - Single file model
-Observation: Model contains 15 operations and 600+ lines in single file
-Benefit: Splitting improves maintainability and enables parallel development
-Alternative: Organize into logical component files
-Example:
-
-```
-model/
-├── service.smithy       # Service definition
-├── operations.smithy    # All operations
-├── types.smithy         # Data structures
-└── errors.smithy        # Error definitions
-```
-
-### Positive Findings
-
-**Naming Conventions**
-All shapes follow PascalCase/camelCase conventions consistently
-
-**HTTP Traits**
-Operations properly use @readonly and @idempotent where appropriate
-
-**Validation**
-Good use of @pattern for email validation
+Open `references/example-review.md` (relative to this file) when writing a review report and you want a filled-in example. It reviews a WeatherService model and shows CRITICAL, IMPORTANT, SUGGESTION, and positive findings in that format.
 
 ## Anti-Patterns to Flag
 
@@ -498,16 +334,6 @@ Good use of @pattern for email validation
 - Missing input validation
 - Insufficient error context (information leakage)
 - Missing authentication requirements
-
-### File Organization Anti-Patterns
-- Single file exceeding 500 lines (should be split)
-- Too many small files (1-2 shapes each, should consolidate)
-- Mixed concerns (operations + unrelated types in same file)
-- Duplicate shape definitions across files
-- Inconsistent file naming conventions
-- Different namespaces within same model
-- Circular dependencies between files
-- No clear separation between domains
 
 ## Validation Checklist
 
@@ -536,26 +362,12 @@ Before approving a model:
 5. **Acknowledge Good Practices**: Recognize what's done well
 6. **Consider Context**: Understand project constraints and requirements
 
-## Success Criteria
-
-A model passes review when:
--  No critical issues remain
--  Warnings addressed or documented as accepted
--  Validates without errors
--  Generates working code
--  Follows best practices consistently
--  Ready for production deployment
--  Documented sufficiently for maintenance
-
-Provide thorough, actionable feedback that improves model quality and ensures production readiness.
-
----
-
 ## Quality Gate
 
 **CRITICAL (must fix):**
 
-- Missing `@auth` traits on operations that require authentication
+- Model fails `smithy validate` with ERROR-level events
+- An operation that needs authentication can be called without it: no auth scheme trait on the service, or the operation is marked `@optionalAuth` or `@auth([])`
 - Sensitive data (PII, credentials) not marked with `@sensitive`
 - Breaking changes introduced to existing operations
 - Invalid Smithy syntax that blocks code generation
@@ -565,10 +377,13 @@ Provide thorough, actionable feedback that improves model quality and ensures pr
 - Inconsistent naming conventions across shapes
 - Missing error documentation
 - List operations without pagination support
+- Generated code for a target language does not compile
 
 **SUGGESTION:**
 
 - Could add deprecation notices for planned removals
 - Could strengthen input validation constraints
+
+A model passes review when no CRITICAL finding remains and each IMPORTANT finding is fixed or accepted with a recorded reason.
 
 Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
