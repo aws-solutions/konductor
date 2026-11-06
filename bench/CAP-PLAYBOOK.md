@@ -206,7 +206,7 @@ node bench/runner/bench.js report --run V/claude,V/gpt --verdict orchestrator-pa
 
 What goes wrong, and what catches it:
 - The host's `~/.claude/rules` read by a Claude Code run: every scratch `CLAUDE_CONFIG_DIR` gets a 0-byte `rules/empty.md` and nothing else.
-- A probe or install writing to the real `~/.konductor/installs`: hashed before and after every run and batch; a change fails the run (`installsChanged`) and the batch (exit code 4).
+- A probe or install writing to the real `~/.konductor/installs`: hashed before and after every run and batch; a change inside a run window fails that run (`installsChanged`) and the batch (exit code 4). A change between runs is a warning (`--gate-strict` makes it fail the batch).
 - Same-day drift as large as the effect: the A/A repeat measures it; the pass rule calls a cell NOT ENOUGH EVIDENCE when drift is not smaller than the effect.
 - A change that lives only in a skill the agent never loads: the cell is NOT ENOUGH EVIDENCE when none of the changed skills loaded in any run of the arm. Check `skills --run V/claude` as well.
 - Review rounds and reworks after a pass come from text heuristics. Read a few runs before quoting them.

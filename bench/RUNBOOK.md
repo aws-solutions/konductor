@@ -135,7 +135,8 @@ bash monitor.sh -h
 | `OK` | Chain alive, nothing wrong found. | Nothing. |
 | `ATTENTION: waiting for credentials` | P4 or P5 is paused. | Re-vend the credentials to the path shown. The chain resumes on its own within 5 minutes. |
 | `ATTENTION: chain not running` | The process died or was stopped before `DONE`. | `bash run-after-capability.sh` to resume. |
-| `ATTENTION: ISOLATION FAILURE` | The installs gate or a log reports a change in the real konductor installs. | Stop and inspect. Do not run `konductor install` or `update` during a study. |
+| `ATTENTION: ISOLATION FAILURE` | The installs gate or a log reports a change in the real konductor installs. | Stop and inspect. Read `installsChangedRuns` in `summary.json`: those runs are invalid, the others saw no change in their own window. Do not run `konductor install` or `update` during a study. |
+| `WARNING: ... outside every run window` | The real installs changed between runs, not during one. The batch stays valid (exit code 0, `ok: true`, `outsideRuns: true` in `isolation-gate.json`). | Note the time window in the log. Pass `--gate-strict` to `run` if you want any batch-level change to fail the batch. |
 | `ATTENTION: N timeouts/errors` | Runs with a non-success status, judge errors or parse failures in the current phase. | Read the log named in the TO-DO. Timeouts stay in the study and are reported; decide after the phase. |
 | `ATTENTION: no log output for ...` | The active log has been silent for more than 30 minutes (`MON_STALL_MIN`) while the chain is alive. | Check that the processes are alive (`ps -ef`). |
 | `ATTENTION: stray bench process(es)` | A bench process outside the chain's process tree is running. | Check its pid. It can disturb the study. |

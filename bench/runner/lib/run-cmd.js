@@ -25,7 +25,7 @@ const sandbox = require('./sandbox.js');
 const rc = require('./runconfig.js');
 const { optionalProfile, replicatesFor, aaArmFor, writeCalibrationSample } = require('./profiles.js');
 const { loadRun } = require('../../report/load.js');
-const { createInstallsGate, describeChange } = require('./isolation-gates.js');
+const { createInstallsGate, describeChange, judgeBatch } = require('./isolation-gates.js');
 const toolchain = require('./toolchain.js');
 
 const DEFAULT_MODEL = 'claude-sonnet-5.5';
@@ -264,6 +264,7 @@ async function cmdRun(opts) {
     };
     log(`isolation gate: hashing ${ctx.installsGate.dirs.join(', ')} before and after each run and the batch`);
     const batchWindow = ctx.installsGate.begin();
+    const batchFrom = new Date().toISOString();
     if (isOc) {
       ctx.opencode = oc.resolveOpencode({ cacheDir, binOverride: opts['opencode-bin'] && opts['opencode-bin'] !== true ? opts['opencode-bin'] : null });
       ctx.rgBin = oc.resolveRipgrep(opts['rg-bin'] && opts['rg-bin'] !== true ? opts['rg-bin'] : null);
@@ -386,12 +387,14 @@ async function cmdRun(opts) {
     log(`out=${outDir}`);
     const { results, observed, charged, studyLine, guard } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
-      costOf: isUsd ? USD : CREDITS, unit,
+      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']),
     });
-    const gate = batchWindow.end();
-    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate }), null, 2) + '\n');
+    const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
+    const gate = judged.gate;
+    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summarize(runConfig, { ...state, results, spent: observed, charged }, { isolationGate: gate, ...(judged.flagged.length ? { installsChangedRuns: judged.flagged } : {}) }), null, 2) + '\n');
+    if (judged.warning) log(judged.warning);
     if (!gate.ok) {
-      log(`ISOLATION FAILURE: ${describeChange(gate)}. Treat this batch as invalid.`);
+      log(judged.alarm);
       process.exitCode = 4;
     }
     log(`finished: ${JSON.stringify(summarize(runConfig, { ...state, results }, {}).counts)}, ${observed.toFixed(3)} ${unit} observed, ${charged.toFixed(3)} charged`);

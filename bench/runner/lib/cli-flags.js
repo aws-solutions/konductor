@@ -10,7 +10,7 @@ const FLAGS = {
     'cargo-online', 'seed', 'isolate', 'allow-unisolated', 'allow-partial', 'censored-floor', 'hide', 'no-default-hide', 'env-keep', 'tripwire-exclude', 'tripwire-depth', 'tripwire-dir',
     'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'agent-engine',
     'extra-tasks', 'run-credit-limit', 'auth-db', 'arm-prefix', 'arm-agent', 'arm-config', 'stop-on', 'max-tool-calls', 'profile',
-    'claude-bin', 'claude-tools-dir', 'run-budget-usd', 'aws-region',
+    'claude-bin', 'claude-tools-dir', 'run-budget-usd', 'aws-region', 'gate-strict',
   ],
   judge: [
     'run', 'judges', 'mode', 'baseline', 'concurrency', 'budget-credits', 'judge-cmd', 'max-file-chars', 'max-bundle-chars', 'redact-file',
@@ -69,7 +69,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'va
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
-  'cargo-online', 'allow-partial', 'allow-unisolated', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
+  'cargo-online', 'allow-partial', 'allow-unisolated', 'gate-strict', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
   'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes',
 ]);
 

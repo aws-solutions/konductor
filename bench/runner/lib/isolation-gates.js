@@ -145,6 +145,41 @@ function describeChange(result) {
   return `the real ~/.konductor/installs changed (${[...parts, ...unread].join(' | ')})`;
 }
 
+const labelOf = ({ arm, task, rep }) => `${arm}/${task}/#${rep}`;
+
+/** The runs whose own window saw a change, as [{ arm, task, rep }], from finished results. */
+function installsChangedRuns(results) {
+  return (results || []).filter((r) => r.flags?.includes('installsChanged')).map((r) => ({ arm: r.armId, task: r.taskId, rep: r.replicate }));
+}
+
+/**
+ * Decides what a batch-level gate result means once the runs are known. A change that lands outside every run window
+ * (between runs, before the first, after the last) is a warning: no run saw it, so no run is affected. `strict`
+ * restores the old rule that any batch-level change invalidates the batch.
+ * Returns { gate, flagged, alarm, warning }. `gate` is the record to store; it is the input untouched unless the
+ * change is demoted to a warning. `alarm` and `warning` are log lines or null.
+ */
+function judgeBatch({ gate, results, strict = false, window = null }) {
+  const flagged = installsChangedRuns(results);
+  if (!gate || gate.ok) return { gate, flagged, alarm: null, warning: null };
+  const all = (results || []).filter((r) => r.status !== 'budget_skipped').map((r) => ({ arm: r.armId, task: r.taskId, rep: r.replicate }));
+  const hit = new Set(flagged.map(labelOf));
+  const unaffected = all.filter((r) => !hit.has(labelOf(r)));
+  if (strict) return { gate, flagged, alarm: `ISOLATION FAILURE: ${describeChange(gate)}. Treat this batch as invalid.`, warning: null };
+  if (flagged.length) {
+    return {
+      gate, flagged,
+      alarm: `ISOLATION FAILURE: ${describeChange(gate)}. Runs whose window saw the change (${flagged.length} of ${all.length}): ${flagged.map(labelOf).join(', ')}. `
+        + `Runs that saw no change (${unaffected.length}): ${unaffected.map(labelOf).join(', ') || 'none'}. Pass --gate-strict to treat the whole batch as invalid.`,
+      warning: null,
+    };
+  }
+  const span = window ? ` between ${window.from} and ${window.to}` : '';
+  const warning = `WARNING: ${describeChange(gate)}${span}, outside every run window. No run saw the change, so all ${all.length} run(s) stand. Pass --gate-strict to treat this as invalid.`;
+  const kept = { ...gate, ok: true, outsideRuns: true, ...(window ? { window } : {}), warning };
+  return { gate: kept, flagged, alarm: null, warning };
+}
+
 /**
  * Makes `<configDir>/rules` hold exactly one 0-byte file and returns its path. Refuses the invoking user's own
  * ~/.claude so a mistake cannot empty the real rules.
@@ -164,4 +199,4 @@ function ensureEmptyClaudeRules(configDir, { homes } = {}) {
   return file;
 }
 
-module.exports = { hashDir, installsDirs, createInstallsGate, describeChange, ensureEmptyClaudeRules, INSTALLS_REL, GATE_FILE, EMPTY_RULES_NAME };
+module.exports = { hashDir, installsDirs, createInstallsGate, describeChange, installsChangedRuns, judgeBatch, ensureEmptyClaudeRules, INSTALLS_REL, GATE_FILE, EMPTY_RULES_NAME };
