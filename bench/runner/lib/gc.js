@@ -45,7 +45,7 @@ function formatAge(ms) {
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
   if (h < 48) return `${h}h ${m % 60}m`;
-  return `${Math.floor(h / 24)}d ${h % 24}h`;
+  return h % 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h / 24}d`;
 }
 
 function cleanGitEnv() {
@@ -154,6 +154,7 @@ function scanRoots(roots) {
   const found = new Map();
   const symlinks = [];
   const warnings = [];
+  const unreadable = {};
   const scannedRoots = [];
   for (const root of roots) {
     const real = realOrNull(root);
@@ -171,7 +172,7 @@ function scanRoots(roots) {
       }
       if (depth >= SCAN_DEPTH) continue;
       let ents;
-      try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { warnings.push(`cannot read ${dir}: ${e.code || e.message}`); continue; }
+      try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { if (e.code !== 'ENOENT') unreadable[e.code || 'error'] = (unreadable[e.code || 'error'] || 0) + 1; continue; }
       for (const e of ents) {
         const p = path.join(dir, e.name);
         if (e.isSymbolicLink()) { const t = realOrNull(p); if (t) symlinks.push({ link: p, target: t }); continue; }
@@ -179,6 +180,7 @@ function scanRoots(roots) {
       }
     }
   }
+  for (const [code, n] of Object.entries(unreadable)) warnings.push(`${n} director${n === 1 ? 'y' : 'ies'} could not be read (${code}) and ${n === 1 ? 'was' : 'were'} skipped`);
   return { found: [...found.values()], symlinks, warnings, roots: scannedRoots };
 }
 
