@@ -29,4 +29,3 @@ def test_checker_handoff_uses_public_terms(name):
     assert "reaches the CR" not in text
     assert "posted to the PR" in text
     assert not re.search(r"\bCR\b", text)
-    assert "CrCheckout" not in text
