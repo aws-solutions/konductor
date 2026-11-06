@@ -57,7 +57,7 @@ Validate infrastructure code across these 10 categories:
 
 Check for:
 
-- **Encryption at Rest**: All data stores (S3, DynamoDB, RDS, EBS) must have encryption enabled
+- **Encryption at Rest**: RDS and EBS must set encryption explicitly. S3 (SSE-S3) and DynamoDB (AWS owned key) encrypt at rest by default, so check them only for data that requires SSE-KMS or a customer managed key
 - **Encryption in Transit**: TLS/SSL required for all network communication (API Gateway, ALB, CloudFront)
 - **IAM Permissions**: Least privilege principle, no wildcard permissions, no overly permissive policies
 - **Network Security**: VPC configuration, security groups, NACLs, no public access to sensitive resources
@@ -68,8 +68,8 @@ Check for:
 
 **Validation Checks**:
 
-1. Verify encryption enabled for all S3 buckets (AWS managed or customer managed KMS)
-2. Check DynamoDB tables have encryption enabled
+1. For S3 buckets holding data that requires SSE-KMS or a customer managed key, verify `BucketEncryption` sets it. A missing `BucketEncryption` alone is not a finding: S3 applies SSE-S3 to every new object
+2. For DynamoDB tables with the same requirement, verify a customer managed key is set. Without one, DynamoDB still encrypts with an AWS owned key
 3. Validate RDS instances use encryption at rest
 4. Verify API Gateway uses TLS 1.2 or higher
 5. Check IAM policies for wildcard permissions (Action: "_", Resource: "_")
@@ -274,7 +274,7 @@ Check for:
 - **Partition Key Design**: High cardinality partition keys, no hot partitions
 - **GSI Configuration**: GSI capacity >= base table capacity
 - **Billing Mode**: Appropriate billing mode for traffic pattern
-- **Encryption**: Encryption at rest enabled
+- **Encryption**: Customer managed key set when the data requires one (default is an AWS owned key)
 - **Backup**: Point-in-time recovery enabled for production
 - **Streams**: Streams enabled only when needed (event-driven architecture)
 - **TTL**: Time-to-live configured for temporary data
@@ -283,7 +283,7 @@ Check for:
 
 - **Public Access**: Block public access enabled
 - **Versioning**: Versioning enabled for critical data
-- **Encryption**: Server-side encryption enabled
+- **Encryption**: SSE-KMS or a customer managed key set when the data requires one (default is SSE-S3)
 - **Lifecycle Policies**: Lifecycle policies for cost optimization
 - **Access Logging**: Access logging enabled for audit
 - **Object Lock**: Object lock for compliance requirements
@@ -409,14 +409,13 @@ Check EVERY data store resource:
 
 **DynamoDB Tables** (`AWS::DynamoDB::Table`):
 
-- [ ] `SSESpecification.SSEEnabled: true` present
-- [ ] Verify encryption type (AWS_MANAGED or CUSTOMER_MANAGED)
+- [ ] If the data requires a customer managed key, `SSESpecification` sets `SSEEnabled: true`, `SSEType: KMS` and `KMSMasterKeyId`
+- [ ] Without `SSESpecification`, the table is encrypted with an AWS owned key; not a finding by itself
 
 **S3 Buckets** (`AWS::S3::Bucket`):
 
-- [ ] `BucketEncryption.ServerSideEncryptionConfiguration` present
-- [ ] `SSEAlgorithm` is `AES256` or `aws:kms`
-- [ ] If KMS, verify `KMSMasterKeyID` specified
+- [ ] If the data requires SSE-KMS, `BucketEncryption` sets `SSEAlgorithm: aws:kms` (or `aws:kms:dsse`) and `KMSMasterKeyID`
+- [ ] Without `BucketEncryption`, S3 applies SSE-S3 (AES-256) to new objects; not a finding by itself
 
 **RDS Instances** (`AWS::RDS::DBInstance`):
 
@@ -664,7 +663,7 @@ Check for alarms on:
 **For EACH S3 Bucket** (`AWS::S3::Bucket`):
 
 - [ ] `PublicAccessBlockConfiguration` with all four settings true
-- [ ] `BucketEncryption` configured
+- [ ] `BucketEncryption` sets SSE-KMS if the data requires it
 - [ ] `VersioningConfiguration.Status: Enabled` for critical data
 - [ ] `LifecycleConfiguration` for cost optimization
 - [ ] `ServerAccessLogsConfiguration` for audit trail
@@ -763,7 +762,7 @@ Before finalizing report, verify you checked:
 
 - [ ] ALL IAM policies for wildcard resources (`"Resource": "*"`)
 - [ ] ALL IAM policies for wildcard actions (`"Action": "*"`)
-- [ ] ALL data stores for encryption at rest
+- [ ] ALL RDS and EBS resources for encryption at rest, and S3 and DynamoDB for SSE-KMS where the data requires it
 - [ ] ALL S3 buckets for public access block
 - [ ] ALL network resources for TLS/SSL configuration
 - [ ] ALL resources for hardcoded secrets
@@ -857,16 +856,16 @@ Good practice: [What's done well]
 
 **Status**: NEEDS REVISION
 **Confidence Level**: HIGH
-**CRITICAL**: 3
+**CRITICAL**: 2
 **IMPORTANT**: 5
 **SUGGESTION**: 10
 
 ### CRITICAL
 
 **Security** - S3 Bucket (DocumentsBucket)
-Issue: S3 bucket does not have encryption at rest enabled
-Impact: Sensitive data stored unencrypted violates security best practices and compliance requirements
-Fix: Enable server-side encryption with AWS managed keys or customer managed KMS keys
+Issue: The bucket holds customer documents that the data classification says need a customer managed KMS key, but it relies on default SSE-S3
+Impact: SSE-S3 encrypts the objects, but with keys you can't control, audit per use, or revoke, so the bucket fails the classification requirement
+Fix: Set SSE-KMS with a customer managed key
 Example:
 
 ```typescript
@@ -880,10 +879,8 @@ const bucket = new s3.Bucket(this, 'DocumentsBucket', {
 const bucket = new s3.Bucket(this, 'DocumentsBucket', {
   bucketName: 'taskflow-documents',
   versioned: true,
-  encryption: s3.BucketEncryption.S3_MANAGED,
-  // Or for customer managed keys:
-  // encryption: s3.BucketEncryption.KMS,
-  // encryptionKey: new kms.Key(this, 'BucketKey')
+  encryption: s3.BucketEncryption.KMS,
+  encryptionKey: new kms.Key(this, 'BucketKey', { enableKeyRotation: true }),
 });
 ```
 
@@ -909,30 +906,6 @@ taskFunction.addToRolePolicy(
     resources: [taskTable.tableArn, `${taskTable.tableArn}/index/*`],
   }),
 );
-```
-
-**Security** - DynamoDB Table (TasksTable)
-Issue: DynamoDB table does not have encryption at rest enabled
-Impact: Sensitive task data stored unencrypted violates compliance requirements
-Fix: Enable encryption using AWS managed keys or customer managed KMS keys
-Example:
-
-```typescript
-// Before
-const table = new dynamodb.Table(this, 'TasksTable', {
-  partitionKey: { name: 'taskId', type: dynamodb.AttributeType.STRING },
-  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-});
-
-// After
-const table = new dynamodb.Table(this, 'TasksTable', {
-  partitionKey: { name: 'taskId', type: dynamodb.AttributeType.STRING },
-  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-  encryption: dynamodb.TableEncryption.AWS_MANAGED,
-  // Or for customer managed keys:
-  // encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
-  // encryptionKey: new kms.Key(this, 'TableKey')
-});
 ```
 
 ### IMPORTANT
@@ -980,7 +953,6 @@ Example:
 const table = new dynamodb.Table(this, 'TasksTable', {
   partitionKey: { name: 'taskId', type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-  encryption: dynamodb.TableEncryption.AWS_MANAGED,
   pointInTimeRecovery: true, // Enable PITR
 });
 ```
@@ -1028,7 +1000,7 @@ const taskFunction = new lambda.Function(this, 'TaskProcessorFunction', {
 
 **Performance** - Lambda Function (TaskProcessorFunction)
 Observation: Lambda function not using ARM64 architecture (Graviton)
-Benefit: 20% better price performance with Graviton processors
+Benefit: AWS cites up to 34% better price performance on arm64 (Graviton2) than on x86, with 20% lower duration charges
 Alternative: Switch to ARM64 architecture for cost and performance benefits
 Example:
 
@@ -1051,7 +1023,6 @@ Example:
 const bucket = new s3.Bucket(this, 'DocumentsBucket', {
   bucketName: 'taskflow-documents',
   versioned: true,
-  encryption: s3.BucketEncryption.S3_MANAGED,
   lifecycleRules: [
     {
       id: 'TransitionToIntelligentTiering',
@@ -1111,7 +1082,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 **Critical Gaps**:
 
-- Missing encryption at rest for S3 and DynamoDB
+- Document bucket lacks the customer managed key its data classification requires
 - Overly permissive IAM policies
 - Missing operational monitoring
 
@@ -1124,7 +1095,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 Before approving infrastructure code:
 
-- [ ] All data stores have encryption at rest enabled
+- [ ] RDS and EBS have encryption at rest enabled; S3 and DynamoDB use SSE-KMS where the data requires it
 - [ ] All network communication uses TLS/SSL
 - [ ] IAM policies follow least privilege principle
 - [ ] No hardcoded credentials or secrets
@@ -1169,7 +1140,7 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 **CRITICAL (must fix):**
 
 - S3 buckets with public access enabled
-- Encryption at rest not configured for data stores
+- RDS or EBS without encryption at rest, or S3 and DynamoDB data that requires SSE-KMS left on the default keys
 - Security groups with `0.0.0.0/0` ingress on non-HTTP ports
 - No deletion protection on stateful resources (RDS, DynamoDB)
 
