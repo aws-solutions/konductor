@@ -388,7 +388,7 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 | `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | `aws-mcp` |
 | `k-developer` | `claude-sonnet-5.5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | `aws-mcp` |
 | `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 12 | — |
-| `k-product-manager` | `claude-sonnet-5.5` | — | 16 | — |
+| `k-product-manager` | `claude-sonnet-5.5` | — | 17 | — |
 | `k-tpm` | `claude-sonnet-5.5` | — | 14 | — |
 | `k-researcher` | `claude-sonnet-5.5` | — | 8 | — |
 | `k-browser` | `claude-sonnet-5.5` | — | 4 | `playwright-mcp` |
