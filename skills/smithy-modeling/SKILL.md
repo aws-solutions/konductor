@@ -9,7 +9,7 @@ tags: [skill, smithy, api-design, type-safety, code-generation, aws]
 
 ## Overview
 
-Generates type-safe Smithy API models from system design and user story inputs. Covers service definitions, operations, input/output shapes, validation traits, error types, and pagination patterns.
+Generates type-safe Smithy models from requirements, design documents, user stories, or existing API specifications. Covers service definitions, operations, input/output shapes, validation traits, error types, and pagination. Every shape must stay compatible with TypeScript, OpenAPI, and AWS SDK code generation.
 
 ## Usage
 
@@ -19,36 +19,12 @@ Use this skill when:
 - Creating API contracts for client/server code generation
 - Defining data structures and validation rules
 
-## Core Concepts
-
-### Smithy Model Structure
-
-A Smithy model defines a service namespace, operations (with `@http` traits), input/output shapes, error shapes, and validation traits (`@length`, `@range`, `@pattern`). Pagination is required for list operations. Security traits (`@auth`, `@sensitive`) are required for authentication and PII.
-
-### Code Generation Targets
-
-Smithy models generate TypeScript clients, OpenAPI specs, and AWS SDK code. All shapes must be code-generation compatible.
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for generating the Smithy model. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Smithy Expert (Maker)
-
-You are a Smithy API modeling expert specializing in creating type-safe, well-documented API definitions using the Smithy IDL (Interface Definition Language).
-
-## Your Role
-
-Generate Smithy model definitions from requirements, design documents, or API specifications. Create models that follow best practices for type safety, documentation, validation, and code generation.
-
-## Core Responsibilities
+## Model Elements
 
 ### 1. Service Definition
 
 - Define service shape with appropriate metadata
-- Set service version following semantic versioning
+- Set the service version, a date string such as `"2024-01-15"` as in the template below
 - Include title and documentation
 - List all operations the service provides
 
@@ -72,7 +48,8 @@ Generate Smithy model definitions from requirements, design documents, or API sp
 - Use @range for numeric bounds
 - Apply @length for string/collection size limits
 - Use @pattern for format validation (email, URLs, etc.)
-- Mark sensitive data with @sensitive trait
+- Mark passwords, tokens, and PII with @sensitive
+- Put the auth scheme traits (for example `@httpBearerAuth`) on the service. Operations inherit them; use `@auth` on an operation only to narrow or reorder its schemes, and `@optionalAuth` only for operations callable without credentials
 
 ### 5. Error Handling
 
@@ -110,7 +87,7 @@ namespace [appropriate.namespace]
 
 /// Service documentation
 @title("[Service Title]")
-@documentation("[Detailed service description]")
+@httpBearerAuth
 service [ServiceName] {
     version: "[YYYY-MM-DD]"
     operations: [
@@ -165,7 +142,7 @@ structure [ErrorName] {
 
 ### Documentation Standards
 
-- Add @documentation to all public shapes
+- Document all public shapes with a `///` doc comment or `@documentation`, not both on one shape
 - Explain constraints and validation rules
 - Document business logic and edge cases
 - Provide examples where helpful
@@ -326,28 +303,11 @@ Provide:
 4. **Documentation** explaining design decisions
 5. **Example Usage** showing how to use generated code
 
-## Success Criteria
-
-Your Smithy model should:
-
-- Validate without errors using `smithy validate`
-- Generate compilable code for target languages
-- Include comprehensive documentation
-- Apply appropriate constraints and validation
-- Follow naming conventions consistently
-- Define specific, actionable error types
-- Support pagination for list operations
-- Mark sensitive data appropriately
-- Be ready for production use
-
-Generate Smithy models that are type-safe, well-documented, and follow industry best practices for API design.
-
----
-
 ## Quality Gate
 
 **CRITICAL (must fix):**
 
+- Model fails `smithy validate`
 - Service namespace missing or not a valid reverse-DNS namespace
 - Operations missing required `@http` traits
 - Error shapes not defined for failure cases
@@ -355,9 +315,12 @@ Generate Smithy models that are type-safe, well-documented, and follow industry 
 
 **IMPORTANT (should fix):**
 
-- Missing `@documentation` traits on operations and shapes
+- Missing documentation (`///` comments or `@documentation`) on operations and shapes
 - Pagination not implemented for list operations
 - Validation constraints (`@length`, `@range`, `@pattern`) missing on string/numeric inputs
+- Passwords, tokens, or PII not marked `@sensitive`
+- Naming conventions applied inconsistently
+- Generated code for a target language does not compile
 
 **SUGGESTION:**
 

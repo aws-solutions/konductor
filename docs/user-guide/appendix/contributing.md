@@ -323,11 +323,12 @@ ls skills | wc -l
 ```
 
 ```text
-      81
+      84
 ```
 
 Compare that against the union of every spec's declared skills. A mismatch means a skill exists that
-no agent can reach — which matters most when a SOP instructs an agent to use it.
+no agent can reach — which matters most when a SOP instructs an agent to use it. Rename stubs are
+the one expected gap: they only point to the new name, so no agent declares them.
 
 ### Test your change end to end
 
@@ -370,7 +371,7 @@ a security problem.
 ## Related
 
 - [Agents reference](../agents.md) — every agent's model, tools, access, and delegation targets
-- [Skills catalog](../skills.md) — all 81 skills and which agents declare each
+- [Skills catalog](../skills.md) — all 84 skills and which agents declare each
 - [SOP workflows](../sop-workflows/README.md) — the 19 procedures and their structure
 - [CLI reference](../reference.md) — the full command, flag, config, and exit-code contract
 

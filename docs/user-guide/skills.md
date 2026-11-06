@@ -4,7 +4,8 @@
 
 [← Back to guide index](README.md)
 
-All **81 skills** the package ships, grouped by what they are for. Each entry gives what the
+All **84 skills** the package ships, grouped by what they are for. Three are rename stubs, listed
+under [Renamed skills](#renamed-skills). Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -13,8 +14,8 @@ what you want and the agent loads what it needs. Naming one explicitly is still 
 know exactly which lens you want applied.
 
 > **A skill is only available in a session with an agent that declares it.** The "Declared by"
-> column is therefore the practical one — it tells you who to talk to. Every skill is declared by
-> at least one agent; see [Coverage](#coverage).
+> column is therefore the practical one — it tells you who to talk to. Every skill except the three
+> rename stubs is declared by at least one agent; see [Coverage](#coverage).
 
 ---
 
@@ -31,6 +32,7 @@ know exactly which lens you want applied.
 - [Testing and browser automation](#testing-and-browser-automation) — 7
 - [Kiro spec generation](#kiro-spec-generation) — 3
 - [Research](#research) — 1
+- [Renamed skills](#renamed-skills) — 3
 - [Coverage](#coverage)
 - [Which agent has the most skills?](#which-agent-has-the-most-skills)
 
@@ -70,8 +72,8 @@ Turning a business ask into something an engineer can build.
 | `user-story-writing` | Creates user stories with INVEST principles, epics, and acceptance criteria. Scales to MVP (10-15), Production (20-30), or full scope (30-40 stories). | Validated requirements exist and you need development-ready stories. | `k-product-manager` |
 | `task-decomposition` | Splits stories and a system design into independent features that individual engineers can build with minimal overlap. | The HLD is done and you need to parallelise the work across people. | `k-developer`, `k-product-manager`, `k-tpm` |
 | `sprint-planning` | Task hierarchy, story-point sizing, capacity tracking, sprint workflow. Its Asana reference drives the same workflow through Asana. | You are planning a sprint or sizing work. For Asana, it needs an Asana MCP server (opt-in). | `k-product-manager`, `k-tpm` |
-| `decision-research` | Research patterns for gathering context before deciding and verifying artifact claims: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager` |
-| `document-formats` | Reads and writes `.docx` via pandoc. | Your requirements arrived as a Word document. | `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm` |
+| `decision-research` | Research patterns for gathering context before deciding, and for surfacing prior art an artifact missed: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager` |
+| `docx-conversion` | Converts `.docx` files to and from Markdown with pandoc. | Your requirements arrived as a Word document. | `k-product-manager`, `k-quality-assurance`, `k-researcher`, `k-tpm` |
 
 ---
 
@@ -122,8 +124,8 @@ Checking a design before anyone builds it.
 | --- | --- | --- | --- |
 | `design-evaluation` | Evaluates a complete design package for production readiness across 10 dimensions. | The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM. | `k-architect` |
 | `design-quality-check` | Scores a design doc for writing quality, structural completeness, and KISS/YAGNI compliance. Detects filler, hedging, unsupported claims, passive voice, circular reasoning. | The doc is complete but reads badly, or you suspect padding. | `k-architect` |
-| `doc-accuracy-analyzer` | Six-step verification of a technical document against primary sources: extracts claims, investigates each, classifies, reports. | You need to know which claims in a document are actually true. | `k-architect` |
-| `aws-service-validator` | Validates AWS service and feature claims against live AWS documentation. Catches hallucinated AWS assertions. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
+| `doc-accuracy-analyzer` | The entry point for fact-checking a technical document: extracts claims, routes AWS claims to `aws-service-validator`, checks the rest against primary sources, reports. | You need to know which claims in a document are actually true. | `k-architect`, `k-product-manager` |
+| `aws-service-validator` | Validates AWS feature, limit, pricing, and Region claims against live AWS documentation. Called by `doc-accuracy-analyzer`, or run directly on a list of AWS claims. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
 | `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
 | `humanize-writing` | Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. | Writing or editing prose, or a draft reads machine-written. | all 11. On Claude Code, `k-architect`, `k-developer`, `k-product-manager` and `k-tpm` preload it when they run as subagents. Otherwise, and on Kiro CLI, it loads on demand |
 
@@ -173,8 +175,8 @@ Writing and reviewing code.
 | `adversarial-code-review-pass-integrity` | One parallel pass, scoped to data integrity: multi-item mutations, atomicity, ordering, idempotency. | Same — spawned by the coordinator, not called on its own. | `k-architect`, `k-developer` |
 | `adversarial-code-review-pass-schema` | One parallel pass, scoped to schema and contract: API/schema/type changes, backward compatibility, validation completeness. | Same — spawned by the coordinator, not called on its own. | `k-architect`, `k-developer` |
 | `historical-issues-registry` | Loads prior review state for a pull request, then filters new findings that duplicate ones already fixed or already declined by a human reviewer. | Reviewing a second or third revision of the same change, to stop the same comment reappearing. | `k-architect` |
-| `asdlc-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
-| `asdlc-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
+| `k-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
+| `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
 | `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer` |
 | `git-merge` | Branch merges — feature into mainline, dev into mainline, release merges. | Merging anything. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
 | `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-developer` |
@@ -224,11 +226,24 @@ Looking things up outside the repository.
 
 ---
 
+## Renamed skills
+
+Each stub keeps an old name loadable for one release and is removed in the next. Its body only
+points to the new name.
+
+| Old name | Load instead |
+| --- | --- |
+| `asdlc-aspect-review` | `k-aspect-review` |
+| `asdlc-code-simplifier` | `k-code-simplifier` |
+| `document-formats` | `docx-conversion` |
+
+---
+
 ## Coverage
 
-**All 81 skills are declared by at least one agent.** That matters because a skill no agent
-declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
-it. Contributors adding a skill should see
+**All 81 working skills are declared by at least one agent.** The three rename stubs are not.
+That matters because a skill no agent declares cannot be loaded by anything — which bites
+hardest when a SOP instructs an agent to use it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
 
 > **Recently fixed.** Four skills used to be declared by no agent: the three
@@ -249,7 +264,7 @@ Useful when deciding which agent to talk to directly.
 | --- | --- |
 | `k-architect` | 38 |
 | `k-developer` | 27 |
-| `k-product-manager` | 15 |
+| `k-product-manager` | 16 |
 | `k-tpm` | 14 |
 | `konductor` | 13 |
 | `k-quality-assurance` | 12 |

@@ -13,7 +13,7 @@ Configuration, registered with your runtime. Specifically:
 | | Count | What it is |
 | --- | --- | --- |
 | Agents | 11 | Three orchestrators plus eight specialists |
-| Skills | 81 | On-demand knowledge modules |
+| Skills | 84 | On-demand knowledge modules (3 are rename stubs) |
 | SOPs | 19 | Written multi-step procedures |
 | Context files | 2 | The core rules for every agent and the orchestrator routing rules, always active |
 
