@@ -22,6 +22,8 @@ Read this when a new estimate's context is gathered and confirmed (CREATE Step 3
    USE analyze_terraform_project(project_path) # if Terraform code provided
    ```
 
+If the pricing tools aren't available and you can't ask the user to add them (they said not to ask, or nobody is there to answer), use published list prices for the estimate's region. Say so at the top of the report and mark those figures unverified. Never invent a unit price you don't know: leave that line unpriced and say what would price it.
+
 ## Step 5: Architecture Validation for Cost Estimation
 
 Analyze their solution to ensure complete and accurate cost estimation:

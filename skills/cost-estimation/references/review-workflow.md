@@ -85,10 +85,13 @@ Once they provide materials:
    USE get_pricing(service_code, region, current_filters, output_options)
    ```
 
+If the pricing tools aren't available and you can't ask the user to add them (they said not to ask, or nobody is there to answer), use published list prices for the estimate's region. Say so at the top of the report and mark those figures unverified. Never invent a unit price you don't know: leave that line unpriced and say what would price it.
+
 ### Step 5: Complete Validation and Gap Analysis
 
 **Pricing Accuracy Assessment:**
 
+- Recompute every existing line from its stated usage and unit prices, not only the missing ones. Mark each line correct, wrong (with the corrected figure and why), or unverifiable. Keep the estimate's usage figures unless the context contradicts them
 - Compare their estimates against current AWS pricing
 - Identify significant pricing discrepancies
 - Check for outdated pricing models or discontinued services
@@ -102,6 +105,7 @@ Once they provide materials:
   - Backup and disaster recovery
   - Security services
   - Operational overhead
+- Add a missing service only when the architecture or context shows it. Label anything you infer (a NAT gateway, WAF, backups) as an assumption on its own line, so the reader can drop it
 - Check for unrealistic usage assumptions
 - Validate service sizing and configuration choices
 
@@ -192,6 +196,7 @@ Your enhanced report will include:
 
 1. **Create comparison analysis:**
    - Original estimate vs. current AWS pricing from get_pricing() calls
+   - One row per original line with its original and corrected cost and the reason, including lines that were right; mark added lines as new
    - Identify pricing discrepancies and corrections needed
    - Calculate potential savings from optimization opportunities
    - Document all changes and improvements made
@@ -199,6 +204,7 @@ Your enhanced report will include:
 2. **Generate enhanced cost analysis:**
    - Updated service-by-service breakdown with current pricing
    - Corrected assumptions and validated calculations
+   - The pricing source (Pricing MCP server or published list prices) and a confidence range for the corrected total
    - Complete optimization recommendations
    - Risk assessment and implementation considerations
    - Professional executive summary for stakeholders
