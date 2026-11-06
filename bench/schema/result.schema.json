@@ -350,6 +350,18 @@
         "null"
       ]
     },
+    "creditLimit": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "creditOvershoot": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
     "workToolCalls": {
       "type": [
         "integer",

@@ -55,6 +55,7 @@ const finish = () => {
     if (c.rawOutput !== undefined) ev('sessionUpdate', { sessionId: sid, update: { sessionUpdate: 'tool_call_update', toolCallId: 'fake-' + i, status: 'completed', rawInput: c.rawInput, rawOutput: c.rawOutput } });
   });
   if (engine === 'v3') v3Completion(); else ev('metadata', { sessionId: sid, turnDurationMs: 100, meteringUsage: [{ value: tc.credits ?? 0.5, unit: 'credit' }] });
+  if (tc.lingerMs) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, tc.lingerMs);
   if (tc.hangAfterMetering) { setTimeout(() => {}, 60000); return; }
   ev('runFinished', { sessionId: sid, status: 'success', stopReason: tc.stopReason ?? 'end_turn', finalText: tc.finalText ?? 'done', finalTextTruncated: false });
   if (cfg.sessionJson) {

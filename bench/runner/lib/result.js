@@ -114,6 +114,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     creditsLowerBound: creditsCensored ? credits ?? 0 : null,
     creditsCharged: null,
     creditsSessionTotal: meta.creditsSessionTotal ?? null,
+    ...(meta.creditLimit != null ? { creditLimit: meta.creditLimit, creditOvershoot: meta.creditOvershoot ?? null } : {}),
     modelCalls: oc
       ? (usage ? { meteringEntries: usage.modelCalls, totalRequestCount: usage.modelCalls } : null)
       : agg

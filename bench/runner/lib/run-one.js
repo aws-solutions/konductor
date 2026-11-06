@@ -59,7 +59,7 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
     const watcher = meter || stop ? setInterval(() => {
       if (limitHit || stopped) return;
       if (stop) stopped = stop.poll();
-      if (!stopped && (!meter || meter.poll() <= creditLimit)) return;
+      if (!stopped && (!meter || meter.live() <= creditLimit)) return;
       if (!stopped) { limitHit = true; metered = meter.poll(); }
       kill('SIGTERM');
       setTimeout(() => kill('SIGKILL'), 5000).unref();
@@ -242,6 +242,12 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
       const finished = summary && summary.runFinishedStatus === 'success' ? summary : null;
       const reply = conv.record(finished);
       if (!reply) break;
+      // Credits that only arrive when a turn ends (engine v3) can be checked here, so the next turn is not started.
+      if (ctx.runCreditLimit != null && spent > ctx.runCreditLimit) {
+        exec.creditLimitHit = true;
+        exec.error = `per-run credit limit ${ctx.runCreditLimit} reached at ${spent.toFixed(3)} credits (checked when turn ${turn} ended; no further turn was started)`;
+        break;
+      }
       sessionId = finished.sessionId ?? sessionId;
       resume = { sessionId, prompt: reply.text };
     }
@@ -256,6 +262,7 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
     exitCode: last.exitCode,
     timedOut: execs.some((e) => e.timedOut),
     creditLimitHit: execs.some((e) => e.creditLimitHit),
+    ...(ctx.runCreditLimit == null ? {} : { creditLimit: ctx.runCreditLimit, creditOvershoot: spent > ctx.runCreditLimit ? spent - ctx.runCreditLimit : null }),
     stopped: execs.map((e) => e.stopped).find((x) => x && x.reason !== 'end_turn') ?? null,
     wallClockMs: execs.reduce((n, e) => n + (e.wallClockMs ?? 0), 0),
     error: last.error ?? null,
@@ -330,6 +337,8 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
         }
       }
       if (exec?.creditLimitHit) meta.flags.push('creditLimit');
+      else if (exec?.creditOvershoot > 0) meta.flags.push('creditLimitExceeded');
+      if (exec?.creditLimit != null) { meta.creditLimit = exec.creditLimit; meta.creditOvershoot = exec.creditOvershoot ?? null; }
       if (exec?.stopped) meta.flags.push('earlyStopped');
       if (harness.finalize && harness.finalize(outDir, ctx) > 0) meta.flags.push('credsRedacted');
       result = buildResult({ ...base, exec, agg: acc.agg, session: acc.session, usage: acc.usage ?? null, skills: acc.skills ?? null, orch: acc.orch ?? null, checks: acc.checks, transcript: acc.transcript, meta, conv });
