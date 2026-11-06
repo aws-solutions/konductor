@@ -291,35 +291,7 @@ Check for:
 - Missing compliance validation checklists
 - Insufficient compliance evidence
 
-**GDPR Compliance Validation**:
-
-- **Encryption**: Verify data encryption at rest (KMS) and in transit (TLS 1.2+)
-- **Access Controls**: Verify role-based access with least privilege and audit logging
-- **Data Deletion**: Verify S3 lifecycle policies or DynamoDB TTL for data deletion capabilities
-- **Data Residency**: Verify resources are deployed in EU regions (eu-west-1, eu-central-1, etc.)
-- **Audit Logging**: Verify CloudTrail and service logs for compliance evidence
-- Flag as CRITICAL if any GDPR requirement is violated
-- Provide specific regulatory citations (GDPR Article 32 for encryption, Article 17 for data deletion)
-
-**HIPAA Compliance Validation**:
-
-- **PHI Encryption**: Verify all PHI data is encrypted with KMS customer-managed keys
-- **Access Controls**: Verify role-based access with MFA enforcement for PHI access
-- **Audit Logging**: Verify comprehensive audit logging with CloudTrail and service logs
-- **BAA Requirements**: Verify Business Associate Agreement is signed with AWS
-- **PHI in Logs**: Check CloudWatch Logs for PHI data (CRITICAL violation if found)
-- Flag as CRITICAL if PHI is not encrypted or found in logs
-- Provide specific HIPAA Security Rule citations (§164.312(a)(2)(iv) for encryption, §164.308(a)(1)(ii)(D) for audit controls)
-
-**PCI-DSS Compliance Validation**:
-
-- **Network Segmentation**: Verify VPC, subnets, and security groups separate cardholder data environment
-- **Encryption**: Verify cardholder data is encrypted at rest and in transit
-- **Access Controls**: Verify least privilege access with MFA for privileged accounts
-- **Logging and Monitoring**: Verify CloudTrail, VPC Flow Logs, and CloudWatch alarms
-- **Vulnerability Management**: Check for AWS Config rules and Security Hub compliance checks
-- Flag as CRITICAL if cardholder data is not encrypted or network segmentation is missing
-- Provide specific PCI-DSS requirement citations (Requirement 3 for encryption, Requirement 1 for network segmentation)
+When the user names a compliance framework, open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory.
 
 **Compliance Gap Report Generation**:
 
@@ -781,49 +753,15 @@ Generate output in this format:
 
 ## Compliance Gap Analysis
 
-### GDPR Compliance
+### [Framework] Compliance
 
-- Data encryption at rest and in transit
-- Access controls with audit logging
-- Missing data deletion capabilities
-- Data residency not enforced (using us-east-1)
+- [Control]: [compliant / partial / violated, with the gap]
 
-**Remediation Priority**: High
-**Estimated Effort**: 2-4 hours
-**Regulatory Citations**: GDPR Article 32 (encryption), Article 17 (right to erasure)
+**Remediation Priority**: [Critical/High/Medium/Low]
+**Estimated Effort**: [hours]
+**Regulatory Citations**: [Citation (requirement)]
 
-### HIPAA Compliance
-
-- PHI encryption with KMS
-- PHI found in CloudWatch Logs (violation)
-- BAA signed with AWS
-- Missing audit log retention policy
-
-**Remediation Priority**: Critical
-**Estimated Effort**: 4-8 hours
-**Regulatory Citations**: HIPAA Security Rule §164.312(a)(2)(iv) (encryption), §164.308(a)(1)(ii)(D) (audit controls)
-
-### PCI-DSS Compliance
-
-- Network segmentation with VPC and security groups
-- Cardholder data encryption at rest and in transit
-- Access controls with MFA for privileged accounts
-- Missing quarterly vulnerability scans
-
-**Remediation Priority**: High
-**Estimated Effort**: 8-16 hours
-**Regulatory Citations**: PCI-DSS Requirement 3 (encryption), Requirement 1 (network segmentation)
-
-### SOC 2 Compliance
-
-- Access controls with least privilege
-- Encryption at rest and in transit
-- Monitoring and alerting with CloudWatch and GuardDuty
-- Missing documented incident response procedures
-
-**Remediation Priority**: Medium
-**Estimated Effort**: 4-8 hours
-**Regulatory Citations**: SOC 2 Trust Service Criteria CC6.1 (logical access), CC6.7 (encryption)
+[Repeat for each framework in scope. A filled example is in `compliance-checklists.md`.]
 
 ## Iteration Progress (if applicable)
 
