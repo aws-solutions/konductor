@@ -1,0 +1,174 @@
+{
+  "loosened": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "cases": [
+    {
+      "name": "go-live before sign-off phrased differently",
+      "check": 2,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "Go-live on 2025-07-01 comes two weeks before the security sign-off on 15 July, which it depends on, so the dates contradict each other.\n"
+      }
+    },
+    {
+      "name": "go-live before sign-off near miss",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Go-live is on 2025-07-01 and the owner is Sam Ortiz.\n"
+      }
+    },
+    {
+      "name": "go-live before sign-off unrelated text",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "top severity for go-live phrased differently",
+      "check": 3,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "Critical: go-live is dated before the security sign-off it depends on.\n"
+      }
+    },
+    {
+      "name": "top severity for go-live near miss",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "Suggestion: go-live could be shown in bold in the milestone table.\n"
+      }
+    },
+    {
+      "name": "top severity for go-live unrelated text",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "vendor dependency phrased differently",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "The vendor API v2 dependency has no owner and only a vague date, and R1 has no mitigation.\n"
+      }
+    },
+    {
+      "name": "vendor dependency near miss",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The vendor is mentioned in the dependencies section.\n"
+      }
+    },
+    {
+      "name": "vendor dependency unrelated text",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "budget total phrased differently",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "The budget lines add up to 410,000 but the total says 380,000.\n"
+      }
+    },
+    {
+      "name": "budget total near miss",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The budget has four lines and a total.\n"
+      }
+    },
+    {
+      "name": "budget total unrelated text",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "date formats phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "Dates are written in two formats, ISO and day-month-year; use one.\n"
+      }
+    },
+    {
+      "name": "date formats near miss",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The milestone dates are in the third column.\n"
+      }
+    },
+    {
+      "name": "date formats unrelated text",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "status colours phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/plan-review.md": "G, A and R are used but never defined; add a legend.\n"
+      }
+    },
+    {
+      "name": "status colours near miss",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The status colours section is at the end of the plan.\n"
+      }
+    },
+    {
+      "name": "status colours unrelated text",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/plan-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    }
+  ]
+}

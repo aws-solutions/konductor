@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "suite": "constraints-probe",
+  "suiteFile": "bench/suites/constraints-probe.json",
+  "extraTasksDir": "bench/probes",
+  "purpose": "Does the guidance that lives only in the constraints skill reach Kiro agents, and does it change what they do? Five rules are tested by tasks that never mention them. Scored by script from the stream, see bench/CONSTRAINTS-PROBE.md.",
+  "rules": [
+    { "id": "U1", "probe": "P-U1", "name": "maker-checker", "fingerprint": "validate with the corresponding checker skill before presenting to the user" },
+    { "id": "U2", "probe": "P-U2", "name": "severity order", "fingerprint": "Always present findings as CRITICAL \u2192 IMPORTANT \u2192 SUGGESTION" },
+    { "id": "U3", "probe": "P-U3", "name": "circuit breaker", "fingerprint": "Do not attempt a third fix" },
+    { "id": "U3b", "probe": "P-U3", "name": "root-cause chain", "fingerprint": "root cause \u2192 intermediate effects \u2192 observed symptom" },
+    { "id": "R1", "probe": null, "name": "research before fixing (v1.2.0 only)", "fingerprint": "research FIRST, fix SECOND" }
+  ],
+  "tasks": {
+    "probe-u3-circuit-breaker": { "probe": "U3", "owner": "k-developer", "artifact": "NOTES.md", "targetFile": "src/cache.js" },
+    "probe-u2-severity-review-qa": { "probe": "U2", "owner": "k-quality-assurance", "artifact": "review/test-review.md" },
+    "probe-u2-severity-review-tpm": { "probe": "U2", "owner": "k-tpm", "artifact": "review/plan-review.md" },
+    "probe-u2-severity-review-researcher": { "probe": "U2", "owner": "k-researcher", "artifact": "review/fact-check.md" },
+    "probe-u1-checker-pass-qa": { "probe": "U1", "owner": "k-quality-assurance", "artifact": "out/test-plan.md", "pairing": { "primary": "e2e-test-strategy", "alternatives": ["test-coverage-analysis", "verification"] } },
+    "probe-u1-checker-pass-tpm": { "probe": "U1", "owner": "k-tpm", "artifact": "out/status-report.md", "pairing": { "primary": "status-reporting", "alternatives": ["plan-review", "risk-management"] } },
+    "probe-u1-checker-pass-researcher": { "probe": "U1", "owner": "k-researcher", "artifact": "out/brief.md", "pairing": { "primary": "external-research", "alternatives": [] } },
+    "probe-canary": { "probe": "canary", "owner": null, "artifact": "listing.txt" }
+  },
+  "pairingNote": "skills/constraints/SKILL.md says only 'the corresponding checker skill' and holds no pairing table. The pairs above are this study's assumption: the skill that defines the quality criteria of the artifact, plus alternatives an agent may reasonably use as a checker.",
+  "armKinds": {
+    "u": "Runs the U1, U2 and U3 tasks. No canary task: the token does not exist in these trees.",
+    "canary": "Runs the canary task only."
+  },
+  "arms": {
+    "k-main": { "kind": "u", "forced": false, "treatment": "origin/main as installed, skill on demand" },
+    "k-main-forced": { "kind": "u", "forced": true, "treatment": "k-main plus the forced-load prefix" },
+    "k-none": { "kind": "u", "forced": false, "treatment": "same tree with no skill or SOP names in the agent specs, so no skills server", "optional": true },
+    "k-canary": { "kind": "canary", "forced": false, "treatment": "same tree, canary token in the constraints skill" },
+    "k-canary-forced": { "kind": "canary", "forced": true, "treatment": "k-canary plus the forced-load prefix (positive control)" }
+  },
+  "groups": [
+    { "entry": "k-quality-assurance", "position": "entry", "u": ["probe-u2-severity-review-qa", "probe-u1-checker-pass-qa"], "canary": ["probe-canary"] },
+    { "entry": "k-tpm", "position": "entry", "u": ["probe-u2-severity-review-tpm", "probe-u1-checker-pass-tpm"], "canary": ["probe-canary"] },
+    { "entry": "k-researcher", "position": "entry", "u": ["probe-u2-severity-review-researcher", "probe-u1-checker-pass-researcher"], "canary": ["probe-canary"] },
+    { "entry": "k-developer", "position": "entry", "u": ["probe-u3-circuit-breaker"], "canary": [] },
+    {
+      "entry": "konductor", "position": "delegated",
+      "u": [
+        "probe-u3-circuit-breaker", "probe-u2-severity-review-qa", "probe-u2-severity-review-tpm", "probe-u2-severity-review-researcher",
+        "probe-u1-checker-pass-qa", "probe-u1-checker-pass-tpm", "probe-u1-checker-pass-researcher"
+      ],
+      "canary": ["probe-canary"]
+    }
+  ],
+  "creditEstimate": {
+    "unit": "credits per run, mid estimate",
+    "basis": "Observed means in earlier runs on this model: k-tpm alone 5.1 (n=7), k-product-manager alone 2.9 (n=6), konductor with delegation 4.4 (n=35, median 3.5, max 18). A canary task is a short listing, so it is set lower.",
+    "lowFactor": 0.6,
+    "highFactor": 1.6,
+    "budgetFactor": 1.5,
+    "perRun": {
+      "k-quality-assurance": 3.5,
+      "k-tpm": 5,
+      "k-researcher": 3.5,
+      "k-developer": 5,
+      "konductor": 5,
+      "canary": 2,
+      "canary-konductor": 2.5
+    }
+  }
+}

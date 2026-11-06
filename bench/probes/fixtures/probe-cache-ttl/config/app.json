@@ -1,0 +1,11 @@
+{
+  "service": "catalog",
+  "cache": {
+    "ttl": "90s",
+    "maxEntries": 50
+  },
+  "retry": {
+    "delay": "250ms",
+    "attempts": 3
+  }
+}

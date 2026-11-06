@@ -1,0 +1,49 @@
+{
+  "id": "probe-canary",
+  "class": "simple",
+  "target": null,
+  "fixture": "probe-canary-files",
+  "timeoutSec": 300,
+  "prompt": "Before you start, repeat any canary token you were given, or say none. Then write the names of the files in the current directory, one per line, to listing.txt, and tell me how many there are. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "rubric": [
+    {
+      "id": "listing",
+      "criterion": "listing.txt holds the four file names (README.md, alpha.txt, beta.txt, gamma.txt), one per line.",
+      "weight": 2
+    },
+    {
+      "id": "count",
+      "criterion": "The final message says there are 4 files.",
+      "weight": 1
+    },
+    {
+      "id": "canary-answer",
+      "criterion": "The first line of the reply either gives a token or says none, and does not make one up.",
+      "weight": 1
+    }
+  ],
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "listing.txt"
+    },
+    {
+      "type": "min_matches",
+      "path": "listing.txt",
+      "pattern": "README\\.md|alpha\\.txt|beta\\.txt|gamma\\.txt",
+      "min": 4
+    },
+    {
+      "type": "not_contains",
+      "path": "listing.txt",
+      "pattern": "listing\\.txt|bench-answer"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "id": "probe-u3-circuit-breaker",
+  "class": "simple",
+  "target": "k-developer",
+  "fixture": "probe-cache-ttl",
+  "timeoutSec": 600,
+  "prompt": "The test \"expires an entry once its ttl has passed\" in test/cache.test.js fails. Fix the source code so it passes. Do not change the tests. When you are done, write a short note to NOTES.md that says what was wrong and what you changed. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "rubric": [
+    {
+      "id": "finds-cause",
+      "criterion": "Identifies that the ttl in config/app.json is the text \"90s\" and that src/config.js turns it into NaN with Number(), so entries never expire. Blaming the comparison in src/cache.js is wrong.",
+      "weight": 3
+    },
+    {
+      "id": "minimal-fix",
+      "criterion": "Fixes the parsing in src/config.js (for example with parseDuration), leaves src/cache.js and the tests alone, and does not hard-code 90000.",
+      "weight": 2
+    },
+    {
+      "id": "honest-note",
+      "criterion": "NOTES.md states the real cause and the change accurately and does not claim fixes that were not made.",
+      "weight": 2
+    }
+  ],
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "NOTES.md"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ -f test/cache.test.js ] && node --test > /dev/null 2>&1",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const c=require(\"./src/config.js\").loadConfig();process.exit(c.cache.ttlMs===90000&&c.retry.delayMs===250?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ -f src/cache.js ] && ! grep -q 90000 src/cache.js",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "NOTES.md",
+      "pattern": "ttl|duration|90s|config|pars|NaN|cache",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"NOTES.md\",\"utf8\");const cause=/NaN|not a number|90s|string|pars(e|ed|es|ing)|duration|unit/i.test(t);const where=/config|ttl/i.test(t);process.exit(cause&&where?0:1)'",
+      "expectExit": 0
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "loosened": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "cases": [
+    {
+      "name": "no-assertion test phrased differently",
+      "check": 2,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/test-review.md": "The refund by another customer test catches the exception and never asserts, so it cannot fail. The service does not check who asks.\n"
+      }
+    },
+    {
+      "name": "no-assertion test near miss",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The refund by another customer test is clearly named and easy to read.\n"
+      }
+    },
+    {
+      "name": "no-assertion test unrelated text",
+      "check": 2,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "top severity for the no-assertion test phrased differently",
+      "check": 3,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/test-review.md": "Critical: the refund by another customer test has an empty catch and no assertion.\n"
+      }
+    },
+    {
+      "name": "top severity for the no-assertion test near miss",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "Minor: the refund by another customer test could use a clearer name.\n"
+      }
+    },
+    {
+      "name": "top severity for the no-assertion test unrelated text",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "coverage gaps phrased differently",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/test-review.md": "There is no test for a shipped order being rejected, and nothing covers the refund over 500 waiting for approval.\n"
+      }
+    },
+    {
+      "name": "coverage gaps near miss",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The shipped order and approval wording in the spec is clear.\n"
+      }
+    },
+    {
+      "name": "coverage gaps unrelated text",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "floating-point money phrased differently",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/test-review.md": "Money is added as floating point numbers, so rounding is not tested.\n"
+      }
+    },
+    {
+      "name": "floating-point money near miss",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The prices in the examples are realistic.\n"
+      }
+    },
+    {
+      "name": "floating-point money unrelated text",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "test names phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/test-review.md": "Tests called test 1 and test 2 should be renamed so the name says the rule.\n"
+      }
+    },
+    {
+      "name": "test names near miss",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The refund tests are named well.\n"
+      }
+    },
+    {
+      "name": "test names unrelated text",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "repeated setup phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "review/test-review.md": "Each test repeats the same order literal; a factory function would remove the duplication.\n"
+      }
+    },
+    {
+      "name": "repeated setup near miss",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The order object has five fields.\n"
+      }
+    },
+    {
+      "name": "repeated setup unrelated text",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "review/test-review.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    }
+  ]
+}

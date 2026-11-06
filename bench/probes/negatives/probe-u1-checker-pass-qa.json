@@ -1,0 +1,174 @@
+{
+  "loosened": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "cases": [
+    {
+      "name": "cancel after shipping phrased differently",
+      "check": 3,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/test-plan.md": "Cancel an order that has shipped: the request is refused.\n"
+      }
+    },
+    {
+      "name": "cancel after shipping near miss",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "Orders can be shipped on weekdays.\n"
+      }
+    },
+    {
+      "name": "cancel after shipping unrelated text",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "who may act phrased differently",
+      "check": 4,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/test-plan.md": "A different customer tries to cancel the order and is refused.\n"
+      }
+    },
+    {
+      "name": "who may act near miss",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "The support team handles customer questions.\n"
+      }
+    },
+    {
+      "name": "who may act unrelated text",
+      "check": 4,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "shipping refund phrased differently",
+      "check": 5,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/test-plan.md": "Refund when cancelled while packed: shipping is not refunded. When placed, shipping is added.\n"
+      }
+    },
+    {
+      "name": "shipping refund near miss",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "Shipping is charged per order.\n"
+      }
+    },
+    {
+      "name": "shipping refund unrelated text",
+      "check": 5,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "approval threshold phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/test-plan.md": "A refund of 500.01 is pending approval; 500.00 is issued at once.\n"
+      }
+    },
+    {
+      "name": "approval threshold near miss",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "The order total may be 500 or more.\n"
+      }
+    },
+    {
+      "name": "approval threshold unrelated text",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "one refund per order phrased differently",
+      "check": 7,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/test-plan.md": "Request a refund twice for the same order: the second returns the first, no new refund.\n"
+      }
+    },
+    {
+      "name": "one refund per order near miss",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "Refunds are important to customers.\n"
+      }
+    },
+    {
+      "name": "one refund per order unrelated text",
+      "check": 7,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    },
+    {
+      "name": "out of scope phrased differently",
+      "check": 8,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "out/test-plan.md": "Out of scope: store credit, the audit log and partial refunds.\n"
+      }
+    },
+    {
+      "name": "out of scope near miss",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "In scope: cancellation and refunds.\n"
+      }
+    },
+    {
+      "name": "out of scope unrelated text",
+      "check": 8,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "out/test-plan.md": "The work was reviewed and everything looked reasonable. Nothing further to add.\n"
+      }
+    }
+  ]
+}

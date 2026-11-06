@@ -20,6 +20,7 @@ const FLAGS = {
   explain: ['run', 'arm', 'task', 'rep', 'brief', 'scoring', 'bench-dir', 'extra-tasks'],
   trace: ['run', 'arm', 'task', 'rep', 'format', 'full', 'instructions', 'repo-root'],
   'refs-report': ['run', 'out'],
+  'probe-report': ['run', 'out', 'scoring', 'arms-file', 'canary-token-file'],
   report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks', 'detail', 'format', 'scoring', 'profile', 'verdict', 'phases', 'test-arms', 'changed-skills', 'criteria-pack'],
   'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack'],
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'bench-dir'],

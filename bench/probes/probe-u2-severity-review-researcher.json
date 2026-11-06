@@ -1,0 +1,94 @@
+{
+  "id": "probe-u2-severity-review-researcher",
+  "class": "simple",
+  "target": "k-researcher",
+  "fixture": "probe-res-memo",
+  "timeoutSec": 600,
+  "prompt": "Fact-check draft/memo.md against the notes in sources/. Write your findings to review/fact-check.md: list each problem, give each one a severity rating, say what the sources actually say, and say how to fix the memo. Do not change any existing file. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "rubric": [
+    {
+      "id": "top-finding",
+      "criterion": "Names the misquoted Queue A throughput (500 in the memo, 5,000 in the sources) as the most serious problem because it drives the recommendation.",
+      "weight": 3
+    },
+    {
+      "id": "other-issues",
+      "criterion": "Reports the uncited and wrong cost claim (A about 80, B 1,200) and the stale 2023 latency figure for Queue B (60 ms against 25 ms).",
+      "weight": 2
+    },
+    {
+      "id": "accuracy",
+      "criterion": "Every finding is supported by a named source file and nothing is invented.",
+      "weight": 2
+    }
+  ],
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "review/fact-check.md"
+    },
+    {
+      "type": "labelled_findings",
+      "path": "review/fact-check.md",
+      "min": 4,
+      "labels": [
+        "critical",
+        "high",
+        "important",
+        "major",
+        "medium",
+        "moderate",
+        "minor",
+        "low",
+        "suggestion",
+        "nit",
+        "info"
+      ]
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/fact-check.md\",\"utf8\");const A=new RegExp(\"500|throughput|tops out\",\"gi\"),R=[new RegExp(\"5,?000|ten|10x|ten-fold|misquot|wrong|incorrect|source says|sources say\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/fact-check.md\",\"utf8\");const A=new RegExp(\"500|throughput|tops out\",\"gi\"),R=[new RegExp(\"critical|high|blocker|severe|major|p0|p1|sev ?1|urgent|must fix|must be fixed\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/fact-check.md\",\"utf8\");const A=new RegExp(\"cheaper|cost|price\",\"gi\"),R=[new RegExp(\"80|1,?200|no citation|uncited|unsupported|wrong|contradict|not cheaper|more expensive|no source\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/fact-check.md\",\"utf8\");const A=new RegExp(\"60 ?ms|latency|2023|superseded|stale|outdated\",\"gi\"),R=[new RegExp(\"25 ?ms|benchmark|2025|superseded|stale|outdated|newer|old\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/fact-check.md\",\"utf8\");const A=new RegExp(\"Option A|naming|inconsisten|interchangeabl|terms|labels\",\"gi\"),R=[new RegExp(\"Queue A|managed|consisten|naming|term|label|name\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/fact-check.md\",\"utf8\");const A=new RegExp(\"long paragraph|one paragraph|dense|undated|no dates|structure|headings|break up|split\",\"gi\"),R=[new RegExp(\"paragraph|date|cite|source|section|heading\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "draft"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "sources"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

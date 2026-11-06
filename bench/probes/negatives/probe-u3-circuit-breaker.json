@@ -1,0 +1,90 @@
+{
+  "loosened": [
+    3,
+    5,
+    6
+  ],
+  "cases": [
+    {
+      "name": "config ttl value phrased differently",
+      "check": 3,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "src/config.js": "'use strict';\nconst { parseDuration } = require('./duration.js');\nconst loadConfig = (raw = require('../config/app.json')) => ({ service: raw.service, cache: { ttlMs: parseDuration(raw.cache.ttl) * 1, maxEntries: raw.cache.maxEntries }, retry: { delayMs: parseDuration(raw.retry.delay), attempts: raw.retry.attempts } });\nmodule.exports = { loadConfig };\n"
+      }
+    },
+    {
+      "name": "config ttl value near miss",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "src/config.js": "'use strict';\nconst { parseDuration } = require('./duration.js');\nconst loadConfig = (raw = require('../config/app.json')) => ({ service: raw.service, cache: { ttlMs: Number(raw.cache.ttl) * 1000, maxEntries: raw.cache.maxEntries }, retry: { delayMs: parseDuration(raw.retry.delay), attempts: raw.retry.attempts } });\nmodule.exports = { loadConfig };\n"
+      }
+    },
+    {
+      "name": "config ttl value unrelated text",
+      "check": 3,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "src/config.js": "'use strict';\nconst { parseDuration } = require('./duration.js');\nconst loadConfig = (raw = require('../config/app.json')) => ({ service: raw.service, cache: { ttlMs: parseDuration(raw.cache.ttl) / 1000, maxEntries: raw.cache.maxEntries }, retry: { delayMs: parseDuration(raw.retry.delay), attempts: raw.retry.attempts } });\nmodule.exports = { loadConfig };\n"
+      }
+    },
+    {
+      "name": "notes mention phrased differently",
+      "check": 5,
+      "type": "min_matches",
+      "expect": "pass",
+      "files": {
+        "NOTES.md": "The cache never expired entries. The ttl in the config is a string with a unit, so reading it as a number gave a bad value. I now parse it, and the cache expires entries as expected.\n"
+      }
+    },
+    {
+      "name": "notes mention near miss",
+      "check": 5,
+      "type": "min_matches",
+      "expect": "fail",
+      "files": {
+        "NOTES.md": "Fixed the failing test.\n"
+      }
+    },
+    {
+      "name": "notes mention unrelated text",
+      "check": 5,
+      "type": "min_matches",
+      "expect": "fail",
+      "files": {
+        "NOTES.md": "Updated the code.\n"
+      }
+    },
+    {
+      "name": "notes cause phrased differently",
+      "check": 6,
+      "type": "cmd",
+      "expect": "pass",
+      "files": {
+        "NOTES.md": "The config stores the ttl as text, \"90s\", and src/config.js read it as a plain number. That gave NaN, so the expiry check never fired. It now goes through the duration parser.\n"
+      }
+    },
+    {
+      "name": "notes cause near miss",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "NOTES.md": "I changed the comparison in cache.js from > to >= and the test ttl handling.\n"
+      }
+    },
+    {
+      "name": "notes cause unrelated text",
+      "check": 6,
+      "type": "cmd",
+      "expect": "fail",
+      "files": {
+        "NOTES.md": "Tests pass now.\n"
+      }
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "id": "probe-u1-checker-pass-qa",
+  "class": "simple",
+  "target": "k-quality-assurance",
+  "fixture": "probe-qa-orders",
+  "timeoutSec": 600,
+  "prompt": "docs/feature-spec.md describes the order cancellation and refund feature. Write the test plan for it to out/test-plan.md: scope, what is out of scope, test data, and the test cases grouped by area, each with its expected result. Do not change any existing file. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "rubric": [
+    {
+      "id": "rule-coverage",
+      "criterion": "Cases cover each rule of the spec: cancel states, who may cancel and refund, refund amount with and without shipping, the 500.00 threshold, one refund per order, refund only after cancel.",
+      "weight": 3
+    },
+    {
+      "id": "boundaries",
+      "criterion": "Includes boundary cases for the 500.00 threshold (below, at, above) and states an expected result for every case.",
+      "weight": 2
+    },
+    {
+      "id": "scope",
+      "criterion": "States the out-of-scope items from the spec (store credit, audit log, partial refunds) and lists test data.",
+      "weight": 1
+    }
+  ],
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "out/test-plan.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' out/test-plan.md)\" -ge 25 ] && [ \"$(grep -c '[^[:space:]]' out/test-plan.md)\" -le 250 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "out/test-plan.md",
+      "pattern": "^\\s*\\|[^|]*\\|[^|]*\\||^\\s*(TC|T|C)-?\\d+|^\\s*(-|\\*|\\d+[.)]) ",
+      "min": 12
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"out/test-plan.md\",\"utf8\");const A=new RegExp(\"shipped|delivered\",\"gi\"),R=[new RegExp(\"reject|cannot|not allowed|refus|denied|error|fail\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"out/test-plan.md\",\"utf8\");const A=new RegExp(\"support|another customer|other customer|non-owner|not the owner|someone else|different customer|c2\",\"gi\"),R=[new RegExp(\"reject|not allowed|denied|forbid|cannot|refus|fail\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"out/test-plan.md\",\"utf8\");const A=new RegExp(\"shipping\",\"gi\"),R=[new RegExp(\"refund\",\"i\"),new RegExp(\"placed|packed|included|exclud|not refunded|add\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"out/test-plan.md\",\"utf8\");const A=new RegExp(\"500|approval\",\"gi\"),R=[new RegExp(\"pending|manager|boundary|above|over|exactly|at 500|below|issued\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"out/test-plan.md\",\"utf8\");const A=new RegExp(\"second|twice|idempot|duplicate|again|repeat|once\",\"gi\"),R=[new RegExp(\"refund\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"out/test-plan.md\",\"utf8\");const A=new RegExp(\"out of scope|not covered|excluded|will not be tested\",\"gi\"),R=[new RegExp(\"store credit|audit|partial\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "min_matches",
+      "path": "out/test-plan.md",
+      "pattern": "expected|expect|should|returns|rejected|allowed",
+      "min": 8
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test"
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

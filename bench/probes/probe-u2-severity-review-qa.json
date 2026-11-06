@@ -1,0 +1,94 @@
+{
+  "id": "probe-u2-severity-review-qa",
+  "class": "simple",
+  "target": "k-quality-assurance",
+  "fixture": "probe-qa-orders",
+  "timeoutSec": 600,
+  "prompt": "Review test/orders.test.js against docs/feature-spec.md and src/orders.js. Write your review to review/test-review.md: list each problem you find, give each one a severity rating, say where it is, and say what to change. Do not change any existing file. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "rubric": [
+    {
+      "id": "top-finding",
+      "criterion": "Names the refund-by-another-customer test as the most serious problem: it catches the error, asserts nothing, and hides that requestRefund never checks the actor.",
+      "weight": 3
+    },
+    {
+      "id": "gaps",
+      "criterion": "Reports the missing tests for the shipped-order rejection, non-owner cancel and the pending-approval refund over 500.00, and the missing rounding case for money.",
+      "weight": 2
+    },
+    {
+      "id": "accuracy",
+      "criterion": "Every finding is true, points to a place in the tests or source, and says what to change. No invented defects.",
+      "weight": 2
+    }
+  ],
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "review/test-review.md"
+    },
+    {
+      "type": "labelled_findings",
+      "path": "review/test-review.md",
+      "min": 4,
+      "labels": [
+        "critical",
+        "high",
+        "important",
+        "major",
+        "medium",
+        "moderate",
+        "minor",
+        "low",
+        "suggestion",
+        "nit",
+        "info"
+      ]
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/test-review.md\",\"utf8\");const A=new RegExp(\"refund by another|requestRefund|empty catch|catch\",\"gi\"),R=[new RegExp(\"no assert|asserts nothing|assertion|swallow|empty catch|never fails|always passes|passes whether|does not assert|not assert|cannot fail\",\"i\")],W=500;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/test-review.md\",\"utf8\");const A=new RegExp(\"refund by another|requestRefund|empty catch|catch\",\"gi\"),R=[new RegExp(\"critical|high|blocker|severe|major|p0|p1|sev ?1|urgent|must fix|must be fixed\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/test-review.md\",\"utf8\");const A=new RegExp(\"shipped|pending-approval|approval|500|non-owner|error path|negative case\",\"gi\"),R=[new RegExp(\"missing|no test|untested|not covered|gap|not tested|absent|lack|only happy\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/test-review.md\",\"utf8\");const A=new RegExp(\"float|floating|rounding|round|precision|decimal|cents|0\\\\.1\",\"gi\"),R=[new RegExp(\"money|price|amount|sum|currency|total|refund\",\"i\")],W=400;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/test-review.md\",\"utf8\");const A=new RegExp(\"test 1|test 2|naming|names|named\",\"gi\"),R=[new RegExp(\"descriptive|rename|unclear|vague|says nothing|meaningful|intent|clearer\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const t=require(\"fs\").readFileSync(\"review/test-review.md\",\"utf8\");const A=new RegExp(\"duplicat|repeat|copy|helper|factory|builder|boilerplate|literal|setup\",\"gi\"),R=[new RegExp(\"order|test|fixture\",\"i\")],W=300;let ok=false;for(const m of t.matchAll(A)){const s=t.slice(Math.max(0,m.index-W),m.index+m[0].length+W);if(R.every(r=>r.test(s))){ok=true;break}}process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "docs"
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

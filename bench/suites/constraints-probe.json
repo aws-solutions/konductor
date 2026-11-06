@@ -1,0 +1,25 @@
+{
+  "extraTasks": [
+    "probes"
+  ],
+  "tasks": [
+    "probe-u3-circuit-breaker",
+    "probe-u2-severity-review-qa",
+    "probe-u2-severity-review-tpm",
+    "probe-u2-severity-review-researcher",
+    "probe-u1-checker-pass-qa",
+    "probe-u1-checker-pass-tpm",
+    "probe-u1-checker-pass-researcher",
+    "probe-canary"
+  ],
+  "arms": [
+    "main"
+  ],
+  "replicates": 5,
+  "parallel": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ]
+}
