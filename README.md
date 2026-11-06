@@ -38,7 +38,7 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
   hand-carrying artifacts between chats.
 - ✅ **Every deliverable gets checked.** Work passes a maker-checker gate, and failed checks
   go back for up to two fix cycles.
-- 🧠 **Expertise built in.** 81 skills and 19 step-by-step workflows (SOPs) cover threat models,
+- 🧠 **Expertise built in.** 84 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
 - 🪶 **No infrastructure.** Agents are configuration (prompts, skills, SOPs) that your Kiro or
   Claude Code runtime runs directly. No servers, no extra accounts.
@@ -324,7 +324,7 @@ More walkthroughs: [understand a codebase](docs/user-guide/use-cases/understand-
 
 ## What's inside
 
-### 🧠 81 skills
+### 🧠 84 skills
 
 Skills are packaged expertise the agents load when they need it. For Claude Code, every skill in an
 agent's `skills:` frontmatter is injected in full at session start; other skills load on demand
@@ -340,6 +340,7 @@ agent's `skills:` frontmatter is injected in full at session start; other skills
 | Documentation & writing | 4 | `docx-conversion`, `doc-accuracy-analyzer`, `humanize-writing`, `agents-md-authoring` |
 | Research & security | 4 | `external-research`, `security-remediation`, `find-aws-skills`, `about-konductor` |
 | Kiro spec generation | 3 | `kiro-requirements-generation`, `kiro-design-generation`, `kiro-task-generation` |
+| Rename stubs (removed next release) | 3 | old names that point to `aspect-review`, `code-simplifier` and `docx-conversion` |
 
 Browse them all in the [skills catalog](docs/user-guide/skills.md).
 
@@ -414,7 +415,7 @@ the README, `LICENSE.txt` and `NOTICE.txt`.
 konductor/
 ├── agents/        11 agent specs (*.agent-spec.json)
 ├── agent-sops/    19 SOPs (*.sop.md)
-├── skills/        81 skills (skills/<name>/SKILL.md)
+├── skills/        84 skills (skills/<name>/SKILL.md)
 ├── context/       Context loaded at agent startup (core rules for every agent, orchestrator routing rules)
 ├── cli/           The konductor CLI (Rust)
 ├── mcp/           The skill-lookup MCP server

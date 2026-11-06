@@ -44,7 +44,7 @@ A few things stand out and are worth knowing before you pick an agent:
 
 - **Every agent runs the same model**: `claude-sonnet-5.5` on Kiro CLI, `claude-sonnet-5-5` on
   Claude Code. Agents differ by what they carry, not by what powers them.
-- **`k-architect` carries by far the most skills** — **38 of the 81** in the library, close
+- **`k-architect` carries by far the most skills** — **38 of the 84** in the library, close
   to half. Design work routed anywhere else comes back thinner.
 - **`konductor`'s skill list is runtime-dependent.** Twelve of its skills are on both
   runtimes. `claude-teams-behavior` is only in the spec's `clientConfig.claudeCli` block,
@@ -393,7 +393,7 @@ and `k-tpm` have Kiro targets but no `Agent(...)` tool at all.
 
 ## Related
 
-- [Skills catalog](skills.md) — all 81 skills, and which agents declare each
+- [Skills catalog](skills.md) — all 84 skills, and which agents declare each
 - [SOP workflows](sop-workflows/README.md) — the 19 procedures and which agent owns each
 - [Core concepts → agent](concepts.md#agent) — what an agent is
 - [Install for Kiro CLI](tasks/install-kiro-cli.md) · [Install for Claude Code](tasks/install-claude-code.md)

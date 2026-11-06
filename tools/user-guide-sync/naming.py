@@ -81,8 +81,8 @@ RENAMES = _PREFIXED + RENAMES
 # Names that merely LOOK retired. A blanket `asdlc-` -> `k-` sweep corrupts
 # these, so every rename pass asserts they survive untouched.
 PRESERVE = [
-    "asdlc-aspect-review",       # shipped skill, skills/asdlc-aspect-review/
-    "asdlc-code-simplifier",     # shipped skill, skills/asdlc-code-simplifier/
+    "asdlc-aspect-review",       # rename stub for aspect-review, kept one release
+    "asdlc-code-simplifier",     # rename stub for code-simplifier, kept one release
     "ASDLCCoreAICapabilities",   # package / repository name
     "ASDLC_BENCH_MODEL_ID",
     "ASDLC_MAX_INLINE_CHARS",
