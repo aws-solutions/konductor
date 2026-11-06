@@ -120,30 +120,9 @@ After writing or restructuring, do a redundancy pass:
 - Tables that appear in both "How It Works" and "Implementation Details" need clear boundary: summary vs spec
 - Check adjacent sentences, not just sections: if covering sentence A and reading sentence B alone tells the reader nothing new, cut B or merge its addition into A.
 
-## Multi-Feature Design Structure
+## Multi-Document Designs
 
-When a design spans multiple features, use an anchor doc + per-feature sub-documents:
-
-**Anchor document** — overall architecture and its components:
-
-- Full system diagram showing all components and their relationships
-- Component registry: name, responsibility, interfaces, owned data
-- Cross-cutting concerns: auth, observability, error handling, data flow between components
-- Does NOT contain feature-specific implementation detail
-
-**Per-feature sub-document** — follows a Minor Patch template:
-
-- References the anchor doc for component definitions (do not redefine)
-- States which anchor components participate and their role in this feature
-- Adds only what is new or changed for this feature
-- Sequence diagrams show anchor components by name, not re-described
-
-**Rules:**
-
-- Components flow from anchor → sub-docs, never the reverse
-- A component's responsibility is defined once (anchor). Sub-docs reference it.
-- If a sub-doc needs to clarify a component's behavior for its feature, add a focused note — do not copy the component description
-- Avoid duplicating content unless emphasis is critical and the duplication is explicitly marked as intentional
+Open `references/multi-doc-designs.md` (relative to this file) when a design spans several features, has a parent and companion doc, targets more than one runtime, or renames a file or config field.
 
 ## Diagram Accuracy
 
@@ -159,45 +138,18 @@ Before polishing layout or colors, verify the diagram is technically correct:
 
 Before finalizing any claim in the doc, verify it matches reality:
 
-- "Work stops when you close your laptop" — does it? (tmux survives)
-- "Agent dispatches tasks to the board" — does it? (user creates tasks manually)
-- "Three context sources load at start" — is it three or four?
+- "Jobs stop when the client disconnects." Do they? (a server-side worker may keep running)
+- "The service retries failed writes." Does it? (the caller may be the one retrying)
+- "A request passes through three services." Is it three or four?
 - If you can't trace the claim to an implementation file or tool behavior, it's probably wrong.
-
-## Companion Documents
-
-When a design has a parent + companion doc:
-
-- The parent explains WHAT and WHY. The companion explains HOW in full detail.
-- Every change to the parent risks breaking the companion. After editing the parent, check:
-  - Stale section anchors (renamed sections = broken links)
-  - Config examples missing new fields
-  - Contradictions in defaults, paths, or behavior descriptions
-- Duplicate content between docs must add richer detail in the companion. If it's just repeating, remove it and cross-reference.
-
-## Cross-Tool Parity
-
-When a design spans multiple runtimes (Kiro CLI, Claude Code):
-
-- Call out where paths differ (`.kiro/skills/` vs `.claude/skills/`)
-- State explicitly what is NOT portable and what requires manual copying
-- If enforcement mechanisms differ by runtime (hooks available vs instruction-only), document both and state the gap
 
 ## Threat Model Completeness
 
 Every data flow that crosses a boundary needs a threat entry:
 
-- Local → team memory sync: what sensitive data could leak?
-- Team → local memory read: what cross-namespace data could be exposed?
-- User → agent (instructions): what could be poisoned?
-- Agent → filesystem (writes): what could be bypassed?
+- Client → API (requests): what input could be malicious or oversized?
+- Service → third-party API (outbound calls): what sensitive data leaves your boundary?
+- Shared store → tenant read: what cross-tenant data could be exposed?
+- Service → database or filesystem (writes): what checks could be bypassed?
 
 For each threat: state mitigations AND residual risk. "Accepted risk" is valid — undocumented risk is not.
-
-## Rename Propagation
-
-After renaming any file or config field:
-
-- `grep -rn "old-name"` across the entire repo
-- Check: design docs, guides, scripts, skills, templates, .gitignore, CHANGELOG
-- Companion docs are the most common place stale references hide

@@ -24,7 +24,7 @@ Do NOT use for private or authenticated resources that require credentialed acce
 
 ## Tools
 
-Use `WebFetch` to retrieve content from a known URL. When no URL is known, use `WebSearch` to find relevant public and internal sources, then `WebFetch` the pages identified.
+Use `WebFetch` to retrieve content from a known URL. When no URL is known, use `WebSearch` to find relevant public sources, then `WebFetch` the pages identified.
 
 ## Search Strategy
 
