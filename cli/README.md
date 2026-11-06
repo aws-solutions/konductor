@@ -60,7 +60,8 @@ of failing.
 
 Running an SDLC _workflow_ is **not** a CLI subcommand — that is driven by the Konductor
 Kiro agent. The CLI utility handles setup, content build, lifecycle, and diagnostics, and it
-checks and shows workflow files with [`flow`](#flow). It does not run them yet.
+checks, shows and runs workflow files with [`flow`](#flow). `flow run` has only the `fake`
+harness, for tests, so far.
 
 ---
 
@@ -842,12 +843,14 @@ stdout instead:
 ```bash
 konductor flow check <name> [--json]
 konductor flow show <name> [--json]
+konductor flow run <name> --harness fake [--fake-script <path>] [--goal "..."] [--json]
 ```
 
 A workflow is a YAML file, `<name>.yml`, that lists the stages of a piece of work and the agent that does each one.
 The rules for the file are in [`docs/design/workflows-spec.md`](../docs/design/workflows-spec.md), and
-[`workflow-engine/examples/hello-plan.yml`](../workflow-engine/examples/hello-plan.yml) is an example. `flow` only
-reads files. It never writes one, and `install`, `update` and `uninstall` never write to `.konductor/workflows/`.
+[`workflow-engine/examples/hello-plan.yml`](../workflow-engine/examples/hello-plan.yml) is an example. `flow check`
+and `flow show` only read files. `flow run` writes the run state under `.konductor/runs/` and nothing else, and
+`install`, `update` and `uninstall` never write to `.konductor/workflows/`.
 
 A bare `<name>` is looked up in `.konductor/workflows/` of the current directory, then in `~/.konductor/workflows/`.
 The name follows the pattern `^[a-z0-9][a-z0-9-]{0,63}$`. `library/<name>` names a shipped workflow, and none exist
@@ -870,8 +873,35 @@ directory or anything bigger is treated as not there, and a link is never follow
   machine path, and the bytes are the same whatever order the keys have in the file. `--json` prints the same
   document and makes a failure JSON as well.
 
-Exit codes: `0` when the workflow has no errors, `64` for a usage error (a bad name, `library/<name>`, or a name that
-matches no file), and `65` when the workflow has errors.
+- `flow run` runs the stages in order, each in a fresh session on the harness that `--harness` names. Each session is
+  given the stage prompt, and the stage passes when the session exits 0 and its final message ends with a valid
+  `KONDUCTOR_RESULT {"status": "success", "outputs": [...]}` line. Otherwise the stage is `blocked` with a reason
+  (`RESULT_MISSING`, `RESULT_INVALID`, `RESULT_FAILURE`, `SESSION_FAILED` or `TIMEOUT`, after 30 minutes), the run is
+  `halted`, and the later stages stay `pending`. The checks in `intent.accept` are recorded as `deferred`; nothing runs
+  them yet. `--goal` sets the goal, at most 2048 characters, and without it the workflow's default goal is used. A
+  rendered stage prompt over 100 KiB is a usage error. Each stage prints a line such as `stage plan: passed`, and the
+  last line is `run <run-id>: passed` or `halted`. With `--json` it prints only the run state.
+
+  `--harness` is required, and this build has only `fake`, which is for tests: it runs no agent and replays the reply,
+  exit status and duration that a JSON script gives for each stage. The script is named by `--fake-script <path>` or
+  by `KONDUCTOR_FAKE_SCRIPT`, and the flag wins. Without one, `--harness fake` is a usage error. `--fake-script` is
+  left out of `--help` because it is for tests. `kiro-cli` and `claude` are usage errors until a later release adds
+  them. The script format is described in
+  [`workflow-engine/adapters/src/fake_harness.rs`](../workflow-engine/adapters/src/fake_harness.rs). A stage whose
+  script entry has `wait_for` waits at most the 30-minute stage limit for it, then times out.
+
+  The run state is `.konductor/runs/<run-id>/state.json` under the current directory, replaced whole at each change.
+  `flow run` makes sure `.konductor/.gitignore` has the line `runs/` (as `init` writes it) and adds it if it is
+  missing, keeping every other line. Only one run is active in a workspace: the run holds an OS file lock on
+  `.konductor/runs/lock`, which records the PID and start time of the process that owns it, and a second `flow run`
+  exits `75` with a message that names that PID. The lock ends when its process ends, however it ends, so a run that
+  such a process left `running` reads as `halted` on the next start. A lock that is held but whose record cannot be
+  read, or that another start is taking at that moment, also exits `75`. Under `--json` the envelope's `code` tells
+  them apart: `already_running` (with `run_id` and `pid`) or `lock_unreadable`.
+
+Exit codes: `0` when the workflow has no errors (for `flow run`, when the run passed), `1` when a run halted, `64` for
+a usage error (a bad name, `library/<name>`, a name that matches no file, or a bad `flow run` input), `65` when the
+workflow has errors, and `75` when the workspace lock refuses the run.
 
 ---
 
@@ -912,14 +942,15 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | Code | Meaning |
   |------|---------|
   | 0 | All passed |
-  | 1 | Halted (timeout / runtime error / parse error) — reused by `doctor` for "at least one check failed/stale" |
+  | 1 | Halted (timeout / runtime error / parse error) — reused by `doctor` for "at least one check failed/stale". Also a `flow run` that halted, and, once that command exists, a `flow verify` that failed |
   | 2 | Unresolved CRITICAL gate — CI-failing signal (**never** used for usage errors) |
   | 3 | Budget / turn limit exceeded |
   | 4 | User aborted a paused verdict |
   | 5 | Reserved, not yet emitted by any command. |
   | 6 | Success with warnings — emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
   | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
-  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error). Also the workflow has errors (`flow check`, `flow show`) |
+  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error). Also the workflow has errors (`flow check`, `flow show`, `flow run`) |
+  | 75 | The workspace lock refuses the run (`flow run`, `EX_TEMPFAIL`): another run is active, the lock cannot be read, or other starts were taking it. Try again later |
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 
