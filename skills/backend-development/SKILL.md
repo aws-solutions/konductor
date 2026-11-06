@@ -33,6 +33,11 @@ Prefer simple, minimal solutions. Only add abstractions or patterns (Strategy, O
 
 ## Implementation Standards
 
+### General
+
+- Read the complete file before changing it.
+- Keep changes backward compatible; a breaking change needs a migration path.
+
 ### Handler Patterns
 
 - If the codebase uses a facade, factory or repository layer, keep it: no business logic in handlers, no direct service instantiation, no direct database calls

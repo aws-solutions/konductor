@@ -6,7 +6,7 @@ version: 1
 
 # Argumentation Reference
 
-A reference primer for argumentation theory covering Toulmin model, informal/formal fallacies (relevance, presumption, ambiguity, formal), and a 0–3 scoring rubric across 5 criteria (max 15 pts).
+A reference primer for argumentation theory covering Toulmin model, informal/formal fallacies (relevance, presumption, ambiguity, formal), and a 0-3 scoring rubric across 5 criteria (max 15 pts).
 
 ## Toulmin Model
 
