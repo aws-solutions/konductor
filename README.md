@@ -337,7 +337,7 @@ agent's `skills:` frontmatter is injected in full at session start; other skills
 | Development & review | 14 | `backend-development`, `frontend-development`, `infra-validation`, `code-review`, `git-workflow`, `adversarial-code-review` |
 | Orchestration & delegation | 13 | `delegation-protocol`, `sdlc-navigator`, `pre-planning-analysis`, `persistent-memory`, `workspace-skills`, `mux-dispatch` |
 | Testing & QA | 8 | `test-coverage-analysis`, `e2e-test-strategy`, `cypress-test-implementation`, `security-test-generation` |
-| Documentation & writing | 4 | `document-formats`, `doc-accuracy-analyzer`, `humanize-writing`, `agents-md-authoring` |
+| Documentation & writing | 4 | `docx-conversion`, `doc-accuracy-analyzer`, `humanize-writing`, `agents-md-authoring` |
 | Research & security | 4 | `external-research`, `security-remediation`, `find-aws-skills`, `about-konductor` |
 | Kiro spec generation | 3 | `kiro-requirements-generation`, `kiro-design-generation`, `kiro-task-generation` |
 

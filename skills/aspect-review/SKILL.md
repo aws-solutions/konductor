@@ -1,5 +1,5 @@
 ---
-name: asdlc-aspect-review
+name: aspect-review
 description: 'Parallel n-aspect review of artifacts using subagents. Use when the user asks for an aspect or n-aspect review, or a thorough multi-angle review of a design, spec or code.'
 version: 1.0.0
 tags: [skill, aspect-review, review, subagent, parallel, quality]
