@@ -59,7 +59,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (fix before proceeding; a review finding gets one fix, and any CRITICAL or IMPORTANT finding the re-review reports on the fix or that the fix caused, carried over or new, blocks done until the user decides; a pre-existing finding in unchanged code is listed):**
+**IMPORTANT (fix before proceeding; a review finding gets one fix and one re-review of every first-review CRITICAL or IMPORTANT plus the fix and what depends on it; a first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports on the fix or that the fix caused, carried over or new, blocks done until the user decides; a finding the first review did not report, outside the fix and not caused by it, is listed as pre-existing):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts

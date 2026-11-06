@@ -193,7 +193,7 @@ After code changes, run the maker-checker cycle:
 1. Get the git diff of all changes
 2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
 3. Address all CRITICAL and IMPORTANT findings (Review ceilings in the Verification Protocol). Never put SUGGESTIONs in a fix brief.
-4. Run the build and tests again for code, then re-review what the fix changed plus what calls, uses or depends on it, once (an SOP's own limit on fix rounds wins). Any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, or that the fix caused in what depends on it, blocks done: stop and report it to the user as unresolved instead of proceeding; a finding in unchanged code that the fix did not cause is listed for the user as pre-existing; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix.
+4. Run the build and tests again for code, then re-review every CRITICAL or IMPORTANT finding from the first review plus what the fix changed and what calls, uses or depends on it, once (an SOP's own limit on fix rounds wins; a finding that blocks done under this rule still blocks it after the SOP's last re-review). Any first-review CRITICAL or IMPORTANT finding still open, any such finding the re-review reports on the fix, carried over or new, and any the fix caused in what depends on it, blocks done: stop and report it to the user as unresolved instead of proceeding; a finding the first review did not report, outside what the fix changed and not caused by it, is listed for the user as pre-existing; rule 5 under Orchestration Rules in your orchestrator prompt counts the failed fix.
 
 ## Failure Recovery
 
