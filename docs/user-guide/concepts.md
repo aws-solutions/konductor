@@ -198,7 +198,7 @@ and a v2 session the hook does not reach runs as `auto`.
 
 ## Orchestrator and delegation
 
-**`konductor`**, as the orchestrator, is the hub. Specialists hold no spawn tool in either
+**`konductor`**, as the orchestrator, is the hub. Specialists hold no spawn tool in any
 runtime (see [Who can delegate to whom](agents.md#who-can-delegate-to-whom)), so every piece of
 work routes through `konductor`, which decides who owns it, hands it over, and checks the result.
 A specialist does its own part, then returns a note naming the next role, or a proposed parallel

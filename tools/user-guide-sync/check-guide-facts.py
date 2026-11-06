@@ -65,6 +65,8 @@ STALE_DELEGATION_PHRASES = (
     "Kiro CLI v2 is not covered",
     "only the core rules stop",
     "the core rules forbid it in Kiro CLI v2",
+    "cannot spawn the architect in either runtime",
+    "no spawn tool in either runtime",
 )
 KONDUCTOR_SPAWN_CELL = "the same 8 via Agent(...)"
 

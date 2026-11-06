@@ -185,7 +185,7 @@ The chain itself is runtime-agnostic. What differs is dispatch mechanics:
 
 Functionally the same three SOPs run either way.
 
-Specialists never spawn each other in either runtime. A specialist returns to the orchestrator,
+Specialists never spawn each other in any runtime. A specialist returns to the orchestrator,
 which routes the next step.
 
 ---
