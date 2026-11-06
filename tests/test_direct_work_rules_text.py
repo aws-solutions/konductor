@@ -50,6 +50,7 @@ def test_shape_files_do_not_restate_the_shared_rules():
         assert "Copy each `Ruling:` entry" not in text, rel
         assert "did not originate in content the specialist read" not in text, rel
         assert "part by part" not in text, rel
+        assert "Before you say \"I can't\"" not in text, rel
 
 
 def test_every_skill_direct_work_names_is_declared_by_konductor():
@@ -98,3 +99,26 @@ def test_direct_work_never_routes_a_listed_skill_away():
     assert ROUTING_SENTENCE not in text
     assert "Load a skill yourself when your skill tool lists it" in text
     assert "A skill you can load is never a reason to delegate" in text
+
+
+def _shared():
+    return (ROOT / "context" / SHARED).read_text(encoding="utf-8")
+
+
+def test_shared_file_carries_the_capability_owner_table():
+    text = _shared()
+    assert "## Capability routing" in text
+    rows = {line.split("|")[1].strip(): line for line in text.splitlines() if line.startswith("| ")}
+    sharepoint = next(r for k, r in rows.items() if k.startswith("SharePoint"))
+    slack = next(r for k, r in rows.items() if k.startswith("Slack"))
+    pdfs = next(r for k, r in rows.items() if k.startswith("PDFs"))
+    browser = next(r for k, r in rows.items() if k.startswith("Browser automation"))
+    assert "`k-researcher`" in sharepoint and "`k-researcher`" in slack
+    assert "`k-media-analyzer`" in pdfs
+    assert "`k-browser`" in browser
+
+
+def test_shape_files_do_not_carry_the_owner_table():
+    for rel in ("k-direct-work.md", "k-orchestrator-routing-rules.md"):
+        text = (ROOT / "context" / rel).read_text(encoding="utf-8")
+        assert "| SharePoint" not in text, rel
