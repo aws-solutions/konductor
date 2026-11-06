@@ -35,9 +35,9 @@ not per individual commit.
 
 ### Changed
 
-- `cost-estimation` moved the start of its CREATE workflow (the setup reply, context gathering
-  and clarifying questions) into `references/create-context.md`. The skill opens it only when
-  the user picks CREATE.
+- `cost-estimation` keeps only the context-gathering steps of a new estimate in `SKILL.md`. The
+  pricing research, scenarios, growth modeling, optimization and report steps moved to
+  `references/create-analysis.md`, which the skill opens once the context is confirmed.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
