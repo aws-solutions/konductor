@@ -6,6 +6,7 @@
 
 const C = require('./charts.js');
 const D = require('./doc.js');
+const { ruleBlocks, sensitivitySection } = require('./quotedoc.js');
 const { medianCI, diffCI, wilson } = require('./stats.js');
 const { qualityOfRun, FORMULAS, checksModeNote, formulasForWeights } = require('./scores.js');
 const { agreementOf, THRESHOLDS } = require('./diligence.js');
@@ -149,7 +150,7 @@ function profileBlocks(profile, check) {
   ];
 }
 
-function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, weights, detail, profile = null, docPhases = null }) {
+function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, weights, detail, profile = null, docPhases = null, quote = null, sens = null }) {
   const blocks = [];
   const charts = new Map();
   const full = detail === 'full';
@@ -166,6 +167,8 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   blocks.push(D.h(1, `Benchmark report (${detail})`));
   const r = report.run;
   blocks.push(D.p(`Run: ${(run.dirs || [run.dir]).length > 2 ? `${(run.dirs || []).length} run directories merged (listed in the full appendix)` : (run.dirs || [run.dir]).join(', ')}  \nSuite: ${r.suite ?? 'n/a'}, model ${r.model}, effort ${r.effort}, ${r.taskIds.length} task(s), ${arms.length} arm(s), ${rows.length} executed run(s)${facts.budget.skipped ? `, ${facts.budget.skipped} budget-skipped` : ''}  \nBaseline: ${base}. Judges: ${report.judges.join(', ') || 'none'}. Detail: ${detail}${full ? '' : ' (add --detail full for every chart, table and the appendix)'}.`));
+
+  blocks.push(...ruleBlocks(quote, sens, { tables: full ? 'full' : 'none' }));
 
   if (profile) blocks.push(...profileBlocks(profile.profile, profile.check));
 
@@ -194,6 +197,7 @@ function buildRunDocument({ run, tasks, report, rows, scores, card, facts, ctx, 
   if (!full) return { blocks, charts, title: 'Benchmark report (quick)' };
 
   // ---- full ----
+  blocks.push(...sensitivitySection(sens));
   blocks.push(D.h(2, 'Scores with components'));
   blocks.push(scoreRowsTable(scores));
   blocks.push(D.list(Object.entries(formulasForWeights(FORMULAS, scores.weights)).filter(([k]) => k !== 'capability').map(([k, v]) => `**${k}**: ${v}`)));

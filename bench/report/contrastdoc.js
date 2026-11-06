@@ -10,11 +10,12 @@ const { qualityOfRun } = require('./scores.js');
 const { renderContrast, tableFor } = require('./contrast.js');
 const { forestRows, tone, noiseBands, scorecardBlocks, headlineTable } = require('./build.js');
 const { medianCI } = require('./stats.js');
+const { ruleBlocks } = require('./quotedoc.js');
 
 const SUBSET = ['replicates', 'aa', 'controls', 'coverage', 'families', 'agreement', 'hidden', 'headroom', 'failures', 'pin', 'drift', 'provenance'];
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 
-function buildContrastDocument({ c, run, rows, scores, card, facts, weights, detail }) {
+function buildContrastDocument({ c, run, rows, scores, card, facts, weights, detail, quote = null, sens = null }) {
   const full = detail === 'full';
   const blocks = [];
   const charts = new Map();
@@ -25,6 +26,8 @@ function buildContrastDocument({ c, run, rows, scores, card, facts, weights, det
 
   blocks.push(D.h(1, `Contrast: ${c.heads.join(', ')} vs ${c.base} (${detail})`));
   blocks.push(D.p(`Run: ${(run.dirs || [run.dir]).length > 2 ? `${run.dirs.length} run directories merged` : (run.dirs || [run.dir]).join(', ')}  \nSuite ${c.run.suite ?? 'n/a'}, model ${c.run.model}, effort ${c.run.effort}. Noise rule: at least ${(c.minRel * 100).toFixed(0)}% and, with 3 or more runs a side, outside the bootstrap CIs. Grouped ${c.by === 'task' ? 'per task' : 'per task class'}.`));
+
+  blocks.push(...ruleBlocks(quote, sens, { tables: 'arms' }));
 
   const subset = { ...card, criteria: card.criteria.filter((x) => SUBSET.includes(x.id) && x.status !== 'N/A') };
   blocks.push(D.h(2, 'Diligence scorecard (subset)'));

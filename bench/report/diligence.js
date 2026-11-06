@@ -11,6 +11,7 @@ const { MIN_RECALL } = require('../runner/lib/contamination.js');
 const { qualityOfRun, DEFAULT_WEIGHTS } = require('./scores.js');
 const { checksRevision } = require('../runner/lib/recheck.js');
 const { prefixIdentity } = require('./aa-identity.js');
+const { viewJudgments } = require('../judge/views.js');
 
 const THRESHOLDS = {
   replicatesPass: 3, replicatesFail: 2,
@@ -61,6 +62,26 @@ function agreementOf(records) {
 }
 
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+
+/** Per judge: criteria, quotes lowered under the lenient rule in use, and under strict. Only a lenient report shows it; a strict report is the earlier page. */
+function quotesOf(recs, strictRecs, rule) {
+  const count = (rs, judge) => rs.filter((r) => r.judge === judge && !r.judgeError).flatMap((r) => r.criteria || []);
+  const byJudge = {};
+  for (const judge of [...new Set(recs.map((r) => r.judge))].sort()) {
+    const own = count(recs, judge);
+    const strict = strictRecs ? count(strictRecs, judge) : null;
+    byJudge[judge] = { criteria: own.length, lowered: own.filter((c) => c.evidenceDowngraded).length, strictLowered: strict ? strict.filter((c) => c.evidenceDowngraded).length : null };
+  }
+  return { rule, byJudge };
+}
+
+/** "luna 7% (strict 15%), glm 18% (strict 34%)": the share of criteria whose quote was not found, under the rule in use and under strict. */
+function quotesText(q) {
+  if (!q || !Object.keys(q.byJudge).length) return '';
+  const share = (n, d) => (d ? `${Math.round((100 * n) / d)}%` : 'n/a');
+  const bits = Object.entries(q.byJudge).map(([judge, v]) => `${judge} ${share(v.lowered, v.criteria)}${q.rule === 'strict' || v.strictLowered === null ? '' : ` (strict ${share(v.strictLowered, v.criteria)})`}`);
+  return `; evidence quotes lowered, ${q.rule} rule: ${bits.join(', ')}`;
+}
 
 function armQuality(rows, weights) {
   const s = rows.filter((r) => r.outcome !== 'infraError' && r.outcome !== 'modelMismatch').map((r) => qualityOfRun(r, weights)).filter(Boolean).map((q) => q.score);
@@ -122,6 +143,8 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
 
   const stale = report?.judging?.stale?.length ?? 0;
   const rubricRecs = j ? j.rubric.filter((r) => !ctx.isStale(r)) : [];
+  // Evidence quotes lowered, per judge: under the rule the scores use (the run's judgments are already that view) and under strict.
+  const quotes = j && run.quoteView && run.quoteView.rule === 'lenient' ? quotesOf(rubricRecs, viewJudgments(run, 'strict', { tasks }).judgments?.rubric.filter((r) => !ctx.isStale(r)) ?? null, run.quoteView.rule) : null;
   const pairRecs = j ? j.pairwise.filter((r) => !ctx.isStale(r)) : [];
   const needsRubric = (id) => (tasks.get(id)?.rubric || []).length > 0;
   const expected = rows.filter((r) => needsRubric(r.task) && r.outcome !== 'infraError');
@@ -158,7 +181,7 @@ function collectFacts({ run, tasks, rows, ctx, report, skipped = 0, baseline, we
       expected: expected.length, unjudged, rubricTasks: taskIds.filter(needsRubric).length,
       parseFailures: [...rubricRecs, ...pairRecs].reduce((n, r) => n + (r.parseFailures || 0), 0),
       pairwise: { run: (j?.modes || []).includes('pairwise'), records: pairRecs.length, bothOrders: pairRecs.filter((r) => Array.isArray(r.orderings) && r.orderings.length === 2 && r.orderings.every(Boolean)).length },
-      agreement: agreementOf(rubricRecs), truncated: [...rubricRecs, ...pairRecs].filter((r) => (r.truncatedFiles || []).length).length, stale,
+      agreement: agreementOf(rubricRecs), quotes, truncated: [...rubricRecs, ...pairRecs].filter((r) => (r.truncatedFiles || []).length).length, stale,
     },
     calibration,
     checks: { withChecks: checkRows.length, currentRevision, stale },
@@ -219,8 +242,8 @@ function evaluate(f, t = THRESHOLDS) {
     const famOk = jg.families.length >= t.familiesMin;
     add(C('families', 'Judge families and Claude exclusion', true, jg.claude.length ? 'FAIL' : famOk ? 'PASS' : 'WARN', `${jg.families.length} family(ies): ${jg.families.join(', ') || 'none'}${jg.claude.length ? `; Claude judge: ${jg.claude.join(', ')}` : ''}`, `>= ${t.familiesMin} families, no Claude judge`));
     const a = jg.agreement;
-    if (!a) add(C('agreement', 'Judge agreement', true, jg.judges.length < 2 ? 'N/A' : 'WARN', jg.judges.length < 2 ? 'one judge' : 'no overlapping criteria', `within-one >= ${t.withinOneMin} and exact >= ${t.exactMin}`));
-    else add(C('agreement', 'Judge agreement', true, a.withinOne >= t.withinOneMin && a.exact >= t.exactMin ? 'PASS' : a.withinOne < t.withinOneFail ? 'FAIL' : 'WARN', `exact ${pct(a.exact)}, within one level ${pct(a.withinOne)} over ${a.pairs} criterion pair(s)`, `within-one >= ${t.withinOneMin} and exact >= ${t.exactMin}; FAIL under ${t.withinOneFail} within-one`));
+    if (!a) add(C('agreement', 'Judge agreement', true, jg.judges.length < 2 ? 'N/A' : 'WARN', `${jg.judges.length < 2 ? 'one judge' : 'no overlapping criteria'}${quotesText(jg.quotes)}`, `within-one >= ${t.withinOneMin} and exact >= ${t.exactMin}`));
+    else add(C('agreement', 'Judge agreement', true, a.withinOne >= t.withinOneMin && a.exact >= t.exactMin ? 'PASS' : a.withinOne < t.withinOneFail ? 'FAIL' : 'WARN', `exact ${pct(a.exact)}, within one level ${pct(a.withinOne)} over ${a.pairs} criterion pair(s)${quotesText(jg.quotes)}`, `within-one >= ${t.withinOneMin} and exact >= ${t.exactMin}; FAIL under ${t.withinOneFail} within-one`));
     add(C('parse', 'Judge parse failures', false, jg.parseFailures === 0 ? 'PASS' : 'WARN', String(jg.parseFailures), '0'));
     if (!jg.pairwise.run) add(C('orders', 'Both orderings judged', false, 'N/A', 'no pairwise mode', 'every pairwise record has two orderings'));
     else add(C('orders', 'Both orderings judged', false, jg.pairwise.bothOrders === jg.pairwise.records && jg.pairwise.records > 0 ? 'PASS' : jg.pairwise.records === 0 ? 'WARN' : 'FAIL', `${jg.pairwise.bothOrders} of ${jg.pairwise.records} pairwise records`, 'all'));

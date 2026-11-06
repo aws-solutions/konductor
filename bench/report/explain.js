@@ -11,6 +11,8 @@ const path = require('node:path');
 const { loadRuns } = require('./load.js');
 const { enrichOrch } = require('./orch.js');
 const { analyze } = require('./generate.js');
+const { ruleLine } = require('./quotes.js');
+const { hasViews } = require('../judge/views.js');
 const { qualityOfRun, componentsOf } = require('./scores.js');
 const { normalize } = require('./verdict.js');
 const { rubricScore } = require('../judge/score.js');
@@ -87,6 +89,14 @@ function hiddenSection(L, { r, row }) {
   L(`   present: ${row.hiddenSource} ${t.passed}/${t.total} = ${f3(row.hidden)}`);
 }
 
+// The verdict the strict rule gives a criterion: both views when the record has them, else the record as stored (older records are strict).
+function strictVerdictOf(run, rec, cr) {
+  if (cr.verdictStrict) return cr.verdictStrict;
+  const stored = (run.judgmentsStored?.rubric || []).find((x) => x.judge === rec.judge && x.armId === rec.armId && x.taskId === rec.taskId && x.replicate === rec.replicate);
+  if (!stored || hasViews(stored)) return null;
+  return (stored.criteria || []).find((x) => x.id === cr.id)?.verdict ?? null;
+}
+
 function rubricSection(L, { run, row, task }) {
   L('4. RUBRIC');
   const recs = (run.judgments?.rubric || []).filter((x) => x.armId === row.arm && x.taskId === row.task && x.replicate === row.rep);
@@ -98,7 +108,9 @@ function rubricSection(L, { run, row, task }) {
       const cr = (rec.criteria || []).find((x) => x.id === item.id);
       if (!cr) { L(`     ${rec.judge.padEnd(14)} (no verdict)`); continue; }
       const note = cr.verdictRaw && cr.verdictRaw !== cr.verdict ? ` [judge said ${cr.verdictRaw}; evidence quote not found, dropped one level]` : '';
-      L(`     ${rec.judge.padEnd(14)} ${String(cr.verdict).padEnd(8)}${note}  "${cut(cr.evidence)}"`);
+      const strict = strictVerdictOf(run, rec, cr);
+      const strictNote = strict && strict !== cr.verdict ? ` [strict rule: ${strict}]` : '';
+      L(`     ${rec.judge.padEnd(14)} ${String(cr.verdict).padEnd(8)}${note}${strictNote}  "${cut(cr.evidence)}"`);
     }
   }
   L('   per-judge score (verified = after the evidence check, which the report uses; raw = the judge\'s verdicts as given):');
@@ -191,10 +203,12 @@ function explainRow({ row, run, tasks, weights, unit, scoringFile, dir, executed
 function explainRuns({ dir, tasks, filter = {}, brief = false, scoringFile = undefined }) {
   const lines = [];
   let matched = 0;
+  let quote = null;
   for (const target of expandRunDirs(path.resolve(dir))) {
     const run = loadRuns([target.dir]);
     enrichOrch(run);
     const a = analyze({ run, tasks, scoringFile });
+    quote = quote ?? a.quote;
     const executed = run.runs.filter((e) => e.result.status !== 'budget_skipped');
     const reportFile = reportJsonFor(target.dir);
     const reportJson = reportFile ? JSON.parse(fs.readFileSync(reportFile, 'utf8')) : null;
@@ -207,6 +221,8 @@ function explainRuns({ dir, tasks, filter = {}, brief = false, scoringFile = und
     }
   }
   if (!matched) throw new Error(`no run in ${dir} matches${filter.arm ? ` arm ${filter.arm}` : ''}${filter.task ? ` task ${filter.task}` : ''}${filter.rep !== undefined ? ` replicate ${filter.rep}` : ''}`);
+  // The brief form is tab-separated for scripts, so it carries no page line.
+  if (!brief && quote) lines.unshift(ruleLine(quote, 'a criterion that the strict rule would score differently is marked [strict rule: verdict].'), '');
   return lines.join('\n');
 }
 

@@ -10,6 +10,8 @@ const { tone } = require('./build.js');
 const { gradedTable } = require('./graded.js');
 const { NEE } = require('./verdict.js');
 const { checksModeNote } = require('./scores.js');
+const { ruleLine } = require('./quotes.js');
+const { verdictSensitivityBlocks } = require('./quotedoc.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const f = (v, d = 1) => (fin(v) ? v.toFixed(d) : 'n/a');
@@ -49,6 +51,8 @@ function buildVerdictDocument(v) {
 
   blocks.push(D.h(1, 'Platform verdict: keep or discard'));
   blocks.push(D.p(`Baseline: ${v.baselineLabel}. ${decided.length} arm(s) compared on ${v.dirs.length} run director${v.dirs.length === 1 ? 'y' : 'ies'}. Arms are named by exact ref (name@commit). Cost is in ${unit === 'USD' ? 'USD at list price' : 'credits'} as metered.`));
+
+  if (v.quote) blocks.push(D.p(ruleLine(v.quote, v.sensitivity?.available ? (v.sensitivity.anyDifferent ? 'at least one call differs, see the Sensitivity block below.' : 'no call differs, see the Sensitivity block below.') : 'not available.')));
 
   blocks.push(D.h(2, 'Verdict'));
   blocks.push(D.table(['arm', 'verdict', 'in plain words'], heads.map((a) => [a.label, verdictCell(a), a.sentence])));
@@ -99,6 +103,8 @@ function buildVerdictDocument(v) {
     blocks.push(D.table(t.head, t.rows));
     blocks.push(D.note(t.note));
   }
+
+  blocks.push(...verdictSensitivityBlocks(v.sensitivity));
 
   blocks.push(D.h(2, 'Run directories'));
   const hasProfile = v.dirs.some((d) => d.profile);

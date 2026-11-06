@@ -457,6 +457,10 @@
       "text": "Baseline: vanilla. 1 arm(s) compared on 1 run directory. Arms are named by exact ref (name@commit). Cost is in credits as metered."
      },
      {
+      "t": "p",
+      "text": "Evidence-quote rule: lenient (tightened: quotes with 20 or more unsupported letters are rejected). Strict sensitivity: no call differs, see the Sensitivity block below."
+     },
+     {
       "t": "h",
       "level": 2,
       "text": "Verdict"
@@ -591,6 +595,36 @@
      {
       "t": "h",
       "level": 2,
+      "text": "Sensitivity: strict quote rule"
+     },
+     {
+      "t": "p",
+      "text": "The same judgments scored under the strict rule, run through the same rules. No call depends on the quote rule."
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "call, lenient (in use)",
+       "call, strict",
+       "quality difference [interval], strict",
+       "A/A band, strict",
+       "compared"
+      ],
+      "rows": [
+       [
+        "v1.2.0",
+        "NOT ENOUGH EVIDENCE",
+        "NOT ENOUGH EVIDENCE",
+        "0.0",
+        "none measured",
+        "same call"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
       "text": "Run directories"
      },
      {
@@ -686,6 +720,10 @@
      {
       "t": "p",
       "text": "Baseline: vanilla. 1 cell(s), keyed by harness and model. A test arm passes in a cell when it costs at most 2.0x vanilla and the 95% interval of its quality difference, paired by task, stays within vanilla's spread on a single task. Cost is in credits."
+     },
+     {
+      "t": "p",
+      "text": "Evidence-quote rule: lenient (tightened: quotes with 20 or more unsupported letters are rejected). Strict sensitivity: no call differs, see the Sensitivity block below."
      },
      {
       "t": "h",
@@ -806,6 +844,38 @@
         0,
         0,
         0
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Sensitivity: strict quote rule"
+     },
+     {
+      "t": "p",
+      "text": "The same judgments scored under the strict rule, run through the same rules. No call depends on the quote rule."
+     },
+     {
+      "t": "table",
+      "head": [
+       "cell",
+       "arm",
+       "call, lenient (in use)",
+       "call, strict",
+       "quality difference [interval], strict",
+       "A/A band, strict",
+       "compared"
+      ],
+      "rows": [
+       [
+        "kiro-cli / claude-sonnet-5.5",
+        "v1.2.0",
+        "NOT ENOUGH EVIDENCE",
+        "NOT ENOUGH EVIDENCE",
+        "0.0",
+        "none measured",
+        "same call"
        ]
       ]
      },
@@ -1247,6 +1317,10 @@
       "text": "Baseline: oc-vanilla. 1 arm(s) compared on 1 run directory. Arms are named by exact ref (name@commit). Cost is in USD at list price as metered."
      },
      {
+      "t": "p",
+      "text": "Evidence-quote rule: lenient (tightened: quotes with 20 or more unsupported letters are rejected). Strict sensitivity: no call differs, see the Sensitivity block below."
+     },
+     {
       "t": "h",
       "level": 2,
       "text": "Verdict"
@@ -1381,6 +1455,36 @@
      {
       "t": "h",
       "level": 2,
+      "text": "Sensitivity: strict quote rule"
+     },
+     {
+      "t": "p",
+      "text": "The same judgments scored under the strict rule, run through the same rules. No call depends on the quote rule."
+     },
+     {
+      "t": "table",
+      "head": [
+       "arm",
+       "call, lenient (in use)",
+       "call, strict",
+       "quality difference [interval], strict",
+       "A/A band, strict",
+       "compared"
+      ],
+      "rows": [
+       [
+        "oc-k",
+        "NOT ENOUGH EVIDENCE",
+        "NOT ENOUGH EVIDENCE",
+        "0.0",
+        "none measured",
+        "same call"
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
       "text": "Run directories"
      },
      {
@@ -1476,6 +1580,10 @@
      {
       "t": "p",
       "text": "Baseline: oc-vanilla. 1 cell(s), keyed by harness and model. A test arm passes in a cell when it costs at most 2.0x vanilla and the 95% interval of its quality difference, paired by task, stays within vanilla's spread on a single task. Cost is in USD."
+     },
+     {
+      "t": "p",
+      "text": "Evidence-quote rule: lenient (tightened: quotes with 20 or more unsupported letters are rejected). Strict sensitivity: no call differs, see the Sensitivity block below."
      },
      {
       "t": "h",
@@ -1596,6 +1704,38 @@
         0,
         0,
         0
+       ]
+      ]
+     },
+     {
+      "t": "h",
+      "level": 2,
+      "text": "Sensitivity: strict quote rule"
+     },
+     {
+      "t": "p",
+      "text": "The same judgments scored under the strict rule, run through the same rules. No call depends on the quote rule."
+     },
+     {
+      "t": "table",
+      "head": [
+       "cell",
+       "arm",
+       "call, lenient (in use)",
+       "call, strict",
+       "quality difference [interval], strict",
+       "A/A band, strict",
+       "compared"
+      ],
+      "rows": [
+       [
+        "opencode / global.anthropic.claude-sonnet-5-5",
+        "oc-k",
+        "NOT ENOUGH EVIDENCE",
+        "NOT ENOUGH EVIDENCE",
+        "0.0",
+        "none measured",
+        "same call"
        ]
       ]
      },

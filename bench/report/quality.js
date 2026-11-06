@@ -12,6 +12,9 @@ const { DEFAULTS } = require('../judge/config.js');
 const D = require('./doc.js');
 const { summarizeProcess, processBlocks } = require('./process.js');
 
+// The pack pass has its own prompt and its own checks; it matches evidence quotes strictly whatever rule the rubric uses.
+const PACK_QUOTE_LINE = 'Evidence-quote rule: strict (quality pack quotes: strict). The pack pass always matches quotes strictly, so these tables do not change with the rule used for the rubric; the rule for the rubric is named at the top of the report.';
+
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const uniq = (xs) => [...new Set(xs)];
@@ -122,8 +125,9 @@ function qualityBlocks(s) {
   const rows = s.dimensions.map((d) => [d.label, ...s.groups.map((g) => cellText(g.dimensions[d.id]))]);
   const blocks = [
     D.h(2, s.scoredWeight > 0 ? 'Quality dimensions (indicative, part of the quality score)' : 'Quality dimensions (indicative, not in the quality score)'),
+    D.p(PACK_QUOTE_LINE),
     D.note(s.note),
-    D.table(head, rows),
+    D.table(head, rows, 'quality pack quotes: strict'),
     D.p(`Score is 0 to 100: the mean over runs of the judge mean of pass 1, partial 0.5, fail 0, weighted by criterion. n is the number of runs where the dimension applied. JUDGES DIFFER marks a mean spread between the highest and lowest judge above ${s.disagreeScore} on a 0 to 1 scale. Pack ${s.pack.id}, revision ${s.pack.revision}; judges: ${s.judges.join(', ')}.`),
   ];
   const reasons = s.dimensions.flatMap((d) => s.groups.flatMap((g) => g.dimensions[d.id].naReasons.slice(0, 2).map((r) => `${d.label}, ${g.label}: ${r.count} run(s) n/a, ${r.reason}`)));
@@ -141,4 +145,4 @@ function qualityBlocks(s) {
   return blocks;
 }
 
-module.exports = { summarizeQuality, qualityBlocks, recordsOf, NOTE };
+module.exports = { summarizeQuality, qualityBlocks, recordsOf, NOTE, PACK_QUOTE_LINE };

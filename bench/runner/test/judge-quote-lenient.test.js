@@ -190,6 +190,28 @@ test('the scoring key "quotes" defaults to lenient and accepts strict in every c
   } finally { cleanup(root); }
 });
 
+test('a report builds the lenient view of old judgments from the output, and the strict profile keeps them as stored', () => {
+  const s = setup();
+  try {
+    const tasks = loadTasks(s.bench);
+    const stored = fs.readFileSync(path.join(s.runDir, 'judgments.json'), 'utf8');
+    const build = (scoringFile, out) => generateRunReport({ run: loadRuns([s.runDir]), tasks, baseline: 'vanilla', out: path.join(s.root, out), detail: 'full', format: 'md', scoringFile, defaultDir: path.join(s.root, out) });
+    const lenient = build(undefined, 'out-l');
+    const strict = build(path.join(__dirname, '..', '..', 'profiles', 'scoring-strict-quotes.json'), 'out-s');
+    const md = fs.readFileSync(path.join(s.root, 'out-l', 'report.md'), 'utf8');
+    assert.match(md, /Evidence-quote rule: lenient \(tightened/);
+    assert.equal(lenient.json.quoteRule.state, 'full');
+    assert.equal(lenient.json.quoteRule.rebuilt, 4);
+    const j1 = (r) => r.json.quoteSensitivity.judges.find((j) => j.judge === 'j1');
+    assert.equal(j1(lenient).downgraded, 0, 'the pasted table row is found under the default rule');
+    assert.equal(j1(lenient).otherDowngraded, 1, 'and lowered under strict');
+    assert.match(fs.readFileSync(path.join(s.root, 'out-s', 'report.md'), 'utf8'), /Evidence-quote rule: strict/);
+    assert.equal(strict.json.quoteSensitivity.judges.find((j) => j.judge === 'j1').downgraded, 1);
+    assert.equal(fs.readFileSync(path.join(s.runDir, 'judgments.json'), 'utf8'), stored, 'judgments.json is not written');
+    assert.equal(fs.existsSync(path.join(s.runDir, LENIENT_FILE)), false, 'no extra file is written');
+  } finally { cleanup(s.root); }
+});
+
 test('judge --rescore-quotes runs from the command line and refuses options that would call a model', () => {
   const s = setup();
   try {

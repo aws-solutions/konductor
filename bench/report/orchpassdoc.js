@@ -6,6 +6,8 @@
 
 const D = require('./doc.js');
 const { NEE } = require('./orchpass.js');
+const { ruleLine } = require('./quotes.js');
+const { verdictSensitivityBlocks } = require('./quotedoc.js');
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const f = (v, d = 1) => (fin(v) ? v.toFixed(d) : v === Infinity ? 'unbounded' : 'n/a');
@@ -25,6 +27,8 @@ function buildOrchestratorPassDocument(v) {
   const blocks = [];
   blocks.push(D.h(1, 'Orchestrator pass rule'));
   blocks.push(D.p(`Baseline: ${v.baseline}. ${v.cells.length} cell(s), keyed by harness and model. A test arm passes in a cell when it costs at most 2.0x vanilla and the 95% interval of its quality difference, paired by task, stays within vanilla's spread on a single task. Cost is in ${v.unit}.`));
+
+  if (v.quote) blocks.push(D.p(ruleLine(v.quote, v.sensitivity?.available ? (v.sensitivity.anyDifferent ? 'at least one call differs, see the Sensitivity block below.' : 'no call differs, see the Sensitivity block below.') : 'not available.')));
 
   blocks.push(D.h(2, 'Calls'));
   const rows = [];
@@ -75,6 +79,8 @@ function buildOrchestratorPassDocument(v) {
       tested.map((a) => [a.label, a.failures.good, a.failures.checksFailed, a.failures.timeout, a.failures.error, a.failures.infraError, a.failures.modelMismatch, a.failedAsZero]),
     ));
   }
+
+  blocks.push(...verdictSensitivityBlocks(v.sensitivity, { perCell: true }));
 
   blocks.push(D.h(2, 'Definitions'));
   blocks.push(D.list([v.rule.cost, v.rule.quality, v.rule.drift, v.rule.evidence, v.rule.gpt, 'A failed or timed-out run counts as quality 0 when it has nothing to score, and its cost counts. An infra error or model mismatch is left out of quality, listed, and capped at a fifth of the runs on a side. The unpaired mean difference is not used for any call.']));
