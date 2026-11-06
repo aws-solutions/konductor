@@ -95,6 +95,11 @@ not per individual commit.
   The file is rewritten, so comments (including the field reference `init` writes), YAML tags,
   anchors and merge keys, quoting, and number spelling such as `0x1F` or `3.10` are not kept.
 - `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
+- `git-merge` pushes straight to the default branch only when the repo merges locally;
+  otherwise it opens a PR. `git-workflow` now merges the default branch in before a PR instead
+  of rebasing, matching `git-merge`.
+- `cmux-dispatch` and `mux-dispatch` say that Claude Code panes skip permission prompts, so
+  dispatch only tasks you would approve unattended. `cmux-dispatch` no longer claims every task.
 
 ### Security
 
