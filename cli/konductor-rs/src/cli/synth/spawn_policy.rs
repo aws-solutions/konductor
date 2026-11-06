@@ -33,6 +33,11 @@ pub(crate) fn is_kiro_spawn_tool(id_or_tag: &str) -> bool {
 /// `run_workflow`, which runs any agent via `agent://<name>`, and no
 /// permission rule gates it. `excludedTools` removes both (checked against
 /// kiro-cli 2.35.0, engine v3).
+///
+/// Re-probe after a kiro-cli upgrade: open `kiro-cli chat --agent k-developer`
+/// from a scratch install, run `/tools`, and confirm no tool whose name
+/// contains `sub_agent`, `workflow`, `agent`, `delegate` or `spawn` is listed
+/// outside this constant. No CI job does this (runners have no kiro-cli).
 pub(crate) const KIRO_V3_SPECIALIST_EXCLUDED_TOOLS: [&str; 2] =
     ["invoke_sub_agent", "run_workflow"];
 

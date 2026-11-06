@@ -39,6 +39,8 @@ Classify the request into one of 6 types:
 
 ## Phase 1: Intent-Specific Analysis
 
+In `auto` mode the acting agent does the phase itself and loads the skills the owner would; it spawns the named agent only as `k-direct-work.md` allows.
+
 ### Refactoring
 
 Questions: What behavior must be preserved? Rollback strategy? Propagation scope? Hidden dependencies?
@@ -86,7 +88,7 @@ Flag these common AI failure patterns:
 | Assumption Cascade     | Building on unvalidated assumptions | Validate assumptions first     |
 | Premature Optimization | Optimizing before it works          | Focus on "working" first       |
 | Analysis Paralysis     | Researching forever                 | Set time bounds, exit criteria |
-| Hero Syndrome          | Trying to do everything             | Delegate to specialists        |
+| Hero Syndrome          | Trying to do everything             | Route to the owner your orchestration rules name |
 
 ## Escalation to Socratic Elicitation
 
