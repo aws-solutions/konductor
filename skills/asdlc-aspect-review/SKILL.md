@@ -1,6 +1,6 @@
 ---
 name: asdlc-aspect-review
-description: Parallel n-aspect review of artifacts using subagents. Use when user asks for an "aspect review", "n-aspect review", "multi-aspect review", or wants a thorough parallel review of a design, spec, code, or other artifact.
+description: 'Parallel n-aspect review of artifacts using subagents. Use when the user asks for an aspect or n-aspect review, or a thorough multi-angle review of a design, spec or code.'
 version: 1.0.0
 tags: [skill, aspect-review, review, subagent, parallel, quality]
 ---
@@ -133,48 +133,4 @@ The orchestrator's job is logistics, not opinion. When framing the review for su
 
 ## Deliberation Panel Mode (Design Context)
 
-Deliberation panel mode invokes a decision-specific, axis-derived deliberation structure that applies when reviewing a design artifact with multiple viable options or significant ambiguity. It is **always user-confirmed** — it never activates automatically.
-
-### When Deliberation Panel Mode Applies
-
-Deliberation panel mode is available **only for design artifacts** (system designs, architecture decision records, design documents). Code reviews, scripts, task specs, written documents, and any non-design artifact use the standard user-chosen-aspects mechanism above, unchanged.
-
-### Trigger: User-Confirmed Only
-
-After reviewing a design artifact normally, if the review surfaces **multiple viable options** or **a significant ambiguity** — a decision where no clear winner emerges — present the following offer to the user before proceeding:
-
-```
-I found a decision with multiple viable options / an ambiguity — convene a
-deliberation panel, or decide directly?
-
-  1. Answer directly (share your preference and we will continue)
-  2. Convene a deliberation panel (~2–3 minutes) — the panel derives a
-     small set of axes specific to this decision, argues each
-     independently, cross-examines the arguments, and returns a scored
-     recommendation
-
-Note: panel size scales with the decision (typically 3–6 derived axes) —
-roughly 2–3 times the cost of a standard 4-aspect review.
-```
-
-Do **not** convene the panel unless the user explicitly selects option 2. If the user decides directly, incorporate their decision and continue with the standard aspect-review synthesis.
-
-**Once-per guard:** Offer the panel at most once per review session per topic. If a subsequent tradeoff or ambiguity is detected in the same session for the same artifact, use a lighter re-prompt instead: "I found another decision point — same treatment?" Do not re-present the full cost/time disclosure.
-
-### Delegation to Deliberation Panel
-
-When the user opts in, invoke the `deliberation-panel` skill with:
-
-- `decision_domain=design`
-- `stance=evaluative`
-- `consent_confirmed=true` (the user's opt-in above satisfies the panel's own consent gate — pass it through explicitly)
-
-Pass the specific tradeoff or ambiguity as the subject. The panel derives its own axes for this decision (Phase 0), argues each independently (Phase 1), cross-examines them anonymously (Phase 2), and returns a Decision Scorecard with an axis-weighted confidence level (Phase 3). Present that scorecard to the user.
-
-The `deliberation-panel` skill owns axis derivation, per-axis advocacy, anonymous cross-examination, and the scorecard synthesis, including its own Axis-Weighted Convergence confidence calibration. See the `deliberation-panel` skill for the full mechanism and the HIGH/MEDIUM/LOW thresholds.
-
-### Scope of Deliberation Panel Mode
-
-- Non-design artifacts (code, scripts, written docs, task plans) use the **standard user-chosen-aspects mechanism** and are **unaffected** by deliberation panel mode.
-- Deliberation panel mode applies to the **specific tradeoff or ambiguity** detected, not to the entire artifact — the rest of the artifact is reviewed using the standard mechanism.
-- After the panel's scorecard is presented, the user decides; the aspect-review synthesis incorporates their decision.
+For a design artifact only (system design, ADR, design doc), when the review finds multiple viable options or a significant ambiguity, offer a deliberation panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain=design`; note it costs about 2-3 times a standard 4-aspect review, and review the rest of the artifact with the standard aspects. If `deliberation-panel` isn't available, offer to reason through the tradeoff together or decide directly. Other artifacts use the standard aspects only.

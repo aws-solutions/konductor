@@ -1,6 +1,6 @@
 ---
 name: decision-research
-description: Use before drafting an ADR or other decision record, to find prior decisions, alternatives, trade-off evidence and constraints. Gathers context systematically and builds an evidence base. Also use after rubric-based quality checks (Maker-Checker Pattern) to surface prior art and missing context an artifact overlooks.
+description: 'Use before drafting an ADR or other decision record, to find prior decisions, alternatives and evidence. Also use after rubric-based quality checks (Maker-Checker Pattern) to surface prior art and missing context an artifact overlooks.'
 ---
 
 # Decision Research

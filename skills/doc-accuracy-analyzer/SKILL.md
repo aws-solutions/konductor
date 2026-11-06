@@ -1,6 +1,6 @@
 ---
 name: doc-accuracy-analyzer
-description: Use to fact-check a document before submitting a design doc for review, after major revisions, or when a reviewer flags factual concerns. Extracts verifiable claims, routes AWS feature, limit, pricing and Region claims to aws-service-validator, investigates the rest against primary sources, and produces a structured accuracy report.
+description: 'Use when asked to fact-check or verify the claims in a design doc, before review or after a reviewer questions accuracy. Extracts verifiable claims, routes AWS feature, limit, pricing and Region claims to aws-service-validator, investigates the rest against primary sources, and produces a structured accuracy report.'
 version: 1.0.0
 ---
 

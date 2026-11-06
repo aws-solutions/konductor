@@ -1,6 +1,6 @@
 ---
 name: backend-review
-description: Reviews backend code changes for architectural pattern compliance, type safety, DynamoDB correctness, and test quality. Use after implementing backend changes to catch issues before code review. Produces CRITICAL/IMPORTANT/SUGGESTION findings.
+description: 'Reviews backend code changes for architectural pattern compliance, type safety, DynamoDB correctness, and test quality. Use when reviewing a backend diff or PR (TS Lambda handlers, services, DynamoDB access), or asked to check backend code before review. Produces CRITICAL/IMPORTANT/SUGGESTION findings.'
 version: 1.0.0
 tags: [skill, backend, code-review, lambda, dynamodb, typescript, checker]
 ---
@@ -30,10 +30,11 @@ Architectural pattern compliance (layer separation), dead code detection (unused
 
 ### Architectural Patterns
 
-- [ ] Handlers delegate to business facade — no direct business logic in handlers
-- [ ] Services created via factory — no direct instantiation
-- [ ] Data access through repository interfaces — no direct database calls
-- [ ] Proper layer separation maintained
+If the codebase uses a facade, factory or repository layering, check the change keeps it. Otherwise check it follows the structure the codebase has.
+
+- [ ] Handlers delegate to the business facade, with no business logic in handlers
+- [ ] Services come from the factory, not direct instantiation
+- [ ] Data access goes through repository interfaces, not direct database calls
 
 ### Dead Code
 
@@ -73,12 +74,12 @@ Architectural pattern compliance (layer separation), dead code detection (unused
 **CRITICAL (blocks approval):**
 
 - Race condition risk (non-atomic multi-item update without transaction)
-- Direct database connection bypassing repository layer
 - Missing null check before non-null assertion that will throw at runtime
 - Test passes only due to test order dependency
 
 **IMPORTANT (should fix):**
 
+- Direct database call that bypasses a repository layer the codebase already uses
 - `any` type in production code
 - Extra query when write return value could be used
 - Catch-all error handler masking specific errors
