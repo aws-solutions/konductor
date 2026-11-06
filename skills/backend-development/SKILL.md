@@ -1,6 +1,6 @@
 ---
 name: backend-development
-description: Implements backend code changes for Lambda handlers, service layers, and DynamoDB operations. Use when fixing code quality issues, adding features, or optimizing backend logic. Follows KISS/YAGNI/DRY principles with minimal, surgical changes.
+description: Implements backend code changes for Lambda handlers, service layers, and DynamoDB operations. Use when fixing code quality issues, adding features, or optimizing backend logic in a TypeScript/Node codebase. Follows KISS/YAGNI/DRY principles with minimal, surgical changes.
 version: 1.0.0
 tags: [skill, backend, lambda, dynamodb, typescript, nodejs, implementation]
 ---
@@ -25,28 +25,20 @@ Use this skill when:
 
 ### Architectural Layers
 
-Handlers (entry point, delegates to facade) → Business Facade (orchestrates service calls) → Services (created via factory, contain business logic) → Repositories (data access through interfaces). No layer should bypass the one below it.
+If the codebase layers handlers over a business facade, factory-built services and repository interfaces, keep that layering: handlers delegate to the facade, and no layer bypasses the one below it. If it doesn't, follow the structure it has.
 
 ### KISS/YAGNI/DRY
 
-Prefer simple, minimal solutions. Only add abstractions that solve a real, existing problem — not hypothetical future needs.
-
-## Core Principles
-
-**Always read the complete file before making changes.** Make minimal changes — only fix the specific issue. Follow established patterns in the codebase. Maintain backward compatibility.
-
-**Prefer simple solutions over design patterns.** Only introduce patterns (Strategy, Observer) when they solve a real, existing problem — not hypothetical future needs. Call out over-engineering directly.
+Prefer simple, minimal solutions. Only add abstractions or patterns (Strategy, Observer) that solve a real, existing problem, not hypothetical future needs. Call out over-engineering directly.
 
 ## Implementation Standards
 
 ### Handler Patterns
 
-- Handlers delegate to a business facade — no direct business logic in handlers
-- Services created via factory pattern — no direct instantiation
-- Data access through repository interfaces — no direct database calls
+- If the codebase uses a facade, factory or repository layer, keep it: no business logic in handlers, no direct service instantiation, no direct database calls
 - Use return values from store operations to avoid extra queries
 
-### Type Safety
+### TypeScript Type Safety
 
 - No `any` types in production code (test mocks are the only exception)
 - Use utility types: `Partial<T>`, `Pick<T, K>`, `Omit<T, K>`
@@ -91,11 +83,11 @@ For each change, provide:
 - TypeScript compilation fails
 - Tests fail
 - Breaking change introduced without migration path
-- Direct database connection bypassing repository layer
 - Race condition introduced (non-atomic multi-item update)
 
 **IMPORTANT (should fix):**
 
+- Direct database call that bypasses a repository layer the codebase already uses
 - `any` type used in production code
 - Missing null check before non-null assertion
 - Extra query when return value from write operation could be used
