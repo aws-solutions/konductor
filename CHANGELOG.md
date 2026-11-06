@@ -133,9 +133,30 @@ not per individual commit.
   stated once. `system-design-patterns` lists its real five interview phases and four
   documents, adds a non-functional requirements section to the design document, and points
   follow-up work at konductor skills instead of prompts that don't exist.
+- Fact-checking starts at `doc-accuracy-analyzer`. It routes AWS feature, limit, pricing and
+  Region claims to `aws-service-validator`, rates findings CRITICAL, IMPORTANT or SUGGESTION,
+  and states when a document passes. When checking an artifact, `decision-research` now adds only
+  prior art and missing context. `k-product-manager` gains `doc-accuracy-analyzer`.
+- `smithy-modeling`, `smithy-validation`, and `progress-tracking` now read as one set of
+  instructions instead of a summary followed by a pasted prompt. `smithy-validation`'s output
+  format uses its Quality Gate's severity names, and it flags operations left callable without
+  authentication instead of operations missing `@auth`. `smithy-modeling`'s service templates
+  carry an auth scheme trait and no longer set a doc comment and `@documentation` on the same
+  shape, which Smithy rejects as a trait conflict. `progress-tracking` takes `plan_path`,
+  per-feature `spec_dir`, and `history_dir`, defaulting to the `.kiro/specs/` paths it used
+  before.
+- `policy-validation` reads as one instruction set, without a pasted second prompt and role. It
+  keeps one Rules section, one IAM score rubric and one Iteration Progress template, and rates
+  findings CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate.
 
 ### Fixed
 
+- Skill bodies no longer contradict themselves or the codebase. `backend-development` and
+  `backend-review` keep a facade, factory or repository layering only when the codebase already
+  uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
+  TDD's RED phase to code changes, and `asdlc-code-simplifier` runs the tests before and after
+  and reports each change with its reason. The deliberation panel offer is defined once, in
+  `deliberation-panel`, and repeated paragraphs and tables are cut from several skills.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
@@ -175,6 +196,11 @@ not per individual commit.
   pricing. `program-planning` and `playwright-test-implementation` no longer point at SOP steps
   that are missing when the skill runs alone. `cmux-dispatch`, `design-doc-guidelines` and
   `external-research` drop terms that do not apply in this repo.
+- `git-merge` pushes straight to the default branch only when the repo merges locally;
+  otherwise it opens a PR. `git-workflow` now merges the default branch in before a PR instead
+  of rebasing, matching `git-merge`.
+- `cmux-dispatch` and `mux-dispatch` no longer claim every task, and say that Claude Code panes
+  skip permission prompts, so dispatch only tasks you would approve unattended.
 
 ### Security
 

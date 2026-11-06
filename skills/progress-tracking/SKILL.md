@@ -19,35 +19,18 @@ Use this skill when:
 - Progress mode: checking completion status during a sprint
 - Final mode: verifying code matches design before handoff to QA
 
-## Core Concepts
-
-### Three Modes
-
-Initial mode (pre-implementation) validates feature plan completeness, checks requirements coverage, and identifies dependency issues. Progress mode (during implementation) tracks task completion, identifies blockers, and monitors velocity. Final mode (post-implementation) verifies code matches design, validates traceability, and checks pattern compliance.
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for tracking progress. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Execution Plan Tracker
-
-## Purpose
-
-Validate feature plans for completeness, track implementation progress, and ensure code-level requirements traceability. Operates in three modes: initial (pre-implementation), progress (during implementation), and final (post-implementation with code verification).
-
 ## Target Personas
 
 - **Team Leads**: Pre-implementation validation and progress monitoring
 - **Developers**: Code-level verification and pattern alignment
 - **Product Managers**: Requirements traceability and coverage tracking
 
-## Prerequisites
+## Parameters
 
-1. **Feature Plan**: Task breakdown in `.kiro/specs/feature-implementation/tasks.md`
-2. **Feature Specs**: Individual feature directories with requirements.md, design.md, tasks.md
-3. **Validation Mode**: Initial, Progress, or Final
+- **mode**: `initial`, `progress`, or `final`. Stage 1 detects it from the request.
+- **plan_path** (optional): the feature plan's task breakdown. Defaults to `.kiro/specs/feature-implementation/tasks.md`. A caller that keeps its plan elsewhere passes its own path, and this skill reads that file instead.
+- **spec_dir** per feature: the directory holding that feature's requirements.md, design.md, and tasks.md. Taken from the plan's `_Spec: path_` reference, otherwise `.kiro/specs/{feature-name}/`, the same default the `kiro-*` skills use.
+- **history_dir** (optional): where saved validation history goes. Defaults to `.kiro/specs/validation-history/`, whatever `plan_path` is.
 
 ## Execution Flow
 
@@ -96,7 +79,7 @@ features_map: Map<
 ```typescript
 {
   mode: "initial"|"progress"|"final",
-  feature_plan_path, detailed_analysis, save_history,
+  plan_path, detailed_analysis, save_history,
   features_map, parsing_errors,
   validation_results: { structure?, coverage?, dependencies?, progress?, code_analysis?, pattern_analysis?, traceability? }
 }
@@ -182,18 +165,16 @@ Warnings (Should Address): [numbered list]
 
 If ambiguous, ask: "Which validation mode? (initial/progress/final)" with descriptions. Default: initial.
 
-**Locate Feature Plan:** Check `.kiro/specs/feature-implementation/tasks.md`. If not found, ask user for path. Validate exists and readable.
+**Locate Feature Plan:** Read `plan_path` (default `.kiro/specs/feature-implementation/tasks.md`). If it is missing or unreadable, ask the user for the path.
 
 **Gather Preferences:**
 
 1. Detail Level: "Detailed analysis?" (yes/no, default: no) → Yes: explanations, examples, paths | No: summary only
-2. Save History: "Save validation history?" (yes/no, default: no for initial, yes for progress/final) → Saves to `.kiro/specs/validation-history/[timestamp].json`
+2. Save History: "Save validation history?" (yes/no, default: no for initial, yes for progress/final) → Saves to `{history_dir}/[timestamp].json`
 
 **Output:** `✅ Configuration: Mode: [mode] | Plan: [path] | Detail: [level] | History: [yes/no]`
 
-Store: mode, feature_plan_path, detailed_analysis, save_history
-
-**Requirements:** 8.1, 8.2
+Store: mode, plan_path, detailed_analysis, save_history
 
 ---
 
@@ -203,7 +184,7 @@ Store: mode, feature_plan_path, detailed_analysis, save_history
 
 **Parse Feature Plan:** Extract feature names using patterns: task descriptions, task details (`_Spec: path_`), section headers, explicit refs. Build list with: featureName, specPath, displayName, discovered status.
 
-**Parse Spec Files:** For each feature:
+**Parse Spec Files:** For each feature, read from its `spec_dir`:
 
 **requirements.md:** Extract requirement sections, user stories, acceptance criteria. Build: `{ id, userStory, acceptanceCriteria: [{ id, text }] }`. Criteria IDs: requirement + item (e.g., "3.2").
 
@@ -230,8 +211,6 @@ Apply error handling patterns for missing files, malformed markdown, invalid for
 **Report:** `📋 Discovery Complete: [N] features | [W] warnings | [E] errors`. List per-feature with BOTH spec status AND implementation status. If ALL failed → stop, request path verification. If >50% missing → warn, ask to continue.
 
 Store: features_map, parsing_errors
-
-**Requirements:** 1.1, 1.2, 3.1
 
 ---
 
@@ -262,8 +241,6 @@ Store: features_map, parsing_errors
 
 Store: validation_results.structure
 
-**Requirements:** 1.2, 1.3
-
 ---
 
 ## Stage 3B: Task State Analysis (Progress Mode)
@@ -292,11 +269,9 @@ Store: validation_results.structure
 
 **Report:** Use standard template. Summary: overall %, task counts, feature counts, estimated remaining. Feature Progress: per-feature breakdown with progress bars, task lists, blockers. Blockers Analysis: critical and warning blockers with recommendations. Insights: strong progress, concerns, recommendations. Detailed mode: all tasks, dependency graphs, historical charts. Summary mode: stats, blocked tasks, critical issues.
 
-**Save History:** If enabled, save to `.kiro/specs/validation-history/progress-[timestamp].json` with: timestamp, mode, overall_percentage, features summary, blockers_count, estimated_remaining_days.
+**Save History:** If enabled, save to `{history_dir}/progress-[timestamp].json` with: timestamp, mode, overall_percentage, features summary, blockers_count, estimated_remaining_days.
 
 Store: validation_results.progress
-
-**Requirements:** 2.1, 2.2, 2.3, 2.4
 
 ---
 
@@ -323,8 +298,6 @@ Store: validation_results.progress
 
 Store: validation_results.coverage
 
-**Requirements:** 1.3, 5.1
-
 ---
 
 ## Stage 5: Dependency Validation (Initial & Final)
@@ -335,7 +308,7 @@ Store: validation_results.coverage
 
 **Extract Dependencies:**
 
-- Feature-level: From feature-implementation/tasks.md, extract order and cross-feature deps. Build graph: `{ featureA: [featureB, featureC] }`
+- Feature-level: From the plan at `plan_path`, extract order and cross-feature deps. Build graph: `{ featureA: [featureB, featureC] }`
 - Task-level: From tasks.md, extract explicit (`Depends on: 1.1`) and implicit (sub-tasks, sequential) deps. Build graph per feature: `{ taskId: [dependencyTaskIds] }`
 
 **Detect Cycles:** Use DFS to detect cycles. If node in recursion_stack visited again → cycle. Trace back to identify all nodes. Report as ordered list: [A → B → C → A]. Suggest breaking points: implicit weaker than explicit, cross-feature candidates.
@@ -347,8 +320,6 @@ Store: validation_results.coverage
 **Decision:** No cycles: PASS → Stage 6 (Final) or complete (Initial) | Cycles: FAIL → block, require fixes | Ordering issues only: PASS with WARNINGS → recommend fixes, allow proceed.
 
 Store: validation_results.dependencies
-
-**Requirements:** 1.4, 6.1, 6.2
 
 ---
 
@@ -371,8 +342,6 @@ After completing mode-specific stages, generate consolidated report using standa
 **Next Steps:** Mode-specific guidance (Initial: fix issues, begin implementation | Progress: unblock, continue, re-run | Final: fix gaps, proceed to release).
 
 **History:** If enabled, note saved location.
-
-**Requirements:** 7.1, 7.2, 7.3, 7.4, 7.5
 
 ---
 
