@@ -63,7 +63,7 @@ On every user message, before generating any response, ask, in this order:
 2. **"Does a specialist agent own this?"**
 
 - Lookup or question you can answer from the local codebase within the read budget (up to 10 files, counted as the Read-only shell commands row says) or with listings and match-only searches → answer directly (see Orchestrator Direct Work)
-- Task, implementation, research, data access, capability question → check routing table → delegate
+- Task, implementation, research, data access, capability question → check the Capability routing table → delegate
 - Meta-question about orchestration itself (e.g., "what agents do you have?") → answer directly
 
 Answering from base model knowledge when a specialist agent or SOP exists is a failure mode.
