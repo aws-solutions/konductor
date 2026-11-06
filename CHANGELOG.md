@@ -35,7 +35,7 @@ not per individual commit.
 
 ### Changed
 
-- delegation-protocol: shorter trigger sentence (fits the Kiro skill index), a stated reason for the four-subagent limit, a konductor skill as the format-ownership example, and a shorter "specialist never spawns" pointer. The adversarial review pass skills are coordinator-only and say "posted to the PR".
+- delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
