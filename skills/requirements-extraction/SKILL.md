@@ -1,6 +1,6 @@
 ---
 name: requirements-extraction
-description: Extracts design inputs from Requirements & Planning outputs (user stories, requirements docs) into three focused files for architecture work. Use when transitioning from requirements to design phase. Produces business-context.md, requirements-summary.md, and user-stories-extract.md.
+description: Extracts design inputs from Requirements & Planning outputs (user stories, requirements docs) into three focused files for architecture work. Use when existing requirements and user stories must be summarized or handed off for system design, such as preparing design inputs for an architect. Not for a request that has no requirements yet; write user stories first. Produces business-context.md, requirements-summary.md, and user-stories-extract.md.
 version: 1.0.0
 tags: [skill, requirements, design-handoff, extraction, system-design]
 ---
@@ -19,30 +19,17 @@ Use this skill when:
 - Preparing inputs for the system design interview
 - Creating a handoff document between PM and architect
 
-## Core Concepts
+## Extraction Rules
 
-### Three Output Files
+These apply to all three files:
 
-`business-context.md` covers product overview, business problem, target users, success metrics, deployment model, competitive differentiation, and timeline. `requirements-summary.md` organizes functional requirements (features, workflows, data), non-functional requirements (performance, scale, availability), security requirements, technical constraints, and integration requirements. `user-stories-extract.md` selects 3-5 most architecturally significant stories per epic with data model, API, security, and performance implications.
+- **Preserve:** quantified metrics (percentages, time savings, cost reductions), security and compliance requirements, scale requirements (demo vs. production), deployment model and technical constraints, integration points.
+- **Remove:** marketing language, customer testimonials, press release formatting, epic descriptions without technical detail.
+- Use specific, measurable targets: not "fast" but "<500ms".
 
-### Extraction Rules
+Write all three files: `business-context.md`, `requirements-summary.md`, and `user-stories-extract.md`. The last one is the file most often skipped when a session runs long, so don't stop after the first two. Apply the Quality Gate before presenting the files.
 
-Preserve: quantified metrics, security/compliance requirements, scale requirements (demo vs production), technical constraints, integration points. Remove: marketing language, customer testimonials, press release formatting, epic descriptions without technical detail.
-
-## Execution
-
-When this skill is activated, use the following as your full instruction set for extracting requirements. Apply the Quality Gate at the end before presenting output to the user.
-
----
-
-# Requirements Summarizer for Design Phase
-
-You are a technical requirements analyst preparing inputs for system architecture design. Your role is to extract essential information from Requirements & Planning phase outputs and organize it into three focused documents optimized for system design interviews.
-
-**Your Task:**
-Read the provided Requirements and User Stories documents, then generate three focused input files that contain only the information needed for system architecture decisions. **MUST DO: write all three files below — `business-context.md`, `requirements-summary.md`, AND `user-stories-extract.md`. `user-stories-extract.md` is the file most often skipped when a session runs long; do not stop after the first two.**
-
-**Input Documents to Analyze:**
+## Input Documents
 
 1. **Requirements doc** — the caller specifies the path; use it as given. (Illustrative default when no path is given: `requirements-planning/outputs/requirements-final.md`.)
    - Extract: Business problem, target users, success metrics, technical constraints
@@ -52,7 +39,7 @@ Read the provided Requirements and User Stories documents, then generate three f
    - Extract: Functional requirements, acceptance criteria, technical implications
    - Ignore: Story formatting, epic descriptions without technical detail
 
-**Output Files to Generate:**
+## Output Files
 
 ### File 1: business-context.md
 
@@ -107,12 +94,7 @@ Read the provided Requirements and User Stories documents, then generate three f
 - **Current Phase**: Design & Architecture (System Requirements)
 ```
 
-**Extraction Guidelines:**
-
-- Focus on technical implications of business objectives
-- Include quantified metrics (percentages, time savings, cost reductions)
-- Preserve scale requirements and deployment constraints
-- Remove marketing language and customer testimonials
+Focus on the technical implications of each business objective.
 
 ---
 
@@ -232,13 +214,7 @@ Read the provided Requirements and User Stories documents, then generate three f
 - [Measurable business results]
 ```
 
-**Extraction Guidelines:**
-
-- Convert user stories into technical requirements
-- Include specific, measurable targets (not "fast" but "<500ms")
-- Preserve all security and compliance requirements
-- Document technical constraints and preferences
-- Note architecture simplifications for demo vs. production
+Convert user stories into technical requirements, and note architecture simplifications for demo vs. production.
 
 ---
 
@@ -293,73 +269,19 @@ Read the provided Requirements and User Stories documents, then generate three f
 - [Performance optimization areas]
 ```
 
-**Extraction Guidelines:**
-
-- Select 3-5 most architecturally significant stories per epic
-- Focus on stories that drive component design decisions
-- Include acceptance criteria with technical implications
-- Preserve performance and scale requirements
-- Document integration points and dependencies
-- Add "Architecture Implications" section summarizing technical needs
+Select the 3-5 most architecturally significant stories per epic: the ones that drive component design or carry security, performance, or integration implications. Keep their acceptance criteria where they have technical detail, and note dependencies between stories.
 
 ---
 
 ## Extraction Process
 
-**Step 1: Read Input Documents**
+1. **Read the inputs** from the caller-specified paths and find the sections with technical content.
+2. **Extract business context**: problem statement, target users and scale, quantified success metrics, deployment model and constraints, competitive differentiation.
+3. **Organize requirements**: functional requirements from the stories, non-functional requirements (performance, scale, security), technical constraints and preferences, integration requirements, architecture simplifications.
+4. **Select key user stories** as described under File 3.
+5. **Write the three files** using consistent terminology across them, and check them for completeness against the inputs. Keep them focused; don't copy the whole requirements doc.
 
-- Load requirements doc from the caller-specified path (illustrative default: `requirements-planning/outputs/requirements-final.md`)
-- Load User Stories from the caller-specified path (illustrative default: `requirements-planning/outputs/user-stories.md`)
-- Identify key sections with technical content
-
-**Step 2: Extract Business Context**
-
-- Find business problem statement
-- Identify target users and scale requirements
-- Extract quantified success metrics
-- Note deployment model and constraints
-- Capture competitive differentiation points
-
-**Step 3: Organize Requirements**
-
-- Convert user stories into functional requirements
-- Extract non-functional requirements (performance, scale, security)
-- Document technical constraints and preferences
-- Identify integration requirements
-- Note architecture simplifications
-
-**Step 4: Select Key User Stories**
-
-- Identify 3-5 most architecturally significant stories per epic
-- Focus on stories that drive component design
-- Include stories with security, performance, or integration implications
-- Preserve acceptance criteria with technical details
-
-**Step 5: Generate Output Files**
-
-- Create `business-context.md` with business objectives
-- Create `requirements-summary.md` with organized requirements
-- Create `user-stories-extract.md` with key stories and implications
-- Ensure all files use consistent terminology
-- Validate completeness against input documents
-
-## Quality Checklist
-
-Before finalizing output files, verify:
-
-- [ ] All 3 output files exist and were written: `business-context.md`, `requirements-summary.md`, `user-stories-extract.md` — this skill is incomplete if any one is missing, especially `user-stories-extract.md`
-- [ ] All quantified metrics preserved (percentages, time targets, cost savings)
-- [ ] Performance requirements include specific numbers (<500ms, 100 users, etc.)
-- [ ] Security requirements are complete (authentication, encryption, compliance)
-- [ ] Technical constraints documented (deployment model, technology preferences)
-- [ ] Scale requirements clear (demo scale vs. future scale)
-- [ ] Integration points identified (AWS services, external systems)
-- [ ] Architecture implications summarized from user stories
-- [ ] Marketing language removed, technical content preserved
-- [ ] Files are focused and concise (not copying entire requirements doc)
-
-**Expected Outcome:**
-Three focused input files ready for System Design Interviewer prompt, containing only essential information for architecture decisions without marketing noise or unnecessary detail.
+The three files are the inputs for the `system-design-patterns` interview.
 
 ---
 
@@ -367,15 +289,18 @@ Three focused input files ready for System Design Interviewer prompt, containing
 
 **CRITICAL (must fix):**
 
+- Any of the three output files missing, especially `user-stories-extract.md`
 - Quantified metrics dropped or replaced with vague terms ("fast", "scalable")
-- Security or compliance requirements missing from requirements-summary.md
+- Security or compliance requirements (authentication, encryption, compliance standards) missing from requirements-summary.md
 - Scale requirements (demo vs. production) not documented
 
 **IMPORTANT (should fix):**
 
 - Performance requirements lack specific numbers ("<500ms", "100 concurrent users")
-- Technical constraints not documented
+- Technical constraints (deployment model, technology preferences) not documented
+- Integration points (AWS services, external systems) not identified
 - Architecture implications not summarized from user stories
+- Marketing language left in, or the files copy the requirements doc instead of summarizing it
 
 **SUGGESTION:**
 
