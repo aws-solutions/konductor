@@ -174,7 +174,7 @@ Artifacts found:
 ✅ smithy-model/
 ✅ dynamodb-table-design.md
 
-Proceeding with review. Note: the Security and threat coverage dimension will be limited.
+Proceeding with review. Note: the Security dimension is capped at 3 without a threat model.
 Consider generating a threat model first using the k-architect agent with the threat-modeling skill.
 ```
 

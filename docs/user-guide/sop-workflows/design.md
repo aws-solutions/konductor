@@ -251,18 +251,11 @@ flowchart TD
 
 ### The 10 dimensions
 
-Each scored 1–5; anything below 3 is flagged for revision.
-
-1. Template adherence and completeness
-2. Scalability and performance
-3. Security and threat coverage
-4. Maintainability and code quality
-5. Resilience and fault tolerance
-6. Testability
-7. Operational readiness
-8. Cost optimization
-9. API design quality
-10. Data model quality
+The SOP scores the 10 dimensions defined in `design-evaluation` Step 1, each 1 to 5: template
+adherence, high-level assessment, scalability (including cost), performance, security,
+maintainability and extensibility, failure handling and resilience, code and implementation
+quality, testability and automation readiness, and actionable recommendations. Anything below 3
+is flagged for revision.
 
 ### What you get
 
@@ -280,8 +273,8 @@ does not print the report body.
 - **`dry_run: true` stops at step 2** and reports what would be reviewed.
 - **Only IMPORTANT issues is still READY.** The SOP's troubleshooting states a design with only
   IMPORTANT issues remains ready for implementation.
-- **A missing threat model degrades rather than blocks.** The review proceeds with a note that
-  the security and threat coverage dimension will be limited.
+- **A missing threat model degrades rather than blocks.** The review proceeds, and the Security
+  dimension is capped at 3 (`design-evaluation` Step 0).
 
 ---
 
