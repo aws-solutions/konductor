@@ -11,7 +11,7 @@ Four SOPs, three different owners:
 | [`k-code-review-workflow`](../sop-workflows/code-review.md#k-code-review-workflow) | `k-developer` | No |
 | [`k-test-coverage-review`](../sop-workflows/testing-and-specs.md#k-test-coverage-review) | `k-quality-assurance` | No |
 | [`k-code-cleanup`](../sop-workflows/code-review.md#k-code-cleanup) | `k-developer` | **Yes** |
-| [`k-adversarial-pull-request-review`](../sop-workflows/code-review.md#k-adversarial-pull-request-review) | `k-architect` | No |
+| [`k-adversarial-pull-request-review`](../sop-workflows/code-review.md#k-adversarial-pull-request-review) | the orchestrators (`k-architect` is the checker) | No |
 
 `k-code-cleanup` is the only SOP **on this page** that changes your source files in place;
 everything else here writes report files next to your code. Elsewhere in the package,
@@ -43,8 +43,8 @@ capability is available"* — so the workflow degrades gracefully rather than er
 SOPs the orchestrator declares, so it delegates the whole SOP to the developer, which hits the
 same wall.
 
-**The workaround that does work:** run `k-adversarial-pull-request-review` yourself against
-`k-architect`, which owns it. That is step 4 below.
+**The workaround that does work:** run `k-adversarial-pull-request-review` through `konductor`,
+which coordinates it. That is step 4 below.
 
 ---
 
@@ -68,7 +68,7 @@ Through the orchestrator in plain language, or straight to the owning agent:
 | --- | --- |
 | Code review, cleanup | `k-developer` |
 | Test coverage review | `k-quality-assurance` |
-| Adversarial security review | `k-architect` |
+| Adversarial security review | `konductor` (it spawns the passes and the `k-architect` checker) |
 
 The same names work on both runtimes.
 
@@ -168,7 +168,7 @@ afterwards — this is the one SOP here where "review" means "changed your code"
 
 ### 4. `k-adversarial-pull-request-review` — the security second opinion
 
-Ask **`k-architect`** directly. This is the workaround for the step 6 gap.
+Ask **`konductor`**. This is the workaround for the step 6 gap; `k-architect` and `k-developer` do not declare this SOP.
 
 ```text
 Run k-adversarial-pull-request-review against my current diff.
@@ -180,9 +180,10 @@ Run k-adversarial-pull-request-review against my current diff.
    per source, no recursive link-following, never blocks on missing context.
 1. **Ingest diff** — accepts git diff output, file paths, or raw diff content; excludes binaries,
    lock files, build artifacts. Stops if the diff is empty.
-2. **Parallel review passes**: returns a split of three `k-developer` parts to run
+2. **Parallel review passes**: the orchestrator spawns three `k-developer` sessions
    **concurrently**, each loading exactly one pass skill and carrying the diff plus the step 0
-   summary, and names step 3 as the step to resume at. Findings are never shared between them.
+   summary. Findings are never shared between them. A pass that fails twice is recorded as
+   `MISSING`; the orchestrator never runs one itself.
    - *Security* (`adversarial-code-review-pass-security`) — information disclosure, authorization,
      injection, secrets. CRITICAL if stack traces, internal IDs, or raw exception messages reach a
      caller, or unvalidated input reaches a query.
@@ -192,23 +193,23 @@ Run k-adversarial-pull-request-review against my current diff.
    - *Schema / contract* (`adversarial-code-review-pass-schema`) — API, schema and type changes,
      backward compatibility, validation completeness. IMPORTANT for ordering violations and wiring
      gaps. Test files are not flagged.
-3. **Reuse pass**: resumed at step 3 with the three lists, the SOP returns a handoff note for a
-   **fourth** `k-developer` session and resumes at step 4. It looks only for cross-pass reuse: an
+3. **Reuse pass**: once the three lists are in, the orchestrator spawns a **fourth**
+   `k-developer` session with them. It looks only for cross-pass reuse: an
    existing utility the diff reimplements or bypasses, or one that would resolve two or more of the
    findings above. IMPORTANT when it flags a bypassed shared utility, transaction helper,
    validation middleware, error-mapping layer, or pagination utility.
-4. **Checker phase** — `k-architect` switches roles and runs `adversarial-code-review` in Validator
-   Mode **itself**, tagging every finding `KEEP` or `REJECT` with a reason and dropping the
-   REJECTs. It proposes nothing new; it is a filter. Independence holds because the coordinator
-   never ran a generator pass.
+4. **Checker phase** — the orchestrator spawns `k-architect` **fresh** with the four lists, and it
+   runs `adversarial-code-review` in Validator Mode, tagging every finding `KEEP` or `REJECT` with
+   a reason and dropping the REJECTs. It proposes nothing new; it is a filter. Independence holds
+   because the checker never ran a pass and the lists reach it unchanged.
 5. **Historical filter** — **always skipped here.** So is step 0.5 before it. Both are permanent
    no-ops on this package, reported as *"historical filtering unavailable"* rather than *"no prior
    revisions"*.
 6. **Verdict** — dedupes by `file:line` and root cause keeping the highest severity, then: any
    CRITICAL → **REQUEST CHANGES**; no CRITICAL but ≥1 IMPORTANT → **APPROVE WITH COMMENTS**; neither
-   → **APPROVE**.
+   → **APPROVE**. A `MISSING` pass caps the verdict at APPROVE WITH COMMENTS.
 
-**What you get:** `adversarial-review-report.md` with the verdict and per-severity counts.
+**What you get:** `adversarial-review-report.md` with the verdict, per-severity counts and the `Passes run` line.
 
 > Across all three technical passes the instruction is the same: check whether the utility already
 > exists **before** flagging its absence — and flag *bypassing* it instead. This is not a replacement

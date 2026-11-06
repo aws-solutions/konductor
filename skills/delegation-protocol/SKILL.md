@@ -106,15 +106,15 @@ For web content, prefer `k-researcher` for information retrieval. Delegate to `k
 
 Which SOPs each agent declares in its own `dependencies.agentSops.agentSopNames`, read directly from `agents/*.agent-spec.json`. This is the authoritative source for which agent a SOP dispatches to when it names another SOP by identifier — a referencing SOP should look up the owning agent here rather than stating or assuming one independently.
 
-| Agent                                                                         | Registered SOPs (own `agentSopNames`)                                                                                                                                                      |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `k-architect`                                                                 | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review`                                                             |
-| `k-developer`                                                                 | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow`                                                                                                     |
-| `k-quality-assurance`                                                         | `k-test-coverage-review`                                                                                                                                                                   |
-| `konductor`                                                                   | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
-| `konductor-mux-orchestrator`                                                  | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor`               |
-| `konductor-cmux-orchestrator`                                                 | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor`               |
-| `k-product-manager`, `k-researcher`, `k-tpm`, `k-browser`, `k-media-analyzer` | None declared — these agents execute delegated tasks; they do not select their own SOPs                                                                                                    |
+| Agent                                                                         | Registered SOPs (own `agentSopNames`)                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `k-architect`                                                                 | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`                                                                                                                                       |
+| `k-developer`                                                                 | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow`                                                                                                                                          |
+| `k-quality-assurance`                                                         | `k-test-coverage-review`                                                                                                                                                                                                        |
+| `konductor`                                                                   | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` |
+| `konductor-mux-orchestrator`                                                  | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor`               |
+| `konductor-cmux-orchestrator`                                                 | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor`               |
+| `k-product-manager`, `k-researcher`, `k-tpm`, `k-browser`, `k-media-analyzer` | None declared — these agents execute delegated tasks; they do not select their own SOPs                                                                                                                                         |
 
 `konductor` additionally registers `k-delegate`; `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` do not.
 
@@ -151,7 +151,7 @@ role, or a proposed split giving each part's agent, skill or SOP step,
 inputs and files. Before routing a note or any part of a split, apply
 the guards in your orchestrator context (the "Specialists do not spawn
 agents" paragraph), which also says how to check a split's file lists
-and how to resume a named SOP step.
+and that a note naming an SOP you declare is yours to run.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
@@ -172,7 +172,7 @@ Examples of parallelizable work:
 
 Large outputs between agents go through handoff files:
 
-1. Subagent writes output to `.konductor/handoff/<agent>-<task>.md`
+1. Subagent writes output to `.konductor/handoff/<agent>-<task>.md` (first create `.konductor/handoff/.gitignore` containing `*` if it is missing, so handoff files are never committed)
 2. Subagent returns only the file path to the orchestrator
 3. Next subagent reads the handoff file directly as CONTEXT
 4. Max ~300 lines per handoff file — split into multiple files if larger

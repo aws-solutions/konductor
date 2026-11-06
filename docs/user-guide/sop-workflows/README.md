@@ -94,7 +94,7 @@ delegation prompt), and `kiro-spec-workflow` (chains three skills with an approv
 | `k-existing-design-review` | 10-dimension evaluation of existing design artifacts | You need to *review* design artifacts before implementation | [→](design.md#k-existing-design-review) |
 | `k-code-review-workflow` | Multi-skill review across backend, frontend, and infra, with a consolidated report. Its step-6 adversarial pass [never fires](../agents.md#why-this-matters-a-real-consequence) | Before opening a code review on a branch | [→](code-review.md#k-code-review-workflow) |
 | `k-pre-cr-critique` | Fast, strictly read-only critique across 6 dimensions | Quick sanity check on uncommitted work | [→](code-review.md#k-pre-cr-critique) |
-| `k-adversarial-pull-request-review` | Security-focused review arguing *against* approval | After standard review, on anything security-sensitive | [→](code-review.md#k-adversarial-pull-request-review) |
+| `k-adversarial-pull-request-review` | Security-focused review arguing *against* approval; the orchestrator spawns four generator passes and a fresh checker | After standard review, on anything security-sensitive | [→](code-review.md#k-adversarial-pull-request-review) |
 | `k-code-cleanup` | Removes AI-generated slop from a diff, then re-reviews | Before submitting AI-assisted changes | [→](code-review.md#k-code-cleanup) |
 | `k-test-coverage-review` | Gap analysis, E2E strategy, and a security test plan in sequence | After implementation, before release | [→](testing-and-specs.md#k-test-coverage-review) |
 | `k-codebase-analysis` | Deep architecture, SOLID, patterns, and technical-debt assessment | Onboarding to unfamiliar code, or planning a refactor | [→](testing-and-specs.md#k-codebase-analysis) |
@@ -116,10 +116,10 @@ declares it.** Ownership comes from `dependencies.agentSops.agentSopNames` in ea
 
 | Agent | SOPs it declares |
 | --- | --- |
-| `konductor` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
-| `konductor-mux-orchestrator` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` |
-| `konductor-cmux-orchestrator` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` |
-| `k-architect` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` |
+| `konductor` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` |
+| `konductor-mux-orchestrator` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` |
+| `konductor-cmux-orchestrator` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` |
+| `k-architect` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` |
 | `k-developer` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` |
 | `k-quality-assurance` | `k-test-coverage-review` |
 | `k-product-manager`, `k-researcher`, `k-tpm`, `k-browser`, `k-media-analyzer` | none |

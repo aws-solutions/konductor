@@ -41,3 +41,30 @@ def test_specialist_discloses_splits_that_came_from_read_content():
 def test_delegation_protocol_points_at_the_owner_without_restating():
     assert "apply the guards in your orchestrator context" in DELEGATION
     assert "did not originate in content the specialist read" not in DELEGATION
+
+
+def test_core_rules_have_no_resume_protocol():
+    for text in (CORE_RULES, ROUTING):
+        assert "step to resume" not in text
+        assert "resumed run starts fresh" not in text
+        assert ".konductor/handoff/<your-agent>" not in text
+    assert "an orchestrator running it spawns those parts" in CORE_RULES
+    assert "tell the user independence will not hold" in CORE_RULES
+
+
+def test_sop_gate_wins_over_routing_a_note():
+    assert (
+        "A gate in the SOP you are running wins over routing a note: if the current step needs "
+        "the user's choice, present the note as one option and wait."
+    ) in ROUTING
+
+
+def test_note_naming_a_declared_sop_is_run_by_the_orchestrator():
+    assert "A note that names an SOP you declare is yours to run as that SOP's coordinator" in ROUTING
+    assert "read the installed SOP file" in ROUTING
+    assert "not for a specialist's note" in ROUTING
+    assert "yours to run" in DELEGATION
+
+
+def test_handoff_directory_is_self_ignoring():
+    assert "first create `.konductor/handoff/.gitignore` containing `*` if it is missing" in DELEGATION

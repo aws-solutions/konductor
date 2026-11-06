@@ -28,11 +28,11 @@ registry entries.
 
 | Agent | Role | Model | Skills | SOPs | MCP |
 | --- | --- | --- | --- | --- | --- |
-| `konductor` | Coordinator. Delegates everything, implements nothing. | `claude-sonnet-5.5` | 13 | 10 | — |
-| `konductor-mux-orchestrator` | Same, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 9 | — |
-| `konductor-cmux-orchestrator` | Same, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 9 | — |
+| `konductor` | Coordinator. Delegates everything, implements nothing. | `claude-sonnet-5.5` | 13 | 11 | — |
+| `konductor-mux-orchestrator` | Same, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 10 | — |
+| `konductor-cmux-orchestrator` | Same, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 10 | — |
 | `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
-| `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 4 | `aws-mcp` |
+| `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 3 | `aws-mcp` |
 | `k-developer` | Implementation, code review, git, builds. | `claude-sonnet-5.5` | 27 | 4 | `aws-mcp` |
 | `k-quality-assurance` | Test coverage, E2E strategy, security tests. | `claude-sonnet-5.5` | 12 | 1 | — |
 | `k-tpm` | Program plans, status, risk, estimation. | `claude-sonnet-5.5` | 14 | 0 | — |
@@ -194,9 +194,10 @@ flowchart LR
 | `k-browser` | no delegation | **nothing** |
 | `k-media-analyzer` | no delegation | **nothing** |
 
-Run directly with no orchestrator, the caller is you. `k-adversarial-pull-request-review`
-returns its three Step 2 passes as a proposed split, resumes at Step 3, returns the reuse pass as
-a handoff note, and resumes at Step 4. Starting from `konductor` routes each hop for you.
+Run directly with no orchestrator, the caller is you and the note or split comes back to you.
+The adversarial review is the exception: only the orchestrators declare
+`k-adversarial-pull-request-review`, which spawns four `k-developer` passes and then a fresh
+`k-architect` checker, so run it through `konductor`.
 
 ### Why this matters: a real consequence
 
@@ -215,7 +216,7 @@ Routing the request through `konductor` does **not** fix it: the orchestrator do
 declare `k-code-review-workflow`, so it delegates the whole SOP to the developer, who then hits
 the same wall. The reliable workaround is to run
 [`k-adversarial-pull-request-review`](sop-workflows/code-review.md#k-adversarial-pull-request-review)
-yourself against `k-architect`, which owns it.
+through `konductor`, which coordinates it.
 
 ### The two multiplexer orchestrators do not use subagents at all
 
@@ -280,13 +281,13 @@ The most capable agent in the package, on the strongest model.
 | | |
 | --- | --- |
 | **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code), the same model every agent runs |
-| **SOPs** (4) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` |
+| **SOPs** (3) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` |
 | **Skills** | **38** — the largest share of any agent. See [Architecture and design](skills.md#architecture-and-design), [Design quality gates](skills.md#design-quality-gates), [API and data modelling](skills.md#api-and-data-modelling) |
 | **MCP** | `aws-mcp`, launched via `uvx mcp-proxy-for-aws-cli==1.7.0`. Kiro CLI's `allowedTools` grants five tools (documentation search, documentation read, skill retrieval, region list, regional availability); Claude Code grants the whole server via `mcp__aws-mcp__*` (8 tools, including the three AWS-API-acting ones: `aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`) |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | `k-developer`, `k-quality-assurance` — in both runtimes |
 
-Owns both design SOPs *and* the adversarial pull-request review. Its system prompt applies a
+Owns the design SOPs and is the checker the orchestrator spawns in `k-adversarial-pull-request-review`. Its system prompt applies a
 maker-checker pass to every artifact and presents findings as CRITICAL → IMPORTANT → SUGGESTION
 followed by `Fix these issues? [y/n]`.
 
