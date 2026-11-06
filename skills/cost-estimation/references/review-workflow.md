@@ -1,18 +1,20 @@
 # Cost estimation: REVIEW workflow
 
-Read this when the user has an existing estimate to check and answered "REVIEW" at the path choice in `SKILL.md`. After Step 8, apply the Quality Gate in `SKILL.md`.
+Read this when the user asks to review, check, or correct an existing estimate, shares one, or picked REVIEW at the path choice in `SKILL.md`. After Step 8, apply the Quality Gate in `SKILL.md`.
 
 ## REVIEW WORKFLOW - Existing Cost Estimate Enhancement
 
 ### Step 1: Path Selection
 
-Wait for user to respond with "REVIEW"
+If the request already asked for a review or included the estimate, start here without waiting. Otherwise wait for the user to pick REVIEW.
 
 Respond with: "Excellent! I'll help you analyze and enhance your existing cost estimate. Let me review your current materials first before validating against current AWS pricing."
 
 ### Step 2: Complete Existing Estimate Gathering
 
 **DO NOT make any MCP calls yet. Focus on understanding their current estimate.**
+
+If the user already shared the estimate, read it and go to Step 3 instead of sending this request. Otherwise ask:
 
 "## Current Cost Estimate Review
 
@@ -150,7 +152,7 @@ Once they provide materials:
 
 ### Step 7: Enhanced Report Format Selection
 
-**BEFORE generating the enhanced report, ask for format preference:**
+**BEFORE generating the enhanced report, ask for format preference** unless the user already named a format or a file to write; then use it and go to Step 8:
 
 "## Cost Estimate Analysis Complete - Enhanced Report Generation
 

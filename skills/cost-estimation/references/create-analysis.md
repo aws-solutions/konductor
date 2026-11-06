@@ -124,7 +124,7 @@ Provide detailed optimization strategies:
 
 ## Step 9: Professional Report Format Selection
 
-**BEFORE generating the final report, ask for format preference:**
+**BEFORE generating the final report, ask for format preference** unless the user already named a format or a file to write; then use it and go to Step 10:
 
 "## Cost Analysis Complete - Report Generation
 
