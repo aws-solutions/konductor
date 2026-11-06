@@ -60,6 +60,11 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- `requirements-extraction`, `user-story-writing`, and `system-design-patterns` now read as one
+  set of instructions each, without a pasted prompt and its separate role. Repeated rules are
+  stated once. `system-design-patterns` lists its real five interview phases and four
+  documents, adds a non-functional requirements section to the design document, and points
+  follow-up work at konductor skills instead of prompts that don't exist.
 
 ### Fixed
 
