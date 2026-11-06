@@ -39,11 +39,11 @@ Avoid over-simplification that could reduce maintainability, create overly cleve
 
 ## Refinement Process
 
-1. **Identify** recently modified code sections
-2. **Analyze** for clarity and consistency improvements
-3. **Apply** project-specific best practices
-4. **Verify** functionality remains unchanged
-5. **Document** only significant changes
+1. **Baseline**: run the tests that cover the code and note the result. If none cover it, say so before changing anything.
+2. **Identify** recently modified code sections
+3. **Apply** clarity and consistency changes that follow the project's own conventions
+4. **Re-run** the same tests and confirm the result matches the baseline. Show both runs.
+5. **Report** each change with its file, what changed, and why it is clearer
 
 ## Quick Reference
 
