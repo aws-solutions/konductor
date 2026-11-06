@@ -1,3 +1,5 @@
+# Stage 9 report template
+
 Read this when you write the Stage 9 report: it is the full report template, sections in order.
 
 ````markdown
