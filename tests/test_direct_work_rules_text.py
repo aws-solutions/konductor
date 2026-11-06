@@ -122,3 +122,9 @@ def test_shape_files_do_not_carry_the_owner_table():
     for rel in ("k-direct-work.md", "k-orchestrator-routing-rules.md"):
         text = (ROOT / "context" / rel).read_text(encoding="utf-8")
         assert "| SharePoint" not in text, rel
+
+
+def test_direct_work_treats_a_skill_miss_as_the_signal_to_spawn():
+    direct = (ROOT / "context" / "k-direct-work.md").read_text(encoding="utf-8")
+    assert "that miss is the answer" in direct
+    assert direct.index(SOP_CLAUSE) < direct.index("spawn a specialist in two cases only")

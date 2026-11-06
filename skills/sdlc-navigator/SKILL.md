@@ -92,4 +92,4 @@ To switch to a different agent:
 
 - Kiro CLI: `kiro-cli chat --agent k-architect`
 - Kiro IDE: `@k-architect`
-- Or ask the current agent to spawn the next agent as a subagent
+- Or ask the orchestrator to route the next phase to that agent

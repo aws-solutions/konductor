@@ -75,6 +75,8 @@ This is distinct from spawning the wrong agent for the task (an IMPORTANT-tier Q
 
 ## Agent Registry
 
+In `auto` mode `konductor` does these tasks itself and spawns only as `context/k-direct-work.md` says; the When to Spawn column names the owner when it does.
+
 ### SDLC Specialists
 
 | Agent                         | Purpose                              | When to Spawn                                                                                                                                                                                                                                                                                                    |
@@ -99,7 +101,7 @@ When uncertain which agent to use, check the agent's skill list in the README or
 
 ### Tool-to-Agent Routing
 
-> **Authoritative source**: This table is the detailed routing reference. `context/k-orchestrator-routing-rules.md` is a quick-reference summary loaded at startup — when the two conflict, this file wins. Update both when adding new tool domains.
+> **Authoritative source**: This table is the detailed routing reference. `context/k-orchestrator-shared.md` carries a compact owner table every orchestrator loads at startup; `context/k-orchestrator-routing-rules.md` is the coordinator's full routing file, loaded at startup by the mux and cmux orchestrators and read by `konductor` in `coordinator` mode. When any of them conflicts with this file, this file wins. Update them when adding new tool domains.
 
 | Tool Domain              | Primary Agent  | Other Agents with Access                                                                              |
 | ------------------------ | -------------- | ----------------------------------------------------------------------------------------------------- |
