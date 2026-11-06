@@ -77,6 +77,9 @@ not per individual commit.
 - `architecture-diagram-generation` keeps its XML templates, icon styles and common patterns in
   `references/drawio-templates.md` and loads them only when generating the XML. Its repeated
   introduction is now one overview.
+- `architecture-diagram-generation` now targets plain draw.io (diagrams.net) XML and drops the
+  rules that served one draw.io-based tool. It places S3 with the regional services, since each
+  bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)

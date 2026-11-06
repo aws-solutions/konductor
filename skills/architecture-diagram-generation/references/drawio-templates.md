@@ -2,9 +2,7 @@
 
 Read this when generating the XML: it holds the single-account and multi-account starting templates, AWS service icon styles, and common patterns to copy from.
 
-## Design Inspector Compatible XML Templates
-
-These templates are optimized for Design Inspector's security analysis and threat modeling features:
+## Account Templates
 
 ### Single Account Architecture Template
 
