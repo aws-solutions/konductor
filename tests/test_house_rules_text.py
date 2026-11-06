@@ -101,6 +101,8 @@ def test_cited_memory_entries_are_origin_qualified():
         "skills/constraints/SKILL.md",
     ):
         assert needle in _read(rel), rel
+    routing = " ".join(_read("context/k-orchestrator-routing-rules.md").split())
+    assert "(tagged `[origin:user]` or untagged)" in routing
 
 
 def test_the_user_asked_form_is_gone():
@@ -173,4 +175,9 @@ def test_confirmed_agent_ruling_is_retagged_in_place():
 
 def test_faq_does_not_claim_a_no_convention_fallback():
     assert "states no convention" not in _read("docs/user-guide/faq.md")
-    assert "states no convention" not in _read("tools/build-user-guide/sync-html-content.py")
+    for rel in (
+        "tools/build-user-guide/sync-html-content.py",
+        "docs/index.html",
+        "docs/site/user-guide.html",
+    ):
+        assert "states no convention" not in _read(rel), rel
