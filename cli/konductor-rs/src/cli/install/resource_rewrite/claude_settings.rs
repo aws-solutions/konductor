@@ -473,7 +473,7 @@ pub(super) fn apply_claude_settings_grant(
 /// argument), never by exe path, so a reinstall replaces a stale block
 /// (moved binary, changed agent set) instead of adding another.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum HookId {
+pub(super) enum HookId {
     Telemetry(&'static str),
     OrchestrationMode,
 }
@@ -634,7 +634,7 @@ pub(super) fn shell_quote_for_hook_command(exe: &str) -> String {
 }
 
 const TELEMETRY_HOOK_MARKER: &str = "__telemetry-hook ";
-const ORCHESTRATION_HOOK_MARKER: &str = "__orchestration-hook";
+pub(crate) const ORCHESTRATION_HOOK_MARKER: &str = "__orchestration-hook";
 
 /// The `__telemetry-hook ...` or `__orchestration-hook ...` part of a
 /// hook command, without the leading exe path, so commands that differ
@@ -650,7 +650,7 @@ pub(super) fn stable_hook_command_suffix(command: &str) -> Option<&str> {
 }
 
 /// Whether `command` is the Konductor hook `id`.
-fn command_is_hook(command: &str, id: HookId) -> bool {
+pub(super) fn command_is_hook(command: &str, id: HookId) -> bool {
     match id {
         HookId::Telemetry(event) => telemetry_hook_event(command) == Some(event),
         HookId::OrchestrationMode => stable_hook_command_suffix(command)
@@ -697,6 +697,79 @@ pub(super) fn orchestration_hook_command(
         command.push_str(&shell_quote_for_hook_command(harness));
     }
     command
+}
+
+/// The exe path a hook command runs, when the command's first word is
+/// followed by `marker`. Reverses both quoting forms of
+/// `shell_quote_for_hook_command`, so a command written on either
+/// platform reads back the same path.
+pub(crate) fn hook_command_exe(command: &str, marker: &str) -> Option<String> {
+    let (exe, rest) = split_first_word(command)?;
+    let rest = rest.strip_prefix(' ')?.strip_prefix(marker)?;
+    (rest.is_empty() || rest.starts_with(' ')).then_some(exe)
+}
+
+/// The unquoted `--install-root` value of a hook command, or `None`
+/// when the command carries none.
+pub(crate) fn hook_command_install_root(command: &str) -> Option<String> {
+    let (_, mut rest) = split_first_word(command)?;
+    loop {
+        let (word, after) = split_first_word(rest.strip_prefix(' ')?)?;
+        if word == "--install-root" {
+            return split_first_word(after.strip_prefix(' ')?).map(|(root, _)| root);
+        }
+        rest = after;
+    }
+}
+
+/// The first shell word of `command`, unquoted, and the text after it.
+fn split_first_word(command: &str) -> Option<(String, &str)> {
+    match command.chars().next()? {
+        '\'' => split_single_quoted(command),
+        '"' => split_double_quoted(command),
+        _ => {
+            let end = command.find(' ').unwrap_or(command.len());
+            Some((command[..end].to_string(), &command[end..]))
+        }
+    }
+}
+
+/// `'a'\''b'` reads as `a'b`.
+fn split_single_quoted(command: &str) -> Option<(String, &str)> {
+    let mut word = String::new();
+    let mut rest = command;
+    loop {
+        let inner = rest.strip_prefix('\'')?;
+        let close = inner.find('\'')?;
+        word.push_str(&inner[..close]);
+        rest = &inner[close + 1..];
+        match rest.strip_prefix("\\'") {
+            Some(after) => {
+                word.push('\'');
+                rest = after;
+            }
+            None => return Some((word, rest)),
+        }
+    }
+}
+
+/// `"a""b"` reads as `a"b`.
+fn split_double_quoted(command: &str) -> Option<(String, &str)> {
+    let mut word = String::new();
+    let mut chars = command[1..].char_indices().peekable();
+    while let Some((index, c)) = chars.next() {
+        if c != '"' {
+            word.push(c);
+            continue;
+        }
+        if chars.peek().is_some_and(|&(_, next)| next == '"') {
+            chars.next();
+            word.push('"');
+            continue;
+        }
+        return Some((word, &command[index + 2..]));
+    }
+    None
 }
 
 fn append_hook_args(command: &mut String, agent: Option<&str>, install_root: Option<&Path>) {
@@ -909,6 +982,14 @@ fn apply_claude_settings_hooks(
     target_dir: &Path,
     no_telemetry: bool,
 ) -> Result<(String, String), ClaudeGrantError> {
+    apply_claude_settings_hooks_with_exe(target_dir, no_telemetry, &resolve_konductor_exe_path())
+}
+
+pub(super) fn apply_claude_settings_hooks_with_exe(
+    target_dir: &Path,
+    no_telemetry: bool,
+    exe: &str,
+) -> Result<(String, String), ClaudeGrantError> {
     let relative = claude_hooks_settings_relative_path(target_dir);
     let agent_names = crate::cli::telemetry_hook::installed_agent_names(target_dir);
     let bytes = merge_claude_settings_hooks_with_exe(
@@ -916,7 +997,7 @@ fn apply_claude_settings_hooks(
         relative,
         KONDUCTOR_HOOK_ENTRIES,
         no_telemetry,
-        &resolve_konductor_exe_path(),
+        exe,
         &agent_names,
     )?;
     if relative == CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH {
@@ -2383,5 +2464,95 @@ mod tests {
             "k __orchestration-hook --install-root /x --harness claude",
             HookId::OrchestrationMode
         ));
+    }
+
+    #[test]
+    fn hook_command_exe_round_trips_the_quoted_exe() {
+        for exe in [
+            "/opt/konductor/bin/konductor",
+            "/Users/a b/bin/konductor",
+            "/tmp/it's/konductor",
+            "/tmp/ends-with-quote'",
+        ] {
+            let command = orchestration_hook_command(
+                &shell_quote_for_hook_command(exe),
+                Some("konductor"),
+                Some(Path::new("/x y")),
+                None,
+            );
+            assert_eq!(
+                hook_command_exe(&command, ORCHESTRATION_HOOK_MARKER).as_deref(),
+                Some(exe),
+                "{command}"
+            );
+        }
+    }
+
+    #[test]
+    fn hook_command_exe_reads_both_quoting_forms() {
+        let marker = ORCHESTRATION_HOOK_MARKER;
+        assert_eq!(
+            hook_command_exe("'/a'\\''b/k' __orchestration-hook", marker).as_deref(),
+            Some("/a'b/k")
+        );
+        assert_eq!(
+            hook_command_exe(
+                "\"C:\\P F\\k \"\"x\"\"\" __orchestration-hook --agent konductor",
+                marker
+            )
+            .as_deref(),
+            Some("C:\\P F\\k \"x\"")
+        );
+    }
+
+    #[test]
+    fn hook_command_install_root_round_trips_the_quoted_root() {
+        let root = Path::new("/p q/r's");
+        let command = orchestration_hook_command(
+            &shell_quote_for_hook_command("/opt/k"),
+            Some("konductor"),
+            Some(root),
+            None,
+        );
+        assert_eq!(
+            hook_command_install_root(&command).as_deref(),
+            Some("/p q/r's")
+        );
+        assert_eq!(
+            hook_command_install_root(
+                "\"C:\\a b\\k\" __orchestration-hook --install-root \"C:\\p q\""
+            )
+            .as_deref(),
+            Some("C:\\p q")
+        );
+        assert_eq!(
+            hook_command_install_root("/opt/k __orchestration-hook --agent konductor"),
+            None
+        );
+    }
+
+    #[test]
+    fn hook_command_exe_needs_the_marker_right_after_the_exe() {
+        let marker = ORCHESTRATION_HOOK_MARKER;
+        assert_eq!(
+            hook_command_exe("/opt/k __orchestration-hookx", marker),
+            None
+        );
+        assert_eq!(
+            hook_command_exe("/opt/k __telemetry-hook agent-invocation", marker),
+            None
+        );
+        assert_eq!(
+            hook_command_exe("/opt/k --x __orchestration-hook", marker),
+            None
+        );
+        assert_eq!(
+            hook_command_exe("'/unterminated __orchestration-hook", marker),
+            None
+        );
+        assert_eq!(
+            hook_command_exe("konductor __orchestration-hook", marker).as_deref(),
+            Some("konductor")
+        );
     }
 }

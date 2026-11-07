@@ -47,6 +47,8 @@ not per individual commit.
 - A Claude Code install with `--no-telemetry` now writes `.claude/settings.local.json` for the
   orchestration hook alone.
 - The telemetry hook's Kiro CLI v3 session lookup follows `$KIRO_HOME` when set.
+- `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
+  config value is valid; a hand-edited hook entry is reported as warn, not as missing.
 
 ### Changed
 

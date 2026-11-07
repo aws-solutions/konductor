@@ -30,8 +30,8 @@ use super::telemetry_hook::{
 /// `k-direct-work.md` (pinned by `tests/test_konductor_prompt_mode_neutral.py`).
 pub(crate) const MODE_AGENT: &str = "konductor";
 
-const ROUTING_RULES_FILE_NAME: &str = "k-orchestrator-routing-rules.md";
-const DIGEST_FILE_NAME: &str = "k-coordinator-digest.md";
+pub(crate) const ROUTING_RULES_FILE_NAME: &str = "k-orchestrator-routing-rules.md";
+pub(crate) const DIGEST_FILE_NAME: &str = "k-coordinator-digest.md";
 
 /// The only directories, relative to an install root, that core rule 11
 /// trusts the routing rules file in. The pointer never names a file
@@ -294,7 +294,7 @@ fn render(output: &HookOutput) -> Vec<u8> {
 /// `TRUSTED_CONTEXT_DIRS`, relative to `root`: the first one present on
 /// disk, else the first one listed. Paths that are absolute, climb out of
 /// `root`, or sit anywhere else are ignored.
-fn installed_file(
+pub(crate) fn installed_file(
     manifest: &super::install::manifest::Manifest,
     root: &Path,
     file_name: &str,
