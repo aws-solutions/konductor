@@ -3329,9 +3329,8 @@ mod tests {
         let source_dir = scratch_dir("config-broken-home-tier-source");
         let home_dir = scratch_dir("config-broken-home-tier-home");
 
-        let user_config_dir = home_dir.join(config::KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&user_config_dir).unwrap();
-        let user_config_path = user_config_dir.join(config::CONFIG_FILE_NAME);
+        let user_config_path = config::user_config_path(&home_dir);
+        fs::create_dir_all(user_config_path.parent().unwrap()).unwrap();
         fs::write(&user_config_path, b"not: [valid: yaml").unwrap();
 
         let resolved = ResolvedSource {
@@ -4170,13 +4169,9 @@ mod tests {
         let broken_source = scratch_dir("isolation-broken-source");
         let broken_destination = scratch_dir("isolation-broken-destination");
         let broken_home = scratch_dir("isolation-broken-home");
-        let broken_user_config_dir = broken_home.join(config::KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&broken_user_config_dir).unwrap();
-        fs::write(
-            broken_user_config_dir.join(config::CONFIG_FILE_NAME),
-            b"not: [valid: yaml",
-        )
-        .unwrap();
+        let broken_user_config_path = config::user_config_path(&broken_home);
+        fs::create_dir_all(broken_user_config_path.parent().unwrap()).unwrap();
+        fs::write(&broken_user_config_path, b"not: [valid: yaml").unwrap();
 
         let code = dispatch_doctor_with(
             &broken_source,
