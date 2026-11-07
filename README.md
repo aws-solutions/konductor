@@ -294,9 +294,10 @@ compact it prints `Orchestration: auto`, so a session that changed mode sees the
 it recognises a `konductor` session but cannot apply `coordinator`, it prints one fallback line
 and the session runs as `auto`.
 
-The first reply of every `konductor` session states the mode once:
+The first reply of every `konductor` session states the mode once, and the reply after a Claude Code
+resume or compact states it again:
 
-| First reply | Meaning |
+| Reply | Meaning |
 | --- | --- |
 | `Orchestration: coordinator` | The coordinator rules are in effect |
 | `Orchestration: auto (default)` | `auto` by setting or by default. With `coordinator` set, no hook output arrived: run `konductor doctor`, then see [Troubleshooting](docs/user-guide/troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator) |

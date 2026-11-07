@@ -114,6 +114,12 @@ MODE_CLAUSE_SENTENCES = [
      "`auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators."),
     ("glossary.md", "The **mux and cmux orchestrators** are read-only by rule, and `konductor` is too in "
      "`coordinator` mode."),
+    ("quick-start.md", "In the default `auto` mode it does the work itself, in this one session, and spawns a "
+     "fresh `k-*` reviewer when a phase closes"),
+    ("tasks/install-kiro-cli.md", "it does the work itself (in `coordinator` mode it hands every change to a "
+     "specialist) or spawns the agent that declares the SOP you need"),
+    ("use-cases/plan-and-verify-work.md", "does the work itself in the default `auto` mode (in `coordinator` mode "
+     "it hands every change to a specialist); no runtime enforces either shape"),
 ]
 
 

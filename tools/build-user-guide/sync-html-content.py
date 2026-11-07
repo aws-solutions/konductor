@@ -100,9 +100,9 @@ EDITS = [
     # ---- every agent loads context/k-core-rules.md ---------------------------
     ('concepts context file paragraph', 'There are two today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains', 'There are four today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-direct-work.md</span> is loaded by konductor; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by the mux and cmux orchestrators; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-shared.md</span> holds the handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains'),
     # ---- single-writer shape: konductor does the work itself (R4-144.c) ----
-    ("quick-start step 3: konductor does the work itself",
-     "You are now talking to the coordinator. It never implements anything itself — it routes each piece of work to the specialist that owns it, checks what comes back, and re-delegates if a check fails.</p>",
-     "You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files.</p>"),
+    ("quick-start step 3: konductor does the work itself in auto",
+     "You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files.</p>",
+     "You are now talking to the orchestrator. In the default auto mode it does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files. In coordinator mode it hands every change to a specialist.</p>"),
     ("concepts context paragraph: coordinator rules, not a routing table",
      "The routing rules file contains the capability-to-agent routing table and three",
      "The routing rules file contains the coordinator rules and three"),
@@ -123,11 +123,13 @@ EDITS = [
      'v: "An agent that coordinates other agents; konductor also does the work itself. Three exist:'),
     # Two edits around the "uc owned-by prose" fragment, which stays byte-identical
     # in the middle of this paragraph so that entry remains satisfied.
-    ("use-cases owned-by-the-orchestrator: mux and cmux dispatch, konductor works",
-     "The orchestrators are dispatchers by design. " + _code("konductor")
-     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>",
+    ("use-cases owned-by-the-orchestrator: mux and cmux dispatch, konductor works in auto",
      "The mux and cmux orchestrators are dispatchers by design, and " + _code("konductor")
      + " does the work itself; no runtime enforces either shape. " + _code("konductor")
+     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>",
+     "The mux and cmux orchestrators are dispatchers by design, and " + _code("konductor")
+     + " does the work itself in the default auto mode (in coordinator mode it hands every change to a "
+     + "specialist); no runtime enforces either shape. " + _code("konductor")
      + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>"),
     ("use-cases owned-by-the-orchestrator: konductor's Claude Code tools",
      "alone; in Claude Code its tool list has no " + _code("Bash") + ", " + _code("Write") + ", or " + _code("Edit")
@@ -445,12 +447,14 @@ EDITS = [
      "konductor anyway: it is the only entry point that verifies a handoff before moving on. "
      "Reach for the direct form when you are deliberately scoping a session to one agent, and "
      "treat it as the exception."),
-    ("ik which agent: prose",
-     ">Start with konductor and let it route. That is the default for everything in this guide: "
+    ("ik which agent: prose, konductor works in auto",
+     ">Start with konductor and ask in plain language; it does the work itself or spawns the agent "
+     "that declares the SOP you need. That is the default for everything in this guide: "
      "it is the only entry point that verifies a handoff before moving on, and it does not "
      "require you to know who owns which workflow. Starting a specialist directly is supported "
      'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>',
-     ">Start with konductor and ask in plain language; it does the work itself or spawns the agent "
+     ">Start with konductor and ask in plain language; it does the work itself (in coordinator mode it "
+     "hands every change to a specialist) or spawns the agent "
      "that declares the SOP you need. That is the default for everything in this guide: "
      "it is the only entry point that verifies a handoff before moving on, and it does not "
      "require you to know who owns which workflow. Starting a specialist directly is supported "
