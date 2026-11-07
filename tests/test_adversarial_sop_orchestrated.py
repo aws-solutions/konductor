@@ -88,14 +88,25 @@ def test_execution_context_note_bounds_the_coordinator_reads():
     assert "> **Execution context:**" in overview
     assert "Direct Work table (up to 10 files, read-only shell commands)" in overview
     assert "it does not read past it" in overview
-    assert "one read-only `k-researcher` spawn produces the Step 0 context summary" in overview
+    assert "one read-only `k-developer` spawn produces the Step 0 context summary" in overview
+    assert "k-researcher` lacks on Claude Code" in overview
+    assert "or a revision range to diff" in overview
     step_0 = section("### 0. Context Ramp-Up")
-    assert "past the Direct Work read budget, You MUST spawn one read-only `k-researcher` session" in step_0
+    assert "past the Direct Work read budget, You MUST spawn one read-only `k-developer` session" in step_0
+    assert "the brief MUST forbid edits, builds and tests" in step_0
+    assert "k-researcher" not in step_0
     step_1 = section("### 1. Ingest Diff")
-    assert "For file paths beyond that budget" in step_1
-    assert "carry the paths in every brief instead of their content" in step_1
-    for heading in ("### 2. Parallel Review Passes", "### 4. Checker Phase"):
-        assert "or its file paths" in section(heading), heading
+    assert "For file paths or a revision range beyond that budget" in step_1
+    assert "carry the paths or the revision range in every brief instead of their content" in step_1
+    assert "as paths or a revision range beyond it" in step_1
+    for heading in ("### 2. Parallel Review Passes", "### 3. Reuse Pass", "### 4. Checker Phase"):
+        assert "or its file paths or revision range" in section(heading), heading
+
+
+def test_the_context_spawn_agent_has_search_tools_on_claude_code():
+    spec = json.loads((ROOT / "agents" / "k-developer.agent-spec.json").read_text(encoding="utf-8"))
+    tools = spec["clientConfig"]["claudeCli"]["tools"]
+    assert {"Grep", "Glob", "Read", "WebFetch"} <= set(tools)
 
 
 def test_step_6_summary_is_returned_to_the_coordinator():

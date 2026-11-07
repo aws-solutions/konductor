@@ -11,7 +11,7 @@ USE_CASE = " ".join((DOCS / "use-cases" / "review-code-and-tests.md").read_text(
 
 
 def test_the_orchestrators_own_the_sop_and_konductor_is_the_prompt_target():
-    assert "**Only the three orchestrators declare this SOP.**" in ADVERSARIAL
+    assert "**Only the three orchestrators declare this SOP**" in ADVERSARIAL
     assert "kiro-cli chat --agent konductor" in ADVERSARIAL
     assert "Run the k-adversarial-pull-request-review SOP on the diff for my current branch." in ADVERSARIAL
     assert "they tell you to run it through `konductor`" in ADVERSARIAL
@@ -25,7 +25,10 @@ def test_the_guide_says_what_each_spawn_receives():
 
 def test_the_guide_bounds_the_coordinator_reads():
     assert "gathers context itself within its read budget" in ADVERSARIAL
-    assert "one read-only `k-researcher` spawn writes the context summary" in ADVERSARIAL
+    assert "one read-only `k-developer` spawn writes the context summary" in ADVERSARIAL
+    assert "k-researcher" not in ADVERSARIAL
+    assert "Five spawns (six when a context spawn is needed), one report." in ADVERSARIAL
+    assert "matches a row in their SOP trigger table" in ADVERSARIAL
 
 
 def test_the_use_case_page_does_not_hand_count_the_declared_sops():

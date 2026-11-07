@@ -483,6 +483,9 @@ SOP_EDITS += [
     ("adversarial: owner",
      'file: "agent-sops/k-adversarial-pull-request-review.sop.md", owner: "k-architect \u2014 no file changes",',
      'file: "agent-sops/k-adversarial-pull-request-review.sop.md", owner: "the orchestrators (k-architect is the checker), no file changes",'),
+    ("adversarial: ingest node",
+     "Accepts git diff output, file paths, or raw diff content; excludes binaries, lock files, build artifacts. Stops if the diff is empty.",
+     "Accepts git diff output, file paths, a revision range, or raw diff content; excludes binaries, lock files, build artifacts. Stops if the diff is empty."),
     ("adversarial: passes node",
      "Spawns k-developer THREE times concurrently, each loading exactly one pass skill \u2014 adversarial-code-review-pass-security, -integrity, -schema \u2014 each receiving the diff plus the step 0 summary. Findings are never shared between them.",
      "Spawns k-developer THREE times concurrently, each loading exactly one pass skill (adversarial-code-review-pass-security, -integrity, -schema), each receiving the diff plus the step 0 summary. Findings are never shared between them. A pass that fails twice is recorded as MISSING, never run by the coordinator."),
@@ -621,8 +624,8 @@ SOP_EDITS += [
 SOP_EDITS += [
     # SOP:20 -- diff_input required "even when pr_url is present"
     ("adversarial: diff_input param",
-     'param("diff_input", true, "— unless pr_url is given. Accepts git diff output, file paths, or raw PR diff content")',
-     'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, or raw PR diff content")'),
+     'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, or raw PR diff content")',
+     'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, a revision range, or raw PR diff content")'),
     # cli/README.md:740 -- doctor does not compare installed vs available versions
     ("update: doctor Updates checklist item",
      'konductor doctor</span> reports the Updates check as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">ok</span>.',

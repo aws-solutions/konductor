@@ -278,13 +278,16 @@ across four passes, then issues a verdict.
 replacement for standard review — it catches what style and quality reviewers miss: information
 disclosure, data integrity failures, and schema/validation gaps.
 
-**Only the three orchestrators declare this SOP.** `konductor` (or a multiplexer orchestrator)
-is the coordinator: it reads the diff and gathers context itself within its read budget (past
-it, the briefs carry file paths that the generators and the checker read, and one read-only
-`k-researcher` spawn writes the context summary), spawns the three generator passes in parallel
-and the reuse pass after them, each a fresh `k-developer` session, then spawns `k-architect`
-fresh as the checker with the four findings lists passed on unchanged. Five spawns, one report. `k-architect` and `k-developer` do not declare the SOP; asked for an
-adversarial review directly, they tell you to run it through `konductor`.
+**Only the three orchestrators declare this SOP**, and a plain-language request for an
+adversarial review matches a row in their SOP trigger table. `konductor` (or a multiplexer
+orchestrator) is the coordinator: it reads the diff and gathers context itself within its read
+budget (past it, the briefs carry the file paths or the revision range that the generators and
+the checker read, and one read-only `k-developer` spawn writes the context summary), spawns the
+three generator passes in parallel and the reuse pass after them, each a fresh `k-developer`
+session, then spawns `k-architect` fresh as the checker with the four findings lists passed on
+unchanged. Five spawns (six when a context spawn is needed), one report. `k-architect` and
+`k-developer` do not declare the SOP; asked for an adversarial review directly, they tell you to
+run it through `konductor`.
 
 ### How to invoke it
 
@@ -307,7 +310,7 @@ that fails or refuses is spawned once more; if it fails again it is recorded as
 
 | Parameter | Required | Default |
 | --- | --- | --- |
-| `diff_input` | **Yes, always** | — git diff output, file paths, or raw PR diff content |
+| `diff_input` | **Yes, always** | — git diff output, file paths, a revision range, or raw PR diff content |
 | `pr_url` | No | none — **context only**. Step 0 uses it to read linked issues and design docs; it never derives the diff |
 | `output_file` | No | `adversarial-review-report.md` |
 

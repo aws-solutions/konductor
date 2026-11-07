@@ -163,10 +163,11 @@ You can also just describe the outcome and let it choose:
 I need to review my changes before opening a CR.
 ```
 
-Two mechanisms are behind that, and it is worth knowing which one you are using. Eight SOPs sit
+Two mechanisms are behind that, and it is worth knowing which one you are using. Nine SOPs sit
 in `konductor`'s own SOP trigger table, so a matching request selects the SOP directly:
 `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`,
-`k-full-sdlc`, `k-e2e-test-generation`, and `k-light-ui-testing`. For the rest, the request falls
+`k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, and
+`k-adversarial-pull-request-review`. For the rest, the request falls
 through to the capability routing table and `konductor` delegates to the specialist that declares
 the SOP — which is why naming the SOP in your request is worth doing either way.
 

@@ -6,13 +6,14 @@ Runs an adversarial review of code changes. Not a replacement for standard code 
 
 Structure: one coordinator (the orchestrator running this SOP), three parallel `k-developer` generator passes (security, integrity, schema) and a fourth reuse pass, each spawned by the coordinator, then one fresh `k-architect` session spawned as the checker, which validates the findings, applies the historical-issues filter and writes the verdict. Persona independence between generator and checker is what keeps false positives out of the pull request.
 
-> **Execution context:** The coordinator is an orchestrator, so Steps 0 and 1 are reads under its Direct Work table (up to 10 files, read-only shell commands) and every later step is a spawn. When `diff_input` is file paths or the ramp-up sources would take the coordinator past that budget, it does not read past it: the briefs carry the file paths and the linked sources, the generators and the checker read them, and one read-only `k-researcher` spawn produces the Step 0 context summary, which the coordinator relays unchanged.
+> **Execution context:** The coordinator is an orchestrator, so Steps 0 and 1 are reads under its Direct Work table (up to 10 files, read-only shell commands) and every later step is a spawn. When reading `diff_input` (file paths, or a revision range to diff) or the ramp-up sources would take the coordinator past that budget, it does not read past it: the briefs carry the file paths or the revision range and the linked sources, the generators and the checker read or diff them, and one read-only `k-developer` spawn produces the Step 0 context summary, which the coordinator relays unchanged. The context spawn is `k-developer`, not `k-researcher`, because the pattern search needs the codebase search tools `k-researcher` lacks on Claude Code; its brief forbids edits, builds and tests.
 
 ## Parameters
 
 - **diff_input** (required on ASDLC — see the `pr_url` note below): The changes to review. Accepts:
   - Git diff output (`git diff` or `git diff HEAD~N`)
   - File paths to read directly
+  - A revision range to diff (for example `main...HEAD`)
   - Raw pull request diff content
 - **pr_url** (optional, context only on ASDLC): Pull request URL. **Diff auto-fetch from `pr_url` is unsupported on ASDLC** — no agent in this package has a tool that resolves an arbitrary pull-request URL to its diff content (see Roles); `diff_input` MUST always be supplied directly, even when `pr_url` is also given. When `pr_url` is present, Step 0 still uses it to look up linked issues or design docs referenced in the pull request description via generic `web_fetch`.
 - **output_file** (optional, default: `adversarial-review-report.md`): Path to write the findings report
@@ -47,7 +48,7 @@ Before reviewing the diff, autonomously gather the context needed to produce cod
 - You MUST limit ramp-up to: the pull request description and linked issues (max 3), directly referenced design docs (max 3), and a targeted codebase search for patterns in the changed files only
 - You MUST spend no more than one context-gathering pass per source — do not recursively follow links
 - You MUST NOT block on missing context — if a linked doc is unavailable, note it and proceed
-- When the sources above would take you past the Direct Work read budget, You MUST spawn one read-only `k-researcher` session with the linked sources and the changed files' paths to produce the context summary, and relay it unchanged (see the Execution context note)
+- When the sources above would take you past the Direct Work read budget, You MUST spawn one read-only `k-developer` session with the linked sources and the changed files' paths (or the revision range) to produce the context summary, and relay it unchanged; the brief MUST forbid edits, builds and tests (see the Execution context note)
 - You MUST NOT modify any files or run builds/tests
 
 **Expected Output:** Context summary — linked docs read, related patterns found
@@ -70,16 +71,16 @@ Resolve `diff_input` to reviewable content.
 
 **Constraints:**
 
-- You MUST accept git diff output, file paths, or raw diff content as `diff_input`
-- For file paths within the Direct Work read budget: You MUST read each file directly
-- For file paths beyond that budget: You MUST verify they exist and count them with read-only shell commands, then carry the paths in every brief instead of their content; the generators and the checker read them (see the Execution context note)
+- You MUST accept git diff output, file paths, a revision range, or raw diff content as `diff_input`
+- For file paths or a revision range within the Direct Work read budget: You MUST read each file directly, or print the range's diff; each file in it counts toward the budget
+- For file paths or a revision range beyond that budget: You MUST verify they exist and count the files with read-only listings (`ls`, `git diff --stat`), then carry the paths or the revision range in every brief instead of their content; the generators and the checker read or diff them (see the Execution context note)
 - For git diff strings: You MUST parse them as-is without running any git commands
 - You MUST exclude binary files, lock files, build artifacts, and `.js.map` files
 - You MUST report the file count and approximate lines changed
 - If the resolved diff is empty, You MUST inform the user and stop
 - You MUST NOT modify any files or run builds/tests
 
-**Expected Output:** List of changed files with content, total file count, approximate lines changed
+**Expected Output:** List of changed files (with content within the read budget; as paths or a revision range beyond it), total file count, approximate lines changed
 
 ### 2. Parallel Review Passes (spawn three generators)
 
@@ -91,7 +92,7 @@ Spawn the three `k-developer` passes in parallel, each with the ingested diff an
   - Security pass → `adversarial-code-review-pass-security`
   - Data integrity pass → `adversarial-code-review-pass-integrity`
   - Schema/contract pass → `adversarial-code-review-pass-schema`
-- Each brief MUST carry the ingested diff (or its file paths, per the Execution context note) and the Step 0 context summary, and name the pass it runs
+- Each brief MUST carry the ingested diff (or its file paths or revision range, per the Execution context note) and the Step 0 context summary, and name the pass it runs
 - Each brief MUST be framed neutrally: the prompt says "review through the lens of X", never "check if X is weak"
 - You MUST NOT share findings between the three passes; they run independently, and none of them sees the checker
 - You MUST NOT run a pass yourself. A pass that fails, refuses or returns no list gets one re-spawn (Orchestration Rules rule 5 counts the first attempt); if it fails again, record it as `<pass> MISSING (<reason>)` and continue
@@ -107,7 +108,7 @@ Concatenate the Step 2 lists, then spawn one more `k-developer` session for the 
 
 - You MUST concatenate the Step 2 findings lists that arrived, preserving each finding's pass origin, and carry the `MISSING` records with them
 - You MUST spawn one `k-developer` session (generator role) for the reuse pass, framed neutrally ("review through the lens of cross-pattern reuse: identify any existing utility, pattern, or helper that the diff reimplements or bypasses, or that would resolve two or more of the findings below"), after the Step 2 passes have returned
-- The brief MUST carry: the ingested diff, the Step 0 context summary, and the consolidated findings list
+- The brief MUST carry: the ingested diff (or its file paths or revision range, per the Execution context note), the Step 0 context summary, and the consolidated findings list
 - You MUST tag the returned findings with pass origin `reuse` and append them to the consolidated list. They are ordinary candidate findings like the other three passes' output. They get no exemption from Step 4's checker rules
 - The reuse pass MUST assign IMPORTANT to a finding that flags inline reimplementation or bypass of an existing shared utility, transaction/batch helper, validation middleware, error-mapping layer, or pagination token utility. For a reuse finding outside that list, it applies the severity guidance from whichever of `adversarial-code-review-pass-security`/`-integrity`/`-schema` most closely matches the concern it raises
 - You MUST NOT run the reuse pass yourself. The same re-spawn rule as Step 2 applies: one re-spawn, then `reuse MISSING (<reason>)`. Sourcing findings from the coordinator, rather than from a `k-developer` generator session, breaks the generator/checker independence invariant this SOP relies on
@@ -122,7 +123,7 @@ Spawn `k-architect` fresh as the checker. It runs `adversarial-code-review` in V
 **Constraints:**
 
 - You MUST spawn one `k-architect` session after Step 3 has returned, never earlier, and never a session that ran a pass in this review
-- The brief MUST carry: the ingested diff (or its file paths), the Step 0 context summary, the findings lists verbatim with their pass tags, the `Passes run` line, `output_file`, `pr_url` if given, and the text of Steps 4 to 6 of this SOP including the report template (the checker does not declare this SOP, so the brief is how Steps 5 and 6 reach it). The context summary lets the checker verify Step 3's reuse-pass findings against the existing utility or pattern they cite, without exempting any finding from the checker's ordinary verification rules
+- The brief MUST carry: the ingested diff (or its file paths or revision range), the Step 0 context summary, the findings lists verbatim with their pass tags, the `Passes run` line, `output_file`, `pr_url` if given, and the text of Steps 4 to 6 of this SOP including the report template (the checker does not declare this SOP, so the brief is how Steps 5 and 6 reach it). The context summary lets the checker verify Step 3's reuse-pass findings against the existing utility or pattern they cite, without exempting any finding from the checker's ordinary verification rules
 - You MUST pass the lists unchanged: never add, drop or reword a finding
 - The checker MUST run `adversarial-code-review` in Validator Mode and tag each finding `KEEP` or `REJECT` with a one-line reason for each REJECT
 - The checker MUST NOT reuse or reference the generator sessions' internal reasoning beyond the findings lists and context summary. It evaluates each finding on its own terms
