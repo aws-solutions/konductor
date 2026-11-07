@@ -39,8 +39,8 @@ Step 6's own constraints anticipate this — *"You MUST skip this step if no adv
 capability is available"* — so the workflow degrades gracefully rather than erroring. In practice
 **step 6 silently no-ops and you get standard review only.**
 
-**Routing through `konductor` does not fix it.** `k-code-review-workflow` is not among the ten
-SOPs the orchestrator declares, so it delegates the whole SOP to the developer, which hits the
+**Routing through `konductor` does not fix it.** `k-code-review-workflow` is not among the
+SOPs the orchestrators declare, so it delegates the whole SOP to the developer, which hits the
 same wall.
 
 **The workaround that does work:** run `k-adversarial-pull-request-review` through `konductor`,

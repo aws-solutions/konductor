@@ -6,6 +6,8 @@ Runs an adversarial review of code changes. Not a replacement for standard code 
 
 Structure: one coordinator (the orchestrator running this SOP), three parallel `k-developer` generator passes (security, integrity, schema) and a fourth reuse pass, each spawned by the coordinator, then one fresh `k-architect` session spawned as the checker, which validates the findings, applies the historical-issues filter and writes the verdict. Persona independence between generator and checker is what keeps false positives out of the pull request.
 
+> **Execution context:** The coordinator is an orchestrator, so Steps 0 and 1 are reads under its Direct Work table (up to 10 files, read-only shell commands) and every later step is a spawn. When `diff_input` is file paths or the ramp-up sources would take the coordinator past that budget, it does not read past it: the briefs carry the file paths and the linked sources, the generators and the checker read them, and one read-only `k-researcher` spawn produces the Step 0 context summary, which the coordinator relays unchanged.
+
 ## Parameters
 
 - **diff_input** (required on ASDLC — see the `pr_url` note below): The changes to review. Accepts:
@@ -45,6 +47,7 @@ Before reviewing the diff, autonomously gather the context needed to produce cod
 - You MUST limit ramp-up to: the pull request description and linked issues (max 3), directly referenced design docs (max 3), and a targeted codebase search for patterns in the changed files only
 - You MUST spend no more than one context-gathering pass per source — do not recursively follow links
 - You MUST NOT block on missing context — if a linked doc is unavailable, note it and proceed
+- When the sources above would take you past the Direct Work read budget, You MUST spawn one read-only `k-researcher` session with the linked sources and the changed files' paths to produce the context summary, and relay it unchanged (see the Execution context note)
 - You MUST NOT modify any files or run builds/tests
 
 **Expected Output:** Context summary — linked docs read, related patterns found
@@ -68,7 +71,8 @@ Resolve `diff_input` to reviewable content.
 **Constraints:**
 
 - You MUST accept git diff output, file paths, or raw diff content as `diff_input`
-- For file paths: You MUST read each file directly
+- For file paths within the Direct Work read budget: You MUST read each file directly
+- For file paths beyond that budget: You MUST verify they exist and count them with read-only shell commands, then carry the paths in every brief instead of their content; the generators and the checker read them (see the Execution context note)
 - For git diff strings: You MUST parse them as-is without running any git commands
 - You MUST exclude binary files, lock files, build artifacts, and `.js.map` files
 - You MUST report the file count and approximate lines changed
@@ -87,7 +91,7 @@ Spawn the three `k-developer` passes in parallel, each with the ingested diff an
   - Security pass → `adversarial-code-review-pass-security`
   - Data integrity pass → `adversarial-code-review-pass-integrity`
   - Schema/contract pass → `adversarial-code-review-pass-schema`
-- Each brief MUST carry the ingested diff and the Step 0 context summary, and name the pass it runs
+- Each brief MUST carry the ingested diff (or its file paths, per the Execution context note) and the Step 0 context summary, and name the pass it runs
 - Each brief MUST be framed neutrally: the prompt says "review through the lens of X", never "check if X is weak"
 - You MUST NOT share findings between the three passes; they run independently, and none of them sees the checker
 - You MUST NOT run a pass yourself. A pass that fails, refuses or returns no list gets one re-spawn (Orchestration Rules rule 5 counts the first attempt); if it fails again, record it as `<pass> MISSING (<reason>)` and continue
@@ -118,7 +122,7 @@ Spawn `k-architect` fresh as the checker. It runs `adversarial-code-review` in V
 **Constraints:**
 
 - You MUST spawn one `k-architect` session after Step 3 has returned, never earlier, and never a session that ran a pass in this review
-- The brief MUST carry: the ingested diff, the Step 0 context summary, the findings lists verbatim with their pass tags, the `Passes run` line, `output_file`, `pr_url` if given, and the text of Steps 4 to 6 of this SOP including the report template (the checker does not declare this SOP, so the brief is how Steps 5 and 6 reach it). The context summary lets the checker verify Step 3's reuse-pass findings against the existing utility or pattern they cite, without exempting any finding from the checker's ordinary verification rules
+- The brief MUST carry: the ingested diff (or its file paths), the Step 0 context summary, the findings lists verbatim with their pass tags, the `Passes run` line, `output_file`, `pr_url` if given, and the text of Steps 4 to 6 of this SOP including the report template (the checker does not declare this SOP, so the brief is how Steps 5 and 6 reach it). The context summary lets the checker verify Step 3's reuse-pass findings against the existing utility or pattern they cite, without exempting any finding from the checker's ordinary verification rules
 - You MUST pass the lists unchanged: never add, drop or reword a finding
 - The checker MUST run `adversarial-code-review` in Validator Mode and tag each finding `KEEP` or `REJECT` with a one-line reason for each REJECT
 - The checker MUST NOT reuse or reference the generator sessions' internal reasoning beyond the findings lists and context summary. It evaluates each finding on its own terms
@@ -151,7 +155,7 @@ The checker consolidates the surviving findings and produces a verdict.
   - Any finding with severity CRITICAL → **REQUEST CHANGES**
   - No CRITICAL-severity finding, one or more findings with severity IMPORTANT → **APPROVE WITH COMMENTS**
   - No CRITICAL-severity finding, no IMPORTANT-severity finding → **APPROVE**
-- If any pass is MISSING, the verdict MUST NOT be APPROVE: cap it at APPROVE WITH COMMENTS and name the missing lens in the summary you display
+- If any pass is MISSING, the verdict MUST NOT be APPROVE: cap it at APPROVE WITH COMMENTS and name the missing lens in the summary you return
 - You MUST write the full report to `output_file` structured as:
 
   ```markdown
@@ -177,15 +181,15 @@ The checker consolidates the surviving findings and produces a verdict.
   Every surviving finding goes in exactly one severity section (`## Critical Findings` / `## Important Findings` / `## Suggestions`). Steps 0.5 and 5 are always-skipped no-ops on ASDLC today (see Step 0.5) — no finding is ever tagged "regressed since ..." or "carried over from ...", so there is no separate historical-section machinery for a finding to land in instead of its own severity section.
 
 - You MUST NOT print the full report in your response — reference the file path
-- You MUST display: verdict, finding counts by severity, checker rejection count, the `Passes run` line, and a one-line description of each CRITICAL-severity finding
+- You MUST return to the coordinator: verdict, finding counts by severity, checker rejection count, the `Passes run` line, the report path, and a one-line description of each CRITICAL-severity finding; the coordinator presents that summary to the user unchanged (Step 4)
 
-**Expected Output:** Report written to `output_file`, summary presented to user
+**Expected Output:** Report written to `output_file`, summary returned to the coordinator, which presents it to the user
 
 ## Quality Gate
 
 **CRITICAL findings block approval** — the verdict MUST be REQUEST CHANGES if any CRITICAL finding survives Steps 4 and 5.
 
-**A MISSING pass blocks APPROVE** — a lens that never ran caps the verdict at APPROVE WITH COMMENTS and is named in the summary.
+**A MISSING pass blocks APPROVE**: a lens that never ran caps the verdict at APPROVE WITH COMMENTS and is named in the summary.
 
 **Independence invariants MUST hold:**
 
@@ -193,5 +197,5 @@ The checker consolidates the surviving findings and produces a verdict.
 - The checker session MUST NOT have run a generator pass earlier in this same review. It is spawned fresh in Step 4, after every pass has returned
 - The three review passes MUST run in parallel, in separate `k-developer` sessions, with no shared context between them
 - Step 3's reuse-pass findings MUST originate from a generator-persona `k-developer` session, never from the coordinator itself
-- The coordinator MUST relay every findings list unchanged — never add, drop or reword a finding — and MUST NOT run a pass itself
+- The coordinator MUST relay every findings list unchanged (never add, drop or reword a finding) and MUST NOT run a pass itself
 - The checker MUST NOT propose new findings — Validator Mode is filter-only

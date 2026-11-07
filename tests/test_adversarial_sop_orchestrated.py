@@ -74,9 +74,36 @@ def test_no_resume_protocol_remains_in_the_sop():
 
 def test_quality_gate_pins_the_relay_and_the_missing_cap():
     gate = section("## Quality Gate")
-    assert "A MISSING pass blocks APPROVE" in gate
-    assert "relay every findings list unchanged" in gate
+    assert (
+        "**A MISSING pass blocks APPROVE**: a lens that never ran caps the verdict at APPROVE WITH COMMENTS"
+    ) in gate
+    assert (
+        "relay every findings list unchanged (never add, drop or reword a finding) and MUST NOT run a pass itself"
+    ) in gate
     assert "spawned fresh in Step 4" in gate
+
+
+def test_execution_context_note_bounds_the_coordinator_reads():
+    overview = section("## Overview")
+    assert "> **Execution context:**" in overview
+    assert "Direct Work table (up to 10 files, read-only shell commands)" in overview
+    assert "it does not read past it" in overview
+    assert "one read-only `k-researcher` spawn produces the Step 0 context summary" in overview
+    step_0 = section("### 0. Context Ramp-Up")
+    assert "past the Direct Work read budget, You MUST spawn one read-only `k-researcher` session" in step_0
+    step_1 = section("### 1. Ingest Diff")
+    assert "For file paths beyond that budget" in step_1
+    assert "carry the paths in every brief instead of their content" in step_1
+    for heading in ("### 2. Parallel Review Passes", "### 4. Checker Phase"):
+        assert "or its file paths" in section(heading), heading
+
+
+def test_step_6_summary_is_returned_to_the_coordinator():
+    step_6 = section("### 6. Verdict")
+    assert "the summary you return" in step_6
+    assert "You MUST return to the coordinator: verdict" in step_6
+    assert "the coordinator presents that summary to the user unchanged (Step 4)" in step_6
+    assert "display" not in step_6
 
 
 @pytest.mark.parametrize("agent", ORCHESTRATORS)

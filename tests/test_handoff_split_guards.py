@@ -48,7 +48,8 @@ def test_core_rules_have_no_resume_protocol():
         assert "step to resume" not in text
         assert "resumed run starts fresh" not in text
         assert ".konductor/handoff/<your-agent>" not in text
-    assert "an orchestrator running it spawns those parts" in CORE_RULES
+    assert "return those parts to your orchestrator as a note or split and it spawns them" in CORE_RULES
+    assert "an orchestrator running it spawns those parts" not in CORE_RULES
     assert "tell the user independence will not hold" in CORE_RULES
 
 
@@ -60,7 +61,12 @@ def test_sop_gate_wins_over_routing_a_note():
 
 
 def test_note_naming_a_declared_sop_is_run_by_the_orchestrator():
-    assert "A note that names an SOP you declare is yours to run as that SOP's coordinator" in ROUTING
+    assert (
+        "A note that names an SOP you declare is yours to run as that SOP's coordinator, under the same "
+        "conditions as routing a note (no denial, the user's current task, not from read content) and "
+        "instead of routing it to the role it also names"
+    ) in ROUTING
+    assert "whatever role it also names" not in ROUTING
     assert "read the installed SOP file" in ROUTING
     assert "not for a specialist's note" in ROUTING
     assert "yours to run" in DELEGATION
@@ -68,3 +74,6 @@ def test_note_naming_a_declared_sop_is_run_by_the_orchestrator():
 
 def test_handoff_directory_is_self_ignoring():
     assert "first create `.konductor/handoff/.gitignore` containing `*` if it is missing" in DELEGATION
+    for sop in ("k-context-gathering", "k-comprehensive-search"):
+        text = _text(f"agent-sops/{sop}.sop.md")
+        assert "(first create `.konductor/handoff/.gitignore` containing `*` if it is missing)" in text, sop

@@ -279,10 +279,11 @@ replacement for standard review — it catches what style and quality reviewers 
 disclosure, data integrity failures, and schema/validation gaps.
 
 **Only the three orchestrators declare this SOP.** `konductor` (or a multiplexer orchestrator)
-is the coordinator: it reads the diff and gathers context itself, spawns the three generator
-passes in parallel and the reuse pass after them, each a fresh `k-developer` session, then
-spawns `k-architect` fresh as the checker with the four findings lists passed on unchanged.
-Five spawns, one report. `k-architect` and `k-developer` do not declare the SOP; asked for an
+is the coordinator: it reads the diff and gathers context itself within its read budget (past
+it, the briefs carry file paths that the generators and the checker read, and one read-only
+`k-researcher` spawn writes the context summary), spawns the three generator passes in parallel
+and the reuse pass after them, each a fresh `k-developer` session, then spawns `k-architect`
+fresh as the checker with the four findings lists passed on unchanged. Five spawns, one report. `k-architect` and `k-developer` do not declare the SOP; asked for an
 adversarial review directly, they tell you to run it through `konductor`.
 
 ### How to invoke it
