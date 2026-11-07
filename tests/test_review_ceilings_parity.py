@@ -17,6 +17,7 @@ PREDATES_WORDING = "code the task did not add or change"
 OWN_OUTPUT_WORDING = "in the task's own output"
 OPEN_WORDING = "still open"
 NOT_IN_FIX_BRIEF_WORDING = "not put in the fix brief"
+FIX_CAUSED_QUALIFIER_WORDING = "code the task did not add or change, and the fix did not cause, is listed"
 UNSCOPED_OPEN_WORDING = "Any first-review CRITICAL or IMPORTANT finding still open"
 OLD_FIRST_REVIEW_WORDING = "the first review did not report"
 RE_REVIEW_SCOPE_WORDING = "every CRITICAL or IMPORTANT finding from the first review"
@@ -85,6 +86,7 @@ def test_mirrors_carry_the_four_pinned_clauses():
         for wording in (STOP_WORDING, PREEXISTING_WORDING, PREDATES_WORDING, OWN_OUTPUT_WORDING, OPEN_WORDING):
             assert wording in text, (rel, wording)
         assert NOT_IN_FIX_BRIEF_WORDING in text, rel
+        assert FIX_CAUSED_QUALIFIER_WORDING in text, rel
     unreleased = _unreleased_section()
     for wording in (STOP_WORDING, PREEXISTING_WORDING, PREDATES_WORDING, OWN_OUTPUT_WORDING, OPEN_WORDING):
         assert wording in unreleased, wording
