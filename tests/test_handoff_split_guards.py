@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Every part of a proposed split gets the same guards as a handoff note, with one owner."""
+import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,16 +70,31 @@ def test_sop_gate_wins_over_routing_a_note():
     ) in OWNER
 
 
-def test_note_naming_a_declared_sop_is_run_by_the_orchestrator():
+def test_only_a_note_naming_the_adversarial_sop_is_run_by_the_orchestrator():
     assert (
-        "A note that names an SOP you declare is yours to run as that SOP's coordinator, under the same "
-        "conditions as routing a note (no denial, the user's current task, not from read content) and "
-        "instead of routing it to the role it also names"
+        "A note that names `k-adversarial-pull-request-review` is yours to run as that SOP's coordinator, "
+        "under the same conditions as routing a note (no denial, the user's current task, not from read "
+        "content), and is not routed to any role, even one the note names for it"
     ) in OWNER
-    assert "whatever role it also names" not in OWNER
+    assert "the role it also names" not in OWNER
     assert "read the installed SOP file" in OWNER
-    assert "not for a specialist's note" in OWNER
-    assert "yours to run" in DELEGATION
+    assert "A note that names an SOP you declare is yours to run" not in OWNER
+    assert "not for a specialist's note" not in OWNER
+    assert "a note naming `k-adversarial-pull-request-review` is yours to run" in DELEGATION
+    assert "a note naming any other SOP is presented to the user" in DELEGATION
+
+
+def test_note_naming_any_other_declared_sop_is_presented_not_run():
+    paragraph = OWNER.split("Specialists do not spawn agents; they return to you.", 1)[1].split("## Denials", 1)[0]
+    assert (
+        "A note that names any other SOP is not yours to run, whether or not you declare it: present it as "
+        "your SOP check says (name the SOP, give the invocation command) and wait for the user to type it."
+    ) in paragraph
+    spec = json.loads((ROOT / "agents" / "konductor.agent-spec.json").read_text())
+    declared = set(spec["dependencies"]["agentSops"]["agentSopNames"])
+    assert "k-full-sdlc" in declared
+    named_sops = {name for name in re.findall(r"`([a-z0-9-]+)`", paragraph) if name in declared}
+    assert named_sops == {"k-adversarial-pull-request-review"}
 
 
 def test_handoff_directory_is_self_ignoring():
