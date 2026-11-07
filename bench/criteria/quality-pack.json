@@ -106,6 +106,10 @@
     {
       "id": "task-breakdown",
       "label": "Task breakdown"
+    },
+    {
+      "id": "design-diagrams",
+      "label": "Diagrams in design documents"
     }
   ],
   "criteria": [
@@ -853,15 +857,15 @@
         "design"
       ],
       "weight": 3,
-      "question": "Do the data model and the API agree?",
+      "question": "Do the data model, the API and the diagrams agree?",
       "levels": {
-        "fail": "In 2 or more places the API or the data model uses a field, status, entity or endpoint that the other does not define, or the state flow in prose contradicts the table.",
-        "partial": "Exactly 1 field, status or type differs between the API and the data model.",
-        "pass": "Every field and status used in the API appears in the data model with the same name and meaning, and the state flow is the same in prose and in the model."
+        "fail": "In 2 or more places the API, the data model or a diagram uses a field, status, entity or endpoint that another of them does not define, or the state flow in prose contradicts the table or a diagram.",
+        "partial": "Exactly 1 field, status or type differs between the API, the data model and the diagrams.",
+        "pass": "Every field and status used in the API and in the diagrams appears in the data model with the same name and meaning, and the state flow is the same in prose, in the model and in every diagram."
       },
       "evidence": {
         "minQuotes": 2,
-        "quote": "Two quotes separated by ' @@ ': the API line and the data model line that disagree (fail or partial) or agree (pass)."
+        "quote": "Two quotes separated by ' @@ ': the API, data model or diagram line that disagrees with another of them (fail or partial), or two lines that agree (pass). Diagram lines sit inside fenced blocks and are quoted as they appear."
       }
     },
     {
@@ -916,6 +920,60 @@
       "evidence": {
         "minQuotes": 1,
         "quote": "One check with its expected outcome (pass), or the vaguest check (partial), or the test section heading (fail)."
+      }
+    },
+    {
+      "id": "des-diagram-present",
+      "dimension": "design-diagrams",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 2,
+      "question": "Does the design draw each view its content needs: a sequence diagram, a component or class diagram, a data flow diagram, a data model (ERD) or an API schema? A view is needed when a flow involves 3 or more parties, the text names 3 or more components, data moves between 2 or more stores or services, 2 or more entities are defined, or 3 or more endpoints are listed. A diagram is a fenced block in a diagram notation (mermaid, plantuml, dot) or boxes and arrows in a text block.",
+      "levels": {
+        "fail": "The document has no diagram, so none of the views its content needs is drawn.",
+        "partial": "The document has at least 1 diagram, and at least 1 view that its content needs is not drawn.",
+        "pass": "Every view that the content needs is drawn, and each diagram is written in a notation that a tool can render."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The opening line of a diagram block (its notation keyword or title) for pass or partial, or the sentence that describes a view that has no diagram for fail or partial. Diagram lines sit inside fenced blocks and are quoted as they appear."
+      }
+    },
+    {
+      "id": "des-diagram-fit",
+      "dimension": "design-diagrams",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 3,
+      "question": "Does every diagram match the prose that describes the same flow, structure or data? A document with no diagram scores fail.",
+      "levels": {
+        "fail": "In 2 or more places a diagram shows a participant, component, entity, field, step or endpoint that the prose does not describe, or the prose gives it a different name or order. A document with no diagram also fails.",
+        "partial": "Exactly 1 element of a diagram (a name, a step order, an arrow direction or a cardinality) differs from the prose.",
+        "pass": "Every participant, component, entity, field, step and arrow in each diagram appears in the prose with the same name and order, and no step of a flow described in prose is missing from the diagram of that flow."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "Two quotes separated by ' @@ ': one line from a diagram (an arrow, participant, entity or field line) and the prose line it must match. Diagram lines sit inside fenced blocks and are quoted as they appear. For a document with no diagram write '(nothing in the output)'."
+      }
+    },
+    {
+      "id": "des-diagram-labels",
+      "dimension": "design-diagrams",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 1,
+      "question": "Is every arrow and relationship in the diagrams labeled with what it carries? A document with no diagram scores fail.",
+      "levels": {
+        "fail": "3 or more arrows or relationships in the diagrams have no label naming the message, data, call or cardinality. A document with no diagram also fails.",
+        "partial": "1 or 2 arrows or relationships in the diagrams have no label.",
+        "pass": "Every arrow and relationship in every diagram carries a label that names the message, data, call or cardinality."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "An arrow or relationship line with no label (fail or partial), or a labeled arrow line (pass). Diagram lines sit inside fenced blocks and are quoted as they appear."
       }
     },
     {

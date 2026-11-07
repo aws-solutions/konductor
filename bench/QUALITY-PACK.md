@@ -21,8 +21,9 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | Non-functional requirements across milestones | requirements, design documents | a performance target with no unit, a capacity target with no design mechanism |
 | Scalability and resilience of design | design documents | what limits the system first at 10 times the load, what happens when a dependency fails |
 | Task breakdown | plans | a task that uses an output no listed dependency provides, a task with no done check |
+| Diagrams in design documents | design documents | a diagram line and the prose line it must match |
 
-`bench/criteria/quality-pack.json` holds 66 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
+`bench/criteria/quality-pack.json` holds 69 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
 
 ### Criteria
 
@@ -66,10 +67,13 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | des-problem-first | Design doc structure and accuracy | design | 2 | judge | Does the document state the problem and requirements before the solution? |
 | des-alternatives | Design doc structure and accuracy | design | 1 | judge | Are alternatives weighed against the chosen approach? |
 | des-decision-rationale | Design doc structure and accuracy | design | 2 | judge | Does each major decision carry its reason? |
-| des-consistency | Design doc structure and accuracy | design | 3 | judge | Do the data model and the API agree? |
+| des-consistency | Design doc structure and accuracy | design | 3 | judge | Do the data model, the API and the diagrams agree? |
 | des-conflicts-surfaced | Design doc structure and accuracy | design | 2 | judge | Are conflicts and gaps in the requirements named? |
 | des-technical-accuracy | Design doc structure and accuracy | design | 3 | judge | Are the technical claims true, and can the mechanisms work as written? |
 | des-testable-acceptance | Design doc structure and accuracy | design | 2 | judge | Can the stated checks be run and pass or fail? |
+| des-diagram-present | Diagrams in design documents | design | 2 | judge | Does the design draw each view its content needs (sequence, component or class, data flow, data model, API schema)? |
+| des-diagram-fit | Diagrams in design documents | design | 3 | judge | Does every diagram match the prose that describes the same flow, structure or data? |
+| des-diagram-labels | Diagrams in design documents | design | 1 | judge | Is every arrow and relationship labeled with what it carries? |
 | chg-no-leftovers | Change discipline | change | 2 | program | Does the change leave out debug output, focus markers, TODO notes and commented-out code? |
 | chg-tests-intact | Change discipline | change | 3 | program | Does the change keep every existing test running? |
 | chg-scoped | Change discipline | change | 2 | judge | Does the change touch only what the task asks for? |
@@ -94,6 +98,16 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | plan-risks | Task breakdown | plan | 2 | judge | Are the main risks and unknowns listed with a mitigation or a spike? |
 | plan-test-tasks | Task breakdown | plan | 2 | judge | Does the plan schedule tests for the functional parts and for the non-functional requirements? |
 | plan-delegation-fit | Task breakdown | delegation | 2 | judge | Does each task name an owner whose type matches the work? |
+
+The diagram criteria read the design document as a whole, fenced blocks included. A view is needed when the content calls for it:
+
+- Sequence: a flow with 3 or more parties.
+- Component or class: 3 or more named components.
+- Data flow: data moving between 2 or more stores or services.
+- Data model: 2 or more entities.
+- API schema: 3 or more endpoints.
+
+The judge quotes a diagram line as it appears inside the fence, together with the prose line it must match. A document with no diagram scores fail on all three, as for any artifact the task asked for and did not get. `des-consistency` also treats a diagram as a source, so a field or step that a diagram shows and the data model or API does not define counts as a disagreement. The counted prose criteria still skip fenced code, so text inside a diagram is not counted for typography, filler or sentence length.
 
 The change discipline, requirements, non-functional, design scalability and task breakdown groups follow the deliverables of the SDLC skills in this repository, so a run is rated at the milestones it produced.
 

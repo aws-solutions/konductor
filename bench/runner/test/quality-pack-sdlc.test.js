@@ -45,7 +45,7 @@ const TASK_PLAN = { id: 'plan-multipart-feature', class: 'sop', prompt: 'Write a
 test('the new dimensions hold exactly the criteria listed for them, and the lint passes the pack', () => {
   assert.deepEqual(P.validatePack(pack), []);
   for (const [dim, ids] of Object.entries(NEW)) assert.deepEqual(pack.criteria.filter((c) => c.dimension === dim).map((c) => c.id), ids, dim);
-  assert.equal(pack.criteria.length, 66);
+  assert.equal(pack.criteria.length, 69);
 });
 
 test('the pre-existing criteria keep their dimension, weight, anchors and evidence rule', () => {
@@ -54,6 +54,8 @@ test('the pre-existing criteria keep their dimension, weight, anchors and eviden
   for (const old of base) {
     const now = pack.criteria.find((c) => c.id === old.id);
     assert.ok(now, old.id);
+    // Extended on purpose to name diagrams as a source; quality-pack-3b.test.js pins what must stay.
+    if (old.id === 'des-consistency') { assert.deepEqual([now.dimension, now.weight, now.evidence.minQuotes], [old.dimension, old.weight, old.evidence.minQuotes]); continue; }
     const { appliesTo: oldApplies, ...oldRest } = old;
     const { appliesTo: nowApplies, ...nowRest } = now;
     assert.deepEqual(nowRest, oldRest, old.id);
