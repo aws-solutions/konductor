@@ -61,10 +61,14 @@ def test_step_4_spawns_the_checker_with_the_lists_unchanged():
     assert "never a session that ran a pass in this review" in step_4
 
 
-def test_report_header_always_says_independence_held():
-    assert "Checker independence: held\n" in SOP
+def test_report_header_makes_no_independence_claim():
+    # Independence holds by construction (a fresh checker after the passes return); the checker
+    # cannot observe how the coordinator ran the passes, so the report does not assert it.
+    assert "Checker independence" not in SOP
     assert "not held" not in SOP
     assert "in-session" not in SOP
+    guide = (ROOT / "docs" / "user-guide" / "sop-workflows" / "code-review.md").read_text(encoding="utf-8")
+    assert "Checker independence: held" not in guide
 
 
 def test_no_resume_protocol_remains_in_the_sop():

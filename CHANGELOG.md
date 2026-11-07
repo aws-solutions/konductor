@@ -44,7 +44,8 @@ not per individual commit.
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in
   `context/k-orchestrator-routing-rules.md` defines what is allowed, including the
-  `k-light-ui-testing` SOP-step exception, and `claude-teams-behavior`, `mux-dispatch`, and
+  `k-light-ui-testing` SOP-step exception and the memory validator's read-only `--check-path`,
+  and `claude-teams-behavior`, `mux-dispatch`, and
   `cmux-dispatch` point at it. The 10-file read budget covers requests the orchestrator answers
   itself; for a request it will delegate, it reads only what routing and the brief need and
   passes file paths. Writes, state-changing git, builds, tests, and whole phases still go to
@@ -57,8 +58,9 @@ not per individual commit.
   and does not report a denied action; it applies the same checks to every part of a proposed
   split, refuses a part that names an orchestrator, and shows refused parts to you; it adds
   visible shared files to a proposed split before fan-out. A gate in the SOP the orchestrator
-  is running wins over routing a note, and a note naming an SOP the orchestrator declares is
-  run by the orchestrator as that SOP's coordinator. When an SOP needs independent parts, an
+  is running wins over routing a note; a note naming `k-adversarial-pull-request-review` is run
+  by the orchestrator as that SOP's coordinator, and a note naming any other SOP is presented to
+  you with its invocation command. When an SOP needs independent parts, an
   orchestrator running it spawns them; a specialist run without one says independence will not
   hold and runs them only when asked. Run directly with no orchestrator, the caller is the user:
   the specialist returns the split or note to them. No specialist is resumed mid-SOP.
@@ -81,8 +83,8 @@ not per individual commit.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
   and is never read or written through a symlink. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
-  instruction-like text after the date and origin tag, and reads the text of a leading `[label]`
-  or `[label](url)` as entry text. Upgrade note: if your repository commits `.konductor/memory/`,
+  instruction-like text after the date and origin tag, reads the text of a leading `[label]`
+  or `[label](url)` as entry text, and matches a leading keyword as a whole word. Upgrade note: if your repository commits `.konductor/memory/`,
   review its untagged lines before upgrading and tag agent-written ones `[origin:agent]`; they are
   followed as project instructions from this version.
   Orchestrators never bypass denials or read unnamed secrets.
