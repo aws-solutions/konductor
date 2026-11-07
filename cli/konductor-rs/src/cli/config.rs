@@ -168,8 +168,9 @@ struct RawConfig {
     fail_on_severity_at_or_above: Option<String>,
 }
 
-/// `<home>/.konductor/config.yml`, the user layer. The gate loader and
-/// `orchestration_mode` both resolve it here so they cannot disagree.
+/// `<home>/.konductor/config.yml`, the user layer. The gate loader,
+/// `orchestration_mode` and `verify_run::config_source` all resolve it here
+/// so they cannot disagree.
 pub(crate) fn user_config_path(home: &Path) -> PathBuf {
     home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME)
 }
