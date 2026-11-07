@@ -19,8 +19,9 @@ def test_passes_are_coordinator_only(name):
     text = read(name)
     description = yaml.safe_load(text.split("---")[1])["description"]
     assert "May also be run directly" not in text
-    assert "user-requested in-session mode" in text
-    assert "Use only when a split from the adversarial-code-review coordinator names it" in description
+    assert "user-requested in-session mode" not in text
+    assert "The coordinator never runs a pass itself" in text
+    assert "Use only when the adversarial-code-review coordinator spawns a session naming it" in description
 
 
 @pytest.mark.parametrize("name", PASSES)

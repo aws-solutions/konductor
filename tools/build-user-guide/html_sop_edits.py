@@ -139,17 +139,17 @@ SOP_EDITS += [
 # agents/*.agent-spec.json dependencies.agentSops.agentSopNames.
 SOP_EDITS += [
     ("SOP_OWNERS konductor",
-     '{ agent: "konductor", sops: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify" }',
-     '{ agent: "konductor", sops: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor" }'),
+     '{ agent: "konductor", sops: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor" }',
+     '{ agent: "konductor", sops: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor" }'),
     ("SOP_OWNERS mux",
-     '{ agent: "konductor-mux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify" }',
-     '{ agent: "konductor-mux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor" }'),
+     '{ agent: "konductor-mux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor" }',
+     '{ agent: "konductor-mux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor" }'),
     ("SOP_OWNERS cmux",
-     '{ agent: "konductor-cmux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify" }',
-     '{ agent: "konductor-cmux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor" }'),
+     '{ agent: "konductor-cmux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor" }',
+     '{ agent: "konductor-cmux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor" }'),
     ("SOP_OWNERS architect",
-     '{ agent: "k-architect", sops: "k-design-doc-creation, k-existing-design-review, k-adversarial-pull-request-review" }',
-     '{ agent: "k-architect", sops: "k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review" }'),
+     '{ agent: "k-architect", sops: "k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review" }',
+     '{ agent: "k-architect", sops: "k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review" }'),
     ("rf-sops roster rows",
      '{"k":"k-test-coverage-review","v":"k-quality-assurance \u00b7 source_dir, test_dir"}',
      '{"k":"k-test-coverage-review","v":"k-quality-assurance \u00b7 source_dir, test_dir"},'
@@ -175,8 +175,8 @@ SOP_EDITS += [
      "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model, claude-sonnet-5.5.",
      "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code."),
     ("specialists table: architect",
-     '{ k: "k-architect", v: "claude-opus-4.6, the only agent not on Sonnet. SOPs: k-design-doc-creation, k-existing-design-review, k-adversarial-pull-request-review. 32 skills.',
-     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review. 38 skills.'),
+     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review. 38 skills.',
+     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review. 38 skills.'),
     ("specialists table: developer skills",
      '{ k: "k-developer", v: "SOPs: k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow. 19 skills',
      '{ k: "k-developer", v: "SOPs: k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow. 27 skills'),
@@ -456,35 +456,37 @@ SOP_EDITS += [
      "Silence plus 11 agent JSONs in dist/kiro-cli-v2/agents/ means everything parsed. (That directory also holds _skill_scopes.json and _sop_scopes.json, so a bare ls | wc -l reports 13.)"),
 ]
 
-# Specialists return the generator passes as a split and a handoff note instead of spawning.
-# These bridge entries run before the entries below, which already carry the final text, so a
-# bundle that still has the earlier wording is rewritten once and later runs are no-ops.
-SOP_EDITS += [
-    ("adversarial: invoker returns split",
-     "declares this SOP \u2014 k-developer and the three orchestrators do not, so none of them invokes it directly. k-architect acts as the coordinator: it spawns the generator subagents and then runs the checker phase itself, which is what keeps generator and checker independent.",
-     "declares this SOP; k-developer and the three orchestrators do not, so none of them invokes it directly. k-architect acts as the coordinator: it returns the generator passes to its caller as a split and a handoff note, resumes to run the checker phase itself, and runs a generator pass itself only when the user asks for an in-session run, which is what keeps generator and checker independent otherwise."),
-    ("adversarial: passes returned as split",
-     "Spawns k-developer THREE times concurrently, each loading exactly one pass skill \u2014 adversarial-code-review-pass-security, -integrity, -schema \u2014 each receiving the diff plus the step 0 summary. Findings are never shared between them.",
-     "Returns a split of three k-developer parts to run concurrently, each loading exactly one pass skill (adversarial-code-review-pass-security, -integrity, -schema), each carrying the diff plus the step 0 summary, and names step 3 as the step to resume at. Findings are never shared between them."),
-    ("adversarial: reuse pass returned as note",
-     "A FOURTH k-developer spawn, looking only for cross-pass reuse:",
-     "Resumed with the three lists, returns a handoff note for a FOURTH k-developer session and resumes at step 4. It looks only for cross-pass reuse:"),
-]
-
 # The adversarial SOP's real structure (agent-sops/k-adversarial-pull-request-review.sop.md):
-# a coordinator, three PARALLEL k-developer generator parts returned as a split, a fourth
-# returned for reuse as a handoff note, then a checker phase k-architect runs itself. The
-# page showed four sequential in-agent passes and omitted steps 0.5 and 5, both of which
-# are permanent no-ops here.
+# the orchestrator coordinates, spawns three PARALLEL k-developer generator passes and a fourth
+# for reuse, then spawns k-architect fresh as the checker. k-architect no longer declares the
+# SOP. Each `old` is the published text; a pass that fails twice is recorded as MISSING.
 SOP_EDITS += [
-    ("adversarial: flow nodes", 'node("01", "Context ramp-up", "Reads pr_url for linked issues (max 3) and referenced design docs (max 3) \u2014 never for the diff \u2014 and searches the codebase for existing patterns: error mapping, transactions, validation, pagination. One pass per source, no recursive following, never blocks on missing context.", ""),\n          node("0.5", "Load prior review state", "ALWAYS SKIPPED on this package \u2014 a documented no-op. Recorded as \'historical filtering unavailable\', never as \'no prior revisions\'.", "skip"),\n          node("02", "Ingest diff", "Excludes binaries, lock files, build artifacts, .js.map; reports file count and lines changed. Stops if the diff is empty.", "stop"),\n          node("03", "Parallel review passes", "Returns a split of three k-developer parts to run concurrently, each loading exactly one pass skill (adversarial-code-review-pass-security, -integrity, -schema), each carrying the diff plus the step 0 summary, and names step 3 as the step to resume at. Findings are never shared between them.", ""),\n          node("04", "Reuse pass", "Resumed with the three lists, returns a handoff note for a FOURTH k-developer session and resumes at step 4. It looks only for cross-pass reuse: an existing utility the diff reimplements or bypasses, or one that would resolve two or more of the findings. IMPORTANT for a bypassed shared utility, transaction helper, validation middleware, error-mapping layer, or pagination utility.", ""),\n          node("05", "Checker phase", "k-architect switches roles and runs adversarial-code-review in Validator Mode itself, tagging every finding KEEP or REJECT with a reason and dropping the REJECTs. It proposes nothing new \u2014 it is a filter. Independence holds because the coordinator never ran a generator pass.", ""),\n          node("06", "Historical filter", "ALWAYS SKIPPED on this package, for the same reason as step 0.5. Findings pass through unchanged.", "skip"),\n          ',
-     'node("01", "Context ramp-up", "Reads pr_url for linked issues (max 3) and referenced design docs (max 3) \u2014 never for the diff \u2014 and searches the codebase for existing patterns: error mapping, transactions, validation, pagination. One pass per source, no recursive following, never blocks on missing context.", ""),\n          node("0.5", "Load prior review state", "ALWAYS SKIPPED on this package \u2014 a documented no-op. Recorded as \'historical filtering unavailable\', never as \'no prior revisions\'.", "skip"),\n          node("02", "Ingest diff", "Excludes binaries, lock files, build artifacts, .js.map; reports file count and lines changed. Stops if the diff is empty.", "stop"),\n          node("03", "Parallel review passes", "Returns a split of three k-developer parts to run concurrently, each loading exactly one pass skill (adversarial-code-review-pass-security, -integrity, -schema), each carrying the diff plus the step 0 summary, and names step 3 as the step to resume at. Findings are never shared between them.", ""),\n          node("04", "Reuse pass", "Resumed with the three lists, returns a handoff note for a FOURTH k-developer session and resumes at step 4. It looks only for cross-pass reuse: an existing utility the diff reimplements or bypasses, or one that would resolve two or more of the findings. IMPORTANT for a bypassed shared utility, transaction helper, validation middleware, error-mapping layer, or pagination utility.", ""),\n          node("05", "Checker phase", "k-architect switches roles and runs adversarial-code-review in Validator Mode itself, tagging every finding KEEP or REJECT with a reason and dropping the REJECTs. It proposes nothing new \u2014 it is a filter. Independence holds unless the user asked for an in-session run; the report header then records that it does not.", ""),\n          node("06", "Historical filter", "ALWAYS SKIPPED on this package, for the same reason as step 0.5. Findings pass through unchanged.", "skip"),\n          '),
     ("adversarial: invoker",
-     "Typically the orchestrator invokes it by spawning k-architect in adversarial mode as the checker in a maker-checker cycle.",
-     "Only k-architect declares this SOP; k-developer and the three orchestrators do not, so none of them invokes it directly. k-architect acts as the coordinator: it returns the generator passes to its caller as a split and a handoff note, resumes to run the checker phase itself, and runs a generator pass itself only when the user asks for an in-session run, which is what keeps generator and checker independent otherwise."),
+     "Only k-architect declares this SOP \u2014 k-developer and the three orchestrators do not, so none of them invokes it directly. k-architect acts as the coordinator: it spawns the generator subagents and then runs the checker phase itself, which is what keeps generator and checker independent.",
+     "Only the three orchestrators declare this SOP; k-architect and k-developer do not, so asked directly they say to run it through konductor. The orchestrator acts as the coordinator: it spawns the four k-developer generator passes, then spawns k-architect fresh as the checker, which is what keeps generator and checker independent."),
+    ("adversarial: owner",
+     'file: "agent-sops/k-adversarial-pull-request-review.sop.md", owner: "k-architect \u2014 no file changes",',
+     'file: "agent-sops/k-adversarial-pull-request-review.sop.md", owner: "the orchestrators (k-architect is the checker), no file changes",'),
+    ("adversarial: ingest node",
+     "Accepts git diff output, file paths, or raw diff content; excludes binaries, lock files, build artifacts. Stops if the diff is empty.",
+     "Accepts git diff output, file paths, a revision range, or raw diff content; excludes binaries, lock files, build artifacts. Stops if the diff is empty."),
+    ("adversarial: passes node",
+     "Spawns k-developer THREE times concurrently, each loading exactly one pass skill \u2014 adversarial-code-review-pass-security, -integrity, -schema \u2014 each receiving the diff plus the step 0 summary. Findings are never shared between them.",
+     "Spawns k-developer THREE times concurrently, each loading exactly one pass skill (adversarial-code-review-pass-security, -integrity, -schema), each receiving the diff plus the step 0 summary. Findings are never shared between them. A pass that fails twice is recorded as MISSING, never run by the coordinator."),
+    ("adversarial: reuse node",
+     "A FOURTH k-developer spawn, looking only for cross-pass reuse:",
+     "A FOURTH k-developer spawn once the three lists are in, looking only for cross-pass reuse:"),
+    ("adversarial: checker node",
+     "k-architect switches roles and runs adversarial-code-review in Validator Mode itself, tagging every finding KEEP or REJECT with a reason and dropping the REJECTs. It proposes nothing new \u2014 it is a filter. Independence holds because the coordinator never ran a generator pass.",
+     "k-architect is spawned fresh once every pass has returned and runs adversarial-code-review in Validator Mode over the lists, tagging every finding KEEP or REJECT with a reason and dropping the REJECTs. It proposes nothing new: it is a filter. Independence holds because the checker never ran a pass and the coordinator relayed the lists unchanged."),
+    ("adversarial: verdict node",
+     "no CRITICAL but \u22651 IMPORTANT \u2192 APPROVE WITH COMMENTS; neither \u2192 APPROVE.\", \"good\")",
+     "no CRITICAL but \u22651 IMPORTANT \u2192 APPROVE WITH COMMENTS; neither \u2192 APPROVE. A MISSING pass caps the verdict at APPROVE WITH COMMENTS and is named in the summary.\", \"good\")"),
+    # The three "step 6 workaround" sentences this block used to rewrite are now
+    # replaced whole by the k-code-review-workflow step 6 entries below.
     ("adversarial: reference roster params",
-     '{"k":"k-adversarial-pull-request-review","v":"k-architect \u00b7 diff_input or pr_url"}',
-     '{"k":"k-adversarial-pull-request-review","v":"k-architect \u00b7 diff_input (always; pr_url is context-only)"}'),
+     '{"k":"k-adversarial-pull-request-review","v":"k-architect \u00b7 diff_input (always; pr_url is context-only)"}',
+     '{"k":"k-adversarial-pull-request-review","v":"orchestrators \u00b7 diff_input (always; pr_url is context-only)"}'),
 ]
 
 # Remaining pass-2 reviewer findings, verified against source before writing here.
@@ -551,9 +553,6 @@ SOP_EDITS += [
 # figure contradicted the At-a-glance table 50 lines above it on the same page.
 # Values from agents/konductor*.agent-spec.json.
 SOP_EDITS += [
-    ("orchestrators: konductor SOPs",
-     '{ k: "konductor SOPs", v: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify" }',
-     '{ k: "konductor SOPs (10)", v: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor" }'),
     ('orchestrators: konductor skills',
      '{ k: "konductor skills (13)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor. claude-teams-behavior is Claude Code only. Kiro CLI has the other 12 plus humanize-writing, on demand" }',
      '{ k: "konductor skills (22)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor, threat-modeling, design-doc-guidelines, user-story-writing, backend-review, frontend-review, backend-development, frontend-development, design-evaluation, plan-review. claude-teams-behavior is Claude Code only. Kiro CLI has the other 21 plus humanize-writing, on demand" }'),
@@ -561,8 +560,8 @@ SOP_EDITS += [
      'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Skill — so it CAN write and run shell there; only its routing rules stop it" }',
      'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Edit, Skill. It can write and run shell there with no prompt gate; the reviewer at each phase gate is the check" }'),
     ("orchestrators: mux/cmux SOPs",
-     '{ k: "mux / cmux SOPs", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify — the same four, minus k-delegate" }',
-     '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }'),
+     '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }',
+     '{ k: "mux / cmux SOPs (10)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor. konductor\'s eleven, minus k-delegate" }'),
     ("orchestrators: mux/cmux skills",
      '{ k: "mux / cmux skills (8)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, plus mux-dispatch or cmux-dispatch" }',
      '{ k: "mux / cmux skills (10)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, sop-state-management, about-konductor, plus mux-dispatch or cmux-dispatch" }'),
@@ -595,8 +594,8 @@ SOP_EDITS += [
 SOP_EDITS += [
     # SOP:20 -- diff_input required "even when pr_url is present"
     ("adversarial: diff_input param",
-     'param("diff_input", true, "— unless pr_url is given. Accepts git diff output, file paths, or raw PR diff content")',
-     'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, or raw PR diff content")'),
+     'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, or raw PR diff content")',
+     'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, a revision range, or raw PR diff content")'),
     # cli/README.md:740 -- doctor does not compare installed vs available versions
     ("update: doctor Updates checklist item",
      'konductor doctor</span> reports the Updates check as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">ok</span>.',
@@ -1079,26 +1078,38 @@ SOP_EDITS += [
      'Declarative policy; the CLI embeds config.yml only\\n│       ├── config.yml            Default configuration\\n│       ├── severity-schema.yml   Finding severities\\n│       ├── scope-table.yml       Change tiers\\n│       └── sop-orchestration.yml Gated SOP list, repository lint input'),
 ]
 
-# Step 6 of k-code-review-workflow writes the report with a pending section and
-# returns the adversarial pass as a handoff (docs/user-guide/{agents,faq}.md,
-# sop-workflows/code-review.md, use-cases/review-code-and-tests.md). Each string
-# is the page's decoded JavaScript source.
+# Step 6 of k-code-review-workflow writes the report, then ends with a note asking
+# the orchestrator to run the adversarial review; the verdict comes from the
+# findings and the adversarial pass state is its own line
+# (docs/user-guide/{agents,faq}.md, sop-workflows/code-review.md,
+# use-cases/review-code-and-tests.md). Each `old` is the bundle text after the
+# adversarial-coordination edits above. Each string is the page's decoded
+# JavaScript source.
 SOP_EDITS += [
-    ("sop step 6 node: pending report then handoff",
+    ("sop step 6 node: report then note to the orchestrator",
      r'''node("06", "Adversarial pass — never actually fires", "Would spawn k-architect in adversarial mode with the same diff as diff_input (plus cr_url if supplied), applying step 5's filters and merging new CRITICAL / IMPORTANT only. Skipped by design for frontend-only reviews — and skipped in practice always, because its one owning agent cannot spawn the architect.", "skip")''',
-     r'''node("06", "Adversarial pass: handoff to k-architect", "Writes the report with an 'Adversarial pass: pending' section and the verdict PENDING ADVERSARIAL PASS, then returns the pass as a handoff for k-architect with the same diff as diff_input (plus the CR URL as pr_url if supplied). On resume, applies step 5's filters and merges new CRITICAL / IMPORTANT only. Skipped by design for frontend-only reviews.", "good")'''),
+     r'''node("06", "Adversarial pass: note to the orchestrator", "Writes the report from the step 5 list with the line Adversarial pass: not run, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the step 1 diff (diff_input, plus the CR URL as pr_url if supplied) with output_file <stem>-adversarial.md. The orchestrator records that verdict and report path next to this report's verdict and sets the final verdict. Skipped by design for frontend-only reviews.", "good")'''),
+    ("sop step 7 node: verdict from the findings",
+     r'''node("07", "Write report to output_file", "State the verdict — READY FOR CR or NEEDS FIXES — and never print the full report inline.", "good")''',
+     r'''node("07", "Write report to output_file", "The verdict comes from the findings: NEEDS FIXES if any CRITICAL or IMPORTANT is open, otherwise READY FOR CR once the adversarial pass is complete or skipped, or PENDING ADVERSARIAL PASS while it has not run. An Adversarial pass: line records the pass state. Never print the full report inline.", "good")'''),
+    ("sop get: verdict and adversarial pass line",
+     r'''numbered issue sections with file:line references, and a verdict of READY FOR CR or NEEDS FIXES.",''',
+     r'''numbered issue sections with file:line references, a verdict of NEEDS FIXES (any CRITICAL or IMPORTANT open), READY FOR CR (none open, adversarial pass complete or skipped) or PENDING ADVERSARIAL PASS (none open, pass not yet run), and an Adversarial pass: line with the pass state.",'''),
     ("sop know: adversarial step needs an orchestrator",
-     r'''{ title: "The adversarial step never actually fires.", body: "Step 6 tells the agent to spawn k-architect, but its one owning agent cannot: in Kiro CLI k-developer's subagent.availableAgents is [\"k-quality-assurance\"], which does not include the architect, and in Claude Code it has no Agent(...) tool at all. The SOP degrades quietly by design, so you get standard review only. Routing through the orchestrator does not help — it does not declare this SOP. Run k-adversarial-pull-request-review against k-architect separately instead." }''',
-     r'''{ title: "The adversarial step needs an orchestrator.", body: "The SOP's one owning agent, k-developer, cannot spawn k-architect. Step 6 writes the report with the adversarial section pending and the verdict PENDING ADVERSARIAL PASS, then returns the pass as a handoff. Under konductor, the handoff is routed to k-architect and the findings come back to replace the pending section and give the final verdict. Started directly, you get the pending report and the handoff: ask konductor to run k-adversarial-pull-request-review, then resume k-code-review-workflow at step 6 with its findings." }'''),
-    ("sop step 6 list: pending report then handoff",
+     r'''{ title: "The adversarial step never actually fires.", body: "Step 6 tells the agent to spawn k-architect, but its one owning agent cannot: in Kiro CLI k-developer's subagent.availableAgents is [\"k-quality-assurance\"], which does not include the architect, and in Claude Code it has no Agent(...) tool at all. The SOP degrades quietly by design, so you get standard review only. Routing through the orchestrator does not help — it does not declare this SOP. Run k-adversarial-pull-request-review through konductor separately instead." }''',
+     r'''{ title: "The adversarial step runs only through konductor.", body: "The SOP's one owning agent, k-developer, cannot spawn. Step 6 writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff; the verdict comes from the findings, so a known CRITICAL reads NEEDS FIXES even on a direct run, and an Adversarial pass: line records the pass state. Under konductor the orchestrator runs the pass and sets the final verdict; started directly, the note comes back to you: ask konductor to run the adversarial review." }'''),
+    ("sop step 6 list: report then note to the orchestrator",
      r'''body: "Attempts the architect spawn. Always no-ops today (see above), and is skipped by design when review_type is frontend only."''',
-     r'''body: "Writes the report with the adversarial section pending, then returns the pass as a handoff for k-architect. Skipped by design when review_type is frontend only."'''),
+     r'''body: "Writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff. Skipped by design when review_type is frontend only."'''),
+    ("sop step 7 list: verdict from the findings",
+     r'''body: "Writes code-review-report.md with a verdict: READY FOR CR or NEEDS FIXES."''',
+     r'''body: "Writes code-review-report.md with a verdict from the findings: NEEDS FIXES if any CRITICAL or IMPORTANT is open, otherwise READY FOR CR once the adversarial pass is complete or skipped, or PENDING ADVERSARIAL PASS while it has not run. An Adversarial pass: line records the pass state."'''),
     ("faq: code review security pass",
-     r'''paras: ["Because it always does. k-code-review-workflow step 6 tries to spawn k-architect for an adversarial pass, and the only agent that owns the SOP cannot spawn the architect — in Kiro CLI their availableAgents lists do not include it, and in Claude Code neither has an Agent(...) tool. The SOP is written to skip the step quietly when the capability is missing, so you get standard review with no error.", "Routing through konductor does not fix it either: the orchestrator does not declare k-code-review-workflow, so it hands the SOP to the developer, which hits the same wall. Run the adversarial pass yourself against the agent that owns it."]''',
-     r'''paras: ["k-code-review-workflow step 6 is an adversarial pass by k-architect, and the only agent that owns the SOP cannot spawn the architect: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and the core rules forbid it in Kiro CLI v2. Step 6 writes the report with an 'Adversarial pass: pending' section, then returns the pass as a handoff for k-architect.", "Under konductor, the handoff is routed and the findings replace the pending section. If you started k-developer directly, nothing routes it: ask konductor to run k-adversarial-pull-request-review, then pass its findings and the handoff to k-developer and ask it to resume k-code-review-workflow at step 6."]'''),
+     r'''paras: ["Because it always does. k-code-review-workflow step 6 tries to spawn k-architect for an adversarial pass, and the only agent that owns the SOP cannot spawn the architect — in Kiro CLI their availableAgents lists do not include it, and in Claude Code neither has an Agent(...) tool. The SOP is written to skip the step quietly when the capability is missing, so you get standard review with no error.", "Routing through konductor does not fix it either: the orchestrator does not declare k-code-review-workflow, so it hands the SOP to the developer, which hits the same wall. Run the adversarial pass through konductor, which coordinates it."]''',
+     r'''paras: ["k-code-review-workflow step 6 is an adversarial pass, and the agent that owns the SOP cannot run it: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and the core rules forbid it in Kiro CLI v2. Step 6 writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff; the verdict comes from the findings, so a known CRITICAL reads NEEDS FIXES even before the pass runs, and an Adversarial pass: line records the pass state.", "Under konductor the orchestrator runs the pass and sets the final verdict; if you started k-developer directly, the note comes back to you: ask konductor to run the adversarial review."]'''),
     ("agents warn: adversarial handoff",
-     r'''warn: "Why this matters: k-code-review-workflow step 6 says to spawn k-architect in adversarial mode. That SOP is declared only by k-developer — which cannot spawn the architect in either runtime. The SOP anticipates this (\"You MUST skip this step if no adversarial CR-review capability is available\"), so it degrades quietly. In practice step 6 always no-ops and you get standard review only. Routing through the orchestrator does not fix it — it does not declare that SOP. Run k-adversarial-pull-request-review yourself against k-architect."''',
-     r'''warn: "Why this matters: k-code-review-workflow step 6 is an adversarial pass by k-architect. That SOP is declared only by k-developer, which cannot spawn the architect in either runtime. Step 6 writes the report with an 'Adversarial pass: pending' section, then returns the pass as a handoff. Under konductor, the handoff is routed to k-architect and the findings come back to finish the report. Started directly, you get the pending report and the handoff: ask konductor to run k-adversarial-pull-request-review, then resume k-code-review-workflow at step 6 with its findings."'''),
+     r'''warn: "Why this matters: k-code-review-workflow step 6 says to spawn k-architect in adversarial mode. That SOP is declared only by k-developer — which cannot spawn the architect in either runtime. The SOP anticipates this (\"You MUST skip this step if no adversarial CR-review capability is available\"), so it degrades quietly. In practice step 6 always no-ops and you get standard review only. Routing through the orchestrator does not fix it — it does not declare that SOP. Run k-adversarial-pull-request-review through konductor, which coordinates it."''',
+     r'''warn: "Why this matters: k-code-review-workflow step 6 is an adversarial pass. That SOP is declared only by k-developer, which cannot run the adversarial review in either runtime. Step 6 writes the report, then ends with a note asking the orchestrator to run k-adversarial-pull-request-review on the same diff; the verdict comes from the findings and the adversarial state is its own line, so a known CRITICAL reads NEEDS FIXES even on a direct run. Under konductor, the orchestrator runs the adversarial review, records its verdict next to the report's and replaces a PENDING ADVERSARIAL PASS verdict with the final one: READY FOR CR, or NEEDS FIXES when the adversarial report lists a CRITICAL or IMPORTANT finding. Started directly, the note comes back to you: ask konductor to run the adversarial review."'''),
 ]
 
 # Specialists hold no spawn tool in Kiro CLI v3 or Claude Code. Each `old` is the
@@ -1159,32 +1170,41 @@ SOP_EDITS += [
 ]
 
 # The published page's "adversarial handoff never fires" section and index row,
-# rewritten to match use-cases/review-code-and-tests.md and sop-workflows/README.md.
+# rewritten for the note-to-the-orchestrator flow to match use-cases/review-code-and-tests.md and sop-workflows/README.md.
 SOP_EDITS += [
     ('known limitation: heading',
      'Known limitation: the adversarial handoff never fires',
      'Known limitation: the adversarial pass needs an orchestrator'),
     ('known limitation: step 6 quote',
      'If an adversarial CR-review step is available, spawn <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">k-architect</code> in adversarial mode with it, passing the same diff used in Step 1 as <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">diff_input</code>, to surface gaps missed by standard review.',
-     'Write the Step 7 report first, then return step 6 as a handoff naming <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">k-architect</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">k-adversarial-pull-request-review</code>, this SOP, and step 6 as the step to resume at.'),
+     'Write the Step 7 report from the Step 5 list, then end your result with a handoff note for the orchestrator: Run <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">k-adversarial-pull-request-review</code> on the Step 1 diff with <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">diff_input</code> = that diff and <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">output_file</code> = <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">&lt;output_file stem&gt;-adversarial.md</code>.'),
     ('known limitation: box label',
      'NEITHER OWNING AGENT CAN DO THAT SPAWN — VERIFIED AGAINST THE AGENT SPECS',
-     'THE OWNING AGENT CANNOT SPAWN THE ARCHITECT, VERIFIED AGAINST THE AGENT SPECS'),
+     'THE OWNING AGENT CANNOT RUN THE ADVERSARIAL REVIEW, VERIFIED AGAINST THE AGENT SPECS'),
     ('known limitation: through konductor',
      '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)">Step 6\'s own constraints anticipate this — <em>"You MUST skip this step if no adversarial CR-review capability is available"</em> — so the workflow degrades gracefully rather than erroring. In practice <strong style="color:var(--tx);font-weight:600">step 6 silently no-ops and you get standard review only.</strong></p>',
-     '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)"><strong style="color:var(--tx);font-weight:600">Through <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">konductor</code>, step 6 runs.</strong> Step 6 has <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-developer</code> write the report with an "Adversarial pass: pending" section, then return the pass as a handoff for <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-architect</code>, naming the SOP and the step to resume at. <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">konductor</code> routes it to the architect and sends the findings back, and the developer rewrites the report with them.</p>'),
+     '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)"><strong style="color:var(--tx);font-weight:600">Through <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">konductor</code>, step 6 runs.</strong> <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-developer</code> writes the report with the verdict from its findings and an <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Adversarial pass: not run</code> line, then ends with a note; <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">konductor</code> runs <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-adversarial-pull-request-review</code> on the same diff, records its verdict and report path, and sets the final verdict.</p>'),
     ('known limitation: started directly',
      '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)"><strong style="color:var(--tx);font-weight:600">Routing through <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em">konductor</code> does not fix it.</strong> The orchestrator does not declare <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-code-review-workflow</code> (its SOPs are <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">kiro-spec-workflow</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-delegate</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-plan</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-context-gathering</code>, <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-verify</code>), so it delegates the whole SOP to the developer, which hits the same wall.</p>',
-     '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)"><strong style="color:var(--tx);font-weight:600">Started directly, the handoff comes back to you.</strong> Nothing routes it, so you get the report with the adversarial section pending. To complete it, ask <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">konductor</code> to run <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-adversarial-pull-request-review</code>, then pass its findings and the handoff to <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-developer</code> and ask it to resume <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-code-review-workflow</code> at step 6.'),
+     '<p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)"><strong style="color:var(--tx);font-weight:600">Started directly, the note comes back to you.</strong> Nothing runs it, so you get the report with <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">Adversarial pass: not run</code>; a known CRITICAL still reads <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">NEEDS FIXES</code>. To complete it, ask <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">konductor</code> to run <code style="font-family:\'JetBrains Mono\',monospace;font-size:.87em;color:var(--tx)">k-adversarial-pull-request-review</code> on the same diff.</p>'),
+    ('known limitation: box label 2',
+     'THE WORKAROUND THAT DOES WORK',
+     'TO RUN THE ADVERSARIAL PASS ON ITS OWN'),
+    ('use-case: runtime differences name the limitation',
+     'The only runtime-relevant fact is the step 6 delegation gap above,',
+     'The only runtime-relevant fact is the step 6 limitation above,'),
+    ('use-case: code review checkpoint',
+     'exists with a READY FOR CR / NEEDS FIXES verdict.',
+     'exists with a NEEDS FIXES, READY FOR CR or PENDING ADVERSARIAL PASS verdict and an Adversarial pass: line.'),
     ('sop index: review workflow row',
      'Its step-6 adversarial pass never fires',
-     'Its step-6 adversarial pass returns as a handoff'),
+     'Its step-6 adversarial pass is handed to the orchestrator by a note'),
 ]
 
 SOP_EDITS += [
     ("sops callout: step 6 hands off",
      "until that registration was removed as unusable: step 6 spawns k-architect, which QA cannot reach.",
-     "until that registration was removed as unusable: step 6 hands off to k-architect, which QA cannot reach."),
+     "until that registration was removed as unusable: step 6 needs the adversarial review, which QA cannot run."),
 ]
 
 # Single-writer shape: these run after every earlier entry, so each `old` is the

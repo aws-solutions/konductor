@@ -29,7 +29,8 @@ To make agents load steering/memory/skills, use **instructions** inside AGENTS.m
 
 1. **Kiro:** the agent spec must list `"file://AGENTS.md"` in `clientConfig.kiroCli.resources`.
 2. **Claude Code:** the repo must have a `CLAUDE.md` containing `@AGENTS.md` (import) so Claude Code loads
-   AGENTS.md content. Chain further imports there if needed (e.g., `@.konductor/memory/MEMORY.md`).
+   AGENTS.md content. Chain further imports there if needed. Do not import `.konductor/memory/` files: an
+   import reads through a symlink and skips the `persistent-memory` skill's checked read.
 
 ## Required structure
 
@@ -55,13 +56,13 @@ agent loads adjacent context via its own file-read tools:
 Before starting work, load available project context:
 
 - You MUST read `.kiro/steering/**/*.md` if present — workspace steering rules.
-- You MUST read `<workspace>/memory/*.md` if present — persistent facts and preferences.
+- You MUST load `<workspace>/memory/MEMORY.md` and `<workspace>/memory/USER.md` only through the `persistent-memory` skill's Reading Memory steps (its `--check-path` check first); never read that directory with a glob or an import. If that skill or a shell is not available to you, skip memory and say so.
 - Workspace-specific skills may exist at `.kiro/skills/ws-*/SKILL.md` — be aware and load when relevant.
 
 If a path does not exist, skip it silently and continue.
 ```
 
-Replace `<workspace>` with the workspace state directory (`.konductor`), so `<workspace>/memory/*.md` -> `.konductor/memory/*.md`.
+Replace `<workspace>` with the workspace state directory (`.konductor`), so `<workspace>/memory/MEMORY.md` -> `.konductor/memory/MEMORY.md`.
 
 ## Rules
 
