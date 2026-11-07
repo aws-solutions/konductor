@@ -80,14 +80,13 @@ flowchart TD
     S4["4. Consolidate<br/>sort CRITICAL → IMPORTANT → SUGGESTION<br/>deduplicate across skills<br/>attach file:line to each finding"]
     S4 --> S5["5. Critique findings<br/>when in doubt, reject"]
 
-    S5 --> S6{"6. Adversarial capability available<br/>AND review_type is not<br/>'frontend' only?"}
-    S6 -->|No| Skip["Skip step 6"]
-    S6 -->|Yes| Adv["Spawn k-architect in adversarial mode<br/>pass the same diff as diff_input<br/>forward cr_url as the adversarial SOP's pr_url<br/>apply step 5's filters to its findings<br/>merge new CRITICAL / IMPORTANT only"]
+    S5 --> S6{"6. review_type is not<br/>'frontend' only?"}
+    S6 -->|No| S7
+    S6 -->|Yes| Report["Write the report with<br/>'Adversarial pass: not run'"]
+    Report --> Note["End with a note: run k-adversarial-pull-request-review<br/>on the step 1 diff, output_file stem-adversarial.md"]
+    Note --> S7
 
-    Skip --> S7
-    Adv --> S7
-
-    S7["7. Write report to output_file<br/>state verdict: READY FOR CR / NEEDS FIXES<br/>never print the full report inline"]
+    S7["7. Write report to output_file<br/>verdict from the findings: NEEDS FIXES if any CRITICAL or IMPORTANT is open<br/>READY FOR CR when the adversarial pass is complete or skipped<br/>PENDING ADVERSARIAL PASS while it has not run<br/>never print the full report inline"]
 
     class Ask,S5 gate
     class S7 focus
@@ -126,21 +125,23 @@ A surviving finding must state the problem, why it matters, and a concrete fix.
 
 `code-review-report.md` (or your `output_file`) with a date, file counts by category, a summary
 line of `CRITICAL: N | IMPORTANT: N | SUGGESTION: N`, numbered issue sections with `file:line`
-references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
+references, a verdict of **NEEDS FIXES** (any CRITICAL or IMPORTANT open), **READY FOR CR**
+(none open, adversarial pass complete or skipped) or **PENDING ADVERSARIAL PASS** (none open,
+pass not yet run), and an `Adversarial pass:` line with the pass state.
 
 ### Things to know
 
 - **The diff, not just the file list, is the input.** Step 1 captures full hunks; the changed-file
   list is derived from them.
-- **The adversarial step never actually fires.** Step 6 tells the agent to spawn
-  `k-architect`, but its one owning agent cannot: in Kiro CLI `k-developer`'s
-  `subagent.availableAgents` is `["k-quality-assurance"]`, which does not include the architect,
-  and in Claude Code it has no `Agent(...)` tool at all.
-  The SOP degrades quietly by design (*"You MUST skip this step if no adversarial CR-review
-  capability is available"*), so you get standard review only. Routing through the orchestrator does
-  not help — it does not declare this SOP. Run
-  [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) through `konductor`
-  separately instead. See
+- **The adversarial step runs only through `konductor`.** Step 6 needs `k-architect` and four
+  review passes, but the owning agent cannot spawn: no specialist holds a spawn tool in Kiro CLI
+  v3 or Claude Code, and the core rules forbid it in Kiro CLI v2. Step 6 has `k-developer` write
+  the report, then end with a note asking the orchestrator to run
+  [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) on the same diff;
+  the verdict comes from the findings, so a known CRITICAL reads `NEEDS FIXES` even on a direct
+  run, and an `Adversarial pass:` line records the pass state. Under `konductor` the orchestrator
+  runs the pass and sets the final verdict; started directly, the note comes back to you: ask
+  `konductor` to run the adversarial review. See
   [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 - **The adversarial step is also skipped for frontend-only reviews** by design, because it targets
   backend and infra gaps.

@@ -84,18 +84,17 @@ Validate each finding to eliminate false positives. When in doubt, reject — fa
 
 ### 6. Adversarial Review
 
-If `k-adversarial-pull-request-review` is available, spawn `k-architect` in adversarial mode with it, passing the same diff used in Step 1 as `diff_input`, to surface gaps missed by standard review.
+Write the Step 7 report from the Step 5 list, then end your result with a handoff note for the orchestrator: "Run `k-adversarial-pull-request-review` on the Step 1 diff with `diff_input` = that diff and `output_file` = `<output_file stem>-adversarial.md`; then state its verdict and report path next to this report's verdict and, if you may write files, replace this report's `Adversarial pass:` line with `Adversarial pass: complete (<path>)` and, when this report's `Verdict:` line reads `PENDING ADVERSARIAL PASS`, set it by the Step 7 rule: `NEEDS FIXES` if the adversarial report lists any CRITICAL or IMPORTANT finding, otherwise `READY FOR CR`." Include in the note the Step 1 diff as `diff_input` or the command that reproduces it, and `pr_url` set to the `cr_url` value if one was given, since that is the name `k-adversarial-pull-request-review` declares. The orchestrator coordinates that SOP; on a direct run with no orchestrator, the note goes to the user.
 
 **Constraints:**
 
-- You MUST skip this step if `k-adversarial-pull-request-review` is unavailable, or if `review_type` is `frontend` only (adversarial review targets backend/infra gaps)
+- You MUST skip this step only if `review_type` is `frontend` only (adversarial review targets backend/infra gaps); then continue to Step 7 with `Adversarial pass: skipped (frontend only)` and no note
+- You MUST NOT spawn `k-architect` or run the adversarial SOP yourself, whatever your tools allow; the note is the only path
+- You MUST write the report to `output_file` before returning the note, using the Step 7 structure with the verdict from the Step 5 list and the line `Adversarial pass: not run (the orchestrator runs k-adversarial-pull-request-review on this diff)`
 - You MUST pass the same diff used in Step 1 as `diff_input`
-- If the k-code-review-workflow was invoked with a CR URL, You MUST also pass it to `k-adversarial-pull-request-review` as its `pr_url` parameter — that is the name that SOP declares, and passing `cr_url` instead leaves it unset so the review degrades to diff-only. Do not send it to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
-- You MUST apply the same false-positive criteria from Step 5 to adversarial findings before merging them
-- You MUST merge any new CRITICAL or IMPORTANT findings into the consolidated list from Step 5
-- You MUST NOT re-report findings already present in the consolidated list
+- Do not send the CR URL to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
 
-**Expected Output:** Consolidated findings list updated with any adversarial CRITICAL/IMPORTANT additions
+**Expected Output:** Report written from the Step 5 list, then a handoff note asking the orchestrator to run the adversarial review
 
 ### 7. Generate Review Report
 
@@ -111,6 +110,8 @@ Write the consolidated report to the output file.
   Files reviewed: [count by category]
   ## Summary
   [CRITICAL: N | IMPORTANT: N | SUGGESTION: N]
+  Verdict: [NEEDS FIXES | READY FOR CR | PENDING ADVERSARIAL PASS]
+  Adversarial pass: [not run (the orchestrator runs k-adversarial-pull-request-review on this diff) | complete (<path>) | skipped (frontend only)]
   ## Critical Issues
   [Numbered list with file:line references]
   ## Important Issues
@@ -119,7 +120,8 @@ Write the consolidated report to the output file.
   [Numbered list]
   ```
 
-- You MUST state the verdict: READY FOR CR / NEEDS FIXES
+- You MUST state the verdict from the findings in the report: `NEEDS FIXES` if any CRITICAL or IMPORTANT finding is open, in this report or in a completed adversarial report; otherwise `READY FOR CR` when the adversarial pass is complete or skipped, or `PENDING ADVERSARIAL PASS` while it has not run. `READY FOR CR` never appears while the pass has not run.
+- The line after the verdict MUST read `Adversarial pass: not run (the orchestrator runs k-adversarial-pull-request-review on this diff)`, `Adversarial pass: complete (<path>)` or `Adversarial pass: skipped (frontend only)`
 - You MUST NOT print the full report in your response — reference the file
 
 **Expected Output:** Report file at `output_file` with verdict and finding counts

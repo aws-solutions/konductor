@@ -37,25 +37,12 @@
     "kiroCli": {
       "welcomeMessage": "I'm your technical program manager. I coordinate across projects — timelines, status reporting, risk tracking, and program-level decision documents. Tell me the program or the coordination problem.",
       "tools": [
-        "@builtin",
-        "subagent"
+        "@builtin"
       ],
       "allowedTools": [
         "fs_read",
         "fs_write"
       ],
-      "toolsSettings": {
-        "subagent": {
-          "trustedAgents": [
-            "k-developer",
-            "k-researcher"
-          ],
-          "availableAgents": [
-            "k-developer",
-            "k-researcher"
-          ]
-        }
-      },
       "hooks": {},
       "mcpServers": {},
       "resources": [

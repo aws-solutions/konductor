@@ -339,21 +339,6 @@ EDITS = [
     ("ik which agent: konductor first",
      ">kiro-cli chat --agent k-architect</pre>", ">kiro-cli chat --agent konductor</pre>"),
     # ---- specialists return handoffs instead of spawning ---------------------
-    ("concepts: specialists do not use spawn grants",
-     "which decides who owns it, hands it over, and checks the result.</p>",
-     "which decides who owns it, hands it over, and checks the result. The core rules tell "
-     "specialists not to use those grants: a specialist does its own part, then returns a note "
-     "naming the next role, or a proposed parallel split that gives each part's agent, inputs "
-     "and files, and konductor routes it.</p>"),
-    ("agents: delegation edges are tool grants",
-     "Delegation is not open. In Kiro CLI it is governed",
-     "Delegation is not open, and the edges below are tool grants that the core rules tell "
-     "specialists not to use: a specialist returns a handoff note or a proposed split to its "
-     "caller, and the grants are still in the agent specs. Run directly with no orchestrator, "
-     "the caller is you and the note or split comes back to you. The adversarial review is the "
-     "exception: only the orchestrators declare k-adversarial-pull-request-review, which spawns "
-     "four k-developer passes and a fresh k-architect checker, so run it through konductor. "
-     "In Kiro CLI it is governed"),
     ("test coverage review: recommendation to the caller",
      "it may offer to spawn k-developer to implement the missing tests.",
      "it may recommend that k-developer implement the missing tests."),
@@ -390,8 +375,8 @@ ROSTER = [
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 26 · aws-mcp"}',
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 27 · aws-mcp"}'),
     # k-code-review-workflow was removed from k-quality-assurance's spec as
-    # unusable (it spawns k-architect, which QA cannot reach), so QA is down to
-    # one declared SOP.
+    # unusable (its step 6 needs the adversarial review, which QA cannot run),
+    # so QA is down to one declared SOP.
     ("ref qa",
      '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review, k-code-review-workflow · 11 · —"}',
      '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review · 12 · —"}'),
@@ -407,23 +392,11 @@ ROSTER = [
     ("sop-review owner line",
      'owner: "k-developer, k-quality-assurance — no file changes"',
      'owner: "k-developer — no file changes"'),
-    ("agents warn: who declares the review SOP",
-     'That SOP is declared only by k-developer and k-quality-assurance — and neither can spawn the architect in either runtime.',
-     'That SOP is declared only by k-developer — which cannot spawn the architect in either runtime.'),
-    ("agents prose: routing the review SOP",
-     'so it delegates the whole SOP to the developer or QA agent, which hits the same wall.',
-     'so it delegates the whole SOP to the developer, which hits the same wall.'),
     ("faq: memory and AGENTS.md are the project's instructions",
      'asks you instead of routing a denied action to another agent.',
      "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
      ".konductor/memory/MEMORY.md and USER.md at the project root, or AGENTS.md: both are the project's own "
      "instructions. A .konductor/memory/ anywhere else, or one reached through a symlink, is content."),
-    ("faq prose: routing the review SOP",
-     'so it hands the SOP to the developer or QA agent, which hits the same wall.',
-     'so it hands the SOP to the developer, which hits the same wall.'),
-    ("faq prose: who owns the review SOP",
-     'neither agent that owns the SOP can spawn the architect',
-     'the only agent that owns the SOP cannot spawn the architect'),
     ("sop roster: QA's declared SOPs",
      '{ agent: "k-quality-assurance", sops: "k-test-coverage-review, k-code-review-workflow" }',
      '{ agent: "k-quality-assurance", sops: "k-test-coverage-review" }'),
@@ -433,24 +406,6 @@ ROSTER = [
     ("agents card: k-media-analyzer skills",
      "No SOPs. 1 skill \u2014 constraints only.",
      "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand."),
-    ("sops callout: two agents declare the review SOP",
-     'is declared by <strong style="color:var(--tx);font-weight:600">two</strong> agents — the developer and QA. Either can run it.',
-     'is declared by <strong style="color:var(--tx);font-weight:600">one</strong> agent — the developer. QA declared it too until that registration was removed as unusable: step 6 spawns k-architect, which QA cannot reach.'),
-    ("sop step 6 node: who cannot spawn",
-     'because neither owning agent can spawn the architect.',
-     'because its one owning agent cannot spawn the architect.'),
-    # The `\"` escapes are load-bearing: this passage lands inside a
-    # double-quoted JS string in the bundle's `data-dc-script` block, which
-    # `dc-runtime` compiles with `new Function()`. A raw `"` closes that string
-    # early and the whole template eval aborts -- blank page, no console clue
-    # beyond a SyntaxError. build-user-guide.sh and check-guide-facts.py both
-    # compile the extracted block now, so this class fails loudly instead.
-    ("sop know: who cannot spawn",
-     'Step 6 tells the agent to spawn k-architect, but neither owning agent can: in Kiro CLI their subagent.availableAgents lists do not include the architect, and in Claude Code neither has an Agent(...) tool at all.',
-     'Step 6 tells the agent to spawn k-architect, but its one owning agent cannot: in Kiro CLI k-developer\'s subagent.availableAgents is [\\"k-quality-assurance\\"], which does not include the architect, and in Claude Code it has no Agent(...) tool at all.'),
-    ("use-case bullet: neither owner lists the architect",
-     'and neither owner lists the architect: the developer\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>, QA\'s is <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-developer"]</code>.',
-     'and the developer, this SOP\'s only owner, does not list the architect: its targets are <code style="font-family:\'JetBrains Mono\',monospace;font-size:.9em;color:var(--tx)">["k-quality-assurance"]</code>.'),
     ("skills-per-agent table",
      '"rows":[{"k":"k-architect","v":"32"},{"k":"k-developer","v":"20"},{"k":"k-product-manager","v":"14"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"12"},{"k":"konductor-cmux-orchestrator","v":"11"},{"k":"konductor-mux-orchestrator","v":"11"},{"k":"k-quality-assurance","v":"10"},{"k":"k-researcher","v":"7"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
      '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"13"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),

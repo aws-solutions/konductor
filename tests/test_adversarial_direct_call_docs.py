@@ -33,7 +33,8 @@ def test_the_guide_bounds_the_coordinator_reads():
 
 def test_the_use_case_page_does_not_hand_count_the_declared_sops():
     assert "ten SOPs" not in USE_CASE
-    assert "not among the SOPs the orchestrators declare" in USE_CASE
+    assert "Routing through `konductor` does not fix it" not in USE_CASE
+    assert "**Through `konductor`, step 6 runs.**" in USE_CASE
 
 
 def test_no_manual_resume_steps_remain():

@@ -54,6 +54,18 @@ WITHDRAWN_COMMANDS: set[str] = {"config"}
 _HIDDEN_COMMAND = re.compile(r"#\[command\(hide = true[^\]]*\]\s*\n\s*(\w+)\s*\{")
 
 
+STALE_DELEGATION_PHRASES = (
+    "can also spawn each other",
+    "carry Agent(...) tools",
+    "holds the subagent tool but can spawn nothing",
+    "via Agent(...)",
+    "adversarial handoff never fires",
+    "step 6 silently no-ops",
+    "Its step-6 adversarial pass never fires",
+)
+KONDUCTOR_SPAWN_CELL = "the same 8 via Agent(...)"
+
+
 def hidden_commands(cli_rs_text: str) -> set[str]:
     """Names of the clap variants marked `#[command(hide = true)]`, lower-cased."""
     return {name.lower() for name in _HIDDEN_COMMAND.findall(cli_rs_text)}
@@ -447,6 +459,12 @@ def main() -> int:
     for rel, text in sources.items():
         if rel.name == "notes.md":
             continue  # records why the claim is wrong; naming it is the point
+        for phrase in STALE_DELEGATION_PHRASES:
+            if phrase in text.replace(KONDUCTOR_SPAWN_CELL, ""):
+                perm_fails.append(
+                    f"{rel}: says {phrase!r}: specialists hold no spawn tool "
+                    f"in Kiro CLI v3 or Claude Code"
+                )
         low = text.lower()
         for phrase in FORBIDDEN_PERMISSION_CLAIMS:
             if phrase in low:

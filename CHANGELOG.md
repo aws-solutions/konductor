@@ -35,6 +35,7 @@ not per individual commit.
 
 ### Changed
 
+- sdlc-navigator lists `konductor` (orchestrator, routing) in its agent table and shows the Claude Code invocation beside the Kiro ones.
 - delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
@@ -68,6 +69,11 @@ not per individual commit.
   `k-test-coverage-review` recommends `k-developer` for missing tests instead of handing off.
 - Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
   `.gitignore`); `konductor init` also ignores the directory.
+- Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it, with
+  `disallowedTools` on Claude Code for every specialist (not shell or Kiro CLI v2).
+  `k-code-review-workflow` step 6 writes the report and ends with a note asking the orchestrator
+  to run the adversarial review, no resume; the verdict comes from the findings, with the
+  adversarial pass state on its own line.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
