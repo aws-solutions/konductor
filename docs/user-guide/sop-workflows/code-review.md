@@ -359,7 +359,7 @@ flowchart TD
     RC --> W
     AC --> W
     AP --> W
-    W["Write report to output_file<br/>verdict, 'Checker independence: held', counts,<br/>'Passes run: ...', 'Filtered by checker: N',<br/>'Historical filtering: unavailable',<br/>plus a Filter Log section — never inline the report"]
+    W["Write report to output_file<br/>verdict, counts,<br/>'Passes run: ...', 'Filtered by checker: N',<br/>'Historical filtering: unavailable',<br/>plus a Filter Log section; never inline the report"]
 
     class Half,S5 muted
     class Ask gate
@@ -409,9 +409,11 @@ missing lens is named in the summary.
   emphatic that this be reported as *"historical filtering unavailable"* and never as *"no prior
   revisions"*: the first means not checked, the second would claim nothing was found.
 - **The report records what the checker removed and which passes ran.** `output_file` carries
-  `Checker independence: held`, `Passes run:` (with `<pass> MISSING (<reason>)` for a lens that
-  never ran), `Filtered by checker: N`, the historical-filtering note, and a `## Filter Log`
-  section — so a rejected finding or a skipped lens is visible rather than silently absent.
+  `Passes run:` (with `<pass> MISSING (<reason>)` for a lens that never ran),
+  `Filtered by checker: N`, the historical-filtering note, and a `## Filter Log` section, so a
+  rejected finding or a skipped lens is visible rather than silently absent. Checker independence
+  is not a line in the report: it holds because `k-architect` is spawned fresh after the four
+  passes return, which the spawn order shows.
 
 ---
 

@@ -151,7 +151,8 @@ role, or a proposed split giving each part's agent, skill or SOP step,
 inputs and files. Before routing a note or any part of a split, apply
 the guards in your orchestrator context (the "Specialists do not spawn
 agents" paragraph), which also says how to check a split's file lists
-and that a note naming an SOP you declare is yours to run.
+and that a note naming `k-adversarial-pull-request-review` is yours
+to run while a note naming any other SOP is presented to the user.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
