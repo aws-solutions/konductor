@@ -35,11 +35,14 @@ not per individual commit.
 
 ### Changed
 
+- constraints: the IMPORTANT tier header is one line again; the review-ceilings summary moves to its own `### Review findings` subsection.
 - sdlc-navigator lists `konductor` (orchestrator, routing) in its agent table and shows the Claude Code invocation beside the Kiro ones.
 - delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
-  so agents get them without loading the skill.
+  so agents get them without loading the skill. The `constraints` skill and the
+  `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
+  severity order; other skills still state it themselves.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in
@@ -90,6 +93,9 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One still open, or one the re-review
+  reports in the task's own output, carried over or new, stops the run; a finding in code the task did not add or change
+  is listed as pre-existing. An SOP's own fix scope and round limit win; what it leaves open is reported, never dropped.
 
 ### Fixed
 

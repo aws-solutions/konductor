@@ -1,6 +1,6 @@
 ---
 name: constraints
-description: MUST USE for every interaction across all Konductor agents. Defines the maker-checker, quality gate, severity ordering, and failure recovery rules; the always-loaded core rules hold the rest.
+description: MUST USE for every interaction across all Konductor agents. Defines the maker-checker, quality gate, and failure recovery rules; the always-loaded core rules hold the rest.
 version: 1.0.0
 tags: [skill, behavioral, constraints, quality, security]
 ---
@@ -30,7 +30,7 @@ The NEVER DO rules live in the core rules, which every agent loads at session st
 5. **Comment complex logic**: see Engineering practices in the core rules
 6. **Structured logging**: see Engineering practices in the core rules
 7. **Verify before done**: see "No broken commits" and "No broken state" under NEVER DO, and Engineering practices, in the core rules
-8. **Severity ordering** — Always present findings as CRITICAL → IMPORTANT → SUGGESTION
+8. **Severity ordering**: see Engineering practices in the core rules
 
 ## Failure Recovery
 
@@ -59,7 +59,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
-**IMPORTANT (must fix before proceeding):**
+**IMPORTANT (fix before proceeding):**
 
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts
@@ -69,3 +69,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 
 - Could improve comment coverage on complex logic
 - Could strengthen logging with additional context fields
+
+### Review findings
+
+A CRITICAL or IMPORTANT review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it. A first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done until the user decides. A finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing. (Orchestrators: Review ceilings, Verification Protocol item 6.)

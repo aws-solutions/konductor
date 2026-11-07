@@ -186,8 +186,8 @@ After code changes, run the maker-checker cycle:
 
 1. Get the git diff of all changes
 2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
-3. Address all CRITICAL findings
-4. Re-review. If the fix fails, follow rule 5 under Orchestration Rules in your orchestrator prompt.
+3. Address all CRITICAL and IMPORTANT findings (Review ceilings in the Verification Protocol). Never put SUGGESTIONs in a fix brief.
+4. Run the build and tests again for code, then re-review once, per Review ceilings (Verification Protocol item 6 in your prompt): every first-review CRITICAL or IMPORTANT finding plus what the fix changed and what depends on it. Item 6 says what blocks done, what is listed as pre-existing, and that an SOP's own fix scope and round limit win; rule 5 under Orchestration Rules counts the failed fix.
 
 ## Failure Recovery
 
