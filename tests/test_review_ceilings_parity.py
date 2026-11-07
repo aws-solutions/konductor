@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Review ceilings (Verification Protocol item 6) is stated once, byte-identical in the three
 orchestrators. Orchestrator-only readers point at it; every other mirror carries the four
-pinned clauses (stop, pre-existing, own output, still open) and nothing that contradicts them."""
+pinned clauses (stop, pre-existing, own output, still open), say that a pre-existing finding is not
+put in the fix brief, and carry nothing that contradicts them."""
 
 import json
 import re
@@ -15,6 +16,9 @@ PREEXISTING_WORDING = "pre-existing"
 PREDATES_WORDING = "code the task did not add or change"
 OWN_OUTPUT_WORDING = "in the task's own output"
 OPEN_WORDING = "still open"
+NOT_IN_FIX_BRIEF_WORDING = "not put in the fix brief"
+FIX_CAUSED_QUALIFIER_WORDING = "code the task did not add or change, and the fix did not cause, is listed"
+UNSCOPED_OPEN_WORDING = "Any first-review CRITICAL or IMPORTANT finding still open"
 OLD_FIRST_REVIEW_WORDING = "the first review did not report"
 RE_REVIEW_SCOPE_WORDING = "every CRITICAL or IMPORTANT finding from the first review"
 MIRROR_SCOPE_WORDING = (
@@ -81,9 +85,12 @@ def test_mirrors_carry_the_four_pinned_clauses():
         text = (ROOT / rel).read_text()
         for wording in (STOP_WORDING, PREEXISTING_WORDING, PREDATES_WORDING, OWN_OUTPUT_WORDING, OPEN_WORDING):
             assert wording in text, (rel, wording)
+        assert NOT_IN_FIX_BRIEF_WORDING in text, rel
+        assert FIX_CAUSED_QUALIFIER_WORDING in text, rel
     unreleased = _unreleased_section()
     for wording in (STOP_WORDING, PREEXISTING_WORDING, PREDATES_WORDING, OWN_OUTPUT_WORDING, OPEN_WORDING):
         assert wording in unreleased, wording
+    assert NOT_IN_FIX_BRIEF_WORDING in unreleased
 
 
 def test_pre_existing_is_never_keyed_to_the_first_review_report():
@@ -137,10 +144,10 @@ def test_item_6_re_reviews_every_first_review_finding():
     assert RE_REVIEW_SCOPE_WORDING in _item_6("konductor")
 
 
-def test_open_first_review_finding_blocks_done():
+def test_open_first_review_finding_in_the_tasks_own_output_blocks_done():
     item = _item_6("konductor")
-    assert "Any first-review CRITICAL or IMPORTANT finding still open" in item
-    assert OPEN_WORDING in item
+    assert "Any first-review CRITICAL or IMPORTANT finding in the task's own output still open" in item
+    assert UNSCOPED_OPEN_WORDING not in item
 
 
 def test_re_review_finding_in_the_tasks_own_output_blocks_done():
@@ -157,7 +164,7 @@ def test_pre_existing_means_code_the_task_did_not_touch():
     item = _item_6("konductor")
     assert (
         "A finding in code the task did not add or change (lines already on the base branch) "
-        "and the fix did not cause is listed for the user as pre-existing."
+        "and the fix did not cause is listed for the user as pre-existing; it is not put in the fix brief."
     ) in item
     assert "unchanged code that the fix did not cause" not in item
 
@@ -168,6 +175,15 @@ def test_code_review_skill_matches_review_ceilings():
     assert "**Re-review once**" in text
     assert "Review ceilings" in text
     assert PREDATES_WORDING.replace("the task", "you") in text
+    assert "every CRITICAL and IMPORTANT finding from step 2, plus what the fix changed and what depends on it" in text
+    assert "review what the fix changed and what depends on it. If" not in text
+    assert (
+        "If a CRITICAL or IMPORTANT in your own changes, or one your fix caused in what depends on them, "
+        "remains, stop and escalate"
+    ) in text
+    assert "If a CRITICAL or IMPORTANT remains" not in text
+    assert "in your own changes remains" not in text
+    assert "code you did not add or change, and your fix did not cause, is listed for the user as pre-existing, not fixed" in text
     assert "Max 2 cycles" not in text
     assert "More than 2 fix cycles" not in text
     assert "More than one fix cycle attempted without escalation" in text
