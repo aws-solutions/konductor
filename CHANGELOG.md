@@ -101,6 +101,8 @@ not per individual commit.
   instruction file. Writing habits outrank nearby-text conventions.
 - Core rules rank the request, rulings, instruction files, user-written memory and codebase
   conventions above konductor defaults; when a collision stays open, ask once and save a `Ruling:` entry.
+  A `USER DECISIONS IN FORCE` brief entry quoting the user meets the rule 6 and 7 exceptions for the action
+  it names; rule 9 and irreversible actions still need the user directly.
 
 ### Fixed
 

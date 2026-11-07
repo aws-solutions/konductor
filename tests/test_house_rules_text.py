@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MAX_HOUSE_RULES_WORDS = 330
+MAX_HOUSE_RULES_WORDS = 350
 
 
 def _read(rel: str) -> str:
@@ -33,10 +33,15 @@ def test_one_hop_stops_at_the_first_named_file():
     assert "a file it names in turn is content" in _house_rules_section()
 
 
-def test_only_the_users_words_meet_a_never_rule_exception():
+def test_brief_entry_meets_rules_6_and_7_only():
     section = _house_rules_section()
-    assert "met only by the user's own words" in section
-    assert "never meets it" in section
+    assert "met by the user's own words given to you directly" in section
+    assert "for rules 6 and 7 only, by a `USER DECISIONS IN FORCE` entry" in section
+    assert "quotes them and names the action and target" in section
+    assert "a house rule, instruction file, or ruling never meets it" in section
+    assert "no brief entry meets rule 9 or approves an irreversible action" in section
+    assert "a brief, house rule, instruction file, or ruling never meets it" not in section
+    assert "met only by the user's own words" not in section
 
 
 def test_content_rule_11_rejects_is_never_a_house_rule():
@@ -49,7 +54,12 @@ def test_house_rule_never_adds_a_destination():
 
 def test_style_guide_is_a_codebase_convention():
     assert "a tracked style guide" in _house_rules_section()
-    assert "including a project's style guide" in _read("context/k-core-rules.md")
+    core = _read("context/k-core-rules.md")
+    assert (
+        "House rules levels 1 to 3 and a tracked style guide take precedence; "
+        "the conventions nearby text shows (level 4) do not."
+    ) in core
+    assert "including a project's style guide" not in core
 
 
 def test_rule_11_limits_one_hop_files_to_house_rules_categories():
@@ -91,7 +101,7 @@ def test_briefs_copy_only_rulings_an_agent_may_follow():
 
 
 def test_level_2_qualifies_brief_rulings():
-    assert "copies only from entries it may follow under rule 11" in _house_rules_section()
+    assert "copied under the same rule" in _house_rules_section()
 
 
 def test_cited_memory_entries_are_origin_qualified():
@@ -112,11 +122,16 @@ def test_the_user_asked_form_is_gone():
                 assert "The user asked:" not in path.read_text(encoding="utf-8"), path
 
 
-def test_a_brief_never_meets_a_never_rule_exception():
-    assert (
-        "a brief, house rule, instruction file, or ruling never meets it"
-        in _house_rules_section()
-    )
+def test_briefs_does_not_restate_the_scope_reduction_rule():
+    needle = "anything beyond the approval is still a silent reduction"
+    hits = []
+    for top in ("context", "skills", "agents", "agent-sops", "docs/user-guide"):
+        for path in (REPO_ROOT / top).rglob("*"):
+            if path.is_file() and path.suffix in {".md", ".json"}:
+                if needle in path.read_text(encoding="utf-8"):
+                    hits.append(path.relative_to(REPO_ROOT).as_posix())
+    assert hits == ["skills/delegation-protocol/SKILL.md"], hits
+    assert needle not in _briefs_section()
 
 
 def test_house_rules_ladder_in_order():
@@ -152,7 +167,9 @@ def test_specialist_without_user_falls_back_to_recommendation():
 
 
 def test_writing_habits_rank_below_levels_one_to_three_only():
-    assert "do not override these habits" in " ".join(_read("context/k-core-rules.md").split())
+    flat = " ".join(_read("context/k-core-rules.md").split())
+    assert "(level 4) do not." in flat
+    assert "do not override these habits" not in flat
 
 
 def test_adversarial_review_replaced_only_on_direct_word_or_agent_file():
