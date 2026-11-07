@@ -125,7 +125,7 @@ def test_orchestrator_direct_work_allows_the_memory_path_check():
         "`USER.md`",
         "lookup fence",
         "reads no stdin and writes nothing",
-        "exits 1",
+        "do not load a file whose check exits 1",
     ):
         assert needle in row, f"Direct Work memory row is missing {needle!r}: {row}"
 
