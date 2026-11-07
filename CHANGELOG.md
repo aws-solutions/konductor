@@ -38,6 +38,7 @@ not per individual commit.
 - constraints: the IMPORTANT tier header is one line again; the review-ceilings summary moves to its own `### Review findings` subsection.
 - sdlc-navigator lists `konductor` (orchestrator, routing) in its agent table and shows the Claude Code invocation beside the Kiro ones.
 - delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
+- persistent-memory: the ruling mechanics are their own "Ruling entries" subsection with numbered steps.
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
@@ -96,6 +97,12 @@ not per individual commit.
 - Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One still open, or one the re-review
   reports in the task's own output, carried over or new, stops the run; a finding in code the task did not add or change
   is listed as pre-existing. An SOP's own fix scope and round limit win; what it leaves open is reported, never dropped.
+- A project mechanism replaces the adversarial review only on the user's direct word or the project's own agent
+  instruction file. Writing habits outrank nearby-text conventions.
+- Core rules rank the request, rulings, instruction files, user-written memory and codebase
+  conventions above konductor defaults; when a collision stays open, ask once and save a `Ruling:` entry.
+  A `USER DECISIONS IN FORCE` brief entry quoting the user meets the rule 6 and 7 exceptions for the action
+  it names; rule 9 and irreversible actions still need the user directly.
 
 ### Fixed
 

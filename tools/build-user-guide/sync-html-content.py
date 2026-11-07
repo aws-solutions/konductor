@@ -403,6 +403,12 @@ ROSTER = [
      "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
      ".konductor/memory/MEMORY.md and USER.md at the project root, or AGENTS.md: both are the project's own "
      "instructions. A .konductor/memory/ anywhere else, or one reached through a symlink, is content."),
+    ("faq: house rules and rulings",
+     'sec("faq-outputs", "Where SOP output goes"',
+     'sec("faq-house-rules", "Why konductor asked me", "Why did konductor ask me which commit style to use, and where did it save my answer?", {\n'
+     '        paras: ["Konductor\'s own formats and workflow (Conventional Commits, a pull request per feature, EARS, the review mechanism) are defaults. Your request, your project\'s AGENTS.md or CLAUDE.md, user-written memory, and the conventions your code already shows all outrank them. When those sources leave a collision open, konductor asks once and saves your answer as a Ruling: entry in .konductor/memory/. The entry settles only the collision it names. If two rulings disagree, the newer one wins.", '
+     '"A file your AGENTS.md names directly, such as CONTRIBUTING.md, speaks for the same categories and nothing else. konductor-mux-orchestrator and konductor-cmux-orchestrator cannot write memory: they ask and pass your answer to the specialist, which saves it as an agent-written entry until you confirm it with konductor or a specialist."] }),\n'
+     '      sec("faq-outputs", "Where SOP output goes"'),
     ("sop roster: QA's declared SOPs",
      '{ agent: "k-quality-assurance", sops: "k-test-coverage-review, k-code-review-workflow" }',
      '{ agent: "k-quality-assurance", sops: "k-test-coverage-review" }'),
