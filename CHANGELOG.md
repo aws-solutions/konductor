@@ -62,8 +62,8 @@ not per individual commit.
   hold and runs them only when asked. Run directly with no orchestrator, the caller is the user:
   the specialist returns the split or note to them. No specialist is resumed mid-SOP.
 - `k-adversarial-pull-request-review` is coordinated by the orchestrator, which spawns the four
-  generator passes and a fresh `k-architect` checker; `k-architect` no longer declares the SOP,
-  and the orchestrators' SOP trigger table gains a row for it.
+  generator passes and a fresh `k-architect` checker; `k-architect` no longer declares the SOP
+  or offers it in its welcome message, and the orchestrators' SOP trigger table gains a row for it.
   A pass that fails twice is recorded as `MISSING` and caps the verdict at APPROVE WITH COMMENTS.
   `k-test-coverage-review` recommends `k-developer` for missing tests instead of handing off.
 - Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
