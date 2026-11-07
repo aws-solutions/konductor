@@ -45,7 +45,7 @@ const TASK_PLAN = { id: 'plan-multipart-feature', class: 'sop', prompt: 'Write a
 test('the new dimensions hold exactly the criteria listed for them, and the lint passes the pack', () => {
   assert.deepEqual(P.validatePack(pack), []);
   for (const [dim, ids] of Object.entries(NEW)) assert.deepEqual(pack.criteria.filter((c) => c.dimension === dim).map((c) => c.id), ids, dim);
-  assert.equal(pack.criteria.length, 74);
+  assert.equal(pack.criteria.length, 79);
 });
 
 test('the pre-existing criteria keep their dimension, weight, anchors and evidence rule', () => {

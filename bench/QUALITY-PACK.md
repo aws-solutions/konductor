@@ -23,8 +23,9 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | Task breakdown | plans | a task that uses an output no listed dependency provides, a task with no done check |
 | Diagrams in design documents | design documents | a diagram line and the prose line it must match |
 | Operability and rollout of design | design documents | an alarm with no operator action, a rollout step with no undo |
+| Guide quality | guides | a sentence that is wrong about the code, a term the reader cannot know |
 
-`bench/criteria/quality-pack.json` holds 74 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
+`bench/criteria/quality-pack.json` holds 79 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
 
 ### Criteria
 
@@ -104,6 +105,11 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | plan-risks | Task breakdown | plan | 2 | judge | Are the main risks and unknowns listed with a mitigation or a spike? |
 | plan-test-tasks | Task breakdown | plan | 2 | judge | Does the plan schedule tests for the functional parts and for the non-functional requirements? |
 | plan-delegation-fit | Task breakdown | delegation | 2 | judge | Does each task name an owner whose type matches the work? |
+| guide-accuracy | Guide quality | guide | 3 | judge | Does every checkable statement in the guide match the code, files or facts it describes? |
+| guide-audience-fit | Guide quality | guide | 2 | judge | Does the guide use the vocabulary and depth of the reader the task names, or of a new team member when the task names none? |
+| guide-troubleshooting | Guide quality | guide | 2 | judge | Does the guide cover what goes wrong: a failing step, an error, a wrong result or a case that surprises the reader? |
+| guide-scannability | Guide quality | guide | 1 | judge | Can a reader find a section from its heading and take in each block at a glance? |
+| guide-consistent-terms | Guide quality | guide | 2 | judge | Does the guide call each thing by one name, the same name the code or the task uses? |
 
 The diagram criteria read the design document as a whole, fenced blocks included. A view is needed when the content calls for it:
 
@@ -124,6 +130,8 @@ The other design criteria follow the usual sections of a design document and of 
 - `des-rollout-migration` wants rollout steps, how each is undone, and what happens to existing data and clients. A new system with no existing data passes by saying so.
 
 A task that never asked for these sections scores them the same way for every arm, so they separate arms only by what the design volunteered.
+
+The guide criteria apply to a task that declares `guide` and to no other. `guide-accuracy` is a guide variant of `doc-accuracy`, which is unchanged. `doc-accuracy` asks for a comment or README sentence together with the code line that confirms it, and a guide about code the agent did not change has that line in neither the output nor the diff. `guide-accuracy` asks for the guide sentence only, and the judge checks it against the answer key and the task. The other four criteria rate audience fit (terms the stated reader cannot know), what the guide says about failures and surprising cases, layout for scanning (headings, paragraph length, lists), and one name per thing.
 
 The change discipline, requirements, non-functional, design scalability and task breakdown groups follow the deliverables of the SDLC skills in this repository, so a run is rated at the milestones it produced.
 

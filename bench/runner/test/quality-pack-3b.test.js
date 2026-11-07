@@ -160,3 +160,42 @@ test('a design criterion takes one quote from the output and downgrades a verdic
   assert.deepEqual([real.verdict, real.evidenceFound], ['pass', true]);
   assert.deepEqual([made.verdict, made.evidenceFound], ['partial', false]);
 });
+
+// ---- guides ----
+
+const GUIDE_IDS = ['guide-accuracy', 'guide-audience-fit', 'guide-troubleshooting', 'guide-scannability', 'guide-consistent-terms'];
+
+test('the guide dimension holds five criteria for the guide type, and doc-accuracy keeps its comment and README types', () => {
+  assert.deepEqual(ids('guide-quality'), GUIDE_IDS);
+  for (const id of GUIDE_IDS) assert.deepEqual(byId(id).appliesTo, ['guide'], id);
+  assert.deepEqual(byId('doc-accuracy').appliesTo, ['comments', 'readme']);
+  assert.equal(byId('doc-accuracy').evidence.minQuotes, 2);
+  assert.equal(byId('guide-accuracy').evidence.minQuotes, 1, 'a guide about unchanged code has no confirming code line in the output');
+  assert.equal(byId('guide-consistent-terms').evidence.minQuotes, 2);
+});
+
+test('a guide task gets the guide criteria judged, a README task or a design task gets n/a, and a missing guide fails without a call', () => {
+  const guideTask = { id: 'simple-explain-file', class: 'simple', prompt: 'Explain src/csv.js in explanation.md.' };
+  const made = status(P.applicability(pack, guideTask, [file('explanation.md', '# csv.js\n\nIt splits a line.\n')]));
+  const missing = status(P.applicability(pack, guideTask, []));
+  const readmeTask = status(P.applicability(pack, { id: 'orch-input-validation', class: 'orchestration', prompt: 'Add validation.' }, [file('README.md', '# R\n', '# R0\n'), file('docs/notes.md', '# n\n')]));
+  const designTask = status(P.applicability(pack, DESIGN_TASK, [file('docs/design/hold-service.md', '# D\n')]));
+  for (const id of GUIDE_IDS) {
+    assert.equal(made[id].status, 'judged', id);
+    assert.equal(missing[id].status, 'absent', id);
+    assert.equal(readmeTask[id].status, 'na', id);
+    assert.equal(designTask[id].status, 'na', id);
+  }
+  assert.match(missing['guide-accuracy'].reason, /asks for guide and none was produced/);
+});
+
+test('guide-accuracy needs one quote from the output; guide-consistent-terms needs two', () => {
+  const bundle = bundleOf('explanation.md', 'A blank line is skipped.\nThe switch --strict makes errors fatal.\nThe flag --strict also sets the exit code.\n');
+  const out = P.scoreReply([
+    { id: 'guide-accuracy', verdict: 'pass', evidence: 'A blank line is skipped.' },
+    { id: 'guide-consistent-terms', verdict: 'fail', evidence: 'The switch --strict makes errors fatal. @@ The flag --strict also sets the exit code.' },
+  ], [byId('guide-accuracy'), byId('guide-consistent-terms')], bundle);
+  assert.deepEqual(out.map((c) => [c.verdict, c.evidenceFound]), [['pass', true], ['fail', true]]);
+  const one = P.scoreReply([{ id: 'guide-consistent-terms', verdict: 'partial', evidence: 'The switch --strict makes errors fatal.' }], [byId('guide-consistent-terms')], bundle)[0];
+  assert.deepEqual([one.verdict, one.evidenceFound], ['fail', false]);
+});

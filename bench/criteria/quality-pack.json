@@ -114,6 +114,10 @@
     {
       "id": "design-operations",
       "label": "Operability and rollout of design"
+    },
+    {
+      "id": "guide-quality",
+      "label": "Guide quality"
     }
   ],
   "criteria": [
@@ -1503,6 +1507,96 @@
       "evidence": {
         "minQuotes": 1,
         "quote": "The task line with its owner (pass), or the mismatched or ownerless task (fail or partial)."
+      }
+    },
+    {
+      "id": "guide-accuracy",
+      "dimension": "guide-quality",
+      "appliesTo": [
+        "guide"
+      ],
+      "weight": 3,
+      "question": "Does every checkable statement in the guide match the code, files or facts it describes?",
+      "levels": {
+        "fail": "A sentence in the guide states behavior the source does not have: a wrong default, limit, input handling, output or name.",
+        "partial": "Every statement checked is correct, but a sentence that claims to list cases, options or rules leaves out one that the source has.",
+        "pass": "At least 3 checkable statements were checked against the source or the answer key, and every one of them matches."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The guide sentence you judged false, incomplete or correct, copied exactly."
+      }
+    },
+    {
+      "id": "guide-audience-fit",
+      "dimension": "guide-quality",
+      "appliesTo": [
+        "guide"
+      ],
+      "weight": 2,
+      "question": "Does the guide use the vocabulary and depth of the reader the task names, or of a new team member when the task names none?",
+      "levels": {
+        "fail": "3 or more terms or concepts that the stated reader would not know appear with no definition or example, or most of the guide explains what that reader already knows.",
+        "partial": "1 or 2 terms or concepts that the stated reader would not know appear with no definition or example.",
+        "pass": "Every term or concept that the stated reader would not know is defined or illustrated where it first appears, and no section explains what that reader already knows."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The sentence with the undefined term (fail or partial), or a term with its definition (pass)."
+      }
+    },
+    {
+      "id": "guide-troubleshooting",
+      "dimension": "guide-quality",
+      "appliesTo": [
+        "guide"
+      ],
+      "weight": 2,
+      "question": "Does the guide cover what goes wrong: a failing step, an error, a wrong result or a case that surprises the reader?",
+      "levels": {
+        "fail": "The guide names no failure, error or surprising case.",
+        "partial": "1 failure or surprising case is covered, or several are named and none gives both a cause and a fix or expected behavior.",
+        "pass": "At least 2 failures or surprising cases are named, each with its symptom (a message or a wrong result), its cause and the fix or expected behavior."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A failure case with its cause and fix (pass or partial), or the last section heading of the guide (fail)."
+      }
+    },
+    {
+      "id": "guide-scannability",
+      "dimension": "guide-quality",
+      "appliesTo": [
+        "guide"
+      ],
+      "weight": 1,
+      "question": "Can a reader find a section from its heading and take in each block at a glance?",
+      "levels": {
+        "fail": "The guide has over 30 lines and no headings, or 2 or more paragraphs run longer than 8 lines.",
+        "partial": "The guide has headings, and 1 paragraph runs longer than 8 lines or 1 heading does not name what its section holds, for example \"Overview\" above a list of commands.",
+        "pass": "Every section has a heading that names its content, no paragraph runs longer than 8 lines, and steps or options sit in a list or a table."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The first line of the longest paragraph (fail or partial), or the heading of the section that best shows the layout (pass)."
+      }
+    },
+    {
+      "id": "guide-consistent-terms",
+      "dimension": "guide-quality",
+      "appliesTo": [
+        "guide"
+      ],
+      "weight": 2,
+      "question": "Does the guide call each thing by one name, the same name the code or the task uses?",
+      "levels": {
+        "fail": "In 2 or more places the same thing is called by different names, for example one option called a flag, a switch and a parameter, or a name differs from the one in the code.",
+        "partial": "Exactly 1 thing is called by 2 names.",
+        "pass": "Each thing has one name throughout the guide, and the name matches the code or the task."
+      },
+      "evidence": {
+        "minQuotes": 2,
+        "quote": "Two quotes separated by ' @@ ': the two sentences that use different names for the same thing (fail or partial), or the first and the last use of one term (pass)."
       }
     }
   ],
