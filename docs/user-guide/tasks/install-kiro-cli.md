@@ -85,7 +85,7 @@ You should get a list of `k-*` specialists: `k-developer`, `k-architect`,
 Run the k-code-review-workflow SOP against my current branch.
 ```
 
-The orchestrator routes this to `k-developer`, which is the agent that declares that SOP.
+`konductor` spawns `k-developer`, the agent that declares that SOP, to run it.
 
 ---
 
@@ -119,7 +119,8 @@ directly, its routing rules did not load — see
 
 ## Which agent to invoke
 
-Start with `konductor` and let it route. That is the default for everything in this guide: it is
+Start with `konductor` and ask in plain language; it does the work itself (in `coordinator` mode it
+hands every change to a specialist) or spawns the agent that declares the SOP you need. That is the default for everything in this guide: it is
 the only entry point that verifies a handoff before moving on, and it does not require you to know
 who owns which workflow.
 

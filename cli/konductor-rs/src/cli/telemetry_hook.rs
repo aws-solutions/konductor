@@ -63,6 +63,10 @@ pub(crate) struct HookPayload {
     /// Which event fired. Read only by the orchestration hook's event gate.
     #[serde(default)]
     pub(crate) hook_event_name: Option<String>,
+    /// Claude Code `SessionStart`: `startup`, `clear`, `resume` or
+    /// `compact`. Kiro payloads carry none.
+    #[serde(default)]
+    pub(crate) source: Option<String>,
     /// Kiro v3 `PreToolUse`: the delegation tool's name.
     #[serde(default)]
     tool_name: Option<String>,
@@ -243,21 +247,36 @@ pub(crate) fn kiro_session_agent_mode(store_root: &Path, session_id: &str) -> Op
     None
 }
 
-/// The agent name a manifest file path belongs to, for the two agent
-/// layouts Konductor installs. Sidecar files (`_*.json`) are excluded.
-fn agent_name_from_manifest_path(path: &str) -> Option<&str> {
-    const AGENT_LAYOUTS: [(&str, &str); 2] =
-        [(".kiro/agents/", ".json"), (".claude/agents/", ".md")];
-    AGENT_LAYOUTS.iter().find_map(|(prefix, extension)| {
-        path.strip_prefix(prefix)
-            .and_then(|rest| rest.strip_suffix(extension))
-            .filter(|name| !name.is_empty() && !name.contains('/') && !name.starts_with('_'))
-    })
+/// The two agent file layouts Konductor installs: one per harness family.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AgentLayout {
+    /// `.kiro/agents/<name>.json` (Kiro CLI v2 and Kiro v3).
+    Kiro,
+    /// `.claude/agents/<name>.md`.
+    Claude,
 }
 
-/// Agent names Konductor installed at `root`, per its manifest (every
-/// strategy slot). Empty when there is no readable manifest.
-pub(crate) fn installed_agent_names(root: &Path) -> Vec<String> {
+/// The layout and agent name a manifest file path belongs to. Sidecar
+/// files (`_*.json`) are excluded.
+fn agent_name_from_manifest_path(path: &str) -> Option<(AgentLayout, &str)> {
+    const AGENT_LAYOUTS: [(AgentLayout, &str, &str); 2] = [
+        (AgentLayout::Kiro, ".kiro/agents/", ".json"),
+        (AgentLayout::Claude, ".claude/agents/", ".md"),
+    ];
+    AGENT_LAYOUTS
+        .iter()
+        .find_map(|(layout, prefix, extension)| {
+            path.strip_prefix(prefix)
+                .and_then(|rest| rest.strip_suffix(extension))
+                .filter(|name| !name.is_empty() && !name.contains('/') && !name.starts_with('_'))
+                .map(|name| (*layout, name))
+        })
+}
+
+/// Agents Konductor installed at `root`, per its manifest (every
+/// strategy slot), with the layout each was found in. Empty when there
+/// is no readable manifest.
+fn installed_agents(root: &Path) -> Vec<(AgentLayout, String)> {
     let Ok(Some(manifest)) = crate::cli::install::manifest::read_manifest(root) else {
         return Vec::new();
     };
@@ -266,7 +285,15 @@ pub(crate) fn installed_agent_names(root: &Path) -> Vec<String> {
         .iter()
         .flat_map(|strategy| strategy.files.iter())
         .filter_map(|file| agent_name_from_manifest_path(&file.path))
-        .map(str::to_string)
+        .map(|(layout, name)| (layout, name.to_string()))
+        .collect()
+}
+
+/// Agent names Konductor installed at `root`, in any layout.
+pub(crate) fn installed_agent_names(root: &Path) -> Vec<String> {
+    installed_agents(root)
+        .into_iter()
+        .map(|(_, name)| name)
         .collect()
 }
 
@@ -287,10 +314,10 @@ pub(crate) fn candidate_install_roots(cwd: &Path, home: Option<&Path>) -> Vec<Pa
     roots
 }
 
-/// The candidate roots with their installed agent names, each manifest
-/// read at most once per hook firing.
+/// The candidate roots with their installed agents, each manifest read
+/// at most once per hook firing.
 pub(crate) struct InstallIndex {
-    roots: Vec<(PathBuf, Vec<String>)>,
+    roots: Vec<(PathBuf, Vec<(AgentLayout, String)>)>,
 }
 
 impl InstallIndex {
@@ -298,18 +325,29 @@ impl InstallIndex {
         let roots = roots
             .into_iter()
             .map(|root| {
-                let names = installed_agent_names(&root);
-                (root, names)
+                let agents = installed_agents(&root);
+                (root, agents)
             })
             .collect();
         InstallIndex { roots }
     }
 
-    /// The nearest install that has `agent` in its manifest.
+    /// The nearest install that has `agent` in its manifest, in any layout.
     pub(crate) fn install_for(&self, agent: &str) -> Option<&Path> {
+        self.nearest(|(_, name)| name == agent)
+    }
+
+    /// The nearest install that has `agent` in its manifest for `layout`,
+    /// so a hook fired by one harness is never owned by an install that
+    /// only serves the other.
+    pub(crate) fn install_for_layout(&self, agent: &str, layout: AgentLayout) -> Option<&Path> {
+        self.nearest(|(found, name)| *found == layout && name == agent)
+    }
+
+    fn nearest(&self, matches: impl Fn(&(AgentLayout, String)) -> bool) -> Option<&Path> {
         self.roots
             .iter()
-            .find(|(_, names)| names.iter().any(|name| name == agent))
+            .find(|(_, agents)| agents.iter().any(&matches))
             .map(|(root, _)| root.as_path())
     }
 }
@@ -703,11 +741,11 @@ mod tests {
     fn agent_names_come_only_from_agent_layout_paths() {
         assert_eq!(
             agent_name_from_manifest_path(".kiro/agents/konductor.json"),
-            Some("konductor")
+            Some((AgentLayout::Kiro, "konductor"))
         );
         assert_eq!(
             agent_name_from_manifest_path(".claude/agents/k-developer.md"),
-            Some("k-developer")
+            Some((AgentLayout::Claude, "k-developer"))
         );
         for other in [
             ".kiro/agents/_sop_scopes.json",
@@ -760,6 +798,48 @@ mod tests {
         assert_eq!(index.install_for("k-researcher"), Some(home.as_path()));
         assert_eq!(index.install_for("amzn-builder"), None);
         assert_eq!(index.install_for("Explore"), None);
+        std::fs::remove_dir_all(&home).ok();
+    }
+
+    #[test]
+    fn install_for_layout_skips_a_nearer_install_of_the_other_layout() {
+        use crate::cli::install::manifest::{
+            upsert_strategy, ManifestFile, Provenance, Status, StrategyManifest,
+        };
+        let home = scratch_dir("install-layout-home");
+        upsert_strategy(
+            &home,
+            StrategyManifest::new(
+                "claude",
+                "2026-01-01T00:00:00Z",
+                ".",
+                None,
+                Status::Complete,
+                vec![ManifestFile {
+                    path: ".claude/agents/konductor.md".to_string(),
+                    sha256: None,
+                    provenance: Provenance::Created,
+                }],
+            ),
+        )
+        .unwrap();
+        let project = home.join("workspace/project");
+        seed_install(&project, &["konductor"]);
+
+        let index = InstallIndex::new(candidate_install_roots(&project, Some(&home)));
+        assert_eq!(index.install_for("konductor"), Some(project.as_path()));
+        assert_eq!(
+            index.install_for_layout("konductor", AgentLayout::Claude),
+            Some(home.as_path())
+        );
+        assert_eq!(
+            index.install_for_layout("konductor", AgentLayout::Kiro),
+            Some(project.as_path())
+        );
+        assert_eq!(
+            index.install_for_layout("k-developer", AgentLayout::Kiro),
+            None
+        );
         std::fs::remove_dir_all(&home).ok();
     }
 

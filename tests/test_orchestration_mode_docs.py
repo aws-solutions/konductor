@@ -64,6 +64,12 @@ def test_faq_coordinator_pointer_is_a_link_to_a_real_heading():
     assert "see Coordinator mode below" not in text
 
 
+def test_readme_states_resume_restate_and_per_harness_owner():
+    text = _flat(ROOT / "cli" / "README.md")
+    assert "for the harness that fired it" in text
+    assert "`Orchestration: auto`, so a session that changed mode" in text
+
+
 def test_hook_location_has_one_owner():
     assert OWNER_SENTENCE in _flat(ROOT / "cli" / "README.md")
     for path in [ROOT / "README.md", GUIDE / "concepts.md", GUIDE / "faq.md"]:

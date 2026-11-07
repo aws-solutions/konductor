@@ -69,6 +69,7 @@ impl ResourceRewritePass for OrchestrationHookPass {
             value,
             &super::claude_settings::resolve_konductor_exe_path(),
             ctx.install_root(),
+            Some(crate::cli::install::kiro_cli::STRATEGY_NAME),
         );
     }
 
@@ -92,11 +93,13 @@ pub(super) fn wire_v2_orchestration_hook(
     value: &mut serde_json::Value,
     exe: &str,
     install_root: Option<&Path>,
+    harness: Option<&str>,
 ) {
     let command = super::claude_settings::orchestration_hook_command(
         &super::claude_settings::shell_quote_for_hook_command(exe),
         Some(crate::cli::orchestration_hook::MODE_AGENT),
         install_root,
+        harness,
     );
     merge_agent_spawn_command(value, AGENT_SPAWN_TRIGGER_V2, exe, command);
 }
@@ -258,6 +261,7 @@ fn build_v3_orchestration_hook_document(
                         quoted_exe,
                         None,
                         Some(install_root),
+                        Some(crate::cli::install::kiro_cli_v3::STRATEGY_NAME),
                     )
                 },
                 "timeout": 10,

@@ -168,8 +168,9 @@ struct RawConfig {
     fail_on_severity_at_or_above: Option<String>,
 }
 
-/// `<home>/.konductor/config.yml`, the user layer. The gate loader and
-/// `orchestration_mode` both resolve it here so they cannot disagree.
+/// `<home>/.konductor/config.yml`, the user layer. The gate loader,
+/// `orchestration_mode` and `verify_run::config_source` all resolve it here
+/// so they cannot disagree.
 pub(crate) fn user_config_path(home: &Path) -> PathBuf {
     home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME)
 }
@@ -1050,10 +1051,10 @@ mod tests {
         // rather than mutating the `HOME` env var, which is unsafe to do
         // from parallel `cargo test` threads.
         let fake_home = scratch_dir("three-tier-home");
-        let user_konductor_dir = fake_home.join(KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&user_konductor_dir).unwrap();
+        let user_config = user_config_path(&fake_home);
+        fs::create_dir_all(user_config.parent().unwrap()).unwrap();
         fs::write(
-            user_konductor_dir.join(CONFIG_FILE_NAME),
+            &user_config,
             "version: 1\ndefault_severity: LOW\nfail_on_severity_at_or_above: HIGH\n",
         )
         .unwrap();

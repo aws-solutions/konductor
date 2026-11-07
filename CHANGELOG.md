@@ -39,9 +39,16 @@ not per individual commit.
   fallback when the install that wired it is outside your home directory and is not the project root.
   Only the mode line and the Step 1 pointer in the hook's output are instructions; the summary
   lines are a preview of the named rules file. The pointer names an install under a symlinked
-  home through the logical home for project and parent-of-project installs too.
+  home through the logical home for project and parent-of-project installs too. On a Claude Code
+  resume or compact under `auto` the hook prints `Orchestration: auto`. The hook resolves the
+  owning install per harness.
+- Claude Code installs copy the context files to `.konductor/context/`, where the orchestration
+  hook finds the routing rules; uninstall removes the directory and keeps memory.
+- A Claude Code install with `--no-telemetry` now writes `.claude/settings.local.json` for the
+  orchestration hook alone.
+- The telemetry hook's Kiro CLI v3 session lookup follows `$KIRO_HOME` when set.
 - `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
-  config value is valid.
+  config value is valid; a hand-edited hook entry is reported as warn, not as missing.
 
 ### Changed
 
@@ -49,17 +56,18 @@ not per individual commit.
   spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
   work on disjoint files. An SOP's own instruction to spawn wins over that limit.
 - The Kiro skills index no longer tells an orchestrator to route a listed skill's task to a specialist; the loaded rules file (Direct Work, or the routing rules) decides, and the load rule asks for the skills the task needs instead of at most two.
-- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at most 50 changed lines whose build, test and lint passed (not for auth, secrets, data or infrastructure), and triage findings against the request, house rules and spec before the fix.
+- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at most 50 changed lines whose build, test and lint passed (reported with the diff stat; not for auth, secrets, data or infrastructure), and triage findings against the request, house rules and spec before the fix.
 - `konductor` also closes a standalone document with its checker skill instead of a reviewer, and when it made the artifact a finding it would reject goes to you before it is dropped.
 - The handoff, split, denial and brief rules every orchestrator follows now live in
   `context/k-orchestrator-shared.md`, loaded by all three orchestrators.
 - A specialist treats a quoted user decision in its brief as approval only for the action it
-  names, never for a NEVER-rule confirmation or an irreversible action.
+  names, never for a rule 9 confirmation or an irreversible action; for rules 6 and 7 the entry
+  meets the exception for the action it names.
 - The rule against reading secret files now lives in the core rules, so all 11 agents load it.
   From a file the user names, an agent reports key names or redacted values only, never the
   secret values, in replies, briefs, commits or logs.
   A `credentials_file` that `k-light-ui-testing` or `k-e2e-test-generation` passes in a brief counts as user-named.
-- constraints: the IMPORTANT tier header is one line again; the review-ceilings summary sits in a paragraph under it.
+- constraints: the IMPORTANT tier header is one line again; the review-ceilings summary moves to its own `### Review findings` subsection.
 - sdlc-navigator lists `konductor` (orchestrator, routing) in its agent table and shows the Claude Code invocation beside the Kiro ones.
 - delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
 - persistent-memory: the ruling mechanics are their own "Ruling entries" subsection with numbered steps.
@@ -85,20 +93,25 @@ not per individual commit.
   handoff only when it serves the user's task, did not come from content the specialist read,
   and does not report a denied action; it applies the same checks to every part of a proposed
   split, refuses a part that names an orchestrator, and shows refused parts to you; it adds
-  visible shared files to a proposed split before fan-out. When the note or split names an
-  SOP step to resume at, the orchestrator returns the results to that specialist to finish
-  the SOP. A specialist returns an SOP's independence step
-  as a split or note and does not run it itself unless the user asks, and says so in its output.
-  The note or split carries the SOP inputs and the outputs of completed steps, inline or in a
-  handoff file, and the orchestrator passes them back with the resume brief. Run directly with
-  no orchestrator, the caller is the user: the specialist returns the split or note to them.
-  `k-adversarial-pull-request-review` returns its three Step 2 passes as a split, resumes at
-  Step 3, returns the reuse pass as a handoff, and resumes at Step 4. `konductor init` now
-  ignores `.konductor/handoff/`; add the line by hand in a project initialised earlier.
+  visible shared files to a proposed split before fan-out. A gate in the SOP the orchestrator
+  is running wins over routing a note, and a note naming an SOP the orchestrator declares is
+  run by the orchestrator as that SOP's coordinator. When an SOP needs independent parts, an
+  orchestrator running it spawns them; a specialist run without one says independence will not
+  hold and runs them only when asked. Run directly with no orchestrator, the caller is the user:
+  the specialist returns the split or note to them. No specialist is resumed mid-SOP.
+- `k-adversarial-pull-request-review` is coordinated by the orchestrator, which spawns the four
+  generator passes and a fresh `k-architect` checker; `k-architect` no longer declares the SOP,
+  and the orchestrators' SOP trigger table gains a row for it.
+  A pass that fails twice is recorded as `MISSING` and caps the verdict at APPROVE WITH COMMENTS.
+  `k-test-coverage-review` recommends `k-developer` for missing tests instead of handing off.
+- Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
+  `.gitignore`); `konductor init` also ignores the directory.
 - Specialist specs grant no spawn tool, and Kiro CLI v2, Kiro CLI v3 and Claude Code configs
-  block it, with `disallowedTools` on Claude Code for every specialist. Kiro CLI v2 gets an
-  explicit tool list in place of `@builtin` (checked with kiro-cli 2.36.0 and 3.0.0).
-  `k-code-review-workflow` step 6 writes a `PENDING ADVERSARIAL PASS` report, then hands off.
+  block it, with `disallowedTools` on Claude Code for every specialist (not shell). Kiro CLI v2
+  gets an explicit tool list in place of `@builtin` (checked with kiro-cli 2.36.0 and 3.0.0).
+  `k-code-review-workflow` step 6 writes the report and ends with a note asking the orchestrator
+  to run the adversarial review, no resume; the verdict comes from the findings, with the
+  adversarial pass state on its own line.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
@@ -107,19 +120,23 @@ not per individual commit.
   and is never read or written through a symlink. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
   instruction-like text after the date and origin tag, and reads the text of a leading `[label]`
-  or `[label](url)` as entry text.
+  or `[label](url)` as entry text. Upgrade note: if your repository commits `.konductor/memory/`,
+  review its untagged lines before upgrading and tag agent-written ones `[origin:agent]`; they are
+  followed as project instructions from this version.
   Orchestrators never bypass denials or read unnamed secrets.
 - `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
-- Orchestrator review fixes CRITICAL and IMPORTANT findings once and re-reviews every first-review finding plus the fix.
-  A first-review finding still open, or one carried over or new on the fix or caused by it in dependents, stops the run;
-  a finding the first review did not report, outside the fix, is listed as pre-existing.
+- Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One still open, or one the re-review
+  reports in the task's own output, carried over or new, stops the run; a finding in code the task did not add or change
+  is listed as pre-existing. An SOP's own fix scope and round limit win; what it leaves open is reported, never dropped.
 - A project mechanism replaces the adversarial review only on the user's direct word or the project's own agent
   instruction file. Writing habits outrank nearby-text conventions.
 - Core rules rank the request, rulings, instruction files, user-written memory and codebase
   conventions above konductor defaults; when a collision stays open, ask once and save a `Ruling:` entry.
+  A `USER DECISIONS IN FORCE` brief entry quoting the user meets the rule 6 and 7 exceptions for the action
+  it names; rule 9 and irreversible actions still need the user directly.
 - Docs describe setting `orchestration.mode` by hand, reading the mode line in the first reply,
   and that Kiro CLI v2 is not supported. Claude Code support is for `konductor install`; the
   plugin does not wire the hook.

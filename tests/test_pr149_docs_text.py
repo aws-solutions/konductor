@@ -39,5 +39,5 @@ def test_spawn_claims_say_any_runtime():
         offenders += [f"{path.name}: {s}" for s in _spawn_either_runtime_sentences(path.read_text(encoding="utf-8"))]
     for rel in ("docs/site/user-guide.html", "docs/index.html"):
         offenders += [f"{rel}: {s}" for s in _spawn_either_runtime_sentences(_read(rel))]
-    assert "cannot spawn the architect in any runtime" in _read("docs/site/user-guide.html")
+    assert "cannot run the adversarial review in any runtime" in _read("docs/site/user-guide.html")
     assert not offenders, offenders

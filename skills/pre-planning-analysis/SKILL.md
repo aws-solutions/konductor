@@ -39,7 +39,7 @@ Classify the request into one of 6 types:
 
 ## Phase 1: Intent-Specific Analysis
 
-In `auto` mode the acting agent does the phase itself and loads the skills the owner would; it spawns the named agent only as `k-direct-work.md` allows.
+The acting agent does the phase itself and loads the skills the owner would; an orchestrator spawns the named agent only as its direct-work rules allow.
 
 ### Refactoring
 

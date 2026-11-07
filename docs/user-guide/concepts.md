@@ -171,7 +171,7 @@ rather than doing them themselves.
 ## Orchestration shapes
 
 `konductor` ships in its single-writer shape: it reads, writes and runs commands itself and spawns a
-fresh `k-*` reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none). This shape is the `auto` orchestration mode, the default.
+fresh `k-*` reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat). This shape is the `auto` orchestration mode, the default.
 The coordinator shape, where the orchestrator never writes and every change goes to a specialist, is
 what `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` use, and what `konductor` uses
 in the `coordinator` mode. Set the mode by hand in your user config; there is no command for it:
@@ -186,7 +186,7 @@ Only this file is read; a value in a project's `.konductor/config.yml` is ignore
 `konductor doctor` reports it. The change applies from the next session, with no reinstall, and
 stays until you edit the file again. A session-start hook that `install` wires reads it. Under
 `coordinator` the hook injects a short digest, `context/k-coordinator-digest.md`, and tells
-`konductor` to read the full routing rules file first. Under `auto` it injects nothing.
+`konductor` to read the full routing rules file first. Under `auto` it injects nothing on startup; on a Claude Code resume or compact it prints `Orchestration: auto`.
 
 The first reply of every `konductor` session states the mode: `Orchestration: coordinator`,
 `Orchestration: auto (default)`, or `Orchestration: auto (fallback: <reason>)` when the hook could
@@ -200,9 +200,10 @@ and a v2 session the hook does not reach runs as `auto`.
 
 **`konductor`**, as the orchestrator, is the hub. Specialists hold no spawn tool in any
 runtime (see [Who can delegate to whom](agents.md#who-can-delegate-to-whom)), so every piece of
-work routes through `konductor`, which decides who owns it, hands it over, and checks the result.
-A specialist does its own part, then returns a note naming the next role, or a proposed parallel
-split that gives each part's agent, inputs and files, and `konductor` routes it.
+work passes through `konductor`, which does it itself or, for a step it cannot do, spawns the owner
+and checks the result. A specialist does its own part, then returns a note naming the next role, or
+a proposed parallel split that gives each part's agent, inputs and files, and `konductor` does that
+step or spawns for it as its direct-work rules allow.
 
 A **delegation** is not a casual instruction — it is a fixed 7-section format defined by the
 `k-delegate` SOP and the `delegation-protocol` skill:
@@ -218,7 +219,7 @@ A **delegation** is not a casual instruction — it is a fixed 7-section format 
 ```
 
 After the specialist returns, the orchestrator runs a verification checklist. If a check
-fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every CRITICAL or IMPORTANT finding from the first review plus the fix and what uses or depends on it; a first-review finding still open, any CRITICAL or IMPORTANT finding the re-review reports on the fix, carried over or new, and any the fix caused in what depends on it, blocks done, and the orchestrator stops and reports it to you; a finding the first review did not report, outside the fix and not caused by it, is listed for you as pre-existing. An SOP can set its own limit on fix rounds; a finding that blocks done under this rule still blocks it after the SOP's last re-review. An artifact that passed review is not reviewed again unless it changes. When `konductor` made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.
+fails, it re-delegates, **up to 2 fix cycles** (`k-delegate` step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it; a first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done, and the orchestrator stops and reports it to you; a finding in code the task did not add or change is listed for you as pre-existing. An SOP's own fix scope and limit on fix rounds win; a finding it leaves open is reported to you as unresolved, never dropped. An artifact that passed review is not reviewed again unless it changes. When `konductor` made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.
 
 ## Maker-checker
 
@@ -281,7 +282,8 @@ Reading the diagram in words:
 1. You describe what you want to the `konductor` agent.
 2. Its always-active direct-work rules have it do the work itself, or name an SOP for a
    multi-phase request.
-3. It spawns a specialist only for a tool it lacks or for parallel work on disjoint files.
+3. It spawns a specialist only for a tool, skill or SOP it lacks or for parallel work on disjoint
+   files.
 4. The specialist loads whichever skills and SOPs the task needs, does the work, and applies
    its own maker-checker pass.
 5. When a phase closes, `konductor` spawns a fresh `k-*` reviewer, fixes the CRITICAL and
