@@ -240,8 +240,7 @@ transmitted. Delete it whenever you like.
 ## Why did my code review skip the security pass?
 
 `k-code-review-workflow` step 6 is an adversarial pass, and **the agent that owns the SOP
-cannot run it**: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and the core
-rules forbid it in Kiro CLI v2.
+cannot run it**: no specialist holds a spawn tool in any runtime.
 
 Step 6 writes the report, then ends with a note asking the orchestrator to run
 `k-adversarial-pull-request-review` on the same diff; the verdict comes from the findings, so a

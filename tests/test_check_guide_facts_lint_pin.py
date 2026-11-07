@@ -155,6 +155,11 @@ def test_stale_delegation_phrases_stay_forbidden():
         "adversarial handoff never fires",
         "step 6 silently no-ops",
         "Its step-6 adversarial pass never fires",
+        "Kiro CLI v2 is not covered",
+        "only the core rules stop",
+        "the core rules forbid it in Kiro CLI v2",
+        "cannot spawn the architect in either runtime",
+        "no spawn tool in either runtime",
     }
 
 
@@ -173,3 +178,74 @@ def test_stale_delegation_phrase_in_a_bundle_fails_the_guide_check(repo_copy):
     finally:
         page.write_text(original, encoding="utf-8")
     assert "specialists hold no spawn tool" in result.stdout
+
+
+def test_v2_spawn_caveat_in_the_guide_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "agents.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nKiro CLI v2 is not covered, so there only the core rules stop a spawn.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert result.returncode != 0
+    assert "specialists hold no spawn tool in any runtime" in result.stdout
+
+
+def test_stale_version_claims_are_the_two_shipped_phrases():
+    assert set(check_guide_facts.STALE_VERSION_CLAIMS) == {"last v2 release", "2.36.0 or later"}
+
+
+def _guide_check_with_appended(repo_copy, rel, addition):
+    page = repo_copy / rel
+    original = page.read_text(encoding="utf-8")
+    page.write_text(original + addition, encoding="utf-8")
+    try:
+        return subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+
+
+def test_last_v2_release_claim_in_the_guide_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy, "docs/user-guide/agents.md", "\nkiro-cli 3.0.0 is the last v2 release.\n"
+    )
+    assert result.returncode != 0
+    assert "state the checked kiro-cli versions, not a last release or a minimum" in result.stdout
+
+
+def test_minimum_version_claim_in_the_rust_doc_comment_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "cli/konductor-rs/src/cli/synth/kiro_cli_v2.rs",
+        "\n/// Needs kiro-cli 2.36.0 or later.\n",
+    )
+    assert result.returncode != 0
+    assert "kiro_cli_v2.rs: says '2.36.0 or later'" in result.stdout
+
+
+def test_v2_core_rules_clause_in_the_guide_fails_the_guide_check(repo_copy):
+    page = repo_copy / "docs" / "user-guide" / "faq.md"
+    original = page.read_text(encoding="utf-8")
+    page.write_text(
+        original + "\nNo specialist holds a spawn tool, and the core rules forbid it in Kiro CLI v2.\n",
+        encoding="utf-8",
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(repo_copy / "tools" / "user-guide-sync" / "check-guide-facts.py")],
+            cwd=repo_copy, capture_output=True, text=True,
+        )
+    finally:
+        page.write_text(original, encoding="utf-8")
+    assert result.returncode != 0
+    assert "the core rules forbid it in Kiro CLI v2" in result.stdout
