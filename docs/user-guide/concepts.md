@@ -179,9 +179,10 @@ release will expose as a setting.
 **`konductor`**, as the orchestrator, is the hub. Specialists hold no spawn tool in Kiro CLI
 v3 or Claude Code, and the core rules forbid spawning everywhere (see
 [Who can delegate to whom](agents.md#who-can-delegate-to-whom)), so every piece of
-work routes through `konductor`, which decides who owns it, hands it over, and checks the result.
-A specialist does its own part, then returns a note naming the next role, or a proposed parallel
-split that gives each part's agent, inputs and files, and `konductor` routes it.
+work passes through `konductor`, which does it itself or, for a step it cannot do, spawns the owner
+and checks the result. A specialist does its own part, then returns a note naming the next role, or
+a proposed parallel split that gives each part's agent, inputs and files, and `konductor` does that
+step or spawns for it as its direct-work rules allow.
 
 A **delegation** is not a casual instruction — it is a fixed 7-section format defined by the
 `k-delegate` SOP and the `delegation-protocol` skill:

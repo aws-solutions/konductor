@@ -115,10 +115,11 @@ Three observations that are not obvious and do affect what you should trust:
    either.** All three declare `Write` and `Bash` in `clientConfig.claudeCli.tools`. In Kiro
    CLI `konductor` pre-approves nothing but `fs_read`, and the two multiplexer variants
    pre-approve shell — which is a *prompting* difference, not a capability one. If you are
-   relying on "the orchestrator only delegates, it never touches my repository", what actually
-   holds that line is the routing rule in
+   relying on "the mux or cmux orchestrator only delegates, it never touches my repository",
+   what actually holds that line is the routing rule in
    [`context/k-orchestrator-routing-rules.md`](#the-three-orchestrators) plus your own answer
-   to the prompt — not the tool configuration.
+   to the prompt, not the tool configuration. `konductor` is outside that line by design: it
+   writes in its own session.
 2. **`k-browser` and `k-media-analyzer` pre-approve reads only in Kiro CLI, and are granted
    write and shell outright in Claude Code.** If you expect a media analyser to be incapable
    of editing your repository, that expectation does not hold in either runtime — in Kiro CLI

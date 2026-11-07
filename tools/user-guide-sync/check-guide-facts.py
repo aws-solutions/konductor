@@ -79,6 +79,14 @@ STALE_DISPATCHER_PHRASES = (
     "hands file edits and shell commands to",
     "which routes design requests to",
     "The orchestrator routes both to",
+    "The orchestrator routes this to",
+    "routes the design to",
+    "routes it to the owner",
+    "re-delegate, up to 2 cycles",
+    "which routes design work to",
+    "let it route",
+    "routing rules send code review to",
+    "which decides who owns it",
 )
 
 

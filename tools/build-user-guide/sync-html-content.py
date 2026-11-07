@@ -36,6 +36,19 @@ def _code(text):
     return f"<code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">{text}</code>"
 
 
+def _mono(text):
+    """Plain monospace span used by the quick-start and install pages."""
+    return f"<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">{text}</span>"
+
+
+def _chip(text):
+    """Highlighted monospace span used by the quick-start step 4 prose."""
+    return (
+        "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx);"
+        f"background:rgba(124,92,255,.16);border-radius:5px;padding:1.5px 6px\">{text}</span>"
+    )
+
+
 # Each entry: (label, old, new). `old` must appear exactly once unless `count` is
 # given. Sourced from agents/*.agent-spec.json, agent-sops/, skills/, cli/README.md.
 EDITS = [
@@ -139,18 +152,53 @@ EDITS = [
      + " Through the mux or cmux orchestrator the same steps execute in whichever specialist it delegates to: "
      + _code("k-developer") + " for implementation and shell work, " + _code("k-researcher")
      + " for parallel research, " + _code("k-architect") + " for escalations.</p>"),
-    ("use-cases design invocation: konductor designs itself",
+    # A request that is the procedure of an SOP konductor does not declare goes to
+    # the SOP's owner; the same reading as quick-start step 4 and k-direct-work.md.
+    ("use-cases design invocation: konductor spawns the SOP owner",
      "Through the orchestrator, which routes design requests to " + _code("k-architect") + ":</p>",
-     "Through the orchestrator. " + _code("konductor") + " writes the design itself and spawns " + _code("k-architect")
-     + " when you name one of these SOPs, which it does not declare; the mux and cmux orchestrators route every"
-     + " design request to " + _code("k-architect") + ":</p>"),
-    ("use-cases codebase invocation: konductor does both itself",
+     "Through the orchestrator. " + _code("konductor") + " spawns " + _code("k-architect")
+     + ", which declares these SOPs, to run them; a design step inside a task " + _code("konductor")
+     + " owns it writes itself. The mux and cmux orchestrators route every design request to "
+     + _code("k-architect") + ":</p>"),
+    ("use-cases codebase invocation: konductor spawns the SOP owner",
      "The orchestrator routes both to " + _code("k-developer") + ", which owns both SOPs. To skip the routing hop,"
      + " start a session with the developer agent directly: " + _code("k-developer") + ", on either runtime.</p>",
-     _code("konductor") + " does both itself and spawns " + _code("k-developer") + " when you name one of the SOPs,"
-     + " which it does not declare; the mux and cmux orchestrators route both to " + _code("k-developer")
-     + ", which owns both SOPs. To skip the hop, start a session with the developer agent directly: "
-     + _code("k-developer") + ", on either runtime.</p>"),
+     _code("konductor") + " spawns " + _code("k-developer") + ", which declares both SOPs, to run them: each is a"
+     + " multi-step procedure of an SOP " + _code("konductor") + " does not declare. The mux and cmux orchestrators"
+     + " route both to " + _code("k-developer") + " as well. To skip the hop, start a session with the developer"
+     + " agent directly: " + _code("k-developer") + ", on either runtime.</p>"),
+    ("quick-start step 4: konductor spawns the codebase-analysis owner",
+     "The orchestrator routes this to " + _chip("k-developer") + ", which owns the " + _chip("k-codebase-analysis")
+     + " workflow. It produces",
+     _chip("konductor") + " spawns " + _chip("k-developer") + ", which owns the " + _chip("k-codebase-analysis")
+     + " workflow, to run it. It produces"),
+    ("quick-start step 4: konductor names the k-full-sdlc SOP",
+     "Here the orchestrator routes the design to " + _chip("k-architect") + ", implementation to "
+     + _chip("k-developer") + ", and test coverage to " + _chip("k-quality-assurance")
+     + ", verifying each handoff before moving on.</p>",
+     "Here " + _chip("konductor") + " names the " + _chip("k-full-sdlc") + " SOP and its command, then waits for"
+     + " you to type it. That SOP runs each phase in a specialist subagent and reviews it before moving on.</p>"),
+    ("landing column 02: konductor does the work",
+     "<span style=\"font-size:14px\">The orchestrator routes it to the owner</span>",
+     "<span style=\"font-size:14px\">konductor does the work in your session</span>"),
+    ("landing column 03: a reviewer at each phase gate",
+     "<span style=\"font-size:14px\">Maker-checker runs before every handoff</span>",
+     "<span style=\"font-size:14px\">A fresh reviewer checks each phase</span>"),
+    ("landing column 04: one fix and one re-review",
+     "<span style=\"font-size:14px\">Failed checks re-delegate, up to 2 cycles</span>",
+     "<span style=\"font-size:14px\">One fix and one re-review, then it reports</span>"),
+    ("install step 5: konductor spawns the code-review owner",
+     "The orchestrator routes this to " + _mono("k-developer") + ", which is the agent that declares that SOP.</p>",
+     _mono("konductor") + " spawns " + _mono("k-developer") + ", the agent that declares that SOP, to run it.</p>"),
+    ("use-cases card: konductor does it or spawns the SOP owner",
+     "Describe what you want in plain language and let it route.</div>",
+     "Describe what you want in plain language; konductor does it or spawns the agent that declares the SOP.</div>"),
+    ("troubleshooting SOP fix: konductor spawns the SOP owner",
+     "Either start with konductor and let it route, or go directly to the owning agent.",
+     "Either start with konductor, which spawns the agent that declares the SOP, or go directly to the owning agent."),
+    ("concepts hub: konductor acts on a split",
+     "inputs and files, and konductor routes it.</p>",
+     "inputs and files, and konductor does that step or spawns for it as its direct-work rules allow.</p>"),
     ("concepts NEVER MUTATE follow-up: mux and cmux hand off",
      "That is why the orchestrator hands file edits and shell commands to <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">k-developer</span> rather than doing them itself.</p>",
      "That is why the mux and cmux orchestrators hand file edits and shell commands to <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">k-developer</span> rather than doing them themselves.</p>"),
@@ -378,16 +426,17 @@ EDITS = [
     # entry point that verifies a handoff, and it does not require the reader to
     # know which agent declares which SOP.
     ("sop invoke: start with konductor",
-     "and ask for a code review workflow, the SOP is not loaded there. Start with the "
-     "orchestrator and let it route, or start with the owning agent.",
      "and ask for a code review workflow, the SOP is not loaded there. Start with konductor and "
      "let it route — that is the form this guide uses throughout, and the one that does not "
-     "require you to know who owns what."),
+     "require you to know who owns what.",
+     "and ask for a code review workflow, the SOP is not loaded there. Start with konductor, which "
+     "spawns the agent that declares the SOP; that is the form this guide uses throughout, and the "
+     "one that does not require you to know who owns what."),
     ("sop invoke: reliable-way heading",
      ">The reliable way: ask the orchestrator</h3>", ">The reliable way: ask konductor</h3>"),
     ("sop invoke: recommends prose",
-     "The orchestrator's routing rules send code review to",
-     "konductor's routing rules send code review to"),
+     "konductor's routing rules send code review to " + _code("k-developer") + ", which declares that SOP. This",
+     "konductor spawns " + _code("k-developer") + ", which declares that SOP, to run it. This"),
     ("sop invoke: direct-agent heading",
      ">Or start with the owning agent directly</h3>", ">Starting a specialist directly</h3>"),
     ("sop invoke: direct-agent prose",
@@ -397,10 +446,12 @@ EDITS = [
      "Reach for the direct form when you are deliberately scoping a session to one agent, and "
      "treat it as the exception."),
     ("ik which agent: prose",
-     ">Start with the orchestrator and let it route. Invoke a specialist directly only when you "
-     'know exactly which workflow you want — see <a href="#/sops">which agent owns which SOP</a>'
-     ".</p>",
      ">Start with konductor and let it route. That is the default for everything in this guide: "
+     "it is the only entry point that verifies a handoff before moving on, and it does not "
+     "require you to know who owns which workflow. Starting a specialist directly is supported "
+     'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>',
+     ">Start with konductor and ask in plain language; it does the work itself or spawns the agent "
+     "that declares the SOP you need. That is the default for everything in this guide: "
      "it is the only entry point that verifies a handoff before moving on, and it does not "
      "require you to know who owns which workflow. Starting a specialist directly is supported "
      'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>'),

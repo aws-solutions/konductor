@@ -133,9 +133,9 @@ Two things worth noticing:
   orchestrator. They dispatch through their `mux-dispatch` / `cmux-dispatch` skills instead.
 
 Practical consequence: if you start a session directly with `k-product-manager` and ask for
-a code review workflow, the SOP is not loaded there. Start with `konductor` and let it route —
-that is the form this guide uses throughout, and it is the one that does not require you to know
-who owns what.
+a code review workflow, the SOP is not loaded there. Start with `konductor`, which spawns the agent
+that declares the SOP; that is the form this guide uses throughout, and it is the one that does not
+require you to know who owns what.
 
 ---
 
@@ -153,7 +153,7 @@ Then ask in plain language, naming the SOP:
 Run the k-code-review-workflow SOP against my current branch.
 ```
 
-`konductor`'s routing rules send code review to `k-developer`, which declares that SOP. This
+`konductor` spawns `k-developer`, which declares that SOP, to run it. This
 works regardless of how SOPs are registered as commands in your runtime, which is why every
 invocation example in this guide starts here.
 

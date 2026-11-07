@@ -109,6 +109,14 @@ READ_ONLY_DISPATCHER_PHRASES = (
     "hands file edits and shell commands to",
     "which routes design requests to",
     "The orchestrator routes both to",
+    "The orchestrator routes this to",
+    "routes the design to",
+    "routes it to the owner",
+    "re-delegate, up to 2 cycles",
+    "which routes design work to",
+    "let it route",
+    "routing rules send code review to",
+    "which decides who owns it",
 )
 
 
@@ -122,6 +130,29 @@ def test_bundles_and_guide_no_longer_describe_a_read_only_dispatcher():
         assert "Under this SOP the orchestrator coordinates; each phase runs in the agent the SOP names." in _read(rel), rel
         assert "The mux and cmux orchestrators are dispatchers by design" in _read(rel), rel
         assert "the mux and cmux orchestrators hand file edits and shell commands to" in _read(rel), rel
+
+
+def test_undeclared_sop_requests_get_one_answer_everywhere():
+    """A request that is the procedure of an SOP konductor does not declare goes to the SOP's owner."""
+    spawn = "`konductor` spawns `k-developer`, which declares both SOPs, to run them"
+    assert "`konductor` spawns `k-developer`, which owns the `k-codebase-analysis` workflow, to run it." in _read(
+        "docs/user-guide/quick-start.md"
+    )
+    assert spawn in _read("docs/user-guide/use-cases/understand-a-codebase.md")
+    assert "`konductor` spawns `k-architect`, which declares these SOPs, to run them" in _read(
+        "docs/user-guide/use-cases/design-a-system.md"
+    )
+    for rel in ("docs/index.html", "docs/site/user-guide.html"):
+        text = _read(rel)
+        assert "does both itself" not in text, rel
+        assert "writes the design itself" not in text, rel
+        assert "spawns <" in text and "which declares both SOPs, to run them" in text, rel
+        assert "which declares these SOPs, to run them" in text, rel
+        assert "konductor does the work in your session" in text, rel
+        assert "One fix and one re-review, then it reports" in text, rel
+    for rel in ("docs/user-guide/use-cases/understand-a-codebase.md", "docs/user-guide/use-cases/design-a-system.md"):
+        text = _read(rel)
+        assert "does both itself" not in text and "writes the design itself" not in text, rel
 
 
 def test_glossary_states_konductor_writes_once():
