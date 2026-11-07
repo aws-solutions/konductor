@@ -268,6 +268,50 @@ only in a workspace and with AWS credentials you are willing to let an agent act
 `k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
 See [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).
 
+### Orchestration mode
+
+`konductor` runs in one of two modes. `auto`, the default, is the single-writer shape described
+above. `coordinator` makes `konductor` read-only: it hands every change to a specialist and checks
+the result, the way the mux and cmux orchestrators work. There is no command for this setting; edit
+your user config by hand:
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+Only this file is read. A value in a project's `.konductor/config.yml` is ignored, and
+`konductor doctor` reports it. The value is case-sensitive. A change applies from the next
+`konductor` session without a reinstall, and it stays until you edit the file again: `install` and
+`update` never change it.
+
+`install` wires a session-start hook for `konductor`, also under `--no-telemetry`. Under
+`coordinator` the hook tells `konductor` to read the installed coordinator routing rules
+(`k-orchestrator-routing-rules.md`) before it does anything else. The hook acts only for the install that wired it; see [where the hook may point](cli/README.md#orchestration-mode). Under `auto`, or with no setting,
+the hook injects nothing and the session costs nothing extra. The hook never fails a session: if
+it recognises a `konductor` session but cannot apply `coordinator`, it prints one fallback line
+and the session runs as `auto`.
+
+The first reply of every `konductor` session states the mode once:
+
+| First reply | Meaning |
+| --- | --- |
+| `Orchestration: coordinator` | The coordinator rules are in effect |
+| `Orchestration: auto (default)` | `auto` by setting or by default. With `coordinator` set, no hook output arrived: run `konductor doctor`, then see [Troubleshooting](docs/user-guide/troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator) |
+| `Orchestration: auto (fallback: <reason>)` | The hook could not apply `coordinator`, for example `orchestration.mode is "Coordinator"; expected auto or coordinator`. Fix what the reason names |
+
+Run `konductor doctor` to check the value and that the hook is wired. To test the hook itself, set
+`coordinator`, start a session, look for `Orchestration: coordinator`, then set the mode back; an
+explicit `auto` injects nothing, so it cannot serve as the test.
+
+| Harness | Coordinator mode |
+| --- | --- |
+| Kiro CLI v3 | Supported. It may not re-inject the rules after `/compact`: if a `coordinator` session starts writing files itself after a compaction, start a new session |
+| Claude Code (`konductor install`) | Supported. The hook is wired to run again on `/clear`, `/compact` and resume, so the rules come back (tested on resume only) |
+| Claude Code plugin (marketplace) | Not available. The plugin does not wire the hook, so a plugin session always runs as `auto` and its first reply reads `Orchestration: auto (default)` |
+| Kiro CLI v2 | Not supported. `install` wires the hook into `konductor`'s `agentSpawn` hooks, as it does for telemetry, but delivery on v2 is untested. The first reply shows whether it arrived: if not, it reads `Orchestration: auto (default)` and the session runs as `auto` |
+
 ---
 
 ## See it in action

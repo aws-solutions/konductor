@@ -28,6 +28,7 @@ For a systematic walk-through rather than a specific symptom, see
 6. [My edits to an agent, skill, or SOP had no effect](#6-my-edits-to-an-agent-skill-or-sop-had-no-effect)
 7. [`konductor synth` succeeds but produces nothing](#7-konductor-synth-succeeds-but-produces-nothing)
 8. [A config value is not what I set](#8-a-config-value-is-not-what-i-set)
+9. [The first reply says `Orchestration: auto` but I set `coordinator`](#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator)
 
 ---
 
@@ -151,7 +152,7 @@ The rule itself:
 > directly execute mutating operations. […] Every other `shell` command MUST be delegated.
 
 This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
-instead, so editing files there is expected.
+instead, so editing files there is expected in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators. If you set `coordinator` and `konductor` still edits files, see item 9.
 
 Running read-only commands such as `ls` or `grep` itself is expected: the Orchestrator Direct Work
 table in that file allows them. Editing files, building, or running tests is not.
@@ -344,6 +345,37 @@ defaults. Otherwise, that file is your answer — edit or remove it.
 To override just for this project, edit `.konductor/config.yml` directly — project config
 always wins over the user layer. Full precedence rules are in the
 [CLI reference](reference.md#configuration-file).
+
+---
+
+## 9. The first reply says `Orchestration: auto` but I set `coordinator`
+
+**Symptom.** `~/.konductor/config.yml` sets `orchestration.mode: coordinator`, but the first reply of
+a `konductor` session reads `Orchestration: auto (default)` or `Orchestration: auto (fallback: ...)`,
+and `konductor` writes files itself.
+
+**Cause.** `Orchestration: auto (default)` with `coordinator` set means no session-start hook
+output arrived. Either the harness did not deliver it, or the hook did not recognise the session as
+a `konductor` session from a Konductor install and printed nothing. `Orchestration: auto (fallback: <reason>)` means the hook ran but could not
+apply `coordinator`; the reason names why, for example an unknown value or a missing rules file.
+Either way the session runs as `auto`. After a resume, `Orchestration: auto` without `(default)` means the mode was changed to `auto` since the session started.
+
+**Fix.** Run the built-in check and fix what its `orchestration` row names:
+
+```bash
+konductor doctor
+```
+
+- The value must be exactly `auto` or `coordinator`, in `~/.konductor/config.yml`. A project
+  `.konductor/config.yml` value is ignored; `doctor` reports it as `info`.
+- Installed as the Claude Code plugin? The plugin does not wire the hook, so coordinator mode is not available there. `konductor doctor` and `konductor update` apply to CLI installs only.
+- A missing hook or rules file: run `konductor update`.
+- `doctor` passes but the line still does not arrive: check that the session runs the `konductor`
+  agent of the install `doctor` checked, then check the harness. Kiro CLI v3 and Claude Code
+  installed with `konductor install` are supported. Kiro CLI v2 is not; its hook is wired but untested, so use v3 or Claude Code for
+  `coordinator` sessions.
+- On Kiro CLI v3 the rules may not come back after `/compact`. A `coordinator` session that starts
+  writing files itself after a compaction has lost them; start a new session.
 
 ---
 

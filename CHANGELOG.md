@@ -136,6 +136,9 @@ not per individual commit.
   conventions above konductor defaults; when a collision stays open, ask once and save a `Ruling:` entry.
   A `USER DECISIONS IN FORCE` brief entry quoting the user meets the rule 6 and 7 exceptions for the action
   it names; rule 9 and irreversible actions still need the user directly.
+- Docs describe setting `orchestration.mode` by hand, reading the mode line in the first reply,
+  and that Kiro CLI v2 is not supported. Claude Code support is for `konductor install`; the
+  plugin does not wire the hook.
 
 ### Fixed
 

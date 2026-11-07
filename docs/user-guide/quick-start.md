@@ -90,9 +90,9 @@ each with a status. Exit code `0` when nothing failed. Anything reported as not 
 kiro-cli chat --agent konductor
 ```
 
-You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a
+You are now talking to the orchestrator. In the default `auto` mode it does the work itself, in this one session, and spawns a
 fresh `k-*` reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or
-SOP it lacks or for parallel work on disjoint files.
+SOP it lacks or for parallel work on disjoint files. In `coordinator` mode it hands every change to a specialist.
 
 **Checkpoint.** Ask it a question about itself. Questions about orchestration are answered directly
 rather than delegated:

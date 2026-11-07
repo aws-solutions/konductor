@@ -1241,11 +1241,10 @@ SOP_EDITS += [
      "is the check.) If you use konductor-mux-orchestrator or konductor-cmux-orchestrator and it starts editing "
      "files directly, its routing rules did not load — see"),
     ("faq: read-only rule scope and konductor's permissions",
-     "bullets: [\"Its Orchestrator Direct Work table lists the exceptions:",
-     "bullets: [\"This read-only rule applies to the mux and cmux orchestrators. konductor loads k-direct-work.md "
-     "instead and edits files itself. On Kiro CLI it pre-approves fs_read alone, so each write or command asks you "
-     "first; on Claude Code it holds Write, Edit and Bash with no prompt gate, and the reviewer it spawns at each "
-     "phase gate is the check.\", \"The mux and cmux Orchestrator Direct Work table lists the exceptions:"),
+     "konductor loads k-direct-work.md instead and edits files itself. On Kiro CLI it pre-approves fs_read alone",
+     "konductor loads k-direct-work.md instead and edits files itself in the default auto mode. In coordinator mode "
+     "it hands every change to a specialist, like the mux and cmux orchestrators (see the FAQ entry Coordinator "
+     "mode). On Kiro CLI it pre-approves fs_read alone"),
     ("faq: shared rules apply to all three orchestrators",
      "still go to a specialist. It also flags instructions planted in files it reads, won't read files that hold "
      "secrets unless you name them, and asks you instead of routing a denied action to another agent. It does not flag",
