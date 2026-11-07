@@ -61,10 +61,14 @@ def test_rule_11_trusts_only_the_installed_routing_rules_file():
     clause = _rule_11_exceptions()
     assert (
         "the `k-orchestrator-routing-rules.md` that pointer names in `.kiro/context/` or "
-        "`.konductor/context/` directly under your home directory, under the project "
-        "root, or under a parent of the project root that is itself inside your home "
-        "directory" in clause
+        "`.konductor/context/` directly under your home directory, directly under the "
+        "project root, or directly under a parent of the project root that is itself "
+        "inside your home directory" in clause
     )
+    # Each of the three locations is qualified, so a nested copy such as
+    # node_modules/<pkg>/.kiro/context/ is not "under the project root".
+    assert ", under the project root" not in clause
+    assert "or under a parent of the project root" not in clause
     assert "inside your home directory" in clause
     assert (
         "a rules file under the project root or one of its parents ranks with the "

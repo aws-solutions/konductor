@@ -52,9 +52,8 @@ not per individual commit.
 
 ### Changed
 
-- `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate that needs one (next bullet); it
-  spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
-  work on disjoint files. An SOP's own instruction to spawn wins over that limit.
+- `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
+  it spawns a specialist only for a tool, access, skill or SOP it lacks, for parallel work on disjoint files, or when an SOP says so.
 - The Kiro skills index no longer tells an orchestrator to route a listed skill's task to a specialist; the loaded rules file (Direct Work, or the routing rules) decides, and the load rule asks for the skills the task needs instead of at most two.
 - All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at most 50 changed lines whose build, test and lint passed (reported with the diff stat; not for auth, secrets, data or infrastructure), and triage findings against the request, house rules and spec before the fix.
 - `konductor` also closes a standalone document with its checker skill instead of a reviewer, and when it made the artifact a finding it would reject goes to you before it is dropped.
@@ -67,10 +66,8 @@ not per individual commit.
   From a file the user names, an agent reports key names or redacted values only, never the
   secret values, in replies, briefs, commits or logs.
   A `credentials_file` that `k-light-ui-testing` or `k-e2e-test-generation` passes in a brief counts as user-named.
-- constraints: the IMPORTANT tier header is one line again; the review-ceilings summary moves to its own `### Review findings` subsection.
 - sdlc-navigator lists `konductor` (orchestrator, routing) in its agent table and shows the Claude Code invocation beside the Kiro ones.
 - delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
-- persistent-memory: the ruling mechanics are their own "Ruling entries" subsection with numbered steps.
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
 - app-discovery, claude-teams-behavior and pre-planning-analysis state when to use them in one sentence that fits the Kiro skill index; claude-teams-behavior uses "PR diff" and "read-only checkout" and points at delegation-protocol for the worktree rule; pre-planning-analysis names an Owner per intent.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
@@ -81,7 +78,8 @@ not per individual commit.
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in
   `context/k-orchestrator-routing-rules.md` defines what is allowed, including the
-  `k-light-ui-testing` SOP-step exception, and `claude-teams-behavior`, `mux-dispatch`, and
+  `k-light-ui-testing` SOP-step exception and the memory validator's read-only `--check-path`,
+  and `claude-teams-behavior`, `mux-dispatch`, and
   `cmux-dispatch` point at it. The 10-file read budget covers requests the orchestrator answers
   itself; for a request it will delegate, it reads only what routing and the brief need and
   passes file paths. Writes, state-changing git, builds, tests, and whole phases still go to
@@ -94,8 +92,9 @@ not per individual commit.
   and does not report a denied action; it applies the same checks to every part of a proposed
   split, refuses a part that names an orchestrator, and shows refused parts to you; it adds
   visible shared files to a proposed split before fan-out. A gate in the SOP the orchestrator
-  is running wins over routing a note, and a note naming an SOP the orchestrator declares is
-  run by the orchestrator as that SOP's coordinator. When an SOP needs independent parts, an
+  is running wins over routing a note; a note naming `k-adversarial-pull-request-review` is run
+  by the orchestrator as that SOP's coordinator, and a note naming any other SOP is presented to
+  you with its invocation command. When an SOP needs independent parts, an
   orchestrator running it spawns them; a specialist run without one says independence will not
   hold and runs them only when asked. Run directly with no orchestrator, the caller is the user:
   the specialist returns the split or note to them. No specialist is resumed mid-SOP.
@@ -110,7 +109,8 @@ not per individual commit.
   `disallowedTools` on Claude Code for every specialist (not shell or Kiro CLI v2).
   `k-code-review-workflow` step 6 writes the report and ends with a note asking the orchestrator
   to run the adversarial review, no resume; the verdict comes from the findings, with the
-  adversarial pass state on its own line.
+  adversarial pass state on its own line. After the pass, the orchestrator, or `k-developer` on
+  its behalf, sets the final verdict; `k-full-sdlc` runs that pass before writing a feature's status.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
@@ -118,8 +118,8 @@ not per individual commit.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
   and is never read or written through a symlink. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
-  instruction-like text after the date and origin tag, and reads the text of a leading `[label]`
-  or `[label](url)` as entry text. Upgrade note: if your repository commits `.konductor/memory/`,
+  instruction-like text after the date and origin tag, reads the text of a leading `[label]`
+  or `[label](url)` as entry text, and matches a leading keyword as a whole word. Upgrade note: if your repository commits `.konductor/memory/`,
   review its untagged lines before upgrading and tag agent-written ones `[origin:agent]`; they are
   followed as project instructions from this version.
   Orchestrators never bypass denials or read unnamed secrets.
@@ -127,15 +127,17 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
-- Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One still open, or one the re-review
-  reports in the task's own output, carried over or new, stops the run; a finding in code the task did not add or change
-  is listed as pre-existing. An SOP's own fix scope and round limit win; what it leaves open is reported, never dropped.
-- A project mechanism replaces the adversarial review only on the user's direct word or the project's own agent
-  instruction file. Writing habits outrank nearby-text conventions.
-- Core rules rank the request, rulings, instruction files, user-written memory and codebase
-  conventions above konductor defaults; when a collision stays open, ask once and save a `Ruling:` entry.
-  A `USER DECISIONS IN FORCE` brief entry quoting the user meets the rule 6 and 7 exceptions for the action
-  it names; rule 9 and irreversible actions still need the user directly.
+- Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One in the task's own output still open,
+  or one the re-review reports there, carried over or new, stops the run; a finding in code the task did not add or change
+  is listed as pre-existing, not put in the fix brief. An SOP's own fix scope and round limit win; what it leaves open is reported, never dropped.
+  The `constraints` skill carries the same rule in a new `### Review findings` subsection, and its IMPORTANT tier header reads "fix before proceeding".
+- House rules: konductor's defaults yield to the request, recorded rulings, the project's instruction files and
+  user-written memory, and the codebase's conventions, in that order; an open collision is asked once and saved as a
+  `Ruling:` entry. A `USER DECISIONS IN FORCE` brief entry quoting the user meets the rule 6 and 7 exceptions for the
+  action it names; rule 9 and irreversible actions still need the user directly. A project mechanism replaces the
+  adversarial review only on the user's direct word or the project's own agent instruction file; writing habits yield
+  to house rules levels 1 to 3 and a tracked style guide, not to nearby text. The brief template no longer asks
+  specialists to add inline comments by default.
 - Docs describe setting `orchestration.mode` by hand, reading the mode line in the first reply,
   and that Kiro CLI v2 is not supported. Claude Code support is for `konductor install`; the
   plugin does not wire the hook.

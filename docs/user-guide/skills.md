@@ -111,7 +111,7 @@ Producing the design itself.
 | `trade-off-evaluator` | Scores options across cost, latency, complexity, scalability, and operability into a comparison matrix plus a recommendation. | A decision has more than one credible option. | `k-architect` |
 | `deliberation-panel` | Multi-perspective deliberation: derives decision-specific axes, argues each independently, cross-examines anonymously, synthesizes a scored recommendation. Requires explicit consent. | A high-stakes decision where you want genuine disagreement, not a single voice. | `konductor`, `k-architect`, `k-developer`, `k-product-manager`, `k-researcher` |
 | `argumentation-reference` | Primer on argumentation theory — Toulmin model, fallacy taxonomy, argument scoring. | Used during adversarial review to name why an argument is weak. | `k-architect` |
-| `design-impact-review` | Traces the downstream, cross-artifact impact of a change before it cascades — DB column to API to frontend. Classifies each artifact BREAKING / STALE / UNAFFECTED. | You are about to change a data model, API schema, or interface and want to know what breaks. | `k-developer` |
+| `design-impact-review` | Traces the downstream, cross-artifact impact of a change before it cascades — DB column to API to frontend. Classifies each artifact BREAKING / STALE / UNAFFECTED. | You are about to change a data model, API schema, or interface and want to know what breaks. | `k-developer`, `konductor` |
 
 ---
 
@@ -167,7 +167,7 @@ Writing and reviewing code.
 | `backend-review` | Reviews backend changes for pattern compliance, type safety, DynamoDB correctness, and test quality. Produces CRITICAL / IMPORTANT / SUGGESTION findings. | After backend changes, before opening a review. | `k-developer`, `konductor` |
 | `frontend-development` | Implements React/TypeScript frontend using AWS Cloudscape. Cloudscape-only components, no native HTML. | Implementing UI in a Cloudscape app. | `k-developer`, `konductor` |
 | `frontend-review` | Reviews frontend changes for Cloudscape compliance, React Hook Form patterns, type safety, and test quality. | After frontend changes, before opening a review. | `k-developer`, `konductor` |
-| `infra-validation` | Validates CDK and CloudFormation against AWS best practice, security standards, and Well-Architected principles. | Before deploying any infrastructure change. | `k-developer` |
+| `infra-validation` | Validates CDK and CloudFormation against AWS best practice, security standards, and Well-Architected principles. | Before deploying any infrastructure change. | `k-developer`, `konductor` |
 | `code-review` | Standard pull-request review workflow — creating PRs, reviewing diffs, addressing feedback, post-implementation cycles. | Ordinary code review, using git and the GitHub CLI. | `k-developer` |
 | `adversarial-code-review` | Reviews a diff from an adversarial security-focused stance, arguing against approval. Targets information disclosure, data-integrity failures, and schema/validation gaps. | After standard review, on anything security-sensitive. This is what `k-adversarial-pull-request-review` runs on. | `k-architect`, `k-developer` |
 | `adversarial-code-review-pass-security` | One parallel pass of the adversarial review, scoped to security: information disclosure, authorization, injection, secrets. | You do not invoke it directly; the orchestrator coordinating `k-adversarial-pull-request-review` spawns a `k-developer` session with it, alongside the integrity and schema passes. | `k-architect`, `k-developer` |
@@ -250,7 +250,7 @@ Useful when deciding which agent to talk to directly.
 | --- | --- |
 | `k-architect` | 38 |
 | `k-developer` | 27 |
-| `konductor` | 22 |
+| `konductor` | 24 |
 | `k-product-manager` | 16 |
 | `k-tpm` | 14 |
 | `k-quality-assurance` | 12 |

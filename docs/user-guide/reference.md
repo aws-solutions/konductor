@@ -384,7 +384,7 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 
 | Agent | Model | SOPs declared | Skills | MCP registry |
 | --- | --- | --- | --- | --- |
-| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` | 22 | — |
+| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` | 24 | — |
 | `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` | 10 | — |
 | `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` | 10 | — |
 | `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` | 38 | `aws-mcp` |

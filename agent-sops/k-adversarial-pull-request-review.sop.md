@@ -164,7 +164,6 @@ The checker consolidates the surviving findings and produces a verdict.
 
   Date: {date}
   Verdict: {APPROVE | APPROVE WITH COMMENTS | REQUEST CHANGES}
-  Checker independence: held
   Findings: {N} CRITICAL, {N} IMPORTANT, {N} SUGGESTION
   Passes run: {security, integrity, schema, reuse | <pass> MISSING (<reason>)}
   Filtered by checker: {N}
