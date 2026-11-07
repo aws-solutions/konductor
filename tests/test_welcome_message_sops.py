@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""A welcome message offers only SOPs its agent declares, and no page names k-architect as the adversarial SOP's owner.
+"""A welcome message offers only SOPs its agent declares, and no bundle owner cell names k-architect for the adversarial SOP.
 
 The Kiro `welcomeMessage` lists SOPs by hand, so it kept `/k-adversarial-pull-request-review`
-after that SOP moved from `k-architect` to the orchestrators.
+after that SOP moved from `k-architect` to the orchestrators. The `dist/` cases skip until
+`make synth` has run; with KONDUCTOR_REQUIRE_FULL_BIN=1 they fail instead.
 """
 import json
+import os
 import re
 from pathlib import Path
 
@@ -15,6 +17,7 @@ ADVERSARIAL_SOP = "k-adversarial-pull-request-review"
 WELCOME_SOP_LINE = re.compile(r"^\s+/([a-z][a-z0-9-]*) \u2014 ", flags=re.MULTILINE)
 GENERATED_DIRS = ["dist/kiro-v3/agents", "dist/kiro-cli-v2/agents"]
 BUNDLES = ["docs/index.html", "docs/site/user-guide.html"]
+REQUIRE_FULL_BIN = os.environ.get("KONDUCTOR_REQUIRE_FULL_BIN") == "1"
 
 
 def all_agents():
@@ -43,6 +46,11 @@ def test_spec_welcome_offers_only_declared_sops(agent):
 @pytest.mark.parametrize("generated", GENERATED_DIRS)
 @pytest.mark.parametrize("agent", all_agents())
 def test_generated_welcome_offers_only_declared_sops(generated, agent):
+    if not (ROOT / generated).is_dir():
+        reason = f"{generated} not found; run 'make synth' first"
+        if REQUIRE_FULL_BIN:
+            pytest.fail(reason)
+        pytest.skip(reason)
     path = ROOT / generated / f"{agent}.json"
     welcome = json.loads(path.read_text(encoding="utf-8")).get("welcomeMessage", "")
     undeclared = [s for s in advertised_sops(welcome) if s not in declared_sops(agent)]
