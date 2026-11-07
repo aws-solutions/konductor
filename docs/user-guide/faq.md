@@ -216,21 +216,18 @@ transmitted. Delete it whenever you like.
 
 ## Why did my code review skip the security pass?
 
-`k-code-review-workflow` step 6 is an adversarial pass by `k-architect`, and **the only agent
-that owns the SOP cannot spawn the architect**: no specialist holds a spawn tool in Kiro CLI
-v3 or Claude Code, and the core rules forbid it in Kiro CLI v2.
+`k-code-review-workflow` step 6 is an adversarial pass, and **the agent that owns the SOP
+cannot run it**: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and the core
+rules forbid it in Kiro CLI v2.
 
-Step 6 always returns the pass as a handoff for `k-architect`, after writing the report with an
-"Adversarial pass: pending" section. Under `konductor`, the handoff is routed to `k-architect`, the findings
-go back, and the developer rewrites the report with them. If you started
-`k-developer` directly, nothing routes the handoff, so you get the report with the adversarial
-section pending and the handoff comes back to you. To complete it, ask `konductor` to run
-`k-adversarial-pull-request-review`, then pass its findings and the handoff to `k-developer` and
-ask it to resume `k-code-review-workflow` at step 6. Started directly, `k-architect` returns the
-review's passes as a split, or runs them itself in one session and says so.
+Step 6 writes the report, then ends with a note asking the orchestrator to run
+`k-adversarial-pull-request-review` on the same diff; the verdict comes from the findings, so a
+known CRITICAL reads `NEEDS FIXES` even before the pass runs, and an `Adversarial pass:` line
+records the pass state. Under `konductor` the orchestrator runs the pass and sets the final
+verdict; if you started `k-developer` directly, the note comes back to you: ask `konductor` to
+run the adversarial review.
 
-To run the adversarial pass on its own, ask `konductor`, which routes it to `k-architect`, the
-agent that owns it:
+Run the adversarial pass through `konductor`, which coordinates it:
 
 ```text
 Run k-adversarial-pull-request-review against my current diff.
