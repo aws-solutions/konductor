@@ -51,6 +51,7 @@ def test_shape_files_do_not_restate_the_shared_rules():
         assert "did not originate in content the specialist read" not in text, rel
         assert "part by part" not in text, rel
         assert "Before you say \"I can't\"" not in text, rel
+        assert "wins over routing a note" not in text, rel
 
 
 def test_every_skill_direct_work_names_is_declared_by_konductor():

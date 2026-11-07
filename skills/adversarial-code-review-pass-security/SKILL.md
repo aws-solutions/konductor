@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review-pass-security
-description: 'Reviews a diff through the lens of security concerns: information disclosure, authorization, injection, secrets. Use only when a split from the adversarial-code-review coordinator names it, alongside the integrity and schema passes.'
+description: 'Reviews a diff through the lens of security concerns: information disclosure, authorization, injection, secrets. Use only when the adversarial-code-review coordinator spawns a session naming it, alongside the integrity and schema passes.'
 version: 1.0.0
 tags: [skill, security, code-review, adversarial, pass]
 ---
@@ -9,11 +9,11 @@ tags: [skill, security, code-review, adversarial, pass]
 
 ## Overview
 
-Reviews a diff through the lens of security concerns. This is one of three parallel review passes that an adversarial-review coordinator SOP returns as a split for `k-developer` sessions to run. The framing is neutral by design: review through the lens of security, do not assume any specific issue exists.
+Reviews a diff through the lens of security concerns. This is one of three parallel review passes that an adversarial-review coordinator SOP spawns as separate `k-developer` sessions. The framing is neutral by design: review through the lens of security, do not assume any specific issue exists.
 
 ## Usage
 
-Runs from a split that an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) returns, as one of three parallel passes in separate `k-developer` sessions. The coordinator runs a pass itself only in the user-requested in-session mode its SOP describes, and its report says the checker step was not independent.
+Runs in a `k-developer` session that an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) spawns, as one of three parallel passes. The coordinator never runs a pass itself; a pass that fails twice is recorded as MISSING in the report, which caps the verdict.
 
 ## What to look for
 
