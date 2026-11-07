@@ -30,6 +30,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import htmlbundle  # noqa: E402
 from html_sop_edits import SOP_EDITS  # noqa: E402
 
+
+def _code(text):
+    """Inline code span in the bundle's prose markup."""
+    return f"<code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">{text}</code>"
+
+
+def _mono(text):
+    """Plain monospace span used by the quick-start and install pages."""
+    return f"<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">{text}</span>"
+
+
+def _chip(text):
+    """Highlighted monospace span used by the quick-start step 4 prose."""
+    return (
+        "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx);"
+        f"background:rgba(124,92,255,.16);border-radius:5px;padding:1.5px 6px\">{text}</span>"
+    )
+
+
 # Each entry: (label, old, new). `old` must appear exactly once unless `count` is
 # given. Sourced from agents/*.agent-spec.json, agent-sops/, skills/, cli/README.md.
 EDITS = [
@@ -79,32 +98,146 @@ EDITS = [
      'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws-cli==1.7.0 — allowedTools grants documentation '
      'search/read, region list, and regional availability.'),
     # ---- every agent loads context/k-core-rules.md ---------------------------
-    ("concepts context file paragraph",
-     "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules and the writing-habits rule, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains",
-     "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains"),
+    ('concepts context file paragraph', 'There are two today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains', 'There are four today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-direct-work.md</span> is loaded by konductor; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by the mux and cmux orchestrators; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-shared.md</span> holds the handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains'),
+    # ---- single-writer shape: konductor does the work itself (R4-144.c) ----
+    ("quick-start step 3: konductor does the work itself",
+     "You are now talking to the coordinator. It never implements anything itself — it routes each piece of work to the specialist that owns it, checks what comes back, and re-delegates if a check fails.</p>",
+     "You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files.</p>"),
+    ("concepts context paragraph: coordinator rules, not a routing table",
+     "The routing rules file contains the capability-to-agent routing table and three",
+     "The routing rules file contains the coordinator rules and three"),
+    ("concepts hub caption: direct-work rules are always active",
+     "Hub-and-spoke: you talk only to konductor; routing rules are always active;",
+     "Hub-and-spoke: you talk only to konductor; its direct-work rules are always active;"),
+    ("concepts hub diagram: single-writer label",
+     "HUB — READ-ONLY</div>",
+     "HUB: SINGLE WRITER</div>"),
+    ("concepts hub diagram: direct-work rules box",
+     "color:var(--tx)\">context/ routing rules</div>",
+     "color:var(--tx)\">context/ direct-work rules</div>"),
+    ("AGENTS array: konductor does the work itself",
+     '["konductor", "The main entry point. Coordinates everything, delegates all work, never implements directly."],',
+     '["konductor", "The main entry point. Does the work itself and spawns a fresh reviewer at each phase gate."],'),
+    ("glossary Orchestrator: konductor also does the work itself",
+     'v: "An agent that coordinates other agents and never implements directly. Three exist:',
+     'v: "An agent that coordinates other agents; konductor also does the work itself. Three exist:'),
+    # Two edits around the "uc owned-by prose" fragment, which stays byte-identical
+    # in the middle of this paragraph so that entry remains satisfied.
+    ("use-cases owned-by-the-orchestrator: mux and cmux dispatch, konductor works",
+     "The orchestrators are dispatchers by design. " + _code("konductor")
+     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>",
+     "The mux and cmux orchestrators are dispatchers by design, and " + _code("konductor")
+     + " does the work itself; no runtime enforces either shape. " + _code("konductor")
+     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>"),
+    ("use-cases owned-by-the-orchestrator: konductor's Claude Code tools",
+     "alone; in Claude Code its tool list has no " + _code("Bash") + ", " + _code("Write") + ", or " + _code("Edit")
+     + ". What it has is " + _code("Read") + ", " + _code("Glob") + ", " + _code("Grep") + ", " + _code("WebFetch")
+     + ", " + _code("WebSearch") + ", " + _code("TodoWrite") + ", " + _code("Workflow") + ", an " + _code("Agent(...)")
+     + " tool scoped to the eight specialists, and " + _code("SendMessage") + ".</p>",
+     "alone; in Claude Code it is granted " + _code("Bash") + ", " + _code("Write") + " and " + _code("Edit")
+     + " alongside " + _code("Read") + ", " + _code("Glob") + ", " + _code("Grep") + ", " + _code("WebFetch")
+     + ", " + _code("WebSearch") + ", " + _code("TodoWrite") + ", " + _code("Workflow") + ", " + _code("Skill") + ", "
+     + _code("SendMessage") + ", and an " + _code("Agent(...)") + " tool scoped to the eight specialists, and uses"
+     + " them as its direct-work rules allow. For the mux and cmux orchestrators only the routing rules stop"
+     + " them, so the dispatcher behaviour you see there is a convention rather than a wall.</p>"),
+    ("use-cases chain: konductor runs the steps itself",
+     "So when you run this chain \"via the orchestrator\", the orchestrator reads, synthesises, and routes."
+     + " The file writes, " + _code("git diff") + " calls, and build and test commands execute through"
+     + " whichever specialist it delegates to — " + _code("k-developer") + " for implementation and shell work, "
+     + _code("k-researcher") + " for parallel research, " + _code("k-architect") + " for escalations.</p>",
+     "So when you run this chain through " + _code("konductor") + ", it reads, synthesises, writes the files"
+     + " and runs the " + _code("git diff") + ", build and test commands itself, as its direct-work rules allow;"
+     + " it spawns a specialist only for a tool, skill or SOP it lacks or for independent work on disjoint files ("
+     + _code("k-researcher") + " for parallel research), and a fresh reviewer when a phase closes."
+     + " Through the mux or cmux orchestrator the same steps execute in whichever specialist it delegates to: "
+     + _code("k-developer") + " for implementation and shell work, " + _code("k-researcher")
+     + " for parallel research, " + _code("k-architect") + " for escalations.</p>"),
+    # A request that is the procedure of an SOP konductor does not declare goes to
+    # the SOP's owner; the same reading as quick-start step 4 and k-direct-work.md.
+    ("use-cases design invocation: konductor spawns the SOP owner",
+     "Through the orchestrator, which routes design requests to " + _code("k-architect") + ":</p>",
+     "Through the orchestrator. " + _code("konductor") + " spawns " + _code("k-architect")
+     + ", which declares these SOPs, to run them; a design step inside a task it owns, " + _code("konductor")
+     + " writes itself. The mux and cmux orchestrators route every design request to "
+     + _code("k-architect") + ":</p>"),
+    ("use-cases codebase invocation: konductor spawns the SOP owner",
+     "The orchestrator routes both to " + _code("k-developer") + ", which owns both SOPs. To skip the routing hop,"
+     + " start a session with the developer agent directly: " + _code("k-developer") + ", on either runtime.</p>",
+     _code("konductor") + " spawns " + _code("k-developer") + ", which declares both SOPs, to run them: each is a"
+     + " multi-step procedure of an SOP " + _code("konductor") + " does not declare. The mux and cmux orchestrators"
+     + " route both to " + _code("k-developer") + " as well. To skip the hop, start a session with the developer"
+     + " agent directly: " + _code("k-developer") + ", on either runtime.</p>"),
+    ("quick-start step 4: konductor spawns the codebase-analysis owner",
+     "The orchestrator routes this to " + _chip("k-developer") + ", which owns the " + _chip("k-codebase-analysis")
+     + " workflow. It produces",
+     _chip("konductor") + " spawns " + _chip("k-developer") + ", which owns the " + _chip("k-codebase-analysis")
+     + " workflow, to run it. It produces"),
+    ("quick-start step 4: konductor names the k-full-sdlc SOP",
+     "Here the orchestrator routes the design to " + _chip("k-architect") + ", implementation to "
+     + _chip("k-developer") + ", and test coverage to " + _chip("k-quality-assurance")
+     + ", verifying each handoff before moving on.</p>",
+     "Here " + _chip("konductor") + " names the " + _chip("k-full-sdlc") + " SOP and its command, then waits for"
+     + " you to type it. That SOP runs each phase in a specialist subagent and reviews it before moving on.</p>"),
+    ("landing column 02: konductor does the work",
+     "<span style=\"font-size:14px\">The orchestrator routes it to the owner</span>",
+     "<span style=\"font-size:14px\">konductor does the work in your session</span>"),
+    ("landing column 03: a reviewer at each phase gate",
+     "<span style=\"font-size:14px\">Maker-checker runs before every handoff</span>",
+     "<span style=\"font-size:14px\">A fresh reviewer checks each phase</span>"),
+    ("landing column 04: one fix and one re-review",
+     "<span style=\"font-size:14px\">Failed checks re-delegate, up to 2 cycles</span>",
+     "<span style=\"font-size:14px\">One fix and one re-review, then it reports</span>"),
+    ("install step 5: konductor spawns the code-review owner",
+     "The orchestrator routes this to " + _mono("k-developer") + ", which is the agent that declares that SOP.</p>",
+     _mono("konductor") + " spawns " + _mono("k-developer") + ", the agent that declares that SOP, to run it.</p>"),
+    ("use-cases card: konductor does it or spawns the SOP owner",
+     "Describe what you want in plain language and let it route.</div>",
+     "Describe what you want in plain language; konductor does it or spawns the agent that declares the SOP.</div>"),
+    ("troubleshooting SOP fix: konductor spawns the SOP owner",
+     "Either start with konductor and let it route, or go directly to the owning agent.",
+     "Either start with konductor, which spawns the agent that declares the SOP, or go directly to the owning agent."),
+    ("concepts hub: konductor acts on a split",
+     "inputs and files, and konductor routes it.</p>",
+     "inputs and files, and konductor does that step or spawns for it as its direct-work rules allow.</p>"),
+    ("concepts NEVER MUTATE follow-up: mux and cmux hand off",
+     "That is why the orchestrator hands file edits and shell commands to <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">k-developer</span> rather than doing them itself.</p>",
+     "That is why the mux and cmux orchestrators hand file edits and shell commands to <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">k-developer</span> rather than doing them themselves.</p>"),
+    # Runs before SOP_EDITS so the "sop-orch page" block (whose `new` carries the
+    # same card text) is already satisfied when that entry is checked.
+    ("sop-orch know card: coordinates under this SOP",
+     '{ title: "The orchestrator coordinates and never implements.", body: "',
+     '{ title: "Under this SOP the orchestrator coordinates; each phase runs in the agent the SOP names.", body: "'),
     ("concepts: no repeat review",
-     "k-delegate</span> step 8).</p>",
-     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it; a first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done, and the orchestrator stops and reports it to you; a finding in code the task did not add or change is listed for you as pre-existing. An SOP's own fix scope and limit on fix rounds win; a finding it leaves open is reported to you as unresolved, never dropped. An artifact that passed review is not reviewed again unless it changes.</p>"),
+     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it; a first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done, and the orchestrator stops and reports it to you; a finding in code the task did not add or change is listed for you as pre-existing. An SOP's own fix scope and limit on fix rounds win; a finding it leaves open is reported to you as unresolved, never dropped. An artifact that passed review is not reviewed again unless it changes.</p>",
+     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it; a first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done, and the orchestrator stops and reports it to you; a finding in code the task did not add or change is listed for you as pre-existing. An SOP's own fix scope and limit on fix rounds win; a finding it leaves open is reported to you as unresolved, never dropped. An artifact that passed review is not reviewed again unless it changes. When konductor made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.</p>"),
     ("concepts: re-delegate sentence without a dash",
      "it re-delegates — <strong",
      "it re-delegates, <strong"),
-    ("concepts context files row",
-     '{ k: "Context files — 1", v: "The orchestrator routing rules, always active" }',
-     '{ k: "Context files — 2", v: "The core rules for every agent and the orchestrator routing rules, always active" }'),
-    ("glossary context file",
-     "One exists: context/k-orchestrator-routing-rules.md, loaded by all three orchestrators.",
-     "Two exist: context/k-core-rules.md, loaded by all 11 agents, and context/k-orchestrator-routing-rules.md, loaded by all three orchestrators."),
+    ('concepts context files row',
+     '{ k: "Context files — 2", v: "The core rules for every agent and the orchestrator routing rules, always active" }',
+     '{ k: "Context files — 4", v: "The core rules for every agent, the shared orchestrator rules, and the direct-work or routing rules, always active" }'),
+    ('glossary orchestrator entry: konductor works itself',
+     'Three exist: konductor (background subagents), konductor-mux-orchestrator (tmux/zellij panes), and konductor-cmux-orchestrator (cmux surfaces). All are read-only by rule — they delegate every file write and shell command.',
+     'Three exist: konductor (background subagents), konductor-mux-orchestrator (tmux/zellij panes), and konductor-cmux-orchestrator (cmux surfaces). The mux and cmux orchestrators are read-only by rule and delegate every file write and shell command; konductor writes in its own session and spawns a reviewer at each phase gate.'),
+    ('glossary read-only entry: mux and cmux only',
+     'The orchestrators are read-only by rule. Applied to a SOP',
+     'The mux and cmux orchestrators are read-only by rule. Applied to a SOP'),
+    ('glossary context file',
+     'Two exist: context/k-core-rules.md, loaded by all 11 agents, and context/k-orchestrator-routing-rules.md, loaded by all three orchestrators.',
+     'Four exist: context/k-core-rules.md, loaded by all 11 agents; context/k-orchestrator-shared.md, loaded by all three orchestrators; context/k-direct-work.md, loaded by konductor; and context/k-orchestrator-routing-rules.md, loaded by the mux and cmux orchestrators.'),
     ("reference roster note: context files",
-     'Only the three orchestrators declare a context file."]',
-     'Every agent declares context/k-core-rules.md. Only the three orchestrators also declare context/k-orchestrator-routing-rules.md."]'),
+     'Every agent declares context/k-core-rules.md. Only the three orchestrators also declare context/k-orchestrator-routing-rules.md."]',
+     'Every agent declares context/k-core-rules.md. Only the mux and cmux orchestrators also declare context/k-orchestrator-routing-rules.md; konductor declares context/k-direct-work.md. The three orchestrators also declare context/k-orchestrator-shared.md."]'),
     ("agents note: context files",
-     "Only the three orchestrators declare a context file (context/k-orchestrator-routing-rules.md), which is what makes them behave as dispatchers.",
-     "Every agent declares the context/k-core-rules.md context file. Only the three orchestrators also declare context/k-orchestrator-routing-rules.md, which is what makes them behave as dispatchers."),
-    ("layout tree context",
-     "│   └── k-orchestrator-routing-rules.md\\n",
-     "│   ├── k-core-rules.md\\n│   └── k-orchestrator-routing-rules.md\\n"),
-    ("troubleshooting context count", "it should report 1 registered.", "it should report 2 registered."),
-    ("contributing: five files", "Four files control four different things.", "Five files control five different things."),
+     "Every agent declares the context/k-core-rules.md context file. Only the three orchestrators also declare context/k-orchestrator-routing-rules.md, which is what makes them behave as dispatchers.",
+     "Every agent declares the context/k-core-rules.md context file. Only the mux and cmux orchestrators also declare context/k-orchestrator-routing-rules.md, which is what makes them behave as dispatchers. konductor declares context/k-direct-work.md and does the work itself. The three orchestrators also declare context/k-orchestrator-shared.md."),
+    ('layout tree context',
+     '│   ├── k-core-rules.md\\n│   └── k-orchestrator-routing-rules.md\\n',
+     '│   ├── k-core-rules.md\\n│   ├── k-direct-work.md\\n│   ├── k-orchestrator-routing-rules.md\\n│   └── k-orchestrator-shared.md\\n'),
+    ('troubleshooting context count',
+     'it should report 2 registered.',
+     'it should report 4 registered.'),
+    ("contributing: seven files", "Five files control five different things.", "Seven files control seven different things."),
     ("contributing: core rules row",
      '{ k: "context/k-core-rules.md", v: "Rules every agent must follow, NEVER DO rules and writing habits, loaded at session start for every agent" }',
      '{ k: "context/k-core-rules.md", v: "Rules every agent must follow, NEVER DO rules, writing habits, and engineering practices, loaded at session start for every agent" }'),
@@ -149,22 +282,6 @@ EDITS = [
     # stated it in six places, including the capability table's own rows.
     # check-guide-facts.py now derives the table from the specs and rejects the
     # prose forms outright, so this class cannot come back quietly.
-    ("qs checkpoint permission prose",
-     "That is the whole design. In Kiro CLI the orchestrator is genuinely read-only — its "
-     "allowedTools is fs_read alone. In Claude Code it holds Write and Bash, and only its "
-     "routing rules stop it using them.",
-     "That is the whole design, and it is a rule rather than a wall in both runtimes. In Kiro "
-     "CLI konductor pre-approves fs_read alone, so a write or a command stops to ask you rather "
-     "than being refused; in Claude Code it holds Write and Bash outright. Either way what keeps "
-     "it delegating is its routing rules."),
-    ("ik success permission prose",
-     "That last point is the real signal. In Kiro CLI the orchestrator genuinely cannot write "
-     "files or run shell commands — its allowedTools is fs_read alone. (In Claude Code it is "
-     "granted Write and Bash; only its routing rules stop it using them.)",
-     "That last point is the real signal. In Kiro CLI the orchestrator pre-approves fs_read "
-     "alone, so a write or a shell command surfaces a permission prompt instead of happening "
-     "quietly — it is not refused, because @builtin grants both. (In Claude Code it is granted "
-     "Write and Bash with no prompt gate of its own; only its routing rules stop it using them.)"),
     ("dx capability prose",
      "konductor</span> cannot write files or run shell commands in Kiro CLI (though Claude Code "
      "grants it Bash and Write), and <span style=\"font-family:'JetBrains Mono',monospace;"
@@ -266,13 +383,6 @@ EDITS = [
      "the narrowest tool list of any agent, and the only one with no write or shell tool at all "
      "— which makes it the safest agent to point at unfamiliar code. In Kiro CLI it pre-approves "
      "fs_read alone, so anything more asks first."),
-    ("ag-orch intent prose",
-     "Treat that as intent, not enforcement: in Kiro CLI it is backed by narrow allowedTools, "
-     "but in Claude Code all three are granted Write and Bash regardless.",
-     "Treat that as intent, not enforcement: it is a prompt rule, and the tool configuration "
-     "does not back it up in either runtime — Kiro CLI pre-approves reads only, so a mutating "
-     "call stops to ask you rather than being refused, and Claude Code grants all three Write "
-     "and Bash outright."),
     ("ag runtime diff: permission model row",
      '{ k: "Tool naming", v: "fs_read, fs_write, shell · Read, Write, Edit, Bash" },',
      '{ k: "Tool naming", v: "fs_read, fs_write, shell · Read, Write, Edit, Bash" },\n'
@@ -316,16 +426,17 @@ EDITS = [
     # entry point that verifies a handoff, and it does not require the reader to
     # know which agent declares which SOP.
     ("sop invoke: start with konductor",
-     "and ask for a code review workflow, the SOP is not loaded there. Start with the "
-     "orchestrator and let it route, or start with the owning agent.",
      "and ask for a code review workflow, the SOP is not loaded there. Start with konductor and "
      "let it route — that is the form this guide uses throughout, and the one that does not "
-     "require you to know who owns what."),
+     "require you to know who owns what.",
+     "and ask for a code review workflow, the SOP is not loaded there. Start with konductor, which "
+     "spawns the agent that declares the SOP; that is the form this guide uses throughout, and the "
+     "one that does not require you to know who owns what."),
     ("sop invoke: reliable-way heading",
      ">The reliable way: ask the orchestrator</h3>", ">The reliable way: ask konductor</h3>"),
     ("sop invoke: recommends prose",
-     "The orchestrator's routing rules send code review to",
-     "konductor's routing rules send code review to"),
+     "konductor's routing rules send code review to " + _code("k-developer") + ", which declares that SOP. This",
+     "konductor spawns " + _code("k-developer") + ", which declares that SOP, to run it. This"),
     ("sop invoke: direct-agent heading",
      ">Or start with the owning agent directly</h3>", ">Starting a specialist directly</h3>"),
     ("sop invoke: direct-agent prose",
@@ -335,10 +446,12 @@ EDITS = [
      "Reach for the direct form when you are deliberately scoping a session to one agent, and "
      "treat it as the exception."),
     ("ik which agent: prose",
-     ">Start with the orchestrator and let it route. Invoke a specialist directly only when you "
-     'know exactly which workflow you want — see <a href="#/sops">which agent owns which SOP</a>'
-     ".</p>",
      ">Start with konductor and let it route. That is the default for everything in this guide: "
+     "it is the only entry point that verifies a handoff before moving on, and it does not "
+     "require you to know who owns which workflow. Starting a specialist directly is supported "
+     'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>',
+     ">Start with konductor and ask in plain language; it does the work itself or spawns the agent "
+     "that declares the SOP you need. That is the default for everything in this guide: "
      "it is the only entry point that verifies a handoff before moving on, and it does not "
      "require you to know who owns which workflow. Starting a specialist directly is supported "
      'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>'),
@@ -398,11 +511,6 @@ ROSTER = [
     ("sop-review owner line",
      'owner: "k-developer, k-quality-assurance — no file changes"',
      'owner: "k-developer — no file changes"'),
-    ("faq: memory and AGENTS.md are the project's instructions",
-     'asks you instead of routing a denied action to another agent.',
-     "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
-     ".konductor/memory/MEMORY.md and USER.md at the project root, or AGENTS.md: both are the project's own "
-     "instructions. A .konductor/memory/ anywhere else, or one reached through a symlink, is content."),
     ("faq: house rules and rulings",
      'sec("faq-outputs", "Where SOP output goes"',
      'sec("faq-house-rules", "Why konductor asked me", "Why did konductor ask me which commit style to use, and where did it save my answer?", {\n'
@@ -422,12 +530,18 @@ ROSTER = [
      '"rows":[{"k":"k-architect","v":"32"},{"k":"k-developer","v":"20"},{"k":"k-product-manager","v":"14"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"12"},{"k":"konductor-cmux-orchestrator","v":"11"},{"k":"konductor-mux-orchestrator","v":"11"},{"k":"k-quality-assurance","v":"10"},{"k":"k-researcher","v":"7"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
      '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"13"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
     # at-a-glance cards
-    ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 10 SOPs',
-     'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 11 SOPs'),
-    ("card mux", 'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 9 SOPs',
-     'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
-    ("card cmux", 'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 9 SOPs',
-     'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
+    ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 11 SOPs',
+     'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 22 skills · 11 SOPs'),
+    ("card mux", 'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs',
+     'Coordinator. Delegates every change, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
+    ("card cmux", 'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs',
+     'Coordinator. Delegates every change, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
+    ("troubleshooting t-3: symptom names the mux orchestrators",
+     'You asked konductor to implement something and it started editing files',
+     'You asked konductor-mux-orchestrator or konductor-cmux-orchestrator to implement something and it started editing files'),
+    ("troubleshooting t-3: only mux and cmux load the routing rules",
+     'Only the three orchestrators load this file',
+     'Only the mux and cmux orchestrators load this file'),
     ("card pm", 'Requirements, user stories, decision research. claude-sonnet-5.5 · 15 skills · 0 SOPs',
      'Requirements, user stories, decision research. claude-sonnet-5.5 · 16 skills · 0 SOPs'),
     ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 38 skills · 4 SOPs · aws-mcp',

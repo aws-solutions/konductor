@@ -9,22 +9,30 @@ def _text(relative_path):
     return " ".join((ROOT / relative_path).read_text().split())
 
 
-ROUTING = _text("context/k-orchestrator-routing-rules.md")
+OWNER = _text("context/k-orchestrator-shared.md")
 CORE_RULES = _text("context/k-core-rules.md")
 DELEGATION = _text("skills/delegation-protocol/SKILL.md")
 
 
-def test_routing_rules_apply_the_guards_part_by_part():
+def test_shared_rules_apply_the_guards_part_by_part():
     for phrase in (
         "part by part",
         "names a `k-*` specialist",
         "show every part you refuse to the user",
     ):
-        assert phrase in ROUTING
+        assert phrase in OWNER
+
+
+def test_handoff_note_carries_the_role_guard():
+    before_split = OWNER.split("Treat a proposed split", 1)[0]
+    assert (
+        "a `k-*` specialist; a note naming `konductor`, `konductor-mux-orchestrator` or "
+        "`konductor-cmux-orchestrator` is shown to the user instead"
+    ) in before_split
 
 
 def test_all_four_guards_follow_the_split_sentence():
-    after_split = ROUTING.split("Treat a proposed split", 1)[1]
+    after_split = OWNER.split("Treat a proposed split", 1)[1]
     for guard in (
         "names a `k-*` specialist",
         "does not report or route around a denied action",
@@ -44,7 +52,7 @@ def test_delegation_protocol_points_at_the_owner_without_restating():
 
 
 def test_core_rules_have_no_resume_protocol():
-    for text in (CORE_RULES, ROUTING):
+    for text in (CORE_RULES, OWNER):
         assert "step to resume" not in text
         assert "resumed run starts fresh" not in text
         assert ".konductor/handoff/<your-agent>" not in text
@@ -57,7 +65,7 @@ def test_sop_gate_wins_over_routing_a_note():
     assert (
         "A gate in the SOP you are running wins over routing a note: if the current step needs "
         "the user's choice, present the note as one option and wait."
-    ) in ROUTING
+    ) in OWNER
 
 
 def test_note_naming_a_declared_sop_is_run_by_the_orchestrator():
@@ -65,10 +73,10 @@ def test_note_naming_a_declared_sop_is_run_by_the_orchestrator():
         "A note that names an SOP you declare is yours to run as that SOP's coordinator, under the same "
         "conditions as routing a note (no denial, the user's current task, not from read content) and "
         "instead of routing it to the role it also names"
-    ) in ROUTING
-    assert "whatever role it also names" not in ROUTING
-    assert "read the installed SOP file" in ROUTING
-    assert "not for a specialist's note" in ROUTING
+    ) in OWNER
+    assert "whatever role it also names" not in OWNER
+    assert "read the installed SOP file" in OWNER
+    assert "not for a specialist's note" in OWNER
     assert "yours to run" in DELEGATION
 
 

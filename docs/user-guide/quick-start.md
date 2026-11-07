@@ -90,8 +90,9 @@ each with a status. Exit code `0` when nothing failed. Anything reported as not 
 kiro-cli chat --agent konductor
 ```
 
-You are now talking to the coordinator. It never implements anything itself — it routes each piece of
-work to the specialist that owns it, checks what comes back, and re-delegates if a check fails.
+You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a
+fresh `k-*` reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or
+SOP it lacks or for parallel work on disjoint files.
 
 **Checkpoint.** Ask it a question about itself. Questions about orchestration are answered directly
 rather than delegated:
@@ -113,7 +114,7 @@ Describe what you want in plain language. You do not need to name an agent or a 
 Run a codebase analysis on this repo.
 ```
 
-The orchestrator routes this to `k-developer`, which owns the `k-codebase-analysis` workflow.
+`konductor` spawns `k-developer`, which owns the `k-codebase-analysis` workflow, to run it.
 It produces `codebase-analysis.md` — architecture, SOLID evaluation, design patterns, dependencies,
 and technical debt, with three diagrams — then reports the file path and its top three
 recommendations.
@@ -124,16 +125,16 @@ Something larger, spanning several specialists:
 Design and implement a service that ingests IoT sensor events and alerts on anomalies.
 ```
 
-Here the orchestrator routes the design to `k-architect`, implementation to `k-developer`,
-and test coverage to `k-quality-assurance`, verifying each handoff before moving on.
+Here `konductor` names the `k-full-sdlc` SOP and its command, then waits for you to type it. That
+SOP runs each phase in a specialist subagent and reviews it before moving on.
 
-**Checkpoint.** Watch what happens after you ask for implementation work. You should see the
-orchestrator **delegate** to a specialist rather than start editing files itself. That is the whole
-design, and it is a *rule* rather than a wall in both runtimes. In Kiro CLI `konductor`
-pre-approves `fs_read` alone, so a write or a command stops to ask you rather than being refused;
-in Claude Code it holds `Write` and `Bash` outright. Either way what keeps it delegating is its
-routing rules — and, in Kiro CLI, your answer to the prompt. If it starts editing
-directly, see
+**Checkpoint.** Watch what happens when you ask for a single change, such as a bug fix in one
+module. You should see `konductor` edit files and run the build itself, then spawn a `k-*` reviewer
+when the phase closes. A multi-phase request like the one above gets an SOP name instead.
+In Kiro CLI `konductor` pre-approves `fs_read` alone, so each write or command stops to ask you
+first; in Claude Code it holds `Write` and `Bash` outright. If you want an orchestrator that hands
+every change to a specialist, use `konductor-mux-orchestrator` or `konductor-cmux-orchestrator`. If
+one of those starts editing directly, see
 [Troubleshooting](troubleshooting.md#3-the-orchestrator-does-the-work-itself-instead-of-delegating).
 
 ---

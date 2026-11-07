@@ -25,7 +25,7 @@ The NEVER DO rules live in the core rules, which every agent loads at session st
 
 1. **Read before edit**: see Engineering practices in the core rules
 2. **Follow existing patterns**: see Engineering practices and Writing habits in the core rules
-3. **Maker-checker** — Always run the maker-checker pattern: generate artifact → validate with the corresponding checker skill before presenting to the user
+3. **Maker-checker**: a separate reviewer runs as often as the orchestrator's Verification Protocol says. Before you return an artifact, apply its checker skill yourself.
 4. **Backward compatibility**: see Engineering practices in the core rules
 5. **Comment complex logic**: see Engineering practices in the core rules
 6. **Structured logging**: see Engineering practices in the core rules
@@ -55,7 +55,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 **CRITICAL (immediate stop):**
 
 - Any NEVER DO rule violated (see the core rules)
-- Artifact presented to user without checker validation (maker-checker bypass)
+- Artifact returned without the maker applying its checker skill, or a phase closed without the review the orchestrator's Verification Protocol requires
 - Code left in non-compiling state
 - Secrets or credentials in source code
 
@@ -72,7 +72,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 
 ### Review findings
 
-A CRITICAL or IMPORTANT review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it. A first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done until the user decides. A finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing. (Orchestrators: Review ceilings, Verification Protocol item 6.)
+A CRITICAL or IMPORTANT review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it. A first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done until the user decides. A finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing. (Orchestrators: Review ceilings, Verification Protocol item 6.) When you made the artifact, a CRITICAL or IMPORTANT finding you would reject in triage also blocks done until the user rules on it.
 
 ### House rules and review findings
 

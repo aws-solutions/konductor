@@ -35,11 +35,27 @@ not per individual commit.
 
 ### Changed
 
+- `konductor` now does the work itself and spawns one fresh `k-*` reviewer at each phase gate that needs one (next bullet); it
+  spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
+  work on disjoint files. An SOP's own instruction to spawn wins over that limit.
+- The Kiro skills index no longer tells an orchestrator to route a listed skill's task to a specialist; the loaded rules file (Direct Work, or the routing rules) decides, and the load rule asks for the skills the task needs instead of at most two.
+- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at most 50 changed lines whose build, test and lint passed (reported with the diff stat; not for auth, secrets, data or infrastructure), and triage findings against the request, house rules and spec before the fix.
+- `konductor` also closes a standalone document with its checker skill instead of a reviewer, and when it made the artifact a finding it would reject goes to you before it is dropped.
+- The handoff, split, denial and brief rules every orchestrator follows now live in
+  `context/k-orchestrator-shared.md`, loaded by all three orchestrators.
+- A specialist treats a quoted user decision in its brief as approval only for the action it
+  names, never for a rule 9 confirmation or an irreversible action; for rules 6 and 7 the entry
+  meets the exception for the action it names.
+- The rule against reading secret files now lives in the core rules, so all 11 agents load it.
+  From a file the user names, an agent reports key names or redacted values only, never the
+  secret values, in replies, briefs, commits or logs.
+  A `credentials_file` that `k-light-ui-testing` or `k-e2e-test-generation` passes in a brief counts as user-named.
 - constraints: the IMPORTANT tier header is one line again; the review-ceilings summary moves to its own `### Review findings` subsection.
 - sdlc-navigator lists `konductor` (orchestrator, routing) in its agent table and shows the Claude Code invocation beside the Kiro ones.
 - delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
 - persistent-memory: the ruling mechanics are their own "Ruling entries" subsection with numbered steps.
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
+- app-discovery, claude-teams-behavior and pre-planning-analysis state when to use them in one sentence that fits the Kiro skill index; claude-teams-behavior uses "PR diff" and "read-only checkout" and points at delegation-protocol for the worktree rule; pre-planning-analysis names an Owner per intent.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the

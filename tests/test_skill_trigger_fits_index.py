@@ -7,7 +7,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-SKILLS = ["persistent-memory", "delegation-protocol"]
+SKILLS = [
+    "persistent-memory",
+    "delegation-protocol",
+    "app-discovery",
+    "claude-teams-behavior",
+    "pre-planning-analysis",
+]
 TRIGGER_MAX_CHARS = 160
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -35,3 +41,9 @@ def test_use_sentence_fits_the_index(skill):
     use = [s for s in split_sentences(collapsed) if s.startswith(("Use ", "MUST USE"))]
     assert use, f"{skill}: no 'Use ...' sentence"
     assert len(use[0]) + 1 < TRIGGER_MAX_CHARS
+
+
+def test_pre_planning_analysis_trigger_leads_with_the_vague_request_case():
+    raw = (ROOT / "skills" / "pre-planning-analysis" / "SKILL.md").read_text(encoding="utf-8")
+    description = yaml.safe_load(raw.split("---")[1])["description"]
+    assert description.startswith("Use when a request is vague")
