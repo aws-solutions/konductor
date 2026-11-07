@@ -151,11 +151,11 @@ For Kiro CLI v3 and Claude Code this is enforced in config, not just in the prom
   Kiro CLI v3, synth also writes `excludedTools: ["invoke_sub_agent", "run_workflow"]` into every
   specialist, because `@builtin` carries `run_workflow`, which can start any agent. This was
   tested with kiro-cli 2.35.0; an older client that rejects unknown agent-file fields
-  may fail to load the specialists.
+  may fail to load the specialists. After an upgrade, open a specialist and run `/tools` to
+  confirm no new spawn-capable built-in appears.
 - Claude Code: synth drops `Agent(...)`, `Task` and `Workflow` from every specialist's `tools`
   list and denies them with `disallowedTools` as well, so a specialist with no `tools` list is
-  still blocked. The Kiro v3 exclusions were checked against kiro-cli 2.35.0; after an upgrade,
-  open a specialist and run `/tools` to confirm no new spawn-capable built-in appears.
+  still blocked.
 - Kiro CLI v2 is not covered. Its `@builtin` includes the `subagent` tool, and the v2 output does
   not remove it, so there only the prompt rule stops a specialist from spawning.
 
