@@ -84,21 +84,17 @@ Validate each finding to eliminate false positives. When in doubt, reject — fa
 
 ### 6. Adversarial Review
 
-Write the Step 7 report first, then return step 6 as a handoff naming `k-architect`, `k-adversarial-pull-request-review`, this SOP, and step 6 as the step to resume at, per the core rules' specialist handoffs. The report is written from the Step 5 list with an `Adversarial pass: pending (handoff to k-architect)` section, so a direct run still leaves `output_file` behind. Include the SOP parameters (`source_dir`, `review_type`, `output_file`, the base branch Step 1 resolved, and `pr_url` set to the `cr_url` value if one was given, since that is the name `k-adversarial-pull-request-review` declares), the Step 1 diff as `diff_input` or the command that reproduces it, the Step 2 file counts by category, and the Step 5 consolidated findings list in the handoff so the resumed run can merge into them and rewrite the report. If the list is long, write it to `.konductor/handoff/k-developer-code-review-<output_file stem>.md` and name that path, per the `delegation-protocol` skill's Handoff Pattern.
+Write the Step 7 report from the Step 5 list, then end your result with a handoff note for the orchestrator: "Run `k-adversarial-pull-request-review` on the Step 1 diff with `diff_input` = that diff and `output_file` = `<output_file stem>-adversarial.md`; then state its verdict and report path next to this report's verdict and, if you may write files, replace this report's `Adversarial pass:` line with `Adversarial pass: complete (<path>)`." Include in the note the Step 1 diff as `diff_input` or the command that reproduces it, and `pr_url` set to the `cr_url` value if one was given, since that is the name `k-adversarial-pull-request-review` declares. The orchestrator coordinates that SOP; on a direct run with no orchestrator, the note goes to the user.
 
 **Constraints:**
 
-- If you were resumed at step 6 with `k-architect`'s findings, You MUST first compare the handoff's `output_file` and Step 1 diff command with those in your resume brief; if either differs, stop and report the mismatch instead of merging. You MUST NOT hand off again. Apply the false-positive, merge and no-re-report constraints below to those findings and the Step 5 list from the handoff, then continue to Step 7, which overwrites the pending report.
-- You MUST skip this step only if `review_type` is `frontend` only (adversarial review targets backend/infra gaps); then continue to Step 7 with no pending section
-- You MUST NOT spawn `k-architect` yourself, whatever your tools allow; the handoff is the only path
-- You MUST write the report to `output_file` before returning the handoff, using the Step 7 structure plus the pending section, and its verdict line MUST read `Verdict: PENDING ADVERSARIAL PASS`
+- You MUST skip this step only if `review_type` is `frontend` only (adversarial review targets backend/infra gaps); then continue to Step 7 with `Adversarial pass: skipped (frontend only)` and no note
+- You MUST NOT spawn `k-architect` or run the adversarial SOP yourself, whatever your tools allow; the note is the only path
+- You MUST write the report to `output_file` before returning the note, using the Step 7 structure with the verdict from the Step 5 list and the line `Adversarial pass: not run (the orchestrator runs k-adversarial-pull-request-review on this diff)`
 - You MUST pass the same diff used in Step 1 as `diff_input`
 - Do not send the CR URL to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
-- You MUST apply the same false-positive criteria from Step 5 to adversarial findings before merging them
-- You MUST merge any new CRITICAL or IMPORTANT findings into the consolidated list from Step 5
-- You MUST NOT re-report findings already present in the consolidated list
 
-**Expected Output:** Consolidated findings list updated with any adversarial CRITICAL/IMPORTANT additions
+**Expected Output:** Report written from the Step 5 list, then a handoff note asking the orchestrator to run the adversarial review
 
 ### 7. Generate Review Report
 
@@ -114,6 +110,8 @@ Write the consolidated report to the output file.
   Files reviewed: [count by category]
   ## Summary
   [CRITICAL: N | IMPORTANT: N | SUGGESTION: N]
+  Verdict: [NEEDS FIXES | READY FOR CR | PENDING ADVERSARIAL PASS]
+  Adversarial pass: [not run (the orchestrator runs k-adversarial-pull-request-review on this diff) | complete (<path>) | skipped (frontend only)]
   ## Critical Issues
   [Numbered list with file:line references]
   ## Important Issues
@@ -122,8 +120,8 @@ Write the consolidated report to the output file.
   [Numbered list]
   ```
 
-- If Step 6 returned a handoff, the report was already written with the pending section; on resume, overwrite it with the merged list and no pending section
-- You MUST state the verdict: READY FOR CR / NEEDS FIXES; `PENDING ADVERSARIAL PASS` only while the pending section exists
+- You MUST state the verdict from the findings in the report: `NEEDS FIXES` if any CRITICAL or IMPORTANT finding is open; otherwise `READY FOR CR` when the adversarial pass is complete or skipped, or `PENDING ADVERSARIAL PASS` while it has not run. `READY FOR CR` never appears while the pass has not run.
+- The line after the verdict MUST read `Adversarial pass: not run (the orchestrator runs k-adversarial-pull-request-review on this diff)`, `Adversarial pass: complete (<path>)` or `Adversarial pass: skipped (frontend only)`
 - You MUST NOT print the full report in your response — reference the file
 
 **Expected Output:** Report file at `output_file` with verdict and finding counts

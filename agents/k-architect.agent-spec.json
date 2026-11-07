@@ -64,8 +64,7 @@
       "agentSopNames": [
         "k-design-doc-creation",
         "k-existing-design-review",
-        "k-principal-engineer-design-review",
-        "k-adversarial-pull-request-review"
+        "k-principal-engineer-design-review"
       ]
     },
     "context": {

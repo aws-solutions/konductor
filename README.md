@@ -367,7 +367,10 @@ to share memory with your team. Agents treat these files like AGENTS.md, and sha
 carries agent-written entries to every clone, so review memory diffs as you would AGENTS.md
 changes. The validator requires an `[origin:agent]` or `[origin:user]` tag on each new line;
 agents follow only untagged and `[origin:user]` entries, which were written by hand or at your
-request.
+request. Upgrading with a committed memory file: untagged lines were data before and are
+instructions now; list them with
+`grep -vE '^\s*-\s*(\[[0-9-]+\]\s*)?\[origin:' .konductor/memory/*.md` and tag agent-written
+ones `[origin:agent]`.
 
 | File | Holds |
 | --- | --- |
