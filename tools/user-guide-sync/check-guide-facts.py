@@ -63,7 +63,18 @@ STALE_DELEGATION_PHRASES = (
     "step 6 silently no-ops",
     "Its step-6 adversarial pass never fires",
 )
-KONDUCTOR_SPAWN_CELL = "the same 8 via Agent(...)"
+# konductor's own delegation cell is the one place "via Agent(...)" is correct. The
+# Markdown source writes it as "the same 8, via `Agent(...)`"; the bundle drops the
+# comma and the backticks.
+KONDUCTOR_SPAWN_CELL = re.compile(r"the same 8,? via Agent\(\.\.\.\)")
+_INLINE_CODE = re.compile(r"`([^`\n]*)`")
+
+
+def stale_delegation_phrases(text: str) -> list[str]:
+    """Stale phrases in `text`, matched with inline-code backticks stripped so the
+    Markdown sources are checked by the same rule as the published bundle."""
+    plain = KONDUCTOR_SPAWN_CELL.sub("", _INLINE_CODE.sub(r"\1", text))
+    return [phrase for phrase in STALE_DELEGATION_PHRASES if phrase in plain]
 
 
 def hidden_commands(cli_rs_text: str) -> set[str]:
@@ -459,12 +470,11 @@ def main() -> int:
     for rel, text in sources.items():
         if rel.name == "notes.md":
             continue  # records why the claim is wrong; naming it is the point
-        for phrase in STALE_DELEGATION_PHRASES:
-            if phrase in text.replace(KONDUCTOR_SPAWN_CELL, ""):
-                perm_fails.append(
-                    f"{rel}: says {phrase!r}: specialists hold no spawn tool "
-                    f"in Kiro CLI v3 or Claude Code"
-                )
+        for phrase in stale_delegation_phrases(text):
+            perm_fails.append(
+                f"{rel}: says {phrase!r}: specialists hold no spawn tool "
+                f"in Kiro CLI v3 or Claude Code"
+            )
         low = text.lower()
         for phrase in FORBIDDEN_PERMISSION_CLAIMS:
             if phrase in low:

@@ -5,10 +5,14 @@
 // transformers and the parser read this module and nothing else for that
 // question.
 
-/// Specialists are the `k-*` agents. They never spawn other agents, so each
-/// harness transformer strips spawn tools from their configs.
+use super::model::is_orchestrator;
+
+/// Every agent that is not a `konductor*` orchestrator is a specialist. Only
+/// the orchestrators delegate, so each harness transformer strips spawn tools
+/// from every other agent's config; an agent outside both naming conventions
+/// loses its spawn tools rather than keeping them.
 pub(crate) fn is_specialist(agent_name: &str) -> bool {
-    agent_name.starts_with("k-")
+    !is_orchestrator(agent_name)
 }
 
 /// Kiro's permission capability for spawning; also the v3 tool tag.
@@ -56,8 +60,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn is_specialist_matches_k_prefix_only() {
+    fn is_specialist_is_every_agent_but_the_orchestrators() {
         assert!(is_specialist("k-architect"));
+        assert!(is_specialist("reviewer"));
         assert!(!is_specialist("konductor"));
         assert!(!is_specialist("konductor-mux-orchestrator"));
         assert!(!is_specialist("konductor-cmux-orchestrator"));
