@@ -211,10 +211,11 @@ def test_code_review_skill_matches_review_ceilings():
     assert "More than one fix cycle attempted without escalation" in text
 
 
-def test_direct_work_carries_the_re_review_stop_wording():
+def test_direct_work_refers_to_review_ceilings_once():
     text = (ROOT / "context/k-direct-work.md").read_text()
-    for wording in (STOP_WORDING, PREEXISTING_WORDING, OPEN_WORDING):
-        assert text.count(wording) == 2, wording
+    assert text.count("Verification Protocol item 6") == 1
+    assert STOP_WORDING not in text
+    assert "list what item 6 calls pre-existing" in text
 
 
 RULE_4_START = "End every brief's CONTEXT"

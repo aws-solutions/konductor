@@ -169,7 +169,7 @@ rather than doing them themselves.
 ## Orchestration shapes
 
 `konductor` ships in its single-writer shape: it reads, writes and runs commands itself and spawns a
-fresh `k-*` reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none). The
+fresh `k-*` reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat). The
 coordinator shape, where the orchestrator never writes and every change goes to a specialist, is
 what `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` still use, and what a later
 release will expose as a setting.

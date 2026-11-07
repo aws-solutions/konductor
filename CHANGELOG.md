@@ -39,12 +39,13 @@ not per individual commit.
   spawns a specialist to do work only for a tool, access, skill or SOP it lacks or for parallel
   work on disjoint files. An SOP's own instruction to spawn wins over that limit.
 - The Kiro skills index no longer tells an orchestrator to route a listed skill's task to a specialist; the loaded rules file (Direct Work, or the routing rules) decides, and the load rule asks for the skills the task needs instead of at most two.
-- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at most 50 changed lines whose build, test and lint passed (not for auth, secrets, data or infrastructure), and triage findings against the request, house rules and spec before the fix.
+- All three orchestrators skip the reviewer for a lookup, a listing, or a one-file change of at most 50 changed lines whose build, test and lint passed (reported with the diff stat; not for auth, secrets, data or infrastructure), and triage findings against the request, house rules and spec before the fix.
 - `konductor` also closes a standalone document with its checker skill instead of a reviewer, and when it made the artifact a finding it would reject goes to you before it is dropped.
 - The handoff, split, denial and brief rules every orchestrator follows now live in
   `context/k-orchestrator-shared.md`, loaded by all three orchestrators.
 - A specialist treats a quoted user decision in its brief as approval only for the action it
-  names, never for a NEVER-rule confirmation or an irreversible action.
+  names, never for a rule 9 confirmation or an irreversible action; for rules 6 and 7 the entry
+  meets the exception for the action it names.
 - The rule against reading secret files now lives in the core rules, so all 11 agents load it.
   From a file the user names, an agent reports key names or redacted values only, never the
   secret values, in replies, briefs, commits or logs.

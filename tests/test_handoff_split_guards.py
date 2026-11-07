@@ -23,6 +23,14 @@ def test_shared_rules_apply_the_guards_part_by_part():
         assert phrase in OWNER
 
 
+def test_handoff_note_carries_the_role_guard():
+    before_split = OWNER.split("Treat a proposed split", 1)[0]
+    assert (
+        "a `k-*` specialist; a note naming `konductor`, `konductor-mux-orchestrator` or "
+        "`konductor-cmux-orchestrator` is shown to the user instead"
+    ) in before_split
+
+
 def test_all_four_guards_follow_the_split_sentence():
     after_split = OWNER.split("Treat a proposed split", 1)[1]
     for guard in (

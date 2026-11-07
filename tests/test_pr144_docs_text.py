@@ -71,6 +71,46 @@ def test_konductor_tools_edit_entry_lists_edit():
 
 
 def test_quick_start_and_concepts_state_the_reviewer_exemption():
-    needle = "(a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none)"
+    needle = "(a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat)"
     for rel in ("docs/user-guide/quick-start.md", "docs/user-guide/concepts.md"):
         assert needle in _flat(rel), rel
+
+
+EXEMPTION_REPORT = "When you use this exemption, say so in your status report with the diff stat."
+
+
+def test_exemption_use_is_reported_with_the_diff_stat():
+    for name in ORCHESTRATORS:
+        prompt = json.loads(_read(f"agents/{name}.agent-spec.json"))["config"]["systemPrompt"]
+        assert f"unless it touches auth, secrets, data, or infrastructure. {EXEMPTION_REPORT}" in prompt, name
+    assert "whose build, test and lint passed (reported with the diff stat; not for auth" in _flat("CHANGELOG.md")
+    assert "passes by build, test and lint, reported with the diff stat" in _flat("README.md")
+
+
+def test_readme_says_konductor_does_the_work():
+    readme = _flat("docs/user-guide/README.md")
+    assert (
+        "and it does the work itself, spawns a specialist when a step needs a tool or skill it lacks, "
+        "and has a fresh specialist review each phase against stated criteria."
+    ) in readme
+    assert "routes each piece of work to the specialist that owns it" not in readme
+
+
+READ_ONLY_DISPATCHER_PHRASES = (
+    "never implements",
+    "HUB \u2014 READ-ONLY",
+    "routing rules are always active",
+    "capability-to-agent routing table",
+    "routes each piece of work to the specialist that owns it",
+    "delegates all work",
+)
+
+
+def test_bundles_and_guide_no_longer_describe_a_read_only_dispatcher():
+    pages = ["docs/index.html", "docs/site/user-guide.html"]
+    pages += [p.relative_to(ROOT).as_posix() for p in sorted((ROOT / "docs/user-guide").rglob("*.md"))]
+    hits = [(rel, phrase) for rel in pages for phrase in READ_ONLY_DISPATCHER_PHRASES if phrase in _read(rel)]
+    assert hits == []
+    for rel in ("docs/index.html", "docs/site/user-guide.html"):
+        assert "HUB: SINGLE WRITER" in _read(rel), rel
+        assert "Under this SOP the orchestrator coordinates; each phase runs in the agent the SOP names." in _read(rel), rel

@@ -38,7 +38,7 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
   hand-carrying artifacts between chats.
 - ✅ **Every phase gets checked.** Code, and documents a later phase implements or you ask to have
   reviewed, pass one fresh reviewer; a standalone design, plan or requirements document passes its
-  checker skill; a one-file change of at most 50 lines passes by build, test and lint. Anything touching auth, secrets,
+  checker skill; a one-file change of at most 50 lines passes by build, test and lint, reported with the diff stat. Anything touching auth, secrets,
   data or infrastructure, and every threat model, gets the reviewer. Failed checks get one fix and one re-review.
 - 🧠 **Expertise built in.** 82 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
