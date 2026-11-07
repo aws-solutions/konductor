@@ -1919,7 +1919,7 @@ fn wiring_findings(
             CheckStatus::Warn,
             format!(
                 "the orchestration hook in {file} is not in the form konductor writes \
-                 ({command}); its binary was not checked"
+                 ({command}); its binary and install root were not checked"
             ),
             Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
         )
