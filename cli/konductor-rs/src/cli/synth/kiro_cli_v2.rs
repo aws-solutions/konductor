@@ -745,12 +745,13 @@ mod tests {
             resources: vec!["file://AGENTS.md".to_string()],
             welcome_message: None,
         };
-        let agent = agent_with_kiro("example", kiro);
+        // An orchestrator: specialists lose `subagent` and `@builtin` here.
+        let agent = agent_with_kiro("konductor", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
             render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
 
-        assert_eq!(file.name, "example");
+        assert_eq!(file.name, "konductor");
         assert_eq!(file.description, "A test agent.");
         assert_eq!(file.prompt, "You are a test agent.");
         assert_eq!(file.model, "claude-sonnet-5");

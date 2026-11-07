@@ -953,6 +953,23 @@ mod tests {
             None
         );
         std::fs::remove_dir_all(&root).ok();
+
+        // A context directory nested below the install root is not one of
+        // TRUSTED_CONTEXT_DIRS: the parent must match exactly.
+        let root = scratch_dir("persona-nested-context-dir");
+        seed(
+            &root,
+            &[(
+                "node_modules/pkg/.kiro/context/k-orchestrator-routing-rules.md",
+                "# Not rules\n",
+            )],
+        );
+        let manifest = read_manifest(&root).unwrap().unwrap();
+        assert_eq!(
+            installed_file(&manifest, &root, ROUTING_RULES_FILE_NAME),
+            None
+        );
+        std::fs::remove_dir_all(&root).ok();
     }
 
     #[test]

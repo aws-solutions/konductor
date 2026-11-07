@@ -68,11 +68,24 @@ STALE_DELEGATION_PHRASES = (
     "cannot spawn the architect in either runtime",
     "no spawn tool in either runtime",
 )
-KONDUCTOR_SPAWN_CELL = "the same 8 via Agent(...)"
+# konductor's own delegation cell is the one place "via Agent(...)" is correct. The
+# Markdown source writes it as "the same 8, via `Agent(...)`"; the bundle drops the
+# comma and the backticks.
+KONDUCTOR_SPAWN_CELL = re.compile(r"the same 8,? via Agent\(\.\.\.\)")
+_INLINE_CODE = re.compile(r"`([^`\n]*)`")
 # kiro-cli 3.1.0 ships v2 as its default engine, and no minimum client version is
 # enforced; versions are checked, not required.
 STALE_VERSION_CLAIMS = ("last v2 release", "2.36.0 or later")
 KIRO_V2_SYNTH = Path("cli") / "konductor-rs" / "src" / "cli" / "synth" / "kiro_cli_v2.rs"
+
+
+def stale_delegation_phrases(text: str) -> list[str]:
+    """Stale phrases in `text`, matched with inline-code backticks stripped so the
+    Markdown sources are checked by the same rule as the published bundle."""
+    plain = KONDUCTOR_SPAWN_CELL.sub("", _INLINE_CODE.sub(r"\1", text))
+    return [phrase for phrase in STALE_DELEGATION_PHRASES if phrase in plain]
+
+
 # `konductor` does the work itself; only the mux and cmux orchestrators are read-only
 # dispatchers. These describe the old all-dispatcher shape.
 STALE_DISPATCHER_PHRASES = (
@@ -492,12 +505,11 @@ def main() -> int:
     for rel, text in sources.items():
         if rel.name == "notes.md":
             continue  # records why the claim is wrong; naming it is the point
-        for phrase in STALE_DELEGATION_PHRASES:
-            if phrase in text.replace(KONDUCTOR_SPAWN_CELL, ""):
-                perm_fails.append(
-                    f"{rel}: says {phrase!r}: specialists hold no spawn tool "
-                    f"in any runtime"
-                )
+        for phrase in stale_delegation_phrases(text):
+            perm_fails.append(
+                f"{rel}: says {phrase!r}: specialists hold no spawn tool "
+                f"in any runtime"
+            )
         for phrase in STALE_DISPATCHER_PHRASES:
             if phrase in text:
                 perm_fails.append(

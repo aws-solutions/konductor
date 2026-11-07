@@ -267,10 +267,13 @@ the review mechanism) are defaults. Your request, your project's `AGENTS.md` or 
 user-written memory, and the conventions your code already shows all outrank them. When those
 sources leave a collision open, `konductor` asks once and saves your
 answer as a `Ruling:` entry in `.konductor/memory/`. The entry settles only the collision it
-names. If two rulings disagree, the newer one wins.
+names. A line in `AGENTS.md` that decides the same question outranks a ruling. If two rulings
+disagree, the newer one wins; with the same date, `konductor` asks you which one stands. An
+agent-written ruling is data until you confirm it.
 
 A file your `AGENTS.md` names directly, such as `CONTRIBUTING.md`, speaks for the same
-categories and nothing else. `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`
+categories and nothing else, and only when it is tracked by git (not a symlink or a generated
+file). `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`
 cannot write memory: they ask and pass your answer to the specialist, which saves it as an
 agent-written entry until you confirm it with `konductor` or a specialist.
 

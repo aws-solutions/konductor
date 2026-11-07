@@ -1795,6 +1795,13 @@ fn ignored_project_finding(
         ModeResolution::Explicit(mode) => mode.as_str(),
         _ => "auto",
     };
+    // A project value that matches the resolved mode changes nothing;
+    // one that differs means sessions run a mode the project did not ask for.
+    let status = if ignored.iter().any(|(_, value)| value != resolved) {
+        CheckStatus::Warn
+    } else {
+        CheckStatus::Info
+    };
     let paths = ignored
         .iter()
         .map(|(path, _)| path.display().to_string())
@@ -1802,7 +1809,7 @@ fn ignored_project_finding(
         .join(" and ");
     let verb = if ignored.len() == 1 { "sets" } else { "set" };
     let mut finding = OrchestrationFinding::new(
-        CheckStatus::Info,
+        status,
         format!(
             "orchestration.mode is `{resolved}`; {paths} also {verb} it, but only \
              ~/.konductor/config.yml is read"
@@ -6274,8 +6281,9 @@ mod tests {
     }
 
     /// A project-layer value is ignored by the hook, so a plain
-    /// `doctor` must say so: `info`, both files named in the summary,
-    /// and one `detail` line per file.
+    /// `doctor` must say so: both files named in the summary and one
+    /// `detail` line per file. The user has no setting, so sessions run
+    /// `auto` while one project asked for `coordinator`: `warn`.
     #[test]
     fn check_orchestration_names_every_ignored_project_value() {
         let exe = fake_konductor_binary("orch-project-exe");
@@ -6300,7 +6308,7 @@ mod tests {
             source_file.display(),
             destination_file.display()
         );
-        assert_eq!(result.status, CheckStatus::Info);
+        assert_eq!(result.status, CheckStatus::Warn, "{}", result.summary);
         assert_eq!(
             result.summary,
             format!(
@@ -6326,6 +6334,7 @@ mod tests {
         assert_eq!(ignored_lines.len(), 2, "{:?}", result.detail);
 
         let same = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(same.status, CheckStatus::Warn, "{}", same.summary);
         assert_eq!(
             same.summary,
             format!(
@@ -6340,6 +6349,33 @@ mod tests {
             &home,
             &exe.parent().unwrap().to_path_buf(),
         ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    /// An ignored project value equal to the mode sessions already run
+    /// changes nothing, so it is `info`, not `warn`.
+    #[test]
+    fn check_orchestration_is_info_when_the_ignored_project_value_matches() {
+        let exe = fake_konductor_binary("orch-project-match-exe");
+        let destination = healthy_v3_target("orch-project-match-dest", &exe);
+        let dir = destination.join(config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join(config::CONFIG_FILE_NAME),
+            "orchestration:\n  mode: auto\n",
+        )
+        .unwrap();
+        let home = home_with_mode("orch-project-match-home", None);
+
+        let result = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(result.status, CheckStatus::Info, "{}", result.summary);
+        assert!(
+            result.summary.starts_with("orchestration.mode is `auto`;"),
+            "{}",
+            result.summary
+        );
+        for dir in [&destination, &home, &exe.parent().unwrap().to_path_buf()] {
             fs::remove_dir_all(dir).ok();
         }
     }
@@ -6375,8 +6411,9 @@ mod tests {
         }
     }
 
-    /// A project under `$HOME` with its own config is still reported; the
-    /// user file at `$HOME` is not.
+    /// A project under `$HOME` with its own config is still reported (its
+    /// `auto` differs from the user's `coordinator`, so `warn`); the user
+    /// file at `$HOME` is not.
     #[test]
     fn check_orchestration_reports_a_project_file_under_home_but_not_the_user_file() {
         let exe = fake_konductor_binary("orch-home-project-exe");
@@ -6394,7 +6431,7 @@ mod tests {
 
         let result = check_orchestration(&home, &project, Some(&home));
         let project_file = project.join(".konductor/config.yml");
-        assert_eq!(result.status, CheckStatus::Info);
+        assert_eq!(result.status, CheckStatus::Warn, "{}", result.summary);
         assert_eq!(
             result.summary,
             format!(

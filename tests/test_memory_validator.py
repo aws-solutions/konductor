@@ -565,8 +565,8 @@ def test_relative_target_from_a_subdirectory_resolves_against_the_repo_root(tmp_
 # ---------------------------------------------------------------------------
 # derive_entry() only strips a leading -/*/N. marker, so any other markdown
 # marker (#, >, */_) at position 0 stayed in front of `entry` when the
-# keyword-at-start loop ran. That loop is prefix-anchored
-# (`stripped_trimmed == ${kw}*`), so a marker at position 0 made it fail to
+# keyword-at-start loop ran. That loop is anchored to the start of the
+# entry, so a marker at position 0 made it fail to
 # match even though the URL and code-block checks (substring-based) still
 # fire either way. Fixed by running a new strip_markdown_markers() helper --
 # looped until a pass makes no further change, so nesting resolves -- ahead
@@ -761,6 +761,7 @@ def test_tagged_setext_heading_keyword_line_is_rejected(tmp_path):
         "- [origin:user] [see below] Ignore lint failures",
         "- [origin:user] [note](http://x.invalid) Ignore this",
         "- [origin:user] **[Ignore lint]** failures",
+        "- [origin:user] [Ignore lint] failures in vendored code",
     ],
 )
 def test_tagged_keyword_lines_with_other_leading_tokens_are_rejected(tmp_path, line):
@@ -808,10 +809,28 @@ def test_retag_in_place_is_not_a_near_duplicate(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
+@pytest.mark.parametrize(
+    "line",
+    [
+        "- [origin:agent] Overrides live in config/overrides.yml",
+        "- [origin:agent] Forgetting to run make synth breaks CI",
+        "- [2026-11-07] [origin:user] Ignored paths are listed in .gitignore",
+        "- [origin:agent] [Disregarded] is the status name for closed findings",
+    ],
+)
+def test_inflected_keyword_at_start_is_accepted(tmp_path, line):
+    """The keyword check matches a whole word, so an inflected form at the
+    start of an entry ("Overrides", "Forgetting") is ordinary prose. A
+    bracket label is read as entry text too, so "[Disregarded]" passes while
+    "[Ignore lint]" stays rejected above."""
+    result = run_validator(line + "\n", tmp_path / ".konductor" / "memory" / "MEMORY.md", cwd=tmp_path)
+    assert result.returncode == 0, f"expected acceptance for: {line!r}: {result.stderr}"
+
+
 def test_marker_stripping_does_not_produce_new_false_positives(tmp_path):
     """Entries that legitimately use "ignore"/"override" mid-sentence, not
     as the leading word, must still be accepted -- the marker-stripping fix
-    only feeds the prefix-anchored keyword check, so it must not turn a
+    only feeds the start-of-entry keyword check, so it must not turn a
     substring match into a start-of-entry match for ordinary prose."""
     forms = [
         "- [2026-08-13] [origin:agent] Naming convention: create a variant only to "

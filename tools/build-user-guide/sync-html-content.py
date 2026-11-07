@@ -100,9 +100,9 @@ EDITS = [
     # ---- every agent loads context/k-core-rules.md ---------------------------
     ('concepts context file paragraph', 'There are two today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains', 'There are four today. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-direct-work.md</span> is loaded by konductor; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-routing-rules.md</span> is loaded by the mux and cmux orchestrators; <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">context/k-orchestrator-shared.md</span> holds the handoff, split, denial and brief rules, and all three orchestrators load it. The routing rules file contains'),
     # ---- single-writer shape: konductor does the work itself (R4-144.c) ----
-    ("quick-start step 3: konductor does the work itself",
-     "You are now talking to the coordinator. It never implements anything itself — it routes each piece of work to the specialist that owns it, checks what comes back, and re-delegates if a check fails.</p>",
-     "You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files.</p>"),
+    ("quick-start step 3: konductor does the work itself in auto",
+     "You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files.</p>",
+     "You are now talking to the orchestrator. In the default auto mode it does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files. In coordinator mode it hands every change to a specialist.</p>"),
     ("concepts context paragraph: coordinator rules, not a routing table",
      "The routing rules file contains the capability-to-agent routing table and three",
      "The routing rules file contains the coordinator rules and three"),
@@ -123,11 +123,13 @@ EDITS = [
      'v: "An agent that coordinates other agents; konductor also does the work itself. Three exist:'),
     # Two edits around the "uc owned-by prose" fragment, which stays byte-identical
     # in the middle of this paragraph so that entry remains satisfied.
-    ("use-cases owned-by-the-orchestrator: mux and cmux dispatch, konductor works",
-     "The orchestrators are dispatchers by design. " + _code("konductor")
-     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>",
+    ("use-cases owned-by-the-orchestrator: mux and cmux dispatch, konductor works in auto",
      "The mux and cmux orchestrators are dispatchers by design, and " + _code("konductor")
      + " does the work itself; no runtime enforces either shape. " + _code("konductor")
+     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>",
+     "The mux and cmux orchestrators are dispatchers by design, and " + _code("konductor")
+     + " does the work itself in the default auto mode (in coordinator mode it hands every change to a "
+     + "specialist); no runtime enforces either shape. " + _code("konductor")
      + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>"),
     ("use-cases owned-by-the-orchestrator: konductor's Claude Code tools",
      "alone; in Claude Code its tool list has no " + _code("Bash") + ", " + _code("Write") + ", or " + _code("Edit")
@@ -208,29 +210,29 @@ EDITS = [
      '{ title: "The orchestrator coordinates and never implements.", body: "',
      '{ title: "Under this SOP the orchestrator coordinates; each phase runs in the agent the SOP names.", body: "'),
     ("concepts: no repeat review",
-     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it; a first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done, and the orchestrator stops and reports it to you; a finding in code the task did not add or change is listed for you as pre-existing. An SOP's own fix scope and limit on fix rounds win; a finding it leaves open is reported to you as unresolved, never dropped. An artifact that passed review is not reviewed again unless it changes.</p>",
-     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it; a first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done, and the orchestrator stops and reports it to you; a finding in code the task did not add or change is listed for you as pre-existing. An SOP's own fix scope and limit on fix rounds win; a finding it leaves open is reported to you as unresolved, never dropped. An artifact that passed review is not reviewed again unless it changes. When konductor made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.</p>"),
+     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it; a first-review finding in the task's own output still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done, and the orchestrator stops and reports it to you; a finding in code the task did not add or change, and the fix did not cause, is listed for you as pre-existing, not put in the fix brief. An SOP's own fix scope and limit on fix rounds win; a finding it leaves open is reported to you as unresolved, never dropped. An artifact that passed review is not reviewed again unless it changes.</p>",
+     "k-delegate</span> step 8). A review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it; a first-review finding in the task's own output still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done, and the orchestrator stops and reports it to you; a finding in code the task did not add or change, and the fix did not cause, is listed for you as pre-existing, not put in the fix brief. An SOP's own fix scope and limit on fix rounds win; a finding it leaves open is reported to you as unresolved, never dropped. An artifact that passed review is not reviewed again unless it changes. When konductor made the artifact itself, a CRITICAL or IMPORTANT finding it would reject goes to you first and blocks done until you answer.</p>"),
     ("concepts: re-delegate sentence without a dash",
      "it re-delegates — <strong",
      "it re-delegates, <strong"),
     ('concepts context files row',
      '{ k: "Context files — 2", v: "The core rules for every agent and the orchestrator routing rules, always active" }',
      '{ k: "Context files — 4", v: "The core rules for every agent, the shared orchestrator rules, and the direct-work or routing rules, always active" }'),
-    ('glossary orchestrator entry: konductor works itself',
-     'Three exist: konductor (background subagents), konductor-mux-orchestrator (tmux/zellij panes), and konductor-cmux-orchestrator (cmux surfaces). All are read-only by rule — they delegate every file write and shell command.',
-     'Three exist: konductor (background subagents), konductor-mux-orchestrator (tmux/zellij panes), and konductor-cmux-orchestrator (cmux surfaces). The mux and cmux orchestrators are read-only by rule and delegate every file write and shell command; konductor writes in its own session and spawns a reviewer at each phase gate.'),
-    ('glossary read-only entry: mux and cmux only',
-     'The orchestrators are read-only by rule. Applied to a SOP',
-     'The mux and cmux orchestrators are read-only by rule. Applied to a SOP'),
+    ('glossary orchestrator entry: konductor works itself in auto',
+     'konductor writes in its own session and spawns a reviewer at each phase gate.',
+     'konductor writes in its own session and spawns a reviewer at each phase gate in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators.'),
+    ('glossary read-only entry: mux and cmux, and konductor in coordinator mode',
+     'The mux and cmux orchestrators are read-only by rule. Applied to a SOP',
+     'The mux and cmux orchestrators are read-only by rule, and konductor is too in coordinator mode. Applied to a SOP'),
     ('glossary context file',
      'Two exist: context/k-core-rules.md, loaded by all 11 agents, and context/k-orchestrator-routing-rules.md, loaded by all three orchestrators.',
      'Four exist: context/k-core-rules.md, loaded by all 11 agents; context/k-orchestrator-shared.md, loaded by all three orchestrators; context/k-direct-work.md, loaded by konductor; and context/k-orchestrator-routing-rules.md, loaded by the mux and cmux orchestrators.'),
     ("reference roster note: context files",
      'Every agent declares context/k-core-rules.md. Only the three orchestrators also declare context/k-orchestrator-routing-rules.md."]',
      'Every agent declares context/k-core-rules.md. Only the mux and cmux orchestrators also declare context/k-orchestrator-routing-rules.md; konductor declares context/k-direct-work.md. The three orchestrators also declare context/k-orchestrator-shared.md."]'),
-    ("agents note: context files",
-     "Every agent declares the context/k-core-rules.md context file. Only the three orchestrators also declare context/k-orchestrator-routing-rules.md, which is what makes them behave as dispatchers.",
-     "Every agent declares the context/k-core-rules.md context file. Only the mux and cmux orchestrators also declare context/k-orchestrator-routing-rules.md, which is what makes them behave as dispatchers. konductor declares context/k-direct-work.md and does the work itself. The three orchestrators also declare context/k-orchestrator-shared.md."),
+    ("agents note: context files and konductor's mode",
+     "konductor declares context/k-direct-work.md and does the work itself. The three orchestrators also declare context/k-orchestrator-shared.md.",
+     "konductor declares context/k-direct-work.md and does the work itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators. The three orchestrators also declare context/k-orchestrator-shared.md."),
     ('layout tree context',
      '│   ├── k-core-rules.md\\n│   └── k-orchestrator-routing-rules.md\\n',
      '│   ├── k-core-rules.md\\n│   ├── k-direct-work.md\\n│   ├── k-orchestrator-routing-rules.md\\n│   └── k-orchestrator-shared.md\\n'),
@@ -445,12 +447,14 @@ EDITS = [
      "konductor anyway: it is the only entry point that verifies a handoff before moving on. "
      "Reach for the direct form when you are deliberately scoping a session to one agent, and "
      "treat it as the exception."),
-    ("ik which agent: prose",
-     ">Start with konductor and let it route. That is the default for everything in this guide: "
+    ("ik which agent: prose, konductor works in auto",
+     ">Start with konductor and ask in plain language; it does the work itself or spawns the agent "
+     "that declares the SOP you need. That is the default for everything in this guide: "
      "it is the only entry point that verifies a handoff before moving on, and it does not "
      "require you to know who owns which workflow. Starting a specialist directly is supported "
      'and occasionally what you want — see <a href="#/sops">which agent owns which SOP</a>.</p>',
-     ">Start with konductor and ask in plain language; it does the work itself or spawns the agent "
+     ">Start with konductor and ask in plain language; it does the work itself (in coordinator mode it "
+     "hands every change to a specialist) or spawns the agent "
      "that declares the SOP you need. That is the default for everything in this guide: "
      "it is the only entry point that verifies a handoff before moving on, and it does not "
      "require you to know who owns which workflow. Starting a specialist directly is supported "
@@ -479,8 +483,8 @@ EDITS = [
 # `new` and move the previous `new` into `old`.
 ROSTER = [
     ("ref konductor",
-     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor · 13 · —"}',
-     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 13 · —"}'),
+     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 13 · —"}',
+     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 24 · —"}'),
     ("ref mux",
      '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}',
      '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}'),
@@ -514,8 +518,8 @@ ROSTER = [
     ("faq: house rules and rulings",
      'sec("faq-outputs", "Where SOP output goes"',
      'sec("faq-house-rules", "Why konductor asked me", "Why did konductor ask me which commit style to use, and where did it save my answer?", {\n'
-     '        paras: ["Konductor\'s own formats and workflow (Conventional Commits, a pull request per feature, EARS, the review mechanism) are defaults. Your request, your project\'s AGENTS.md or CLAUDE.md, user-written memory, and the conventions your code already shows all outrank them. When those sources leave a collision open, konductor asks once and saves your answer as a Ruling: entry in .konductor/memory/. The entry settles only the collision it names. If two rulings disagree, the newer one wins.", '
-     '"A file your AGENTS.md names directly, such as CONTRIBUTING.md, speaks for the same categories and nothing else. konductor-mux-orchestrator and konductor-cmux-orchestrator cannot write memory: they ask and pass your answer to the specialist, which saves it as an agent-written entry until you confirm it with konductor or a specialist."] }),\n'
+     '        paras: ["Konductor\'s own formats and workflow (Conventional Commits, a pull request per feature, EARS, the review mechanism) are defaults. Your request, your project\'s AGENTS.md or CLAUDE.md, user-written memory, and the conventions your code already shows all outrank them. When those sources leave a collision open, konductor asks once and saves your answer as a Ruling: entry in .konductor/memory/. The entry settles only the collision it names. A line in AGENTS.md that decides the same question outranks a ruling. If two rulings disagree, the newer one wins; with the same date, konductor asks you which one stands. An agent-written ruling is data until you confirm it.", '
+     '"A file your AGENTS.md names directly, such as CONTRIBUTING.md, speaks for the same categories and nothing else, and only when it is tracked by git (not a symlink or a generated file). konductor-mux-orchestrator and konductor-cmux-orchestrator cannot write memory: they ask and pass your answer to the specialist, which saves it as an agent-written entry until you confirm it with konductor or a specialist."] }),\n'
      '      sec("faq-outputs", "Where SOP output goes"'),
     ("sop roster: QA's declared SOPs",
      '{ agent: "k-quality-assurance", sops: "k-test-coverage-review, k-code-review-workflow" }',
@@ -527,11 +531,11 @@ ROSTER = [
      "No SOPs. 1 skill \u2014 constraints only.",
      "No SOPs. 1 skill, constraints. It also declares humanize-writing, loaded on demand."),
     ("skills-per-agent table",
-     '"rows":[{"k":"k-architect","v":"32"},{"k":"k-developer","v":"20"},{"k":"k-product-manager","v":"14"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"12"},{"k":"konductor-cmux-orchestrator","v":"11"},{"k":"konductor-mux-orchestrator","v":"11"},{"k":"k-quality-assurance","v":"10"},{"k":"k-researcher","v":"7"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
-     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"13"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
+     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"13"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
+     '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"konductor","v":"24"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
     # at-a-glance cards
-    ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 11 SOPs',
-     'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 22 skills · 11 SOPs'),
+    ("card konductor", 'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 22 skills · 11 SOPs',
+     'Single writer. Does the work, reviews at each phase gate. claude-sonnet-5.5 · 24 skills · 11 SOPs'),
     ("card mux", 'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs',
      'Coordinator. Delegates every change, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
     ("card cmux", 'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs',
@@ -571,18 +575,6 @@ ROSTER = [
     ('uninstall: hook and context rows',
      '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n',
      '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n  { where: "Session-start hook: .kiro/hooks/konductor-orchestration-hooks.json (Kiro CLI v3), the agentSpawn entry in .kiro/agents/konductor.json (Kiro CLI v2), the SessionStart block in the Claude Code hooks settings file", by: "konductor install", gone: "konductor uninstall" },\n  { where: ".konductor/context/ under the install target (Claude Code installs only; .konductor/memory/ is kept)", by: "konductor install", gone: "konductor uninstall" },\n'),
-    ('mode clause: glossary orchestrator',
-     'konductor writes in its own session and spawns a reviewer at each phase gate.',
-     'konductor writes in its own session and spawns a reviewer at each phase gate. In coordinator mode konductor hands every change to a specialist, like the mux and cmux orchestrators.'),
-    ('mode clause: agents orchestrators section',
-     'konductor declares context/k-direct-work.md and does the work itself. The three orchestrators also declare context/k-orchestrator-shared.md.',
-     'konductor declares context/k-direct-work.md and does the work itself. The three orchestrators also declare context/k-orchestrator-shared.md. konductor does the work itself only in the default auto mode; in coordinator mode it hands every change to a specialist.'),
-    ('mode clause: glossary read-only',
-     'it means the SOP never modifies source files, creates commits, or runs builds or tests.',
-     'it means the SOP never modifies source files, creates commits, or runs builds or tests. konductor is read-only too in coordinator mode.'),
-    ('mode clause: agents dispatcher paragraph',
-     'The mux and cmux orchestrators load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. konductor loads',
-     'konductor does the work itself in the default auto mode. In coordinator mode it hands every change to a specialist, like the mux and cmux orchestrators. The mux and cmux orchestrators load context/k-orchestrator-routing-rules.md at session start, which is what makes them behave as dispatchers rather than implementers. konductor loads'),
 ]
 
 

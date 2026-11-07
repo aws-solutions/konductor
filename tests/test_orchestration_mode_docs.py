@@ -70,6 +70,13 @@ def test_readme_states_resume_restate_and_per_harness_owner():
     assert "`Orchestration: auto`, so a session that changed mode" in text
 
 
+def test_top_readme_qualifies_auto_injects_nothing_and_lists_the_resume_line():
+    text = _flat(ROOT / "README.md")
+    assert "the hook injects nothing and the session costs nothing extra, except that" in text
+    assert "`Orchestration: auto`, so a session that changed mode sees the change" in text
+    assert "| `Orchestration: auto` | The mode changed to `auto` since the session started" in text
+
+
 def test_hook_location_has_one_owner():
     assert OWNER_SENTENCE in _flat(ROOT / "cli" / "README.md")
     for path in [ROOT / "README.md", GUIDE / "concepts.md", GUIDE / "faq.md"]:
@@ -95,6 +102,36 @@ def test_html_faq_qualifies_konductor_editing_by_mode():
         text = bundle.read_text()
         assert sentence in text, bundle.name
         assert '\\", \\"konductor edits' not in text, bundle.name
+
+
+MODE_CLAUSE_SENTENCES = [
+    ("agents.md", "`konductor` declares `context/k-direct-work.md` and does the work itself in the default "
+     "`auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators."),
+    ("agents.md", "`konductor` loads `context/k-direct-work.md` instead and writes and runs commands itself in the "
+     "default `auto` mode; it commits when you ask. In `coordinator` mode it hands every change to a specialist, "
+     "like the mux and cmux orchestrators."),
+    ("glossary.md", "`konductor` writes in its own session and spawns a reviewer at each phase gate in the default "
+     "`auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators."),
+    ("glossary.md", "The **mux and cmux orchestrators** are read-only by rule, and `konductor` is too in "
+     "`coordinator` mode."),
+    ("quick-start.md", "In the default `auto` mode it does the work itself, in this one session, and spawns a "
+     "fresh `k-*` reviewer when a phase closes"),
+    ("tasks/install-kiro-cli.md", "it does the work itself (in `coordinator` mode it hands every change to a "
+     "specialist) or spawns the agent that declares the SOP you need"),
+    ("use-cases/plan-and-verify-work.md", "does the work itself in the default `auto` mode (in `coordinator` mode "
+     "it hands every change to a specialist); no runtime enforces either shape"),
+]
+
+
+def test_html_bundle_carries_the_markdown_mode_clause_sentences():
+    """The bundle qualifies each self-work claim in the sentence that makes it,
+    as the Markdown does, instead of appending a second, qualified claim."""
+    bundles = [b.read_text() for b in [ROOT / "docs" / "index.html", ROOT / "docs" / "site" / "user-guide.html"]]
+    for name, sentence in MODE_CLAUSE_SENTENCES:
+        assert sentence in _flat(GUIDE / name), (name, sentence)
+        plain = sentence.replace("`", "").replace("**", "")
+        for text in bundles:
+            assert plain in text, (name, plain)
 
 
 def test_owner_bullet_describes_out_of_trust_install_as_fallback():
