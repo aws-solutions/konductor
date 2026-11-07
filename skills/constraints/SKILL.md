@@ -61,8 +61,6 @@ See Engineering practices in the core rules: for an unverified claim that matter
 
 **IMPORTANT (fix before proceeding):**
 
-A review finding gets one fix and one re-review of every first-review CRITICAL or IMPORTANT plus the fix and what depends on it. A first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports on the fix or that the fix caused, carried over or new, blocks done until the user decides. A finding the first review did not report, outside the fix and not caused by it, is listed as pre-existing.
-
 - ALWAYS DO rule not followed
 - Circuit breaker not triggered after 2 failed attempts
 - Uncertainty level not disclosed when relevant
@@ -71,3 +69,7 @@ A review finding gets one fix and one re-review of every first-review CRITICAL o
 
 - Could improve comment coverage on complex logic
 - Could strengthen logging with additional context fields
+
+### Review findings
+
+A CRITICAL or IMPORTANT review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it. A first-review finding still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done until the user decides. A finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing. (Orchestrators: Review ceilings, Verification Protocol item 6.)

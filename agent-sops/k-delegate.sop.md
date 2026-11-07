@@ -196,7 +196,7 @@ After receiving subagent results, verify completeness.
   - Did agent avoid MUST NOT DO prohibitions?
   - Are results usable for next steps?
 - You MUST re-delegate if any check fails (max 2 fix cycles)
-- The 2-cycle limit covers this checklist only. Review findings get one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus what the fix changed and what calls, uses or depends on it, per Review ceilings in the orchestrator's Verification Protocol; a first-review finding still open, any CRITICAL or IMPORTANT finding that re-review reports on the fix, carried over or new, and any the fix caused in what depends on it, blocks done; a finding the first review did not report, outside the fix and not caused by it, is listed for the user as pre-existing. Another SOP's own limit on fix rounds wins; a finding that blocks done under this rule still blocks it after the SOP's last re-review.
+- The 2-cycle limit covers this checklist only. Review findings follow Review ceilings (Verification Protocol item 6 in the orchestrator's prompt): one fix, one re-review of every first-review CRITICAL or IMPORTANT finding plus what the fix changed and what depends on it; item 6 says what blocks done and what is listed as pre-existing, and an SOP's own fix scope and round limit win.
 
 **Expected Output:** Completed verification checklist with pass/fail per item, and either confirmation of success or a re-delegation prompt
 
