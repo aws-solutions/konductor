@@ -24,6 +24,9 @@
     "simple-explain-file": [
       "guide"
     ],
+    "simple-readme-section": [
+      "readme"
+    ],
     "orch-input-validation": [
       "code",
       "tests",

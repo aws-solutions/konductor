@@ -10,6 +10,8 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const P = require('../../judge/pack/index.js');
+const { loadTasks } = require('../lib/tasks.js');
+const { taskRevision } = require('../../judge/revision.js');
 
 const pack = P.loadPack('quality');
 const frozen = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'quality-pack-66.json'), 'utf8'));
@@ -198,4 +200,26 @@ test('guide-accuracy needs one quote from the output; guide-consistent-terms nee
   assert.deepEqual(out.map((c) => [c.verdict, c.evidenceFound]), [['pass', true], ['fail', true]]);
   const one = P.scoreReply([{ id: 'guide-consistent-terms', verdict: 'partial', evidence: 'The switch --strict makes errors fatal.' }], [byId('guide-consistent-terms')], bundle)[0];
   assert.deepEqual([one.verdict, one.evidenceFound], ['fail', false]);
+});
+
+// ---- simple-readme-section is scored by the pack ----
+
+const BENCH = path.join(__dirname, '..', '..');
+const README_TASK = { id: 'simple-readme-section', class: 'simple', prompt: 'Add a Usage section to README.md.' };
+
+test('simple-readme-section declares readme, so the README criteria apply to a changed README and nothing else does', () => {
+  assert.deepEqual(pack.taskArtifacts['simple-readme-section'], ['readme']);
+  const made = status(P.applicability(pack, README_TASK, [file('README.md', '# R\n\n## Usage\n\nCall slugify.\n', '# R\n')]));
+  assert.equal(made['doc-accuracy'].status, 'judged');
+  assert.equal(made['cq-reader-order'].status, 'judged');
+  assert.equal(made['cq-plain-typography'].status, 'auto');
+  for (const id of ['mod-single-responsibility', 'chg-no-leftovers', 'test-asserts-behavior', 'guide-accuracy', 'des-consistency']) assert.equal(made[id].status, 'na', id);
+  const untouched = status(P.applicability(pack, README_TASK, []));
+  assert.equal(untouched['doc-accuracy'].status, 'na');
+});
+
+test('the task text the judge sees for the earlier tasks is unchanged, so their saved judgments keep their task revision', () => {
+  const tasks = loadTasks(BENCH);
+  const revisions = { 'design-hold-service': '92b124375998', 'simple-readme-section': '4d95a9eec715', 'simple-explain-file': 'ddc4cebafd8c' };
+  for (const [id, rev] of Object.entries(revisions)) assert.equal(taskRevision(tasks.get(id)), rev, id);
 });
