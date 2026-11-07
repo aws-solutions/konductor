@@ -295,7 +295,7 @@ it recognises a `konductor` session but cannot apply `coordinator`, it prints on
 and the session runs as `auto`.
 
 The first reply of every `konductor` session states the mode once, and the reply after a Claude Code
-resume or compact states it again:
+resume or compact states it again when the mode changed:
 
 | Reply | Meaning |
 | --- | --- |
