@@ -28,7 +28,7 @@ and the MCP registry entries.
 
 | Agent | Role | Model | Skills | SOPs | MCP |
 | --- | --- | --- | --- | --- | --- |
-| `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 22 | 11 | — |
+| `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 24 | 11 | — |
 | `konductor-mux-orchestrator` | Coordinator. Delegates every change, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 10 | — |
 | `konductor-cmux-orchestrator` | Coordinator. Delegates every change, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 10 | — |
 | `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
@@ -143,7 +143,8 @@ pre-approves `fs_read` alone, so anything beyond reading stops to ask you.
 
 ## Who can delegate to whom
 
-Only the orchestrators delegate. A specialist (any `k-*` agent) never spawns another agent:
+Only the orchestrators delegate. A specialist (any agent other than the three orchestrators)
+never spawns another agent:
 it does its own part and returns to its caller, with a handoff note naming the next role or a
 proposed parallel split. The orchestrator routes that note.
 
@@ -218,9 +219,10 @@ Step 6 has `k-developer` write the report, then end with a note asking the orche
 problem is never hidden behind a pending pass. Under `konductor`, the orchestrator runs the
 adversarial review from the note, records its verdict and report path next to the report's
 own verdict, and replaces a `PENDING ADVERSARIAL PASS` verdict with the final one: `READY FOR
-CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding. When
-`k-developer` is started directly, the note comes back to you: ask `konductor` to run the
-adversarial review.
+CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding. The
+report's two lines are written by the orchestrator, or by `k-developer` on its behalf when the
+orchestrator does not write files. When `k-developer` is started directly, the note comes back
+to you: ask `konductor` to run the adversarial review.
 
 To be sure the adversarial pass runs, run
 [`k-adversarial-pull-request-review`](sop-workflows/code-review.md#k-adversarial-pull-request-review)
@@ -243,7 +245,7 @@ Code the distinction disappears — all three declare `Bash` there.
 
 The mux and cmux orchestrators load `context/k-orchestrator-routing-rules.md` at session start,
 which is what makes them behave as dispatchers rather than implementers. `konductor` loads
-`context/k-direct-work.md` instead and writes, runs commands and commits itself. Treat the
+`context/k-direct-work.md` instead and writes and runs commands itself; it commits when you ask. Treat the
 dispatcher rule as intent, not enforcement: it
 is a prompt rule, and the tool configuration does not back it up in either runtime. Kiro CLI
 pre-approves reads only, so a mutating call stops to ask you rather than being refused, and
@@ -257,7 +259,7 @@ The default entry point, and the one to use unless you have a specific reason no
 | --- | --- |
 | **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code) |
 | **SOPs** (11) | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` |
-| **Skills** (22) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`, `threat-modeling`, `design-doc-guidelines`, `user-story-writing`, `backend-review`, `frontend-review`, `backend-development`, `frontend-development`, `design-evaluation`, `plan-review`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 21 plus `humanize-writing`, on demand |
+| **Skills** (24) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`, `threat-modeling`, `design-doc-guidelines`, `user-story-writing`, `backend-review`, `frontend-review`, `backend-development`, `frontend-development`, `design-evaluation`, `plan-review`, `design-impact-review`, `infra-validation`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 23 plus `humanize-writing`, on demand |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` **only** |
 | **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Edit`, `Skill` |
 | **Can mutate?** | Yes, by design: it does the work itself. In Claude Code it declares `Bash`, `Write` and `Edit`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
