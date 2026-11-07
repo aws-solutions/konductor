@@ -289,7 +289,8 @@ Only this file is read. A value in a project's `.konductor/config.yml` is ignore
 `install` wires a session-start hook for `konductor`, also under `--no-telemetry`. Under
 `coordinator` the hook tells `konductor` to read the installed coordinator routing rules
 (`k-orchestrator-routing-rules.md`) before it does anything else. The hook acts only for the install that wired it; see [where the hook may point](cli/README.md#orchestration-mode). Under `auto`, or with no setting,
-the hook injects nothing and the session costs nothing extra. The hook never fails a session: if
+the hook injects nothing and the session costs nothing extra, except that on a Claude Code resume or
+compact it prints `Orchestration: auto`, so a session that changed mode sees the change. The hook never fails a session: if
 it recognises a `konductor` session but cannot apply `coordinator`, it prints one fallback line
 and the session runs as `auto`.
 
@@ -300,10 +301,11 @@ The first reply of every `konductor` session states the mode once:
 | `Orchestration: coordinator` | The coordinator rules are in effect |
 | `Orchestration: auto (default)` | `auto` by setting or by default. With `coordinator` set, no hook output arrived: run `konductor doctor`, then see [Troubleshooting](docs/user-guide/troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator) |
 | `Orchestration: auto (fallback: <reason>)` | The hook could not apply `coordinator`, for example `orchestration.mode is "Coordinator"; expected auto or coordinator`. Fix what the reason names |
+| `Orchestration: auto` | The mode changed to `auto` since the session started (Claude Code resume or compact) |
 
 Run `konductor doctor` to check the value and that the hook is wired. To test the hook itself, set
 `coordinator`, start a session, look for `Orchestration: coordinator`, then set the mode back; an
-explicit `auto` injects nothing, so it cannot serve as the test.
+explicit `auto` injects nothing at session start, so it cannot serve as the test.
 
 | Harness | Coordinator mode |
 | --- | --- |
