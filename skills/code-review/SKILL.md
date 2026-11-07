@@ -119,7 +119,7 @@ After completing a task, run a self-review cycle:
 1. **Capture diff**: `git diff main...HEAD` for the full diff of changes
 2. **Review**: apply the Review Checklist below to your own changes
 3. **Fix once**: fix every CRITICAL and IMPORTANT finding, then re-run build and tests
-4. **Re-review once**: review every CRITICAL and IMPORTANT finding from step 2, plus what the fix changed and what depends on it. If a CRITICAL or IMPORTANT remains, stop and escalate to the user with root cause analysis. This is the same bound an orchestrator applies under Review ceilings; a finding in code you did not add or change is listed for the user as pre-existing, not fixed.
+4. **Re-review once**: review every CRITICAL and IMPORTANT finding from step 2, plus what the fix changed and what depends on it. If a CRITICAL or IMPORTANT in your own changes remains, stop and escalate to the user with root cause analysis. This is the same bound an orchestrator applies under Review ceilings; a finding in code you did not add or change is listed for the user as pre-existing, not fixed.
 
 ## PR Description Concision
 
