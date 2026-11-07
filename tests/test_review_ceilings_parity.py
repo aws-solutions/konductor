@@ -175,9 +175,13 @@ def test_code_review_skill_matches_review_ceilings():
     assert PREDATES_WORDING.replace("the task", "you") in text
     assert "every CRITICAL and IMPORTANT finding from step 2, plus what the fix changed and what depends on it" in text
     assert "review what the fix changed and what depends on it. If" not in text
-    assert "If a CRITICAL or IMPORTANT in your own changes remains, stop and escalate" in text
+    assert (
+        "If a CRITICAL or IMPORTANT in your own changes, or one your fix caused in what depends on them, "
+        "remains, stop and escalate"
+    ) in text
     assert "If a CRITICAL or IMPORTANT remains" not in text
-    assert "listed for the user as pre-existing, not fixed" in text
+    assert "in your own changes remains" not in text
+    assert "code you did not add or change, and your fix did not cause, is listed for the user as pre-existing, not fixed" in text
     assert "Max 2 cycles" not in text
     assert "More than 2 fix cycles" not in text
     assert "More than one fix cycle attempted without escalation" in text
