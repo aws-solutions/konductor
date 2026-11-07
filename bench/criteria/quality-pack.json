@@ -110,6 +110,10 @@
     {
       "id": "design-diagrams",
       "label": "Diagrams in design documents"
+    },
+    {
+      "id": "design-operations",
+      "label": "Operability and rollout of design"
     }
   ],
   "criteria": [
@@ -974,6 +978,96 @@
       "evidence": {
         "minQuotes": 1,
         "quote": "An arrow or relationship line with no label (fail or partial), or a labeled arrow line (pass). Diagram lines sit inside fenced blocks and are quoted as they appear."
+      }
+    },
+    {
+      "id": "des-architecture",
+      "dimension": "design-doc",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 2,
+      "question": "Does the design name each component and state what it owns and how it connects to its neighbors?",
+      "levels": {
+        "fail": "The document does not list its components, or lists them with no responsibility.",
+        "partial": "Every component has a stated responsibility, and at least 1 responsibility overlaps another component or at least 1 component has no stated interface to its neighbors.",
+        "pass": "Every component has one stated responsibility, no responsibility is claimed by two components, and the interface between each pair of connected components is named (call, event, table or queue)."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A component with its responsibility (pass), or the component whose responsibility or interface is missing or overlaps another (fail or partial)."
+      }
+    },
+    {
+      "id": "des-goals-nongoals",
+      "dimension": "design-doc",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 1,
+      "question": "Does the design state its goals and what it leaves out?",
+      "levels": {
+        "fail": "The document states neither goals nor non-goals.",
+        "partial": "Goals are stated and no non-goal is, or a non-goal is stated with no reason and no link to a requirement.",
+        "pass": "At least 1 goal and 1 non-goal are stated, each goal names a requirement or a number it can be checked against, and each non-goal says what is left out and why."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "The non-goal sentence or the goals heading line (pass or partial), or the opening sentence of the document (fail)."
+      }
+    },
+    {
+      "id": "des-adr-consequences",
+      "dimension": "design-doc",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 2,
+      "question": "Does each major decision state its status and its consequences?",
+      "levels": {
+        "fail": "No major decision states a status or a consequence.",
+        "partial": "Some decisions state a consequence, and at least 1 major decision has no consequence or no status (accepted, proposed or superseded).",
+        "pass": "Every major decision states a status (accepted, proposed or superseded) and at least 1 consequence: what becomes harder, what it costs or what follow-up work it forces."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A decision with its status and consequence (pass), or the decision that has neither or lacks one (fail or partial)."
+      }
+    },
+    {
+      "id": "des-operability",
+      "dimension": "design-operations",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 2,
+      "question": "Does the design say how an operator sees the health of the system and what the operator does when it degrades?",
+      "levels": {
+        "fail": "The document names no metric, log line, alarm or operator action.",
+        "partial": "At least 1 metric, log line or alarm is named, but none has a threshold or a stated operator action.",
+        "pass": "At least 2 signals (metric, log line or alarm) are named, each with a threshold or condition, and each names the operator action it triggers."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A signal with its threshold and operator action (pass or partial), or the sentence that covers operation (fail)."
+      }
+    },
+    {
+      "id": "des-rollout-migration",
+      "dimension": "design-operations",
+      "appliesTo": [
+        "design"
+      ],
+      "weight": 2,
+      "question": "Does the design say how it is rolled out, how existing data and clients move over, and how a step is undone?",
+      "levels": {
+        "fail": "The document does not say how the change is rolled out, migrated or rolled back.",
+        "partial": "A rollout order is stated, and the rollback step is missing or existing data and clients are not addressed.",
+        "pass": "The rollout order is stated in steps, each step says how it is undone, and existing data and clients are addressed or the document says there are none."
+      },
+      "evidence": {
+        "minQuotes": 1,
+        "quote": "A rollout step with its rollback (pass or partial), or the sentence that covers rollout (fail)."
       }
     },
     {

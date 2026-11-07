@@ -22,8 +22,9 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | Scalability and resilience of design | design documents | what limits the system first at 10 times the load, what happens when a dependency fails |
 | Task breakdown | plans | a task that uses an output no listed dependency provides, a task with no done check |
 | Diagrams in design documents | design documents | a diagram line and the prose line it must match |
+| Operability and rollout of design | design documents | an alarm with no operator action, a rollout step with no undo |
 
-`bench/criteria/quality-pack.json` holds 69 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
+`bench/criteria/quality-pack.json` holds 74 criteria. Each has an id, a dimension, the artifact types it applies to, a weight, and three anchors (fail, partial, pass). An anchor is one or two sentences that name something countable or quotable ("a function longer than 40 lines", "3 or more em dashes", "an assertion that only checks a result exists"). A lint in `validatePack` rejects an anchor that uses a vague word (good, clean, clear, robust and similar), runs past two sentences, repeats another level's text, or contains an em or en dash.
 
 ### Criteria
 
@@ -74,6 +75,11 @@ By default the pack does not touch the numbers. `qualityOfRun` (hidden tests, ch
 | des-diagram-present | Diagrams in design documents | design | 2 | judge | Does the design draw each view its content needs (sequence, component or class, data flow, data model, API schema)? |
 | des-diagram-fit | Diagrams in design documents | design | 3 | judge | Does every diagram match the prose that describes the same flow, structure or data? |
 | des-diagram-labels | Diagrams in design documents | design | 1 | judge | Is every arrow and relationship labeled with what it carries? |
+| des-architecture | Design doc structure and accuracy | design | 2 | judge | Does the design name each component and state what it owns and how it connects to its neighbors? |
+| des-goals-nongoals | Design doc structure and accuracy | design | 1 | judge | Does the design state its goals and what it leaves out? |
+| des-adr-consequences | Design doc structure and accuracy | design | 2 | judge | Does each major decision state its status and its consequences? |
+| des-operability | Operability and rollout of design | design | 2 | judge | Does the design say how an operator sees the health of the system and what the operator does when it degrades? |
+| des-rollout-migration | Operability and rollout of design | design | 2 | judge | Does the design say how it is rolled out, how existing data and clients move over, and how a step is undone? |
 | chg-no-leftovers | Change discipline | change | 2 | program | Does the change leave out debug output, focus markers, TODO notes and commented-out code? |
 | chg-tests-intact | Change discipline | change | 3 | program | Does the change keep every existing test running? |
 | chg-scoped | Change discipline | change | 2 | judge | Does the change touch only what the task asks for? |
@@ -108,6 +114,16 @@ The diagram criteria read the design document as a whole, fenced blocks included
 - API schema: 3 or more endpoints.
 
 The judge quotes a diagram line as it appears inside the fence, together with the prose line it must match. A document with no diagram scores fail on all three, as for any artifact the task asked for and did not get. `des-consistency` also treats a diagram as a source, so a field or step that a diagram shows and the data model or API does not define counts as a disagreement. The counted prose criteria still skip fenced code, so text inside a diagram is not counted for typography, filler or sentence length.
+
+The other design criteria follow the usual sections of a design document and of an architecture decision record.
+
+- `des-architecture` reads the component list: one responsibility per component, no responsibility claimed twice, a named interface between connected components.
+- `des-goals-nongoals` wants a goal that can be checked against a requirement or a number, and a non-goal with its reason.
+- `des-adr-consequences` wants a status (accepted, proposed or superseded) and a consequence for each major decision. `des-decision-rationale` still rates the reason, and `des-alternatives` the options weighed.
+- `des-operability` wants signals (metric, log line, alarm) with a threshold and the operator action each triggers.
+- `des-rollout-migration` wants rollout steps, how each is undone, and what happens to existing data and clients. A new system with no existing data passes by saying so.
+
+A task that never asked for these sections scores them the same way for every arm, so they separate arms only by what the design volunteered.
 
 The change discipline, requirements, non-functional, design scalability and task breakdown groups follow the deliverables of the SDLC skills in this repository, so a run is rated at the milestones it produced.
 

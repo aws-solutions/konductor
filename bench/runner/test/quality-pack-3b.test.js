@@ -122,3 +122,41 @@ test('the counted prose criteria still skip fenced diagrams, so a dash inside a 
   assert.equal(res.count, 0);
   assert.equal(res.verdict, 'pass');
 });
+
+// ---- architecture, goals, decisions, operability and rollout ----
+
+test('the design additions sit in the dimensions listed for them and apply to design documents only', () => {
+  const added = { 'design-doc': ['des-architecture', 'des-goals-nongoals', 'des-adr-consequences'], 'design-operations': ['des-operability', 'des-rollout-migration'] };
+  for (const [dim, list] of Object.entries(added)) {
+    const have = ids(dim);
+    for (const id of list) {
+      assert.ok(have.includes(id), `${id} in ${dim}`);
+      assert.deepEqual(byId(id).appliesTo, ['design'], id);
+    }
+  }
+  assert.deepEqual(ids('design-operations'), added['design-operations']);
+  assert.equal(pack.dimensions.find((d) => d.id === 'design-operations').label, 'Operability and rollout of design');
+});
+
+test('the design additions are judged for a produced design, absent when none was written, and n/a for other tasks', () => {
+  const names = ['des-architecture', 'des-goals-nongoals', 'des-adr-consequences', 'des-operability', 'des-rollout-migration'];
+  const doc = file('docs/design/hold-service.md', '# Design\n\nGoals: serve holds.\n');
+  const made = status(P.applicability(pack, DESIGN_TASK, [doc]));
+  const missing = status(P.applicability(pack, DESIGN_TASK, []));
+  const plan = status(P.applicability(pack, { id: 'plan-multipart-feature', class: 'sop', prompt: 'Plan.' }, [file('docs/plan.md', '# Plan\n')]));
+  for (const id of names) {
+    assert.equal(made[id].status, 'judged', id);
+    assert.equal(missing[id].status, 'absent', id);
+    assert.equal(plan[id].status, 'na', id);
+  }
+});
+
+test('a design criterion takes one quote from the output and downgrades a verdict whose quote is invented', () => {
+  const text = '# Design\n\n## Rollout\n1. Deploy the queue worker behind a flag. Undo: switch the flag off.\n';
+  const bundle = bundleOf('docs/design/hold-service.md', text);
+  const crit = [byId('des-rollout-migration')];
+  const real = P.scoreReply([{ id: 'des-rollout-migration', verdict: 'pass', evidence: 'Undo: switch the flag off.' }], crit, bundle)[0];
+  const made = P.scoreReply([{ id: 'des-rollout-migration', verdict: 'pass', evidence: 'Undo: restore the snapshot.' }], crit, bundle)[0];
+  assert.deepEqual([real.verdict, real.evidenceFound], ['pass', true]);
+  assert.deepEqual([made.verdict, made.evidenceFound], ['partial', false]);
+});
