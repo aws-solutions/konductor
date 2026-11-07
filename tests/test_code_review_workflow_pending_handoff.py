@@ -55,6 +55,17 @@ def test_step_7_never_says_ready_while_not_run():
     assert "`READY FOR CR` never appears while the pass has not run" in step_7()
 
 
+def test_note_routes_the_write_back_by_the_direct_work_rules():
+    """A read-only orchestrator cannot take an 'if you may write files' branch; the note
+    names the writer it routes to instead, so the report is updated at every head."""
+    note = step_6()
+    assert "if you may write files" not in note
+    assert (
+        "update this report's two lines yourself or through the report's owner (`k-developer`), "
+        "as your direct-work rules allow" in note
+    )
+
+
 def test_note_sets_the_verdict_once_the_pass_is_complete():
     note = step_6()
     assert "when this report's `Verdict:` line reads `PENDING ADVERSARIAL PASS`, set it by the Step 7 rule" in note

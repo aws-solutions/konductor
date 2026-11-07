@@ -73,9 +73,32 @@ def test_shared_rules_briefs_keeps_the_named_collision_qualifier():
     assert "decides the same named collision" in shared
 
 
+def _brief_template_default_lines() -> list[str]:
+    template = re.search(r"```\n(TARGET AGENT:.*?)```", _read("skills/delegation-protocol/SKILL.md"), re.S)
+    assert template, "delegation-protocol has no brief template"
+    return [
+        line[2:]
+        for line in template.group(1).splitlines()
+        if line.startswith("- ") and not line.startswith("- <")
+    ]
+
+
+def test_every_brief_template_default_line_is_backed_by_never_rules_6_and_7():
+    assert _brief_template_default_lines() == [
+        "Preserve existing comments and JSDoc blocks",
+        "Preserve existing logging statements",
+        "Do NOT remove comments or documentation",
+        "Do NOT strip logging statements",
+        "Do NOT silently reduce scope",
+    ]
+
+
 def test_template_defaults_backed_by_never_rules_are_not_dropped_by_house_rules():
-    assert "NEVER rules 6 and 7" in _read("skills/delegation-protocol/SKILL.md")
-    assert "NEVER rules 6 and 7" in _read("context/k-orchestrator-shared.md")
+    protocol = _read("skills/delegation-protocol/SKILL.md")
+    assert "Every default MUST DO / MUST NOT DO line in the template is backed by NEVER rules 6 and 7" in protocol
+    assert "a house rule never drops one, only the user's own request does" in protocol
+    assert "a house rule overrides and name the house rule in CONTEXT" not in protocol
+    assert "a house rule named in CONTEXT" not in _read("context/k-orchestrator-shared.md")
 
 
 def test_review_dedup_lives_in_constraints_skill():
@@ -106,11 +129,7 @@ def test_level_2_qualifies_brief_rulings():
 
 def test_cited_memory_entries_are_origin_qualified():
     needle = "`[origin:user]` or untagged memory entry"
-    for rel in (
-        "skills/delegation-protocol/SKILL.md",
-        "skills/constraints/SKILL.md",
-    ):
-        assert needle in _read(rel), rel
+    assert needle in _read("skills/constraints/SKILL.md")
     shared = " ".join(_read("context/k-orchestrator-shared.md").split())
     assert "(tagged `[origin:user]` or untagged)" in shared
 

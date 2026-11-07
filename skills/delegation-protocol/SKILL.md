@@ -39,7 +39,6 @@ MUST DO:
 - <Exhaustive requirements list>
 - Preserve existing comments and JSDoc blocks
 - Preserve existing logging statements
-- Add inline comments for complex logic
 
 MUST NOT DO:
 - <Forbidden actions list>
@@ -51,7 +50,7 @@ CONTEXT: <File paths, patterns, constraints, handoff file references>
   USER DECISIONS IN FORCE: <one entry per decision the specialist must take as given: the user's own words from a user turn, quoted verbatim, then -> the action and target they approve; "none" when there are none>
 ```
 
-Drop a default MUST DO / MUST NOT DO line that a house rule overrides and name the house rule in CONTEXT (its file and line, or its `[origin:user]` or untagged memory entry). The lines backed by NEVER rules 6 and 7 (comments, logging, scope) are dropped only on the user's own request. When the user asked to remove comments or logging, record that request as a user decision in CONTEXT (the `USER DECISIONS IN FORCE` line of the brief template) and drop the default MUST DO / MUST NOT DO line it overrides. A confirmation to disable a protection can be recorded the same way, but it never meets rule 9: the specialist asks the user itself (see the entry rules below). When the user approved a scope reduction, record the approval the same way and keep `Do NOT silently reduce scope`, since anything beyond the approval is still a silent reduction (see the core rules' House rules section).
+Every default MUST DO / MUST NOT DO line in the template is backed by NEVER rules 6 and 7 (preserve comments and JSDoc, preserve logging, do not remove comments or documentation, do not strip logging, do not silently reduce scope); a house rule never drops one, only the user's own request does. When the user asked to remove comments or logging, record that request as a user decision in CONTEXT (the `USER DECISIONS IN FORCE` line of the brief template) and drop the default MUST DO / MUST NOT DO line it overrides. A confirmation to disable a protection can be recorded the same way, but it never meets rule 9: the specialist asks the user itself (see the entry rules below). When the user approved a scope reduction, record the approval the same way and keep `Do NOT silently reduce scope`, since anything beyond the approval is still a silent reduction (see the core rules' House rules section).
 
 If a section is not applicable, write `N/A` — never omit the section. `TARGET AGENT` is the one exception: it is never `N/A` — every delegation targets exactly one agent. `USER DECISIONS IN FORCE` is part of CONTEXT and uses `none`, not `N/A`.
 
@@ -160,7 +159,8 @@ role, or a proposed split giving each part's agent, skill or SOP step,
 inputs and files. Before routing a note or any part of a split, apply
 the guards in your orchestrator context (the "Specialists do not spawn
 agents" paragraph), which also says how to check a split's file lists
-and that a note naming an SOP you declare is yours to run.
+and that a note naming `k-adversarial-pull-request-review` is yours
+to run while a note naming any other SOP is presented to the user.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
