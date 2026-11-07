@@ -163,7 +163,8 @@ This is enforced in config, not just in the prompt:
   therefore replaces a specialist's `@builtin` with the v2 built-in tools listed one by one,
   without `subagent`, and drops `toolsSettings.subagent`. A `*` entry gets the same list plus
   `@<server>` for each of the spec's MCP servers. The list matches kiro-cli 2.36.0 and the v2
-  engine in kiro-cli 3.0.0; kiro-cli 3.1.0 still defaults to the v2 engine and was not re-probed.
+  engine in kiro-cli 3.0.0, which shows `fs_read`, `fs_write` and `execute_bash` as `read`,
+  `write` and `shell`; kiro-cli 3.1.0 still defaults to the v2 engine and was not re-probed.
   Older v2 clients were not checked. An unknown tool name does not stop an agent from loading,
   and `kiro-cli agent validate` checks the file's schema, not tool names, so to confirm the set
   on your client start `kiro-cli chat --agent-engine v2 --agent <name>` and run `/tools`; the 13
