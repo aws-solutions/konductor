@@ -12,6 +12,10 @@ const path = require('node:path');
 const P = require('../../judge/pack/index.js');
 const { loadTasks } = require('../lib/tasks.js');
 const { taskRevision } = require('../../judge/revision.js');
+const { runChecks } = require('../lib/checks.js');
+const { copyFixture } = require('../lib/sandbox.js');
+const { buildCheckEnv } = require('../lib/env.js');
+const { mkScratch } = require('./scratch.js');
 
 const pack = P.loadPack('quality');
 const frozen = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'quality-pack-66.json'), 'utf8'));
@@ -222,4 +226,71 @@ test('the task text the judge sees for the earlier tasks is unchanged, so their 
   const tasks = loadTasks(BENCH);
   const revisions = { 'design-hold-service': '92b124375998', 'simple-readme-section': '4d95a9eec715', 'simple-explain-file': 'ddc4cebafd8c' };
   for (const [id, rev] of Object.entries(revisions)) assert.equal(taskRevision(tasks.get(id)), rev, id);
+});
+
+// ---- the design task variant that asks for diagrams ----
+
+const VARIANTS = path.join(BENCH, 'variants');
+const VARIANT = 'design-hold-service-diagrams';
+const variantTasks = () => loadTasks(BENCH, { extraDirs: [VARIANTS] });
+
+test('the diagram request is a separate optional task: the original task and every suite are unchanged', () => {
+  assert.equal(loadTasks(BENCH).has(VARIANT), false, 'bench/tasks does not hold the variant');
+  for (const f of fs.readdirSync(path.join(BENCH, 'suites')).filter((n) => n.endsWith('.json'))) {
+    const s = JSON.parse(fs.readFileSync(path.join(BENCH, 'suites', f), 'utf8'));
+    assert.equal((Array.isArray(s.tasks) ? s.tasks : Object.keys(s.tasks || {})).includes(VARIANT), false, f);
+    assert.equal((s.extraTasks || []).includes('variants'), false, f);
+  }
+  const tasks = variantTasks();
+  assert.notEqual(taskRevision(tasks.get(VARIANT)), taskRevision(tasks.get('design-hold-service')));
+});
+
+test('the variant keeps the original prompt, checks and rubric, and adds the diagram request, two checks and one rubric item', () => {
+  const tasks = variantTasks();
+  const base = tasks.get('design-hold-service');
+  const v = tasks.get(VARIANT);
+  const [before, after] = base.prompt.split('and how you would test it. ');
+  assert.ok(v.prompt.startsWith(`${before}and how you would test it. Include three diagrams as fenced mermaid blocks`));
+  assert.ok(v.prompt.endsWith(after));
+  assert.match(v.prompt, /sequence diagram.*component diagram.*data model diagram.*Label every arrow/);
+  const same = (c) => JSON.stringify(c);
+  const lineCap = (c) => c.type === 'cmd' && c.cmd.includes('wc -l');
+  assert.deepEqual(v.checks.slice(0, base.checks.length).filter((c) => !lineCap(c)).map(same), base.checks.filter((c) => !lineCap(c)).map(same));
+  assert.match(v.checks.find(lineCap).cmd, /-le 260/);
+  assert.equal(v.checks.length, base.checks.length + 2);
+  assert.deepEqual(v.rubric.filter((r) => ['conflict', 'concurrency', 'data-model', 'notifications'].includes(r.id)), base.rubric.filter((r) => ['conflict', 'concurrency', 'data-model', 'notifications'].includes(r.id)));
+  assert.ok(v.rubric.some((r) => r.id === 'diagrams' && /sequence diagram/.test(r.criterion)));
+  assert.equal(v.rubric.length, 6);
+});
+
+const runAll = (task, overlay) => {
+  const dir = mkScratch('var-');
+  try {
+    copyFixture(task.fixtureDir, dir);
+    if (overlay) fs.cpSync(overlay, dir, { recursive: true });
+    const { env } = buildCheckEnv(process.env, { home: path.join(dir, '.home') });
+    fs.mkdirSync(env.TMPDIR, { recursive: true });
+    return runChecks(dir, task.checks, { pristineDir: task.fixtureDir, env });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+test('the reference solution passes every check of the variant, and the keyword stub and the untouched fixture do not', () => {
+  const v = variantTasks().get(VARIANT);
+  assert.deepEqual(runAll(v, path.join(VARIANTS, 'solutions', VARIANT)).filter((c) => !c.passed), []);
+  const stub = runAll(v, path.join(VARIANTS, 'stubs', VARIANT));
+  assert.ok(stub.filter((c) => !c.passed).length >= 2);
+  assert.ok(stub.slice(-2).every((c) => !c.passed), 'the keyword stub has no diagram');
+  assert.ok(runAll(v, null).slice(-2).every((c) => !c.passed));
+});
+
+test('the pack judges the diagram criteria on the variant solution and scores a design without diagrams fail on presence', () => {
+  const v = variantTasks().get(VARIANT);
+  const text = fs.readFileSync(path.join(VARIANTS, 'solutions', VARIANT, 'docs', 'design', 'hold-service.md'), 'utf8');
+  const made = status(P.applicability(pack, v, [file('docs/design/hold-service.md', text)]));
+  for (const id of ids('design-diagrams')) assert.equal(made[id].status, 'judged', id);
+  assert.equal((text.match(/^```mermaid$/gm) || []).length, 3);
+  assert.match(text, /^  HoldService->>Notifier: ready email, after commit$/m);
+  assert.match(text, /HoldService calls `claimHead/);
 });

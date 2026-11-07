@@ -191,6 +191,8 @@ The `requirements` suite (see `README-tasks.md`) adds two tasks:
 
 A declared type with no produced file scores fail on its criteria without a model call, as for the other types.
 
+A design task that asks for diagrams is available as the optional variant `design-hold-service-diagrams` (see `README-tasks.md`, Variants). The original `design-hold-service` is unchanged, so its saved judgments keep their task revision.
+
 ## How a criterion is judged
 
 - **Separate call.** The pack runs as a second call per judge and run, not as extra items in the rubric call. The rubric prompt, its cache keys and its reply validation stay byte-identical. A judge answers 8 to 20 items instead of those plus the task rubric. The pack prompt can carry the diff and the quote rules without growing the rubric prompt. A failure in one pass does not discard the other. The cost is that the bundle is sent twice. The prompt holds the usual bundle (at most 48,000 characters), a diff capped at 12,000 characters, the task text, the answer key and only the criteria that apply. A prompt over the 120,000 byte argument limit is refused with an error, as in the rubric pass.

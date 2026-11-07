@@ -96,6 +96,19 @@ Fixtures have at most 15 files (40 for fixtures used only by `hard` tasks, at le
 
 Both suites list `"judges": ["gpt-5.6-luna", "deepseek-3.2", "glm-5"]`: three model families, none Claude, none the subject's family. The validator uses the runner's `checkPanel` and `checkJudgeModel` and fails on fewer than 3 judges or two of one family. `qwen3-coder-next` and `minimax-m2.5` are alternates; swap one in with `--judges` on the `judge` command.
 
+## Variants
+
+`variants/` holds optional copies of a task with one change. No suite lists it and no suite file names it in `extraTasks`, so no saved run, judgment or report changes. Pass `--extra-tasks bench/variants` to run or judge one. Validate with `node bench/tasks/validate-tasks.js --only-extra --extra-tasks bench/variants`. The directory is laid out like `rootcause/`: task files beside `solutions/` and `stubs/`, with fixtures taken from `bench/fixtures`.
+
+`design-hold-service-diagrams` is `design-hold-service` with a request for three fenced mermaid diagrams: a sequence diagram of a returned copy and the next member being notified, a component diagram and a data model diagram. It differs from the original in four ways:
+
+- The prompt gains one request for the diagrams, asks for labeled arrows and asks for the same names in the diagrams and the text.
+- Two checks are added: at least 3 diagram fences, and a sequence diagram marker.
+- The line limit is 260 instead of 200, and the timeout is 900 s instead of 600 s.
+- The rubric gains a `diagrams` item. `limit` and `scope` are merged into `limit-and-scope` because a task holds at most 6 rubric items.
+
+Why a copy and not an edit: a judgment is keyed to the task revision, which hashes the prompt, the rubric and the answer key. Editing `design-hold-service` would turn every saved judgment of it stale and would put runs made with the old wording under the new one. The variant has its own id, so its results never mix with the original's. The quality pack's diagram criteria apply to both tasks, because both declare a design.
+
 ## Add a task
 
 1. Pick or add a fixture with a `.bench-answer-key.md`.
