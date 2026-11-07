@@ -69,6 +69,10 @@ STALE_DELEGATION_PHRASES = (
     "no spawn tool in either runtime",
 )
 KONDUCTOR_SPAWN_CELL = "the same 8 via Agent(...)"
+# kiro-cli 3.1.0 ships v2 as its default engine, and no minimum client version is
+# enforced; versions are checked, not required.
+STALE_VERSION_CLAIMS = ("last v2 release", "2.36.0 or later")
+KIRO_V2_SYNTH = Path("cli") / "konductor-rs" / "src" / "cli" / "synth" / "kiro_cli_v2.rs"
 # `konductor` does the work itself; only the mux and cmux orchestrators are read-only
 # dispatchers. These describe the old all-dispatcher shape.
 STALE_DISPATCHER_PHRASES = (
@@ -506,6 +510,17 @@ def main() -> int:
                 perm_fails.append(
                     f"{rel}: says {phrase!r} — `tools` grants the capability, "
                     f"`allowedTools` only pre-approves it"
+                )
+    version_sources = dict(sources)
+    version_sources[KIRO_V2_SYNTH] = read(root / KIRO_V2_SYNTH).replace("///", " ")
+    for rel, text in version_sources.items():
+        if rel.name == "notes.md":
+            continue
+        for phrase in STALE_VERSION_CLAIMS:
+            if phrase in text:
+                perm_fails.append(
+                    f"{rel}: says {phrase!r}: state the checked kiro-cli versions, "
+                    f"not a last release or a minimum"
                 )
 
     if perm_fails:

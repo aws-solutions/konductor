@@ -231,12 +231,11 @@ fn render_agent_file<'a>(
     })
 }
 
-/// The v2 engine's `@builtin` tools minus `subagent`, as kiro-cli 2.36.0
-/// lists them. kiro-cli 3.0.0's v2 engine resolves the same 13 (it shows
-/// `fs_read`, `fs_write` and `execute_bash` as `read`, `write` and `shell`).
-/// kiro-cli 3.1.0 keeps v2 as its default engine; re-probe the list on each
-/// release that changes the built-ins. v2 ignores `excludedTools`,
-/// and `toolsSettings.subagent.availableAgents` does not remove the tool (an
+/// The v2 engine's `@builtin` tools minus `subagent`, as the kiro-cli
+/// versions in `SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH` list them (3.0.0
+/// shows `fs_read`, `fs_write` and `execute_bash` as `read`, `write` and
+/// `shell`). v2 ignores `excludedTools`, and
+/// `toolsSettings.subagent.availableAgents` does not remove the tool (an
 /// empty list allows every agent; a non-matching list still lists
 /// `subagent`), so a specialist gets this explicit list in place of
 /// `@builtin`.
@@ -255,6 +254,12 @@ const SPECIALIST_BUILTIN_TOOLS: [&str; 13] = [
     "code",
     "goal",
 ];
+
+/// kiro-cli versions whose v2 engine listed exactly `SPECIALIST_BUILTIN_TOOLS`
+/// plus `subagent` under `/tools`. Re-probe on a release that changes the
+/// built-ins; the docs quote this list (tests/test_spawn_docs_text.py).
+#[allow(dead_code)] // read by the docs pin test, not by synth
+pub(crate) const SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH: [&str; 2] = ["2.36.0", "3.0.0"];
 
 /// Drops every spawn-tool alias and expands `@builtin` to
 /// `SPECIALIST_BUILTIN_TOOLS`, keeping the other entries in order and
