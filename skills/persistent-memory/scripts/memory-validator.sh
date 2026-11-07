@@ -412,12 +412,14 @@ while IFS= read -r line; do
     exit 1
   fi
 
-  # 3c. Instruction-like language
+  # 3c. Instruction-like language. The keyword must be a whole word at the
+  # start of either view, so "Overrides live in ..." and "Forgetting to ..."
+  # pass while "Ignore lint failures" and "[Ignore]" do not.
   stripped_lower="$(printf '%s\n' "$entry" | tr '[:upper:]' '[:lower:]')"
   stripped_trimmed="$(strip_markdown_markers "$stripped_lower")"
   stripped_unwrapped="$(strip_markdown_markers "$stripped_lower" unwrap)"
   for kw in ignore override forget disregard pretend; do
-    if [[ "$stripped_trimmed" == ${kw}* || "$stripped_unwrapped" == ${kw}* ]]; then
+    if [[ "$stripped_trimmed" =~ ^${kw}([^[:alnum:]]|$) || "$stripped_unwrapped" =~ ^${kw}([^[:alnum:]]|$) ]]; then
       echo "REJECT: instruction-like keyword '$kw' at start of entry" >&2
       exit 1
     fi
