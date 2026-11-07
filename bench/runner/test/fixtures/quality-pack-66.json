@@ -1,0 +1,496 @@
+{
+  "description": "Frozen fingerprint of the quality pack before the Block 3b additions (pack revision 7d7d059d9a3f). A criterion is fingerprinted without appliesTo, which is stored beside it. Regenerate only with a note in the commit that says which scores change.",
+  "packRevision": "7d7d059d9a3f",
+  "criteria": {
+    "mod-single-responsibility": {
+      "appliesTo": [
+        "code"
+      ],
+      "fingerprint": "bdd8b3e039eb3b1f"
+    },
+    "mod-no-duplication": {
+      "appliesTo": [
+        "code"
+      ],
+      "fingerprint": "5e92af40135f22e7"
+    },
+    "mod-isolation": {
+      "appliesTo": [
+        "code"
+      ],
+      "fingerprint": "cd902bc618b7a6ed"
+    },
+    "mod-pattern-fit": {
+      "appliesTo": [
+        "code"
+      ],
+      "fingerprint": "2d897f687503a199"
+    },
+    "maint-naming": {
+      "appliesTo": [
+        "code"
+      ],
+      "fingerprint": "01aa4a0eb5aec73b"
+    },
+    "maint-size-nesting": {
+      "appliesTo": [
+        "code"
+      ],
+      "fingerprint": "65ca9c5f650bae75"
+    },
+    "maint-dead-code": {
+      "appliesTo": [
+        "code"
+      ],
+      "fingerprint": "4e33ab051ac71185"
+    },
+    "maint-error-handling": {
+      "appliesTo": [
+        "code"
+      ],
+      "fingerprint": "c3f8836296e30cf3"
+    },
+    "maint-magic-constants": {
+      "appliesTo": [
+        "code"
+      ],
+      "fingerprint": "b986b708b3c5f2bf"
+    },
+    "doc-why-not-what": {
+      "appliesTo": [
+        "comments"
+      ],
+      "fingerprint": "cdadf19291e70a4f"
+    },
+    "doc-accuracy": {
+      "appliesTo": [
+        "comments",
+        "readme"
+      ],
+      "fingerprint": "55c057b2c81f6daf"
+    },
+    "doc-no-stale-or-noise": {
+      "appliesTo": [
+        "comments"
+      ],
+      "fingerprint": "554e71dd8cf77b51"
+    },
+    "doc-concise": {
+      "appliesTo": [
+        "comments"
+      ],
+      "fingerprint": "c6674d96b9c9724a"
+    },
+    "cq-plain-typography": {
+      "appliesTo": [
+        "readme",
+        "guide",
+        "design",
+        "review",
+        "threat-model",
+        "requirements",
+        "plan"
+      ],
+      "fingerprint": "55760e47ff68418c"
+    },
+    "cq-no-filler-terms": {
+      "appliesTo": [
+        "readme",
+        "guide",
+        "design",
+        "review",
+        "threat-model",
+        "requirements",
+        "plan"
+      ],
+      "fingerprint": "93e8a15b84114150"
+    },
+    "cq-sentence-length": {
+      "appliesTo": [
+        "readme",
+        "guide",
+        "design",
+        "review",
+        "threat-model",
+        "requirements",
+        "plan"
+      ],
+      "fingerprint": "5a6a94679947782e"
+    },
+    "cq-lead-with-point": {
+      "appliesTo": [
+        "readme",
+        "guide",
+        "design",
+        "review",
+        "threat-model",
+        "requirements",
+        "plan"
+      ],
+      "fingerprint": "df3787e7b5dfb6bb"
+    },
+    "cq-concrete": {
+      "appliesTo": [
+        "readme",
+        "guide",
+        "design",
+        "review",
+        "threat-model",
+        "requirements",
+        "plan"
+      ],
+      "fingerprint": "64cffb19488333cb"
+    },
+    "cq-human-voice": {
+      "appliesTo": [
+        "readme",
+        "guide",
+        "design",
+        "review",
+        "threat-model",
+        "requirements",
+        "plan"
+      ],
+      "fingerprint": "ea410ff485e89e01"
+    },
+    "cq-no-repetition": {
+      "appliesTo": [
+        "readme",
+        "guide",
+        "design",
+        "review",
+        "threat-model",
+        "requirements",
+        "plan"
+      ],
+      "fingerprint": "17f0faeff9be1ef0"
+    },
+    "cq-reader-order": {
+      "appliesTo": [
+        "readme",
+        "guide"
+      ],
+      "fingerprint": "e47fc2a1ee36bd35"
+    },
+    "cq-direct-instructions": {
+      "appliesTo": [
+        "readme",
+        "guide"
+      ],
+      "fingerprint": "aba228684f67cc73"
+    },
+    "test-asserts-behavior": {
+      "appliesTo": [
+        "tests"
+      ],
+      "fingerprint": "0979d3c0b2c64d57"
+    },
+    "test-rule-would-fail": {
+      "appliesTo": [
+        "tests"
+      ],
+      "fingerprint": "8ea39a8d64cc4437"
+    },
+    "test-scenario-spread": {
+      "appliesTo": [
+        "tests"
+      ],
+      "fingerprint": "3d138758abaf2a45"
+    },
+    "test-no-tautology": {
+      "appliesTo": [
+        "tests"
+      ],
+      "fingerprint": "558e9323a125f8a2"
+    },
+    "test-one-scenario": {
+      "appliesTo": [
+        "tests"
+      ],
+      "fingerprint": "821d10654c364d33"
+    },
+    "test-names": {
+      "appliesTo": [
+        "tests"
+      ],
+      "fingerprint": "df04adf2e13753ef"
+    },
+    "test-deterministic": {
+      "appliesTo": [
+        "tests"
+      ],
+      "fingerprint": "d55efc4655ab1a50"
+    },
+    "scn-traced": {
+      "appliesTo": [
+        "tests",
+        "design"
+      ],
+      "fingerprint": "437f0935fa31dd99"
+    },
+    "tm-scope": {
+      "appliesTo": [
+        "review",
+        "threat-model"
+      ],
+      "fingerprint": "03f73fb42f33fe94"
+    },
+    "tm-stride": {
+      "appliesTo": [
+        "threat-model"
+      ],
+      "fingerprint": "60755eece8151e65"
+    },
+    "tm-mitigations": {
+      "appliesTo": [
+        "review",
+        "threat-model"
+      ],
+      "fingerprint": "45a34a96b966846c"
+    },
+    "tm-residual": {
+      "appliesTo": [
+        "review",
+        "threat-model"
+      ],
+      "fingerprint": "29307097b2a7538d"
+    },
+    "tm-grounded": {
+      "appliesTo": [
+        "review",
+        "threat-model"
+      ],
+      "fingerprint": "8c91db27e259f1f5"
+    },
+    "des-problem-first": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "faef694b15480e87"
+    },
+    "des-alternatives": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "edb6f5465eee273f"
+    },
+    "des-decision-rationale": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "3cbf1c877f386a5a"
+    },
+    "des-consistency": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "ceb1ed2eb8f8ccf8"
+    },
+    "des-conflicts-surfaced": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "e292a893445c2769"
+    },
+    "des-technical-accuracy": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "838b13325ca8602d"
+    },
+    "des-testable-acceptance": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "5e7471c849c36ca0"
+    },
+    "chg-no-leftovers": {
+      "appliesTo": [
+        "change"
+      ],
+      "fingerprint": "c26ceb5fb1d6d55f"
+    },
+    "chg-tests-intact": {
+      "appliesTo": [
+        "change"
+      ],
+      "fingerprint": "ad34a8eab5f36b4f"
+    },
+    "chg-scoped": {
+      "appliesTo": [
+        "change"
+      ],
+      "fingerprint": "c0b2b70ea6d5b955"
+    },
+    "req-unambiguous": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "d863ebfc369e9866"
+    },
+    "req-testable": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "38b5ece722eafa0f"
+    },
+    "req-failure-and-edge-cases": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "e74f3cd4d939c1f3"
+    },
+    "req-no-solution-leak": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "8e48c97499489c7e"
+    },
+    "req-conflicts-and-gaps": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "1d4cb8c59680257d"
+    },
+    "req-assumptions-and-questions": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "01ad6b6d905388af"
+    },
+    "req-prioritized": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "5e356eb931b64e92"
+    },
+    "req-traceable": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "c39458f35f786e27"
+    },
+    "req-nfr-coverage": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "cd18b0a1100baa72"
+    },
+    "req-nfr-measurable": {
+      "appliesTo": [
+        "requirements"
+      ],
+      "fingerprint": "c9ded5b7fff46202"
+    },
+    "des-nfr-addressed": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "3277fa61a5372bf4"
+    },
+    "des-scale-bottleneck": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "ce0945e3cb18b52a"
+    },
+    "des-failure-modes": {
+      "appliesTo": [
+        "design"
+      ],
+      "fingerprint": "858fc00015be1d92"
+    },
+    "plan-independent-tasks": {
+      "appliesTo": [
+        "plan"
+      ],
+      "fingerprint": "e0ce175d4334f94e"
+    },
+    "plan-done-criteria": {
+      "appliesTo": [
+        "plan"
+      ],
+      "fingerprint": "768a82a2244c90c9"
+    },
+    "plan-dependencies-order": {
+      "appliesTo": [
+        "plan"
+      ],
+      "fingerprint": "00b0984ebd0b005f"
+    },
+    "plan-coverage": {
+      "appliesTo": [
+        "plan"
+      ],
+      "fingerprint": "d275e048da915a75"
+    },
+    "plan-sizing": {
+      "appliesTo": [
+        "plan"
+      ],
+      "fingerprint": "80c143202b5748ea"
+    },
+    "plan-risks": {
+      "appliesTo": [
+        "plan"
+      ],
+      "fingerprint": "8ad37384a0f68166"
+    },
+    "plan-test-tasks": {
+      "appliesTo": [
+        "plan"
+      ],
+      "fingerprint": "c41785f1560703d3"
+    },
+    "plan-delegation-fit": {
+      "appliesTo": [
+        "delegation"
+      ],
+      "fingerprint": "9bab382a3f2160ca"
+    }
+  },
+  "dimensions": "dd435ffd8a527308",
+  "data": {
+    "minAddedCodeLines": "2c624232cdd22177",
+    "declaredOnly": "989a7414ed668b78",
+    "fillerTerms": "6ea185931e66f519",
+    "vagueTerms": "ee7c9d28a441e62b",
+    "leftoverPatterns": "62845f542a6d2aff",
+    "weakenedTestPatterns": "ea9e0565bd00489c",
+    "artifactTypes": "1ffe7b9e8fcccc70"
+  },
+  "taskArtifacts": {
+    "simple-fix-failing-test": [
+      "code"
+    ],
+    "simple-explain-file": [
+      "guide"
+    ],
+    "orch-input-validation": [
+      "code",
+      "tests",
+      "readme"
+    ],
+    "review-inventory-security": [
+      "review"
+    ],
+    "design-hold-service": [
+      "design"
+    ],
+    "req-vague-request": [
+      "requirements"
+    ],
+    "plan-multipart-feature": [
+      "plan"
+    ],
+    "rc-queue-decision": [
+      "design"
+    ],
+    "rc-tpm-status": [
+      "guide"
+    ],
+    "rc-agents-md": [
+      "guide"
+    ]
+  }
+}
