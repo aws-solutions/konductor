@@ -102,7 +102,7 @@ EDITS = [
     # ---- single-writer shape: konductor does the work itself (R4-144.c) ----
     ("quick-start step 3: konductor does the work itself",
      "You are now talking to the coordinator. It never implements anything itself — it routes each piece of work to the specialist that owns it, checks what comes back, and re-delegates if a check fails.</p>",
-     "You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool it lacks or for parallel work on disjoint files.</p>"),
+     "You are now talking to the orchestrator. It does the work itself, in this one session, and spawns a fresh k-* reviewer when a phase closes (a lookup, a listing or a one-file change of at most 50 lines that builds, tests and lints clean needs none, reported with the diff stat); it spawns a specialist to do work only for a tool, skill or SOP it lacks or for parallel work on disjoint files.</p>"),
     ("concepts context paragraph: coordinator rules, not a routing table",
      "The routing rules file contains the capability-to-agent routing table and three",
      "The routing rules file contains the coordinator rules and three"),
@@ -147,7 +147,7 @@ EDITS = [
      + _code("k-researcher") + " for parallel research, " + _code("k-architect") + " for escalations.</p>",
      "So when you run this chain through " + _code("konductor") + ", it reads, synthesises, writes the files"
      + " and runs the " + _code("git diff") + ", build and test commands itself, as its direct-work rules allow;"
-     + " it spawns a specialist only for a tool it lacks or for independent work on disjoint files ("
+     + " it spawns a specialist only for a tool, skill or SOP it lacks or for independent work on disjoint files ("
      + _code("k-researcher") + " for parallel research), and a fresh reviewer when a phase closes."
      + " Through the mux or cmux orchestrator the same steps execute in whichever specialist it delegates to: "
      + _code("k-developer") + " for implementation and shell work, " + _code("k-researcher")
@@ -157,8 +157,8 @@ EDITS = [
     ("use-cases design invocation: konductor spawns the SOP owner",
      "Through the orchestrator, which routes design requests to " + _code("k-architect") + ":</p>",
      "Through the orchestrator. " + _code("konductor") + " spawns " + _code("k-architect")
-     + ", which declares these SOPs, to run them; a design step inside a task " + _code("konductor")
-     + " owns it writes itself. The mux and cmux orchestrators route every design request to "
+     + ", which declares these SOPs, to run them; a design step inside a task it owns, " + _code("konductor")
+     + " writes itself. The mux and cmux orchestrators route every design request to "
      + _code("k-architect") + ":</p>"),
     ("use-cases codebase invocation: konductor spawns the SOP owner",
      "The orchestrator routes both to " + _code("k-developer") + ", which owns both SOPs. To skip the routing hop,"

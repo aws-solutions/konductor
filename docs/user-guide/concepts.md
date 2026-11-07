@@ -261,7 +261,8 @@ Reading the diagram in words:
 1. You describe what you want to the `konductor` agent.
 2. Its always-active direct-work rules have it do the work itself, or name an SOP for a
    multi-phase request.
-3. It spawns a specialist only for a tool it lacks or for parallel work on disjoint files.
+3. It spawns a specialist only for a tool, skill or SOP it lacks or for parallel work on disjoint
+   files.
 4. The specialist loads whichever skills and SOPs the task needs, does the work, and applies
    its own maker-checker pass.
 5. When a phase closes, `konductor` spawns a fresh `k-*` reviewer, fixes the CRITICAL and

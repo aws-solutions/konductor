@@ -90,10 +90,39 @@ def test_exemption_use_is_reported_with_the_diff_stat():
 def test_readme_says_konductor_does_the_work():
     readme = _flat("docs/user-guide/README.md")
     assert (
-        "and it does the work itself, spawns a specialist when a step needs a tool or skill it lacks, "
+        "and it does the work itself, spawns a specialist when a step needs a tool, skill or SOP it lacks, "
         "and has a fresh specialist review each phase against stated criteria."
     ) in readme
     assert "routes each piece of work to the specialist that owns it" not in readme
+
+
+SPAWN_CASE_SUMMARY_PAGES = (
+    "docs/user-guide/quick-start.md",
+    "README.md",
+    "docs/user-guide/concepts.md",
+    "docs/user-guide/use-cases/plan-and-verify-work.md",
+    "docs/index.html",
+    "docs/site/user-guide.html",
+)
+
+
+def test_spawn_case_summary_names_the_sop_case():
+    """The one-line summary of the spawn rule lists the SOP case the guide's examples rely on."""
+    for rel in SPAWN_CASE_SUMMARY_PAGES:
+        text = _flat(rel)
+        assert "only for a tool it lacks" not in text, rel
+        assert "only for a tool, skill or SOP it lacks or for " in text, rel
+    assert "a tool or skill it lacks" not in _flat("docs/user-guide/README.md")
+
+
+def test_design_use_case_names_the_owner_before_the_verb():
+    assert "a design step inside a task it owns, `konductor` writes itself" in _flat(
+        "docs/user-guide/use-cases/design-a-system.md"
+    )
+    for rel in ("docs/index.html", "docs/site/user-guide.html"):
+        text = _read(rel)
+        assert "owns it writes itself" not in text, rel
+        assert "a design step inside a task it owns, <" in text and "> writes itself. The mux and cmux" in text, rel
 
 
 READ_ONLY_DISPATCHER_PHRASES = (

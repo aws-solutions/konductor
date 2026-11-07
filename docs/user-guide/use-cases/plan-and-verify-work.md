@@ -34,8 +34,8 @@ wall.
 
 So when you run this chain through `konductor`, it reads, synthesises, writes the files and runs the
 `git diff`, build and test commands itself, as its direct-work rules allow; it spawns a specialist
-only for a tool it lacks or for independent work on disjoint files (`k-researcher` for parallel
-research), and a fresh reviewer when a phase closes. Through the mux or cmux orchestrator the same
+only for a tool, skill or SOP it lacks or for independent work on disjoint files (`k-researcher`
+for parallel research), and a fresh reviewer when a phase closes. Through the mux or cmux orchestrator the same
 steps execute in whichever specialist it delegates to: `k-developer` for implementation and shell
 work, `k-researcher` for parallel research, `k-architect` for escalations.
 

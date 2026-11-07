@@ -55,7 +55,7 @@ These patterns are matched **literally**. A file named `design.md` will not fill
 ## How to invoke
 
 Through the orchestrator. `konductor` spawns `k-architect`, which declares these SOPs, to run them;
-a design step inside a task `konductor` owns it writes itself. The mux and cmux orchestrators route
+a design step inside a task it owns, `konductor` writes itself. The mux and cmux orchestrators route
 every design request to `k-architect`:
 
 ```text

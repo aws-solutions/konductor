@@ -75,8 +75,8 @@ implementation conversation, and you remember to ask for tests. Nothing checks a
 but you.
 
 Konductor replaces that manual relay. You talk to one agent, **`konductor`**, a multi-agent
-orchestrator, and it does the work itself, spawns a specialist when a step needs a tool or skill
-it lacks, and has a fresh specialist review each phase against stated criteria. The direct-work
+orchestrator, and it does the work itself, spawns a specialist when a step needs a tool, skill or
+SOP it lacks, and has a fresh specialist review each phase against stated criteria. The direct-work
 rules and the verification gates are plain files, so the behaviour is inspectable and editable
 rather than implicit in a prompt.
 

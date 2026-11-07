@@ -237,8 +237,8 @@ for the full fallback chain.
 ## Meet the team
 
 `konductor` is where you start. It does the work in your session and brings in one fresh specialist
-reviewer at each phase gate; it spawns a specialist to do work only for a tool it lacks or for parallel
-work on disjoint files. A failed review gets one fix and one re-review; a CRITICAL or IMPORTANT finding still open after that is reported to you. On Kiro CLI it trusts only reads, so
+reviewer at each phase gate; it spawns a specialist to do work only for a tool, skill or SOP it lacks
+or for parallel work on disjoint files. A failed review gets one fix and one re-review; a CRITICAL or IMPORTANT finding still open after that is reported to you. On Kiro CLI it trusts only reads, so
 each write and shell command asks you first; widen `allowedTools` in your agent config if you want
 fewer prompts.
 
