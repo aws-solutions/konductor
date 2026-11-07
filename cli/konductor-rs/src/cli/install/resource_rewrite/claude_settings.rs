@@ -680,15 +680,22 @@ pub(super) fn telemetry_hook_command(
     command
 }
 
-/// `<exe> __orchestration-hook [--agent <name>] [--install-root <dir>]`.
+/// `<exe> __orchestration-hook [--agent <name>] [--install-root <dir>] [--harness <id>]`.
 /// `quoted_exe` is already shell-quoted; the other values are quoted here.
+/// `harness` is the strategy name of the install that wires the hook, so
+/// the hook resolves its owner among installs for that harness only.
 pub(super) fn orchestration_hook_command(
     quoted_exe: &str,
     agent: Option<&str>,
     install_root: Option<&Path>,
+    harness: Option<&str>,
 ) -> String {
     let mut command = format!("{quoted_exe} {ORCHESTRATION_HOOK_MARKER}");
     append_hook_args(&mut command, agent, install_root);
+    if let Some(harness) = harness {
+        command.push_str(" --harness ");
+        command.push_str(&shell_quote_for_hook_command(harness));
+    }
     command
 }
 
@@ -710,9 +717,12 @@ fn hook_command(quoted_exe: &str, id: HookId, install_root: &Path) -> String {
         HookId::Telemetry(event) => {
             telemetry_hook_command(quoted_exe, event, None, Some(install_root))
         }
-        HookId::OrchestrationMode => {
-            orchestration_hook_command(quoted_exe, None, Some(install_root))
-        }
+        HookId::OrchestrationMode => orchestration_hook_command(
+            quoted_exe,
+            None,
+            Some(install_root),
+            Some(crate::cli::install::claude::STRATEGY_NAME),
+        ),
     }
 }
 
@@ -1699,7 +1709,10 @@ mod tests {
     fn orchestration_block(dir: &Path, exe: &str) -> serde_json::Value {
         hook_block(
             "startup|clear|resume|compact",
-            &format!("{exe} __orchestration-hook{}", root_arg(dir)),
+            &format!(
+                "{exe} __orchestration-hook{} --harness claude",
+                root_arg(dir)
+            ),
         )
     }
 
@@ -2343,7 +2356,7 @@ mod tests {
 
     #[test]
     fn orchestration_hook_commands_are_recognized_by_subcommand() {
-        let command = orchestration_hook_command("/opt/k", None, None);
+        let command = orchestration_hook_command("/opt/k", None, None, None);
         assert_eq!(command, "/opt/k __orchestration-hook");
         assert!(command_is_hook(&command, HookId::OrchestrationMode));
         assert!(command_is_hook(
@@ -2359,8 +2372,16 @@ mod tests {
             HookId::OrchestrationMode
         ));
         assert_eq!(
-            orchestration_hook_command("k", Some("konductor"), None),
+            orchestration_hook_command("k", Some("konductor"), None, None),
             "k __orchestration-hook --agent konductor"
         );
+        assert_eq!(
+            orchestration_hook_command("k", None, None, Some("claude")),
+            "k __orchestration-hook --harness claude"
+        );
+        assert!(command_is_hook(
+            "k __orchestration-hook --install-root /x --harness claude",
+            HookId::OrchestrationMode
+        ));
     }
 }

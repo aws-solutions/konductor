@@ -58,7 +58,7 @@ fn seed_repo(agents: &[&str]) -> PathBuf {
   "schemaVersion": "1",
   "name": "{name}",
   "config": {{ "description": "An agent.", "model": "claude-sonnet-5", "systemPrompt": "Help." }},
-  "clientConfig": {{ "kiroCli": {{}} }}
+  "clientConfig": {{ "kiroCli": {{}}, "claudeCli": {{}} }}
 }}
 "#
             ),
@@ -184,7 +184,13 @@ fn v3_payload() -> String {
 }
 
 fn assert_persona(stdout: &str, install_root: &Path) {
-    let rules = install_root.join(".kiro/context/k-orchestrator-routing-rules.md");
+    assert_persona_naming(
+        stdout,
+        &install_root.join(".kiro/context/k-orchestrator-routing-rules.md"),
+    );
+}
+
+fn assert_persona_naming(stdout: &str, rules: &Path) {
     assert!(
         stdout.starts_with("Orchestration: coordinator\nFor this session"),
         "{stdout}"
@@ -195,7 +201,7 @@ fn assert_persona(stdout: &str, install_root: &Path) {
     );
     assert!(stdout.ends_with("- Delegate every write.\n"), "{stdout}");
     assert!(stdout.len() <= 2500);
-    let named = std::fs::read_to_string(&rules).unwrap();
+    let named = std::fs::read_to_string(rules).unwrap();
     assert!(named.contains(RULES_LAST_HEADING));
 }
 
@@ -493,6 +499,166 @@ fn only_the_nearest_install_prints() {
 }
 
 #[test]
+fn a_claude_resume_under_auto_prints_the_auto_line() {
+    let home = scratch_dir("resume-home");
+    install_into(&home, &home, &["konductor"]);
+    set_mode(&home, "orchestration:\n  mode: auto\n");
+    for source in ["resume", "compact"] {
+        assert_eq!(
+            fire(
+                &home,
+                &home,
+                &[],
+                &[],
+                &claude_payload(Some("konductor"), source)
+            ),
+            "Orchestration: auto\n",
+            "{source}"
+        );
+    }
+    for source in ["startup", "clear"] {
+        assert_eq!(
+            fire(
+                &home,
+                &home,
+                &[],
+                &[],
+                &claude_payload(Some("konductor"), source)
+            ),
+            "",
+            "{source}"
+        );
+    }
+    // No config file resolves to auto as well.
+    std::fs::remove_file(home.join(".konductor/config.yml")).unwrap();
+    assert_eq!(
+        fire(
+            &home,
+            &home,
+            &[],
+            &[],
+            &claude_payload(Some("konductor"), "resume")
+        ),
+        "Orchestration: auto\n"
+    );
+    // Kiro payloads carry no `source`, so they stay silent.
+    let kiro_home = scratch_dir("resume-kiro-home");
+    seed_kiro_session(&kiro_home, V3_SESSION, "konductor");
+    let env: [(&str, &Path); 1] = [("KIRO_HOME", &kiro_home)];
+    assert_eq!(fire(&home, &home, &[], &env, &v3_payload()), "");
+    std::fs::remove_dir_all(&home).ok();
+    std::fs::remove_dir_all(&kiro_home).ok();
+}
+
+/// A Claude install at the home and a Kiro-only install in the project:
+/// the home's Claude hook owns the Claude session, so the nearer Kiro
+/// install neither silences it nor prints for it.
+#[test]
+fn a_mixed_harness_pair_resolves_the_owner_per_harness() {
+    let home = scratch_dir("mixed-home");
+    install_with(
+        &home,
+        &home,
+        &["konductor"],
+        &["--harness", "claude", "--no-telemetry"],
+    );
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    install_into(&home, &project, &["konductor"]);
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    let home_arg = home.display().to_string();
+    let project_arg = project.display().to_string();
+    let claude = claude_payload(Some("konductor"), "startup");
+
+    assert_persona_naming(
+        &fire(
+            &home,
+            &project,
+            &["--install-root", &home_arg, "--harness", "claude"],
+            &[],
+            &claude,
+        ),
+        &home.join(".konductor/context/k-orchestrator-routing-rules.md"),
+    );
+
+    let kiro_home = scratch_dir("mixed-kiro-home");
+    seed_kiro_session(&kiro_home, V3_SESSION, "konductor");
+    let env: [(&str, &Path); 1] = [("KIRO_HOME", &kiro_home)];
+    assert_persona(
+        &fire(
+            &home,
+            &project,
+            &["--install-root", &project_arg, "--harness", "kiro-v3"],
+            &env,
+            &v3_payload(),
+        ),
+        &project,
+    );
+
+    // Without `--harness` (a hook written before the flag) the lookup
+    // stays layout-blind: the nearer Kiro-only install wins and the home
+    // hook prints nothing.
+    assert_eq!(
+        fire(
+            &home,
+            &project,
+            &["--install-root", &home_arg],
+            &[],
+            &claude
+        ),
+        ""
+    );
+    std::fs::remove_dir_all(&home).ok();
+    std::fs::remove_dir_all(&kiro_home).ok();
+}
+
+/// The reverse pair: a Kiro v3 install at the home and a Claude-only
+/// install in the project.
+#[test]
+fn the_reverse_mixed_harness_pair_resolves_the_owner_per_harness() {
+    let home = scratch_dir("mixed-reverse-home");
+    install_into(&home, &home, &["konductor"]);
+    let project = home.join("workspace/project");
+    std::fs::create_dir_all(&project).unwrap();
+    install_with(
+        &home,
+        &project,
+        &["konductor"],
+        &["--harness", "claude", "--no-telemetry"],
+    );
+    set_mode(&home, "orchestration:\n  mode: coordinator\n");
+    let home_arg = home.display().to_string();
+    let project_arg = project.display().to_string();
+
+    let kiro_home = scratch_dir("mixed-reverse-kiro-home");
+    seed_kiro_session(&kiro_home, V3_SESSION, "konductor");
+    let env: [(&str, &Path); 1] = [("KIRO_HOME", &kiro_home)];
+    assert_persona(
+        &fire(
+            &home,
+            &project,
+            &["--install-root", &home_arg, "--harness", "kiro-v3"],
+            &env,
+            &v3_payload(),
+        ),
+        &home,
+    );
+
+    assert_persona_naming(
+        &fire(
+            &home,
+            &project,
+            &["--install-root", &project_arg, "--harness", "claude"],
+            &[],
+            &claude_payload(Some("konductor"), "startup"),
+        ),
+        &project.join(".konductor/context/k-orchestrator-routing-rules.md"),
+    );
+    std::fs::remove_dir_all(&home).ok();
+    std::fs::remove_dir_all(&kiro_home).ok();
+}
+
+#[test]
 fn bad_stdin_exits_zero_with_no_output() {
     let home = scratch_dir("stdin-home");
     install_into(&home, &home, &["konductor"]);
@@ -523,7 +689,7 @@ fn kiro_v3_wires_its_own_hook_document_under_no_telemetry_and_uninstall_removes_
     let command = entry["action"]["command"].as_str().unwrap();
     assert!(
         command.ends_with(&format!(
-            " __orchestration-hook --install-root {}",
+            " __orchestration-hook --install-root {} --harness kiro-v3",
             project.display()
         )),
         "{command}"
@@ -604,8 +770,8 @@ fn kiro_v2_wires_the_hook_on_konductor_only() {
         };
         let konductor_hooks = spawn_commands("konductor");
         assert!(
-            konductor_hooks.iter().any(|c| c.contains(&format!(
-                " __orchestration-hook --agent konductor --install-root {}",
+            konductor_hooks.iter().any(|c| c.ends_with(&format!(
+                " __orchestration-hook --agent konductor --install-root {} --harness kiro-cli-v2",
                 project.display()
             ))),
             "{flags:?}: {konductor_hooks:?}"

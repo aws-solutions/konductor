@@ -39,7 +39,14 @@ not per individual commit.
   fallback when the install that wired it is outside your home directory and is not the project root.
   Only the mode line and the Step 1 pointer in the hook's output are instructions; the summary
   lines are a preview of the named rules file. The pointer names an install under a symlinked
-  home through the logical home for project and parent-of-project installs too.
+  home through the logical home for project and parent-of-project installs too. On a Claude Code
+  resume or compact under `auto` the hook prints `Orchestration: auto`. The hook resolves the
+  owning install per harness.
+- Claude Code installs copy the context files to `.konductor/context/`, where the orchestration
+  hook finds the routing rules; uninstall removes the directory and keeps memory.
+- A Claude Code install with `--no-telemetry` now writes `.claude/settings.local.json` for the
+  orchestration hook alone.
+- The telemetry hook's Kiro CLI v3 session lookup follows `$KIRO_HOME` when set.
 
 ### Changed
 

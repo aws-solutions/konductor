@@ -202,6 +202,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
         Commands::OrchestrationHook {
             agent,
             install_root,
+            harness,
         } => {
             // Same silent cwd fallback as `TelemetryHook`: this arm never
             // prints to stderr and never fails the harness.
@@ -214,6 +215,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
                 &cwd,
                 agent.as_deref(),
                 install_root.as_deref(),
+                harness.as_deref(),
             );
             0
         }

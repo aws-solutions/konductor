@@ -52,10 +52,13 @@ pub(crate) const KONDUCTOR_DESTINATION_ROOT: &str = ".konductor";
 /// writes `.konductor/manifest`.
 pub struct KiroCliInstallStrategy;
 
+/// The strategy's manifest name and `--harness` value. Matches
+/// `KiroCliV2Transformer::name()` exactly.
+pub(crate) const STRATEGY_NAME: &str = "kiro-cli-v2";
+
 impl InstallStrategy for KiroCliInstallStrategy {
-    /// Matches `KiroCliV2Transformer::name()` exactly.
     fn name(&self) -> &'static str {
-        "kiro-cli-v2"
+        STRATEGY_NAME
     }
 
     fn harness_dir(&self) -> &'static str {
@@ -3228,7 +3231,7 @@ mod tests {
                 "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
             }, {
                 "matcher": "startup|clear|resume|compact",
-                "hooks": [{"type": "command", "command": format!("{exe} __orchestration-hook{root}")}]
+                "hooks": [{"type": "command", "command": format!("{exe} __orchestration-hook{root} --harness claude")}]
             }]),
             "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
         );
