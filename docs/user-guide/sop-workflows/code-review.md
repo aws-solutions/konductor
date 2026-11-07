@@ -137,13 +137,11 @@ pass not yet run), and an `Adversarial pass:` line with the pass state.
   review passes, but the owning agent cannot spawn: no specialist holds a spawn tool in Kiro CLI
   v3 or Claude Code, and the core rules forbid it in Kiro CLI v2. Step 6 has `k-developer` write
   the report, then end with a note asking the orchestrator to run
-  [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) on the same diff.
-  The verdict comes from the findings (`NEEDS FIXES` when any CRITICAL or IMPORTANT is open), and
-  the adversarial state is its own line (`Adversarial pass: not run`, `complete (<path>)` or
-  `skipped (frontend only)`), so a known CRITICAL reads `NEEDS FIXES` even on a direct run. Under
-  `konductor`, the orchestrator runs the adversarial review and records its verdict and report
-  path next to the report's own verdict. When `k-developer` is started directly, the note comes
-  back to you: ask `konductor` to run the adversarial review. See
+  [`k-adversarial-pull-request-review`](#k-adversarial-pull-request-review) on the same diff;
+  the verdict comes from the findings, so a known CRITICAL reads `NEEDS FIXES` even on a direct
+  run, and an `Adversarial pass:` line records the pass state. Under `konductor` the orchestrator
+  runs the pass and sets the final verdict; started directly, the note comes back to you: ask
+  `konductor` to run the adversarial review. See
   [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 - **The adversarial step is also skipped for frontend-only reviews** by design, because it targets
   backend and infra gaps.

@@ -214,9 +214,11 @@ Step 6 has `k-developer` write the report, then end with a note asking the orche
 (`NEEDS FIXES` when any CRITICAL or IMPORTANT is open), and the adversarial state is its own line
 (`Adversarial pass: not run`, `complete (<path>)` or `skipped (frontend only)`), so a known
 problem is never hidden behind a pending pass. Under `konductor`, the orchestrator runs the
-adversarial review from the note and records its verdict and report path next to the report's
-own verdict. When `k-developer` is started directly, the note comes back to you: ask
-`konductor` to run the adversarial review.
+adversarial review from the note, records its verdict and report path next to the report's
+own verdict, and replaces a `PENDING ADVERSARIAL PASS` verdict with the final one: `READY FOR
+CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding. When
+`k-developer` is started directly, the note comes back to you: ask `konductor` to run the
+adversarial review.
 
 To be sure the adversarial pass runs, run
 [`k-adversarial-pull-request-review`](sop-workflows/code-review.md#k-adversarial-pull-request-review)

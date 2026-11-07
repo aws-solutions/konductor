@@ -22,20 +22,19 @@ it generates.
 
 ## Known limitation: the adversarial pass needs an orchestrator
 
-`k-code-review-workflow` step 6 is an adversarial pass by `k-architect` over the same diff, to
-surface gaps missed by standard review. **`k-developer`, the SOP's only owner, cannot spawn
-the architect**, verified against the agent specs:
+`k-code-review-workflow` step 6 is an adversarial pass over the same diff, to surface gaps missed
+by standard review. It needs four review passes and a fresh `k-architect` checker, and
+**`k-developer`, the SOP's only owner, cannot spawn them**, verified against the agent specs:
 
 - In **Claude Code**, no specialist has an `Agent(...)` tool; only `konductor` does.
 - In **Kiro CLI v3**, no specialist has the `subagent` tool; only `konductor` does. In Kiro CLI
   v2, `@builtin` still carries it, and only the core rules stop the spawn.
 
-**Through `konductor`, step 6 runs.** Step 6 has `k-developer` write the report, then end with a
-note asking the orchestrator to run `k-adversarial-pull-request-review` on the same diff. The
-verdict comes from the findings (`NEEDS FIXES` when any CRITICAL or IMPORTANT is open), and the
-adversarial state is its own line (`Adversarial pass: not run`, `complete (<path>)` or
-`skipped (frontend only)`). `konductor` runs the adversarial review and records its verdict and
-report path next to the report's own verdict.
+**Through `konductor`, step 6 runs.** `k-developer` writes the report with the verdict from its
+findings and an `Adversarial pass: not run` line, then ends with a note; `konductor` runs
+`k-adversarial-pull-request-review` on the same diff, records its verdict and report path, and
+sets the final verdict. Detail in
+[Agents reference](../agents.md#why-this-matters-a-real-consequence).
 
 **Started directly, the note comes back to you.** Nothing runs it, so you get the report with
 `Adversarial pass: not run`; a known CRITICAL still reads `NEEDS FIXES`. To complete it, ask
@@ -169,7 +168,7 @@ afterwards — this is the one SOP here where "review" means "changed your code"
 
 ### 4. `k-adversarial-pull-request-review` — the security second opinion
 
-Ask **`konductor`**, which coordinates it. This is the workaround for the step 6 gap; `k-architect` and `k-developer` do not declare this SOP.
+Ask **`konductor`**, which coordinates it; `k-architect` and `k-developer` do not declare this SOP. This is the pass `k-code-review-workflow` step 6 asks the orchestrator to run.
 
 ```text
 Run k-adversarial-pull-request-review against my current diff.
@@ -221,7 +220,8 @@ Run k-adversarial-pull-request-review against my current diff.
 
 ## Checkpoint
 
-- [ ] `code-review-report.md` exists with a READY FOR CR / NEEDS FIXES verdict.
+- [ ] `code-review-report.md` exists with a NEEDS FIXES, READY FOR CR or PENDING ADVERSARIAL PASS
+      verdict and an `Adversarial pass:` line.
 - [ ] `test-gap-analysis.md`, `e2e-test-strategy.md` and `test-coverage-review-report.md` exist
       under `test-coverage-review/`, alongside the security skill's own output.
 - [ ] `cleanup-report.md` exists, and `git diff` shows only slop removals — no logic changes.
@@ -236,7 +236,7 @@ Any CRITICAL finding in the adversarial report forces REQUEST CHANGES regardless
 ## Runtime differences
 
 Mechanics are identical across runtimes for all four SOPs. The only runtime-relevant fact is the
-step 6 delegation gap above, and that is about which *agent* has a spawn capability rather than about
+step 6 limitation above, and that is about which *agent* has a spawn capability rather than about
 Kiro CLI versus Claude Code behaviour once you are inside the right agent.
 
 ---

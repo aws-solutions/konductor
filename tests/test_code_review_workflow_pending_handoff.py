@@ -55,6 +55,13 @@ def test_step_7_never_says_ready_while_not_run():
     assert "`READY FOR CR` never appears while the pass has not run" in step_7()
 
 
+def test_note_sets_the_verdict_once_the_pass_is_complete():
+    note = step_6()
+    assert "when this report's `Verdict:` line reads `PENDING ADVERSARIAL PASS`, set it by the Step 7 rule" in note
+    assert "`NEEDS FIXES` if the adversarial report lists any CRITICAL or IMPORTANT finding, otherwise `READY FOR CR`" in note
+    assert "is open, in this report or in a completed adversarial report" in step_7()
+
+
 def test_frontend_only_skips_with_its_own_state():
     assert "`Adversarial pass: skipped (frontend only)` and no note" in step_6()
 

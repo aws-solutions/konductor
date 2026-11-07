@@ -84,7 +84,7 @@ Validate each finding to eliminate false positives. When in doubt, reject — fa
 
 ### 6. Adversarial Review
 
-Write the Step 7 report from the Step 5 list, then end your result with a handoff note for the orchestrator: "Run `k-adversarial-pull-request-review` on the Step 1 diff with `diff_input` = that diff and `output_file` = `<output_file stem>-adversarial.md`; then state its verdict and report path next to this report's verdict and, if you may write files, replace this report's `Adversarial pass:` line with `Adversarial pass: complete (<path>)`." Include in the note the Step 1 diff as `diff_input` or the command that reproduces it, and `pr_url` set to the `cr_url` value if one was given, since that is the name `k-adversarial-pull-request-review` declares. The orchestrator coordinates that SOP; on a direct run with no orchestrator, the note goes to the user.
+Write the Step 7 report from the Step 5 list, then end your result with a handoff note for the orchestrator: "Run `k-adversarial-pull-request-review` on the Step 1 diff with `diff_input` = that diff and `output_file` = `<output_file stem>-adversarial.md`; then state its verdict and report path next to this report's verdict and, if you may write files, replace this report's `Adversarial pass:` line with `Adversarial pass: complete (<path>)` and, when this report's `Verdict:` line reads `PENDING ADVERSARIAL PASS`, set it by the Step 7 rule: `NEEDS FIXES` if the adversarial report lists any CRITICAL or IMPORTANT finding, otherwise `READY FOR CR`." Include in the note the Step 1 diff as `diff_input` or the command that reproduces it, and `pr_url` set to the `cr_url` value if one was given, since that is the name `k-adversarial-pull-request-review` declares. The orchestrator coordinates that SOP; on a direct run with no orchestrator, the note goes to the user.
 
 **Constraints:**
 
@@ -120,7 +120,7 @@ Write the consolidated report to the output file.
   [Numbered list]
   ```
 
-- You MUST state the verdict from the findings in the report: `NEEDS FIXES` if any CRITICAL or IMPORTANT finding is open; otherwise `READY FOR CR` when the adversarial pass is complete or skipped, or `PENDING ADVERSARIAL PASS` while it has not run. `READY FOR CR` never appears while the pass has not run.
+- You MUST state the verdict from the findings in the report: `NEEDS FIXES` if any CRITICAL or IMPORTANT finding is open, in this report or in a completed adversarial report; otherwise `READY FOR CR` when the adversarial pass is complete or skipped, or `PENDING ADVERSARIAL PASS` while it has not run. `READY FOR CR` never appears while the pass has not run.
 - The line after the verdict MUST read `Adversarial pass: not run (the orchestrator runs k-adversarial-pull-request-review on this diff)`, `Adversarial pass: complete (<path>)` or `Adversarial pass: skipped (frontend only)`
 - You MUST NOT print the full report in your response — reference the file
 
