@@ -139,11 +139,14 @@ Reject plans that have ANY of these issues:
 
 Each criterion scores as **Pass** (fully met), **Partial** (some items met, some gaps), or **Fail** (not met).
 
+Count the Pass scores, then take the one row that matches. Partial never counts as Pass.
+
 - 4 Pass = ⭐⭐⭐⭐⭐
-- 3 Pass, 1 Partial = ⭐⭐⭐⭐
-- 3 Pass, 1 Fail, or exactly 2 Pass = ⭐⭐⭐
-- 1 Pass = ⭐⭐
-- 0 Pass = ⭐
+- 3 Pass and 1 Partial = ⭐⭐⭐⭐
+- 3 Pass and 1 Fail = ⭐⭐⭐
+- 2 Pass (any mix of Partial and Fail in the other two) = ⭐⭐⭐
+- 1 Pass (any mix of Partial and Fail in the other three) = ⭐⭐
+- 0 Pass (any mix of Partial and Fail, including 4 Partial) = ⭐
 
 ## Verdict Format
 
