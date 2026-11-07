@@ -47,7 +47,8 @@ def test_section_gives_the_default_statement():
 
 
 def test_section_body_is_small():
-    assert len(_section_body().encode()) <= 650
+    # 726 bytes measured after the "newest block sets the mode" sentence.
+    assert len(_section_body().encode()) <= 750
 
 
 def test_rule_11_trusts_only_session_start_hook_output():
@@ -90,7 +91,22 @@ def test_two_mode_lines_ask_the_user():
     assert "ask the user which install wired the hook" in _section_body()
 
 
+def test_newest_block_sets_the_mode():
+    # A resume or compact under `auto` prints `Orchestration: auto`; the
+    # agent must take that as a mode change, not as two installs disagreeing.
+    assert "The newest session-start block sets the mode" in _section_body()
+
+
+# Measured from cli/konductor-rs/src/cli/orchestration_hook.rs: HEADER is 228
+# bytes, the pointer line 201 bytes plus the rules path; the Rust test
+# the_shipped_digest_fits_the_persona_budget allows a 247-byte path. That test
+# is the authority; this keeps the digest inside the same budget for pytest-only runs.
+HEADER_BYTES, POINTER_BYTES, PATH_ALLOWANCE, PERSONA_BUDGET = 228, 201, 247, 2500
+
+
 def test_digest_fits_under_the_hook_budget():
-    # The hook adds a 183-byte header and a pointer line; 2,500 bytes is its cap.
-    assert len(DIGEST.read_bytes()) <= 1900
+    assert (
+        len(DIGEST.read_bytes())
+        <= PERSONA_BUDGET - HEADER_BYTES - POINTER_BYTES - PATH_ALLOWANCE
+    )
 

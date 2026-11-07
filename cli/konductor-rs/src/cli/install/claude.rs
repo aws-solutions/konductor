@@ -64,7 +64,7 @@ pub(crate) const CLAUDE_DESTINATION_ROOT: &str = ".claude";
 /// writes `.konductor/manifest`.
 pub struct ClaudeInstallStrategy;
 
-/// The strategy name recorded in the manifest slot.
+/// The strategy's manifest name and `--harness` value.
 pub(crate) const STRATEGY_NAME: &str = "claude";
 
 impl InstallStrategy for ClaudeInstallStrategy {
@@ -1406,7 +1406,7 @@ mod tests {
                 "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
             }, {
                 "matcher": "startup|clear|resume|compact",
-                "hooks": [{"type": "command", "command": format!("{exe} __orchestration-hook{root}")}]
+                "hooks": [{"type": "command", "command": format!("{exe} __orchestration-hook{root} --harness claude")}]
             }]),
             "SessionStart must carry the telemetry and orchestration hooks"
         );

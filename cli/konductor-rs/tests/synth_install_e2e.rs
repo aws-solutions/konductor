@@ -1232,6 +1232,10 @@ fn coordinator_mode_round_trips_through_each_harness_install() {
         .unwrap();
 
         let command = installed_orchestration_command(&target, harness);
+        assert!(
+            command.ends_with(&format!(" --harness {harness}")),
+            "{harness}: {command}"
+        );
         let mut child = Command::new("sh")
             .arg("-c")
             .arg(&command)

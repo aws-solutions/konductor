@@ -43,11 +43,8 @@ kiro-cli chat --agent konductor
 Design a system for ingesting IoT sensor events and alerting on anomalies.
 ```
 
-Or through the orchestrator, which routes design work to `k-architect`:
-
-```bash
-kiro-cli chat --agent konductor
-```
+`konductor` spawns `k-architect`, which declares this SOP, to run it; the mux and cmux orchestrators
+route it there.
 
 ### Parameters
 

@@ -195,7 +195,12 @@ mod tests {
         for exe in [PLAIN_EXE, EXE_WITH_SPACE] {
             let destination = scratch_dir("v2");
             let mut agent = serde_json::json!({"name": crate::cli::orchestration_hook::MODE_AGENT});
-            wire_v2_orchestration_hook(&mut agent, exe, Some(&destination));
+            wire_v2_orchestration_hook(
+                &mut agent,
+                exe,
+                Some(&destination),
+                Some(crate::cli::install::kiro_cli::STRATEGY_NAME),
+            );
             let listed = v2_agent_manifest_path();
             let file = destination.join(&listed);
             fs::create_dir_all(file.parent().unwrap()).unwrap();

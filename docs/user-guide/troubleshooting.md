@@ -231,7 +231,7 @@ improvises something different.
 `k-test-coverage-review` is declared only by `k-quality-assurance` — ask
 `k-product-manager` for it and there is nothing to run.
 
-**Fix.** Either start with `konductor` and let it route:
+**Fix.** Either start with `konductor`, which spawns the agent that declares the SOP:
 
 ```text
 Run the k-test-coverage-review SOP on src/ against test/.

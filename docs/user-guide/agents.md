@@ -28,11 +28,11 @@ and the MCP registry entries.
 
 | Agent | Role | Model | Skills | SOPs | MCP |
 | --- | --- | --- | --- | --- | --- |
-| `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 22 | 10 | — |
-| `konductor-mux-orchestrator` | Coordinator. Delegates every change, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 9 | — |
-| `konductor-cmux-orchestrator` | Coordinator. Delegates every change, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 9 | — |
+| `konductor` | Single writer. Does the work, reviews at each phase gate. | `claude-sonnet-5.5` | 22 | 11 | — |
+| `konductor-mux-orchestrator` | Coordinator. Delegates every change, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 10 | — |
+| `konductor-cmux-orchestrator` | Coordinator. Delegates every change, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 10 | — |
 | `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
-| `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 4 | `aws-mcp` |
+| `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 3 | `aws-mcp` |
 | `k-developer` | Implementation, code review, git, builds. | `claude-sonnet-5.5` | 27 | 4 | `aws-mcp` |
 | `k-quality-assurance` | Test coverage, E2E strategy, security tests. | `claude-sonnet-5.5` | 12 | 1 | — |
 | `k-tpm` | Program plans, status, risk, estimation. | `claude-sonnet-5.5` | 14 | 0 | — |
@@ -115,10 +115,11 @@ Three observations that are not obvious and do affect what you should trust:
    either.** All three declare `Write` and `Bash` in `clientConfig.claudeCli.tools`. In Kiro
    CLI `konductor` pre-approves nothing but `fs_read`, and the two multiplexer variants
    pre-approve shell — which is a *prompting* difference, not a capability one. If you are
-   relying on "the orchestrator only delegates, it never touches my repository", what actually
-   holds that line is the routing rule in
+   relying on "the mux or cmux orchestrator only delegates, it never touches my repository",
+   what actually holds that line is the routing rule in
    [`context/k-orchestrator-routing-rules.md`](#the-three-orchestrators) plus your own answer
-   to the prompt — not the tool configuration.
+   to the prompt, not the tool configuration. `konductor` is outside that line by design: it
+   writes in its own session.
 2. **`k-browser` and `k-media-analyzer` pre-approve reads only in Kiro CLI, and are granted
    write and shell outright in Claude Code.** If you expect a media analyser to be incapable
    of editing your repository, that expectation does not hold in either runtime — in Kiro CLI
@@ -152,11 +153,11 @@ For Kiro CLI v3 and Claude Code this is enforced in config, not just in the prom
   Kiro CLI v3, synth also writes `excludedTools: ["invoke_sub_agent", "run_workflow"]` into every
   specialist, because `@builtin` carries `run_workflow`, which can start any agent. This was
   tested with kiro-cli 2.35.0; an older client that rejects unknown agent-file fields
-  may fail to load the specialists.
+  may fail to load the specialists. After an upgrade, open a specialist and run `/tools` to
+  confirm no new spawn-capable built-in appears.
 - Claude Code: synth drops `Agent(...)`, `Task` and `Workflow` from every specialist's `tools`
   list and denies them with `disallowedTools` as well, so a specialist with no `tools` list is
-  still blocked. The Kiro v3 exclusions were checked against kiro-cli 2.35.0; after an upgrade,
-  open a specialist and run `/tools` to confirm no new spawn-capable built-in appears.
+  still blocked.
 - Kiro CLI v2 is not covered. Its `@builtin` includes the `subagent` tool, and the v2 output does
   not remove it, so there only the prompt rule stops a specialist from spawning.
 
@@ -197,32 +198,33 @@ flowchart LR
 | `konductor-cmux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
 | every `k-*` specialist | **nothing** | **nothing** |
 
-Run directly with no orchestrator, the caller is you. `k-adversarial-pull-request-review`
-returns its three Step 2 passes as a proposed split, resumes at Step 3, returns the reuse pass as
-a handoff note, and resumes at Step 4. Starting from `konductor` routes each hop for you.
+Run directly with no orchestrator, the caller is you and the note or split comes back to you.
+The adversarial review is the exception: only the orchestrators declare
+`k-adversarial-pull-request-review`, which spawns four `k-developer` passes and then a fresh
+`k-architect` checker, so run it through `konductor`.
 
 ### Why this matters: a real consequence
 
-`k-code-review-workflow` step 6 is an adversarial pass by `k-architect`. That SOP
-is declared only by `k-developer`, which **cannot spawn `k-architect`** in Kiro CLI v3 or Claude
-Code:
+`k-code-review-workflow` step 6 is an adversarial pass. That SOP is declared only by
+`k-developer`, which **cannot run the adversarial review** in Kiro CLI v3 or Claude Code:
 
 - Specialists hold no spawn tool there (see above; Kiro CLI v2 relies on the prompt rule).
 - The core rules tell a specialist to do such steps itself or return them to its caller.
 
-Step 6 has `k-developer` write the report with an "Adversarial pass: pending" section, then
-return the pass as a handoff for `k-architect`, naming the SOP and the step to resume at. Under
-`konductor`, the handoff goes to the architect, the findings come back, and the
-developer rewrites the report. When `k-developer` is started directly, you get the report with
-the section pending and the handoff comes back to you. To complete it, ask
-`konductor` to run `k-adversarial-pull-request-review`, then pass its findings and the handoff
-to `k-developer` and ask it to resume `k-code-review-workflow` at step 6. Started directly,
-`k-architect` returns the review's passes as a split, or runs them itself in one session and
-says so.
+Step 6 has `k-developer` write the report, then end with a note asking the orchestrator to run
+`k-adversarial-pull-request-review` on the same diff. The verdict comes from the findings
+(`NEEDS FIXES` when any CRITICAL or IMPORTANT is open), and the adversarial state is its own line
+(`Adversarial pass: not run`, `complete (<path>)` or `skipped (frontend only)`), so a known
+problem is never hidden behind a pending pass. Under `konductor`, the orchestrator runs the
+adversarial review from the note, records its verdict and report path next to the report's
+own verdict, and replaces a `PENDING ADVERSARIAL PASS` verdict with the final one: `READY FOR
+CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding. When
+`k-developer` is started directly, the note comes back to you: ask `konductor` to run the
+adversarial review.
 
-To be sure the adversarial pass runs, ask `konductor` to run
+To be sure the adversarial pass runs, run
 [`k-adversarial-pull-request-review`](sop-workflows/code-review.md#k-adversarial-pull-request-review)
-against your diff; `konductor` routes it to `k-architect`, which owns it.
+through `konductor`, which coordinates it.
 
 ### The two multiplexer orchestrators do not use subagents at all
 
@@ -254,7 +256,7 @@ The default entry point, and the one to use unless you have a specific reason no
 | | |
 | --- | --- |
 | **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code) |
-| **SOPs** (10) | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
+| **SOPs** (11) | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` |
 | **Skills** (22) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`, `threat-modeling`, `design-doc-guidelines`, `user-story-writing`, `backend-review`, `frontend-review`, `backend-development`, `frontend-development`, `design-evaluation`, `plan-review`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 21 plus `humanize-writing`, on demand |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` **only** |
 | **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Edit`, `Skill` |
@@ -268,7 +270,7 @@ specialists — and the only one that declares
 
 | | |
 | --- | --- |
-| **SOPs** (9) | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` — `konductor`'s ten, minus `k-delegate` |
+| **SOPs** (10) | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor`. `konductor`'s eleven, minus `k-delegate` |
 | **Skills** (10) | `constraints`, `delegation-protocol`, `sdlc-navigator`, `git-merge`, `pre-planning-analysis`, `socratic-elicitation`, `verification`, `sop-state-management`, `about-konductor`, plus `mux-dispatch` or `cmux-dispatch` |
 | **Kiro CLI tools** | `@builtin`, `read`, `shell`, `todo`; `allowedTools` is `fs_read`, `shell` |
 | **Claude Code tools** | `Workflow`, `TodoWrite`, `Read`, `Bash`, `Grep`, `Glob`, `Write`, `Skill` |
@@ -289,13 +291,13 @@ The most capable agent in the package, on the strongest model.
 | | |
 | --- | --- |
 | **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code), the same model every agent runs |
-| **SOPs** (4) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` |
+| **SOPs** (3) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` |
 | **Skills** | **38** — the largest share of any agent. See [Architecture and design](skills.md#architecture-and-design), [Design quality gates](skills.md#design-quality-gates), [API and data modelling](skills.md#api-and-data-modelling) |
 | **MCP** | `aws-mcp`, launched via `uvx mcp-proxy-for-aws-cli==1.7.0`. Kiro CLI's `allowedTools` grants five tools (documentation search, documentation read, skill retrieval, region list, regional availability); Claude Code grants the whole server via `mcp__aws-mcp__*` (8 tools, including the three AWS-API-acting ones: `aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`) |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | nothing (returns to the orchestrator) |
 
-Owns both design SOPs *and* the adversarial pull-request review. Its system prompt applies a
+Owns the design SOPs and is the checker the orchestrator spawns in `k-adversarial-pull-request-review`. Its system prompt applies a
 maker-checker pass to every artifact and presents findings as CRITICAL → IMPORTANT → SUGGESTION
 followed by `Fix these issues? [y/n]`.
 
