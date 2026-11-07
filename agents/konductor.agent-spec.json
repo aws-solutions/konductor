@@ -30,7 +30,9 @@
         "backend-development",
         "frontend-development",
         "design-evaluation",
-        "plan-review"
+        "plan-review",
+        "design-impact-review",
+        "infra-validation"
       ]
     },
     "agentSops": {
@@ -125,7 +127,9 @@
         "backend-development",
         "frontend-development",
         "design-evaluation",
-        "plan-review"
+        "plan-review",
+        "design-impact-review",
+        "infra-validation"
       ]
     }
   }

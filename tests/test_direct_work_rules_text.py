@@ -58,7 +58,14 @@ def test_every_skill_direct_work_names_is_declared_by_konductor():
     direct = (ROOT / "context" / "k-direct-work.md").read_text()
     on_disk = {p.name for p in (ROOT / "skills").iterdir() if p.is_dir()}
     named = {n for n in re.findall(r"`([a-z][a-z0-9-]+)`", direct) if n in on_disk}
-    assert {"backend-development", "frontend-development", "design-evaluation", "plan-review"} <= named
+    assert {
+        "backend-development",
+        "frontend-development",
+        "design-evaluation",
+        "plan-review",
+        "design-impact-review",
+        "infra-validation",
+    } <= named
     spec = _spec("konductor")
     kiro = set(spec["dependencies"]["skills"]["skillNames"])
     claude = set(spec["clientConfig"]["claudeCli"]["skills"])
@@ -68,6 +75,24 @@ def test_every_skill_direct_work_names_is_declared_by_konductor():
 
 def _direct_work():
     return (ROOT / "context" / "k-direct-work.md").read_text(encoding="utf-8")
+
+
+def test_konductor_commits_only_when_the_user_asks():
+    text = _direct_work()
+    assert "Commit only when the user asks, as `k-developer` does." in text
+    assert "run commands, commit" not in text
+    developer = json.loads((ROOT / "agents" / "k-developer.agent-spec.json").read_text(encoding="utf-8"))
+    assert "Commit with a conventional commit message when the user asks" in developer["config"]["systemPrompt"]
+    for rel in ("docs/user-guide/agents.md", "tools/build-user-guide/html_sop_edits.py"):
+        body = (ROOT / rel).read_text(encoding="utf-8")
+        assert "it commits when you ask" in body, rel
+
+
+def test_maker_side_checks_have_triggers_in_direct_work():
+    text = _direct_work()
+    assert "or one that deviates from a design doc, load `design-impact-review`" in text
+    assert "after an infrastructure change (CDK, CloudFormation), load `infra-validation`" in text
+    assert "git-workflow" not in text
 
 
 def test_stack_skills_load_only_when_the_project_uses_the_stack():
