@@ -40,10 +40,10 @@ def _template_line(text: str) -> str | None:
     return None
 
 
-def _drop_a_default_paragraph() -> str:
+def _default_lines_paragraph() -> str:
     paragraphs = _read(DELEGATION_PROTOCOL).split("\n\n")
-    matches = [p for p in paragraphs if p.startswith("Drop a default MUST DO / MUST NOT DO line")]
-    assert len(matches) == 1, "delegation-protocol has no single drop-a-default paragraph"
+    matches = [p for p in paragraphs if p.startswith("Every default MUST DO / MUST NOT DO line")]
+    assert len(matches) == 1, "delegation-protocol has no single default-lines paragraph"
     return matches[0]
 
 
@@ -69,10 +69,16 @@ def test_template_carries_the_relay_line():
 
 
 def test_removal_requests_are_recorded_on_the_relay_line():
-    paragraph = " ".join(_drop_a_default_paragraph().split())
+    paragraph = " ".join(_default_lines_paragraph().split())
     assert "When the user asked to remove comments or logging" in paragraph
     assert f"the `{RELAY_LINE}` line of the brief template" in paragraph
     assert "drop the default MUST DO / MUST NOT DO line it overrides" in paragraph
+
+
+def test_a_protection_confirmation_on_the_relay_line_never_meets_rule_9():
+    paragraph = " ".join(_default_lines_paragraph().split())
+    assert "confirmed disabling a protection" not in paragraph
+    assert "it never meets rule 9: the specialist asks the user itself" in paragraph
 
 
 def test_template_line_is_identical_where_k_delegate_carries_it():
