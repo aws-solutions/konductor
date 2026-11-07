@@ -484,6 +484,9 @@ SOP_EDITS += [
      "no CRITICAL but \u22651 IMPORTANT \u2192 APPROVE WITH COMMENTS; neither \u2192 APPROVE. A MISSING pass caps the verdict at APPROVE WITH COMMENTS and is named in the summary.\", \"good\")"),
     # The three "step 6 workaround" sentences this block used to rewrite are now
     # replaced whole by the k-code-review-workflow step 6 entries below.
+    ("adversarial: review use-case owner",
+     ">k-adversarial-pull-request-review</div><div style=\"padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">k-architect</div>",
+     ">k-adversarial-pull-request-review</div><div style=\"padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">the orchestrators (k-architect is the checker)</div>"),
     ("adversarial: reference roster params",
      '{"k":"k-adversarial-pull-request-review","v":"k-architect \u00b7 diff_input (always; pr_url is context-only)"}',
      '{"k":"k-adversarial-pull-request-review","v":"orchestrators \u00b7 diff_input (always; pr_url is context-only)"}'),
