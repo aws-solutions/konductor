@@ -216,6 +216,9 @@ def test_direct_work_refers_to_review_ceilings_once():
     assert text.count("Verification Protocol item 6") == 1
     assert STOP_WORDING not in text
     assert "list what item 6 calls pre-existing" in text
+    # The pointer governs the scope; the mirror does not paraphrase it.
+    assert "one re-check or re-review as item 6 scopes it" in text
+    assert "re-review of what the fix changed and what depends on it" not in text
 
 
 RULE_4_START = "End every brief's CONTEXT"

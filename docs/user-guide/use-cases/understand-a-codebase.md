@@ -44,8 +44,9 @@ Critique my uncommitted changes.
 Run a codebase analysis on this repo.
 ```
 
-The orchestrator routes both to `k-developer`, which owns both SOPs. To skip the routing hop,
-start a session with the developer agent directly: `k-developer`, on either runtime.
+`konductor` does both itself and spawns `k-developer` when you name one of the SOPs, which it does
+not declare; the mux and cmux orchestrators route both to `k-developer`, which owns both SOPs. To
+skip the hop, start a session with the developer agent directly: `k-developer`, on either runtime.
 
 ---
 

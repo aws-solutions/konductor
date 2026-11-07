@@ -30,6 +30,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import htmlbundle  # noqa: E402
 from html_sop_edits import SOP_EDITS  # noqa: E402
 
+
+def _code(text):
+    """Inline code span in the bundle's prose markup."""
+    return f"<code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">{text}</code>"
+
+
 # Each entry: (label, old, new). `old` must appear exactly once unless `count` is
 # given. Sourced from agents/*.agent-spec.json, agent-sops/, skills/, cli/README.md.
 EDITS = [
@@ -102,6 +108,52 @@ EDITS = [
     ("glossary Orchestrator: konductor also does the work itself",
      'v: "An agent that coordinates other agents and never implements directly. Three exist:',
      'v: "An agent that coordinates other agents; konductor also does the work itself. Three exist:'),
+    # Two edits around the "uc owned-by prose" fragment, which stays byte-identical
+    # in the middle of this paragraph so that entry remains satisfied.
+    ("use-cases owned-by-the-orchestrator: mux and cmux dispatch, konductor works",
+     "The orchestrators are dispatchers by design. " + _code("konductor")
+     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>",
+     "The mux and cmux orchestrators are dispatchers by design, and " + _code("konductor")
+     + " does the work itself; no runtime enforces either shape. " + _code("konductor")
+     + " <strong style=\"color:var(--tx);font-weight:600\">pre-approves reads only in Kiro CLI</strong>"),
+    ("use-cases owned-by-the-orchestrator: konductor's Claude Code tools",
+     "alone; in Claude Code its tool list has no " + _code("Bash") + ", " + _code("Write") + ", or " + _code("Edit")
+     + ". What it has is " + _code("Read") + ", " + _code("Glob") + ", " + _code("Grep") + ", " + _code("WebFetch")
+     + ", " + _code("WebSearch") + ", " + _code("TodoWrite") + ", " + _code("Workflow") + ", an " + _code("Agent(...)")
+     + " tool scoped to the eight specialists, and " + _code("SendMessage") + ".</p>",
+     "alone; in Claude Code it is granted " + _code("Bash") + ", " + _code("Write") + " and " + _code("Edit")
+     + " alongside " + _code("Read") + ", " + _code("Glob") + ", " + _code("Grep") + ", " + _code("WebFetch")
+     + ", " + _code("WebSearch") + ", " + _code("TodoWrite") + ", " + _code("Workflow") + ", " + _code("Skill") + ", "
+     + _code("SendMessage") + ", and an " + _code("Agent(...)") + " tool scoped to the eight specialists, and uses"
+     + " them as its direct-work rules allow. For the mux and cmux orchestrators only the routing rules stop"
+     + " them, so the dispatcher behaviour you see there is a convention rather than a wall.</p>"),
+    ("use-cases chain: konductor runs the steps itself",
+     "So when you run this chain \"via the orchestrator\", the orchestrator reads, synthesises, and routes."
+     + " The file writes, " + _code("git diff") + " calls, and build and test commands execute through"
+     + " whichever specialist it delegates to — " + _code("k-developer") + " for implementation and shell work, "
+     + _code("k-researcher") + " for parallel research, " + _code("k-architect") + " for escalations.</p>",
+     "So when you run this chain through " + _code("konductor") + ", it reads, synthesises, writes the files"
+     + " and runs the " + _code("git diff") + ", build and test commands itself, as its direct-work rules allow;"
+     + " it spawns a specialist only for a tool it lacks or for independent work on disjoint files ("
+     + _code("k-researcher") + " for parallel research), and a fresh reviewer when a phase closes."
+     + " Through the mux or cmux orchestrator the same steps execute in whichever specialist it delegates to: "
+     + _code("k-developer") + " for implementation and shell work, " + _code("k-researcher")
+     + " for parallel research, " + _code("k-architect") + " for escalations.</p>"),
+    ("use-cases design invocation: konductor designs itself",
+     "Through the orchestrator, which routes design requests to " + _code("k-architect") + ":</p>",
+     "Through the orchestrator. " + _code("konductor") + " writes the design itself and spawns " + _code("k-architect")
+     + " when you name one of these SOPs, which it does not declare; the mux and cmux orchestrators route every"
+     + " design request to " + _code("k-architect") + ":</p>"),
+    ("use-cases codebase invocation: konductor does both itself",
+     "The orchestrator routes both to " + _code("k-developer") + ", which owns both SOPs. To skip the routing hop,"
+     + " start a session with the developer agent directly: " + _code("k-developer") + ", on either runtime.</p>",
+     _code("konductor") + " does both itself and spawns " + _code("k-developer") + " when you name one of the SOPs,"
+     + " which it does not declare; the mux and cmux orchestrators route both to " + _code("k-developer")
+     + ", which owns both SOPs. To skip the hop, start a session with the developer agent directly: "
+     + _code("k-developer") + ", on either runtime.</p>"),
+    ("concepts NEVER MUTATE follow-up: mux and cmux hand off",
+     "That is why the orchestrator hands file edits and shell commands to <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">k-developer</span> rather than doing them itself.</p>",
+     "That is why the mux and cmux orchestrators hand file edits and shell commands to <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">k-developer</span> rather than doing them themselves.</p>"),
     # Runs before SOP_EDITS so the "sop-orch page" block (whose `new` carries the
     # same card text) is already satisfied when that entry is checked.
     ("sop-orch know card: coordinates under this SOP",
@@ -118,7 +170,7 @@ EDITS = [
      '{ k: "Context files — 4", v: "The core rules for every agent, the shared orchestrator rules, and the direct-work or routing rules, always active" }'),
     ('glossary orchestrator entry: konductor works itself',
      'Three exist: konductor (background subagents), konductor-mux-orchestrator (tmux/zellij panes), and konductor-cmux-orchestrator (cmux surfaces). All are read-only by rule — they delegate every file write and shell command.',
-     'Three exist: konductor (background subagents), konductor-mux-orchestrator (tmux/zellij panes), and konductor-cmux-orchestrator (cmux surfaces). The mux and cmux orchestrators are read-only by rule and delegate every file write and shell command; konductor does the work itself and spawns a reviewer at each phase gate.'),
+     'Three exist: konductor (background subagents), konductor-mux-orchestrator (tmux/zellij panes), and konductor-cmux-orchestrator (cmux surfaces). The mux and cmux orchestrators are read-only by rule and delegate every file write and shell command; konductor writes in its own session and spawns a reviewer at each phase gate.'),
     ('glossary read-only entry: mux and cmux only',
      'The orchestrators are read-only by rule. Applied to a SOP',
      'The mux and cmux orchestrators are read-only by rule. Applied to a SOP'),

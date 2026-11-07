@@ -73,6 +73,12 @@ STALE_DISPATCHER_PHRASES = (
     "capability-to-agent routing table",
     "routes each piece of work to the specialist that owns it",
     "delegates all work",
+    "The orchestrators are dispatchers by design",
+    "its tool list has no",
+    "reads, synthesises, and routes",
+    "hands file edits and shell commands to",
+    "which routes design requests to",
+    "The orchestrator routes both to",
 )
 
 

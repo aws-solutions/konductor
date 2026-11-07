@@ -103,6 +103,12 @@ READ_ONLY_DISPATCHER_PHRASES = (
     "capability-to-agent routing table",
     "routes each piece of work to the specialist that owns it",
     "delegates all work",
+    "The orchestrators are dispatchers by design",
+    "its tool list has no",
+    "reads, synthesises, and routes",
+    "hands file edits and shell commands to",
+    "which routes design requests to",
+    "The orchestrator routes both to",
 )
 
 
@@ -114,3 +120,12 @@ def test_bundles_and_guide_no_longer_describe_a_read_only_dispatcher():
     for rel in ("docs/index.html", "docs/site/user-guide.html"):
         assert "HUB: SINGLE WRITER" in _read(rel), rel
         assert "Under this SOP the orchestrator coordinates; each phase runs in the agent the SOP names." in _read(rel), rel
+        assert "The mux and cmux orchestrators are dispatchers by design" in _read(rel), rel
+        assert "the mux and cmux orchestrators hand file edits and shell commands to" in _read(rel), rel
+
+
+def test_glossary_states_konductor_writes_once():
+    for rel in ("docs/user-guide/glossary.md", "docs/index.html", "docs/site/user-guide.html"):
+        text = _read(rel)
+        assert "writes in its own session and" in text, rel
+        assert "does the work itself and spawns a reviewer" not in text, rel

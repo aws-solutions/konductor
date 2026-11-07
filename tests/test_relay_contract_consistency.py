@@ -75,6 +75,8 @@ def test_removal_requests_are_recorded_on_the_relay_line():
     assert "When the user asked to remove comments or logging" in paragraph
     assert f"the `{RELAY_LINE}` line of the brief template" in paragraph
     assert "drop the default MUST DO / MUST NOT DO line it overrides" in paragraph
+    assert "A confirmation to disable a protection can be recorded the same way, but it never meets rule 9" in paragraph
+    assert "or confirmed disabling a protection, record" not in paragraph
 
 
 def test_template_line_is_identical_where_k_delegate_carries_it():

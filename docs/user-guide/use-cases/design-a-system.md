@@ -54,7 +54,9 @@ These patterns are matched **literally**. A file named `design.md` will not fill
 
 ## How to invoke
 
-Through the orchestrator, which routes design requests to `k-architect`:
+Through the orchestrator. `konductor` writes the design itself and spawns `k-architect` when you
+name one of these SOPs, which it does not declare; the mux and cmux orchestrators route every design
+request to `k-architect`:
 
 ```text
 Design a system for X
