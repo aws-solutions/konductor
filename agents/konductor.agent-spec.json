@@ -35,6 +35,7 @@
         "k-comprehensive-search",
         "k-full-sdlc",
         "k-e2e-test-generation",
+        "k-adversarial-pull-request-review",
         "about-konductor"
       ]
     },

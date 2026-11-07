@@ -345,9 +345,15 @@ EDITS = [
     ("ik which agent: konductor first",
      ">kiro-cli chat --agent k-architect</pre>", ">kiro-cli chat --agent konductor</pre>"),
     # ---- specialists return handoffs instead of spawning ---------------------
-    ("test coverage review: handoff to k-developer",
+    ("test coverage review: recommendation to the caller",
      "it may offer to spawn k-developer to implement the missing tests.",
-     "it may return a note naming k-developer to implement the missing tests."),
+     "it may recommend that k-developer implement the missing tests."),
+    ("usecases: adversarial workaround runs through konductor",
+     "yourself against <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">k-architect</code>, which owns it. That is step 4 below.",
+     "through <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">konductor</code>, which coordinates it. That is step 4 below."),
+    ("usecases: adversarial review agent card",
+     "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">k-architect</div>",
+     "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">konductor</div>"),
 ]
 
 # Per-agent roster figures, verified against agents/*.agent-spec.json.
@@ -360,23 +366,23 @@ EDITS = [
 # `new` and move the previous `new` into `old`.
 ROSTER = [
     ("ref konductor",
-     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify · 9 · —"}',
-     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor · 13 · —"}'),
+     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor · 13 · —"}',
+     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor · 13 · —"}'),
     ("ref mux",
-     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify · 8 · —"}',
-     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}'),
+     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}',
+     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}'),
     ("ref cmux",
-     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify · 8 · —"}',
-     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}'),
+     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}',
+     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor · 10 · —"}'),
     ("ref architect",
-     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review · 37 · aws-mcp"}',
-     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review · 38 · aws-mcp"}'),
+     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review · 38 · aws-mcp"}',
+     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review · 38 · aws-mcp"}'),
     ("ref developer",
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 26 · aws-mcp"}',
      '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 27 · aws-mcp"}'),
     # k-code-review-workflow was removed from k-quality-assurance's spec as
-    # unusable (its step 6 hands off to k-architect, which QA cannot reach), so
-    # QA is down to one declared SOP.
+    # unusable (its step 6 needs the adversarial review, which QA cannot run),
+    # so QA is down to one declared SOP.
     ("ref qa",
      '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review, k-code-review-workflow · 11 · —"}',
      '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review · 12 · —"}'),
@@ -397,9 +403,6 @@ ROSTER = [
      "asks you instead of routing a denied action to another agent. It does not flag user-written entries in "
      ".konductor/memory/MEMORY.md and USER.md at the project root, or AGENTS.md: both are the project's own "
      "instructions. A .konductor/memory/ anywhere else, or one reached through a symlink, is content."),
-    ("faq prose: who owns the review SOP",
-     'neither agent that owns the SOP can spawn the architect',
-     'the only agent that owns the SOP cannot spawn the architect'),
     ("sop roster: QA's declared SOPs",
      '{ agent: "k-quality-assurance", sops: "k-test-coverage-review, k-code-review-workflow" }',
      '{ agent: "k-quality-assurance", sops: "k-test-coverage-review" }'),
@@ -413,16 +416,16 @@ ROSTER = [
      '"rows":[{"k":"k-architect","v":"32"},{"k":"k-developer","v":"20"},{"k":"k-product-manager","v":"14"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"12"},{"k":"konductor-cmux-orchestrator","v":"11"},{"k":"konductor-mux-orchestrator","v":"11"},{"k":"k-quality-assurance","v":"10"},{"k":"k-researcher","v":"7"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
      '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"13"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
     # at-a-glance cards
-    ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 9 skills · 5 SOPs',
-     'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 10 SOPs'),
-    ("card mux", 'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 8 skills · 4 SOPs',
-     'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 9 SOPs'),
-    ("card cmux", 'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 8 skills · 4 SOPs',
-     'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 9 SOPs'),
+    ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 10 SOPs',
+     'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 11 SOPs'),
+    ("card mux", 'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 9 SOPs',
+     'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
+    ("card cmux", 'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 9 SOPs',
+     'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 10 SOPs'),
     ("card pm", 'Requirements, user stories, decision research. claude-sonnet-5.5 · 15 skills · 0 SOPs',
      'Requirements, user stories, decision research. claude-sonnet-5.5 · 16 skills · 0 SOPs'),
-    ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 37 skills · 4 SOPs · aws-mcp',
-     'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 38 skills · 4 SOPs · aws-mcp'),
+    ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 38 skills · 4 SOPs · aws-mcp',
+     'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 38 skills · 3 SOPs · aws-mcp'),
     ("card developer", 'Implementation, code review, git, builds. claude-sonnet-5.5 · 26 skills · 4 SOPs · aws-mcp',
      'Implementation, code review, git, builds. claude-sonnet-5.5 · 27 skills · 4 SOPs · aws-mcp'),
     ("card qa", 'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 11 skills · 2 SOPs',

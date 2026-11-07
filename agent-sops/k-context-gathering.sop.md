@@ -87,7 +87,7 @@ Consolidate all gathered context into a structured analysis summary.
   - Constraints: Technical limitations, requirements to follow
   - Recommended Approach: Based on findings
 - You MUST NOT include raw tool output — synthesize into actionable insights
-- If findings exceed ~100 lines, You MUST write to `.konductor/handoff/<analysis-name>.md` and return the path
+- If findings exceed ~100 lines, You MUST write to `.konductor/handoff/<analysis-name>.md` and return the path (first create `.konductor/handoff/.gitignore` containing `*` if it is missing)
 
 **Expected Output:** A structured analysis summary:
 

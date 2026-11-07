@@ -32,6 +32,7 @@
         "k-full-sdlc",
         "k-e2e-test-generation",
         "k-light-ui-testing",
+        "k-adversarial-pull-request-review",
         "about-konductor"
       ]
     },
