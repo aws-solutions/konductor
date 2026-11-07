@@ -143,7 +143,8 @@ pre-approves `fs_read` alone, so anything beyond reading stops to ask you.
 
 ## Who can delegate to whom
 
-Only the orchestrators delegate. A specialist (any `k-*` agent) never spawns another agent:
+Only the orchestrators delegate. A specialist (any agent other than the three orchestrators)
+never spawns another agent:
 it does its own part and returns to its caller, with a handoff note naming the next role or a
 proposed parallel split. The orchestrator routes that note.
 
@@ -218,9 +219,10 @@ Step 6 has `k-developer` write the report, then end with a note asking the orche
 problem is never hidden behind a pending pass. Under `konductor`, the orchestrator runs the
 adversarial review from the note, records its verdict and report path next to the report's
 own verdict, and replaces a `PENDING ADVERSARIAL PASS` verdict with the final one: `READY FOR
-CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding. When
-`k-developer` is started directly, the note comes back to you: ask `konductor` to run the
-adversarial review.
+CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding. The
+report's two lines are written by the orchestrator, or by `k-developer` on its behalf when the
+orchestrator does not write files. When `k-developer` is started directly, the note comes back
+to you: ask `konductor` to run the adversarial review.
 
 To be sure the adversarial pass runs, run
 [`k-adversarial-pull-request-review`](sop-workflows/code-review.md#k-adversarial-pull-request-review)

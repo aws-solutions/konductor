@@ -26,7 +26,7 @@ def test_concurrency_limit_states_its_reason():
 def test_specialist_paragraph_points_without_restating():
     text = flat()
     assert "apply the guards in your orchestrator context" in text
-    assert "a note naming an SOP you declare is yours to run" in text
+    assert "a note naming `k-adversarial-pull-request-review` is yours to run" in text
     assert "how to resume a named SOP step" not in text
     assert "file lists are a prediction" not in text
     assert "check what each part actually touched" not in text

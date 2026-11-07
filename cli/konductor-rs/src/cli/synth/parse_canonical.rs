@@ -320,7 +320,7 @@ fn check_skill_scope_consistency(agents: &[parser::ParsedAgentSpec]) -> Vec<Stri
     warnings
 }
 
-/// Warns, one line per specialist (`k-*`) agent, when its spec grants a spawn
+/// Warns, one line per specialist (non-orchestrator) agent, when its spec grants a spawn
 /// tool that the harness transformers strip from its output, so the spec
 /// and the synthed config cannot disagree unnoticed.
 fn check_specialist_spawn_grants(agents: &[parser::ParsedAgentSpec]) -> Vec<String> {

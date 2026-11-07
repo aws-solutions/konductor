@@ -110,6 +110,27 @@ def test_reading_memory_runs_the_validator_path_check():
     assert "do not load memory" in reading, reading
 
 
+def test_orchestrator_direct_work_allows_the_memory_path_check():
+    """The orchestrators may run only the shell commands the Direct Work table
+    names, so the table must name the validator's read-only `--check-path`;
+    otherwise an orchestrator either breaks its read-only rule to load memory
+    or skips memory and can never write it."""
+    rules = (REPO_ROOT / "context" / "k-orchestrator-routing-rules.md").read_text()
+    direct_work = _section(rules, "### Orchestrator Direct Work")
+    rows = [line for line in direct_work.splitlines() if "--check-path" in line]
+    assert len(rows) == 1, direct_work
+    row = rows[0]
+    for needle in (
+        "`persistent-memory` path check",
+        ".konductor/memory/MEMORY.md",
+        "`USER.md`",
+        "lookup fence",
+        "reads no stdin and writes nothing",
+        "do not load a file whose check exits 1",
+    ):
+        assert needle in row, f"Direct Work memory row is missing {needle!r}: {row}"
+
+
 def test_agents_md_context_loading_uses_the_checked_read():
     """The session-start load must go through `--check-path`; a glob reads
     through a symlink and pulls in files rule 11 never names."""

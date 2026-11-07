@@ -14,3 +14,9 @@ def test_invocation_lists_claude_code():
     claude = "- Claude Code: `claude --agent k-architect`"
     assert claude in text
     assert text.index(claude) > text.index("- Kiro IDE: `@k-architect`")
+
+
+def test_invocation_routes_through_the_orchestrator_not_a_spawn():
+    text = SKILL.read_text()
+    assert "- Or ask the orchestrator to route the next phase to that agent" in text
+    assert "spawn the next agent as a subagent" not in text
