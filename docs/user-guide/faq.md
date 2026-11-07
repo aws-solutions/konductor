@@ -212,7 +212,7 @@ transmitted. Delete it whenever you like.
 ## Why did my code review skip the security pass?
 
 Because it always does. `k-code-review-workflow` step 6 tries to spawn `k-architect` for an
-adversarial pass, and **the only agent that owns the SOP cannot spawn the architect** — in Kiro CLI
+adversarial pass, and **the only agent that owns that SOP cannot spawn the architect** — in Kiro CLI
 `k-developer`'s `availableAgents` list does not include it, and in Claude Code it has no
 `Agent(...)` tool.
 The SOP is written to skip the step quietly when the capability is missing, so you get standard
@@ -221,7 +221,7 @@ review with no error.
 Routing through `konductor` does not fix it either: the orchestrator does not declare
 `k-code-review-workflow`, so it hands the SOP to the developer, which hits the same wall.
 
-Run the adversarial pass yourself against the agent that owns it:
+Run the adversarial pass through `konductor`, which coordinates it:
 
 ```text
 Run k-adversarial-pull-request-review against my current diff.
@@ -247,7 +247,7 @@ Each SOP has its own default output location. Most accept an override.
 | `k-test-coverage-review` | `test-coverage-review/` — four files |
 | `k-codebase-analysis` | `codebase-analysis.md` |
 | `kiro-spec-workflow` | `.kiro/specs/<feature-name>/` — three files |
-| `k-context-gathering` | `.konductor/handoff/<name>.md`, only when findings exceed ~100 lines |
+| `k-context-gathering`, `k-comprehensive-search` | `.konductor/handoff/<name>.md`, only when findings exceed ~100 lines |
 
 Nearly all of these SOPs are required to reference the file path rather than print the report
 inline, so if you get a one-paragraph summary and a path, that is correct behavior — the file is

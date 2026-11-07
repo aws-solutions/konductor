@@ -139,17 +139,17 @@ SOP_EDITS += [
 # agents/*.agent-spec.json dependencies.agentSops.agentSopNames.
 SOP_EDITS += [
     ("SOP_OWNERS konductor",
-     '{ agent: "konductor", sops: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify" }',
-     '{ agent: "konductor", sops: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor" }'),
+     '{ agent: "konductor", sops: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor" }',
+     '{ agent: "konductor", sops: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor" }'),
     ("SOP_OWNERS mux",
-     '{ agent: "konductor-mux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify" }',
-     '{ agent: "konductor-mux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor" }'),
+     '{ agent: "konductor-mux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor" }',
+     '{ agent: "konductor-mux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor" }'),
     ("SOP_OWNERS cmux",
-     '{ agent: "konductor-cmux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify" }',
-     '{ agent: "konductor-cmux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor" }'),
+     '{ agent: "konductor-cmux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor" }',
+     '{ agent: "konductor-cmux-orchestrator", sops: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor" }'),
     ("SOP_OWNERS architect",
-     '{ agent: "k-architect", sops: "k-design-doc-creation, k-existing-design-review, k-adversarial-pull-request-review" }',
-     '{ agent: "k-architect", sops: "k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review" }'),
+     '{ agent: "k-architect", sops: "k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review" }',
+     '{ agent: "k-architect", sops: "k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review" }'),
     ("rf-sops roster rows",
      '{"k":"k-test-coverage-review","v":"k-quality-assurance \u00b7 source_dir, test_dir"}',
      '{"k":"k-test-coverage-review","v":"k-quality-assurance \u00b7 source_dir, test_dir"},'
@@ -175,8 +175,8 @@ SOP_EDITS += [
      "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model, claude-sonnet-5.5.",
      "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model: claude-sonnet-5.5 on Kiro CLI, claude-sonnet-5-5 on Claude Code."),
     ("specialists table: architect",
-     '{ k: "k-architect", v: "claude-opus-4.6, the only agent not on Sonnet. SOPs: k-design-doc-creation, k-existing-design-review, k-adversarial-pull-request-review. 32 skills.',
-     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review. 38 skills.'),
+     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review. 38 skills.',
+     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review. 38 skills.'),
     ("specialists table: developer skills",
      '{ k: "k-developer", v: "SOPs: k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow. 19 skills',
      '{ k: "k-developer", v: "SOPs: k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow. 27 skills'),
@@ -473,17 +473,46 @@ SOP_EDITS += [
 ]
 
 # The adversarial SOP's real structure (agent-sops/k-adversarial-pull-request-review.sop.md):
-# a coordinator, three PARALLEL k-developer generator subagents, a fourth for reuse, then a
-# checker phase k-architect runs itself. The page showed four sequential in-agent passes and
-# omitted steps 0.5 and 5, both of which are permanent no-ops here.
+# the orchestrator coordinates, spawns three PARALLEL k-developer generator passes and a fourth
+# for reuse, then spawns k-architect fresh as the checker. k-architect no longer declares the
+# SOP. Each `old` is the published text; a pass that fails twice is recorded as MISSING.
 SOP_EDITS += [
-    ("adversarial: flow nodes", "node(\"01\", \"Context ramp-up\", \"Fetches the PR diff if only pr_url was given, reads linked issues (max 3) and referenced design docs (max 3), and searches the codebase for existing patterns \u2014 error mapping, transactions, validation, pagination. One pass per source, no recursive following, never blocks on missing context.\", \"\"),\n          node(\"02\", \"Ingest diff\", \"Excludes binaries, lock files, build artifacts, .js.map; reports file count and lines changed. Stops if the diff is empty.\", \"stop\"),\n          node(\"03\", \"Pass 2 \u2014 Security\", \"Error and log information disclosure, API input leaks, pagination token injection, abstraction violations. CRITICAL when stack traces, internal IDs, or raw exceptions reach a caller, or unvalidated input lands in a query.\", \"\"),\n          node(\"04\", \"Pass 3 \u2014 Data integrity\", \"Partial writes, unconditional overwrites, missing conditional writes, untested write paths. CRITICAL for a multi-item mutation with no transaction, or an unconditional overwrite on a contested resource.\", \"\"),\n          node(\"05\", \"Pass 4 \u2014 Schema / validation\", \"Missing map guards, missing standalone fields, validate-then-act ordering, integration wiring. IMPORTANT for ordering violations and wiring gaps. Never flags test files.\", \"\"),\n          node(\"06\", \"Pass 5 \u2014 Codebase awareness\", \"Flags inline reimplementation of an existing shared utility as IMPORTANT.\", \"\"),\n          ", "node(\"01\", \"Context ramp-up\", \"Reads pr_url for linked issues (max 3) and referenced design docs (max 3) \u2014 never for the diff \u2014 and searches the codebase for existing patterns: error mapping, transactions, validation, pagination. One pass per source, no recursive following, never blocks on missing context.\", \"\"),\n          node(\"0.5\", \"Load prior review state\", \"ALWAYS SKIPPED on this package \u2014 a documented no-op. Recorded as 'historical filtering unavailable', never as 'no prior revisions'.\", \"skip\"),\n          node(\"02\", \"Ingest diff\", \"Excludes binaries, lock files, build artifacts, .js.map; reports file count and lines changed. Stops if the diff is empty.\", \"stop\"),\n          node(\"03\", \"Parallel review passes\", \"Spawns k-developer THREE times concurrently, each loading exactly one pass skill \u2014 adversarial-code-review-pass-security, -integrity, -schema \u2014 each receiving the diff plus the step 0 summary. Findings are never shared between them.\", \"\"),\n          node(\"04\", \"Reuse pass\", \"A FOURTH k-developer spawn, looking only for cross-pass reuse: an existing utility the diff reimplements or bypasses, or one that would resolve two or more of the findings. IMPORTANT for a bypassed shared utility, transaction helper, validation middleware, error-mapping layer, or pagination utility.\", \"\"),\n          node(\"05\", \"Checker phase\", \"k-architect switches roles and runs adversarial-code-review in Validator Mode itself, tagging every finding KEEP or REJECT with a reason and dropping the REJECTs. It proposes nothing new \u2014 it is a filter. Independence holds because the coordinator never ran a generator pass.\", \"\"),\n          node(\"06\", \"Historical filter\", \"ALWAYS SKIPPED on this package, for the same reason as step 0.5. Findings pass through unchanged.\", \"skip\"),\n          "),
     ("adversarial: invoker",
-     "Typically the orchestrator invokes it by spawning k-architect in adversarial mode as the checker in a maker-checker cycle.",
-     "Only k-architect declares this SOP \u2014 k-developer and the three orchestrators do not, so none of them invokes it directly. k-architect acts as the coordinator: it spawns the generator subagents and then runs the checker phase itself, which is what keeps generator and checker independent."),
+     "Only k-architect declares this SOP \u2014 k-developer and the three orchestrators do not, so none of them invokes it directly. k-architect acts as the coordinator: it spawns the generator subagents and then runs the checker phase itself, which is what keeps generator and checker independent.",
+     "Only the three orchestrators declare this SOP; k-architect and k-developer do not, so asked directly they say to run it through konductor. The orchestrator acts as the coordinator: it spawns the four k-developer generator passes, then spawns k-architect fresh as the checker, which is what keeps generator and checker independent."),
+    ("adversarial: owner",
+     'file: "agent-sops/k-adversarial-pull-request-review.sop.md", owner: "k-architect \u2014 no file changes",',
+     'file: "agent-sops/k-adversarial-pull-request-review.sop.md", owner: "the orchestrators (k-architect is the checker), no file changes",'),
+    ("adversarial: ingest node",
+     "Accepts git diff output, file paths, or raw diff content; excludes binaries, lock files, build artifacts. Stops if the diff is empty.",
+     "Accepts git diff output, file paths, a revision range, or raw diff content; excludes binaries, lock files, build artifacts. Stops if the diff is empty."),
+    ("adversarial: passes node",
+     "Spawns k-developer THREE times concurrently, each loading exactly one pass skill \u2014 adversarial-code-review-pass-security, -integrity, -schema \u2014 each receiving the diff plus the step 0 summary. Findings are never shared between them.",
+     "Spawns k-developer THREE times concurrently, each loading exactly one pass skill (adversarial-code-review-pass-security, -integrity, -schema), each receiving the diff plus the step 0 summary. Findings are never shared between them. A pass that fails twice is recorded as MISSING, never run by the coordinator."),
+    ("adversarial: reuse node",
+     "A FOURTH k-developer spawn, looking only for cross-pass reuse:",
+     "A FOURTH k-developer spawn once the three lists are in, looking only for cross-pass reuse:"),
+    ("adversarial: checker node",
+     "k-architect switches roles and runs adversarial-code-review in Validator Mode itself, tagging every finding KEEP or REJECT with a reason and dropping the REJECTs. It proposes nothing new \u2014 it is a filter. Independence holds because the coordinator never ran a generator pass.",
+     "k-architect is spawned fresh once every pass has returned and runs adversarial-code-review in Validator Mode over the lists, tagging every finding KEEP or REJECT with a reason and dropping the REJECTs. It proposes nothing new: it is a filter. Independence holds because the checker never ran a pass and the coordinator relayed the lists unchanged."),
+    ("adversarial: verdict node",
+     "no CRITICAL but \u22651 IMPORTANT \u2192 APPROVE WITH COMMENTS; neither \u2192 APPROVE.\", \"good\")",
+     "no CRITICAL but \u22651 IMPORTANT \u2192 APPROVE WITH COMMENTS; neither \u2192 APPROVE. A MISSING pass caps the verdict at APPROVE WITH COMMENTS and is named in the summary.\", \"good\")"),
+    ("adversarial: step 6 workaround (code review page)",
+     "Run k-adversarial-pull-request-review against k-architect separately instead.",
+     "Run k-adversarial-pull-request-review through konductor separately instead."),
+    ("adversarial: step 6 workaround (agents page)",
+     "Run k-adversarial-pull-request-review yourself against k-architect.",
+     "Run k-adversarial-pull-request-review through konductor, which coordinates it."),
+    ("adversarial: step 6 workaround (faq)",
+     "Run the adversarial pass yourself against the agent that owns it.",
+     "Run the adversarial pass through konductor, which coordinates it."),
+    ("adversarial: review use-case owner",
+     ">k-adversarial-pull-request-review</div><div style=\"padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">k-architect</div>",
+     ">k-adversarial-pull-request-review</div><div style=\"padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">the orchestrators (k-architect is the checker)</div>"),
     ("adversarial: reference roster params",
-     '{"k":"k-adversarial-pull-request-review","v":"k-architect \u00b7 diff_input or pr_url"}',
-     '{"k":"k-adversarial-pull-request-review","v":"k-architect \u00b7 diff_input (always; pr_url is context-only)"}'),
+     '{"k":"k-adversarial-pull-request-review","v":"k-architect \u00b7 diff_input (always; pr_url is context-only)"}',
+     '{"k":"k-adversarial-pull-request-review","v":"orchestrators \u00b7 diff_input (always; pr_url is context-only)"}'),
 ]
 
 # Remaining pass-2 reviewer findings, verified against source before writing here.
@@ -555,8 +584,8 @@ SOP_EDITS += [
 # Values from agents/konductor*.agent-spec.json.
 SOP_EDITS += [
     ("orchestrators: konductor SOPs",
-     '{ k: "konductor SOPs", v: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify" }',
-     '{ k: "konductor SOPs (10)", v: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor" }'),
+     '{ k: "konductor SOPs (10)", v: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor" }',
+     '{ k: "konductor SOPs (11)", v: "kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-adversarial-pull-request-review, about-konductor" }'),
     ("orchestrators: konductor skills",
      '{ k: "konductor skills (13)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor \u2014 claude-teams-behavior is Claude Code only, so Kiro CLI loads 12" }',
      '{ k: "konductor skills (13)", v: "constraints, delegation-protocol, agents-md-authoring, claude-teams-behavior, pre-planning-analysis, socratic-elicitation, deliberation-panel, verification, persistent-memory, workspace-skills, sdlc-navigator, sop-state-management, about-konductor. claude-teams-behavior is Claude Code only. Kiro CLI has the other 12 plus humanize-writing, on demand" }'),
@@ -564,8 +593,8 @@ SOP_EDITS += [
      'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep" }',
      'Claude Code: Workflow, WebFetch, WebSearch, TodoWrite, Agent(...) over the 8 specialists, SendMessage, Read, Glob, Grep, Bash, Write, Skill — so it CAN write and run shell there; only its routing rules stop it" }'),
     ("orchestrators: mux/cmux SOPs",
-     '{ k: "mux / cmux SOPs", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify — the same four, minus k-delegate" }',
-     '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }'),
+     '{ k: "mux / cmux SOPs (9)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor — konductor\'s ten, minus k-delegate" }',
+     '{ k: "mux / cmux SOPs (10)", v: "kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, k-adversarial-pull-request-review, about-konductor. konductor\'s eleven, minus k-delegate" }'),
     ("orchestrators: mux/cmux skills",
      '{ k: "mux / cmux skills (8)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, plus mux-dispatch or cmux-dispatch" }',
      '{ k: "mux / cmux skills (10)", v: "constraints, delegation-protocol, sdlc-navigator, git-merge, pre-planning-analysis, socratic-elicitation, verification, sop-state-management, about-konductor, plus mux-dispatch or cmux-dispatch" }'),
@@ -598,8 +627,8 @@ SOP_EDITS += [
 SOP_EDITS += [
     # SOP:20 -- diff_input required "even when pr_url is present"
     ("adversarial: diff_input param",
-     'param("diff_input", true, "— unless pr_url is given. Accepts git diff output, file paths, or raw PR diff content")',
-     'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, or raw PR diff content")'),
+     'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, or raw PR diff content")',
+     'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, a revision range, or raw PR diff content")'),
     # cli/README.md:740 -- doctor does not compare installed vs available versions
     ("update: doctor Updates checklist item",
      'konductor doctor</span> reports the Updates check as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">ok</span>.',
@@ -1006,8 +1035,8 @@ SOP_EDITS += [
 # 1.2.0 -- so it is now generated from skills/delegation-protocol/SKILL.md.
 SOP_EDITS += [
     ("concepts: frontmatter sample matches the shipped skill",
-     "---\nname: delegation-protocol\ndescription: Structured delegation format for the ASDLC orchestrator. Defines the\n  8-field prompt format (mandatory target agent + 7 sections), agent registry,\n  parallel execution rules, and handoff patterns.\nversion: 1.2.0\ntags: [skill, behavioral, orchestration, delegation, multi-agent]\n---",
-     "---\nname: delegation-protocol\ndescription: Use when spawning any subagent, deciding which agent should handle a piece of work, coordinating parallel or sequential agent execution, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.\nversion: 1.4.0\ntags: [skill, behavioral, orchestration, delegation, multi-agent]\n---"),
+     "---\nname: delegation-protocol\ndescription: Use when spawning any subagent, deciding which agent should handle a piece of work, coordinating parallel or sequential agent execution, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.\nversion: 1.4.0\ntags: [skill, behavioral, orchestration, delegation, multi-agent]\n---",
+     "---\nname: delegation-protocol\ndescription: Use when spawning a subagent, choosing the agent for a piece of work, running agents in parallel or in sequence, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.\nversion: 1.4.0\ntags: [skill, behavioral, orchestration, delegation, multi-agent]\n---"),
     ("plan-and-verify: eyebrow drops the retired SOP name",
      "ASDLC-ANALYZE SAYS THIS OUT LOUD",
      "THE SOP SAYS THIS OUT LOUD"),
