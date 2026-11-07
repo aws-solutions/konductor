@@ -17,9 +17,9 @@ def test_step_8_runs_the_adversarial_pass_from_the_note():
     assert "`Verdict:` and `Adversarial pass:` lines set as the note says" in text
 
 
-def test_step_8_treats_a_pending_verdict_as_not_approved():
+def test_step_8_records_a_pending_verdict_as_blocked():
     text = step_8()
-    assert "`PENDING ADVERSARIAL PASS` is not APPROVED" in text
+    assert "`PENDING ADVERSARIAL PASS` when its `status.md` is written is BLOCKED, not APPROVED" in text
     assert "from the review report or the adversarial report" in text
 
 
