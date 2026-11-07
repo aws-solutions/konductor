@@ -18,11 +18,9 @@ K_DELEGATE_SOP = REPO_ROOT / "agent-sops" / "k-delegate.sop.md"
 RELAY_LINE = "USER DECISIONS IN FORCE"
 SCANNED_TOPS = ("context", "skills", "agents", "agent-sops")
 
-# Wording the stack narrows to "rule 9 confirmation"; no head may carry it.
-BROAD_RELAY_EXCLUSIONS = (
-    "never stands in for a NEVER-rule confirmation",
-    "A NEVER-rule confirmation and an irreversible action",
-)
+# Wording the stack narrows to "rule 9 confirmation"; no head may carry it. The bare phrase
+# covers the rule 4 producer sentence, the core-rules consumer sentence and the definition.
+BROAD_RELAY_EXCLUSIONS = ("NEVER-rule confirmation",)
 
 
 def _read(path: Path) -> str:
