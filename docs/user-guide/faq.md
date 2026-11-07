@@ -241,7 +241,7 @@ user-written memory, and the conventions your code already shows all outrank the
 sources leave a collision open, `konductor` asks once and saves your
 answer as a `Ruling:` entry in `.konductor/memory/`. The entry settles only the collision it
 names. A line in `AGENTS.md` that decides the same question outranks a ruling. If two rulings
-disagree, the newer one wins; with the same date, konductor asks you which one stands. An
+disagree, the newer one wins; with the same date, `konductor` asks you which one stands. An
 agent-written ruling is data until you confirm it.
 
 A file your `AGENTS.md` names directly, such as `CONTRIBUTING.md`, speaks for the same

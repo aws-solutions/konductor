@@ -102,7 +102,9 @@ not per individual commit.
 - House rules: konductor's defaults yield to the request, recorded rulings, the project's instruction files and
   user-written memory, and the codebase's conventions, in that order; an open collision is asked once and saved as a
   `Ruling:` entry. A `USER DECISIONS IN FORCE` brief entry quoting the user meets the rule 6 and 7 exceptions for the
-  action it names; rule 9 and irreversible actions still need the user directly. The brief template no longer asks
+  action it names; rule 9 and irreversible actions still need the user directly. A project mechanism replaces the
+  adversarial review only on the user's direct word or the project's own agent instruction file; writing habits yield
+  to house rules levels 1 to 3 and a tracked style guide, not to nearby text. The brief template no longer asks
   specialists to add inline comments by default.
 
 ### Fixed

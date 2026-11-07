@@ -98,9 +98,7 @@ def test_template_defaults_backed_by_never_rules_are_not_dropped_by_house_rules(
     assert "Every default MUST DO / MUST NOT DO line in the template is backed by NEVER rules 6 and 7" in protocol
     assert "a house rule never drops one, only the user's own request does" in protocol
     assert "a house rule overrides and name the house rule in CONTEXT" not in protocol
-    routing = _read("context/k-orchestrator-routing-rules.md")
-    assert "every default line is backed by NEVER rules 6 and 7, so no house rule drops one" in routing
-    assert "a house rule named in CONTEXT" not in routing
+    assert "a house rule named in CONTEXT" not in _read("context/k-orchestrator-routing-rules.md")
 
 
 def test_review_dedup_lives_in_constraints_skill():
@@ -203,7 +201,7 @@ def test_drop_a_default_paragraph_has_one_owner():
     template = _read("skills/delegation-protocol/SKILL.md")
     assert "USER DECISIONS IN FORCE:" in template
     routing = " ".join(_read("context/k-orchestrator-routing-rules.md").split())
-    assert "as the `delegation-protocol` skill's brief template says" in routing
+    assert "only as the `delegation-protocol` skill's brief template says" in routing
     assert "record it as a user decision in CONTEXT, in the form" not in routing
 
 
