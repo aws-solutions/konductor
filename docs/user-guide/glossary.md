@@ -157,8 +157,8 @@ Renders as a diagram in GitHub, most Markdown viewers, and many IDEs.
 An **agent** that coordinates other agents; `konductor` also does the work itself. Three exist:
 `konductor` (background subagents), `konductor-mux-orchestrator` (tmux/zellij panes), and
 `konductor-cmux-orchestrator` (**cmux** surfaces). The mux and cmux orchestrators are read-only by
-rule and delegate every file write and shell command; `konductor` does the work itself and spawns
-a reviewer at each phase gate in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators.
+rule and delegate every file write and shell command; `konductor` writes in its own session and
+spawns a reviewer at each phase gate in the default `auto` mode. In `coordinator` mode it hands every change to a specialist, like the mux and cmux orchestrators.
 
 ### Orphan skill
 

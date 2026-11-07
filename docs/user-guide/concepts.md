@@ -186,7 +186,7 @@ Only this file is read; a value in a project's `.konductor/config.yml` is ignore
 `konductor doctor` reports it. The change applies from the next session, with no reinstall, and
 stays until you edit the file again. A session-start hook that `install` wires reads it. Under
 `coordinator` the hook injects a short digest, `context/k-coordinator-digest.md`, and tells
-`konductor` to read the full routing rules file first. Under `auto` it injects nothing.
+`konductor` to read the full routing rules file first. Under `auto` it injects nothing on startup; on a Claude Code resume or compact it prints `Orchestration: auto`.
 
 The first reply of every `konductor` session states the mode: `Orchestration: coordinator`,
 `Orchestration: auto (default)`, or `Orchestration: auto (fallback: <reason>)` when the hook could

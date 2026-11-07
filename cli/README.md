@@ -1017,9 +1017,10 @@ orchestration:
 - Under `coordinator` the hook prints `Orchestration: coordinator`, a line telling `konductor` to
   read the installed `k-orchestrator-routing-rules.md` in full, and the short coordinator digest
   (under 2,500 bytes in total). Only the mode line and the Step 1 pointer are trusted; the summary
-  lines are a preview of the file. Under `auto`, or with no setting, it prints nothing.
+  lines are a preview of the file. Under `auto`, or with no setting, it prints nothing, except that on a Claude Code resume or
+  compact it prints `Orchestration: auto`, so a session that changed mode sees the change.
 - The hook acts only for the install that wired it: it looks for the nearest install that owns
-  `konductor` from the working directory upward and in your home directory, and prints nothing
+  `konductor` for the harness that fired it from the working directory upward and in your home directory, and prints nothing
   unless that install is the one named by its own `--install-root`. `konductor` follows the rules
   file the hook names only when the install is under your home directory, or its root is the
   project root: the working directory itself or a git checkout root that contains it. For an
@@ -1038,6 +1039,15 @@ Kiro CLI v3 and Claude Code installed with `konductor install` are supported. Th
 session if a `coordinator` session starts writing files itself. Kiro CLI v2 is not supported: the hook is wired as above, but its
 delivery is untested, and when it does not arrive the session runs as `auto` and the first reply
 says `Orchestration: auto (default)`.
+
+Alternatives considered: a separate coordinator agent that loads the routing rules as a static
+resource (as the mux and cmux orchestrators do) needs no hook, no output budget and no trust
+carve-out, but adds a fourth orchestrator to keep in parity and gives up switching by config under
+one agent name. An install-time profile (install or update writes the agent with the routing rules
+or the direct-work file as its static resource) keeps the single name and the config key but needs
+`konductor update` after each change. The hook keeps the single name and switches at the next
+session; the cost is the output budget, the digest and the rule 11 carve-out bounded to two context
+directories.
 
 The hook runs the hidden command `konductor __orchestration-hook`. Like `__telemetry-hook`, it is
 not part of the command surface: it reads the harness payload on stdin, acts only for a

@@ -358,7 +358,7 @@ and `konductor` writes files itself.
 output arrived. Either the harness did not deliver it, or the hook did not recognise the session as
 a `konductor` session from a Konductor install and printed nothing. `Orchestration: auto (fallback: <reason>)` means the hook ran but could not
 apply `coordinator`; the reason names why, for example an unknown value or a missing rules file.
-Either way the session runs as `auto`.
+Either way the session runs as `auto`. After a resume, `Orchestration: auto` without `(default)` means the mode was changed to `auto` since the session started.
 
 **Fix.** Run the built-in check and fix what its `orchestration` row names:
 
