@@ -85,17 +85,16 @@ use crate::cli::synth::HarnessTransformer as _;
 /// then writes `.konductor/manifest`.
 pub struct KiroCliV3InstallStrategy;
 
-/// The strategy name recorded in the manifest slot.
+/// The strategy's manifest name and `--harness` value. Matches
+/// `KiroCliV3Transformer::name()` (`"kiro-v3"`) exactly. Distinct from
+/// `KiroCliInstallStrategy::name()` (`"kiro-cli-v2"`) so the two remain
+/// individually addressable in the manifest -- `KIRO_VARIANT_FAMILY`
+/// governs switching between them (warn, then override), not a hard
+/// refusal, since both write under the same `.kiro`/`.konductor` roots
+/// and only one can occupy a target at a time.
 pub(crate) const STRATEGY_NAME: &str = "kiro-v3";
 
 impl InstallStrategy for KiroCliV3InstallStrategy {
-    /// Matches `KiroCliV3Transformer::name()` (`"kiro-v3"`) exactly.
-    /// Distinct from `KiroCliInstallStrategy::name()` (`"kiro-cli-v2"`)
-    /// so the two remain individually addressable in the manifest --
-    /// `KIRO_VARIANT_FAMILY` governs switching between them (warn, then
-    /// override), not a hard refusal, since both write under the same
-    /// `.kiro`/`.konductor` roots and only one can occupy a target at
-    /// a time.
     fn name(&self) -> &'static str {
         STRATEGY_NAME
     }

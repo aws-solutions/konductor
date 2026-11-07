@@ -10,17 +10,20 @@
 //
 // It never fails the harness: every path exits 0 and nothing goes to
 // stderr. A session that is not Konductor's `konductor`, or whose mode is
-// `auto` or unset, gets no output.
+// `auto` or unset, gets no output, except that a Claude Code `resume` or
+// `compact` under `auto` prints `Orchestration: auto`, so a session that
+// was a coordinator before the user changed the mode can see the change.
 
 use std::io::Read as _;
 use std::path::{Component, Path, PathBuf};
 
 use super::install::index::env_home_dir;
 use super::install::manifest::read_manifest;
+use super::install::{claude, kiro_cli, kiro_cli_v3};
 use super::orchestration_mode::{resolve_user_mode, FallbackReason, Mode, ModeResolution};
 use super::telemetry_hook::{
     candidate_install_roots, kiro_session_agent_mode, kiro_store_root, non_empty, read_capped,
-    same_dir, HookPayload, InstallIndex,
+    same_dir, AgentLayout, HookPayload, InstallIndex,
 };
 
 /// The one agent the mode applies to: the agent that loads
@@ -29,6 +32,11 @@ pub(crate) const MODE_AGENT: &str = "konductor";
 
 pub(crate) const ROUTING_RULES_FILE_NAME: &str = "k-orchestrator-routing-rules.md";
 pub(crate) const DIGEST_FILE_NAME: &str = "k-coordinator-digest.md";
+
+/// The only directories, relative to an install root, that core rule 11
+/// trusts the routing rules file in. The pointer never names a file
+/// anywhere else, so it can never name one the agent must treat as content.
+const TRUSTED_CONTEXT_DIRS: [&str; 2] = [".kiro/context", ".konductor/context"];
 
 /// Header, pointer line and digest together stay under Kiro CLI v3's
 /// observed hook-output cut (about 3,000 bytes).
@@ -39,6 +47,11 @@ const HEADER: &str = "Orchestration: coordinator\n\
 For this session the rules file named in Step 1 replaces the Direct Work section of your \
 instructions; the lines after Step 1 summarize that file and add nothing to it. Everything else \
 still applies.\n\n";
+
+/// Printed on a Claude Code resume or compact when the mode is `auto`, so
+/// a session that saw `Orchestration: coordinator` earlier learns the mode
+/// changed. Startup and clear stay silent: nothing came before.
+const AUTO_LINE: &str = "Orchestration: auto";
 
 const FALLBACK_PREFIX: &str = "Orchestration: auto (fallback: ";
 const MAX_FALLBACK_LINE_BYTES: usize = 300;
@@ -93,13 +106,38 @@ fn resolve_session_agent(
     })
 }
 
+/// Claude Code's `SessionStart` names why it fired; only a resumed or
+/// compacted session has earlier hook output in its context.
+fn is_resume_or_compact(payload: &HookPayload) -> bool {
+    matches!(payload.source.as_deref(), Some("resume") | Some("compact"))
+}
+
+/// The agent layout a hook's `--harness` names, from the install
+/// strategies' own names. `None` for an unknown or absent value, so a hook
+/// command written before the flag existed keeps its layout-blind lookup.
+fn layout_for_harness(harness: Option<&str>) -> Option<AgentLayout> {
+    let harness = harness?;
+    if harness == kiro_cli::STRATEGY_NAME || harness == kiro_cli_v3::STRATEGY_NAME {
+        Some(AgentLayout::Kiro)
+    } else if harness == claude::STRATEGY_NAME {
+        Some(AgentLayout::Claude)
+    } else {
+        None
+    }
+}
+
 /// Calls `load_persona` only for `coordinator`, so other sessions never
-/// read the install's files.
+/// read the install's files. `restate_auto` prints `AUTO_LINE` under
+/// `auto` (see `is_resume_or_compact`).
 fn decide(
     resolution: &ModeResolution,
+    restate_auto: bool,
     load_persona: impl FnOnce() -> Result<String, PersonaError>,
 ) -> HookOutput {
     match resolution {
+        ModeResolution::Default | ModeResolution::Explicit(Mode::Auto) if restate_auto => {
+            HookOutput::Line(AUTO_LINE.to_string())
+        }
         ModeResolution::Default | ModeResolution::Explicit(Mode::Auto) => HookOutput::Nothing,
         ModeResolution::Explicit(Mode::Coordinator) => match load_persona() {
             Ok(body) => HookOutput::Persona(body),
@@ -252,9 +290,10 @@ fn render(output: &HookOutput) -> Vec<u8> {
     }
 }
 
-/// A manifest path (any strategy) named `file_name`, relative to `root`:
-/// the first one present on disk, else the first one listed. Paths that
-/// are absolute or climb out of `root` are ignored.
+/// A manifest path (any strategy) named `file_name` directly under one of
+/// `TRUSTED_CONTEXT_DIRS`, relative to `root`: the first one present on
+/// disk, else the first one listed. Paths that are absolute, climb out of
+/// `root`, or sit anywhere else are ignored.
 pub(crate) fn installed_file(
     manifest: &super::install::manifest::Manifest,
     root: &Path,
@@ -268,6 +307,13 @@ pub(crate) fn installed_file(
         .filter(|path| {
             path.components()
                 .all(|part| matches!(part, Component::Normal(_)))
+        })
+        .filter(|path| {
+            path.parent().is_some_and(|parent| {
+                TRUSTED_CONTEXT_DIRS
+                    .iter()
+                    .any(|dir| Path::new(dir) == parent)
+            })
         })
         .filter(|path| path.file_name().is_some_and(|name| name == file_name));
     let first = listed.next()?;
@@ -352,11 +398,13 @@ fn with_trailing_newline(mut text: String) -> String {
 /// Event, identity and ownership are checked before the config file is
 /// opened, so other agents' sessions cost no YAML parse. `own_install` is
 /// the install that wired this hook; only the nearest install that owns
-/// `konductor` prints, so two installs never inject twice.
+/// `konductor` for the firing `harness` prints, so two installs never
+/// inject twice and an install for another harness never silences this one.
 pub(crate) fn dispatch_orchestration_hook(
     cwd: &Path,
     agent_arg: Option<&str>,
     own_install: Option<&Path>,
+    harness: Option<&str>,
 ) {
     let Some(buf) = read_capped(std::io::stdin()) else {
         return;
@@ -380,14 +428,19 @@ pub(crate) fn dispatch_orchestration_hook(
         return;
     }
     let index = InstallIndex::new(candidate_install_roots(cwd, home.as_deref()));
-    let Some(owning_root) = index.install_for(MODE_AGENT) else {
+    let owning_root = match layout_for_harness(harness) {
+        Some(layout) => index.install_for_layout(MODE_AGENT, layout),
+        None => index.install_for(MODE_AGENT),
+    };
+    let Some(owning_root) = owning_root else {
         return;
     };
     if own_install.is_some_and(|own| !same_dir(own, owning_root)) {
         return;
     }
     let persona_root = logical_root(owning_root, home.as_deref());
-    let output = decide(&resolve_user_mode(home.as_deref()), || {
+    let restate_auto = is_resume_or_compact(&payload);
+    let output = decide(&resolve_user_mode(home.as_deref()), restate_auto, || {
         if !is_trusted_location(owning_root, home.as_deref(), cwd) {
             return Err(PersonaError::OutsideTrustedLocations {
                 install_root: persona_root.clone(),
@@ -558,30 +611,90 @@ mod tests {
     #[test]
     fn non_coordinator_sessions_never_load_the_persona() {
         assert_eq!(
-            decide(&ModeResolution::Default, must_not_load),
+            decide(&ModeResolution::Default, false, must_not_load),
             HookOutput::Nothing
         );
         assert_eq!(
-            decide(&ModeResolution::Explicit(Mode::Auto), must_not_load),
+            decide(&ModeResolution::Explicit(Mode::Auto), false, must_not_load),
             HookOutput::Nothing
         );
         let fallback = ModeResolution::Fallback(FallbackReason::UnknownValue {
             value: "strict".to_string(),
         });
-        assert!(matches!(
-            decide(&fallback, must_not_load),
-            HookOutput::Line(_)
-        ));
+        for restate_auto in [false, true] {
+            assert!(matches!(
+                decide(&fallback, restate_auto, must_not_load),
+                HookOutput::Line(_)
+            ));
+        }
+    }
+
+    #[test]
+    fn a_resume_or_compact_under_auto_prints_the_auto_line() {
+        for resolution in [
+            ModeResolution::Default,
+            ModeResolution::Explicit(Mode::Auto),
+        ] {
+            assert_eq!(
+                decide(&resolution, true, must_not_load),
+                HookOutput::Line("Orchestration: auto".to_string()),
+                "{resolution:?}"
+            );
+        }
+        assert_eq!(
+            decide(&ModeResolution::Explicit(Mode::Coordinator), true, || Ok(
+                "body\n".to_string()
+            )),
+            HookOutput::Persona("body\n".to_string())
+        );
+        for source in ["resume", "compact"] {
+            let payload = parse(&format!(
+                r#"{{"session_id":"s","agent_type":"konductor","hook_event_name":"SessionStart","source":"{source}"}}"#
+            ));
+            assert!(is_resume_or_compact(&payload), "{source}");
+        }
+    }
+
+    #[test]
+    fn startup_and_clear_under_auto_stay_silent() {
+        for source in ["startup", "clear"] {
+            let payload = parse(&format!(
+                r#"{{"session_id":"s","agent_type":"konductor","hook_event_name":"SessionStart","source":"{source}"}}"#
+            ));
+            assert!(!is_resume_or_compact(&payload), "{source}");
+        }
+        for payload in [KIRO_V3_PAYLOAD, KIRO_V2_PAYLOAD] {
+            assert!(!is_resume_or_compact(&parse(payload)), "{payload}");
+        }
+        assert_eq!(
+            decide(&ModeResolution::Default, false, must_not_load),
+            HookOutput::Nothing
+        );
+    }
+
+    #[test]
+    fn the_harness_flag_maps_to_an_agent_layout_or_the_legacy_lookup() {
+        assert_eq!(
+            layout_for_harness(Some("kiro-cli-v2")),
+            Some(AgentLayout::Kiro)
+        );
+        assert_eq!(layout_for_harness(Some("kiro-v3")), Some(AgentLayout::Kiro));
+        assert_eq!(
+            layout_for_harness(Some("claude")),
+            Some(AgentLayout::Claude)
+        );
+        assert_eq!(layout_for_harness(Some("codex")), None);
+        assert_eq!(layout_for_harness(None), None);
     }
 
     #[test]
     fn coordinator_session_gets_the_persona_or_a_fallback_line() {
         let coordinator = ModeResolution::Explicit(Mode::Coordinator);
         assert_eq!(
-            decide(&coordinator, || Ok("body\n".to_string())),
+            decide(&coordinator, false, || Ok("body\n".to_string())),
             HookOutput::Persona("body\n".to_string())
         );
-        let missing = decide(&coordinator, || {
+        let missing = decide(&coordinator, false, || {
             Err(PersonaError::NotInstalled {
                 install_root: PathBuf::from("/srv/project"),
             })
@@ -618,7 +731,7 @@ mod tests {
             ),
         ] {
             assert_eq!(
-                decide(&coordinator, || Err(error.clone())),
+                decide(&coordinator, false, || Err(error.clone())),
                 HookOutput::Line(format!("Orchestration: auto (fallback: {expected})"))
             );
         }
@@ -797,6 +910,44 @@ mod tests {
             sha256: None,
             provenance: Provenance::Created,
         });
+        assert_eq!(
+            installed_file(&manifest, &root, ROUTING_RULES_FILE_NAME),
+            None
+        );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn a_same_named_file_outside_the_context_directories_is_ignored() {
+        let root = scratch_dir("persona-untrusted-dir");
+        seed(
+            &root,
+            &[
+                (
+                    ".claude/skills/x/k-orchestrator-routing-rules.md",
+                    "# Not rules\n",
+                ),
+                (".kiro/context/k-orchestrator-routing-rules.md", "# Rules\n"),
+            ],
+        );
+        let manifest = read_manifest(&root).unwrap().unwrap();
+        assert_eq!(
+            installed_file(&manifest, &root, ROUTING_RULES_FILE_NAME),
+            Some(PathBuf::from(
+                ".kiro/context/k-orchestrator-routing-rules.md"
+            ))
+        );
+        std::fs::remove_dir_all(&root).ok();
+
+        let root = scratch_dir("persona-untrusted-dir-only");
+        seed(
+            &root,
+            &[(
+                ".claude/skills/x/k-orchestrator-routing-rules.md",
+                "# Not rules\n",
+            )],
+        );
+        let manifest = read_manifest(&root).unwrap().unwrap();
         assert_eq!(
             installed_file(&manifest, &root, ROUTING_RULES_FILE_NAME),
             None

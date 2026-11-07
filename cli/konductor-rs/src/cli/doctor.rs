@@ -1886,13 +1886,8 @@ fn wiring_findings(
     use crate::cli::install::resource_rewrite::{hook_command_exe, ORCHESTRATION_HOOK_MARKER};
 
     let file = wiring.file.display();
-    let hooks: Vec<(String, &String)> = match &wiring.commands {
-        Ok(commands) => commands
-            .iter()
-            .filter_map(|command| {
-                hook_command_exe(command, ORCHESTRATION_HOOK_MARKER).map(|exe| (exe, command))
-            })
-            .collect(),
+    let commands = match &wiring.commands {
+        Ok(commands) => commands,
         Err(reason) => {
             return vec![OrchestrationFinding::new(
                 missing_status,
@@ -1901,7 +1896,15 @@ fn wiring_findings(
             )];
         }
     };
-    if hooks.is_empty() {
+    let mut hooks: Vec<(String, &String)> = Vec::new();
+    let mut unparsed: Vec<&String> = Vec::new();
+    for command in commands {
+        match hook_command_exe(command, ORCHESTRATION_HOOK_MARKER) {
+            Some(exe) => hooks.push((exe, command)),
+            None => unparsed.push(command),
+        }
+    }
+    if hooks.is_empty() && unparsed.is_empty() {
         return vec![OrchestrationFinding::new(
             missing_status,
             format!(
@@ -1911,6 +1914,16 @@ fn wiring_findings(
             Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
         )];
     }
+    let unparsed_findings = unparsed.into_iter().map(|command| {
+        OrchestrationFinding::new(
+            CheckStatus::Warn,
+            format!(
+                "the orchestration hook in {file} is not in the form konductor writes \
+                 ({command}); its binary was not checked"
+            ),
+            Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+        )
+    });
     hooks
         .into_iter()
         .flat_map(|(exe, command)| {
@@ -1921,6 +1934,7 @@ fn wiring_findings(
             ]
         })
         .flatten()
+        .chain(unparsed_findings)
         .collect()
 }
 
@@ -3795,9 +3809,8 @@ mod tests {
         let source_dir = scratch_dir("config-broken-home-tier-source");
         let home_dir = scratch_dir("config-broken-home-tier-home");
 
-        let user_config_dir = home_dir.join(config::KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&user_config_dir).unwrap();
-        let user_config_path = user_config_dir.join(config::CONFIG_FILE_NAME);
+        let user_config_path = config::user_config_path(&home_dir);
+        fs::create_dir_all(user_config_path.parent().unwrap()).unwrap();
         fs::write(&user_config_path, b"not: [valid: yaml").unwrap();
 
         let resolved = ResolvedSource {
@@ -4637,13 +4650,9 @@ mod tests {
         let broken_source = scratch_dir("isolation-broken-source");
         let broken_destination = scratch_dir("isolation-broken-destination");
         let broken_home = scratch_dir("isolation-broken-home");
-        let broken_user_config_dir = broken_home.join(config::KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&broken_user_config_dir).unwrap();
-        fs::write(
-            broken_user_config_dir.join(config::CONFIG_FILE_NAME),
-            b"not: [valid: yaml",
-        )
-        .unwrap();
+        let broken_user_config_path = config::user_config_path(&broken_home);
+        fs::create_dir_all(broken_user_config_path.parent().unwrap()).unwrap();
+        fs::write(&broken_user_config_path, b"not: [valid: yaml").unwrap();
 
         let code = dispatch_doctor_with(
             &broken_source,
@@ -6033,6 +6042,48 @@ mod tests {
             &coordinator_home,
             &exe.parent().unwrap().to_path_buf(),
         ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    #[test]
+    fn check_orchestration_warns_on_a_hook_command_not_in_the_written_form() {
+        let exe = fake_konductor_binary("orch-wrapped-exe");
+        let home = home_with_mode("orch-wrapped-home", COORDINATOR);
+        let destination = scratch_dir("orch-wrapped-dest");
+        let command = format!(
+            "env K=1 {} __orchestration-hook --install-root {}",
+            exe.display(),
+            destination.display()
+        );
+        let mut files = vec![(
+            ORCHESTRATION_CLAUDE_HOOKS,
+            claude_hooks_settings(Some(&command)),
+        )];
+        files.extend(persona_files());
+        seed_orchestration_install(&destination, "claude", &files);
+
+        let result = check_orchestration(&destination, &destination, Some(&home));
+
+        assert_eq!(result.status, CheckStatus::Warn, "{}", result.summary);
+        assert!(
+            result
+                .summary
+                .contains("is not in the form konductor writes"),
+            "{}",
+            result.summary
+        );
+        assert!(result.summary.contains(&command), "{}", result.summary);
+        assert!(
+            !result.summary.contains("has no __orchestration-hook"),
+            "{}",
+            result.summary
+        );
+        assert_eq!(
+            result.remediation.as_deref(),
+            Some("run `konductor update`")
+        );
+        for dir in [&destination, &home, &exe.parent().unwrap().to_path_buf()] {
             fs::remove_dir_all(dir).ok();
         }
     }

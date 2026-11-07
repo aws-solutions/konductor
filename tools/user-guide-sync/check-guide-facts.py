@@ -64,6 +64,30 @@ STALE_DELEGATION_PHRASES = (
     "Its step-6 adversarial pass never fires",
 )
 KONDUCTOR_SPAWN_CELL = "the same 8 via Agent(...)"
+# `konductor` does the work itself; only the mux and cmux orchestrators are read-only
+# dispatchers. These describe the old all-dispatcher shape.
+STALE_DISPATCHER_PHRASES = (
+    "never implements",
+    "HUB \u2014 READ-ONLY",
+    "routing rules are always active",
+    "capability-to-agent routing table",
+    "routes each piece of work to the specialist that owns it",
+    "delegates all work",
+    "The orchestrators are dispatchers by design",
+    "its tool list has no",
+    "reads, synthesises, and routes",
+    "hands file edits and shell commands to",
+    "which routes design requests to",
+    "The orchestrator routes both to",
+    "The orchestrator routes this to",
+    "routes the design to",
+    "routes it to the owner",
+    "re-delegate, up to 2 cycles",
+    "which routes design work to",
+    "let it route",
+    "routing rules send code review to",
+    "which decides who owns it",
+)
 
 
 def hidden_commands(cli_rs_text: str) -> set[str]:
@@ -464,6 +488,12 @@ def main() -> int:
                 perm_fails.append(
                     f"{rel}: says {phrase!r}: specialists hold no spawn tool "
                     f"in Kiro CLI v3 or Claude Code"
+                )
+        for phrase in STALE_DISPATCHER_PHRASES:
+            if phrase in text:
+                perm_fails.append(
+                    f"{rel}: says {phrase!r}: konductor does the work itself; only the "
+                    f"mux and cmux orchestrators are read-only dispatchers"
                 )
         low = text.lower()
         for phrase in FORBIDDEN_PERMISSION_CLAIMS:

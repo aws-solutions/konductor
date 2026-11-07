@@ -562,6 +562,11 @@ pub enum Commands {
         /// that owns the agent prints, so two installs never inject twice.
         #[arg(long)]
         install_root: Option<std::path::PathBuf>,
+        /// The harness whose hook this is: `kiro-cli-v2`, `kiro-v3` or
+        /// `claude`. Only installs that have the agent for that harness
+        /// count as owners; without it every install counts.
+        #[arg(long)]
+        harness: Option<String>,
     },
 }
 
