@@ -1,7 +1,7 @@
 ---
 name: aws-service-validator
 description: 'Validates AWS service and feature claims in a design document against AWS documentation. Catches incorrect or hallucinated AWS assertions. Use when a design doc makes AWS feature, limit, pricing or Region claims, when doc-accuracy-analyzer hands over its AWS claims, or when someone asks to fact-check them. Trigger phrases: "validate my AWS claims", "fact-check my AWS assertions", "check whether this DynamoDB feature is accurate", "verify regional availability for X".'
-version: 1.0.0
+version: 1.1.0
 tags: [skill, aws, validation, fact-checking, design, accuracy]
 ---
 
@@ -10,6 +10,8 @@ tags: [skill, aws, validation, fact-checking, design, accuracy]
 Checks AWS claims against AWS documentation and classifies each as CONFIRMED, UNVERIFIED, or INCORRECT, with evidence URLs and corrections.
 
 This is the AWS-claims subroutine of `doc-accuracy-analyzer`, which extracts the claims from a document and routes the AWS ones here. To fact-check a whole document, start with `doc-accuracy-analyzer`. Run this skill directly when you already have a list of AWS claims.
+
+If you were pointed at a document and `doc-accuracy-analyzer` is not available, extract the claims yourself: one row per atomic assertion, so a sentence that mixes a correct and a wrong fact becomes two claims.
 
 ## Input
 
@@ -43,6 +45,17 @@ Do not accept the document's own assertion as evidence. Always consult the prima
 
 For INCORRECT claims, provide the correction and the evidence URL.
 For UNVERIFIED claims, note what was searched and why it could not be confirmed.
+
+A correction says what the design should do instead, not just the right limit. "Max item size is 400 KB; store the payload in S3 and keep a pointer in the item" helps the author. "Max is 400 KB" alone does not.
+
+#### When the aws-mcp tools are unavailable
+
+You cannot reach CONFIRMED, but a known-wrong claim must not hide in UNVERIFIED, or the gate passes a broken design. So:
+
+- Mark a claim INCORRECT when you are confident it contradicts a documented AWS limit or behavior. Label the evidence "prior knowledge, not source-checked" and name the doc page the author should check. Do not list a URL you did not open as evidence.
+- Keep pricing and Region claims UNVERIFIED, since both change often and must come from the pricing page or the regional availability tool.
+- Mark everything else UNVERIFIED, saying the tools were unavailable rather than claiming a search.
+- State at the top of the report that no AWS docs were consulted.
 
 ### Step 3: Produce Validation Report
 
@@ -83,4 +96,5 @@ The fact-check gate passes when:
 
 - **0 INCORRECT findings** remain: each one is corrected inline. A `> ⚠️ INCORRECT: <correction>` callout marks a fix still owed, not a pass
 - UNVERIFIED findings are flagged with `> ⚠️ UNVERIFIED: <what was searched>` callouts
+- Each callout sits under the claim it flags and carries the design fix, so reviewers see the remedy next to the text
 - The validation report is written to `docs/design/<name>-aws-validation.md`, or to the path the caller gives
