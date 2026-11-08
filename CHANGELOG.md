@@ -55,7 +55,8 @@ not per individual commit.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
   non-trivial work; orchestrators route skill work to the owning specialist.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
-  and is never read or written through a symlink. The memory validator rejects a new or edited line without
+  and is never read or written through a symlink; the brief carries the check result, so a specialist
+  without a shell reads only checked paths. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
   instruction-like text after the date and origin tag, reads the text of a leading `[label]`
   or `[label](url)` as entry text, and matches a leading keyword as a whole word. Upgrade note: if your repository commits `.konductor/memory/`,
