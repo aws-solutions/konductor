@@ -50,6 +50,11 @@ echo "CMUX_DISPATCH_DIR=$CMUX_DISPATCH_DIR"
 If it exits 1, dispatch can't run: tell the user and fall back to the base
 orchestrator.
 
+If you are writing dispatch commands for someone to run later instead of
+running them now, put this block at the top of the script and use
+`"$CMUX_DISPATCH_DIR"` in the commands. A path resolved on your machine may
+not exist on theirs.
+
 ## Deterministic Script
 
 ### cmux-dispatch.sh
@@ -112,6 +117,19 @@ run) — not a substitute for the deliverable. Dispatch prompts SHOULD instruct
 the child agent to write its full deliverable to a file (e.g.
 `/tmp/konductor-cmux/result-<slug>.md`) for the orchestrator to read; use
 `cmux read-screen` only as a fallback.
+
+### Chaining agents (maker, then checker)
+
+Dispatched agents can't see each other, so the orchestrator carries every
+handoff:
+
+1. Dispatch the maker. Wait for its `.done` and read its result file.
+2. Dispatch the checker with what it needs from that result (branch, worktree
+   path, summary) pasted into its task.
+3. Read the checker's result file. If it has findings, dispatch the maker
+   again on the same target with those findings in the task.
+
+Never tell one agent to message or wait for another.
 
 ## Worktree Provisioning for Write Agents
 
@@ -220,11 +238,11 @@ things provide harder enforcement after the fact:
 - The pre-commit hook (husky/lint-staged, or the equivalent for this
   project) runs inside the tree the agent actually committed from — edits
   made outside the named target simply will not surface in that commit.
-- The CR diff at review time shows exactly which files changed; a human
+- The PR diff at review time shows exactly which files changed; a human
   reviewer catches any file that should not have been touched before merge.
 
 Cleanup (removing the worktree and branch) happens only after the agent's
-draft CR has merged, and only with explicit user confirmation — this skill
+draft PR has merged, and only with explicit user confirmation. This skill
 does not perform cleanup itself.
 
 ## Best Practices
