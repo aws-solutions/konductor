@@ -145,7 +145,7 @@ agent infer or default to a location: a silent default is what causes two
 agents, from the same task or different tasks, to collide in the same tree.
 The write agent itself provisions or reuses the named target using its own
 shell/file tools — not the orchestrator — on either runtime.
-The agent that owns the integration tree merges every parallel part into it and reruns build and tests there before the review; for the mux and cmux orchestrators that agent is `k-developer`, for `konductor` it is `konductor`.
+Each parallel writer commits its part on its worktree branch before it returns (its brief says so; that commit is part of the parallel work the user agreed to), and the agent that owns the integration tree merges every parallel part into it and reruns build and tests there before the review; for the mux and cmux orchestrators that agent is `k-developer`, for `konductor` it is `konductor`.
 
 Parallel write agents MUST own disjoint files. An orchestrator that
 writes in the same session counts as one of them. Before spawning two or
