@@ -51,9 +51,9 @@ If it exits 1, dispatch can't run: tell the user and fall back to the base
 orchestrator.
 
 If you are writing dispatch commands for someone to run later instead of
-running them now, put this block at the top of the script and use
-`"$CMUX_DISPATCH_DIR"` in the commands. A path resolved on your machine may
-not exist on theirs.
+running them now, put this block at the top of the script and have the
+commands read the variable it sets, not a path you resolved. A path resolved
+on your machine may not exist on theirs.
 
 ## Deterministic Script
 
