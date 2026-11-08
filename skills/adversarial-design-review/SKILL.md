@@ -1,7 +1,7 @@
 ---
 name: adversarial-design-review
 description: 'Takes an adversarial stance against a design document''s decisions, trade-offs, and architectural choices, classifying findings as CRITICAL/IMPORTANT/SUGGESTION. Use when asked to challenge, stress-test or play devil''s advocate on a design doc''s decisions, not a code diff. Trigger phrases: "adversarial design review", "challenge my design", "devil''s advocate on design doc", "review design decisions".'
-version: 1.0.0
+version: 1.1.0
 tags: [skill, design, adversarial, review, architecture, checker]
 ---
 
@@ -10,6 +10,8 @@ tags: [skill, design, adversarial, review, architecture, checker]
 ## Overview
 
 Takes an adversarial stance against every major design decision, trade-off, and architectural choice in a design document. Unlike `adversarial-code-review` (which operates on code diffs), this skill operates on design doc sections.
+
+Use `argumentation-reference` skill during this review to identify logical fallacies in decision justifications.
 
 ## When to Use
 
@@ -46,6 +48,17 @@ Takes an adversarial stance against every major design decision, trade-off, and 
 - Style or clarity issue in a decision section
 - Minor omission (e.g., missing consequence in an ADR)
 - Weak rebuttal acknowledgment
+
+### Calibrating Severity
+
+- CRITICAL means the design as written breaks a stated requirement or matches a CRITICAL item above. That covers a design that contradicts a requirement (a synchronous call where the requirement says async), a required security boundary the document never states (PII with no encryption or access control counts as missing), a single point of failure with no mitigation, and a false technical claim. Name the requirement (e.g., R2) the finding breaks.
+- IMPORTANT covers a design element that is present but not shown to work: an unsourced load figure, an external dependency assumed to scale with no quota or failure mode, or a mechanism that needs implementation the document leaves out. Keep these IMPORTANT even when they are load-bearing.
+- The test: if the document is missing something the CRITICAL list requires, or says something false, it is CRITICAL. If it describes something without the evidence that it works, it is IMPORTANT.
+- Do not raise a CRITICAL because a design looks risky. A revised document that fixed earlier CRITICALs can still fail the gate on IMPORTANT findings alone.
+
+### Staying in the Document
+
+Every finding cites the section and the text it challenges. Do not add requirements, regulations, services, or numbers the document does not state, and do not pad with generic checklist items that have no anchor in the text. When a finding relies on outside knowledge (a service limit, a pricing figure), say so in the challenge.
 
 ### Fallacy Checking
 
@@ -130,6 +143,8 @@ Flag any identified fallacy as IMPORTANT with the fallacy name and the affected 
    Rebuttal needed: {what the author must address}
    Fallacy (if any): {fallacy name from argumentation-reference}
    ```
+
+   Every finding, SUGGESTION included, gets a concrete `Rebuttal needed` line: the evidence, alternative, or design change that would answer it.
 
 8. **Summary**: report N CRITICAL (architectural), N CRITICAL (factual), N IMPORTANT, N SUGGESTION. Include axis attribution for all CRITICAL findings (or note "single-voice review, panel declined" if applicable).
 
