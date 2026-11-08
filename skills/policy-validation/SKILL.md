@@ -1,7 +1,7 @@
 ---
 name: policy-validation
 description: Validates IAM policies and security controls against AWS best practices. Use before deployment to detect overly permissive permissions, missing conditions, and compliance gaps. Produces prioritized findings with specific fixes.
-version: 1.0.0
+version: 1.1.0
 tags: [skill, iam, security, policy, validation, checker, aws]
 ---
 
@@ -31,6 +31,7 @@ Overly permissive actions (wildcards without justification), missing condition k
 - Tell a security gap from a design decision. If the design justifies a choice (for example, "AWS-managed keys sufficient for Internal/Confidential data classification"), say so in the finding and present your recommendation as an alternative. With no justification, it is a gap.
 - Report only what the design missed. If it already has a "Compliance Gaps Identified" table, a SOC 2 checklist, threat mitigation tables, or remediation steps under "Next Steps and Recommendations", reference them, check that they are accurate, and add only new gaps. Repeating them lengthens the report without telling the maker anything new.
 - Rate every finding CRITICAL, IMPORTANT, or SUGGESTION, the scale the Quality Gate uses. Severity Mapping below says which findings go where.
+- When asked to fix the policies instead of reporting, keep the access each policy exists to grant: scope it down, don't delete it. Write a change log with one entry per change giving the finding, its severity, and the before and after. Mark any value you made up, such as an ExternalId or a role ARN, as an assumption.
 
 ## Severity Mapping
 
@@ -42,12 +43,13 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - Cross-account trust without `sts:ExternalId` or another condition key
 - `kms:*` granted to a non-admin principal
 - S3 bucket open to the public, a data store with no encryption at rest, or no TLS enforcement where sensitive data moves
-- CloudTrail missing, or not enabled in all regions
+- No CloudTrail trail at all
 - KMS key rotation off where a named compliance framework or the design requires it
 - A compliance violation the checklists in CATEGORY 5 flag CRITICAL, or a threat with no control
 
 **IMPORTANT:** a weakness that raises risk but leaves the data protected and the trail intact.
 
+- A trail that is single-region or skips global service events
 - CloudTrail logs not encrypted or without log file validation
 - KMS key rotation off for sensitive data where nothing requires it
 - Key administrators who can also decrypt
@@ -56,7 +58,7 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 
 **SUGGESTION:** hardening beyond the minimum, such as VPC endpoints instead of an internet gateway, service-specific logs, or tighter condition keys.
 
-Older reports on a HIGH/MEDIUM/LOW scale map to this one: HIGH becomes IMPORTANT unless the finding is on the CRITICAL list above, and MEDIUM and LOW become SUGGESTION.
+Older reports on a HIGH/MEDIUM/LOW scale map to this one: HIGH becomes IMPORTANT unless the finding is on the CRITICAL list above, and MEDIUM and LOW become SUGGESTION. If the reader expects that older scale, say so once in the summary (IMPORTANT = High).
 
 ## Validation Framework
 
@@ -145,7 +147,7 @@ Check for:
 
 - Check for least privilege separation between key administrators and key users
 - Key administrators should have: `kms:Create*`, `kms:Describe*`, `kms:Enable*`, `kms:List*`, `kms:Put*`, `kms:Update*`, `kms:Revoke*`, `kms:Disable*`, `kms:Get*`, `kms:Delete*`, `kms:ScheduleKeyDeletion`, `kms:CancelKeyDeletion`
-- Key users should have: `kms:Decrypt`, `kms:DescribeKey`, `kms:GenerateDataKey`
+- Key users should have: `kms:Encrypt`, `kms:Decrypt`, `kms:ReEncrypt*`, `kms:GenerateDataKey*`, `kms:DescribeKey`
 - Flag as IMPORTANT if key administrators also have decrypt permissions (violates separation of duties)
 
 **VPC Endpoint Validation**:
@@ -171,7 +173,7 @@ Check for:
 
 - Check for `IsMultiRegionTrail: true` on CloudTrail configuration
 - Check for `IncludeGlobalServiceEvents: true` to capture IAM, STS, CloudFront events
-- Flag as CRITICAL if CloudTrail is missing or not enabled in all regions
+- Flag as CRITICAL if no trail exists; flag as IMPORTANT if the trail is single-region or misses global service events
 - Recommend single multi-region trail for centralized audit logging
 
 **CloudTrail Encryption and Log File Validation**:
@@ -279,7 +281,12 @@ Check for:
 - Missing compliance validation checklists
 - Insufficient compliance evidence
 
-When the user names a compliance framework, open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory.
+When the user names a compliance framework, open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory. If it is not there, use these minimums and say in the report that the full checklist was unavailable:
+
+- **GDPR**: encryption at rest and in transit (Article 32), deletion through lifecycle rules or TTL (Article 17), EU-region residency
+- **HIPAA**: PHI encrypted with customer-managed KMS keys (§164.312(a)(2)(iv)), audit controls (§164.308(a)(1)(ii)(D)), MFA for PHI access, no PHI in logs, a signed BAA
+- **PCI-DSS**: cardholder data environment segmented (Requirement 1), cardholder data encrypted (Requirement 3), MFA for privileged access
+- **SOC 2**: least-privilege logical access (CC6.1), encryption (CC6.7), security monitoring (CC7.2)
 
 **Compliance Gap Report Generation**:
 
@@ -505,7 +512,7 @@ Report the comparison in the `## Iteration Progress` section of the output templ
 
 ## Finding Templates
 
-Use these templates for findings:
+Use these templates for findings. Every CRITICAL and IMPORTANT finding on a policy or config shows both Current State (the statement as it is in the file) and Recommended State as complete JSON, trust policies and CloudTrail or key settings included. A fix given only in prose is not enough.
 
 ### CRITICAL FINDING
 
@@ -823,7 +830,7 @@ Generate output in this format:
 - Cross-account trust without `ExternalId` or condition keys
 - KMS key policies allow `kms:*` to non-admin principals
 - S3 bucket policies allow public access
-- CloudTrail missing or not enabled in all regions
+- No CloudTrail trail at all
 - KMS key rotation off where a compliance framework or the design requires it
 - Anything else on the CRITICAL list in Severity Mapping
 
@@ -832,10 +839,11 @@ Generate output in this format:
 - Roles have permissions not required by any documented access pattern
 - Missing `aws:RequestedRegion` conditions for region-locked services
 - No resource tagging conditions to scope access
+- CloudTrail single-region, without global service events, log file validation, or KMS encryption
 
 **SUGGESTION:**
 
 - Could add `aws:CalledVia` conditions for service-to-service calls
 - Could tighten `s3:GetObject` to specific key prefixes
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask "Fix these issues? [y/n]" unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
