@@ -182,8 +182,7 @@ reusable multi-step procedures to `workspace-skills` instead.
 Scan `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md`. Both are loaded at session
 start through the checked read in Reading Memory and are then already in your context. Use that
 copy for the overlap check; no file I/O needed. A file skipped at session start (its
-`--check-path` exited 1, or you had no shell) is not read for the overlap check either, and you
-do not write to it.
+`--check-path` exited 1) is not read for the overlap check either, and you do not write to it.
 
 **Decision rules:**
 
