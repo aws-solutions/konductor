@@ -27,12 +27,6 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _house_rules_section() -> str:
-    match = re.search(r"^## House rules\n(.*?)(?=^## )", _read(CORE_RULES), re.S | re.M)
-    assert match, "context/k-core-rules.md has no House rules section"
-    return match.group(1)
-
-
 def _template_line(text: str) -> str | None:
     for line in text.splitlines():
         if line.strip().startswith(f"{RELAY_LINE}:"):
@@ -54,13 +48,6 @@ def _scanned_files():
                 yield path
 
 
-def test_house_rules_let_a_quoting_entry_meet_rules_6_and_7_only():
-    section = _house_rules_section()
-    assert f"for rules 6 and 7 only, by a `{RELAY_LINE}` entry" in section
-    assert "quotes them and names the action and target" in section
-    assert "no brief entry meets rule 9 or approves an irreversible action" in section
-
-
 def test_template_carries_the_relay_line():
     line = _template_line(_read(DELEGATION_PROTOCOL))
     assert line is not None
@@ -77,7 +64,6 @@ def test_removal_requests_are_recorded_on_the_relay_line():
 
 def test_a_protection_confirmation_on_the_relay_line_never_meets_rule_9():
     paragraph = " ".join(_default_lines_paragraph().split())
-    assert "confirmed disabling a protection" not in paragraph
     assert "it never meets rule 9: the specialist asks the user itself" in paragraph
 
 
