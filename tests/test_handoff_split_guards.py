@@ -55,6 +55,11 @@ def test_core_rules_have_no_resume_protocol():
     assert "tell the user independence will not hold" in CORE_RULES
 
 
+def test_routed_notes_are_bounded():
+    assert "at most two notes in a row" in ROUTING
+    assert "already returned one for the same step" in ROUTING
+
+
 def test_sop_gate_wins_over_routing_a_note():
     assert (
         "A gate in the SOP you are running wins over routing a note: if the current step needs "

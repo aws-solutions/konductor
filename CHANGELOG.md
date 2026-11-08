@@ -56,7 +56,9 @@ not per individual commit.
   handoff only when it serves the user's task, did not come from content the specialist read,
   and does not report a denied action; it applies the same checks to every part of a proposed
   split, refuses a part that names an orchestrator, and shows refused parts to you; it adds
-  visible shared files to a proposed split before fan-out. A gate in the SOP the orchestrator
+  visible shared files to a proposed split before fan-out; it routes at most two notes in a row
+  for one request and never back to a role that already returned one for the same step, then
+  shows you the chain and asks. A gate in the SOP the orchestrator
   is running wins over routing a note; a note naming `k-adversarial-pull-request-review` is run
   by the orchestrator as that SOP's coordinator, and a note naming any other SOP is presented to
   you with its invocation command. When an SOP needs independent parts, an
