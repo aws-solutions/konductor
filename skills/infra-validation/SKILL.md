@@ -79,7 +79,7 @@ Check for:
 9. Validate CloudTrail is enabled for audit logging
 10. Verify VPC endpoints used for AWS service access where appropriate
 
-### CATEGORY 2: COST OPTIMIZATION (MEDIUM)
+### CATEGORY 2: COST OPTIMIZATION (SUGGESTION)
 
 Check for:
 
@@ -104,7 +104,7 @@ Check for:
 9. Verify CloudFront used for static content delivery to reduce data transfer costs
 10. Identify opportunities for S3 Intelligent-Tiering for unpredictable access patterns
 
-### CATEGORY 3: OPERATIONAL EXCELLENCE (HIGH)
+### CATEGORY 3: OPERATIONAL EXCELLENCE (IMPORTANT)
 
 Check for:
 
@@ -130,7 +130,7 @@ Check for:
 9. Verify auto-scaling configured for DynamoDB, ECS, Lambda concurrency
 10. Check resource tagging includes Environment, Application, Owner, CostCenter
 
-### CATEGORY 4: RELIABILITY & RESILIENCE (HIGH)
+### CATEGORY 4: RELIABILITY & RESILIENCE (IMPORTANT)
 
 Check for:
 
@@ -155,7 +155,7 @@ Check for:
 9. Verify SQS queues have dead letter queues configured
 10. Check for single points of failure (single NAT Gateway, single database)
 
-### CATEGORY 5: PERFORMANCE OPTIMIZATION (MEDIUM)
+### CATEGORY 5: PERFORMANCE OPTIMIZATION (SUGGESTION)
 
 Check for:
 
@@ -179,7 +179,7 @@ Check for:
 9. Verify CloudFront compression enabled for text-based content
 10. Check Lambda functions use ARM64 (Graviton) for cost and performance benefits
 
-### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES (MEDIUM)
+### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES (SUGGESTION)
 
 Check for:
 
@@ -230,7 +230,7 @@ Check for:
 9. Validate backup retention meets compliance requirements
 10. Verify encryption algorithms meet organizational standards
 
-### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS (HIGH)
+### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS (IMPORTANT)
 
 Check for:
 
@@ -256,7 +256,7 @@ Check for:
 9. Detect missing retry logic for external service calls
 10. Identify missing dead letter queues for asynchronous processing
 
-### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION (HIGH)
+### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION (IMPORTANT)
 
 #### Lambda Functions
 
@@ -299,7 +299,7 @@ Check for:
 - **Request Validation**: Request validation enabled
 - **WAF Integration**: WAF attached for security
 
-### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT (MEDIUM)
+### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT (SUGGESTION)
 
 Check for:
 
@@ -393,11 +393,11 @@ Check EVERY IAM policy statement for:
    - Search for: `"Action": "*"` or `actions: ["*"]`
    - Search for: `"Action": "service:*"` (e.g., `"s3:*"`)
 
-3. **Overly Permissive Actions** - Flag as HIGH
+3. **Overly Permissive Actions** - Flag as IMPORTANT
    - `dynamodb:*`, `s3:*`, `lambda:*`, `cognito-idp:*`
    - Should specify exact actions needed
 
-4. **Cross-Account Access** - Flag as HIGH
+4. **Cross-Account Access** - Flag as IMPORTANT
    - Check for `Principal` with external account IDs
    - Verify trust relationships are intentional
 
@@ -777,7 +777,7 @@ Before finalizing report, verify you checked:
 - [ ] ALL network resources for TLS/SSL configuration
 - [ ] ALL resources for hardcoded secrets
 
-**Operational (HIGH)**:
+**Operational (IMPORTANT)**:
 
 - [ ] ALL Lambda functions for DLQ configuration
 - [ ] ALL Lambda functions for CloudWatch alarms
@@ -787,14 +787,14 @@ Before finalizing report, verify you checked:
 - [ ] ALL S3 buckets for access logging
 - [ ] ALL CloudFront distributions for logging
 
-**Cost (MEDIUM)**:
+**Cost (SUGGESTION)**:
 
 - [ ] ALL Lambda functions for memory/timeout optimization
 - [ ] ALL DynamoDB tables for GSI optimization
 - [ ] ALL S3 buckets for lifecycle policies
 - [ ] ALL resources for appropriate billing modes
 
-**Reliability (HIGH)**:
+**Reliability (IMPORTANT)**:
 
 - [ ] ALL stateful resources for backup configuration
 - [ ] ALL Lambda functions for retry configuration
@@ -807,9 +807,8 @@ Provide structured feedback with:
 - **Resource Inventory Summary** (from Step 6.1)
 - **Verification Checklist Status** (from Step 6.2)
 - CRITICAL findings requiring immediate attention
-- HIGH findings for near-term resolution
-- MEDIUM findings: optimizations worth doing
-- LOW findings: minor improvements
+- IMPORTANT findings for near-term resolution
+- SUGGESTION findings: optimizations and minor improvements
 - Iteration progress tracking
 - Limits of the review: name the inputs you did not inspect (Lambda handler code, the synthesized template in `cdk.out/`, the app entrypoint, CI) and mark findings that depend on them as unverified
 
@@ -819,7 +818,13 @@ If you did not systematically check ALL resources of a type, explicitly state th
 
 ## Output Format
 
-Use the four tiers from the Quality Gate. CRITICAL is for exposure, data loss or credential risk that blocks deployment: the Quality Gate CRITICAL list, hardcoded secrets, and wildcard IAM. Operational gaps such as missing alarms, DLQs, tracing, reserved concurrency or a hot partition key belong in HIGH, even in production. If you would hedge a rating with "arguably", use the lower tier.
+Use the same CRITICAL, IMPORTANT and SUGGESTION scale as the Quality Gate:
+
+- **CRITICAL** blocks deployment. Use it only for exposure, data loss or credential risk: the Quality Gate CRITICAL list, which covers public access, missing encryption the data requires, open ingress, missing deletion protection, hardcoded secrets and wildcard IAM.
+- **IMPORTANT** is for operational and reliability gaps such as missing alarms, backups, DLQs, tracing, reserved concurrency or a hot partition key. They stay IMPORTANT even in production.
+- **SUGGESTION** is for cost, performance and code-quality improvements.
+
+If you would hedge a rating with "arguably", use the lower tier.
 
 ### CRITICAL (Must Fix)
 
@@ -832,7 +837,7 @@ Example:
 [Code showing fix - before and after]
 ```
 
-### HIGH (Should Fix)
+### IMPORTANT (Should Fix)
 
 ```
  [Category] [Resource/Location]
@@ -843,23 +848,15 @@ Example:
 [Code showing improvement]
 ```
 
-### MEDIUM (Consider Fixing)
+### SUGGESTION (Consider Fixing)
 
 ```
 [Category] [Resource/Location]
 Observation: [What could be better]
-Benefit: [Cost savings estimate, performance improvement]
+Benefit: [Cost savings estimate, performance improvement, code quality, maintainability]
 Alternative: [Optional approach]
-Example:
+Example (optional):
 [Code showing optimization]
-```
-
-### LOW (Optional)
-
-```
-[Category] [Resource/Location]
-Suggestion: [Minor improvement]
-Benefit: [Code quality, maintainability]
 ```
 
 ### Positive Findings
@@ -879,9 +876,8 @@ Good practice: [What's done well]
 **Status**: NEEDS REVISION
 **Confidence Level**: HIGH
 **CRITICAL**: 2
-**HIGH**: 3
-**MEDIUM**: 3
-**LOW**: 2
+**IMPORTANT**: 3
+**SUGGESTION**: 5
 
 ### CRITICAL
 
@@ -931,7 +927,7 @@ taskFunction.addToRolePolicy(
 );
 ```
 
-### HIGH
+### IMPORTANT
 
 **Operational Excellence** - Lambda Function (TaskProcessorFunction)
 Issue: No CloudWatch alarms configured for Lambda errors or throttling
@@ -1001,7 +997,7 @@ const taskFunction = new lambda.Function(this, 'TaskProcessorFunction', {
 });
 ```
 
-### MEDIUM
+### SUGGESTION
 
 **Cost Optimization** - Lambda Function (TaskProcessorFunction)
 Observation: Lambda function using default memory (128MB) without analysis
@@ -1071,14 +1067,12 @@ const bucket = new s3.Bucket(this, 'DocumentsBucket', {
 });
 ```
 
-### LOW
-
 **Code Quality** - Stack Organization
-Suggestion: Extract repeated resource patterns into reusable constructs
+Observation: Repeated resource patterns are not extracted into reusable constructs
 Benefit: Improved code maintainability and reusability
 
 **Documentation** - Missing inline comments
-Suggestion: Add inline comments to complex resource configurations
+Observation: Complex resource configurations have no inline comments
 Benefit: Improved code readability for team members
 
 ### Positive Findings
@@ -1097,7 +1091,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 ## Validation Summary
 
-**Overall Recommendation**: Address 2 CRITICAL security issues before deployment. HIGH operational issues should be resolved for production readiness.
+**Overall Recommendation**: Address 2 CRITICAL security issues before deployment. IMPORTANT operational issues should be resolved for production readiness.
 
 **Key Strengths**:
 
@@ -1113,7 +1107,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 **Estimated Cost Savings**: $150-200/month from lifecycle policies and Lambda optimization
 
-**Timeline Impact**: 2-3 days to address CRITICAL and HIGH issues
+**Timeline Impact**: 2-3 days to address CRITICAL and IMPORTANT issues
 ````
 
 ## Validation Checklist
@@ -1150,7 +1144,7 @@ Before approving infrastructure code:
 Infrastructure code passes review when:
 
 - No CRITICAL security issues remain
-- HIGH operational issues addressed or documented as accepted
+- IMPORTANT operational issues addressed or documented as accepted
 - Compliance requirements met
 - Cost optimization opportunities identified
 - Follows AWS best practices consistently
@@ -1171,20 +1165,17 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 - Hardcoded passwords, keys or tokens in code or environment variables
 - IAM statements with wildcard actions or resources
 
-**HIGH (should fix):**
+**IMPORTANT (should fix):**
 
 - CloudWatch alarms not defined for key metrics
 - No backup configuration for stateful resources
 - Lambda functions without reserved concurrency limits, DLQ or tracing
 - Low-cardinality partition keys that create hot partitions
 
-**MEDIUM (consider):**
+**SUGGESTION:**
 
 - Over-provisioned memory, timeout or capacity with no stated reason
 - Could enable VPC Flow Logs for network visibility
-
-**LOW (optional):**
-
 - Could add cost allocation tags to all resources
 
-Present findings as: CRITICAL → HIGH → MEDIUM → LOW. Ask: "Fix these issues? [y/n]" unless `scope_confirmed` is true. In that case, report all the findings and leave fixing to the caller without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" unless `scope_confirmed` is true. In that case, report all the findings and leave fixing to the caller without asking.
