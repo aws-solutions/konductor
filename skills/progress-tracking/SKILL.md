@@ -1,7 +1,7 @@
 ---
 name: progress-tracking
 description: Validates feature plans, tracks implementation progress, and verifies code-level requirements traceability. Use when validating a feature plan, tracking its progress, or checking requirements against code.
-version: 1.0.0
+version: 1.1.0
 tags: [skill, progress-tracking, implementation, traceability, validation]
 ---
 
@@ -249,7 +249,7 @@ Store: validation_results.structure
 
 **Mode:** Progress only (skip in Initial and Final).
 
-**Parse States:** Extract checkbox states, count per feature. Track optional tasks separately. Validate: parent completed but sub-tasks incomplete → warning.
+**Parse States:** Extract checkbox states, count per feature. Track optional tasks separately. Validate: parent completed but sub-tasks incomplete → warning. A checkbox outside the valid set (`- [X]`, `- []`) is an invalid state: flag it, say whether you counted it as done, and give the percentage both ways so the reader can see what it changes.
 
 **Calculate Progress:**
 
@@ -257,6 +257,8 @@ Store: validation_results.structure
 - Overall: `(total_completed / total_tasks) * 100`
 - Status: not_started (0%), in_progress (1-99%), completed (100%), blocked (has blockers)
 - Historical: If history exists, compare to previous, calculate velocity, project completion
+
+**Cross-Check Coverage:** A percentage only measures the tasks that exist. For each feature, compare the acceptance criteria in requirements.md against the tasks' `_Requirements:_` refs and list any criterion no task covers. Call this out most clearly for features at 100%, since every box is ticked but the feature is not done.
 
 **Identify Blockers:** Parse dependencies: explicit (`Depends on: 1.1`), implicit (sub-tasks, sequential IDs), cross-feature. For each incomplete task, check if dependencies completed. If not → blocked. Types: Critical (explicit, parent, cross-feature) | Warning (sequential, soft). Provide recommendations.
 
@@ -269,7 +271,7 @@ Store: validation_results.structure
 
 **Report:** Use standard template. Summary: overall %, task counts, feature counts, estimated remaining. Feature Progress: per-feature breakdown with progress bars, task lists, blockers. Blockers Analysis: critical and warning blockers with recommendations. Insights: strong progress, concerns, recommendations. Detailed mode: all tasks, dependency graphs, historical charts. Summary mode: stats, blocked tasks, critical issues.
 
-**Save History:** If enabled, save to `{history_dir}/progress-[timestamp].json` with: timestamp, mode, overall_percentage, features summary, blockers_count, estimated_remaining_days.
+**Save History:** If enabled, save to `{history_dir}/progress-[timestamp].json` with: timestamp, mode, overall_percentage, features summary, blockers_count, estimated_remaining_days. Count each distinct blocker once (a dependency cycle is one blocker, however many tasks it holds up) so counts compare across weeks.
 
 Store: validation_results.progress
 
