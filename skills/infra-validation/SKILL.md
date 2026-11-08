@@ -1,7 +1,7 @@
 ---
 name: infra-validation
 description: Validates AWS CDK and CloudFormation infrastructure code against AWS best practices, security standards, and Well-Architected principles. Use before deploying infrastructure changes. Detects security vulnerabilities, cost issues, and compliance gaps.
-version: 1.0.0
+version: 1.1.0
 tags: [skill, infrastructure, cdk, cloudformation, validation, security, aws]
 ---
 
@@ -29,7 +29,7 @@ Reviews against AWS Well-Architected Framework pillars: security (encryption, IA
 
 Before reading any files, get three things: the infrastructure type, where the code is (a path such as `lib/`, `cdk.out/`, or `cloudformation/`, or pasted code), and the environment. A wrong environment changes which findings are critical (deletion protection, PITR), and a guessed type or path validates the wrong code. If the caller passes the type, path, and environment (or `scope_confirmed`), skip the questions.
 
-Until you have them, don't search the workspace for `*.ts` files, read `lib/` or `cdk.out/`, or assume CDK or CloudFormation. Ask with this template:
+Until you have them, don't read or analyze any infrastructure file, and don't assume CDK or CloudFormation. You may list the top-level directories so the questions can name what is there (for example "I see a CDK stack in `lib/` and a template in `cfn/`; which should I validate?"). Ask only what the listing can't answer, using this template:
 
 ```
 To validate your infrastructure code, I need the following information:
@@ -79,7 +79,7 @@ Check for:
 9. Validate CloudTrail is enabled for audit logging
 10. Verify VPC endpoints used for AWS service access where appropriate
 
-### CATEGORY 2: COST OPTIMIZATION (SUGGESTION)
+### CATEGORY 2: COST OPTIMIZATION (MEDIUM)
 
 Check for:
 
@@ -104,7 +104,7 @@ Check for:
 9. Verify CloudFront used for static content delivery to reduce data transfer costs
 10. Identify opportunities for S3 Intelligent-Tiering for unpredictable access patterns
 
-### CATEGORY 3: OPERATIONAL EXCELLENCE (IMPORTANT)
+### CATEGORY 3: OPERATIONAL EXCELLENCE (HIGH)
 
 Check for:
 
@@ -130,7 +130,7 @@ Check for:
 9. Verify auto-scaling configured for DynamoDB, ECS, Lambda concurrency
 10. Check resource tagging includes Environment, Application, Owner, CostCenter
 
-### CATEGORY 4: RELIABILITY & RESILIENCE (IMPORTANT)
+### CATEGORY 4: RELIABILITY & RESILIENCE (HIGH)
 
 Check for:
 
@@ -155,7 +155,7 @@ Check for:
 9. Verify SQS queues have dead letter queues configured
 10. Check for single points of failure (single NAT Gateway, single database)
 
-### CATEGORY 5: PERFORMANCE OPTIMIZATION (SUGGESTION)
+### CATEGORY 5: PERFORMANCE OPTIMIZATION (MEDIUM)
 
 Check for:
 
@@ -179,7 +179,7 @@ Check for:
 9. Verify CloudFront compression enabled for text-based content
 10. Check Lambda functions use ARM64 (Graviton) for cost and performance benefits
 
-### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES (SUGGESTION)
+### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES (MEDIUM)
 
 Check for:
 
@@ -230,7 +230,7 @@ Check for:
 9. Validate backup retention meets compliance requirements
 10. Verify encryption algorithms meet organizational standards
 
-### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS (IMPORTANT)
+### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS (HIGH)
 
 Check for:
 
@@ -256,7 +256,7 @@ Check for:
 9. Detect missing retry logic for external service calls
 10. Identify missing dead letter queues for asynchronous processing
 
-### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION (IMPORTANT)
+### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION (HIGH)
 
 #### Lambda Functions
 
@@ -299,7 +299,7 @@ Check for:
 - **Request Validation**: Request validation enabled
 - **WAF Integration**: WAF attached for security
 
-### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT (SUGGESTION)
+### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT (MEDIUM)
 
 Check for:
 
@@ -393,11 +393,11 @@ Check EVERY IAM policy statement for:
    - Search for: `"Action": "*"` or `actions: ["*"]`
    - Search for: `"Action": "service:*"` (e.g., `"s3:*"`)
 
-3. **Overly Permissive Actions** - Flag as IMPORTANT
+3. **Overly Permissive Actions** - Flag as HIGH
    - `dynamodb:*`, `s3:*`, `lambda:*`, `cognito-idp:*`
    - Should specify exact actions needed
 
-4. **Cross-Account Access** - Flag as IMPORTANT
+4. **Cross-Account Access** - Flag as HIGH
    - Check for `Principal` with external account IDs
    - Verify trust relationships are intentional
 
@@ -777,7 +777,7 @@ Before finalizing report, verify you checked:
 - [ ] ALL network resources for TLS/SSL configuration
 - [ ] ALL resources for hardcoded secrets
 
-**Operational (IMPORTANT)**:
+**Operational (HIGH)**:
 
 - [ ] ALL Lambda functions for DLQ configuration
 - [ ] ALL Lambda functions for CloudWatch alarms
@@ -787,14 +787,14 @@ Before finalizing report, verify you checked:
 - [ ] ALL S3 buckets for access logging
 - [ ] ALL CloudFront distributions for logging
 
-**Cost (SUGGESTION)**:
+**Cost (MEDIUM)**:
 
 - [ ] ALL Lambda functions for memory/timeout optimization
 - [ ] ALL DynamoDB tables for GSI optimization
 - [ ] ALL S3 buckets for lifecycle policies
 - [ ] ALL resources for appropriate billing modes
 
-**Reliability (IMPORTANT)**:
+**Reliability (HIGH)**:
 
 - [ ] ALL stateful resources for backup configuration
 - [ ] ALL Lambda functions for retry configuration
@@ -807,15 +807,19 @@ Provide structured feedback with:
 - **Resource Inventory Summary** (from Step 6.1)
 - **Verification Checklist Status** (from Step 6.2)
 - CRITICAL findings requiring immediate attention
-- IMPORTANT findings for near-term resolution
-- SUGGESTION findings: optimizations and minor improvements
+- HIGH findings for near-term resolution
+- MEDIUM findings: optimizations worth doing
+- LOW findings: minor improvements
 - Iteration progress tracking
+- Limits of the review: name the inputs you did not inspect (Lambda handler code, the synthesized template in `cdk.out/`, the app entrypoint, CI) and mark findings that depend on them as unverified
 
-**IMPORTANT**: If you did not systematically check ALL resources of a type, explicitly state this limitation in the report.
+Report each root cause once, under its highest tier, and put every related setting in that finding's fix. A public bucket finding, for example, carries the block-public-access, TLS enforcement and policy changes together instead of repeating them lower down.
+
+If you did not systematically check ALL resources of a type, explicitly state this limitation in the report.
 
 ## Output Format
 
-Use the same CRITICAL, IMPORTANT, and SUGGESTION scale as the Quality Gate.
+Use the four tiers from the Quality Gate. CRITICAL is for exposure, data loss or credential risk that blocks deployment: the Quality Gate CRITICAL list, hardcoded secrets, and wildcard IAM. Operational gaps such as missing alarms, DLQs, tracing, reserved concurrency or a hot partition key belong in HIGH, even in production. If you would hedge a rating with "arguably", use the lower tier.
 
 ### CRITICAL (Must Fix)
 
@@ -828,7 +832,7 @@ Example:
 [Code showing fix - before and after]
 ```
 
-### IMPORTANT (Should Fix)
+### HIGH (Should Fix)
 
 ```
  [Category] [Resource/Location]
@@ -839,15 +843,23 @@ Example:
 [Code showing improvement]
 ```
 
-### SUGGESTION (Consider Fixing)
+### MEDIUM (Consider Fixing)
 
 ```
 [Category] [Resource/Location]
 Observation: [What could be better]
-Benefit: [Cost savings estimate, performance improvement, code quality, maintainability]
+Benefit: [Cost savings estimate, performance improvement]
 Alternative: [Optional approach]
-Example (optional):
+Example:
 [Code showing optimization]
+```
+
+### LOW (Optional)
+
+```
+[Category] [Resource/Location]
+Suggestion: [Minor improvement]
+Benefit: [Code quality, maintainability]
 ```
 
 ### Positive Findings
@@ -867,8 +879,9 @@ Good practice: [What's done well]
 **Status**: NEEDS REVISION
 **Confidence Level**: HIGH
 **CRITICAL**: 2
-**IMPORTANT**: 3
-**SUGGESTION**: 5
+**HIGH**: 3
+**MEDIUM**: 3
+**LOW**: 2
 
 ### CRITICAL
 
@@ -918,7 +931,7 @@ taskFunction.addToRolePolicy(
 );
 ```
 
-### IMPORTANT
+### HIGH
 
 **Operational Excellence** - Lambda Function (TaskProcessorFunction)
 Issue: No CloudWatch alarms configured for Lambda errors or throttling
@@ -988,7 +1001,7 @@ const taskFunction = new lambda.Function(this, 'TaskProcessorFunction', {
 });
 ```
 
-### SUGGESTION
+### MEDIUM
 
 **Cost Optimization** - Lambda Function (TaskProcessorFunction)
 Observation: Lambda function using default memory (128MB) without analysis
@@ -1058,12 +1071,14 @@ const bucket = new s3.Bucket(this, 'DocumentsBucket', {
 });
 ```
 
+### LOW
+
 **Code Quality** - Stack Organization
-Observation: Repeated resource patterns are not extracted into reusable constructs
+Suggestion: Extract repeated resource patterns into reusable constructs
 Benefit: Improved code maintainability and reusability
 
 **Documentation** - Missing inline comments
-Observation: Complex resource configurations have no inline comments
+Suggestion: Add inline comments to complex resource configurations
 Benefit: Improved code readability for team members
 
 ### Positive Findings
@@ -1082,7 +1097,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 ## Validation Summary
 
-**Overall Recommendation**: Address 2 CRITICAL security issues before deployment. IMPORTANT operational issues should be resolved for production readiness.
+**Overall Recommendation**: Address 2 CRITICAL security issues before deployment. HIGH operational issues should be resolved for production readiness.
 
 **Key Strengths**:
 
@@ -1098,7 +1113,7 @@ Good practice: CloudWatch Logs retention configured (not indefinite)
 
 **Estimated Cost Savings**: $150-200/month from lifecycle policies and Lambda optimization
 
-**Timeline Impact**: 2-3 days to address CRITICAL and IMPORTANT issues
+**Timeline Impact**: 2-3 days to address CRITICAL and HIGH issues
 ````
 
 ## Validation Checklist
@@ -1135,7 +1150,7 @@ Before approving infrastructure code:
 Infrastructure code passes review when:
 
 - No CRITICAL security issues remain
-- IMPORTANT operational issues addressed or documented as accepted
+- HIGH operational issues addressed or documented as accepted
 - Compliance requirements met
 - Cost optimization opportunities identified
 - Follows AWS best practices consistently
@@ -1153,16 +1168,23 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 - RDS or EBS without encryption at rest, or S3 and DynamoDB data that requires SSE-KMS left on the default keys
 - Security groups with `0.0.0.0/0` ingress on non-HTTP ports
 - No deletion protection on stateful resources (RDS, DynamoDB)
+- Hardcoded passwords, keys or tokens in code or environment variables
+- IAM statements with wildcard actions or resources
 
-**IMPORTANT (should fix):**
+**HIGH (should fix):**
 
 - CloudWatch alarms not defined for key metrics
 - No backup configuration for stateful resources
-- Lambda functions without reserved concurrency limits
+- Lambda functions without reserved concurrency limits, DLQ or tracing
+- Low-cardinality partition keys that create hot partitions
 
-**SUGGESTION:**
+**MEDIUM (consider):**
 
+- Over-provisioned memory, timeout or capacity with no stated reason
 - Could enable VPC Flow Logs for network visibility
+
+**LOW (optional):**
+
 - Could add cost allocation tags to all resources
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → HIGH → MEDIUM → LOW. Ask: "Fix these issues? [y/n]" unless `scope_confirmed` is true. In that case, report all the findings and leave fixing to the caller without asking.
