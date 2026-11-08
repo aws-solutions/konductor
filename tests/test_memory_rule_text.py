@@ -130,7 +130,9 @@ def test_brief_template_carries_the_memory_check_result():
     template = skill.split("```", 2)[1]
     memory_lines = [line for line in template.splitlines() if line.strip().startswith("MEMORY:")]
     assert len(memory_lines) == 1, template
-    assert "exited 0" in memory_lines[0], memory_lines[0]
+    # The printed path, not the relative literal: the specialist's working
+    # directory may differ from the orchestrator's.
+    assert "the path each --check-path printed" in memory_lines[0], memory_lines[0]
     assert "memory skipped" in memory_lines[0], memory_lines[0]
 
 
@@ -152,6 +154,7 @@ def test_orchestrator_direct_work_allows_the_memory_path_check():
         "reads no stdin and writes nothing",
         "do not load a file whose check exits 1",
         "every brief's `MEMORY:` line",
+        "the path each check printed",
         "`git --no-pager -c core.fsmonitor= rev-parse --show-toplevel`",
     ):
         assert needle in row, f"Direct Work memory row is missing {needle!r}: {row}"
