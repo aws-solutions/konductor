@@ -1,7 +1,7 @@
 ---
 name: smithy-modeling
 description: Generates Smithy API models from requirements. Use when designing a new service API. Produces service definitions, operations, data structures, validation rules, and error handling following Smithy best practices. Supports TypeScript, OpenAPI, and AWS SDK code generation.
-version: 1.0.0
+version: 1.1.0
 tags: [skill, smithy, api-design, type-safety, code-generation, aws]
 ---
 
@@ -34,13 +34,15 @@ Use this skill when:
 - Define clear input/output structures
 - Apply appropriate HTTP traits (@http, @readonly, @idempotent)
 - Specify all possible errors for each operation
+- A POST that creates something or changes state (create, check out, submit) is not idempotent. Give its input an `@idempotencyToken` member so clients can retry a timed-out call without doing the work twice, or say in the operation docs why a retry is unsafe
 
 ### 3. Shape Design
 
 - Use appropriate shape types (structure, string, integer, list, map, etc.)
 - Apply naming conventions (PascalCase for shapes, camelCase for members)
 - Add comprehensive documentation to all public shapes
-- Define reusable shapes for common patterns
+- Define reusable shapes for common patterns. When create, replace, and read shapes repeat the same members, put them in a `@mixin` (see Common Patterns)
+- When another service will reuse types or errors, put them in their own namespace (for example `com.example.library.common`) and pull them in with `use`, so the second service imports them instead of copying
 
 ### 4. Validation and Constraints
 
@@ -49,7 +51,7 @@ Use this skill when:
 - Apply @length for string/collection size limits
 - Use @pattern for format validation (email, URLs, etc.)
 - Mark passwords, tokens, and PII with @sensitive
-- Put the auth scheme traits (for example `@httpBearerAuth`) on the service. Operations inherit them; use `@auth` on an operation only to narrow or reorder its schemes, and `@optionalAuth` only for operations callable without credentials
+- When the requirements call for authentication, put the auth scheme trait (for example `@httpBearerAuth`) on the service. Operations inherit it; use `@auth` on an operation only to narrow or reorder its schemes, and `@optionalAuth` only for operations callable without credentials. Don't add a scheme the input never asked for, since it changes every generated client; list it as a suggestion instead
 
 ### 5. Error Handling
 
@@ -57,7 +59,9 @@ Use this skill when:
 - Use @error("client") for 4xx errors
 - Use @error("server") for 5xx errors
 - Apply @httpError with appropriate status codes
-- Include helpful error messages and context
+- Include helpful error messages and context, for example a `fieldErrors` list on `ValidationError` naming each bad field and why
+- Mark errors a client may retry with `@retryable` (`@retryable(throttling: true)` for 429), and give throttling and 503 errors a `Retry-After` `@httpHeader`
+- Attach errors to the operations that can raise them. Errors any operation can raise (throttling, 503) go in the service's `errors` list instead
 
 ### 6. Pagination Support
 
@@ -85,9 +89,11 @@ $version: "2"
 
 namespace [appropriate.namespace]
 
+use aws.protocols#restJson1
+
 /// Service documentation
 @title("[Service Title]")
-@httpBearerAuth
+@restJson1
 service [ServiceName] {
     version: "[YYYY-MM-DD]"
     operations: [
@@ -109,6 +115,7 @@ operation [OperationName] {
 }
 
 /// Input structure documentation
+@input
 structure [OperationInput] {
     /// Field documentation
     @required
@@ -116,6 +123,7 @@ structure [OperationInput] {
 }
 
 /// Output structure documentation
+@output
 structure [OperationOutput] {
     /// Field documentation
     [fieldName]: [Type]
@@ -181,6 +189,13 @@ operation CreateUser {
     errors: [ValidationError, ConflictError]
 }
 
+@input
+structure CreateUserInput with [UserAttributes] {
+    /// Lets a client retry a timed-out create without creating a second user
+    @idempotencyToken
+    clientToken: String
+}
+
 @http(method: "GET", uri: "/users/{userId}")
 @readonly
 operation GetUser {
@@ -203,6 +218,70 @@ operation DeleteUser {
     input: DeleteUserInput
     output: DeleteUserOutput
     errors: [UserNotFound]
+}
+```
+
+### Shared Members with a Mixin
+
+```smithy
+/// Fields a caller sets on create and full replace
+@mixin
+structure UserAttributes {
+    @required
+    email: Email
+
+    displayName: String
+}
+
+structure User with [UserAttributes] {
+    @required
+    userId: String
+}
+```
+
+### Common Errors
+
+```smithy
+@error("client")
+@httpError(400)
+structure ValidationError {
+    @required
+    message: String
+
+    /// One entry per invalid field
+    fieldErrors: FieldErrorList
+}
+
+structure FieldError {
+    @required
+    field: String
+
+    @required
+    reason: String
+}
+
+list FieldErrorList {
+    member: FieldError
+}
+
+@error("client")
+@httpError(429)
+@retryable(throttling: true)
+structure ThrottlingError {
+    @required
+    message: String
+
+    /// Seconds to wait before retrying
+    @httpHeader("Retry-After")
+    retryAfterSeconds: Integer
+}
+
+@error("server")
+@httpError(503)
+@retryable
+structure ServiceUnavailableError {
+    @required
+    message: String
 }
 ```
 
@@ -264,7 +343,7 @@ list UserList {
 - Missing constraints on strings and numbers
 - Inconsistent error handling across operations
 - Missing documentation on public shapes
-- Breaking changes without versioning
+- Breaking changes without versioning. Renaming a member changes its JSON wire name, so when you fix an existing model, say in the change notes whether any clients depend on it, and keep the old wire name with `@jsonName` if they do
 - Missing pagination on list operations
 - Exposing internal implementation details
 - Using snake_case instead of camelCase
@@ -284,6 +363,10 @@ list UserList {
 Keep a model under 10 operations in one file; split it at 10+ operations, past 500 lines, or when several services share its types.
 
 Open `references/file-organization.md` (relative to this file) when a model spans more than one file or you are deciding whether to split one. It has the file layouts, what goes in each file, the `smithy-build.json` sources setup, and the review checks `smithy-validation` applies.
+
+## Reviewing an Existing Model
+
+When asked to review or fix a model, check it against the Quality Gate below, fix what it asks for, and stay within what the model already does: no new operations or auth schemes the original didn't imply. Report the changes under CRITICAL, IMPORTANT, and SUGGESTION headings in that order, and note any change that alters the wire format.
 
 ## Interaction Guidelines
 
@@ -327,4 +410,4 @@ Provide:
 - Could add `@examples` traits for documentation
 - Could define reusable common shapes (timestamps, IDs)
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
