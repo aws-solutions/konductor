@@ -21,3 +21,11 @@ def test_claude_code_bullet_is_claude_only():
     claude = bullet("- Claude Code:", "- Kiro CLI v2")
     assert "run `/tools`" not in claude
     assert "kiro-cli" not in claude
+
+
+def test_specialist_row_qualifies_kiro_v2_until_the_strip():
+    row = next(line for line in AGENTS_MD.splitlines() if line.startswith("| every `k-*` specialist |"))
+    assert row == (
+        "| every `k-*` specialist | **nothing** in Kiro CLI v3 "
+        "(v2: the core rules only, see the bullet above) | **nothing** |"
+    )

@@ -77,7 +77,7 @@ def test_validator_lookup_fence_carries_no_write_line():
 def test_gitignore_bootstrap_targets_the_git_root():
     """The validator writes memory at the git root, so a cwd-relative
     `>> .gitignore` run from a subdirectory ignores nothing."""
-    assert 'ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)"' in RAW
+    assert 'ROOT="$(git --no-pager -c core.fsmonitor= rev-parse --show-toplevel 2>/dev/null || pwd -P)"' in RAW
     assert '[ -L "$ROOT/.gitignore" ]' in RAW
     assert "grep -qxF '.konductor/memory/' \"$ROOT/.gitignore\"" in RAW
     assert ">> \"$ROOT/.gitignore\"" in RAW
