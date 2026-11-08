@@ -98,6 +98,16 @@ def test_rule_11_memory_has_its_own_sentence():
     assert "symlink" in sentence, sentence
 
 
+def test_rule_11_treats_the_brief_memory_line_as_a_report_not_a_pointer():
+    """Reading Memory tells a shell-less specialist to load the paths its brief's
+    MEMORY: line reports as checked, so rule 11 cannot call a brief-named memory
+    path content; the line reports the two project files, it points nowhere else."""
+    rule = _rule_11()
+    assert "one a brief or a file points you to" not in rule, rule
+    assert "a brief's `MEMORY:` line only reports" in rule, rule
+    assert "whichever file or brief points you to it" in rule, rule
+
+
 def test_reading_memory_runs_the_validator_path_check():
     skill = (REPO_ROOT / "skills/persistent-memory/SKILL.md").read_text()
     reading = _section(skill, "## Reading Memory")
