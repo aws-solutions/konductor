@@ -42,7 +42,7 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
    Memory and step 1 run only this lookup, never the write fence below it:
 
    ```bash
-   ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+   ROOT="$(git --no-pager -c core.fsmonitor= rev-parse --show-toplevel 2>/dev/null)"
    PROJECT="" CHECKOUT=""
    [ -n "$ROOT" ] && [ -f "$ROOT/.konductor/manifest" ] && PROJECT="$ROOT/.konductor/skills/persistent-memory"
    [ -n "$ROOT" ] && grep -qs '"name": *"konductor"' "$ROOT/.claude-plugin/marketplace.json" && CHECKOUT="$ROOT/skills/persistent-memory"
@@ -101,7 +101,7 @@ If `.konductor/memory/` doesn't exist, pass initial content through the validato
 - On first write, if `.konductor/memory/` is not in the project root's `.gitignore`, add it there (the validator writes memory at the git root, so the ignore must sit there too) so each clone keeps its own memory by default. A project that wants shared memory removes the line; trust does not depend on it. Skip this if `.gitignore` is a symlink: git does not read a symlinked `.gitignore`, and the append would write to wherever it points.
 
   ```bash
-  ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)"
+  ROOT="$(git --no-pager -c core.fsmonitor= rev-parse --show-toplevel 2>/dev/null || pwd -P)"
   [ -L "$ROOT/.gitignore" ] || grep -qxF '.konductor/memory/' "$ROOT/.gitignore" 2>/dev/null || printf '.konductor/memory/\n' >> "$ROOT/.gitignore"
   ```
 

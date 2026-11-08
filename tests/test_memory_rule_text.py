@@ -142,6 +142,7 @@ def test_orchestrator_direct_work_allows_the_memory_path_check():
         "reads no stdin and writes nothing",
         "do not load a file whose check exits 1",
         "every brief's `MEMORY:` line",
+        "`git --no-pager -c core.fsmonitor= rev-parse --show-toplevel`",
     ):
         assert needle in row, f"Direct Work memory row is missing {needle!r}: {row}"
 
