@@ -168,7 +168,8 @@ def test_agents_md_context_loading_uses_the_checked_read():
     assert "MEMORY.md" in loading, loading
     assert "USER.md" in loading, loading
     assert "memory/*.md" not in loading, loading
-    assert "If you have no shell to run the check, skip memory and say so." in loading, loading
+    assert "If you have no shell to run the check, skip memory and say so." not in loading, loading
+    assert "Without a shell, load only the paths your brief's `MEMORY:` line reports, as Reading Memory says." in loading, loading
 
 
 def test_unreleased_changelog_does_not_tie_memory_trust_to_untracked():

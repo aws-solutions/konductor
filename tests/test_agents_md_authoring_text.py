@@ -33,7 +33,11 @@ def test_template_loads_memory_through_the_checked_read():
 
 def test_template_tells_skill_less_agents_to_skip_memory():
     """Agents that load a generated AGENTS.md without the persistent-memory
-    skill or a shell need an explicit fail-closed path, not a method they
-    cannot run."""
+    skill skip memory; agents without a shell read the paths their brief's
+    `MEMORY:` line reports, as Reading Memory says, instead of skipping."""
     template = TEXT.split("## Context Loading (MUST follow at session start)")[1].split("```")[0]
-    assert "If that skill or a shell is not available to you, skip memory and say so." in template, template
+    assert "If that skill or a shell is not available to you, skip memory and say so." not in template, template
+    assert (
+        "If that skill is not available to you, skip memory and say so; without a shell, "
+        "load only the paths your brief's `MEMORY:` line reports, as Reading Memory says."
+    ) in template, template
