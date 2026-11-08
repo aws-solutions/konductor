@@ -51,7 +51,7 @@ CONTEXT: <File paths, patterns, constraints, handoff file references>
   MEMORY: <the path each --check-path printed, or "memory skipped: <reason>">
 ```
 
-If a section is not applicable, write `N/A` — never omit the section. `TARGET AGENT` is the one exception: it is never `N/A` — every delegation targets exactly one agent.
+If a section is not applicable, write `N/A` — never omit the section. `TARGET AGENT` is the one exception: it is never `N/A` — every delegation targets exactly one agent. The `MEMORY:` line under `CONTEXT:` is always filled as well: the path each check printed, or `memory skipped: <reason>`, never `N/A` and never dropped.
 
 ### Never Omit the Target Agent
 
