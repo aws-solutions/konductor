@@ -86,6 +86,21 @@ def test_konductor_commits_only_when_the_user_asks():
     for rel in ("docs/user-guide/agents.md", "tools/build-user-guide/html_sop_edits.py"):
         body = (ROOT / rel).read_text(encoding="utf-8")
         assert "it commits when you ask" in body, rel
+    teams = (ROOT / "skills" / "claude-teams-behavior" / "SKILL.md").read_text(encoding="utf-8")
+    assert "commit when the user asks" in teams
+    assert "commit yourself" not in teams
+    for rel in _konductor_loaded_files():
+        body = (ROOT / rel).read_text(encoding="utf-8")
+        assert "commit yourself" not in body, rel
+        assert "commits itself" not in body, rel
+
+
+def _konductor_loaded_files():
+    spec = _spec("konductor")
+    files = [f"context/{name}" for name in spec["dependencies"]["context"]["contextNames"]]
+    files += [f"skills/{name}/SKILL.md" for name in spec["dependencies"]["skills"]["skillNames"]]
+    files += [f"agent-sops/{name}.sop.md" for name in spec["dependencies"]["agentSops"]["agentSopNames"]]
+    return files
 
 
 def test_bundle_reference_block_counts_konductor_skills_as_24():
