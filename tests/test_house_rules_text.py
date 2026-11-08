@@ -62,6 +62,17 @@ def test_style_guide_is_a_codebase_convention():
     assert "including a project's style guide" not in core
 
 
+def test_default_bearing_sites_name_the_house_rules():
+    developer = _read("agents/k-developer.agent-spec.json")
+    assert (
+        "Commit with a conventional commit message when the user asks (the format is a default; "
+        "a house rule on commit messages wins, see House rules in the core rules)"
+    ) in developer
+    git_workflow = _read("skills/git-workflow/SKILL.md")
+    lead_in = git_workflow.split("### Conventional Commit Messages\n\n", 1)[1].split("\n", 1)[0]
+    assert lead_in == "Default format; the project's house rules take precedence (core rules, House rules)."
+
+
 def test_rule_11_limits_one_hop_files_to_house_rules_categories():
     core = _read("context/k-core-rules.md")
     assert "for the House rules categories only" in core
