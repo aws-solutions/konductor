@@ -208,3 +208,11 @@ def test_stale_delegation_phrase_in_a_bundle_fails_the_guide_check(repo_copy):
     finally:
         page.write_text(original, encoding="utf-8")
     assert "specialists hold no spawn tool" in result.stdout
+
+
+def test_notes_describe_the_existence_check_the_code_runs():
+    """A visible command missing from cli/README.md fails the check; the guide
+    must not say that any command in cli.rs, hidden or not, passes."""
+    notes = (REPO_ROOT / "docs" / "user-guide" / "notes.md").read_text(encoding="utf-8")
+    assert "hidden with `#[command(hide = true)]`" in notes
+    assert "hidden or not" not in notes
