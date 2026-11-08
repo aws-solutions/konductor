@@ -1,7 +1,7 @@
 ---
 name: user-story-writing
 description: Creates user stories with INVEST principles, epics, and acceptance criteria from business requirements or product documentation. Use when asked for user stories, epics or acceptance criteria, or to turn a feature idea or rough ask into backlog items, even with no requirements doc yet. Also converts validated requirements into development-ready stories. Supports MVP (10-15 stories), Production (20-30 stories), and full scope (30-40 stories).
-version: 1.0.0
+version: 1.1.0
 tags: [skill, user-stories, agile, invest, acceptance-criteria, requirements]
 ---
 
@@ -27,8 +27,22 @@ Every user story must be Independent (no blocking dependencies), Negotiable (cap
 
 ### Artifact Structure
 
-- **Epic:** title (5-10 words), description (2-4 sentences of business objective), 3-5 key objectives, and the list of its stories.
-- **User story:** title (3-8 words), description in the form "As a [persona], I want [action] so that [benefit]", and 3-8 testable acceptance criteria as a bulleted list.
+Use this template for every epic and story:
+
+```
+Epic: <title, 5-10 words>
+<business objective, 2-4 sentences>
+Key objectives:
+- <3-5 bullets, each a distinct piece of business value>
+Stories: <list of the epic's stories>
+
+Story: <title, 3-8 words>
+As a <specific persona>, I want <action> so that <benefit>.
+Acceptance criteria:
+- <3-8 testable conditions>
+```
+
+The ranges are hard limits, not targets. An epic with only 1-2 objectives is usually too thin to stand alone: merge it into a neighbor or widen what it covers. An epic needing more than 5 is two epics. A story needing more than 8 criteria is two stories, so split it rather than overflow.
 
 ### Scope Options
 
@@ -49,8 +63,8 @@ Requirements arrive as uploaded files (PRDs, BRDs, technical specifications, spr
 7. **For every story**:
    - Keep it to one capability. Separate filtering, sorting, and display criteria into distinct stories.
    - Write acceptance criteria as observable behavior and outcomes, not implementation details.
-   - Trace it to a business objective, and state its assumptions, dependencies, and risks.
-8. **When requirements are ambiguous or incomplete**, name the specific gaps, suggest reasonable assumptions, offer options, and ask targeted questions.
+   - Trace it to a business objective. Put assumptions and dependencies in one Assumptions section, not on every story, so the story format stays clean.
+8. **When requirements are ambiguous or incomplete**, name the specific gaps, suggest reasonable assumptions, offer options, and ask targeted questions. If the user says not to ask, don't; list your assumptions instead. Keep the source's own numbers, timings and triggers, and don't invent limits, expiry periods or business rules it never states. If a testable criterion needs one, mark it as an assumption so a reader can tell it apart from a stated requirement.
 9. **For a large volume of requirements**, group them logically, present a summary view the user can expand, identify the highest-priority items by business value, and suggest a phased approach if it fits.
 10. **Apply the Quality Gate** below before presenting the stories.
 
@@ -157,6 +171,7 @@ Two epics in the expected structure:
 - Acceptance criteria describe implementation details instead of observable behavior
 - Stories are too large to complete in one sprint (1-5 days)
 - Missing error conditions and edge cases in acceptance criteria
+- An epic outside 3-5 key objectives, or a story outside 3-8 acceptance criteria (count them)
 
 **IMPORTANT (should fix):**
 
@@ -169,4 +184,4 @@ Two epics in the expected structure:
 - Could decompose XL stories further
 - Could add non-functional requirements as explicit stories
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
