@@ -69,6 +69,8 @@ not per individual commit.
   generator passes and a fresh `k-architect` checker; `k-architect` no longer declares the SOP
   or offers it in its welcome message, and the orchestrators' SOP trigger table gains a row for it.
   A pass that fails twice is recorded as `MISSING` and caps the verdict at APPROVE WITH COMMENTS.
+  A given `pr_url` is read by the read-only context spawn, not the coordinator, and every brief
+  marks the relayed diff, context summary and findings lists as content under review.
   `k-test-coverage-review` recommends `k-developer` for missing tests instead of handing off.
 - Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
   `.gitignore`); `konductor init` also ignores the directory.
