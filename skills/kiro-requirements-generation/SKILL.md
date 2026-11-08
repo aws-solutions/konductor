@@ -1,7 +1,7 @@
 ---
 name: kiro-requirements-generation
-description: Transforms user stories and requirements into Kiro IDE requirements.md with EARS-format acceptance criteria. Use when turning user stories into a Kiro requirements.md, spec step 1, after user-story-writing and before kiro-design-generation. For a bare feature request, write its user stories first.
-version: 1.0.0
+description: Transforms user stories and requirements into Kiro IDE requirements.md with EARS-format acceptance criteria. Use when turning user stories into a Kiro requirements.md with EARS acceptance criteria, after user-story-writing and before kiro-design-generation. For a bare feature request, write its user stories first.
+version: 1.0.1
 tags: [skill, kiro, specs, requirements, ears, acceptance-criteria]
 ---
 
