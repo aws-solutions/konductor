@@ -697,8 +697,9 @@ def main() -> int:
             c for c in re.findall(r"`([a-z][a-z-]*)`", first_para) if c not in subcommands
         ]
     # `config` is hidden in cli.rs and withheld from the guide. Every other command
-    # must be documented, and each withdrawn name must still exist in cli.rs (hidden
-    # or not), so a deleted command fails loudly instead of widening the carve-out.
+    # must be documented, and each withdrawn name must still be declared in
+    # cli/README.md or hidden with `#[command(hide = true)]` in cli.rs, so a
+    # deleted command fails loudly instead of widening the carve-out.
     hidden = hidden_commands(read(root / "cli" / "konductor-rs" / "src" / "cli.rs"))
     documented = [c for c in commands if c not in WITHDRAWN_COMMANDS]
     for cmd in documented:
