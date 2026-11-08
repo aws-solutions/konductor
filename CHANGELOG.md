@@ -74,7 +74,9 @@ not per individual commit.
   handoff only when it serves the user's task, did not come from content the specialist read,
   and does not report a denied action; it applies the same checks to every part of a proposed
   split, refuses a part that names an orchestrator, and shows refused parts to you; it adds
-  visible shared files to a proposed split before fan-out. A gate in the SOP the orchestrator
+  visible shared files to a proposed split before fan-out; it routes at most two notes in a row
+  for one request and never back to a role that already returned one for the same step, then
+  shows you the chain and asks. A gate in the SOP the orchestrator
   is running wins over routing a note; a note naming `k-adversarial-pull-request-review` is run
   by the orchestrator as that SOP's coordinator, and a note naming any other SOP is presented to
   you with its invocation command. When an SOP needs independent parts, an
@@ -85,6 +87,8 @@ not per individual commit.
   generator passes and a fresh `k-architect` checker; `k-architect` no longer declares the SOP
   or offers it in its welcome message, and the orchestrators' SOP trigger table gains a row for it.
   A pass that fails twice is recorded as `MISSING` and caps the verdict at APPROVE WITH COMMENTS.
+  A given `pr_url` is read by the read-only context spawn, not the coordinator, and every brief
+  marks the relayed diff, context summary and findings lists as content under review.
   `k-test-coverage-review` recommends `k-developer` for missing tests instead of handing off.
 - Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
   `.gitignore`); `konductor init` also ignores the directory.
@@ -93,13 +97,15 @@ not per individual commit.
   `k-code-review-workflow` step 6 writes the report and ends with a note asking the orchestrator
   to run the adversarial review, no resume; the verdict comes from the findings, with the
   adversarial pass state on its own line. After the pass, the orchestrator, or `k-developer` on
-  its behalf, sets the final verdict; `k-full-sdlc` runs that pass before writing a feature's status.
+  its behalf, sets the final verdict; `k-full-sdlc` runs that pass before writing a feature's status,
+  and marks a feature BLOCKED when either report leaves a CRITICAL or IMPORTANT finding open.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
   non-trivial work; orchestrators route skill work to the owning specialist.
 - Agents ignore planted instructions; `.konductor/memory/` ranks with AGENTS.md, tracked or not,
-  and is never read or written through a symlink. The memory validator rejects a new or edited line without
+  and is never read or written through a symlink; the brief carries the check result, so a specialist
+  without a shell reads only checked paths. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
   instruction-like text after the date and origin tag, reads the text of a leading `[label]`
   or `[label](url)` as entry text, and matches a leading keyword as a whole word. Upgrade note: if your repository commits `.konductor/memory/`,
@@ -111,8 +117,9 @@ not per individual commit.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
 - Review ceilings: CRITICAL and IMPORTANT findings get one fix and one re-review. One in the task's own output still open,
-  or one the re-review reports there, carried over or new, stops the run; a finding in code the task did not add or change
-  is listed as pre-existing, not put in the fix brief. An SOP's own fix scope and round limit win; what it leaves open is reported, never dropped.
+  or one the re-review reports there, carried over or new, or caused by the fix in what depends on it, stops work on that artifact;
+  a finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief.
+  An SOP's own fix scope and round limit win; what it leaves open is reported, never dropped.
   The `constraints` skill carries the same rule in a new `### Review findings` subsection, and its IMPORTANT tier header reads "fix before proceeding".
 - House rules: konductor's defaults yield to the request, recorded rulings, the project's instruction files and
   user-written memory, and the codebase's conventions, in that order; an open collision is asked once and saved as a

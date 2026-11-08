@@ -465,8 +465,9 @@ fn is_date(part: &str) -> bool {
 /// precedence rule) before rendering, so the frontmatter's `mcpServers:`
 /// key reflects both sources rather than only the Claude-specific one.
 ///
-/// For a specialist (`k-*`), spawn tools are dropped from `tools` and
-/// `disallowedTools` denies them, whether or not a `tools` list exists.
+/// For a specialist (any agent that is not a `konductor*` orchestrator), spawn
+/// tools are dropped from `tools` and `disallowedTools` denies them, whether or
+/// not a `tools` list exists.
 fn render_agent_md(
     name: &str,
     config: &super::parser::AgentConfig,

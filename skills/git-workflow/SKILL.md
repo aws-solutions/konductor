@@ -33,6 +33,8 @@ Each commit must contain exactly one logical change. Split work into separate co
 
 ### Conventional Commit Messages
 
+Default format; the project's house rules take precedence (core rules, House rules).
+
 Format: `<type>(<scope>): <description>`
 
 | Type       | When to Use                                |
