@@ -144,3 +144,11 @@ def test_existence_check_accepts_a_hidden_command_missing_from_the_readme():
 def test_existence_check_fails_for_a_name_in_neither_source():
     problem = check_guide_facts.withdrawn_command_problem("nosuchcmd", ["init"], {"config"})
     assert "cli/README.md does not declare it and cli.rs has no hidden command of that name" in problem
+
+
+def test_notes_describe_the_existence_check_the_code_runs():
+    """A visible command missing from cli/README.md fails the check; the guide
+    must not say that any command in cli.rs, hidden or not, passes."""
+    notes = (REPO_ROOT / "docs" / "user-guide" / "notes.md").read_text(encoding="utf-8")
+    assert "hidden with `#[command(hide = true)]`" in notes
+    assert "hidden or not" not in notes
