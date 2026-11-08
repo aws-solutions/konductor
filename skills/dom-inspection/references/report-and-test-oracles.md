@@ -12,8 +12,9 @@ Produce a `dom-inspection-report.json` with this structure:
   "ui_framework": "cloudscape | material-ui | plain-html | unknown",
   "forms": [
     {
-      "form_selector": "<selector>",
+      "form_selector": "<one parseable selector>",
       "validation_trigger": "submit | blur | change | unknown",
+      "validation_trigger_note": "<what the source or observation suggests, and any submit side effects, or null>",
       "fields": [
         {
           "selector": "<most reliable selector>",
