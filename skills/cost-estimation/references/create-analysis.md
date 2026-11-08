@@ -92,6 +92,8 @@ Model costs for different growth scenarios:
 - **5x growth** - Five times current scale
 - **10x growth** - Ten times current scale
 
+Give each growth level its own total in one table. Leaving out 2x or 10x is a gap, even when a launch only calls for one multiplier.
+
 Include scaling considerations:
 
 - Auto-scaling cost implications

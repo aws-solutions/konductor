@@ -106,7 +106,7 @@ If the pricing tools aren't available and you can't ask the user to add them (th
   - Security services
   - Operational overhead
 - Add a missing service only when the architecture or context shows it. Label anything you infer (a NAT gateway, WAF, backups) as an assumption on its own line, so the reader can drop it
-- Check for unrealistic usage assumptions
+- Check for unrealistic usage assumptions, and for usage that grows over the budget period (accumulating storage, rising traffic) but is priced flat
 - Validate service sizing and configuration choices
 
 **Optimization Opportunity Identification:**
@@ -205,7 +205,7 @@ Your enhanced report will include:
    - Updated service-by-service breakdown with current pricing
    - Corrected assumptions and validated calculations
    - The pricing source (Pricing MCP server or published list prices) and a confidence range for the corrected total
-   - Complete optimization recommendations
+   - Optimization levers with estimated monthly savings, grouped by horizon (0-30 days, 1-6 months, 6+ months)
    - Risk assessment and implementation considerations
    - Professional executive summary for stakeholders
 
