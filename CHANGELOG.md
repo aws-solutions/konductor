@@ -164,6 +164,20 @@ not per individual commit.
 - `policy-validation` reads as one instruction set, without a pasted second prompt and role. It
   keeps one Rules section, one IAM score rubric and one Iteration Progress template, and rates
   findings CRITICAL, IMPORTANT or SUGGESTION, matching its quality gate.
+- About 40 skills were revised after test runs showed where they went wrong. What changes when
+  you use them:
+  - Review and validation skills rate findings CRITICAL, IMPORTANT or SUGGESTION and keep
+    CRITICAL for real blockers such as exposure, data loss and credential risk. Each finding
+    cites its location and a concrete fix. Context the skill could not check is reported as an
+    assumption or an unscored note, not a rated finding.
+  - Tell a skill not to ask questions, or pass the scope up front, and it records its
+    assumptions in the output and finishes instead of stopping to ask. This covers the kiro
+    spec, requirements, user story, threat model, NFR, cost and sprint-planning skills.
+  - A request for a security-focused or adversarial second pass loads `adversarial-code-review`
+    instead of `code-review`. `verification`, `git-merge` and `decision-research` load on more
+    of the requests they cover, such as finishing a change test-first or syncing a branch.
+  - `git-merge` checks the staged merge before it commits and recovers from a rejected push
+    without force-pushing or rebasing.
 
 ### Fixed
 
