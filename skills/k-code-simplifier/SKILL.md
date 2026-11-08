@@ -1,7 +1,7 @@
 ---
 name: k-code-simplifier
 description: 'Simplifies and refines code for clarity, consistency, and maintainability while preserving functionality. Use when asked to simplify, clean up or flatten code (nested ternaries, deep nesting, duplication) without changing behavior.'
-version: 1.0.0
+version: 1.1.0
 tags: [refactor, simplify, readability, maintainability]
 ---
 
@@ -25,11 +25,11 @@ Use this skill when:
 
 ### Preserve Functionality
 
-Never change what the code does — only how it does it. All original features, outputs, and behaviors **MUST** remain intact.
+Never change what the code does, only how it does it. All original features, outputs, and behaviors **MUST** remain intact.
 
 ### Clarity Over Brevity
 
-- Avoid nested ternary operators — prefer switch statements or if/else chains
+- Avoid nested ternary operators; prefer switch statements or if/else chains
 - Explicit code is better than overly compact code
 - Readable code beats clever one-liners
 
@@ -39,11 +39,11 @@ Avoid over-simplification that could reduce maintainability, create overly cleve
 
 ## Refinement Process
 
-1. **Baseline**: run the tests that cover the code and note the result. If none cover it, say so before changing anything.
-2. **Identify** recently modified code sections
+1. **Baseline**: run the tests that cover the code and note the result. If none cover it, or you cannot run them, say so before changing anything.
+2. **Identify** recently modified code sections, and the behavior the tests do not pin down: explicit `0` or `None` arguments, zero or negative values, boundary comparisons, exception types.
 3. **Apply** clarity and consistency changes that follow the project's own conventions
-4. **Re-run** the same tests and confirm the result matches the baseline. Show both runs.
-5. **Report** each change with its file, what changed, and why it is clearer
+4. **Re-run** the same tests and confirm the result matches the baseline. Show both runs. Passing tests do not prove equivalence, so also check each rewritten condition against the original on the inputs from step 2.
+5. **Report** only the significant changes: file, what changed, and why it is clearer. Name the non-obvious behavior you kept and say whether the tests ran. If the user asked for a summary file, put this there, not only in your reply.
 
 ## Quick Reference
 
