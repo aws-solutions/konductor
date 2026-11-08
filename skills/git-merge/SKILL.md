@@ -1,7 +1,7 @@
 ---
 name: git-merge
 description: 'Merges a feature or dev branch into the default branch with --no-ff --no-commit so the merge can be inspected and built before it is committed. Use for branch, release and sync merges, merge conflicts (lockfiles too), a half-done merge or a hotfix on two branches; if merges go through PRs, open a PR. The code-review skill opens PRs.'
-version: 1.0.0
+version: 1.1.0
 tags: [skill, git, merge, branch, default-branch, release]
 ---
 
@@ -9,7 +9,9 @@ tags: [skill, git, merge, branch, default-branch, release]
 
 ## Overview
 
-Merge a feature branch into `<default-branch>` safely using `--no-ff --no-commit` for inspectable merge commits. This skill defines the standard 4-phase merge workflow that preserves branch history and allows pre-commit inspection.
+Merge a feature branch into `<default-branch>` safely using `--no-ff --no-commit` for inspectable merge commits. Phases 1 and 2 are the merge itself. Phases 3 and 4 (tag, clean up) apply only when the user asks for them, so leave them out of a runbook written for someone else.
+
+Use the repo's real branch names. If the default branch is `main`, every command and message says `main`.
 
 ## Usage
 
@@ -35,9 +37,9 @@ git switch <default-branch>
 git pull
 git switch <feature_branch>
 git merge --no-commit --no-ff <default-branch>
-# Fix any merge conflicts
+# Resolve conflicts, then run the pre-commit checks below
 git commit -m "Merging <default-branch> into <feature_branch>"
-git push
+git push origin <feature_branch>
 ```
 
 ### Phase 2: Merge feature branch into `<default-branch>`
@@ -52,6 +54,39 @@ git merge --no-ff --no-commit <feature_branch>
 git commit -m "Merging <feature_branch> into <default-branch>"
 git push
 ```
+
+### Before every commit and push
+
+The merge is staged but not committed, so check it now:
+
+```bash
+git status                          # no "Unmerged paths" left
+git diff --cached --check           # no leftover conflict markers or whitespace errors
+git diff --cached -- <conflicted_file>   # read each file that conflicted
+<build command> && <test command>   # use the repo's own, e.g. npm ci && npm test
+```
+
+Before pushing, `git log --oneline -3` should show the merge commit on top.
+
+### Conflicts
+
+- Source files: edit to keep both sides' intent, `git add <file>`, then read `git diff --cached -- <file>`.
+- Lockfiles (`package-lock.json`, `yarn.lock`, `Cargo.lock`): don't hand-edit conflict markers. Take the default branch's copy and regenerate it, for example `git checkout --theirs package-lock.json && npm install && git add package-lock.json` when merging `<default-branch>` into the feature branch.
+- To back out of a half-done merge: `git merge --abort`.
+
+### If the push is rejected or the PR falls behind
+
+Someone pushed first. Merge their work in the same way, re-check, then push again:
+
+```bash
+git fetch origin
+git merge --no-ff --no-commit origin/<default-branch>
+# pre-commit checks again
+git commit -m "Merging origin/<default-branch> into <current_branch>"
+git push origin <current_branch>
+```
+
+Never force-push and never rebase a branch others have pulled; both rewrite history they already have. In a runbook, state that rule in words rather than as a command a reader could paste.
 
 ### Phase 3: Tag release (if applicable)
 
@@ -69,10 +104,10 @@ git push -d origin <feature_branch>   # delete remote
 
 ## Merge Flags
 
-| Flag          | Purpose                                                                         |
-| ------------- | ------------------------------------------------------------------------------- |
-| `--no-ff`     | Always create a merge commit (no fast-forward) — preserves branch history       |
-| `--no-commit` | Stage the merge but don't commit — lets you inspect and build before committing |
+| Flag          | Purpose                                                                           |
+| ------------- | --------------------------------------------------------------------------------- |
+| `--no-ff`     | Always create a merge commit (no fast-forward) to preserve branch history         |
+| `--no-commit` | Stage the merge but don't commit, so you can inspect and build before committing |
 
 ## Quick Reference
 
@@ -91,11 +126,11 @@ git push -d origin <feature_branch>   # delete remote
 - Merging into `<default-branch>` without `--no-ff` flag: branch history will be lost
 - Merging into `<default-branch>` without pulling latest first: risks overwriting others' changes
 - Skipping Phase 1 (merging `<default-branch>` into feature branch first): conflicts should be resolved on the feature branch, not `<default-branch>`
-- Force pushing to `<default-branch>`
+- Force pushing to `<default-branch>`, or rebasing a branch others have pulled
 
 **IMPORTANT (fix before proceeding):**
 
-- Not using `--no-commit` flag — prevents pre-commit inspection of merge result
+- Not using `--no-commit` flag: prevents pre-commit inspection of merge result
 - Not verifying build passes before committing the merge
 - Merge commit message doesn't describe what was merged
 
