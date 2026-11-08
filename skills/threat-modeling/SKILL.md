@@ -1,7 +1,7 @@
 ---
 name: threat-modeling
 description: 'Generates AWS service threat models using STRIDE methodology. Use when asked for a threat model or STRIDE analysis, the security risks of a design, or prep for a security review. Produces a complete threat model with architecture analysis, threat identification, and security controls.'
-version: 1.0.0
+version: 1.1.0
 tags: [skill, threat-modeling, security, stride, aws, architecture]
 ---
 
@@ -39,6 +39,14 @@ Apply the Quality Gate before presenting output.
 8. **Define Mitigations** - Map security controls to identified threats
 9. **Generate Final Document** - Compile complete threat model
 
+## Working Without Questions
+
+If the user says not to ask questions, or nobody is there to answer, skip every "confirm with user" step and the closing "Fix these issues?" prompt. Make the smallest reasonable assumption instead, and record each one in the document's assumptions table with what changes if it is wrong. A reviewer can then check the assumptions in one place instead of hunting for them in the prose.
+
+## Change-Only Threat Models
+
+When the request covers a change to an existing design, model only what the change adds or alters: new routes, new trust boundaries, and existing components whose behavior changes. Continue the threat and mitigation numbering from where the user says to start. Cite controls from the base design only when that design documents them.
+
 ## Context Management
 
 The design documents and reference models can be large. Summarize each document as you read it and work from the summaries.
@@ -67,7 +75,7 @@ The design documents and reference models can be large. Summarize each document 
 
 - **Document-Driven Analysis**: Base all threat assessments solely on components explicitly documented in design materials
 - **No Component Hallucination**: Never assume or infer the existence of security controls, services, or architecture components not clearly specified
-- **Validation-First Approach**: When components or security implementations are unclear, ask clarifying questions rather than making assumptions
+- **Validation-First Approach**: When components or security implementations are unclear, ask clarifying questions rather than making assumptions (see Working Without Questions when you cannot ask)
 - **Scope Adherence**: Limit threat analysis to documented architecture within the defined scope boundaries
 - **Evidence-Based Threats**: Only identify threats that apply to the actual documented implementation, not theoretical possibilities
 - **User Confirmation**: Validate understanding of architecture components and security controls with the user before proceeding with threat analysis
@@ -146,8 +154,9 @@ Document architecture focusing on defined scope:
 Systematic threat identification using STRIDE methodology:
 
 - Identify threat actors (external and internal)
+- Trace every credential, token, and secret through the flow: where it is created, sent, stored, logged, and forwarded. Leaks usually happen in URLs, headers, logs, and emails, not in the primary store
 - Analyze security anti-patterns within scope
-- Create STRIDE-based threat categorization with priority levels
+- Create STRIDE-based threat categorization, rating each threat's likelihood and impact and deriving its priority from both
 - Use consistent threat numbering (T-001, T-002, etc.)
 - Focus on in-scope assets and components
 - Suggest 10-15 potential threats for consideration
@@ -159,8 +168,9 @@ Document comprehensive mitigations for identified threats:
 
 - Baseline Security Controls (BSCs) implementation
 - System-specific mitigations with threat mapping
-- Implementation status and verification evidence
-- Security testing strategy (test cases, coverage, types)
+- Implementation status for each mitigation: Implemented (the design documents it), Partial, Not implemented, or Unknown. Do not mark something Implemented because it is a common default
+- State each mitigation as a concrete change to this design (which component, which setting or API), not "consider X"
+- Security testing strategy as a table: test ID, type, the concrete input or action, expected result, and the threat IDs it covers
 - Consistent mitigation numbering (M-001, M-002, etc.)
 - Ensure each threat has at least one mitigation
 - Confirm mitigation strategies with user
@@ -189,7 +199,8 @@ Default sections for the final document:
 
 - Project Background and Service Overview
 - Scope (In-Scope and Out-of-Scope components)
-- Security Tenets and Key Assumptions
+- Security Tenets
+- Assumptions table: each assumption, what changes if it is wrong, and the threats it affects
 - Administrative Information (AppSec reviews, team info, documentation)
 
 ### System Architecture
@@ -200,14 +211,22 @@ Default sections for the final document:
 
 ### Threat Analysis
 
+- Trust Boundaries and Data Flows
 - Threat Actors and Security Anti-Patterns
-- STRIDE-Based Threat Categorization table
+- STRIDE coverage matrix: each in-scope component against the six categories, with the threat IDs in each cell or "none found"
+- Threat table: ID, STRIDE category, component, description, likelihood, impact, priority, and mitigation IDs on the same row
 
 ### Mitigations
 
 - Baseline Security Controls (BSCs)
 - System-Specific Mitigations table
-- Security Testing Strategy
+- Security Testing Strategy table
+
+### Residual Risk and Open Decisions
+
+- Risks that remain after the mitigations, and decisions the owners must make or accept
+- A launch recommendation: which mitigations must ship first
+- The Quality Gate results for this document
 
 ### Appendix
 
@@ -243,6 +262,7 @@ Process at most 2-3 large documents per batch and build the final document secti
 
 **IMPORTANT (should fix):**
 
+- Threats lack likelihood and impact ratings
 - STRIDE categories not fully covered for each component
 - Security testing strategy not included
 - A threat has no mitigation
@@ -251,7 +271,6 @@ Process at most 2-3 large documents per batch and build the final document secti
 
 **SUGGESTION:**
 
-- Could add threat likelihood and impact scoring
 - Could reference specific AWS security services for each mitigation
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". Skip the question when `scope_confirmed` is true or the user asked for no questions: report the findings and leave fixing to the caller, or fix them yourself if you are producing the document unattended.
