@@ -83,7 +83,7 @@ flowchart TD
     S5 --> S6{"6. review_type is not<br/>'frontend' only?"}
     S6 -->|No| S7
     S6 -->|Yes| Report["Write the report with<br/>'Adversarial pass: not run'"]
-    Report --> Note["End with a note: run k-adversarial-pull-request-review<br/>on the step 1 diff, output_file stem-adversarial.md"]
+    Report --> Note["End with a note: run k-adversarial-pull-request-review<br/>on the step 1 diff, output_file: the report name with -adversarial<br/>before the extension (code-review-report-adversarial.md)"]
     Note --> S7
 
     S7["7. Write report to output_file<br/>verdict from the findings: NEEDS FIXES if any CRITICAL or IMPORTANT is open<br/>READY FOR CR when the adversarial pass is complete or skipped<br/>PENDING ADVERSARIAL PASS while it has not run<br/>never print the full report inline"]

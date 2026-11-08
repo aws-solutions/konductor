@@ -24,11 +24,22 @@ def step_7():
 
 def test_step_6_ends_with_the_adversarial_note():
     assert "Run `k-adversarial-pull-request-review` on the Step 1 diff" in step_6()
-    assert "`<output_file stem>-adversarial.md`" in step_6()
     assert "resumed at step 6" not in SOP
     assert "hand off again" not in SOP
     assert "step to resume at" not in SOP
     assert ".konductor/handoff/" not in SOP
+
+
+def test_note_names_the_adversarial_report_concretely():
+    """A formula such as `<output_file stem>-adversarial.md` has two readings (file-system
+    stem, word stem); a bench run picked the wrong one. The note states the rule and the
+    concrete default so no reader has to derive the name."""
+    note = step_6()
+    assert "`code-review-report-adversarial.md`" in note
+    assert "with `-adversarial` added before its extension" in note
+    assert "stem" not in note
+    mirror = Path(__file__).resolve().parent.parent / "docs/user-guide/sop-workflows/code-review.md"
+    assert "code-review-report-adversarial.md" in mirror.read_text()
 
 
 def test_step_6_never_runs_the_adversarial_review_itself():
