@@ -286,7 +286,7 @@ Check for:
 When the user or the design under review names a compliance framework, open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory. If it is not there, use these minimums and say in the report that the full checklist was unavailable:
 
 - **GDPR**: encryption at rest and in transit (Article 32), deletion through lifecycle rules or TTL (Article 17), EU-region residency
-- **HIPAA**: PHI encrypted with customer-managed KMS keys (§164.312(a)(2)(iv)), audit controls (§164.308(a)(1)(ii)(D)), MFA for PHI access, no PHI in logs, a signed BAA
+- **HIPAA**: PHI encrypted with customer-managed KMS keys (§164.312(a)(2)(iv)), audit controls (§164.312(b)), MFA for PHI access, no PHI in logs, a signed BAA
 - **PCI-DSS**: cardholder data environment segmented (Requirement 1), cardholder data encrypted (Requirement 3), MFA for privileged access
 - **SOC 2**: least-privilege logical access (CC6.1), encryption (CC6.7), security monitoring (CC7.2)
 
