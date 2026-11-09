@@ -146,19 +146,20 @@ never spawns another agent:
 it does its own part and returns to its caller, with a handoff note naming the next role or a
 proposed parallel split. The orchestrator routes that note.
 
-For Kiro CLI v3 and Claude Code this is enforced in config, not just in the prompt:
+This is enforced in config, not just in the prompt:
 
-- Kiro CLI: no specialist spec grants the `subagent` tool or `toolsSettings.subagent`. For
-  Kiro CLI v3, synth also writes `excludedTools: ["invoke_sub_agent", "run_workflow"]` into every
-  specialist, because `@builtin` carries `run_workflow`, which can start any agent. This was
+- Kiro CLI: no specialist spec grants the `subagent` tool, and its `toolsSettings.subagent`
+  names no agent. For Kiro CLI v3, synth also writes
+  `excludedTools: ["invoke_sub_agent", "run_workflow"]` into every specialist, because
+  `@builtin` carries `run_workflow`, which can start any agent. This was
   tested with kiro-cli 2.35.0; an older client that rejects unknown agent-file fields
   may fail to load the specialists. After an upgrade, open a specialist and run `/tools` to
   confirm no new spawn-capable built-in appears.
 - Claude Code: synth drops `Agent(...)`, `Task` and `Workflow` from every specialist's `tools`
   list and denies them with `disallowedTools` as well, so a specialist with no `tools` list is
   still blocked.
-- Kiro CLI v2 is not covered. Its `@builtin` includes the `subagent` tool, and the v2 output does
-  not remove it, so there only the prompt rule stops a specialist from spawning.
+- Kiro CLI v2: the `subagent` tool stays in `@builtin`; every specialist carries an empty
+  `toolsSettings.subagent` target list, so it has no agent to spawn.
 
 The block covers the runtime's agent-spawning tools only, not shell. A specialist with shell
 access could still start a new agent session by running `kiro-cli` or `claude` from the shell.
@@ -166,8 +167,8 @@ access could still start a new agent session by running `kiro-cli` or `claude` f
 every specialist except `k-researcher` is granted `Bash` in Claude Code.
 
 The edges below are the orchestrator's tool grants. Specialists hold none in Kiro CLI v3 or
-Claude Code. Kiro CLI v2 is not covered, so there only the core rules stop a specialist from
-spawning. A specialist does its own part, then returns a handoff note or a proposed parallel
+Claude Code, and in Kiro CLI v2 their `subagent` target list is empty. A specialist does its
+own part, then returns a handoff note or a proposed parallel
 split to its caller.
 
 ```mermaid
@@ -195,7 +196,7 @@ flowchart LR
 | `konductor` | the 8 specialists (an explicit allowlist, not "anything") | the same 8, via `Agent(...)`, plus `SendMessage` |
 | `konductor-mux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
 | `konductor-cmux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
-| every `k-*` specialist | **nothing** in Kiro CLI v3 (v2: the core rules only, see the bullet above) | **nothing** |
+| every `k-*` specialist | **nothing** in Kiro CLI v3 (v2: an empty target list, see the bullet above) | **nothing** |
 
 Run directly with no orchestrator, the caller is you and the note or split comes back to you.
 The adversarial review is the exception: only the orchestrators declare
@@ -207,7 +208,7 @@ The adversarial review is the exception: only the orchestrators declare
 `k-code-review-workflow` step 6 is an adversarial pass. That SOP is declared only by
 `k-developer`, which **cannot run the adversarial review** in Kiro CLI v3 or Claude Code:
 
-- Specialists hold no spawn tool there (see above; Kiro CLI v2 relies on the prompt rule).
+- Specialists hold no spawn tool there (see above; in Kiro CLI v2 their target list is empty).
 - The core rules tell a specialist to do such steps itself or return them to its caller.
 
 Step 6 has `k-developer` write the report, then end with a note asking the orchestrator to run
@@ -217,7 +218,8 @@ Step 6 has `k-developer` write the report, then end with a note asking the orche
 problem is never hidden behind a pending pass. Under `konductor`, the orchestrator runs the
 adversarial review from the note, records its verdict and report path next to the report's
 own verdict, and replaces a `PENDING ADVERSARIAL PASS` verdict with the final one: `READY FOR
-CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding. The
+CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding, unless
+a pass is MISSING, which keeps the report pending (`Adversarial pass: incomplete`). The
 report's two lines are written by the orchestrator, or by `k-developer` on its behalf when the
 orchestrator does not write files. When `k-developer` is started directly, the note comes back
 to you: ask `konductor` to run the adversarial review.
