@@ -54,7 +54,9 @@ not per individual commit.
 - The telemetry hook's Kiro CLI v3 session lookup follows `$KIRO_HOME` when set.
 - `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
   config value is valid; a hand-edited hook entry, or one naming a bare `konductor` found only on
-  this shell's PATH, is reported as warn, not as missing.
+  this shell's PATH, is reported as warn, not as missing. Under `coordinator` it runs the same
+  persona load the session-start hook runs, so a digest over the hook's output budget is
+  `failed`, and an install root outside the home that is not a git checkout root is `warn`.
 
 ### Changed
 

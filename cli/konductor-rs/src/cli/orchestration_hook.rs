@@ -189,7 +189,7 @@ fn config_reason(reason: &FallbackReason) -> String {
     }
 }
 
-fn persona_reason(error: &PersonaError) -> String {
+pub(crate) fn persona_reason(error: &PersonaError) -> String {
     let home = env_home_dir();
     match error {
         PersonaError::NotInstalled { install_root } => format!(
@@ -241,7 +241,7 @@ fn canonical(path: &Path) -> PathBuf {
 }
 
 /// `current_dir()` is physical; name an install under the home as the session knows the home.
-fn logical_root(owning_root: &Path, home: Option<&Path>) -> PathBuf {
+pub(crate) fn logical_root(owning_root: &Path, home: Option<&Path>) -> PathBuf {
     home.and_then(|home| {
         let rest = canonical(owning_root)
             .strip_prefix(canonical(home))
@@ -258,9 +258,21 @@ fn logical_root(owning_root: &Path, home: Option<&Path>) -> PathBuf {
 /// contains it.
 fn is_trusted_location(owning_root: &Path, home: Option<&Path>, cwd: &Path) -> bool {
     let root = canonical(owning_root);
-    home.is_some_and(|home| root.starts_with(canonical(home)))
-        || root == canonical(cwd)
+    root == canonical(cwd)
+        || is_under_home(&root, home)
         || (root.join(".git").exists() && canonical(cwd).starts_with(&root))
+}
+
+/// The part of `is_trusted_location` that does not depend on the
+/// session's working directory: any other root is trusted only from
+/// itself, so `doctor` can report it without knowing where sessions start.
+pub(crate) fn is_home_or_git_root(owning_root: &Path, home: Option<&Path>) -> bool {
+    let root = canonical(owning_root);
+    is_under_home(&root, home) || root.join(".git").exists()
+}
+
+fn is_under_home(canonical_root: &Path, home: Option<&Path>) -> bool {
+    home.is_some_and(|home| canonical_root.starts_with(canonical(home)))
 }
 
 /// `<home>/rest` as `~/rest`; any other path unchanged.
@@ -363,7 +375,7 @@ pub(crate) fn installed_file(
 
 /// The persona body for the install at `root`: the line naming its
 /// routing rules file, then its digest.
-fn load_persona(root: &Path) -> Result<String, PersonaError> {
+pub(crate) fn load_persona(root: &Path) -> Result<String, PersonaError> {
     let not_installed = || PersonaError::NotInstalled {
         install_root: root.to_path_buf(),
     };
