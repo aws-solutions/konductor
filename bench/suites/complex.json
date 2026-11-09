@@ -3,7 +3,8 @@
     "complex"
   ],
   "tasks": [
-    "cx-design-then-implement"
+    "cx-design-then-implement",
+    "cx-multifile-refactor"
   ],
   "arms": [
     "vanilla",

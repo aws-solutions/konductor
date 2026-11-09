@@ -1,0 +1,94 @@
+{
+  "id": "cx-multifile-refactor",
+  "class": "complex",
+  "target": null,
+  "prompt": "This repository (shipquote) works, but the code has grown untidy. Refactor it without changing behaviour or the public API (`quote`, `listCarriers` and `normalizeAddress`, exported from `src/index.js` and nothing else). Small helpers are copy-pasted across several files: move the shared ones into a new `src/util.js` that exports `roundCents` and `normalizeZip`, and use them everywhere. Also rename the carriers' `calcBase` function to `baseRate` everywhere it appears, code and docs. Quotes must come out exactly as before, to the cent, for every carrier. Do not edit the existing tests or package.json and keep the diff to what the refactor needs. Update README.md to match and add an entry under Unreleased in CHANGELOG.md. Make sure `node --test` passes. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "cx-shipping",
+  "hidden": "cx-multifile-refactor",
+  "timeoutSec": 1800,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 15
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -f src/util.js && node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/quote.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -f src/util.js && node -e 'const k=Object.keys(require(\"./src\")).sort().join();process.exit(k===\"listCarriers,normalizeAddress,quote\"?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -f src/util.js && ! grep -rn calcBase src README.md",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -rl baseRate src | wc -l)\" -ge 4 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -f src/util.js && [ \"$(grep -rEo 'Math\\.round\\([^)]*\\*[[:space:]]*100[[:space:]]*\\)' src | wc -l)\" -eq 1 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "test -f src/util.js && [ \"$(grep -rFo 'replace(/\\s+/g' src | wc -l)\" -le 1 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "^## Unreleased\\s*\\n+\\s*[-*]\\s+\\S"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "src/util\\.js"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "diff-minimal",
+      "criterion": "The change is limited to the helper move, the rename and the matching docs: no behaviour change, no reformatting or renaming of code the refactor did not need to touch, no new dependency, and the freight rounding stays its own rule instead of being folded into the shared cents helper.",
+      "weight": 3
+    },
+    {
+      "id": "complete-propagation",
+      "criterion": "Every place the old name and the copied helpers appeared was updated, including the README layout section, with no alias or compatibility wrapper left behind for the old name.",
+      "weight": 2
+    },
+    {
+      "id": "changelog-docs",
+      "criterion": "CHANGELOG.md has an entry under Unreleased that says what moved and what was renamed and that quotes are unchanged, and README.md describes the new layout accurately.",
+      "weight": 2
+    },
+    {
+      "id": "behaviour-evidence",
+      "criterion": "The final message reports that the tests were run and their result, and says how the agent checked that quotes did not change (for example by comparing outputs before and after).",
+      "weight": 1
+    },
+    {
+      "id": "api-and-tests-untouched",
+      "criterion": "The exports of src/index.js are unchanged, the existing test file and package.json are unchanged, and any test the agent added is in a new file.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}
