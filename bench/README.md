@@ -307,12 +307,13 @@ node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then:
 node --test "bench/runner/test/*.test.js"                           # unit tests
 node bench/tasks/validate-tasks.js                                  # tasks vs reference solutions
 ```
-Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--budget-credits X`,
+Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--replicate-offset N`, `--parallel N`, `--budget-credits X`,
 `--model ID` (default claude-sonnet-5.5), `--effort LEVEL` (default high), `--agent-engine v2|v3` (default v2), `--seed N`,
 `--isolate auto|unshare|sandbox-exec|none`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
 `--hide PATH,..`, `--no-default-hide`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
 `--suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe` (`cap` is the fallback the `cap` commands use; they name their arms).
+Replicates are numbered from 1. To add replicates to an out dir that already holds 1 to N, pass `--replicate-offset N` (a non-negative integer, default 0): the new ones are N+1 to N+`--replicates`. A run overwrites any `result.json` already at a planned path and prints a warning with the count of cells it will overwrite.
 No credit cap is the default: every run is a line in `credit-ledger.jsonl` in the results directory and `run` prints the running total. `--budget-credits X` is an optional guard
 that stops new runs at 90% of X; a run that carries the command past 100% ends it with exit code 3. `run` prints the worst-case wall clock first. See "Profiles, credit ledger and platform verdict".
 The unit tests for the real-task track run a fake project's pytest suite. Without `python3 -m pytest`
@@ -773,6 +774,7 @@ The task rubrics check that a run did what its task asked. The quality pack adds
 - To make the pack part of the quality score, pass a scoring file that weights it: `report --run DIR --criteria-pack quality --scoring bench/profiles/scoring-quality.json` (hidden 0.4, checks 0.16, rubric 0.24, pack 0.2). Each run gets one pack score, the mean over every criterion that applied to it, so a one-line fix and a design document are scored on the same scale. A run where nothing applied is scored on the other components. The report then refuses any run without a current pack judgment instead of leaving it out. A scoring file with a pack weight is refused by every other command, and `profiles/scoring.json` is unchanged, so earlier numbers stay comparable.
 - The "Quality dimensions" section also has a "Process signals" table. It shows spawns per run, runs that delegated, distinct agents, whether an assumptions section was written (in a document, in the final message) and whether the run ended on a question. They are read from the recorded results, not judged, and not scored.
 - No sample has been rated yet. Read the scores as a way to see where arms differ, not as a measure.
+- A weighted pack needs a current pack judgment for every run, so `report` stops when one was made against another pack or task revision. `report --allow-stale-pack` (plain report only) scores those runs from the stale judgments instead. The report then opens with a note and `report.json` carries a `packStale` list, each run labelled "stale pack revision <rev>". Without the flag the check is unchanged, and the verdict pages never take it. Rejudging with `judge --criteria-pack quality` is still the way to get comparable numbers.
 - `report --verdict platform|orchestrator-pass --criteria-pack quality --scoring profiles/scoring-quality-fractional.json` scores every run with the pack included, so the paired intervals, the A/A noise floor and the call use the pack-weighted number. Every run needs a current pack judgment, the scoring file must weight the pack, and without the flag nothing changes.
 
 ## Calibration

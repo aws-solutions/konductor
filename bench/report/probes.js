@@ -352,6 +352,7 @@ function scoreRun(runDir, ctx) {
     streamMissing: events == null, sessions: sessions.length, problems: [],
   };
   if (!spec) { row.problems.push('task is not in the manifest'); row.usable = false; return row; }
+  if (result.status === 'budget_skipped') { row.usable = false; row.excludedReason = 'budget-skipped'; return row; }
   if (events == null) { row.problems.push('no stream.jsonl'); row.usable = false; return row; }
 
   const entries = kiroTimeline(events);

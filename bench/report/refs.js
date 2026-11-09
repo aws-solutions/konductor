@@ -247,6 +247,7 @@ function scoreRun(runDir, ctx) {
   };
   if (!spec) { row.problems.push('task is not in the manifest'); row.usable = false; row.excludedReason = 'unknown-task'; return row; }
   if (!armDef) row.problems.push('arm is not in the manifest');
+  if (result.status === 'budget_skipped') { row.usable = false; row.excludedReason = 'budget-skipped'; return row; }
   if (events == null) { row.problems.push('no stream.jsonl'); row.usable = false; row.excludedReason = 'no-stream'; return row; }
 
   const entries = kiroTimeline(events);
@@ -428,7 +429,7 @@ function renderReport({ rows, table, decision, control, readable, manifest, T = 
   const ex = rows.filter((r) => !r.usable);
   L.push('## Excluded runs', '');
   if (!ex.length) L.push('None.', '');
-  for (const r of ex) L.push(`- ${r.arm} / ${r.task} #${r.rep}: ${r.excludedReason}${r.errnoHits?.length ? ` (${r.errnoHits.map((h) => `${h.source}: ${h.match}`).join('; ')})` : ''}. Sandbox errno 38 runs are listed here and counted in no rate.`);
+  for (const r of ex) L.push(`- ${r.arm} / ${r.task} #${r.rep}: ${r.excludedReason}${r.errnoHits?.length ? ` (${r.errnoHits.map((h) => `${h.source}: ${h.match}`).join('; ')})` : ''}.${r.errnoHits?.length ? ' Sandbox errno 38 runs are listed here and counted in no rate.' : ''}`);
   L.push('', '## Runs', '', '| arm | task | rep | outcome | skill | attempts | ok | refused | error | fact | credits |', '|---|---|---:|---|---|---:|---:|---:|---:|---|---:|');
   for (const r of rows.filter((x) => x.usable)) L.push(`| ${r.arm} | ${r.task} | ${r.rep} | ${r.outcome} | ${r.skill?.loaded ? r.skill.forms.join('+') : 'no'} | ${r.readAttempts} | ${r.readSucceeded} | ${r.readRefused} | ${r.readErrored} | ${r.usedReference ? 'yes' : 'no'} | ${r.credits == null ? 'n/a' : f1(r.credits)} |`);
   L.push('', `Manifest: ${manifest.suiteFile}. Thresholds are in bench/report/refs.js and bench/REFERENCES-READ.md.`, '');

@@ -6,7 +6,7 @@
 
 const FLAGS = {
   run: [
-    'suite', 'arms', 'tasks', 'replicates', 'parallel', 'budget-credits', 'budget-usd', 'out', 'model', 'effort', 'cache', 'cargo-target',
+    'suite', 'arms', 'tasks', 'replicates', 'replicate-offset', 'parallel', 'budget-credits', 'budget-usd', 'out', 'model', 'effort', 'cache', 'cargo-target',
     'cargo-online', 'seed', 'isolate', 'allow-unisolated', 'allow-partial', 'censored-floor', 'hide', 'no-default-hide', 'env-keep', 'tripwire-exclude', 'tripwire-depth', 'tripwire-dir',
     'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'agent-engine',
     'extra-tasks', 'run-credit-limit', 'auth-db', 'arm-prefix', 'arm-agent', 'arm-config', 'stop-on', 'max-tool-calls', 'profile',
@@ -21,7 +21,7 @@ const FLAGS = {
   trace: ['run', 'arm', 'task', 'rep', 'format', 'full', 'instructions', 'repo-root'],
   'refs-report': ['run', 'out'],
   'probe-report': ['run', 'out', 'scoring', 'arms-file', 'canary-token-file'],
-  report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks', 'detail', 'format', 'scoring', 'profile', 'verdict', 'phases', 'test-arms', 'changed-skills', 'criteria-pack'],
+  report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks', 'detail', 'format', 'scoring', 'profile', 'verdict', 'phases', 'test-arms', 'changed-skills', 'criteria-pack', 'allow-stale-pack'],
   'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack'],
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'bench-dir'],
   contrast: ['run', 'base', 'head', 'min-rel', 'rule', 'by', 'bench-dir', 'extra-tasks', 'detail', 'format', 'out', 'scoring', 'phases'],
@@ -71,7 +71,7 @@ const SUBCOMMANDS = { calibrate: ['export', 'score'], cap: ['list', 'audit', 'va
 
 // Flags that never take a value, so they cannot swallow the next argument.
 const BOOLEAN_FLAGS = new Set([
-  'cargo-online', 'allow-partial', 'allow-unisolated', 'gate-strict', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
+  'cargo-online', 'allow-partial', 'allow-unisolated', 'gate-strict', 'allow-stale-pack', 'prepare-only', 'no-vanilla', 'dry-run', 'force', 'json', 'allow-small-panel', 'help',
   'init', 'public', 'verify', 'vanilla', 'allow-regex', 'all', 'update-baseline', 'write', 'credits', 'skills', 'status', 'no-patches', 'no-adjust', 'screen', 'no-default-hide', 'sample-only', 'plan', 'brief', 'full', 'instructions', 'rescore-quotes', 'apply', 'remove-originals',
 ]);
 

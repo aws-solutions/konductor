@@ -41,6 +41,14 @@ function intOpt(v, name, min = 1) {
   return n;
 }
 
+// A bare flag parses as `true`, which Number() would read as 1.
+function replicateOffsetOpt(opts) {
+  const v = opts['replicate-offset'];
+  if (v === undefined) return 0;
+  if (v === true || !/^\d+$/.test(String(v))) throw new Error('--replicate-offset must be a non-negative integer');
+  return Number(v);
+}
+
 // --agent-engine picks the kiro-cli engine and the matching install (v2: kiro-cli-v2, v3: kiro-v3). opencode and Claude Code have no engine.
 function engineOpt(opts, runtimes) {
   const v = opts['agent-engine'];
@@ -142,6 +150,7 @@ async function cmdRun(opts) {
   const profile = optionalProfile(opts.profile);
   const armIds = [...(opts.arms ? list(opts.arms) : suite.arms)];
   const replicates = profile ? replicatesFor(profile, opts.replicates) : opts.replicates ? intOpt(opts.replicates, 'replicates') : suite.replicates;
+  const replicateOffset = replicateOffsetOpt(opts);
   const parallel = opts.parallel ? intOpt(opts.parallel, 'parallel') : suite.parallel;
   const REPO = repoRootOf(opts);
   const arms = armIds.map((id) => resolveArm(id, REPO));
@@ -389,7 +398,7 @@ async function cmdRun(opts) {
     log(`out=${outDir}`);
     const { results, observed, charged, studyLine, guard } = await runAll({
       tasks, arms, prepared, prepErrors: errors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log,
-      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']),
+      costOf: isUsd ? USD : CREDITS, unit, gateStrict: Boolean(opts['gate-strict']), replicateOffset,
     });
     const judged = judgeBatch({ gate: batchWindow.end(), results, strict: Boolean(opts['gate-strict']), window: { from: batchFrom, to: new Date().toISOString() } });
     const gate = judged.gate;
@@ -418,4 +427,4 @@ async function cmdRun(opts) {
   }
 }
 
-module.exports = { cmdRun, repoRootOf, maskPaths };
+module.exports = { cmdRun, repoRootOf, maskPaths, replicateOffsetOpt };

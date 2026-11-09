@@ -26,7 +26,7 @@ const cleanup = require('./lib/cleanup-cmd.js');
 
 const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe [--arms a,b,c] [--tasks id,id]
-       [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
+       [--replicates N] [--replicate-offset N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
@@ -38,6 +38,8 @@ const USAGE = `Usage:
        adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
        to the results directory. Without --profile the suite defaults apply and no arm is added. Credits are tracked per run in credit-ledger.jsonl; with no
        --budget-credits nothing stops a run, with it new runs stop at 90% of the budget)
+       (--replicate-offset N numbers the replicates N+1 to N+replicates, to add runs to an out dir that already holds replicates 1 to N. The default 0 numbers them from 1.
+       A run writes over any result.json already at a planned path and prints a warning with the count of cells it will overwrite)
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
        (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
        (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)
@@ -103,6 +105,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
        [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
+       [--allow-stale-pack]
        (--criteria-pack quality adds a Quality dimensions table from judgments-quality.json; it is indicative and not part of quality /100.
        --scoring profiles/scoring-fractional.json scores the checks component as passed / total instead of 1 only when every check passed; the default is unchanged.
        The evidence-quote rule is lenient (tightened) unless the scoring file says "quotes": "strict" (profiles/scoring-strict-quotes.json, which reproduces the numbers of earlier reports).
@@ -111,6 +114,8 @@ const USAGE = `Usage:
        --verdict platform writes verdict.md, verdict.html and verdict.json: one page with keep, discard or not enough evidence for each arm against the baseline,
        from one or more run directories (several need --out); it replaces the normal report for that call.
        With --criteria-pack quality and a --scoring file that weights the pack, either verdict scores every run with the pack included; every run then needs a current pack judgment.
+       The plain report is the same: it stops when a run has no current pack judgment. --allow-stale-pack (plain report only, not the verdicts) scores a run from judgments made against
+       another pack or task revision instead, and a note at the top of the report and a packStale list in report.json label each such run "stale pack revision <rev>".
        --verdict orchestrator-pass writes orchestrator-pass.md, .html and .json: per (harness, model) cell, a PASS, FAIL or NOT ENOUGH EVIDENCE for each test arm
        against the baseline (default vanilla): cost at most 2.0x the baseline per run and per successful run, quality not below it by more than the spread of one
        baseline run, an A/A repeat required and its drift compared with the effect, and a skill-only change must have loaded. A GPT cell is shown beside the Claude

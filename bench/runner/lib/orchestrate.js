@@ -36,13 +36,21 @@ function shuffle(items, rand) {
 
 // Replicate-major: every (task, arm) pair runs once per replicate, in a seeded random order.
 // A budget stop then removes whole replicates or an unbiased random remainder, never a task class.
-function planRuns(tasks, arms, replicates, seed = 1) {
+// `offset` continues numbering after an earlier run in the same out dir: replicates are offset+1..offset+replicates.
+function planRuns(tasks, arms, replicates, seed = 1, offset = 0) {
   const plan = [];
-  for (let rep = 1; rep <= replicates; rep++) {
+  for (let rep = offset + 1; rep <= offset + replicates; rep++) {
     const pairs = tasks.flatMap((task) => arms.map((arm) => ({ task, arm, replicate: rep })));
     plan.push(...shuffle(pairs, mulberry32(seed + rep)));
   }
   return plan;
+}
+
+const runDirOf = (outDir, { arm, task, replicate }) => path.join(outDir, arm.id, task.id, String(replicate));
+
+// Planned cells whose result.json already exists; running them overwrites it in place.
+function existingResults(plan, outDir) {
+  return plan.filter((item) => fs.existsSync(path.join(runDirOf(outDir, item), 'result.json')));
 }
 
 // Bounded worker pool. `shouldSkip(item)` is checked at launch time, so runs already
@@ -200,7 +208,7 @@ function preflightTable(arms, prepared, errors) {
   return rows.map((r) => r.map((c, i) => c.padEnd(w[i])).join('  ')).join('\n');
 }
 
-async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false }) {
+async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel, budgetCredits, censoredFloor, seed, outDir, ctx, state, log, costOf = CREDITS, unit = 'credits', creditLedger = null, gateStrict = false, replicateOffset = 0 }) {
   const ledger = makeLedger({ budgetCredits, floor: censoredFloor, runsPerReplicate: tasks.length * arms.length, costOf });
   // The study ledger only tracks unless a budget was given; then it also stops new launches at 90% of that budget.
   const study = creditLedger ?? openLedger({ dir: outDir, budget: budgetCredits });
@@ -210,7 +218,9 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
     return guardReason !== null || ledger.shouldSkip(item);
   };
   let active = 0;
-  const plan = planRuns(tasks, arms, replicates, seed);
+  const plan = planRuns(tasks, arms, replicates, seed, replicateOffset);
+  const clobbered = existingResults(plan, outDir);
+  if (clobbered.length) log(`WARNING: ${clobbered.length} of ${plan.length} planned cell(s) already have a result.json in ${outDir} and will be OVERWRITTEN. Use a new --out, or --replicate-offset N to add replicates after the existing ones.`);
   const batchWindow = ctx.installsGate ? ctx.installsGate.begin() : null;
   const batchFrom = new Date().toISOString();
 
@@ -266,5 +276,5 @@ async function runAll({ tasks, arms, prepared, prepErrors, replicates, parallel,
 }
 
 module.exports = {
-  CREDITS, USD, runAll, planRuns, runPool, prepareAll, preflightTable, makeLedger, describePlan, budgetNote, LARGE_PLAN_RUNS, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
+  CREDITS, USD, runAll, planRuns, existingResults, runPool, prepareAll, preflightTable, makeLedger, describePlan, budgetNote, LARGE_PLAN_RUNS, mulberry32, shuffle, median, resolveArm, DEFAULT_CENSORED_FLOOR,
 };

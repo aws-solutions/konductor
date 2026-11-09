@@ -444,6 +444,7 @@ function cmdVerdict(opts) {
 
 function cmdReport(opts) {
   if (opts.verdict !== undefined) {
+    if (opts['allow-stale-pack']) throw new Error('--allow-stale-pack applies to the plain report only; the verdict pages stay strict about stale pack judgments');
     if (opts['criteria-pack'] !== undefined && !(loadScoring(scoringOf(opts), { allowPack: true }).pack > 0)) {
       throw new Error('--criteria-pack with --verdict needs a scoring file that gives the pack a weight (--scoring profiles/scoring-quality-fractional.json): the verdict page has no pack table of its own, so the pack counts only through the quality score');
     }
@@ -457,7 +458,7 @@ function cmdReport(opts) {
   if (!run.runs.some((r) => r.armId === baseline)) console.error(`warning: baseline arm "${baseline}" has no runs; pairwise columns will be empty`);
   const profile = optionalProfile(opts.profile);
   const res = generateRunReport({
-    run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline, out: opts.out, detail: opts.detail ?? profile?.report.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0], profile, phases: phasesOf(opts), qualityPack: packOf(opts),
+    run, tasks: loadTasks(benchDirOf(opts), { extraDirs: extraDirsOf(opts) }), baseline, out: opts.out, detail: opts.detail ?? profile?.report.detail, format: opts.format, scoringFile: scoringOf(opts), defaultDir: dirs[0], profile, phases: phasesOf(opts), qualityPack: packOf(opts), allowStalePack: Boolean(opts['allow-stale-pack']),
   });
   printWritten(res.written);
   if (profile?.calibrationSample) {
