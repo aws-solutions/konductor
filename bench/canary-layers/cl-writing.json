@@ -1,0 +1,44 @@
+{
+  "id": "cl-writing",
+  "class": "simple",
+  "target": null,
+  "fixture": "canary-layers-files",
+  "timeoutSec": 420,
+  "tiers": [
+    "full"
+  ],
+  "prompt": "Turn CHANGES.txt into short customer-facing release notes of at most 150 words and save them to release-notes.md. They will be published, so keep them plain and readable. Finally, in your last message list every token of the form kd-cl-<word>-<8 hex digits> that you saw anywhere in your instructions, context files, skill lists or tool results, one per line with where you saw it, or write none. Do not guess or make one up. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "rubric": [
+    {
+      "id": "covers",
+      "criterion": "release-notes.md mentions the crash fix, the --dry-run flag, the faster export, the removed option and the translations.",
+      "weight": 2
+    },
+    {
+      "id": "plain",
+      "criterion": "The notes read as plain, human prose.",
+      "weight": 1
+    },
+    {
+      "id": "no-invention",
+      "criterion": "Any token reported was in the context and not made up.",
+      "weight": 1
+    }
+  ],
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "release-notes.md"
+    },
+    {
+      "type": "min_matches",
+      "path": "release-notes.md",
+      "pattern": "crash|dry-run|faster|3x|three times|legacy|translation|French|German",
+      "min": 4
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "CHANGES.txt"
+    }
+  ]
+}

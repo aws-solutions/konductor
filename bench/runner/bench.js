@@ -3,7 +3,7 @@
 /**
  * bench.js - benchmark runner for Konductor on kiro-cli or opencode (run, judge, recheck, backfill, report, compare, calibrate).
  *
- *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe [--arms a,b] [--tasks id,id]
+ *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers [--arms a,b] [--tasks id,id]
  *        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
@@ -25,14 +25,14 @@ const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli
 const cleanup = require('./lib/cleanup-cmd.js');
 
 const USAGE = `Usage:
-  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe [--arms a,b,c] [--tasks id,id]
+  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--replicate-offset N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        [--extra-tasks DIR,DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
-       [--arm-config name=key.path=value[;key.path=value],...]
+       [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed]
        (--profile quick runs 1 to 3 replicates (default 2) and labels a result under 3 runs anecdotal. --profile detailed runs at least 5 replicates (default 5),
        adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
@@ -54,6 +54,11 @@ const USAGE = `Usage:
        and result.json record it). --stop-on kills the run at the first skills-server call, subagent call
        or end of turn (first-capability), or at the first get_skill, subagent call or end of turn (first-load); the run is flagged earlyStopped and
        has no metered credits (kiro-cli meters at the end of a turn), so its cost is unobserved. --max-tool-calls stops after that many tool calls whatever they are)
+       (--oracle-skills puts the SKILL.md bodies (frontmatter removed) of the skills a task is expected to use in a delimited block in front of its prompt, read from the arm's own
+       ref. With no value it applies to every konductor arm; with ARM,ARM only to those. Vanilla is refused, as is a task with no expected skills or a skill the ref does not have,
+       and nothing runs then. The expected skills come from --oracle-manifest FILE (default suites/rootcause.manifest.json, tasks[].entries[].expectedSkills for the arm's entry
+       agent, else all the task's entries). result.json records oracle {skills, entryMatched, bytes, sha256} and the report flags the arm ORACLE. Give an oracle arm its own
+       name (for example oracle=<sha>) and never pool it with normal runs; references/ files of a skill are not included)
        arms: vanilla, v1.0.0, v1.1.0, v1.2.0, main, name=<git ref>, name=dir:<path> (see list-arms for the syntax)
        opencode arms (oc-vanilla, oc-v1.2.0, oc-main; one harness per run):
        --aws-creds-file FILE [--aws-profile bench] [--budget-usd X] [--opencode-bin PATH] [--rg-bin PATH]
@@ -102,6 +107,10 @@ const USAGE = `Usage:
        the canary token; sandbox errno 38 runs, which are excluded from every rate; and the DECISION rows with fixed thresholds. Writes probe-report.md, probe-report.json,
        probe-runs.jsonl and judge-queue.json to --out. --scoring takes a scoring profile for the checks quality column; --arms-file or --canary-token-file gives the exact canary token.
        See bench/CONSTRAINTS-PROBE.md)
+  node bench/runner/bench.js canary-report --run DIR[,DIR...] --layers-file FILE --out DIR
+       (scores the runs of the canary-layers suite from stream.jsonl, with no model call: per layer token (core rules, system prompt, skill index, skill body, SOP body, routing context),
+       per entry agent and per task, the share of runs where the token showed in a tool result (direct) or in the model's own text or calls (inferred), next to whether the agent spec
+       declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/CANARY-LAYERS.md)
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
        [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
@@ -362,6 +371,7 @@ async function main(argv) {
   if (cmd === 'trace') return evalCommands.cmdTrace(opts);
   if (cmd === 'refs-report') return require('../report/refs.js').cmdRefsReport(opts);
   if (cmd === 'probe-report') return require('../report/probes.js').cmdProbeReport(opts);
+  if (cmd === 'canary-report') return require('../report/canary-layers.js').cmdCanaryReport(opts);
   if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);

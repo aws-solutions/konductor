@@ -9,6 +9,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { resolveArm } = require('./arms.js');
 const { applyArmOptions, attachVariant } = require('./arm-opts.js');
+const { applyOracle } = require('./oracle.js');
 const { STOP_ON } = require('./stop-watch.js');
 const { harnessFor, opencode: oc, claudeCode: cc } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime } = require('./harness/runtime.js');
@@ -155,12 +156,13 @@ async function cmdRun(opts) {
   const REPO = repoRootOf(opts);
   const arms = armIds.map((id) => resolveArm(id, REPO));
   const armOpts = applyArmOptions(arms, opts);
+  armOpts.oracle = applyOracle(arms, opts, { tasks, repo: REPO, benchDir });
   const aa = profile?.aaArm ? aaArmFor(arms) : null;
   if (aa?.spec) {
     // The repeat runs under the same conditions as the arm it repeats, so it takes that arm's prefix, entry agent and config.
     const twin = arms.find((a) => a.id === aa.twin);
     const copy = resolveArm(aa.spec, REPO);
-    for (const k of ['prefixText', 'prefixInfo', 'agent', 'agentOverride', 'armConfig']) if (twin[k] !== undefined) copy[k] = twin[k];
+    for (const k of ['prefixText', 'prefixInfo', 'agent', 'agentOverride', 'armConfig', 'oracle']) if (twin[k] !== undefined) copy[k] = twin[k];
     arms.push(copy);
     armIds.push(copy.id);
   }
@@ -333,7 +335,7 @@ async function cmdRun(opts) {
     runConfig = {
       suite: suite.name, harness: runtimes[0], armIds, taskIds: tasks.map((t) => t.id), replicates, parallel, [isUsd ? 'budgetUsd' : 'budgetCredits']: budgetCredits, censoredFloor, seed,
       profile: profile ? { name: profile.name, aaArm: aa?.spec ? { arm: arms.at(-1).id, repeats: aa.twin } : null } : null,
-      runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig,
+      runCreditLimit, extraTasks: extraDirs, stopOn, maxToolCalls, armPrefix: armOpts.armPrefix, armAgent: armOpts.armAgent, armConfig: armOpts.armConfig, oracleSkills: armOpts.oracle,
       isolationGates: { installs: ctx.installsGate.dirs, claudeRules: 'an empty rules file in a scratch CLAUDE_CONFIG_DIR (Claude Code runs)' },
       variants: variants.map((v) => ({ ...v })),
       order: 'replicate-major, seeded shuffle of (task, arm) pairs per replicate',

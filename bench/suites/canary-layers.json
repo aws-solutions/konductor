@@ -1,0 +1,20 @@
+{
+  "extraTasks": [
+    "canary-layers"
+  ],
+  "tasks": [
+    "cl-plain",
+    "cl-writing",
+    "cl-plan"
+  ],
+  "arms": [
+    "main"
+  ],
+  "replicates": 3,
+  "parallel": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ]
+}

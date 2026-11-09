@@ -1036,6 +1036,34 @@
         }
       }
     },
+    "oracle": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "skills",
+        "sha256"
+      ],
+      "properties": {
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entryMatched": {
+          "type": "boolean"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string"
+        }
+      }
+    },
     "comparable": {
       "type": "boolean"
     },

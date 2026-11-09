@@ -8,6 +8,7 @@ const { autonomyFields } = require('./autonomy.js');
 const { provenanceOf } = require('./runconfig.js');
 const { kiroInstallHarness, isUsdRuntime } = require('./harness/runtime.js');
 const { isComparableMode } = require('./isolate.js');
+const { oracleResult } = require('./oracle.js');
 
 const isolationOf = (mode) => (typeof mode === 'string' && mode && mode !== 'auto' ? mode : 'none');
 
@@ -167,6 +168,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     triggerQuery: task.triggerQuery ? { ...task.triggerQuery, rep: replicate } : null,
     variant: arm.variant ?? null,
     armPrefix: arm.prefixInfo ? { ...arm.prefixInfo } : null,
+    oracle: oracleResult(arm, task),
     armConfig: arm.armConfig ?? null,
     ...(meta.claudeCode ? { claudeCode: meta.claudeCode } : {}),
     ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),

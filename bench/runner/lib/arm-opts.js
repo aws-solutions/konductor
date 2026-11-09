@@ -71,9 +71,11 @@ function applyArmOptions(arms, opts) {
   return { armPrefix, armAgent, armConfig };
 }
 
-/** The prompt of the first turn: the arm's prefix, a blank line, the task prompt. */
+/** The prompt of the first turn: the arm's prefix, the oracle skills block, then the task prompt, each after a blank line. */
 function promptFor(arm, task) {
-  return arm?.prefixText ? `${arm.prefixText.replace(/\s+$/, '')}\n\n${task.prompt}` : task.prompt;
+  const oracle = arm?.oracle?.get(task.id)?.block;
+  const parts = [arm?.prefixText ? arm.prefixText.replace(/\s+$/, '') : null, oracle ?? null, task.prompt].filter((p) => p !== null);
+  return parts.join('\n\n');
 }
 
 /** A cap variant arm carries the variant.json that `cap variant` wrote beside its tree; the result records a summary of it. */

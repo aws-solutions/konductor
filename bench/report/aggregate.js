@@ -256,6 +256,8 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
       : `${censoredRuns} run(s) ended before their final metering event; their credits are missing or partial, so credit figures are lower bounds`);
   }
   for (const [name, count] of Object.entries(flagCounts)) flags.push(`${count} run(s) flagged ${name}`);
+  const oracleRuns = executed.filter((e) => e.result.oracle);
+  if (oracleRuns.length) flags.push(`ORACLE: ${oracleRuns.length} of ${n} run(s) had the expected skill bodies (${[...new Set(oracleRuns.flatMap((e) => e.result.oracle.skills))].sort().join(', ')}) put in the prompt; they are not comparable with normal runs, so never pool them with normal runs or use them for a platform verdict`);
   if (n - counts.good > 0) flags.push(`${n - counts.good} of ${n} run(s) were not clean passes (${OUTCOMES.slice(1).filter((o) => counts[o]).map((o) => `${counts[o]} ${o}`).join(', ')}); efficiency medians use the ${counts.good} clean pass(es) only, the failure rates and credits per successful run include all`);
   const skippedJudge = notJudged.length;
   if (skippedJudge) flags.push(`${skippedJudge} run(s) not judged (${[...new Set(notJudged.map((x) => x.reason))].join(', ')}); they have no rubric or pairwise result`);

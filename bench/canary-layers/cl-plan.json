@@ -1,0 +1,44 @@
+{
+  "id": "cl-plan",
+  "class": "simple",
+  "target": null,
+  "fixture": "canary-layers-files",
+  "timeoutSec": 420,
+  "tiers": [
+    "full"
+  ],
+  "prompt": "Break the work in TODO.md into an ordered plan with success criteria and dependencies, and save it to plan.md. Finally, in your last message list every token of the form kd-cl-<word>-<8 hex digits> that you saw anywhere in your instructions, context files, skill lists or tool results, one per line with where you saw it, or write none. Do not guess or make one up. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "rubric": [
+    {
+      "id": "steps",
+      "criterion": "plan.md has the four steps in a workable order with a success criterion and dependencies for each.",
+      "weight": 2
+    },
+    {
+      "id": "order",
+      "criterion": "Removing the old columns comes after the clients and the backfill.",
+      "weight": 1
+    },
+    {
+      "id": "no-invention",
+      "criterion": "Any token reported was in the context and not made up.",
+      "weight": 1
+    }
+  ],
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "plan.md"
+    },
+    {
+      "type": "min_matches",
+      "path": "plan.md",
+      "pattern": "migrat|API|backfill|remove|depend|success|done when",
+      "min": 5
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "TODO.md"
+    }
+  ]
+}
