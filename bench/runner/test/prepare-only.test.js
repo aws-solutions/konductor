@@ -55,7 +55,7 @@ test('--prepare-only fails fast, with the reason, for a ref that predates the bu
     assert.equal(r.status, 1);
     assert.match(r.stderr, /arm old could not be prepared.*no cli\/konductor-rs\/Cargo\.toml, mcp\/Cargo\.toml.*predates/s);
     assert.equal(fs.existsSync(s.out), false);
-    assert.equal(fs.existsSync(s.cache) ? fs.readdirSync(s.cache).length : 0, 0, 'nothing was built or cached');
+    assert.equal(fs.existsSync(s.cache) ? fs.readdirSync(s.cache).filter((n) => n !== '.bench-owner.json').length : 0, 0, 'nothing was built or cached');
   } finally { fs.rmSync(s.root, { recursive: true, force: true }); }
 });
 

@@ -288,7 +288,8 @@ test('with the flag, report adds the dimensions table and says the scores are no
 test('the table flags judges that differ, counts n/a runs and ignores records from another pack revision', async () => {
   const s = judgedSetup();
   try {
-    await runPackJudging({ ...common(s), caller: stub((ids, { model }) => (model === 'gpt-test' ? { 'des-consistency': { verdict: 'fail', evidence: 'Hold service design' }, 'des-testable-acceptance': { verdict: 'fail', evidence: 'Hold service design' } } : {})) });
+    const failDesign = (ids) => Object.fromEntries(ids.filter((id) => id.startsWith('des-')).map((id) => [id, { verdict: 'fail', evidence: 'Hold service design' }]));
+    await runPackJudging({ ...common(s), caller: stub((ids, { model }) => (model === 'gpt-test' ? failDesign(ids) : {})) });
     const run = loadRun(s.runDir);
     const sum = summarizeQuality({ groups: [{ id: 'vanilla', label: 'vanilla', run, arm: 'vanilla' }], tasks: loadTasks(s.bench), pack });
     const design = sum.groups[0].dimensions['design-doc'];
