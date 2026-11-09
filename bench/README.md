@@ -562,6 +562,30 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   descriptions). Vanilla gets the built-in agent, best effort and unsized. `skills` on an old run sizes rule files from `--repo-root`.
 - Limits: a load is a call that returned text; reading a `SKILL.md` with the file tool is not counted; bytes include JSON framing.
 
+## Skill evaluation scenarios
+
+`bench/skilleval/skilleval.js` turns one skill into a frozen set of text-only bench tasks, so a skill can be tested for the effect of its rules instead of its name. Every model call is cached on disk under `bench/skilleval/<skill>/cache/` by prompt hash (reruns cost nothing and need no credentials) and total spend is capped by `--budget-usd` (default 3).
+```bash
+S=test-coverage-analysis
+node bench/skilleval/skilleval.js extract   --skill $S --ref GITREF [--repo DIR | --skill-file FILE] [--count 12]
+node bench/skilleval/skilleval.js vote      --skill $S [--judges a,b,c] [--decisions FILE]
+node bench/skilleval/skilleval.js scenarios --skill $S --domain "software testing" [--max 20]
+node bench/skilleval/skilleval.js freeze    --skill $S [--noise-margin 0.05]
+node bench/skilleval/skilleval.js verify    --skill $S
+node bench/skilleval/skilleval.js emit      --skill $S
+```
+Model calls use the opencode and Bedrock judge backend (`--opencode-bin`, `--aws-creds-file`, `--aws-profile`, `--aws-region`, as for `judge`). Outputs go to `bench/skilleval/<skill>/`.
+- `extract`: about 12 rules from `SKILL.md`, each an observable property of a written answer, with a quoted source line (a script checks the quote is in the file; failures are listed in `rejected`) and a tag `useful`, `generic` or `style`. Writes `rules.json`.
+- `vote`: three judges (default `gpt-5.6-luna,deepseek-3.2,glm-5`) see one rule and a request type, never the skill name or text. A rule survives with at least 2 worth votes and fewer than 2 style-only votes. Writes `votes.json`, `survivors.json` and `flagged.md` (split worth votes, any style vote, style tag, judge errors). `owner-decisions.json` (`{"R03": "keep", "R07": "drop"}`) overrides the vote on the next run.
+- `scenarios`: a model (default `glm-5`) writes up to `--max` requests in three kinds: rule scenarios (about 50 percent, the rule matters and is not stated), skill-blind scenarios (30 percent, written from the one-line description and `--domain` only) and near-miss requests (20 percent, related but the skill should not apply). Scripts reject skill vocabulary (a stoplist built from the skill name, headings, bold and code spans), requests for a saved file or a command, konductor procedure names and near-duplicates; one repair round asks again for the shortfall. Fewer scenarios than the cap is a normal result. A second model call per scenario writes 4 to 6 rubric items, bucketed value, guard and format (near-miss: guard only, expectation "skill not loaded"). Writes `scenarios.json` and `rubric.json`. Rubric facts written by a model need a human read before the freeze.
+- `freeze`: writes `freeze.json` with the sha256 of `survivors.json`, `scenarios.json`, `rubric.json` and `thresholds.json` (created from `thresholds.default.json`: gain interval low end above 0, positive mean on the second batch, no quality loss beyond `noiseMargin`, default 0.05 and provisional; expert check and layout swap are report-only). Later `extract`, `vote` and `scenarios` runs refuse; `verify` re-hashes and exits 1 on any change.
+- `emit`: one task per scenario in `<skill>/tasks/` (class `simple`, no checks, timeout 300, prompt only, bucket weights value 3, guard 2, format 1), the suite `bench/suites/skilleval-<skill>.json` (arms `vanilla,main`), `oracle-manifest.json` and `expectations.json`.
+```bash
+node bench/runner/bench.js run --suite skilleval-$S --arms vanilla,natural=GITSHA,oracle=GITSHA --oracle-skills oracle \
+  --oracle-manifest bench/skilleval/$S/oracle-manifest.json --budget-credits N --out $OUT
+```
+The oracle arm puts the skill body in front of every prompt, near-miss tasks included, which measures the cost of applying the skill where it should not apply; `expectations.json` records that the natural path should not load the skill for them. Tests: `node --test bench/skilleval/test/`.
+
 ## Isolation, environment, safety
 - Each run gets a scratch HOME and a fresh cwd under `/tmp/w-<random>/`, with a copy of the auth
   database (kiro-cli's `~/Library/Application Support/kiro-cli` on macOS, `~/.local/share/kiro-cli`
