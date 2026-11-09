@@ -122,6 +122,7 @@ not per individual commit.
 - `architecture-diagram-generation` now targets plain draw.io (diagrams.net) XML and drops the
   rules that served one draw.io-based tool. It places S3 with the regional services, since each
   bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
+  A Lambda function with VPC config is drawn in its subnets.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
