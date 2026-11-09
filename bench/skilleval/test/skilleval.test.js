@@ -464,3 +464,17 @@ test('a long document is read in parts split at headings and the rules are merge
   assert.deepEqual(out.rules.map((r) => r.id), ['R01', 'R02', 'R03', 'R04']);
   assert.deepEqual(out.rules.map((r) => r.line), [...out.rules.map((r) => r.line)].sort((a, b) => a - b));
 });
+
+test('a repair round tells the model which terms got earlier drafts rejected', async () => {
+  const prompts = [];
+  const caller = async ({ prompt }) => {
+    prompts.push(prompt);
+    const bad = !prompt.includes('Earlier drafts were rejected');
+    return { text: JSON.stringify({ scenarios: [{ ruleId: 'R01', title: 'Check the nightly job', prompt: bad ? 'Our nightly job keeps failing and the widget audit report is late again, what now?' : 'Our nightly job keeps failing and the report is late again, what should we look at first?' }] }), usd: 0 };
+  };
+  const ask = makeCachedModel({ caller, cacheDir: tmp() });
+  const survivors = [{ id: 'R01', text: 'Name the cause.', tag: 'useful', requestType: 'a', bucket: 'value' }];
+  const doc = await runScenarios({ skill: { skill: 'widget-audit', description: 'd' }, survivors, ask, model: 'glm-5', max: 2, stoplist: ['widget audit'], domain: 'ops' });
+  assert.deepEqual(doc.scenarios.filter((s) => s.type === 'rule').map((s) => s.ruleIds[0]), ['R01']);
+  assert.ok(prompts.some((p) => p.includes('rejected for using these terms: widget audit')));
+});

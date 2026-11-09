@@ -27,7 +27,12 @@ const COMMON_RULES = `Each request must:
 - be answerable in a written reply only, with no request to save, create, run, commit or install anything;
 - never mention a rule, a checklist, a skill, a framework or a named procedure.`;
 
-function rulePrompt({ rules, count, domain }) {
+// Terms that got earlier drafts rejected, so a repair round steers around them instead of repeating the same draft.
+function avoidNote(avoid = []) {
+  return avoid.length ? `\n\nEarlier drafts were rejected for using these terms: ${avoid.join(', ')}. Describe the situation in the user's plain everyday words without them.` : '';
+}
+
+function rulePrompt({ rules, count, domain, avoid }) {
   return `You write realistic test requests for an AI assistant in the domain: ${domain}.
 
 For each rule below, write one request where a good answer would visibly follow the rule, without the request stating or hinting at the rule. A different assistant that does not know the rule should still produce a normal answer, only a weaker one.
@@ -38,10 +43,10 @@ RULES:
 ${rules.map((r) => `${r.id}: ${r.text} (kind of request: ${r.requestType})`).join('\n')}
 
 Write ${count} request${count === 1 ? '' : 's'} (one per rule, in order). Reply with only this JSON:
-{"scenarios":[{"ruleId":"<rule id>","title":"<4 to 8 word title>","prompt":"<the user's message>"}]}`;
+{"scenarios":[{"ruleId":"<rule id>","title":"<4 to 8 word title>","prompt":"<the user's message>"}]}${avoidNote(avoid)}`;
 }
 
-function blindPrompt({ description, count, domain }) {
+function blindPrompt({ description, count, domain, avoid }) {
   return `You write realistic test requests for an AI assistant. A tool exists with this one-line description:
 
 "${description}"
@@ -53,10 +58,10 @@ Write ${count} different requests that a user in this domain might send where th
 ${COMMON_RULES}
 
 Reply with only this JSON:
-{"scenarios":[{"title":"<4 to 8 word title>","prompt":"<the user's message>"}]}`;
+{"scenarios":[{"title":"<4 to 8 word title>","prompt":"<the user's message>"}]}${avoidNote(avoid)}`;
 }
 
-function nearMissPrompt({ description, count, domain }) {
+function nearMissPrompt({ description, count, domain, avoid }) {
   return `You write realistic test requests for an AI assistant. A tool exists with this one-line description:
 
 "${description}"
@@ -68,7 +73,7 @@ Write ${count} different requests that look related to that tool's subject at fi
 ${COMMON_RULES}
 
 Reply with only this JSON:
-{"scenarios":[{"title":"<4 to 8 word title>","prompt":"<the user's message>"}]}`;
+{"scenarios":[{"title":"<4 to 8 word title>","prompt":"<the user's message>"}]}${avoidNote(avoid)}`;
 }
 
 /** Checks one scenario against the stoplist and the shape rules; returns the reasons it fails (empty when it passes). */
@@ -99,7 +104,7 @@ function pickRules(survivors, n) {
   return shortList(order, n).sort((a, b) => a.id.localeCompare(b.id));
 }
 
-async function generateType({ type, ask, model, count, survivors, description, domain }) {
+async function generateType({ type, ask, model, count, survivors, description, domain, avoid }) {
   if (count <= 0) return [];
   const check = (v) => { if (!Array.isArray(v?.scenarios)) throw new Error('reply has no scenarios array'); };
   if (type === 'rule') {
@@ -107,13 +112,13 @@ async function generateType({ type, ask, model, count, survivors, description, d
     const out = [];
     for (let i = 0; i < rules.length; i += RULES_PER_CALL) {
       const chunk = rules.slice(i, i + RULES_PER_CALL);
-      const v = await ask.askJson(model, rulePrompt({ rules: chunk, count: chunk.length, domain }), check);
+      const v = await ask.askJson(model, rulePrompt({ rules: chunk, count: chunk.length, domain, avoid }), check);
       for (const s of v.scenarios) if (chunk.some((r) => r.id === s.ruleId)) out.push({ type, ruleIds: [s.ruleId], title: s.title, prompt: s.prompt });
     }
     return out;
   }
   const build = type === 'blind' ? blindPrompt : nearMissPrompt;
-  const v = await ask.askJson(model, build({ description, count, domain }), check);
+  const v = await ask.askJson(model, build({ description, count, domain, avoid }), check);
   return v.scenarios.map((s) => ({ type, ruleIds: [], title: s.title, prompt: s.prompt }));
 }
 
@@ -121,7 +126,7 @@ async function generateType({ type, ask, model, count, survivors, description, d
  * Generates up to `max` scenarios, validates them, and returns the accepted and rejected lists. One repair round asks again for
  * the shortfall of each type; fewer scenarios than the cap is a normal outcome.
  */
-async function runScenarios({ skill, survivors, ask, model, max = DEFAULT_MAX, stoplist, domain, outDir, repairRounds = 1 }) {
+async function runScenarios({ skill, survivors, ask, model, max = DEFAULT_MAX, stoplist, domain, outDir, repairRounds = 2 }) {
   const quota = quotas(max);
   const accepted = [];
   const rejected = [];
@@ -136,7 +141,8 @@ async function runScenarios({ skill, survivors, ask, model, max = DEFAULT_MAX, s
       const covered = new Set(accepted.filter((s) => s.type === 'rule').flatMap((s) => s.ruleIds));
       const pool = type === 'rule' ? survivors.filter((r) => !covered.has(r.id)) : survivors;
       if (type === 'rule' && !pool.some((r) => r.bucket !== 'format')) continue;
-      const made = await generateType({ type, ask, model, count: need, survivors: pool, description: skill.description, domain });
+      const avoid = [...new Set(rejected.filter((r) => r.type === type).flatMap((r) => r.reasons).filter((x) => x.startsWith('skill vocabulary: ')).flatMap((x) => x.slice('skill vocabulary: '.length).split(', ')))];
+      const made = await generateType({ type, ask, model, count: need, survivors: pool, description: skill.description, domain, avoid });
       for (const s of made) {
         const scenario = { type: s.type, ruleIds: s.ruleIds, title: String(s.title ?? '').trim(), prompt: String(s.prompt ?? '').trim() };
         const reasons = validateScenario(scenario, { stoplist, skill: skill.skill });

@@ -105,7 +105,8 @@ function checkConsistency({ items, prompt, rules = [] }) {
   const ruleText = rules.map((r) => r.text).join('\n').toLowerCase();
   const ruleTokens = new Set(labelTokens(ruleText));
   const listCounts = facts.filter((f) => f.source === 'list').map((f) => f.value);
-  const derived = new Set([...listCounts, sum(listCounts)]);
+  for (const c of listCounts) known.add(c);
+  const derived = new Set([sum(listCounts)]);
   const errors = [];
   const warnings = [];
   items.forEach((item, index) => {
