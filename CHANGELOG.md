@@ -174,6 +174,9 @@ not per individual commit.
   `dom-inspection` and `socratic-elicitation`, which had none, gain one. `git-merge` now says
   the default branch instead of `mainline`, and long descriptions such as
   `historical-issues-registry` and `legacy-to-agentic-estimate` are shorter.
+- `k-product-manager`, `k-tpm` and `k-quality-assurance` prompts drop their hand-written
+  skill lists, whose old triggers contradicted the new descriptions. Each skill's description is
+  now the one place that says when to use it.
 
 ### Fixed
 
