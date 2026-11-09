@@ -98,3 +98,26 @@ test('killAllGroups stops a registered group', async () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('with stdioDir the child writes under the scratch root and the files move to their final paths on exit', async () => {
+  const root = tmp();
+  try {
+    const out = path.join(root, 'out'); const scratch = path.join(root, 'stdio');
+    fs.mkdirSync(out); fs.mkdirSync(scratch);
+    const marker = path.join(root, 'go');
+    const p = spawnWithTimeout('sh', ['-c', `echo hello; echo oops >&2; while [ ! -e ${marker} ]; do sleep 0.05; done`], {
+      cwd: root, env: { PATH: process.env.PATH }, timeoutMs: 20000,
+      stdoutPath: path.join(out, 'stream.jsonl'), stderrPath: path.join(out, 'stderr.txt'), stdioDir: scratch,
+    });
+    await waitFor(() => fs.existsSync(path.join(scratch, 'stream.jsonl')) && fs.readFileSync(path.join(scratch, 'stream.jsonl'), 'utf8').includes('hello'));
+    assert.equal(fs.existsSync(path.join(out, 'stream.jsonl')), false, 'nothing is written to the out dir while the child runs');
+    fs.writeFileSync(marker, '');
+    const r = await p;
+    assert.equal(r.exitCode, 0);
+    assert.equal(fs.readFileSync(path.join(out, 'stream.jsonl'), 'utf8'), 'hello\n');
+    assert.equal(fs.readFileSync(path.join(out, 'stderr.txt'), 'utf8'), 'oops\n');
+    assert.deepEqual(fs.readdirSync(scratch), [], 'the live files are moved, not copied');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

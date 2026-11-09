@@ -598,7 +598,10 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
   denied, except `~/Library` (system frameworks write caches and keychains there, but the dirs macOS runs
   code from, `LaunchAgents`, `Services`, `Scripts`, `QuickLook` and similar, stay denied) and the run's
   scratch root. The probe checks that scratch is writable, the home and temp dir are not, and a masked
-  file cannot be read. The same
+  file cannot be read. The child's `stream.jsonl` and `stderr.txt` are written under the scratch root
+  (`<run>/stdio/`) while it runs and moved into the out dir when it exits: the out dir is masked, and
+  sandbox-exec denies even `fstat` on a descriptor whose file sits under a masked path, which made
+  the v3 engine's node abort at startup. The same
   hidden paths and masks as above are denied for reading, writing and Unix-socket connects (a denied
   read fails with "Operation not permitted" instead of showing an empty directory), plus the kiro-cli
   auth database under `~/Library/Application Support/kiro-cli` and launchd's per-session sockets under

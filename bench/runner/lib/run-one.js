@@ -23,15 +23,41 @@ const { secretLiterals, scrubDeep } = require('./scrub.js');
 
 const SNAPSHOT_SKIP = new Set(['node_modules', '.git']);
 
+// rename() fails across filesystems (EXDEV); the scratch root and the out dir need not share one.
+function moveFile(src, dest) {
+  try {
+    fs.renameSync(src, dest);
+  } catch (e) {
+    if (e.code !== 'EXDEV') throw e;
+    fs.copyFileSync(src, dest);
+    fs.unlinkSync(src);
+  }
+}
+
+// Where the child's stdout and stderr files live while it runs. The out dir is masked from the
+// agent, and on macOS sandbox-exec denies even fstat on a descriptor whose file is under a masked
+// path; the v3 engine's node checks its stdio descriptors at startup and aborts on that failure.
+// With `stdioDir` (the run's scratch root, which the sandbox allows) the files are written there
+// and moved to their final paths when the child exits.
+function liveStdioPath(finalPath, stdioDir) {
+  return stdioDir ? path.join(stdioDir, path.basename(finalPath)) : finalPath;
+}
+
 // Spawns in its own process group so a timeout kills child tools too. The group is
 // registered so a runner interrupted by a signal can kill it.
-function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, stdinPath = null, creditLimit = null, creditPollMs = 1000, stop = null }) {
+function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPath, stdinPath = null, stdioDir = null, creditLimit = null, creditPollMs = 1000, stop = null }) {
   return new Promise((resolve) => {
-    const out = fs.openSync(stdoutPath, 'w');
-    const err = fs.openSync(stderrPath, 'w');
+    const liveOut = liveStdioPath(stdoutPath, stdioDir);
+    const liveErr = liveStdioPath(stderrPath, stdioDir);
+    const out = fs.openSync(liveOut, 'w');
+    const err = fs.openSync(liveErr, 'w');
     // A file as stdin ends at its last byte; a pipe left open would make some CLIs wait for more input.
     const input = stdinPath ? fs.openSync(stdinPath, 'r') : null;
-    const closeAll = () => { fs.closeSync(out); fs.closeSync(err); if (input !== null) fs.closeSync(input); };
+    const closeAll = () => {
+      fs.closeSync(out); fs.closeSync(err); if (input !== null) fs.closeSync(input);
+      if (liveOut !== stdoutPath) moveFile(liveOut, stdoutPath);
+      if (liveErr !== stderrPath) moveFile(liveErr, stderrPath);
+    };
     const started = Date.now();
     let timedOut = false;
     let limitHit = false;
@@ -50,12 +76,14 @@ function spawnWithTimeout(cmd, args, { cwd, env, timeoutMs, stdoutPath, stderrPa
     const finish = (result) => {
       if (child.pid) procs.untrackGroup(child.pid);
       clearInterval(watcher);
+      // Read the final credits before closeAll moves the live stream file.
+      const credits = meter ? meter.poll() : null;
       closeAll();
-      resolve({ ...result, credits: meter ? meter.poll() : null, creditLimitHit: limitHit, stopped });
+      resolve({ ...result, credits, creditLimitHit: limitHit, stopped });
     };
     // Kills the process group once the credits metered so far pass the limit, or the stop watcher has a decision.
     // The run is then recorded as censored.
-    const meter = creditLimit == null ? null : makeCreditMeter(stdoutPath);
+    const meter = creditLimit == null ? null : makeCreditMeter(liveOut);
     const watcher = meter || stop ? setInterval(() => {
       if (limitHit || stopped) return;
       if (stop) stopped = stop.poll();
@@ -195,7 +223,7 @@ function concatTurnFiles(outDir, base, name, turns) {
  * copy is still there). The task timeout is one budget for all turns. Every turn goes through the same isolation.
  * Fills `conv` as it goes; returns the combined exec record.
  */
-async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, conv, startedAt }) {
+async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir = null, conv, startedAt }) {
   const multi = Boolean(task.autonomy);
   const deadline = Date.now() + task.timeoutSec * 1000;
   const execs = [];
@@ -218,11 +246,12 @@ async function runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir
         fs.appendFileSync(path.join(outDir, 'command.txt'), `--- turn ${turn} (resumed) ---\n${cmd.display}\n`);
       }
       const w = iso.wrap(cmd.file, cmd.args);
-      const stopFile = path.join(outDir, streamFile(multi, turn));
-      const stop = ctx.stopOn || ctx.maxToolCalls ? makeStopWatcher(stopFile, { runtime: harness.id, stopOn: ctx.stopOn ?? 'end_turn', maxToolCalls: ctx.maxToolCalls ?? null }) : null;
+      const stdoutPath = path.join(outDir, streamFile(multi, turn));
+      // The stop watcher reads the stream while the child runs, so it follows the live file.
+      const stop = ctx.stopOn || ctx.maxToolCalls ? makeStopWatcher(liveStdioPath(stdoutPath, stdioDir), { runtime: harness.id, stopOn: ctx.stopOn ?? 'end_turn', maxToolCalls: ctx.maxToolCalls ?? null }) : null;
       const exec = await spawnWithTimeout(w.file, w.args, {
         cwd, env, timeoutMs: Math.max(1, remaining),
-        stdoutPath: path.join(outDir, streamFile(multi, turn)), stderrPath: path.join(outDir, stderrFile(multi, turn)),
+        stdoutPath, stderrPath: path.join(outDir, stderrFile(multi, turn)), stdioDir,
         creditLimit: ctx.runCreditLimit == null ? null : Math.max(0, ctx.runCreditLimit - spent), creditPollMs: ctx.creditPollMs, stop,
       });
       spent += exec.credits ?? 0;
@@ -309,6 +338,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
       const leaked = sandbox.findAnswerKey(cwd);
       if (leaked) throw new Error(`answer key present in the agent working directory: ${leaked}`);
       fs.mkdirSync(path.join(runRoot, 'tmp'), { recursive: true });
+      fs.mkdirSync(path.join(runRoot, 'stdio'), { recursive: true });
     } catch (e) {
       meta.infraError = e.message;
       result = errorResult({ ...base, message: `setup failed: ${e.message}`, meta });
@@ -322,7 +352,7 @@ async function executeRun({ arm, task, replicate, ctx, prepared, outDir, inFligh
         const env = harness.env({ arm, config, ctx, home, tmpdir });
         tripwire.start();
         meta.agentStarted = true;
-        exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, conv, startedAt: new Date().toISOString() });
+        exec = await runTurns({ harness, arm, task, config, ctx, cwd, env, iso, outDir, stdioDir: path.join(runRoot, 'stdio'), conv, startedAt: new Date().toISOString() });
       } catch (e) {
         meta.infraError = e.message;
         exec = { timedOut: false, exitCode: null, wallClockMs: null, error: e.message };
