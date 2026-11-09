@@ -95,8 +95,10 @@ def _spawn_grants(spec):
 
 def test_specialists_hold_no_spawn_grant():
     failures = []
-    for spec_path in sorted(AGENTS_DIR.glob("k-*.agent-spec.json")):
+    for spec_path in sorted(AGENTS_DIR.glob("*.agent-spec.json")):
         spec = json.loads(spec_path.read_text())
+        if spec["name"].startswith("konductor"):
+            continue
         failures.extend(f"{spec_path.name}: {grant}" for grant in _spawn_grants(spec))
 
     assert not failures, "specialists must not spawn agents:\n" + "\n".join(failures)
