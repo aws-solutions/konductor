@@ -190,7 +190,7 @@
       "input": [
         "Use the persistent-memory skill to save this fact: this project uses DynamoDB single-table design with PK=SERVICE# and SK=RESOURCE#."
       ],
-      "expectedOutput": "Agent invokes the persistent-memory skill, reads the current .konductor/memory/MEMORY.md file (or creates the directory if first write), prepares the full file content with the new timestamped entry, and pipes it through the memory-validator.sh script for atomic write.",
+      "expectedOutput": "Agent invokes the persistent-memory skill, reads the current .konductor/memory/MEMORY.md file (if present), prepares the full file content with the new timestamped entry tagged [origin:user], and pipes it through the memory-validator.sh script, which creates the directory and writes atomically. The agent does not run mkdir itself.",
       "expectedStrings": ["MEMORY.md"],
       "expectedTools": {
         "required": [],
