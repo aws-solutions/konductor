@@ -46,6 +46,7 @@ function buildRows(run, tasks, ctx) {
       isolation: r.isolation ?? null, comparable: resultComparable(r), modelNormalized: r.modelNormalized ?? null, sessionModel: r.sessionModel ?? null, streamModel: r.streamModel ?? null, model: r.model ?? null,
       commitSha: r.commitSha ?? null, contentHash: r.contentHash ?? null, dirty: r.dirty ?? null, armConfig: r.armConfig ?? null,
       armPrefix: r.armPrefix ? { sha256: r.armPrefix.sha256 ?? null, bytes: r.armPrefix.bytes ?? null } : null,
+      oracle: r.oracle ?? null,
       tripwire: (r.flags || []).includes('homeTripwire') || (r.flags || []).includes('homeTripwireTruncated'),
       // Only when the scoring file weights the pack, so a default row has exactly the fields it always had.
       ...(packScoreOf ? { pack: packScoreOf(e.armId, e.taskId, e.replicate) } : {}),

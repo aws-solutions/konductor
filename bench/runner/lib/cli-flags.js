@@ -10,7 +10,7 @@ const FLAGS = {
     'cargo-online', 'seed', 'isolate', 'allow-unisolated', 'allow-partial', 'censored-floor', 'hide', 'no-default-hide', 'env-keep', 'tripwire-exclude', 'tripwire-depth', 'tripwire-dir',
     'kiro-bin', 'bench-dir', 'repo-root', 'real-cache', 'prepare-only', 'aws-creds-file', 'aws-profile', 'opencode-bin', 'rg-bin', 'agent-engine',
     'extra-tasks', 'run-credit-limit', 'auth-db', 'arm-prefix', 'arm-agent', 'arm-config', 'stop-on', 'max-tool-calls', 'profile',
-    'claude-bin', 'claude-tools-dir', 'run-budget-usd', 'aws-region', 'gate-strict',
+    'oracle-skills', 'oracle-manifest', 'claude-bin', 'claude-tools-dir', 'run-budget-usd', 'aws-region', 'gate-strict',
   ],
   judge: [
     'run', 'judges', 'mode', 'baseline', 'concurrency', 'budget-credits', 'judge-cmd', 'max-file-chars', 'max-bundle-chars', 'redact-file',
@@ -21,6 +21,7 @@ const FLAGS = {
   trace: ['run', 'arm', 'task', 'rep', 'format', 'full', 'instructions', 'repo-root'],
   'refs-report': ['run', 'out'],
   'probe-report': ['run', 'out', 'scoring', 'arms-file', 'canary-token-file'],
+  'canary-report': ['run', 'out', 'layers-file'],
   report: ['run', 'baseline', 'out', 'bench-dir', 'extra-tasks', 'detail', 'format', 'scoring', 'profile', 'verdict', 'phases', 'test-arms', 'changed-skills', 'criteria-pack', 'allow-stale-pack'],
   'report-2x2': ['kiro-vanilla', 'kiro-konductor', 'cc-vanilla', 'cc-konductor', 'out', 'json', 'bench-dir', 'extra-tasks', 'scoring', 'criteria-pack'],
   compare: ['base', 'head', 'min-rel', 'rule', 'force', 'bench-dir'],

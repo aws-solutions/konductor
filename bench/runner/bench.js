@@ -32,7 +32,7 @@ const USAGE = `Usage:
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
        [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
        [--extra-tasks DIR,DIR] [--run-credit-limit X] [--auth-db FILE] [--arm-prefix name=FILE,...] [--arm-agent name=AGENT,...]
-       [--arm-config name=key.path=value[;key.path=value],...]
+       [--arm-config name=key.path=value[;key.path=value],...] [--oracle-skills [ARM,ARM]] [--oracle-manifest FILE]
        [--stop-on first-capability|first-load|end_turn] [--max-tool-calls N] [--profile quick|detailed]
        (--profile quick runs 1 to 3 replicates (default 2) and labels a result under 3 runs anecdotal. --profile detailed runs at least 5 replicates (default 5),
        adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
@@ -54,6 +54,11 @@ const USAGE = `Usage:
        and result.json record it). --stop-on kills the run at the first skills-server call, subagent call
        or end of turn (first-capability), or at the first get_skill, subagent call or end of turn (first-load); the run is flagged earlyStopped and
        has no metered credits (kiro-cli meters at the end of a turn), so its cost is unobserved. --max-tool-calls stops after that many tool calls whatever they are)
+       (--oracle-skills puts the SKILL.md bodies (frontmatter removed) of the skills a task is expected to use in a delimited block in front of its prompt, read from the arm's own
+       ref. With no value it applies to every konductor arm; with ARM,ARM only to those. Vanilla is refused, as is a task with no expected skills or a skill the ref does not have,
+       and nothing runs then. The expected skills come from --oracle-manifest FILE (default suites/rootcause.manifest.json, tasks[].entries[].expectedSkills for the arm's entry
+       agent, else all the task's entries). result.json records oracle {skills, entryMatched, bytes, sha256} and the report flags the arm ORACLE. Give an oracle arm its own
+       name (for example oracle=<sha>) and never pool it with normal runs; references/ files of a skill are not included)
        arms: vanilla, v1.0.0, v1.1.0, v1.2.0, main, name=<git ref>, name=dir:<path> (see list-arms for the syntax)
        opencode arms (oc-vanilla, oc-v1.2.0, oc-main; one harness per run):
        --aws-creds-file FILE [--aws-profile bench] [--budget-usd X] [--opencode-bin PATH] [--rg-bin PATH]

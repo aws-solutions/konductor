@@ -74,7 +74,8 @@ const identityOf = (a) => {
   if (!ref) return null;
   const cfg = a.armConfig ? `|${JSON.stringify(a.armConfig)}` : '';
   const pre = a.prefixInfo ? `|prefix:${a.prefixInfo.sha256}` : '';
-  return `${ref}${cfg}${pre}`;
+  const oracle = a.oracle ? '|oracle' : '';
+  return `${ref}${cfg}${pre}${oracle}`;
 };
 const unprefixed = (id) => id.replace(/^(oc|cc)-/, '');
 
