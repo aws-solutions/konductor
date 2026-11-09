@@ -1,6 +1,6 @@
 ---
 name: architecture-diagram-generation
-description: Generates AWS architecture diagrams as draw.io (diagrams.net) XML. Use when you need a visual diagram from a system design document. Produces single or multi-account diagrams with official AWS service icons and directional data flows.
+description: Generates AWS architecture diagrams as draw.io (diagrams.net) XML. Use when you need a visual diagram from a system design document. Draws single or multi-account layouts with official AWS icons and directional data flows.
 version: 1.0.0
 tags: [skill, architecture, diagram, drawio, aws]
 ---

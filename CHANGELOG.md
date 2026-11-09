@@ -56,6 +56,9 @@ not per individual commit.
 
 ### Changed
 
+- 44 skill descriptions are shorter, so the Claude Code skill listing for the bundled skills
+  plus built-ins fits its 30,000-character budget (about 28,500 characters, down from about
+  30,800). Every "Use ..." trigger sentence is kept.
 - `konductor` does the work itself, commits only when you ask, and spawns one fresh `k-*` reviewer per phase gate (next bullet);
   it spawns a specialist only for a tool, access, skill or SOP it lacks, for parallel work on disjoint files, or when an SOP says so;
   an SOP `konductor` does not declare is run by the specialist that declares it.

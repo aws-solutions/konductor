@@ -1,6 +1,6 @@
 ---
 name: cost-estimation
-description: 'Generates AWS cost estimates for architectures. Use when asked what an architecture will cost, to estimate a monthly AWS bill, or to check an existing estimate. Produces baseline, optimized, and high-availability cost scenarios from service configurations and expected load.'
+description: Generates AWS cost estimates for architectures. Use when asked what an architecture will cost, to estimate a monthly AWS bill, or to check an existing estimate. Gives baseline, optimized, and high-availability scenarios from service configs and expected load.
 version: 1.1.0
 tags: [skill, cost, aws, pricing, architecture, estimation]
 ---

@@ -1,6 +1,6 @@
 ---
 name: about-konductor
-description: Gets a new user from nothing to a working Konductor session — install the CLI, start the orchestrator, and describe real work in plain language. Covers the real `konductor` CLI command surface, example orchestrator prompts, and the agent/skill/SOP model. Use when a user asks "what is Konductor", "how do I install this", "what can I ask it", or "what's the difference between an agent, a skill, and a SOP".
+description: 'Gets a new user from nothing to a working Konductor session: install the CLI, start the orchestrator, and describe real work in plain language. Covers the `konductor` commands, example prompts, and the agent/skill/SOP model. Use when a user asks "what is Konductor", "how do I install this", "what can I ask it", or "what''s the difference between an agent, a skill, and a SOP".'
 version: 4.0.0
 tags: [skill, help, onboarding, model, cli, install]
 ---

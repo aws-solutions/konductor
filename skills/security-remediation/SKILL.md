@@ -1,6 +1,6 @@
 ---
 name: security-remediation
-description: Analyzes security findings and generates remediation plans with prioritized fixes. Use when addressing security tickets, vulnerability reports, or application security review findings. Produces remediation steps with effort estimates and risk context.
+description: Analyzes security findings and plans prioritized fixes. Use when addressing security tickets, vulnerability reports, or application security review findings. Gives remediation steps with effort estimates and risk context.
 version: 1.1.0
 tags: [skill, security, remediation, vulnerability, operations, aws]
 ---

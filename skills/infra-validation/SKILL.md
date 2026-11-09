@@ -1,6 +1,6 @@
 ---
 name: infra-validation
-description: Validates AWS CDK and CloudFormation infrastructure code against AWS best practices, security standards, and Well-Architected principles. Use before deploying infrastructure changes. Detects security vulnerabilities, cost issues, and compliance gaps.
+description: Validates AWS CDK and CloudFormation code against AWS best practices and Well-Architected principles. Use before deploying infrastructure changes. Flags security vulnerabilities, cost issues, and compliance gaps.
 version: 1.1.0
 tags: [skill, infrastructure, cdk, cloudformation, validation, security, aws]
 ---

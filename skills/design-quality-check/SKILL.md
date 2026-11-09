@@ -1,6 +1,6 @@
 ---
 name: design-quality-check
-description: 'Scores a design document for writing quality, structural completeness, and KISS/YAGNI compliance. Use when asked whether a design doc is ready for review, to check it for filler or hedging, or to score its structure and KISS/YAGNI fit. Detects slop (filler phrases, hedge words, unsupported claims, passive-voice overuse, circular reasoning) and flags complexity violations. Trigger phrases: "check doc quality", "slop detection", "quality gate before design review", "is this doc ready".'
+description: 'Scores a design document for writing quality, structural completeness, and KISS/YAGNI compliance, flagging filler, hedging, unsupported claims, and needless complexity. Use when asked whether a design doc is ready for review, to check it for filler or hedging, or to score its structure and KISS/YAGNI fit. Trigger phrases: "check doc quality", "slop detection", "is this doc ready".'
 version: 1.0.0
 tags: [skill, design, quality, slop-detection, completeness, clarity, checker]
 ---

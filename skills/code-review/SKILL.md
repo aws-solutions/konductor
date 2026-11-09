@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Use to review a folder, repo, diff or PR for bugs and error handling, even with no git history; adversarial or security passes go to adversarial-code-review. Also use when creating or submitting a pull request, addressing PR feedback, or running a post-implementation review of local changes. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
+description: Use to review a folder, repo, diff or PR for bugs and error handling, even with no git history; adversarial or security passes go to adversarial-code-review. Also use when creating or submitting a pull request, addressing PR feedback, or running a post-implementation review of local changes. Uses git and `gh`; findings are CRITICAL/IMPORTANT/SUGGESTION.
 version: 1.4.0
 tags: [skill, code-review, pr, git, workflow, humanize-writing]
 ---

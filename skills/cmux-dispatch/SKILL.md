@@ -1,6 +1,6 @@
 ---
 name: cmux-dispatch
-description: Delegate tasks to parallel agent sessions via cmux. Use when cmux is running and the work should be visible in its own pane, or to delegate to a specific agent. Claude Code panes skip permission prompts. Handles surface creation, readiness polling, prompt delivery, and completion notification.
+description: Delegates tasks to parallel agent sessions via cmux. Use when cmux is running and the work should be visible in its own pane, or to delegate to a specific agent. Claude Code panes skip permission prompts. Handles pane creation, readiness polling, prompt delivery, and completion notice.
 ---
 
 # cmux Dispatch

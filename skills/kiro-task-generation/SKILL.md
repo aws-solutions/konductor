@@ -1,6 +1,6 @@
 ---
 name: kiro-task-generation
-description: Generates Kiro IDE tasks.md from requirements.md and design.md. Use when turning an approved requirements.md plus design.md into a Kiro tasks.md, spec step 3, after kiro-design-generation and before implementation. Produces a numbered checkbox task list with requirement references for spec-driven development.
+description: 'Generates a Kiro IDE tasks.md: a numbered checkbox task list with requirement references. Use when turning an approved requirements.md plus design.md into a Kiro tasks.md, spec step 3, after kiro-design-generation and before implementation.'
 version: 1.1.0
 tags: [skill, kiro, specs, tasks, implementation-plan, spec-driven-development]
 ---

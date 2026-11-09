@@ -1,6 +1,6 @@
 ---
 name: mux-dispatch
-description: Delegate tasks to parallel agent sessions via tmux or zellij. Auto-detects the active multiplexer from environment variables. Use when tmux or zellij is running and the work should be visible in its own pane, or to delegate to a specific agent. Claude Code panes skip permission prompts.
+description: Delegates tasks to parallel agent sessions via tmux or zellij, detecting which is active. Use when tmux or zellij is running and the work should be visible in its own pane, or to delegate to a specific agent. Claude Code panes skip permission prompts.
 ---
 
 # mux Dispatch

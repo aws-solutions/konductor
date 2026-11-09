@@ -1,7 +1,7 @@
 ---
 name: dom-inspection
 version: 1.1.0
-description: 'Extracts structured field-level metadata from web forms using the browser DOM and HTML5 Constraint Validation API. Use when a functional test or discovery report needs a form''s validation rules, error selectors or conditional fields from the live DOM. Produces a per-field inspection report capturing validation rules, error message selectors, and conditional visibility.'
+description: Extracts field-level metadata from web forms using the browser DOM and the HTML5 Constraint Validation API. Use when a functional test or discovery report needs a form's validation rules, error selectors or conditional fields from the live DOM. Produces a per-field inspection report.
 tags: [dom, forms, validation, testing, browser, html5, constraint-validation]
 ---
 
