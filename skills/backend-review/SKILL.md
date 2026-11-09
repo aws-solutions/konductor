@@ -73,13 +73,13 @@ If the codebase uses a facade, factory or repository layering, check the change 
 
 **CRITICAL (blocks approval):**
 
+- Direct database call that bypasses a repository layer the codebase already uses
 - Race condition risk (non-atomic multi-item update without transaction)
 - Missing null check before non-null assertion that will throw at runtime
 - Test passes only due to test order dependency
 
 **IMPORTANT (should fix):**
 
-- Direct database call that bypasses a repository layer the codebase already uses
 - `any` type in production code
 - Extra query when write return value could be used
 - Catch-all error handler masking specific errors
