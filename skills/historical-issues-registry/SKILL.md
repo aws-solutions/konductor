@@ -50,7 +50,7 @@ For each new candidate finding produced by the review passes:
 5. If a match exists AND its historical state is `unresolved` and the finding is still present, **surface** the new finding but tag it — reviewers should see it did not get addressed, not treated as new noise. Use the matched fingerprint's `revision` field to produce "carried over from revision {revision}"; if that field is `null` (the host platform recorded no revision), use the unqualified "carried over from a prior revision" instead — never invent a revision number.
 6. If no match exists, pass through unchanged.
 
-Open `references/multi-match-precedence.md` (relative to this file) when a candidate matches two or more historical threads, and resolve that before applying steps 3-6. It also holds the rule that `resolution` keeps exactly four values and `blocking` stays a separate field.
+Open `references/multi-match-precedence.md` (relative to this file) when a candidate matches two or more historical fingerprints (including several with the same `thread_id`), and resolve that before applying steps 3-6. It also holds the rule that `resolution` keeps exactly four values and `blocking` stays a separate field.
 
 Return the filtered finding list plus the suppression log.
 
