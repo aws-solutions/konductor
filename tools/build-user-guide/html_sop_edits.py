@@ -1154,7 +1154,7 @@ SOP_EDITS += [
      "cannot reach the architect there: no specialist has an Agent(...) tool."),
     ("use-case: kiro spawn claim",
      "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI v3</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool; only konductor does. In Kiro CLI v2, <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">@builtin</code> still carries it, and only the core rules stop the spawn.",
-     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool; only konductor does."),
+     "In <strong style=\"color:var(--tx);font-weight:600\">Kiro CLI</strong>, no specialist has the <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code> tool. Only konductor declares <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">subagent</code>; the mux orchestrators dispatch through shell and reach it only through <code style=\"font-family:'JetBrains Mono',monospace;font-size:.9em;color:var(--tx)\">@builtin</code>."),
     ("roster row: architect delegation",
      "Can delegate to developer and QA in both runtimes.",
      "Delegates to nothing; it returns to its caller."),

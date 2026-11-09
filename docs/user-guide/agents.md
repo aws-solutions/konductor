@@ -408,7 +408,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | Difference | Kiro CLI | Claude Code |
 | --- | --- | --- |
 | Agent name | `konductor` | `konductor` |
-| Cross-agent delegation | only `konductor` has `subagent`; the mux orchestrators use shell. Synth also keeps the built-in spawn tools out of specialists (`excludedTools` on v3, an explicit built-in list on v2) | only `konductor` holds `Agent(...)` |
+| Cross-agent delegation | only `konductor` declares `subagent`; the mux orchestrators dispatch through shell and reach it only through `@builtin`. Synth also keeps the built-in spawn tools out of specialists (`excludedTools` on v3, an explicit built-in list on v2) | only `konductor` holds `Agent(...)` |
 | MCP servers | declared and launched from `dependencies.mcpRegistry` | requested via tool globs (`mcp__aws-mcp__*`); you configure the server yourself |
 | Tool naming | `fs_read`, `fs_write`, `shell` | `Read`, `Write`, `Edit`, `Bash` |
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |

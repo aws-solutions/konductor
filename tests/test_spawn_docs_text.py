@@ -41,6 +41,20 @@ def test_bundle_states_any_runtime():
     assert "cannot run the adversarial review in any runtime" in _read("docs/site/user-guide.html")
 
 
+def test_docs_say_konductor_declares_subagent_not_has_it():
+    """On Kiro CLI v2 the mux orchestrators keep `@builtin`, which carries `subagent`,
+    so only `konductor` declares the tool; "has" would claim more than the config does."""
+    for rel in ("docs/user-guide/agents.md", "docs/user-guide/use-cases/review-code-and-tests.md"):
+        text = _read(rel)
+        assert "declares `subagent`" in text, rel
+        assert "reach it only through `@builtin`" in text, rel
+        assert "has `subagent`" not in text, rel
+    for rel in ("docs/site/user-guide.html", "docs/index.html"):
+        page = re.sub(r"<code[^>]*>|</code>", "", _read(rel))
+        assert "Only konductor declares subagent" in page, rel
+        assert "only konductor does." not in page, rel
+
+
 def test_docs_name_the_checked_kiro_versions():
     versions = checked_kiro_versions()
     assert versions == ["2.36.0", "3.0.0"]
