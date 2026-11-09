@@ -1,0 +1,365 @@
+{
+  "skill": "test-coverage-analysis",
+  "panel": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "thresholds": {
+    "minWorth": 2,
+    "maxStyle": 1
+  },
+  "results": [
+    {
+      "id": "R01",
+      "text": "When analyzing test coverage, the answer must first determine the application architecture type (frontend, backend, serverless, microservices, or full-stack) and recommend an appropriate testing model (pyramid, trophy, hybrid, or microservices).",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Architecture and testing-model identification meaningfully contextualize coverage assessment and ensure recommendations match the payments system's structure."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Architecture-specific coverage analysis improves test strategy recommendations."
+        },
+        {
+          "judge": "glm-5",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Determining architecture type is unnecessary for basic test coverage analysis."
+        }
+      ],
+      "worthCount": 2,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [
+        "split on worth (2 of 3)"
+      ],
+      "ownerDecision": null,
+      "survives": true
+    },
+    {
+      "id": "R02",
+      "text": "When reporting test distribution, the answer must use test case counts from running the test suite, not file counts, because a single test file may contain 10-50 test cases.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It prevents materially misleading answers by distinguishing executed test cases from test-file counts."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Test case counts are more accurate than file counts for distribution."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "File counts can be misleading; test case counts are more accurate."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "survives": true
+    },
+    {
+      "id": "R03",
+      "text": "When analyzing test distribution, the answer must compare the current distribution against the recommended model and report alignment status as Aligned (within ±10%), Misaligned (±10% to ±25%), or Severely Misaligned (>±25%).",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It requires explicit quantitative comparison and categorical assessment, adding substantive evaluation beyond typical answers."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Adds specific quantitative criteria not standard in default answers."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Provides specific quantitative thresholds and terminology that improve consistency and clarity."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "survives": true
+    },
+    {
+      "id": "R04",
+      "text": "When identifying test gaps, the answer must categorize each gap as Critical (must fix), Warning (should fix), or Manual Testing Required.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Categorizing test gaps by urgency makes recommendations more actionable and adds substantive prioritization beyond mere formatting."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Adds structured prioritization, improving actionability."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Categorizing gaps by severity helps prioritize testing efforts effectively."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "survives": true
+    },
+    {
+      "id": "R05",
+      "text": "When analyzing non-functional requirements, the answer must map each NFR category to the appropriate test type (e.g., Performance NFRs to load tests, Security NFRs to security tests, Reliability NFRs to failure injection tests).",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It requires substantive mapping from each NFR category to appropriate testing evidence, improving coverage analysis beyond a generic yes-or-no response."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Explicit mapping improves clarity and completeness of test coverage analysis."
+        },
+        {
+          "judge": "glm-5",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Competent assistants already map NFRs to appropriate test types by default."
+        }
+      ],
+      "worthCount": 2,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [
+        "split on worth (2 of 3)"
+      ],
+      "ownerDecision": null,
+      "survives": true
+    },
+    {
+      "id": "R06",
+      "text": "When evaluating release readiness, the answer must apply coverage thresholds based on the testing philosophy (e.g., for Frontend Trophy model: critical user flows require 100% integration test coverage).",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It adds substantive, philosophy-specific coverage criteria to release-readiness evaluations, beyond generic testing advice."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Specifies concrete coverage thresholds, not default for all assistants."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Applies specific coverage thresholds based on testing philosophy, improving answer quality and relevance."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "survives": true
+    },
+    {
+      "id": "R07",
+      "text": "When detecting anti-patterns in tests, the answer must flag tests that test implementation details instead of behavior, especially in frontend applications.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It adds a concrete, important testing-quality criterion, especially relevant to frontend tests, beyond generic test assessment."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Highlights a common testing pitfall, improving answer quality."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Flagging implementation-detail testing is substantive advice that improves test quality."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "survives": true
+    },
+    {
+      "id": "R08",
+      "text": "When calculating test coverage percentages, the answer must use the formula (covered_items / total_items) * 100 for acceptance criteria coverage, test plan coverage, and feature coverage.",
+      "tag": "generic",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "The formula is standard practice for coverage calculations, so it adds little beyond what a competent assistant already does."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Competent assistant already calculates percentages correctly."
+        },
+        {
+          "judge": "glm-5",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "This is standard formula definition; competent assistants already calculate coverage correctly."
+        }
+      ],
+      "worthCount": 0,
+      "styleCount": 0,
+      "keep": false,
+      "flags": [],
+      "ownerDecision": null,
+      "survives": false
+    },
+    {
+      "id": "R09",
+      "text": "When presenting findings, the answer must organize them in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+      "tag": "style",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": true,
+          "reason": "Prioritizing severity helps readers address urgent coverage risks first; it changes presentation, not the findings themselves."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Prioritizes by severity, aiding decision-making."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Ordering by severity helps user prioritize fixes and understand impact."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 1,
+      "keep": true,
+      "flags": [
+        "style (1 vote)",
+        "extractor tagged style"
+      ],
+      "ownerDecision": null,
+      "survives": true
+    },
+    {
+      "id": "R10",
+      "text": "When reporting coverage status, the answer must use visual indicators consistently: ✅ for Covered/Pass, ❌ for Missing/Fail, ⚠️ for Partial/Warning, and 🔍 for Manual Required.",
+      "tag": "style",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": true,
+          "reason": "Consistent status icons make coverage reports easier to scan without changing their substantive content."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Standardizes status communication for clarity and consistency."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": true,
+          "reason": "Visual indicators improve readability and are formatting choices, not content changes."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 2,
+      "keep": false,
+      "flags": [
+        "style (2 votes)",
+        "extractor tagged style"
+      ],
+      "ownerDecision": null,
+      "survives": false
+    },
+    {
+      "id": "R11",
+      "text": "When assessing release readiness, the answer must report the status as Ready (all gates passed), At Risk (minor gaps), or Not Ready (critical gaps or failing tests).",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "A standardized readiness status makes deployment assessments clearer and more actionable; it requires substantive classification, not merely presentation changes."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Standardizes assessment categories, improving clarity and actionability."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Ensures clear, actionable status reporting for critical deployment decisions."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "survives": true
+    }
+  ]
+}

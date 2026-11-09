@@ -1,0 +1,102 @@
+{
+  "skill": "test-coverage-analysis",
+  "suite": "skilleval-test-coverage-analysis",
+  "natural": {
+    "se-test-coverage-analysis-r01": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R02"
+      ]
+    },
+    "se-test-coverage-analysis-r02": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R03"
+      ]
+    },
+    "se-test-coverage-analysis-r03": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R04"
+      ]
+    },
+    "se-test-coverage-analysis-r04": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R07"
+      ]
+    },
+    "se-test-coverage-analysis-b01": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-test-coverage-analysis-b02": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-test-coverage-analysis-b03": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-test-coverage-analysis-n01": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-test-coverage-analysis-n02": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-test-coverage-analysis-n03": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-test-coverage-analysis-n04": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-test-coverage-analysis-r05": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R01"
+      ]
+    },
+    "se-test-coverage-analysis-r06": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R05"
+      ]
+    },
+    "se-test-coverage-analysis-r07": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R06"
+      ]
+    },
+    "se-test-coverage-analysis-r08": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R09"
+      ]
+    },
+    "se-test-coverage-analysis-b04": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    }
+  }
+}

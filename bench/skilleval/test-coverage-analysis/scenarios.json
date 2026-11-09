@@ -1,0 +1,270 @@
+{
+  "skill": "test-coverage-analysis",
+  "model": "glm-5",
+  "max": 20,
+  "quota": {
+    "rule": 10,
+    "blind": 6,
+    "near-miss": 4
+  },
+  "domain": "software testing and quality assurance",
+  "count": 16,
+  "scenarios": [
+    {
+      "id": "r01",
+      "type": "rule",
+      "ruleIds": [
+        "R02"
+      ],
+      "title": "Count tests for user authentication",
+      "prompt": "I need to understand how many tests we have for the user authentication feature. Our test suite has these files: auth.unit.test.js with testLogin, testLogout, testPasswordReset, testTokenRefresh, testSessionExpiry, testInvalidCredentials, testAccountLockout; auth.integration.test.js with testLoginAPI, testLogoutAPI, testOAuthFlow, test2FASetup, test2FAVerification; auth.e2e.test.js with testFullLoginFlow, testPasswordRecoveryFlow. How many tests do we have total and by type?"
+    },
+    {
+      "id": "r02",
+      "type": "rule",
+      "ruleIds": [
+        "R03"
+      ],
+      "title": "Test distribution alignment check",
+      "prompt": "Our team has been following the testing pyramid model. We just ran our test suite and got: 45 unit tests, 25 integration tests, and 30 end-to-end tests. The total is 100 tests. Does this distribution follow best practices for the testing pyramid, or should we adjust our approach?"
+    },
+    {
+      "id": "r03",
+      "type": "rule",
+      "ruleIds": [
+        "R04"
+      ],
+      "title": "Missing tests for shopping cart",
+      "prompt": "I'm worried we have gaps in our shopping cart testing. The cart should: add/remove items, update quantities, calculate totals with tax, apply discount codes, handle out-of-stock items, persist across sessions, and sync with inventory. We test adding items and calculating totals. What tests are we missing and how should we prioritize filling those gaps?"
+    },
+    {
+      "id": "r04",
+      "type": "rule",
+      "ruleIds": [
+        "R07"
+      ],
+      "title": "Reviewing test quality for anti-patterns",
+      "prompt": "I wrote this test for my React component and want to know if it's good quality:\n\ntest('button click works', () => {\n  const wrapper = shallow(<MyButton />);\n  wrapper.find('button').simulate('click');\n  expect(wrapper.find('button').prop('disabled')).toBe(true);\n});\n\nThe button should disable itself after clicking. Is this a well-written test?"
+    },
+    {
+      "id": "b01",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Checking unit test completeness",
+      "prompt": "I just finished implementing a user authentication module with login, logout, and password reset features. I wrote unit tests for the login flow but I'm not sure if I've covered all the important edge cases. Can you review what I have and tell me what scenarios I might be missing? Here are my test cases: valid credentials, invalid username, invalid password, empty fields, and SQL injection attempt."
+    },
+    {
+      "id": "b02",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "E2E test scenario identification",
+      "prompt": "I'm building an e-commerce checkout flow and need to figure out what end-to-end tests to write. The flow includes: adding items to cart, entering shipping address, selecting shipping method, payment, and order confirmation. I already have happy path tests. What other E2E scenarios should I consider testing?"
+    },
+    {
+      "id": "b03",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Release readiness validation request",
+      "prompt": "We've completed development on our customer dashboard feature and want to validate that we're ready to ship. The feature includes data visualization, export functionality, and customizable widgets. We've done manual testing and have automated tests, but I want to make sure we haven't missed anything critical. What should we verify before giving the green light for deployment?"
+    },
+    {
+      "id": "n01",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Explain test coverage metrics",
+      "prompt": "I keep seeing coverage reports show 80% line coverage but we still have bugs in production. Can you explain what line coverage actually measures and what its limitations are? I want to understand why high coverage doesn't guarantee bug-free code."
+    },
+    {
+      "id": "n02",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Fix failing unit test",
+      "prompt": "This unit test keeps failing and I can't figure out why. Here's the test: expect(calculateDiscount(100, 'PREMIUM')).toBe(20). The function should return 20 for a premium customer with 100 dollar purchase, but it returns 0. Here's the function: function calculateDiscount(amount, tier) { if (tier === 'premium') return amount * 0.2; return 0; }. What's wrong?"
+    },
+    {
+      "id": "n03",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Compare testing approaches",
+      "prompt": "Our team is debating whether to focus more on unit tests or integration tests for our microservices. We have limited time and resources. What are the trade-offs between these two testing levels? I need arguments for both sides so we can make an informed decision."
+    },
+    {
+      "id": "n04",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Debug test environment issue",
+      "prompt": "My tests pass locally but fail in CI with a timeout error. The test suite has 50 tests and each one takes about 2 seconds. The CI timeout is set to 60 seconds. I'm using Jest with the default configuration. What could cause this discrepancy between local and CI environments?"
+    },
+    {
+      "id": "r05",
+      "type": "rule",
+      "ruleIds": [
+        "R01"
+      ],
+      "title": "Payments module test coverage assessment",
+      "prompt": "I'm working on a payments processing module for our e-commerce platform. The module handles payment gateway integration, transaction processing, and payment confirmation callbacks. We have unit tests for the transaction logic, some integration tests for the gateway API calls, and a few end-to-end tests for the complete checkout flow. The requirements include supporting multiple payment methods (credit cards, PayPal, digital wallets), handling payment failures gracefully, and ensuring transaction idempotency. Can you review whether our current test approach adequately covers these requirements?"
+    },
+    {
+      "id": "r06",
+      "type": "rule",
+      "ruleIds": [
+        "R05"
+      ],
+      "title": "Performance and security test coverage",
+      "prompt": "Our application requirements specify that the API must handle 5000 concurrent users with response times under 200ms, all endpoints must be protected against SQL injection and XSS attacks, and the system must maintain 99.9% uptime with automatic failover. We currently have unit tests for business logic and some integration tests for API endpoints. We're not sure if we need additional tests. Can you help us understand if our testing covers these requirements properly?"
+    },
+    {
+      "id": "r07",
+      "type": "rule",
+      "ruleIds": [
+        "R06"
+      ],
+      "title": "Production release readiness check",
+      "prompt": "We're planning to release our React-based customer portal to production tomorrow. Our test results show: 85% unit test coverage, 70% integration test coverage, critical user flows (login, search, checkout) have 95% end-to-end test coverage, and all smoke tests pass. We follow the testing trophy model for frontend applications. Should we proceed with the release or do we need to address any gaps?"
+    },
+    {
+      "id": "r08",
+      "type": "rule",
+      "ruleIds": [
+        "R09"
+      ],
+      "title": "Test coverage issues summary",
+      "prompt": "I just ran a coverage analysis on our authentication service and found several issues: some error handling paths have no tests, the password reset flow only has happy path tests, two API endpoints are missing integration tests entirely, test naming could be more descriptive, and the OAuth callback handler has no tests. Can you summarize these findings for my team?"
+    },
+    {
+      "id": "b04",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Finding untested edge cases",
+      "prompt": "I just finished implementing a user authentication module with login, logout, password reset, and session timeout features. My team wrote tests for the happy paths but I'm worried about edge cases. We have unit tests for valid credentials, integration tests for database connections, and one E2E test for the login flow. What test scenarios should we add to feel confident about edge cases and error handling?"
+    }
+  ],
+  "rejected": [
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R01"
+      ],
+      "title": "Payments module test coverage analysis",
+      "prompt": "I'm reviewing the test coverage for our payments processing module. The module handles credit card transactions, payment validation, and integrates with Stripe and PayPal APIs. We have unit tests for validation logic, integration tests for API calls, and some end-to-end tests for the checkout flow. Can you analyze whether our tests adequately cover the requirements and suggest any improvements?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: test coverage analysis"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R05"
+      ],
+      "title": "Non-functional requirements test coverage",
+      "prompt": "Our product requirements document lists these NFRs: page load under 2 seconds, handle 1000 concurrent users, protect against SQL injection and XSS, 99.9% uptime, encrypt data at rest and in transit, and recover from server failures within 30 seconds. We have unit tests and integration tests for functionality. Do we have adequate test coverage for these non-functional requirements?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: non-functional requirements"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R06"
+      ],
+      "title": "Evaluating release readiness with coverage thresholds",
+      "prompt": "I'm working on a frontend application and we follow the Frontend Trophy testing model. Our test coverage report shows: Login flow has 85% integration test coverage, Checkout flow has 92% integration test coverage, and Search flow has 100% integration test coverage. All unit tests are passing. Can you tell me if we're ready to release to production?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: coverage thresholds"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R09"
+      ],
+      "title": "Summarizing test coverage issues",
+      "prompt": "Here's our test coverage report. Can you summarize the issues?\n\n- Login page: 45% coverage (missing error handling tests)\n- Dashboard: 78% coverage (missing edge case tests)\n- Payment flow: 0% coverage (no tests written)\n- Settings page: 92% coverage (minor gaps in validation)\n- User profile: 65% coverage (missing accessibility tests)",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: accessibility tests"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R11"
+      ],
+      "title": "Assessing deployment readiness status",
+      "prompt": "We're planning to deploy our e-commerce application to production tomorrow. Here's our current status: All unit tests pass (342/342), 2 integration tests are failing (checkout payment processing and order confirmation email), code coverage is at 87%, and our performance tests show response times within acceptable limits. Should we proceed with the deployment?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: performance tests, readiness status",
+        "asks for a side effect"
+      ]
+    },
+    {
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Integration test gap analysis",
+      "prompt": "Our team built a payment processing system that connects to three external APIs: Stripe, PayPal, and our internal ledger. We have integration tests for successful payments through each provider, but I'm worried we haven't tested enough failure scenarios. What integration test gaps should we address before our release next week?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: gap analysis"
+      ]
+    },
+    {
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Pre-release test coverage review",
+      "prompt": "We're planning to deploy our inventory management system to production on Friday. The system handles stock updates, reorder alerts, and supplier management. I need to understand if our current test suite is sufficient for a safe release. We have 45 unit tests, 12 integration tests, and 5 end-to-end tests. Does this seem adequate, and what areas might we be overlooking?",
+      "round": 0,
+      "reasons": [
+        "asks for a side effect"
+      ]
+    },
+    {
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Assessing test coverage for microservice",
+      "prompt": "My notification microservice sends emails, SMS, and push notifications. It also handles retry logic and tracks delivery status. I've been adding tests as I go, but now I need a systematic look at what's covered and what isn't. Can you help me identify any major testing blind spots in this service?",
+      "round": 0,
+      "reasons": [
+        "asks for a side effect"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R11"
+      ],
+      "title": "Production deployment readiness",
+      "prompt": "Our CI/CD pipeline just finished running all tests for the user service microservice. Here are the results: 92% unit test coverage (threshold is 80%), 75% integration test coverage (threshold is 70%), all 15 critical user journey tests pass, 2 out of 8 performance tests fail (showing 20% slower response times than required), and the security scan found 1 medium vulnerability in a dependency. We're supposed to deploy this to production today. Is this service ready for deployment?",
+      "round": 1,
+      "reasons": [
+        "skill vocabulary: performance tests",
+        "asks for a side effect"
+      ]
+    },
+    {
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Pre-release coverage gap analysis",
+      "prompt": "We're getting ready to ship version 2.4 of our payment processing service next week. I want to make sure we haven't missed any important test cases. We have 47 unit tests covering the core calculation logic, 12 integration tests for the API endpoints, and 5 E2E tests for the main user flows. Can you analyze this and tell me what scenarios we might be missing before we release?",
+      "round": 1,
+      "reasons": [
+        "skill vocabulary: gap analysis"
+      ]
+    },
+    {
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Deployment readiness assessment",
+      "prompt": "Our e-commerce checkout feature has been in development for three months and management wants to deploy it to production on Friday. We've got decent test coverage: 89 unit tests, 23 integration tests, and 8 E2E tests covering cart management, payment processing, and order confirmation. Before we sign off on the deployment, can you review our testing approach and identify any critical gaps or scenarios we should address?",
+      "round": 1,
+      "reasons": [
+        "skill vocabulary: critical gaps",
+        "asks for a side effect"
+      ]
+    }
+  ],
+  "stoplistSize": 194
+}

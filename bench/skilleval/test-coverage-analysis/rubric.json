@@ -1,0 +1,965 @@
+{
+  "model": "glm-5",
+  "weights": {
+    "value": 3,
+    "guard": 2,
+    "format": 1
+  },
+  "rubrics": [
+    {
+      "scenarioId": "r01",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must report the total test count as 16 tests (7 unit, 5 integration, and 4 e2e) based on the test cases provided, not the file count of 3.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model (e.g., pyramid, trophy) to compare against the current distribution.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must compare the current test distribution against the recommended model and report the alignment status as Aligned, Misaligned, or Severely Misaligned.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim to have run the test suite or obtained counts from execution, as the counts must come from the test case names provided in the request.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must present findings in order starting with CRITICAL issues, then IMPORTANT issues, then SUGGESTIONs.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must report the total test count as 16 tests (7 unit, 5 integration, and 4 e2e) based on the test cases provided, not the file count of 3.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model (e.g., pyramid, trophy) to compare against the current distribution.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must compare the current test distribution against the recommended model and report the alignment status as Aligned, Misaligned, or Severely Misaligned.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not claim to have run the test suite or obtained counts from execution, as the counts must come from the test case names provided in the request.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must present findings in order starting with CRITICAL issues, then IMPORTANT issues, then SUGGESTIONs.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "r02",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must determine the application architecture type before recommending a testing model, as required by R01.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must compare the current test distribution (45% unit, 25% integration, 30% E2E) against the recommended model and report alignment status as Aligned, Misaligned, or Severely Misaligned.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must identify test gaps and categorize each gap as Critical, Warning, or Manual Testing Required.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim the distribution follows the testing pyramid best practices, since 30% end-to-end tests is a significant inversion of the pyramid model.",
+          "ruleId": null
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must organize findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must determine the application architecture type before recommending a testing model, as required by R01.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must compare the current test distribution (45% unit, 25% integration, 30% E2E) against the recommended model and report alignment status as Aligned, Misaligned, or Severely Misaligned.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must identify test gaps and categorize each gap as Critical, Warning, or Manual Testing Required.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not claim the distribution follows the testing pyramid best practices, since 30% end-to-end tests is a significant inversion of the pyramid model.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must organize findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "r03",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must identify the missing test coverage for remove items, update quantities, apply discount codes, handle out-of-stock items, persist across sessions, and sync with inventory.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must categorize each identified test gap as Critical, Warning, or Manual Testing Required.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must first determine the application architecture type and recommend an appropriate testing model such as the pyramid, trophy, hybrid, or microservices model.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim to report test distribution percentages or alignment status without access to actual test case counts from running the test suite.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must present findings in order with CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must identify the missing test coverage for remove items, update quantities, apply discount codes, handle out-of-stock items, persist across sessions, and sync with inventory.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must categorize each identified test gap as Critical, Warning, or Manual Testing Required.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must first determine the application architecture type and recommend an appropriate testing model such as the pyramid, trophy, hybrid, or microservices model.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not claim to report test distribution percentages or alignment status without access to actual test case counts from running the test suite.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must present findings in order with CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "r04",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer identifies that the test tests implementation details (the disabled prop) instead of user-facing behavior (what the user sees or experiences).",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer determines this is a frontend application and recommends the appropriate testing model (Trophy model for frontend).",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer suggests using a testing library that focuses on user behavior (like React Testing Library) instead of Enzyme's shallow rendering.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim the test is well-written or high quality since it tests implementation details rather than behavior.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer organizes findings with CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONS.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer identifies that the test tests implementation details (the disabled prop) instead of user-facing behavior (what the user sees or experiences).",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer determines this is a frontend application and recommends the appropriate testing model (Trophy model for frontend).",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer suggests using a testing library that focuses on user behavior (like React Testing Library) instead of Enzyme's shallow rendering.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not claim the test is well-written or high quality since it tests implementation details rather than behavior.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer organizes findings with CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONS.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "b01",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must identify and categorize missing test scenarios such as account lockout, expired passwords, or concurrent sessions as Critical, Warning, or Manual Testing Required per R04.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model like the pyramid or trophy model per R01.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must map security-related non-functional requirements to appropriate test types such as security tests or penetration testing per R05.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not report test distribution alignment status using percentages because the user has not provided test case counts from a running test suite per R02 and R03.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must organize its findings in order with critical issues first, then important issues, and then suggestions per R09.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must identify and categorize missing test scenarios such as account lockout, expired passwords, or concurrent sessions as Critical, Warning, or Manual Testing Required per R04.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model like the pyramid or trophy model per R01.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must map security-related non-functional requirements to appropriate test types such as security tests or penetration testing per R05.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not report test distribution alignment status using percentages because the user has not provided test case counts from a running test suite per R02 and R03.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must organize its findings in order with critical issues first, then important issues, and then suggestions per R09.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "b02",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend testing negative scenarios such as invalid payment details, out-of-stock items, or session timeouts.",
+          "ruleId": null
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must suggest testing edge cases like empty cart checkout, extreme quantities, or invalid address formats.",
+          "ruleId": null
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must include tests for user experience variations such as different payment methods, guest vs registered user, or mobile vs desktop flows.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend test types outside of E2E testing such as unit tests for individual React components or API integration tests.",
+          "ruleId": null
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must organize test scenarios starting with critical failure paths before moving to edge cases and optional variations.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend testing negative scenarios such as invalid payment details, out-of-stock items, or session timeouts.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must suggest testing edge cases like empty cart checkout, extreme quantities, or invalid address formats.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must include tests for user experience variations such as different payment methods, guest vs registered user, or mobile vs desktop flows.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not recommend test types outside of E2E testing such as unit tests for individual React components or API integration tests.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must organize test scenarios starting with critical failure paths before moving to edge cases and optional variations.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "b03",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must determine the application architecture type (frontend, backend, serverless, microservices, or full-stack) and recommend an appropriate testing model (pyramid, trophy, hybrid, or microservices).",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must map each non-functional requirement category to the appropriate test type (e.g., Performance NFRs to load tests, Security NFRs to security tests).",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must report the release readiness status as Ready, At Risk, or Not Ready based on coverage thresholds and gate checks.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not report test distribution using file counts instead of test case counts from running the test suite.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must organize findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must determine the application architecture type (frontend, backend, serverless, microservices, or full-stack) and recommend an appropriate testing model (pyramid, trophy, hybrid, or microservices).",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must map each non-functional requirement category to the appropriate test type (e.g., Performance NFRs to load tests, Security NFRs to security tests).",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must report the release readiness status as Ready, At Risk, or Not Ready based on coverage thresholds and gate checks.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not report test distribution using file counts instead of test case counts from running the test suite.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must organize findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "n01",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains what line coverage measures.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains the limitations of line coverage.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains why high coverage does not guarantee bug-free code.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply does not introduce an unrelated topic such as a specialized analysis procedure.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply does not include a scoring scheme, rubric, or formal grading system.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply explains what line coverage measures.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply explains the limitations of line coverage.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply explains why high coverage does not guarantee bug-free code.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply does not introduce an unrelated topic such as a specialized analysis procedure.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply does not include a scoring scheme, rubric, or formal grading system.",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "scenarioId": "n02",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply identifies the case sensitivity issue causing the test failure.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains the solution without introducing unnecessary complexity or ceremony.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays focused on the specific bug and does not provide unrelated debugging reports or scoring schemes.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply directly addresses the user's question about what is wrong with the function.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply identifies the case sensitivity issue causing the test failure.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply explains the solution without introducing unnecessary complexity or ceremony.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply stays focused on the specific bug and does not provide unrelated debugging reports or scoring schemes.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply directly addresses the user's question about what is wrong with the function.",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "scenarioId": "n03",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains trade-offs between unit tests and integration tests for microservices.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply provides arguments supporting unit tests.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply provides arguments supporting integration tests.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply acknowledges the constraint of limited time and resources.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays focused on testing approaches without introducing unrelated topics.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply explains trade-offs between unit tests and integration tests for microservices.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply provides arguments supporting unit tests.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply provides arguments supporting integration tests.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply acknowledges the constraint of limited time and resources.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply stays focused on testing approaches without introducing unrelated topics.",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "scenarioId": "n04",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply directly addresses the timeout discrepancy between local and CI environments without suggesting that a specialized analysis procedure be applied.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays in scope by focusing on the specific timeout issue and does not introduce unrelated topics or tangential advice.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply provides a concise explanation or actionable suggestions without generating a long report, scoring scheme, or formal deliverable.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply answers the user's actual question about what could cause the discrepancy rather than pivoting to a different problem or solution.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply avoids unrequested ceremony such as executive summaries, structured frameworks, or multi-section formatted outputs.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply directly addresses the timeout discrepancy between local and CI environments without suggesting that a specialized analysis procedure be applied.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply stays in scope by focusing on the specific timeout issue and does not introduce unrelated topics or tangential advice.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply provides a concise explanation or actionable suggestions without generating a long report, scoring scheme, or formal deliverable.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply answers the user's actual question about what could cause the discrepancy rather than pivoting to a different problem or solution.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply avoids unrequested ceremony such as executive summaries, structured frameworks, or multi-section formatted outputs.",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "scenarioId": "r05",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must identify the application as a backend system and recommend the testing pyramid model as the appropriate approach for a payments processing module.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must categorize the lack of explicit tests for transaction idempotency as a Critical gap given the stated requirements.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must map the reliability requirement for handling payment failures gracefully to failure injection tests.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim the test distribution is aligned or misaligned without first acknowledging that test case counts are required and not provided.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not declare the module as release ready given the presence of critical test gaps in a payments system.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must present findings in order starting with critical issues, then important issues, and finally suggestions.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must identify the application as a backend system and recommend the testing pyramid model as the appropriate approach for a payments processing module.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must categorize the lack of explicit tests for transaction idempotency as a Critical gap given the stated requirements.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must map the reliability requirement for handling payment failures gracefully to failure injection tests.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not claim the test distribution is aligned or misaligned without first acknowledging that test case counts are required and not provided.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not declare the module as release ready given the presence of critical test gaps in a payments system.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must present findings in order starting with critical issues, then important issues, and finally suggestions.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "r06",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must map the performance requirement (5000 concurrent users, 200ms response) to load testing, the security requirements (SQL injection, XSS) to security testing, and the reliability requirement (99.9% uptime, failover) to failure injection testing.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must identify the lack of performance, security, and reliability tests as Critical gaps given the specific non-functional requirements stated.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must determine the application is a backend system and recommend a testing model such as the pyramid or hybrid model.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim the current testing covers the requirements properly since the user explicitly stated they lack tests for the stated non-functional requirements.",
+          "ruleId": null
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must present findings in order starting with Critical issues (the missing non-functional tests), then Important issues, then Suggestions.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must map the performance requirement (5000 concurrent users, 200ms response) to load testing, the security requirements (SQL injection, XSS) to security testing, and the reliability requirement (99.9% uptime, failover) to failure injection testing.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must identify the lack of performance, security, and reliability tests as Critical gaps given the specific non-functional requirements stated.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must determine the application is a backend system and recommend a testing model such as the pyramid or hybrid model.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not claim the current testing covers the requirements properly since the user explicitly stated they lack tests for the stated non-functional requirements.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must present findings in order starting with Critical issues (the missing non-functional tests), then Important issues, then Suggestions.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "r07",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must identify the application as a frontend system and confirm the testing trophy model is appropriate before analyzing the coverage metrics.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must flag the 95% end-to-end test coverage for critical user flows as a critical gap because the testing trophy model requires 100% coverage for these flows.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must categorize the identified test gaps using the required severity levels: Critical, Warning, or Manual Testing Required.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim the test distribution is aligned without comparing the current coverage percentages against the testing trophy model's recommended distribution.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must present the findings in the specific order of CRITICAL issues first, then IMPORTANT issues, and finally SUGGESTIONs.",
+          "ruleId": "R09"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must report the release readiness status as At Risk due to the critical gap in end-to-end test coverage for critical user flows.",
+          "ruleId": "R11"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must identify the application as a frontend system and confirm the testing trophy model is appropriate before analyzing the coverage metrics.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must flag the 95% end-to-end test coverage for critical user flows as a critical gap because the testing trophy model requires 100% coverage for these flows.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must categorize the identified test gaps using the required severity levels: Critical, Warning, or Manual Testing Required.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not claim the test distribution is aligned without comparing the current coverage percentages against the testing trophy model's recommended distribution.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must present the findings in the specific order of CRITICAL issues first, then IMPORTANT issues, and finally SUGGESTIONs.",
+          "weight": 1
+        },
+        {
+          "id": "value-4",
+          "criterion": "The answer must report the release readiness status as At Risk due to the critical gap in end-to-end test coverage for critical user flows.",
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "scenarioId": "r08",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must categorize each identified test gap (error handling paths, password reset flow, missing API endpoint tests, OAuth callback handler) as Critical, Warning, or Manual Testing Required per R04.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must organize the findings in the order of CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONS per R09.",
+          "ruleId": "R09"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim a release readiness status (Ready, At Risk, Not Ready) because the user did not provide sufficient data to apply coverage thresholds per R06 and R11.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend a specific testing model (pyramid, trophy, etc.) or claim to determine the architecture type because the user did not provide that information per R01.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must present a clear, bulleted or numbered summary of the findings that the team can easily read and understand.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must categorize each identified test gap (error handling paths, password reset flow, missing API endpoint tests, OAuth callback handler) as Critical, Warning, or Manual Testing Required per R04.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must organize the findings in the order of CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONS per R09.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not claim a release readiness status (Ready, At Risk, Not Ready) because the user did not provide sufficient data to apply coverage thresholds per R06 and R11.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not recommend a specific testing model (pyramid, trophy, etc.) or claim to determine the architecture type because the user did not provide that information per R01.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must present a clear, bulleted or numbered summary of the findings that the team can easily read and understand.",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "scenarioId": "b04",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must determine the application architecture type (backend) and recommend an appropriate testing model (e.g., pyramid or hybrid) before suggesting specific test scenarios.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must categorize each identified test gap (e.g., invalid credentials, expired sessions) as Critical, Warning, or Manual Testing Required.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must map security non-functional requirements to specific security test types, such as suggesting SQL injection or brute force tests for the login feature.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim to report test distribution alignment status (Aligned/Misaligned/Severely Misaligned) because the user did not provide the necessary test case counts.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must organize its findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+          "ruleId": "R09"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must determine the application architecture type (backend) and recommend an appropriate testing model (e.g., pyramid or hybrid) before suggesting specific test scenarios.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must categorize each identified test gap (e.g., invalid credentials, expired sessions) as Critical, Warning, or Manual Testing Required.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must map security non-functional requirements to specific security test types, such as suggesting SQL injection or brute force tests for the login feature.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not claim to report test distribution alignment status (Aligned/Misaligned/Severely Misaligned) because the user did not provide the necessary test case counts.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must organize its findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+          "weight": 1
+        }
+      ]
+    }
+  ],
+  "failed": []
+}

@@ -1,0 +1,110 @@
+{
+  "skill": "test-coverage-analysis",
+  "source": {
+    "ref": "ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c",
+    "sha256": "8e817745d83de71e33a6f6a8df1a459a807fd02d1811f40a3cae028daab538d0"
+  },
+  "model": "glm-5",
+  "requested": 12,
+  "rules": [
+    {
+      "id": "R01",
+      "text": "When analyzing test coverage, the answer must first determine the application architecture type (frontend, backend, serverless, microservices, or full-stack) and recommend an appropriate testing model (pyramid, trophy, hybrid, or microservices).",
+      "quote": "This stage establishes the foundation for all subsequent analysis. The testing model determines what \"good coverage\" means.",
+      "line": 222,
+      "tag": "useful",
+      "requestType": "asking whether the tests for a payments module cover its requirements"
+    },
+    {
+      "id": "R02",
+      "text": "When reporting test distribution, the answer must use test case counts from running the test suite, not file counts, because a single test file may contain 10-50 test cases.",
+      "quote": "IMPORTANT: Test FILES ≠ Test CASES - A single test file may contain 10-50 test cases - Always use test case count from test runner, not file count",
+      "line": 522,
+      "tag": "useful",
+      "requestType": "asking how many tests exist for a feature"
+    },
+    {
+      "id": "R03",
+      "text": "When analyzing test distribution, the answer must compare the current distribution against the recommended model and report alignment status as Aligned (within ±10%), Misaligned (±10% to ±25%), or Severely Misaligned (>±25%).",
+      "quote": "Alignment Status: - ✅ Aligned: All deltas within ±10% - ⚠️ Misaligned: One or more deltas between ±10% and ±25% - ❌ Severely Misaligned: One or more deltas > ±25%",
+      "line": 666,
+      "tag": "useful",
+      "requestType": "asking whether the test distribution follows best practices"
+    },
+    {
+      "id": "R04",
+      "text": "When identifying test gaps, the answer must categorize each gap as Critical (must fix), Warning (should fix), or Manual Testing Required.",
+      "quote": "Critical Gaps (Must Fix): - Acceptance criteria with no tests (priority: high) - Test plans with no implementation - Core functionality untested (authentication, data persistence, critical workflows)",
+      "line": 1249,
+      "tag": "useful",
+      "requestType": "asking what tests are missing for a feature"
+    },
+    {
+      "id": "R05",
+      "text": "When analyzing non-functional requirements, the answer must map each NFR category to the appropriate test type (e.g., Performance NFRs to load tests, Security NFRs to security tests, Reliability NFRs to failure injection tests).",
+      "quote": "Map NFR Categories to Required Test Types: **Performance NFRs → Load/Performance Tests:** - Response time requirements → Latency validation tests - Throughput requirements → Load tests with concurrent users",
+      "line": 771,
+      "tag": "useful",
+      "requestType": "asking whether performance and security requirements have test coverage"
+    },
+    {
+      "id": "R06",
+      "text": "When evaluating release readiness, the answer must apply coverage thresholds based on the testing philosophy (e.g., for Frontend Trophy model: critical user flows require 100% integration test coverage).",
+      "quote": "Apply thresholds based on testing philosophy: **For Frontend (Trophy Model):** - Critical user flows: 100% integration test coverage required - High priority features: 90% integration test coverage required",
+      "line": 1505,
+      "tag": "useful",
+      "requestType": "asking if the application is ready for production release"
+    },
+    {
+      "id": "R07",
+      "text": "When detecting anti-patterns in tests, the answer must flag tests that test implementation details instead of behavior, especially in frontend applications.",
+      "quote": "Anti-Patterns Detected: - ❌ Tests testing implementation details (especially in frontend) - ❌ Flaky tests (timing dependencies) - ❌ Overly complex tests (>50 lines)",
+      "line": 1427,
+      "tag": "useful",
+      "requestType": "asking about the quality of existing tests"
+    },
+    {
+      "id": "R08",
+      "text": "When calculating test coverage percentages, the answer must use the formula (covered_items / total_items) * 100 for acceptance criteria coverage, test plan coverage, and feature coverage.",
+      "quote": "Calculate Coverage: - **Acceptance Criteria Coverage:** `(covered_criteria / total_criteria) * 100` - **Test Plan Coverage:** `(implemented_plans / total_plans) * 100` - **Test Type Coverage:** Per type (unit/integration/e2e)",
+      "line": 718,
+      "tag": "generic",
+      "requestType": "asking for the test coverage percentage for a module"
+    },
+    {
+      "id": "R09",
+      "text": "When presenting findings, the answer must organize them in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+      "quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: \"Fix these issues? [y/n]\"",
+      "line": 2064,
+      "tag": "style",
+      "requestType": "asking for a summary of test coverage issues"
+    },
+    {
+      "id": "R10",
+      "text": "When reporting coverage status, the answer must use visual indicators consistently: ✅ for Covered/Pass, ❌ for Missing/Fail, ⚠️ for Partial/Warning, and 🔍 for Manual Required.",
+      "quote": "Use consistently across all reports: - ✅ Covered/Pass | ❌ Missing/Fail | ⚠️ Partial/Warning | 🔍 Manual Required",
+      "line": 131,
+      "tag": "style",
+      "requestType": "asking for a test coverage status report"
+    },
+    {
+      "id": "R11",
+      "text": "When assessing release readiness, the answer must report the status as Ready (all gates passed), At Risk (minor gaps), or Not Ready (critical gaps or failing tests).",
+      "quote": "Readiness Status: - ✅ Ready: All gates passed, coverage meets thresholds - ⚠️ At Risk: Minor gaps, coverage slightly below threshold, quality concerns - ❌ Not Ready: Critical gaps, failing tests, coverage significantly below threshold",
+      "line": 1539,
+      "tag": "useful",
+      "requestType": "asking whether the code is ready to deploy to production"
+    }
+  ],
+  "rejected": [
+    {
+      "text": "When recommending test types, the answer must provide rationale based on the testing philosophy (e.g., for Frontend Trophy model, recommend integration tests for user interaction flows because they provide highest confidence).",
+      "quote": "Testing Trophy (Frontend/UI Applications): Rationale: - Frontend components work together, not in isolation - Integration tests provide highest confidence - Unit tests for components test implementation details",
+      "tag": "useful",
+      "requestType": "asking what type of test to write for a user login form",
+      "reasons": [
+        "quote not found in the skill text"
+      ]
+    }
+  ]
+}
