@@ -42,7 +42,7 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - Wildcard action or resource without a documented justification
 - Cross-account trust without `sts:ExternalId` or another condition key
 - `kms:*` granted to a non-admin principal
-- S3 bucket open to the public, a data store with no encryption at rest, or no TLS enforcement where sensitive data moves
+- S3 bucket open to the public, an RDS instance or EBS volume with no encryption at rest, S3 or DynamoDB data that needs SSE-KMS or a customer managed key left on default keys, or no TLS enforcement where sensitive data moves
 - No CloudTrail trail at all
 - KMS key rotation off where a named compliance framework or the design requires it
 - A compliance violation the checklists in CATEGORY 5 flag CRITICAL, or a threat with no control
@@ -112,7 +112,8 @@ Score the category with the IAM Policy Security Score in STEP 4.
 
 Check for:
 
-- Data stores without encryption at rest (S3, DynamoDB, RDS, EBS)
+- RDS instances or EBS volumes without encryption at rest
+- S3 or DynamoDB data that needs SSE-KMS or a customer managed key but uses the default encryption
 - Missing TLS enforcement for data in transit
 - KMS keys without rotation enabled
 - Weak encryption algorithms (< AES-256)
@@ -122,11 +123,11 @@ Check for:
 
 **Data Store Encryption Detection**:
 
-- **S3 Buckets**: Check for `BucketEncryption` configuration with `SSEAlgorithm: aws:kms`
-- **DynamoDB Tables**: Check for `SSESpecification` with `SSEEnabled: true` and `KMSMasterKeyId`
+- **S3 Buckets**: A missing `BucketEncryption` is not a finding by itself, since S3 applies SSE-S3 to every new object. If the data needs SSE-KMS or a customer managed key, check for `SSEAlgorithm: aws:kms` and `KMSMasterKeyID`
+- **DynamoDB Tables**: A missing `SSESpecification` is not a finding by itself, since DynamoDB encrypts with an AWS owned key. If the data needs a customer managed key, check for `SSEEnabled: true` and `KMSMasterKeyId`
 - **RDS Instances**: Check for `StorageEncrypted: true` with `KmsKeyId`
 - **EBS Volumes**: Check for `Encrypted: true` with `KmsKeyId`
-- Flag as CRITICAL if any data store lacks encryption at rest
+- Flag as CRITICAL if an RDS instance or EBS volume lacks encryption at rest, or if S3 or DynamoDB data that needs SSE-KMS or a customer managed key is left on default keys
 
 **TLS Enforcement Validation**:
 
@@ -409,7 +410,7 @@ Start with 100 points, deduct for issues:
 
 Start with 100 points, deduct for issues:
 
-- **Unencrypted data store** (DynamoDB, RDS, S3): -40 points each
+- **Unencrypted data store** (RDS or EBS unencrypted, or S3 or DynamoDB data that needs SSE-KMS left on default keys): -40 points each
 - **AWS-managed keys** (when customer-managed recommended): -15 points per resource
 - **No TLS enforcement** (missing bucket policy or API config): -30 points
 - **No VPC endpoints** (for private AWS service access): -10 points
