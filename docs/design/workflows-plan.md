@@ -220,7 +220,8 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **API rows:** none. 1g serves `startRun` and `getRun` from this code.
 - **Engine:** `stage_prompt` as a pure function (D10) with golden files; the [stage
   result](workflows-spec.md#stage-result) parser; run, stage and check states; `flow run --harness fake`. Ports:
-  `Harness`, `Clock`, `RunStore` and `RunLock` (a per-workspace lock with its owner's PID and start time). The `fake`
+  `Harness`, `Clock`, `RunStore` and `RunLock` (a per-workspace OS file lock that records its owner's PID and start
+  time). `flow run` exits 75 when the lock refuses it ([rule](workflows-spec.md#commands-and-exit-codes)). The `fake`
   harness replays scripted replies and is for tests only. The way a test server accepts `--harness fake` is a decision
   recorded by this step ([deferred](workflows-spec.md#deferred-to-a-later-slice)) and implemented by the stub and the 1g
   server. Run state is written to `.konductor/runs/<run-id>/` in the project, git-ignored through
@@ -229,9 +230,10 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
   dormant until run state exists. The `getRun` of 1g and the `flow verify` of 3a read the same location. The
   [limits](workflows-spec.md#limits): the stage time limit decided against the clock port, and the output byte caps.
 - **Tests:** unit: golden prompts, a case per way a result line is invalid, state transitions with a fake clock, a stage
-  that exceeds its time limit (`TIMEOUT`), a run whose owner is gone reads `halted`, a live owner refuses a second run,
-  a param or prompt over its cap. Functional: a run through the real run store on the fake harness, including a missing
-  result line (blocked) and a run that was `running` when the process stopped (`halted`). Playwright: none.
+  that exceeds its time limit (`TIMEOUT`), a run whose owner is gone reads `halted`, or `passed` if every stage had
+  passed, a live owner refuses a second run, a param or prompt over its cap. Functional: a run through the real run
+  store on the fake harness, including a missing result line (blocked) and a run that was `running` when the process
+  stopped (`halted`). Playwright: none.
 - **Demo:** you can run `hello-plan` with `--harness fake` and get `passed`, and a bad reply halts the run with exit 1.
 
 ### 1e: Trust
@@ -312,11 +314,12 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **YAML keys:** none new.
 - **Canvas:** none. The page talks to the contract. `WC_API_TARGET` points it at the Rust server.
 - **API rows:** all six, from the engine. `startRun` answers `trust_required` with a `fix` that names the exact command,
-  for example `konductor flow trust hello-plan`, and `harness_unavailable` covers `claude`. The canvas cannot grant
-  trust.
+  for example `konductor flow trust hello-plan`, and `harness_unavailable` covers `claude`. `startRun` answers
+  `already_running` while a run holds the lock. The canvas cannot grant trust.
 - **Engine:** an HTTP adapter on loopback with the launch code and session token, `getRun` reading the run state that 1d
-  writes, `flow view` (which asks first for an untrusted workflow), saves with `base_hash` that follow the [canvas
-  rule](workflows-spec.md#trust) and never move a trust record. Ports: an HTTP adapter only, with no new core port.
+  writes and applying the same [dead-owner rule](workflows-spec.md#run-stage-and-check-states), `flow view` (which asks
+  first for an untrusted workflow), saves with `base_hash` that follow the [canvas rule](workflows-spec.md#trust) and
+  never move a trust record. Ports: an HTTP adapter only, with no new core port.
 - **Tests:** unit: request guards. Functional: the stub's own HTTP test suite pointed at the Rust server, plus the drift
   test. The server sends the Content-Security-Policy header with `frame-ancestors 'none'` on the response that serves
   the page. Playwright: the 1b tests run with `WC_API_TARGET` on the Rust server. A save that changes the workflow, a
