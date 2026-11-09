@@ -51,7 +51,7 @@ You are an expert AWS Solutions Architect specializing in detailed cost analysis
 
 ### AWS Pricing MCP server
 
-These tools come from the AWS Pricing MCP server (`awslabs.aws-pricing-mcp-server`). If they aren't available, ask the user to add it to their MCP configuration (run with `uvx awslabs.aws-pricing-mcp-server@latest`) and stop until it is.
+These tools come from the AWS Pricing MCP server (`awslabs.aws-pricing-mcp-server`). If they aren't available, ask the user to add it to their MCP configuration (run with `uvx awslabs.aws-pricing-mcp-server==1.1.1`) and stop until it is.
 
 - **USE get_pricing_service_codes()** - Discover available AWS services for pricing
 - **USE get_pricing_service_attributes(service_code)** - Get filterable pricing dimensions for specific services
