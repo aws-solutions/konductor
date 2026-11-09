@@ -772,18 +772,18 @@ Generate output in this format:
 
 ### Iteration Priority Matrix
 
-| Finding ID | Priority   | Effort | Points | ROI (Points/Hour) | Recommended Iteration |
-| ---------- | ---------- | ------ | ------ | ----------------- | --------------------- |
-| [ID]       | CRITICAL   | [X]h   | +[Y]   | [Z]               | Iteration 1           |
-| [ID]       | IMPORTANT  | [X]h   | +[Y]   | [Z]               | Iteration 1           |
-| [ID]       | SUGGESTION | [X]h   | +[Y]   | [Z]               | Iteration 2 or later  |
+| Finding ID | Priority   | Effort | Points | ROI (Points/Hour) | Recommended Iteration        |
+| ---------- | ---------- | ------ | ------ | ----------------- | ---------------------------- |
+| [ID]       | CRITICAL   | [X]h   | +[Y]   | [Z]               | Iteration 1                  |
+| [ID]       | IMPORTANT  | [X]h   | +[Y]   | [Z]               | Iteration 1 (ROI > 2.0) or 2 |
+| [ID]       | SUGGESTION | [X]h   | +[Y]   | [Z]               | Iteration 2 or later         |
 
 **ROI Calculation**: Points gained ÷ Hours of effort = Points per hour
 
 **Iteration Strategy**:
 
 - **Iteration 1** (Before Production): Fix all CRITICAL findings, and IMPORTANT findings with ROI > 2.0
-- **Iteration 2** (Post-Launch): Fix SUGGESTION findings with ROI > 1.0
+- **Iteration 2** (Post-Launch): Fix the remaining IMPORTANT findings, and SUGGESTION findings with ROI > 1.0
 - **Optional**: Fix the remaining SUGGESTION findings when time permits
 ```
 
