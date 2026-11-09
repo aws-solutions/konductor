@@ -1,6 +1,6 @@
 ---
 name: adr-generator
-description: Produces a complete inline ADR (Context, Decision, Status, Alternatives, Consequences). Use when a significant design decision is identified during design doc creation, when an engineer asks to document a decision as an ADR, or when an existing ADR is incomplete (missing alternatives, consequences, or status). Trigger phrases — "generate an ADR for this decision", "document this as an architecture decision record", "create an ADR for choosing X over Y".
+description: Produces a complete inline ADR (Context, Decision, Status, Alternatives, Consequences). Use when a design doc surfaces a significant decision, when asked to record one as an ADR, or when an ADR lacks alternatives, consequences or status. Trigger phrases — "generate an ADR for this decision", "document this as an architecture decision record", "create an ADR for choosing X over Y".
 version: 1.0.0
 tags: [skill, adr, decision, architecture, design-doc]
 ---
