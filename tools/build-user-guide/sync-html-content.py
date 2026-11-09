@@ -575,6 +575,9 @@ ROSTER = [
     ('uninstall: hook and context rows',
      '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n',
      '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n  { where: "Session-start hook: .kiro/hooks/konductor-orchestration-hooks.json (Kiro CLI v3), the agentSpawn entry in .kiro/agents/konductor.json (Kiro CLI v2), the SessionStart block in the Claude Code hooks settings file", by: "konductor install", gone: "konductor uninstall" },\n  { where: ".konductor/context/ under the install target (Claude Code installs only; .konductor/memory/ is kept)", by: "konductor install", gone: "konductor uninstall" },\n'),
+    ("skills catalog: system-design-patterns outputs",
+     "Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description.",
+     "Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff."),
 ]
 
 

@@ -19,6 +19,7 @@ Use this skill when:
 - Reviewing a diff or PR from another developer
 - Addressing PR feedback and re-submitting
 - Running a post-implementation review cycle on local changes
+- Reviewing a folder or repository with no PR or git history
 
 ## Explicit Publish Authorization
 
@@ -102,10 +103,17 @@ event=COMMENT` (or `APPROVE` / `REQUEST_CHANGES`).
 ### Review a Source Tree
 
 When the code to review is a folder or repository with no PR, or with no git
-history, there is no diff to capture. Read every source file in scope, apply
-the Review Checklist below to each one, and report findings by severity with
-file and line. Skip the checkout and pending-review steps, since there is no
-PR to post to.
+history, there is no diff to capture. Skip the checkout and pending-review
+steps, since there is no PR to post to.
+
+1. Settle the scope. If the user named files or a folder, that is the scope.
+   If the tree is too large to read in full, list its top-level layout and
+   ask the user which parts to review before reading any of it.
+2. Read in priority order: entry points, then code that handles auth, input
+   parsing, data writes and external calls, then the rest.
+3. Apply the Review Checklist below to each file you read.
+4. Report findings by severity with file and line. End the report with the
+   in-scope files you did not read, so the user knows what was not reviewed.
 
 ### Address Feedback
 

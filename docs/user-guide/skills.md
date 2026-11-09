@@ -99,7 +99,7 @@ Producing the design itself.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `system-design-patterns` | Guides system architecture design through a structured interview. Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description. | Starting a new service or feature that needs a design document. | `k-architect` |
+| `system-design-patterns` | Guides system architecture design through a structured interview. Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff. | Starting a new service or feature that needs a design document. | `k-architect` |
 | `architecture-advisor` | Quick recommendation mode — concise opinions with trade-off analysis instead of a full artifact. | You want a sanity check or an opinion, not a document. | `k-architect` |
 | `design-doc-guidelines` | Rules for writing and reviewing design docs: outside-in structure, plain writing, AI-slop detection, diagram accuracy, technical accuracy. | Writing or reviewing any design doc. It is also the maker-checker rubric `k-design-doc-creation` runs against. | `k-architect`, `konductor` |
 | `non-functional-requirements` | Extracts measurable NFRs across performance, availability, security, scalability, and observability. | The design exists and "it should be fast" needs to become a number. | `k-architect` |
