@@ -393,26 +393,55 @@ Exit codes follow the CLI's exit-code contract in `cli/README.md`. A command tha
 | `1`  | `flow run`: run `halted`. `flow verify`: result `failed`                                                               |
 | `64` | Usage error, in any command                                                                                            |
 | `65` | The workflow has errors (`flow check`, `flow show`, `flow run`, `flow verify`)                                         |
+| `75` | `flow run`: the run lock refuses the run. Another run holds it, or its owner record cannot be read                     |
 | `77` | Trust refusal: the workflow is not trusted and the user said no, no terminal was available, or `--trust` did not match |
 
-The CLI's contract defines `65` as an unsupported manifest or index `schema_version`, a state failure, and has no `77`.
-Its `1` row reads "Halted (timeout / runtime error / parse error)", and `doctor` reuses it for a failed check. The
-change that adds the commands edits `cli/README.md` in three places:
+The CLI's contract defines `65` as an unsupported manifest or index `schema_version`, a state failure, and has no `75`
+or `77`. Its `1` row reads "Halted (timeout / runtime error / parse error)", and `doctor` reuses it for a failed check.
+The change that adds the commands edits `cli/README.md` in four places:
 
 - widen the `65` row to cover workflow errors;
+- add the `75` row;
 - add the `77` row;
 - widen the `1` row to cover a `flow run` that halted and a `flow verify` that failed.
 
-Every trust refusal exits `77`, including a no at the prompt, so a script handles one code. The `flow` commands never
-emit `2`, which the CLI reserves, or `4`, which stays reserved for a user who aborts a paused verdict.
+Every trust refusal exits `77`, including a no at the prompt, so a script handles one code. A lock refusal exits `75`,
+the "try again later" code. Under `--json` its code is `already_running`, with the active `run_id` and the owner's
+`pid`, or `lock_unreadable`. The `flow` commands never emit `2`, which the CLI reserves, or `4`, which stays reserved
+for a user who aborts a paused verdict.
 
 ## Run, stage and check states
 
 | Thing | States                                    | Rule                                                                                    |
 | ----- | ----------------------------------------- | --------------------------------------------------------------------------------------- |
-| Run   | `running`, `passed`, `halted`             | A run that was `running` reads as `halted` on the next start only if its owner is gone. |
+| Run   | `running`, `passed`, `halted`             | If its owner stops while it is `running`, it reads as `halted` (see below).             |
 | Stage | `pending`, `running`, `passed`, `blocked` | A blocked stage halts the run, and later stages stay `pending`.                         |
 | Check | `verified`, `deferred`                    | `verified`: Konductor ran it. `deferred`: not checked yet.                              |
+
+**A run whose owner stops (the dead-owner rule, D22).** A run holds an OS file lock on `.konductor/runs/lock` in the
+project root for as long as it runs. The lock is close-on-exec, so a session or check that the run starts does not
+inherit it, and the kernel frees it when the owner's process ends. Whether an owner is alive means whether the lock is
+held. The lock file also holds the owner's PID, start time and run id, for messages only, and nothing reads them to
+decide liveness. If a run's owner stops while the run is `running`, the run reads as `halted` the next time anything in
+the workspace looks at it, by these rules:
+
+- A reader that finds the lock free takes it, reads the run state again, and writes `halted` only if the state still
+  says `running`. This closes the race where an owner finishes between a reader's first read and its lock.
+- A reader that finds the lock held only reads. A later reader such as the canvas server's `getRun` is a reader.
+- A new `flow run` takes the lock, sweeps any other `running` run by the first rule, and only then creates its own
+  state. A lock file left behind by an owner that ended does not block it.
+- A `flow run` that finds the lock held by a live run is refused. So is one that finds the lock held with a record it
+  cannot read, or on a platform that cannot lock (some network filesystems). All three exit 75
+  ([codes](#commands-and-exit-codes)). A torn record with a free lock is replaced, so the workspace never wedges.
+- The owner record and the run state are written atomically: to a temporary file, then renamed.
+- The scope is the project root ([rule](#commands-and-exit-codes)). Deleting `runs/lock` by hand while a run is live is
+  unsupported.
+- The lock is taken after the trust confirmation and before any run-state write.
+- `flow verify <run-id>` on a run that is still in progress exits 75.
+
+The sweep writes `halted` like this: the stage that was running, or the next `pending` one if none was, is `blocked`
+with the reason `SESSION_FAILED`, `exit_code` is 1, and `finished_at` is the time it was found. If every stage had
+`passed`, there is none to block, and the run reads as `passed` with `exit_code` 0.
 
 **Where run state lives.** Run state is in the repo, at `.konductor/runs/<run-id>/`. It is git-ignored through
 `.konductor/.gitignore`, which `konductor init` writes (pattern `runs/`); `flow run` creates that file with the pattern
@@ -462,8 +491,10 @@ needs the changes below.
 - **Run stages.** `RunStage` gains `reason`, present when the stage is `blocked`. It is a stable upper snake case code
   (D4): the reasons named under [Stage result](#stage-result) and [Limits](#limits).
 - **One run per workspace.** `already_running` covers a run started by any process in the workspace, because a run holds
-  a per-workspace lock with its owner's PID and start time, and the run state is [in the
-  repo](#run-stage-and-check-states). When the owner exits, its sessions and checks are killed with their process group.
+  the per-workspace OS file lock ([the dead-owner rule](#run-stage-and-check-states), D22), and the run state is [in the
+  repo](#run-stage-and-check-states). When the owner exits normally, its sessions and checks are killed with their
+  process group. After a hard kill, the next run ends the sessions that the run state records (D24). Step 1g changes
+  the wording of this rule in `openapi.yaml`.
 - **Params.** The `params` object of `RunRequest` accepts the params the workflow declares, besides `goal` (slice 2).
 - **Trust.** `trust_required` joins `ErrorCode`. `POST /api/run` answers it with 409 for a project workflow that is not
   trusted. Its `fix` text names the exact command, for example `konductor flow trust hello-plan`. The contract has no

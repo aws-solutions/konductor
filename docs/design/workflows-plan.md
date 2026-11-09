@@ -220,19 +220,37 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **API rows:** none. 1g serves `startRun` and `getRun` from this code.
 - **Engine:** `stage_prompt` as a pure function (D10) with golden files; the [stage
   result](workflows-spec.md#stage-result) parser; run, stage and check states; `flow run --harness fake`. Ports:
-  `Harness`, `Clock`, `RunStore` and `RunLock` (a per-workspace lock with its owner's PID and start time). The `fake`
-  harness replays scripted replies and is for tests only. The way a test server accepts `--harness fake` is a decision
-  recorded by this step ([deferred](workflows-spec.md#deferred-to-a-later-slice)) and implemented by the stub and the 1g
-  server. Run state is written to `.konductor/runs/<run-id>/` in the project, git-ignored through
-  `.konductor/.gitignore` ([rule](workflows-spec.md#run-stage-and-check-states)): `konductor init` writes it, and `flow
-  run` creates it with the pattern `runs/` if it is missing. This step wires the `doctor` gitignore check, which is
-  dormant until run state exists. The `getRun` of 1g and the `flow verify` of 3a read the same location. The
+  `Harness`, `Clock`, `RunStore` and `RunLock`. `RunLock` is the OS file lock on `.konductor/runs/lock` that the
+  [dead-owner rule](workflows-spec.md#run-stage-and-check-states) describes (D22). The kernel frees it when the owner
+  ends, it is close-on-exec, and whether an owner is alive means whether the lock is held, never its PID. The lock file
+  holds the PID, start time and run id for messages only. A reader that finds the lock free takes it, reads the state
+  again, and writes `halted` only if the state still says `running`. A reader that finds it held only reads. A new `flow
+  run` takes the lock after the trust confirmation that 1e adds, sweeps any other `running` run, then creates its own state. The owner
+  record and the run state are written atomically. `flow run` exits 75 when another run holds the lock, when the lock is
+  held and its record cannot be read, or when the platform cannot lock
+  ([rule](workflows-spec.md#commands-and-exit-codes)). `flow run` takes `--json`. The `fake` harness replays scripted
+  replies from the file named by `--fake-script <path>` or `KONDUCTOR_FAKE_SCRIPT`, and is for tests only. The way a
+  test server accepts `--harness fake` is a decision recorded by this step
+  ([deferred](workflows-spec.md#deferred-to-a-later-slice)) and implemented by the stub and the 1g server. Run state is
+  written to `.konductor/runs/<run-id>/` in the project, git-ignored through `.konductor/.gitignore`
+  ([rule](workflows-spec.md#run-stage-and-check-states)): `konductor init` writes it, and `flow run` creates it with the
+  pattern `runs/` if it is missing. This step wires the `doctor` gitignore check, which is dormant until run state
+  exists. The `getRun` of 1g and the `flow verify` of 3a read the same location. A `flow` command finds the project root
+  by the [rule in the spec](workflows-spec.md#commands-and-exit-codes), which stops at the git top folder (D25). The
   [limits](workflows-spec.md#limits): the stage time limit decided against the clock port, and the output byte caps.
+  `cli/README.md` gets the `75` row and the widened `1` row ([rule](workflows-spec.md#commands-and-exit-codes)).
 - **Tests:** unit: golden prompts, a case per way a result line is invalid, state transitions with a fake clock, a stage
-  that exceeds its time limit (`TIMEOUT`), a run whose owner is gone reads `halted`, a live owner refuses a second run,
-  a param or prompt over its cap. Functional: a run through the real run store on the fake harness, including a missing
-  result line (blocked) and a run that was `running` when the process stopped (`halted`). Playwright: none.
-- **Demo:** you can run `hello-plan` with `--harness fake` and get `passed`, and a bad reply halts the run with exit 1.
+  that exceeds its time limit (`TIMEOUT`), a run whose owner is gone reads `halted`, or `passed` if every stage had
+  passed, a param or prompt over its cap. Lock tests: two concurrent starts (one gets 75), a held lock with an
+  unreadable record (75, `lock_unreadable`), a lock file left by an ended process (does not block a new run), a reader
+  that races an owner that finishes (it must not overwrite `passed`), and a real process killed mid-run (the next run
+  reads it as `halted`). Functional: a run through the real run store on the fake harness, including a missing result
+  line (blocked) and a run that was `running` when the process stopped (`halted`). Root search (D25): inside a git
+  folder (the search stops at the folder that holds `.git`, a file in a git worktree, and never reads above it), with
+  no git folder (the working folder only), and from a nested folder (a subfolder of the project finds the root above
+  it). Playwright: none.
+- **Demo:** you can run `hello-plan` with `--harness fake --fake-script <path>` and get `passed`, and a bad reply halts
+  the run with exit 1.
 
 ### 1e: Trust
 
@@ -323,10 +341,13 @@ A file of stages and `file` checks that runs in the runner and opens in the canv
 - **YAML keys:** none new.
 - **Canvas:** none. The page talks to the contract. `WC_API_TARGET` points it at the Rust server.
 - **API rows:** all six, from the engine. `startRun` answers `trust_required` with a `fix` that names the exact command,
-  for example `konductor flow trust hello-plan`, and `harness_unavailable` covers `claude`. The canvas cannot grant
-  trust.
+  for example `konductor flow trust hello-plan`, and `harness_unavailable` covers `claude`. `startRun` answers
+  `already_running` while a run holds the lock (D22), and the wording of that rule in `openapi.yaml` changes in this
+  step. The canvas cannot grant trust.
 - **Engine:** an HTTP adapter on loopback with the launch code and session token, `getRun` reading the run state that 1d
-  writes, `flow view` (which asks first for an untrusted workflow), saves with `base_hash` that follow the [canvas
+  writes and applying the same [dead-owner rule](workflows-spec.md#run-stage-and-check-states) (a reader that finds the
+  lock free takes it, re-reads the state and halts a run that still says `running`, and a reader that finds it held only
+  reads; D22), `flow view` (which asks first for an untrusted workflow), saves with `base_hash` that follow the [canvas
   rule](workflows-spec.md#trust) and never move a trust record. Ports: an HTTP adapter only, with no new core port.
 - **Tests:** unit: request guards. Functional: the stub's own HTTP test suite pointed at the Rust server, plus the drift
   test. The server sends the Content-Security-Policy header with `frame-ancestors 'none'` on the response that serves
