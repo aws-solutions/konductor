@@ -320,7 +320,7 @@ Provide:
 - Validation constraints (`@length`, `@range`, `@pattern`) missing on string/numeric inputs
 - Passwords, tokens, or PII not marked `@sensitive`
 - Naming conventions applied inconsistently
-- Generated code for a target language does not compile
+- Generated code for a target language does not compile (CRITICAL if the design requires that target)
 
 **SUGGESTION:**
 

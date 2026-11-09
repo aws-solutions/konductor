@@ -17,7 +17,7 @@ Load this skill before declaring a task with a testable outcome done: code, buil
 
 ## TDD Workflow
 
-For code changes, follow these phases in order. Do not skip phases. For a document or infrastructure change with no test to write, keep SPEC, then build or validate the change instead of RED, GREEN and REFACTOR, and go to EVIDENCE.
+For code changes, follow these phases in order. Do not skip phases. For a document or infrastructure change with no test to write, keep SPEC, then build or validate the change instead of RED, GREEN and REFACTOR, then run VERIFY if the repo has tests that cover the change, and go to EVIDENCE.
 
 1. **SPEC** — Define success criteria before implementation. What must be true when done?
 2. **RED** — Write a failing test. Run it. Confirm it FAILS. Show the output.
