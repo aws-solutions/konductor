@@ -1,0 +1,10 @@
+{
+  "name": "stockd",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Small stock service",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

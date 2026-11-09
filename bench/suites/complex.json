@@ -1,0 +1,20 @@
+{
+  "extraTasks": [
+    "complex"
+  ],
+  "tasks": [
+    "cx-design-then-implement"
+  ],
+  "arms": [
+    "vanilla",
+    "v1.2.0",
+    "main"
+  ],
+  "replicates": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "parallel": 1
+}
