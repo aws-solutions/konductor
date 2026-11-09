@@ -42,7 +42,7 @@ Loaded to shape *how* an agent works rather than what it produces. Several are o
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `constraints` | Workflow rules for every agent: maker-checker validation, severity ordering, the 2-strike circuit breaker, and the quality gate. The NEVER DO rules, writing habits, and engineering practices live in `context/k-core-rules.md`. | You never invoke it. Claude Code preloads it only into subagents; otherwise it loads on demand. | all 11 |
+| `constraints` | Workflow rules for every agent: maker-checker validation, the 2-strike circuit breaker, and the quality gate. The NEVER DO rules, writing habits, and engineering practices live in `context/k-core-rules.md`. | You never invoke it. Claude Code preloads it only into subagents; otherwise it loads on demand. | all 11 |
 | `about-konductor` | Gets a new user from nothing to a working session: the real `konductor` CLI command surface, example orchestrator prompts, and the agent/skill/SOP model. | Someone asks what this is, how to install it, or what they can ask for. Backs the SOP of the same name. | all 3 orchestrators |
 | `sop-state-management` | Session and checklist mechanics for long-running SOPs: minting or resuming a session by project identity, per-phase status, and serialized fix-cycle counters. | You are running or resuming `k-full-sdlc`. It owns the state file schema and the resume-discovery walk. | all 3 orchestrators |
 | `delegation-protocol` | The authoritative delegation format: the 8-field prompt (target agent + 7 sections), the agent registry, parallel-execution rules, and handoff patterns. | Read it to understand what the orchestrator sends a specialist. Edit it to change routing — it outranks the routing-rules context file. | all 3 orchestrators |
@@ -67,7 +67,7 @@ Turning a business ask into something an engineer can build.
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
 | `requirements-extraction` | Extracts design inputs from requirements outputs into three focused files: business-context.md, requirements-summary.md, user-stories-extract.md. | You are moving from requirements into design and want the architect to start from something structured. | `k-architect`, `k-product-manager` |
-| `user-story-writing` | Creates user stories with INVEST principles, epics, and acceptance criteria. Scales to MVP (10-15), Production (20-30), or full scope (30-40 stories). | Validated requirements exist and you need development-ready stories. | `k-product-manager` |
+| `user-story-writing` | Creates user stories with INVEST principles, epics, and acceptance criteria. Scales to MVP (10-15), Production (20-30), or full scope (30-40 stories). | Validated requirements exist and you need development-ready stories. | `k-product-manager`, `konductor` |
 | `task-decomposition` | Splits stories and a system design into independent features that individual engineers can build with minimal overlap. | The HLD is done and you need to parallelise the work across people. | `k-developer`, `k-product-manager`, `k-tpm` |
 | `sprint-planning` | Task hierarchy, story-point sizing, capacity tracking, sprint workflow. Its Asana reference drives the same workflow through Asana. | You are planning a sprint or sizing work. For Asana, it needs an Asana MCP server (opt-in). | `k-product-manager`, `k-tpm` |
 | `decision-research` | Research patterns for gathering context before deciding, and for surfacing prior art an artifact missed: prior art, alternatives, trade-offs, evidence base, assumption challenges. | A decision needs evidence rather than opinion. | `k-architect`, `k-product-manager` |
@@ -85,7 +85,7 @@ Coordination across people and time rather than within one codebase.
 | `program-decision-docs` | Program-level decision documents with options analysis, trade-offs, and a recommendation. | A cross-team decision needs to be written down formally. | `k-tpm` |
 | `status-reporting` | Program status reports for stakeholders. | Weekly updates, executive summaries, milestone reviews. | `k-tpm` |
 | `risk-management` | Identifies, assesses, and tracks program risks with mitigation plans and RAID logs. | Starting a risk assessment, or a risk register has gone stale. | `k-tpm` |
-| `plan-review` | Critically reviews a work plan against clarity, verifiability, context completeness, and big picture. Gives a 1-5 rating and a BLOCKED / OKAY / SHIP IT verdict. | You have a plan and want it torn apart before anyone executes it. | `k-tpm` |
+| `plan-review` | Critically reviews a work plan against clarity, verifiability, context completeness, and big picture. Gives a 1-5 rating and a BLOCKED / OKAY / SHIP IT verdict. | You have a plan and want it torn apart before anyone executes it. | `k-tpm`, `konductor` |
 | `legacy-to-agentic-estimate` 📎 | Converts all-human effort estimates into agentic-SDLC estimates accounting for AI toolchains. Ships `convert_estimates.py` plus evals. | Re-baselining a legacy estimate for AI-assisted delivery. Note the tier presets are uncalibrated defaults. | `k-product-manager`, `k-tpm` |
 | `progress-tracking` | Validates feature plans and tracks implementation against requirements traceability, in three modes: initial, progress, final. | Mid-implementation, and you want to know what is genuinely done. | `k-developer` |
 
@@ -101,7 +101,7 @@ Producing the design itself.
 | --- | --- | --- | --- |
 | `system-design-patterns` | Guides system architecture design through a structured interview. Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description. | Starting a new service or feature that needs a design document. | `k-architect` |
 | `architecture-advisor` | Quick recommendation mode — concise opinions with trade-off analysis instead of a full artifact. | You want a sanity check or an opinion, not a document. | `k-architect` |
-| `design-doc-guidelines` | Rules for writing and reviewing design docs: outside-in structure, plain writing, AI-slop detection, diagram accuracy, technical accuracy. | Writing or reviewing any design doc. It is also the maker-checker rubric `k-design-doc-creation` runs against. | `k-architect` |
+| `design-doc-guidelines` | Rules for writing and reviewing design docs: outside-in structure, plain writing, AI-slop detection, diagram accuracy, technical accuracy. | Writing or reviewing any design doc. It is also the maker-checker rubric `k-design-doc-creation` runs against. | `k-architect`, `konductor` |
 | `non-functional-requirements` | Extracts measurable NFRs across performance, availability, security, scalability, and observability. | The design exists and "it should be fast" needs to become a number. | `k-architect` |
 | `architecture-diagram-generation` | Generates AWS architecture diagrams as draw.io XML with official service icons and directional data flows; single or multi-account. | You need a real diagram from a written design. | `k-architect` |
 | `cost-estimation` | AWS cost estimates in baseline, optimized, and high-availability scenarios. | Someone asked what this will cost to run. Needs service configs and expected load. | `k-architect` |
@@ -110,7 +110,7 @@ Producing the design itself.
 | `trade-off-evaluator` | Scores options across cost, latency, complexity, scalability, and operability into a comparison matrix plus a recommendation. | A decision has more than one credible option. | `k-architect` |
 | `deliberation-panel` | Multi-perspective deliberation: derives decision-specific axes, argues each independently, cross-examines anonymously, synthesizes a scored recommendation. Requires explicit consent. | A high-stakes decision where you want genuine disagreement, not a single voice. | `konductor`, `k-architect`, `k-developer`, `k-product-manager`, `k-researcher` |
 | `argumentation-reference` | Primer on argumentation theory — Toulmin model, fallacy taxonomy, argument scoring. | Used during adversarial review to name why an argument is weak. | `k-architect` |
-| `design-impact-review` | Traces the downstream, cross-artifact impact of a change before it cascades — DB column to API to frontend. Classifies each artifact BREAKING / STALE / UNAFFECTED. | You are about to change a data model, API schema, or interface and want to know what breaks. | `k-developer` |
+| `design-impact-review` | Traces the downstream, cross-artifact impact of a change before it cascades — DB column to API to frontend. Classifies each artifact BREAKING / STALE / UNAFFECTED. | You are about to change a data model, API schema, or interface and want to know what breaks. | `k-developer`, `konductor` |
 
 ---
 
@@ -120,7 +120,7 @@ Checking a design before anyone builds it.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `design-evaluation` | Evaluates a complete design package for production readiness across 10 dimensions. | The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM. | `k-architect` |
+| `design-evaluation` | Evaluates a complete design package for production readiness across 10 dimensions. | The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM. | `k-architect`, `konductor` |
 | `design-quality-check` | Scores a design doc for writing quality, structural completeness, and KISS/YAGNI compliance. Detects filler, hedging, unsupported claims, passive voice, circular reasoning. | The doc is complete but reads badly, or you suspect padding. | `k-architect` |
 | `doc-accuracy-analyzer` | The entry point for fact-checking a technical document: extracts claims, routes AWS claims to `aws-service-validator`, checks the rest against primary sources, reports. | You need to know which claims in a document are actually true. | `k-architect`, `k-product-manager` |
 | `aws-service-validator` | Validates AWS feature, limit, pricing, and Region claims against live AWS documentation. Called by `doc-accuracy-analyzer`, or run directly on a list of AWS claims. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
@@ -150,7 +150,7 @@ Security-specific analysis, spanning design through remediation.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `threat-modeling` | AWS threat models via STRIDE — architecture analysis, threat identification, security controls. | After system design, on anything touching auth, PII, or an external boundary. | `k-architect` |
+| `threat-modeling` | AWS threat models via STRIDE — architecture analysis, threat identification, security controls. | After system design, on anything touching auth, PII, or an external boundary. | `k-architect`, `konductor` |
 | `security-test-generation` | Security test plans by domain and layer, covering all 7 domains: authentication, input validation, API security, data protection, session management, error handling, infrastructure. | You need security test coverage, not just functional coverage. | `k-quality-assurance` |
 | `security-remediation` | Analyzes security findings and produces prioritized remediation plans with effort estimates and risk context. | You have a vulnerability report or appsec findings to work through. | `k-developer` |
 
@@ -162,16 +162,16 @@ Writing and reviewing code.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `backend-development` | Implements backend changes — Lambda handlers, service layers, DynamoDB operations. KISS/YAGNI/DRY, minimal surgical changes. | Implementing or fixing backend logic. | `k-developer` |
-| `backend-review` | Reviews backend changes for pattern compliance, type safety, DynamoDB correctness, and test quality. Produces CRITICAL / IMPORTANT / SUGGESTION findings. | After backend changes, before opening a review. | `k-developer` |
-| `frontend-development` | Implements React/TypeScript frontend using AWS Cloudscape. Cloudscape-only components, no native HTML. | Implementing UI in a Cloudscape app. | `k-developer` |
-| `frontend-review` | Reviews frontend changes for Cloudscape compliance, React Hook Form patterns, type safety, and test quality. | After frontend changes, before opening a review. | `k-developer` |
-| `infra-validation` | Validates CDK and CloudFormation against AWS best practice, security standards, and Well-Architected principles. | Before deploying any infrastructure change. | `k-developer` |
+| `backend-development` | Implements backend changes — Lambda handlers, service layers, DynamoDB operations. KISS/YAGNI/DRY, minimal surgical changes. | Implementing or fixing backend logic. | `k-developer`, `konductor` |
+| `backend-review` | Reviews backend changes for pattern compliance, type safety, DynamoDB correctness, and test quality. Produces CRITICAL / IMPORTANT / SUGGESTION findings. | After backend changes, before opening a review. | `k-developer`, `konductor` |
+| `frontend-development` | Implements React/TypeScript frontend using AWS Cloudscape. Cloudscape-only components, no native HTML. | Implementing UI in a Cloudscape app. | `k-developer`, `konductor` |
+| `frontend-review` | Reviews frontend changes for Cloudscape compliance, React Hook Form patterns, type safety, and test quality. | After frontend changes, before opening a review. | `k-developer`, `konductor` |
+| `infra-validation` | Validates CDK and CloudFormation against AWS best practice, security standards, and Well-Architected principles. | Before deploying any infrastructure change. | `k-developer`, `konductor` |
 | `code-review` | Standard pull-request review workflow — creating PRs, reviewing diffs, addressing feedback, post-implementation cycles. | Ordinary code review, using git and the GitHub CLI. | `k-developer` |
 | `adversarial-code-review` | Reviews a diff from an adversarial security-focused stance, arguing against approval. Targets information disclosure, data-integrity failures, and schema/validation gaps. | After standard review, on anything security-sensitive. This is what `k-adversarial-pull-request-review` runs on. | `k-architect`, `k-developer` |
-| `adversarial-code-review-pass-security` | One parallel pass of the adversarial review, scoped to security: information disclosure, authorization, injection, secrets. | You do not invoke it directly — the `k-adversarial-pull-request-review` coordinator spawns it alongside the integrity and schema passes. | `k-architect`, `k-developer` |
-| `adversarial-code-review-pass-integrity` | One parallel pass, scoped to data integrity: multi-item mutations, atomicity, ordering, idempotency. | Same — spawned by the coordinator, not called on its own. | `k-architect`, `k-developer` |
-| `adversarial-code-review-pass-schema` | One parallel pass, scoped to schema and contract: API/schema/type changes, backward compatibility, validation completeness. | Same — spawned by the coordinator, not called on its own. | `k-architect`, `k-developer` |
+| `adversarial-code-review-pass-security` | One parallel pass of the adversarial review, scoped to security: information disclosure, authorization, injection, secrets. | You do not invoke it directly; the orchestrator coordinating `k-adversarial-pull-request-review` spawns a `k-developer` session with it, alongside the integrity and schema passes. | `k-architect`, `k-developer` |
+| `adversarial-code-review-pass-integrity` | One parallel pass, scoped to data integrity: multi-item mutations, atomicity, ordering, idempotency. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
+| `adversarial-code-review-pass-schema` | One parallel pass, scoped to schema and contract: API/schema/type changes, backward compatibility, validation completeness. | Same: run in a session the coordinator spawns, not called on its own. | `k-architect`, `k-developer` |
 | `historical-issues-registry` | Loads prior review state for a pull request, then filters new findings that duplicate ones already fixed or already declined by a human reviewer. | Reviewing a second or third revision of the same change, to stop the same comment reappearing. | `k-architect` |
 | `asdlc-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
 | `asdlc-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
@@ -249,9 +249,9 @@ Useful when deciding which agent to talk to directly.
 | --- | --- |
 | `k-architect` | 38 |
 | `k-developer` | 27 |
+| `konductor` | 24 |
 | `k-product-manager` | 16 |
 | `k-tpm` | 14 |
-| `konductor` | 13 |
 | `k-quality-assurance` | 12 |
 | `konductor-cmux-orchestrator` | 10 |
 | `konductor-mux-orchestrator` | 10 |
