@@ -48,6 +48,11 @@ agent names such as `konductor` and `k-architect`.
 Plugin agents need agent-teams mode and tool permissions. Follow [Install for
 Claude Code, steps 2-3](install-claude-code.md#2-enable-agent-teams-mode).
 
+## Orchestration mode
+
+The plugin does not wire the session-start hook, so `orchestration.mode: coordinator` has no effect
+there. Coordinator mode needs a `konductor install` setup.
+
 ## Update or remove
 
 ```bash
