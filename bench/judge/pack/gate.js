@@ -32,7 +32,7 @@ function declaredArtifacts(pack, task) {
   const prompt = String(task.prompt || '');
   if (task.class === 'review') out.push('review');
   if (task.class === 'design') out.push('design');
-  if (['orchestration', 'hard', 'real', 'autonomy'].includes(task.class)) out.push('code');
+  if (['orchestration', 'hard', 'complex', 'real', 'autonomy'].includes(task.class)) out.push('code');
   if (task.class !== 'review' && task.class !== 'design' && MENTIONS_TESTS.test(prompt) && out.includes('code')) out.push('tests');
   if (/\bREADME\b/.test(prompt) && !FORBIDS_README.test(prompt) && out.includes('code')) out.push('readme');
   if (/threat[- ]model/i.test(prompt)) out.push('threat-model');

@@ -23,6 +23,8 @@ const SUITE_DEFAULTS = {
   requirements: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 3, parallel: 1 },
   // Skills reached through the agents that own them; tasks come from bench/rootcause (a suite-declared extra directory) and bench/tasks.
   rootcause: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 2, parallel: 1 },
+  // Larger multi-step tasks (design then implement, refactor, cross-layer feature, review then fix); tasks come from bench/complex.
+  complex: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 1, parallel: 1 },
   // Can a Kiro agent read a skill's references/*.md file from the skills root? Tasks come from bench/refs; the arms are built by the study driver.
   'references-read': { arms: ['main'], replicates: 3, parallel: 1 },
   // Does the `constraints` skill's guidance reach Kiro agents and change what they do? Tasks come from bench/probes; the arms are built by the study driver.
@@ -82,7 +84,7 @@ function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR) {
-  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, references-read or constraints-probe)`);
+  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, complex, references-read or constraints-probe)`);
   const file = path.join(benchDir, 'suites', `${name}.json`);
   const fromFile = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks
