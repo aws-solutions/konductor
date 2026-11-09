@@ -163,6 +163,9 @@ not per individual commit.
   and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
   skills; it used to serve every installed skill.
+- The routing rules no longer say the Kiro IDE copy of an SOP (`.kiro/skills/sop-<name>/SKILL.md`)
+  is out of the agent's reach: Kiro CLI lists that copy to every agent as a skill, and it is not
+  one of the agent's declared SOPs.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
   pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
   fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
