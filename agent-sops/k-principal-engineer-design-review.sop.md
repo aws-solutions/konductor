@@ -63,7 +63,7 @@ Run the `design-evaluation` skill across 10 production readiness dimensions.
 
 **Constraints:**
 
-- You MUST apply the `design-evaluation` skill
+- You MUST apply the `design-evaluation` skill with package scope `single-document`
 - You MUST evaluate all 10 dimensions defined in `design-evaluation` Step 1
 - You MUST classify each finding as CRITICAL, IMPORTANT, or SUGGESTION using the same severity definitions as the adversarial review
 - You MUST compute a confidence score per section: average of the 8 scored dimensions (1 to 5 each). High-level assessment (#2) and actionable recommendations (#10) are unscored report sections and stay out of the average

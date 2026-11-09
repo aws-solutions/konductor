@@ -42,17 +42,20 @@ Small projects (1-2 services) get focused feedback on core patterns. Medium proj
 ### Inputs
 
 - **Design package**: the documents to evaluate. Load every artifact you are given.
+- **Package scope** (optional): `full-package` (default) or `single-document`. Use `single-document` when the design doc is the whole input, as in a pre-review of one doc.
 - **Project scope**: small, medium or large. If the caller doesn't say, infer it from the service count in Scope-Tailored Feedback and state the inference.
 - **Templates** (optional): design templates to compare against. Without one, use the section structure in `design-doc-guidelines`. Treat templates as references, not strict requirements.
 
 ### Step 0: Check the package
 
-List which of these artifacts are missing: system design, threat model, API specs, data models, architecture diagrams, IAM policies. Then:
+With `single-document`, skip this step. The doc is the package, and each dimension is scored on what the doc itself says.
+
+With `full-package`, list which of these artifacts are missing: system design, threat model, API specs, data models, architecture diagrams, IAM policies. Then:
 
 - When invoked standalone, show the list and ask whether to score what is present or wait for the rest. Don't score until the user answers.
 - When invoked from a SOP, or `scope_confirmed` is true, don't ask. Mark each missing artifact "not provided" in the report and score what is present.
 
-A dimension that depends on a missing artifact (security without a threat model, for example) gets its score capped at 3, with the gap named as a finding.
+A dimension that depends on a missing artifact (security without a threat model, for example) gets its score capped at 3. Report missing artifacts in a separate "Not provided" list, not as findings. They carry no CRITICAL, IMPORTANT or SUGGESTION severity and don't count toward any finding gate, because revising the design can't supply them.
 
 ### Step 1: Evaluate the 10 dimensions
 

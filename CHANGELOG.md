@@ -261,6 +261,9 @@ not per individual commit.
   items map to its 10 dimensions, which both design review SOPs and the user guide now use.
   Eight of them are scored. The high-level assessment and the recommendations are unscored
   report sections, so a SOP's confidence score averages only the eight.
+  Missing artifacts are listed apart from findings and carry no severity, and the PE review and
+  design-doc SOPs evaluate a single document without asking for the rest of a package, so a
+  one-doc review can reach PE-READY.
   `plan-review` has a SHIP IT template and star rules that don't overlap, and
   `trade-off-evaluator` writes to the caller's output directory or reports inline. The
   `external-research` AWS example states a checked fact instead of a wrong one.
