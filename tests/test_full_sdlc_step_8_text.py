@@ -23,6 +23,12 @@ def test_step_8_records_a_pending_verdict_as_blocked():
     assert "from the review report or the adversarial report" in text
 
 
+def test_step_8_maps_open_findings_after_the_fix_cycles_to_blocked():
+    text = step_8()
+    assert "APPROVED when neither report leaves a CRITICAL or IMPORTANT finding open" in text
+    assert "BLOCKED when either does after the fix cycles" in text
+
+
 def test_step_8_no_longer_claims_a_diff_only_degrade():
     assert "degrades to diff-only" not in SOP
     assert "diff-only degrade" not in SOP

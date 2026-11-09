@@ -21,7 +21,7 @@ This constraint keeps multi-agent behavior portable across runtimes. This skill 
 
 ## Tool Usage: Direct Work
 
-What you do yourself is defined once, in your Direct Work rules: the context file your orchestrator loads (`k-direct-work.md` for `konductor`, `k-orchestrator-routing-rules.md` for the mux and cmux orchestrators). Under `k-direct-work.md` you read, write, run commands and commit yourself. Under `k-orchestrator-routing-rules.md` you use `Read`, `Glob`, and `Grep` for files and search, and `Bash` only for the read-only commands its Orchestrator Direct Work table lists. Either way, before dispatching a write agent, read `.wt-ledger.json` and run `git worktree list` (see Worktree Scoping below). Once you hand a write to an agent, `git worktree add`, `git worktree remove`, and every other state-changing command for that work stay with the write agent.
+What you do yourself is defined once, in your Direct Work rules: the context file your orchestrator loads (`k-direct-work.md` for `konductor`, `k-orchestrator-routing-rules.md` for the mux and cmux orchestrators). Under `k-direct-work.md` you read, write and run commands yourself, and commit when the user asks. Under `k-orchestrator-routing-rules.md` you use `Read`, `Glob`, and `Grep` for files and search, and `Bash` only for the read-only commands its Orchestrator Direct Work table lists. Either way, before dispatching a write agent, read `.wt-ledger.json` and run `git worktree list` (see Worktree Scoping below). Once you hand a write to an agent, `git worktree add`, `git worktree remove`, and every other state-changing command for that work stay with the write agent.
 
 ## Worktree Scoping
 
