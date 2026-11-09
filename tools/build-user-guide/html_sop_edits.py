@@ -1283,12 +1283,24 @@ SOP_EDITS += [
      "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts)\" },",
      "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text, and every OVERSTATED "
      "finding corrected or flagged (UNVERIFIED is acceptable with callouts)\" },"),
-    ("design use case: Phase 3 flags OVERSTATED",
-     "INCORRECT and UNVERIFIED findings get inline callouts but do not stop the phase;",
-     "INCORRECT, OVERSTATED, and UNVERIFIED findings get inline callouts but do not stop the phase;"),
-    ("design SOP: Phase 3 node flags OVERSTATED",
-     "flagging INCORRECT / UNVERIFIED inline.",
-     "flagging INCORRECT / OVERSTATED / UNVERIFIED inline."),
+    ("design use case: Phase 3 is two passes and flags OVERSTATED",
+     "Three automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
+     "claim against primary sources and routes AWS claims to aws-service-validator. INCORRECT and UNVERIFIED "
+     "findings get inline callouts but do not stop the phase; Phase 5 corrects the INCORRECT ones. "
+     "aws-service-validator checks every AWS service and feature claim against live AWS documentation, "
+     "classifying each CONFIRMED / UNVERIFIED / INCORRECT.",
+     "Two automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
+     "claim against primary sources and routes AWS service and feature claims to aws-service-validator, which "
+     "checks them against live AWS documentation and classifies each CONFIRMED / UNVERIFIED / INCORRECT. "
+     "INCORRECT, OVERSTATED, and UNVERIFIED findings get inline callouts but do not stop the phase; Phase 5 "
+     "corrects the INCORRECT ones."),
+    ("design SOP: Phase 3 node routes AWS claims and flags OVERSTATED",
+     "doc-accuracy-analyzer verifies claims against the codebase, flagging INCORRECT / UNVERIFIED inline. "
+     "aws-service-validator checks every AWS claim via aws-mcp (CONFIRMED / UNVERIFIED / INCORRECT) and writes "
+     "the validation report.",
+     "doc-accuracy-analyzer verifies claims against primary sources, flagging INCORRECT / OVERSTATED / UNVERIFIED "
+     "inline, and routes AWS claims to aws-service-validator, which checks them via aws-mcp (CONFIRMED / "
+     "UNVERIFIED / INCORRECT) and writes the validation report."),
     ("design SOP: OVERSTATED blocks until corrected or flagged",
      "mark UNVERIFIED claims with a callout and proceed. Only INCORRECT findings are treated as blocking.",
      "mark UNVERIFIED claims with a callout and proceed. INCORRECT findings block until the text is corrected, "

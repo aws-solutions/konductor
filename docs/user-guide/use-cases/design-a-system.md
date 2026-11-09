@@ -106,14 +106,13 @@ fixed and the pass re-run before Phase 3. This can loop a few times without aski
 
 ### Phase 3 — Quality gates *(no pause, by design)*
 
-Three automated passes, with no user interaction permitted:
+Two automated passes, with no user interaction permitted:
 
-- **`doc-accuracy-analyzer`** checks every technical claim against primary sources and routes AWS
-  claims to `aws-service-validator`. INCORRECT, OVERSTATED, and UNVERIFIED findings get inline `> ⚠️`
-  callouts but do not stop the phase. Phase 5 corrects the INCORRECT ones.
-- **`aws-service-validator`** checks every AWS service and feature claim against live AWS
-  documentation, classifying each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
-  `docs/design/pennywise-aws-validation.md`.
+- **`doc-accuracy-analyzer`** checks every technical claim against primary sources. It routes AWS
+  service and feature claims to `aws-service-validator`, which checks them against live AWS
+  documentation, classifies each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
+  `docs/design/pennywise-aws-validation.md`. INCORRECT, OVERSTATED, and UNVERIFIED findings get
+  inline `> ⚠️` callouts but do not stop the phase. Phase 5 corrects the INCORRECT ones.
 - **`trade-off-evaluator`** scores every multi-option decision 1–5 across cost, latency,
   complexity, scalability, and operability, embeds the table in the relevant ADR, and writes
   `docs/design/pennywise-tradeoffs.md`.
