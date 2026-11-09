@@ -42,15 +42,25 @@ function flagReasons({ rule, votes, worthCount, styleCount }) {
   return reasons;
 }
 
-/** Owner decisions: {"R03":"keep"|"drop"}. Anything else is refused so a typo cannot pass silently. */
+const RULE_BUCKETS = ['value', 'format'];
+
+/**
+ * Owner decisions: {"R03":"keep","R07":"drop","R09":{"decision":"keep","bucket":"format"}}. A rule is value unless the owner buckets it
+ * as format. Anything else is refused so a typo cannot pass silently. Returns {id: {decision, bucket}}.
+ */
 function loadDecisions(file, ruleIds) {
   if (!file || !fs.existsSync(file)) return {};
   const d = readJson(file);
-  for (const [id, v] of Object.entries(d)) {
+  const out = {};
+  for (const [id, raw] of Object.entries(d)) {
     if (!ruleIds.includes(id)) throw new Error(`${path.basename(file)}: unknown rule id ${id}`);
-    if (v !== 'keep' && v !== 'drop') throw new Error(`${path.basename(file)}: ${id} must be "keep" or "drop" (got ${JSON.stringify(v)})`);
+    const v = typeof raw === 'object' && raw !== null ? raw : { decision: raw };
+    if (v.decision !== 'keep' && v.decision !== 'drop') throw new Error(`${path.basename(file)}: ${id} must be "keep" or "drop" (got ${JSON.stringify(v.decision)})`);
+    if (v.bucket !== undefined && !RULE_BUCKETS.includes(v.bucket)) throw new Error(`${path.basename(file)}: ${id} bucket must be "value" or "format" (got ${JSON.stringify(v.bucket)})`);
+    if (v.bucket !== undefined && v.decision === 'drop') throw new Error(`${path.basename(file)}: ${id} is dropped, so it takes no bucket`);
+    out[id] = { decision: v.decision, bucket: v.bucket ?? null };
   }
-  return d;
+  return out;
 }
 
 function flaggedMarkdown({ skill, panel, results }) {
@@ -62,7 +72,17 @@ function flaggedMarkdown({ skill, panel, results }) {
     const v = r.votes.map((x) => (x.error ? `${x.judge}: error` : `${x.judge}: ${x.worth ? 'Y' : 'n'}/${x.styleOnly ? 'Y' : 'n'}`)).join('; ');
     lines.push(`| ${r.id} | ${r.tag} | ${v} | ${r.keep ? 'keep' : 'drop'} | ${r.flags.join(', ')} | ${r.text.replace(/\|/g, '/')} |`);
   }
-  lines.push('', 'Record a decision in owner-decisions.json as {"R03": "keep", "R07": "drop"} and run vote again (cached, no cost).');
+  lines.push('', 'Record a decision in owner-decisions.json as {"R03": "keep", "R07": "drop", "R09": {"decision": "keep", "bucket": "format"}} and run vote again (cached, no cost).');
+  return `${lines.join('\n')}\n`;
+}
+
+function ruleTableMarkdown({ skill, results }) {
+  const lines = [`# Rules: ${skill}`, '', 'Bucket is the rubric bucket for items tied to the rule. Status shows the owner decision when there is one.', '',
+    '| Rule | Bucket | Status | Worth votes | Style votes | Rule text |', '| --- | --- | --- | --- | --- | --- |'];
+  for (const r of results) {
+    const status = `${r.survives ? 'kept' : 'dropped'}${r.ownerDecision ? ' (owner)' : ''}`;
+    lines.push(`| ${r.id} | ${r.survives ? r.bucket : '-'} | ${status} | ${r.worthCount} of ${r.votes.length} | ${r.styleCount} | ${r.text.replace(/\|/g, '/')} |`);
+  }
   return `${lines.join('\n')}\n`;
 }
 
@@ -92,14 +112,15 @@ async function runVote({ rulesDoc, ask, panel = DEFAULT_PANEL, decisionsFile, ou
     const counts = decide(votes);
     const flags = flagReasons({ rule, votes, ...counts });
     const owner = decisions[rule.id] ?? null;
-    const survives = owner ? owner === 'keep' : counts.keep;
-    return { id: rule.id, text: rule.text, tag: rule.tag, votes, ...counts, flags, ownerDecision: owner, survives };
+    const survives = owner ? owner.decision === 'keep' : counts.keep;
+    return { id: rule.id, text: rule.text, tag: rule.tag, votes, ...counts, flags, ownerDecision: owner?.decision ?? null, bucket: owner?.bucket ?? 'value', survives };
   });
-  const survivors = rulesDoc.rules.filter((r) => results.find((x) => x.id === r.id).survives);
+  const survivors = rulesDoc.rules.filter((r) => results.find((x) => x.id === r.id).survives).map((r) => ({ ...r, bucket: results.find((x) => x.id === r.id).bucket }));
   writeJson(path.join(outDir, 'votes.json'), { skill: rulesDoc.skill, panel, thresholds: { minWorth: MIN_WORTH, maxStyle: MAX_STYLE }, results });
   writeJson(path.join(outDir, 'survivors.json'), { skill: rulesDoc.skill, source: rulesDoc.source, rules: survivors });
   fs.writeFileSync(path.join(outDir, 'flagged.md'), flaggedMarkdown({ skill: rulesDoc.skill, panel, results }));
+  fs.writeFileSync(path.join(outDir, 'rule-table.md'), ruleTableMarkdown({ skill: rulesDoc.skill, results }));
   return { results, survivors };
 }
 
-module.exports = { votePrompt, decide, flagReasons, loadDecisions, runVote, DEFAULT_PANEL, MIN_WORTH, MAX_STYLE };
+module.exports = { ruleTableMarkdown, RULE_BUCKETS, votePrompt, decide, flagReasons, loadDecisions, runVote, DEFAULT_PANEL, MIN_WORTH, MAX_STYLE };

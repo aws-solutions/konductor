@@ -7,9 +7,11 @@ const { writeJson, REQUEST_SIDE_EFFECT, ITEM_SIDE_EFFECT } = require('./util.js'
 
 const TAGS = ['useful', 'generic', 'style'];
 const DEFAULT_RULES = 12;
+// A document longer than this is read in parts so one model call stays small and quotes stay exact.
+const DEFAULT_CHUNK_CHARS = 72000;
 
-function extractPrompt({ skillText, skillName, count }) {
-  return `Below is the text of an instruction document written for an AI assistant. Extract about ${count} rules from it that can be tested.
+function extractPrompt({ skillText, skillName, count, part }) {
+  return `Below is the text of an instruction document written for an AI assistant${part ? `, part ${part.index} of ${part.total}. Use only this part` : ''}. Extract about ${count} rules from it that can be tested.
 
 A testable rule:
 - describes a result that a written answer to a user request can visibly show (something that is present, absent, ordered, named, or quantified in the answer). It must not depend on a saved file, a command that ran, or any other side effect.
@@ -59,14 +61,45 @@ function screenRules({ raw, skillText, skill }) {
   return { accepted: accepted.map((r, i) => ({ id: `R${String(i + 1).padStart(2, '0')}`, ...r })), rejected };
 }
 
-async function runExtract({ skill, ask, modelName, count = DEFAULT_RULES, outDir }) {
-  const reply = await ask.askJson(modelName, extractPrompt({ skillText: skill.text, skillName: skill.skill, count }), (v) => {
+/** Splits at a heading near each equal share of the text; a text within `maxChars` stays whole. */
+function splitDocument(text, maxChars) {
+  if (text.length <= maxChars) return [text];
+  const total = Math.ceil(text.length / maxChars);
+  const share = text.length / total;
+  const chunks = [];
+  let cur = [];
+  let len = 0;
+  for (const line of text.split('\n')) {
+    if (chunks.length < total - 1 && len >= share && /^#{1,3}\s/.test(line)) { chunks.push(cur.join('\n')); cur = []; len = 0; }
+    cur.push(line);
+    len += line.length + 1;
+  }
+  chunks.push(cur.join('\n'));
+  return chunks;
+}
+
+async function runExtract({ skill, ask, modelName, count = DEFAULT_RULES, outDir, chunkChars = DEFAULT_CHUNK_CHARS }) {
+  const parts = splitDocument(skill.text, chunkChars);
+  const ask1 = async (skillText, n, part) => (await ask.askJson(modelName, extractPrompt({ skillText, skillName: skill.skill, count: n, part }), (v) => {
     if (!Array.isArray(v?.rules)) throw new Error('reply has no rules array');
-  });
-  const { accepted, rejected } = screenRules({ raw: reply.rules, skillText: skill.text, skill: skill.skill });
-  const out = { skill: skill.skill, source: skill.source, model: modelName, requested: count, rules: accepted, rejected };
+  })).rules;
+  let accepted;
+  let rejected;
+  if (parts.length === 1) {
+    ({ accepted, rejected } = screenRules({ raw: await ask1(skill.text, count), skillText: skill.text, skill: skill.skill }));
+  } else {
+    const perPart = Math.ceil(count / parts.length) + 1;
+    const raws = [];
+    for (let i = 0; i < parts.length; i++) raws.push(await ask1(parts[i], perPart, { index: i + 1, total: parts.length }));
+    const mixed = [];
+    for (let k = 0; k < perPart; k++) for (const r of raws) if (r[k] !== undefined) mixed.push(r[k]);
+    const screened = screenRules({ raw: mixed, skillText: skill.text, skill: skill.skill });
+    rejected = screened.rejected;
+    accepted = screened.accepted.slice(0, count).sort((a, b) => a.line - b.line).map((r, i) => ({ ...r, id: `R${String(i + 1).padStart(2, '0')}` }));
+  }
+  const out = { skill: skill.skill, source: skill.source, model: modelName, requested: count, parts: parts.length, rules: accepted, rejected };
   writeJson(path.join(outDir, 'rules.json'), out);
   return out;
 }
 
-module.exports = { extractPrompt, screenRules, runExtract, TAGS, DEFAULT_RULES };
+module.exports = { splitDocument, DEFAULT_CHUNK_CHARS, extractPrompt, screenRules, runExtract, TAGS, DEFAULT_RULES };

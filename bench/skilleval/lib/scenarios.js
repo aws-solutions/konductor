@@ -93,8 +93,9 @@ function findDuplicate(s, earlier) {
 
 const shortList = (arr, n) => arr.slice(0, n);
 
+// A layout rule cannot carry a scenario: its rubric item is a format item and a rule scenario needs value items.
 function pickRules(survivors, n) {
-  const order = [...survivors].sort((a, b) => (a.tag === 'useful' ? 0 : 1) - (b.tag === 'useful' ? 0 : 1));
+  const order = survivors.filter((r) => r.bucket !== 'format').sort((a, b) => (a.tag === 'useful' ? 0 : 1) - (b.tag === 'useful' ? 0 : 1));
   return shortList(order, n).sort((a, b) => a.id.localeCompare(b.id));
 }
 
@@ -134,7 +135,7 @@ async function runScenarios({ skill, survivors, ask, model, max = DEFAULT_MAX, s
       if (need <= 0) continue;
       const covered = new Set(accepted.filter((s) => s.type === 'rule').flatMap((s) => s.ruleIds));
       const pool = type === 'rule' ? survivors.filter((r) => !covered.has(r.id)) : survivors;
-      if (type === 'rule' && !pool.length) continue;
+      if (type === 'rule' && !pool.some((r) => r.bucket !== 'format')) continue;
       const made = await generateType({ type, ask, model, count: need, survivors: pool, description: skill.description, domain });
       for (const s of made) {
         const scenario = { type: s.type, ruleIds: s.ruleIds, title: String(s.title ?? '').trim(), prompt: String(s.prompt ?? '').trim() };
