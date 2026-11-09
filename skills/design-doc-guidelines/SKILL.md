@@ -157,5 +157,6 @@ Every data flow that crosses a boundary needs a threat entry:
 - Service → third-party API (outbound calls): what sensitive data leaves your boundary?
 - Shared store → tenant read: what cross-tenant data could be exposed?
 - Service → database or filesystem (writes): what checks could be bypassed?
+- Untrusted content → LLM agent (prompts, tool results, retrieved docs): what instructions could be injected?
 
 For each threat: state mitigations AND residual risk. "Accepted risk" is valid — undocumented risk is not.
