@@ -32,6 +32,19 @@ pub(crate) fn is_kiro_spawn_tool(id_or_tag: &str) -> bool {
             .is_some_and(|rest| rest.starts_with('/'))
 }
 
+/// True for `{"availableAgents": [], "trustedAgents": []}`: the v2 `subagent`
+/// tool stays in `@builtin`, and this setting leaves it no agent to spawn, so
+/// a specialist carries it as a block, not a grant. A missing list or any
+/// named agent is a grant.
+pub(crate) fn is_empty_subagent_target_list(settings: &serde_json::Value) -> bool {
+    ["availableAgents", "trustedAgents"].iter().all(|key| {
+        settings
+            .get(key)
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(Vec::is_empty)
+    })
+}
+
 /// v3 built-ins a specialist must not hold even under `--trust-all-tools`.
 /// Dropping the `subagent` tag is not enough: `@builtin` also carries
 /// `run_workflow`, which runs any agent via `agent://<name>`, and no
@@ -87,6 +100,21 @@ mod tests {
             "subagent_x",
         ] {
             assert!(!is_kiro_spawn_tool(id), "{id}");
+        }
+    }
+
+    #[test]
+    fn is_empty_subagent_target_list_needs_both_lists_empty() {
+        assert!(is_empty_subagent_target_list(&serde_json::json!({
+            "availableAgents": [], "trustedAgents": []
+        })));
+        for settings in [
+            serde_json::json!({}),
+            serde_json::json!({"availableAgents": []}),
+            serde_json::json!({"availableAgents": ["k-developer"], "trustedAgents": []}),
+            serde_json::json!({"availableAgents": [], "trustedAgents": ["k-developer"]}),
+        ] {
+            assert!(!is_empty_subagent_target_list(&settings), "{settings}");
         }
     }
 

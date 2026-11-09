@@ -78,12 +78,17 @@ not per individual commit.
 - Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
   `.gitignore`); `konductor init` also ignores the directory.
 - Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it, with
-  `disallowedTools` on Claude Code for every specialist (not shell or Kiro CLI v2).
+  `disallowedTools` on Claude Code for every specialist (not shell). On Kiro CLI v2, where
+  `@builtin` keeps the `subagent` tool, every specialist carries an empty
+  `toolsSettings.subagent` target list, so it has no agent to spawn.
   `k-code-review-workflow` step 6 writes the report and ends with a note asking the orchestrator
   to run the adversarial review, no resume; the verdict comes from the findings, with the
   adversarial pass state on its own line. After the pass, the orchestrator, or `k-developer` on
-  its behalf, sets the final verdict; `k-full-sdlc` runs that pass before writing a feature's status,
-  and marks a feature BLOCKED when either report leaves a CRITICAL or IMPORTANT finding open.
+  its behalf, sets the final verdict when the adversarial report's `Passes run:` line names no
+  `MISSING` pass; a `MISSING` pass writes `Adversarial pass: incomplete` and leaves the verdict
+  pending. `k-full-sdlc` runs that pass before writing a feature's status,
+  and marks a feature BLOCKED when either report leaves a CRITICAL or IMPORTANT finding open or
+  the pass is incomplete.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before

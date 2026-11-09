@@ -85,6 +85,12 @@
         "@aws-mcp/aws___list_regions",
         "@aws-mcp/aws___get_regional_availability"
       ],
+      "toolsSettings": {
+        "subagent": {
+          "availableAgents": [],
+          "trustedAgents": []
+        }
+      },
       "hooks": {},
       "resources": [
         "file://AGENTS.md",
