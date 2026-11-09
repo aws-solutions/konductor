@@ -93,7 +93,7 @@ Delegate to `k-browser`.
 
 **ON FAILURE:** `k-browser` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step runs in a separate agent from Step 1, which set `credentials_file`/`agent_created_credentials_file` — reference the literal values, not shell variables.)
 
-**CONTEXT:** `url={url}`, `credentials_file={credentials_file}`, `agent_created_credentials_file={agent_created_credentials_file}`, `features={features}`.
+**CONTEXT:** `url={url}`, `credentials_file={credentials_file}`, `agent_created_credentials_file={agent_created_credentials_file}`, `features={features}`. `credentials_file` comes from the user through this SOP (supplied as its parameter, or built in Step 1 from the user's own username and password); core rule 12 treats it as user-named. Read only `test_url`, `user_name` and `password`; never echo the values.
 
 ### Step 3: Confirm Discovery Scope
 
@@ -149,6 +149,8 @@ Unless `scope_confirmed=true`, ask: "Review the prompts above. Run them now? [y/
 ### Step 6: Execute Test Prompts
 
 Delegate to `k-browser`. Pass `{credentials_file}` and `{agent_created_credentials_file}` into this delegated step as literals — Step 6 runs in a separate agent from Step 1, which set them, so the delegate has no shell state to inherit.
+
+**CONTEXT:** `url={url}`, `credentials_file={credentials_file}`, `agent_created_credentials_file={agent_created_credentials_file}`. `credentials_file` comes from the user through this SOP (supplied as its parameter, or built in Step 1 from the user's own username and password); core rule 12 treats it as user-named. Read only `test_url`, `user_name` and `password`; never echo the values.
 
 **REQUIRED TOOLS:** browser automation tools
 

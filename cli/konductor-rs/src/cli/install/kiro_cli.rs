@@ -52,10 +52,13 @@ pub(crate) const KONDUCTOR_DESTINATION_ROOT: &str = ".konductor";
 /// writes `.konductor/manifest`.
 pub struct KiroCliInstallStrategy;
 
+/// The strategy's manifest name and `--harness` value. Matches
+/// `KiroCliV2Transformer::name()` exactly.
+pub(crate) const STRATEGY_NAME: &str = "kiro-cli-v2";
+
 impl InstallStrategy for KiroCliInstallStrategy {
-    /// Matches `KiroCliV2Transformer::name()` exactly.
     fn name(&self) -> &'static str {
-        "kiro-cli-v2"
+        STRATEGY_NAME
     }
 
     fn harness_dir(&self) -> &'static str {
@@ -315,14 +318,14 @@ mod plan;
 // `kiro_cli/{plan,copy,fs_util}.rs`.
 pub(super) use copy::{
     copy_agent_files, copy_skill_dir_recursive, install_agents, install_context,
-    install_kiro_sop_skills, install_skills, install_sops, list_agent_files, list_agent_files_like,
-    list_skill_dirs, CONTEXT_RESOURCE_PREFIX,
+    install_context_into, install_kiro_sop_skills, install_skills, install_sops, list_agent_files,
+    list_agent_files_like, list_skill_dirs, CONTEXT_RESOURCE_PREFIX,
 };
 pub(super) use fs_util::{reject_unsafe_file_name, set_executable};
 pub(super) use plan::{
     attach_provenance, content_manifest_path, plan_additive_claude_sop_skill_files, plan_all_files,
-    plan_claude_hooks_file, plan_claude_settings_grant, plan_skill_dir_recursive,
-    read_skill_scopes_sidecar, read_sop_scopes_sidecar, PlannedFile,
+    plan_claude_hooks_file, plan_claude_settings_grant, plan_context_files_into,
+    plan_skill_dir_recursive, read_skill_scopes_sidecar, read_sop_scopes_sidecar, PlannedFile,
 };
 
 #[cfg(test)]
@@ -3226,7 +3229,8 @@ mod tests {
                 "matcher": "startup|clear",
                 "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
             }]),
-            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
+            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation; \
+             the orchestration hook is the Claude strategy's, never a Kiro install's"
         );
         assert_eq!(
             claude_settings["hooks"]["SubagentStart"],
@@ -3273,8 +3277,10 @@ mod tests {
     /// `--no-telemetry` on a dual-marker install (`.kiro` and `.claude`
     /// both already present) run end to end: the V2 Kiro `mcpServers`
     /// injection and the V3/Claude `permissions.allow` grant must still
-    /// land (neither is a telemetry side effect), but no telemetry-hook
-    /// block or `.claude/settings.local.json` may be written.
+    /// land (neither is a telemetry side effect), but no hook block and no
+    /// `.claude/settings.local.json` may be written: a Kiro install wires
+    /// only the telemetry hooks into Claude settings, and `--no-telemetry`
+    /// turns those off.
     #[test]
     fn install_from_local_no_telemetry_skips_claude_hook_wiring_but_keeps_permission_grant() {
         let target_dir = scratch_dir("no-telemetry-skips-hooks-target");
@@ -3323,15 +3329,17 @@ mod tests {
             "--no-telemetry must not affect the unrelated MCP permission grant"
         );
 
-        // The telemetry hook wiring itself must be completely absent:
-        // no `hooks` key in the shared file, and no personal settings
-        // file at all.
+        // The hook wiring must be completely absent: no `hooks` key in
+        // the shared file, and no personal settings file at all.
         assert!(
             claude_settings.get("hooks").is_none(),
-            "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
-             wiring entirely; got: {claude_settings:?}"
+            "--no-telemetry must suppress the Claude hook wiring entirely; got: \
+             {claude_settings:?}"
         );
-        assert!(!target_dir.join(".claude/settings.local.json").exists());
+        assert!(
+            !target_dir.join(".claude/settings.local.json").exists(),
+            "a Kiro --no-telemetry install must not create .claude/settings.local.json"
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();

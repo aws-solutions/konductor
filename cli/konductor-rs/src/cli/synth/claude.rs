@@ -26,6 +26,7 @@ use super::model::CanonicalModel;
 use super::model::{AuxiliaryFile, ContextDef, SkillDef, SopDef};
 use super::parser::{ClaudeCliConfig, McpServerDef};
 use super::path_safety::reject_unsafe_agent_name;
+use super::spawn_policy::{is_claude_spawn_tool, is_specialist, CLAUDE_SPAWN_TOOLS};
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
 
@@ -74,6 +75,8 @@ struct ClaudeAgentFrontmatter<'a> {
     skills: &'a [String],
     #[serde(rename = "allowedTools", skip_serializing_if = "is_empty_str_slice")]
     allowed_tools: &'a [String],
+    #[serde(rename = "disallowedTools", skip_serializing_if = "<[_]>::is_empty")]
+    disallowed_tools: &'a [&'static str],
     #[serde(skip_serializing_if = "IndexMap::is_empty")]
     hooks: IndexMap<String, serde_yaml::Value>,
     #[serde(rename = "mcpServers", skip_serializing_if = "Vec::is_empty")]
@@ -461,6 +464,10 @@ fn is_date(part: &str) -> bool {
 /// `merge_mcp_servers` (see that function's own doc comment for the
 /// precedence rule) before rendering, so the frontmatter's `mcpServers:`
 /// key reflects both sources rather than only the Claude-specific one.
+///
+/// For a specialist (any agent that is not a `konductor*` orchestrator), spawn
+/// tools are dropped from `tools` and `disallowedTools` denies them, whether or
+/// not a `tools` list exists.
 fn render_agent_md(
     name: &str,
     config: &super::parser::AgentConfig,
@@ -481,13 +488,26 @@ fn render_agent_md(
 
     let model = claude_model_id(&config.model);
     let merged_mcp_servers = merge_mcp_servers(mcp_registry, &claude.mcp_servers);
+    let specialist = is_specialist(name);
+    let tools: Option<Vec<String>> = claude.tools.as_ref().map(|tools| {
+        tools
+            .iter()
+            .filter(|tool| !(specialist && is_claude_spawn_tool(tool)))
+            .cloned()
+            .collect()
+    });
+    // Spawn tools are dropped from `tools` and denied here. With no `tools`
+    // list a specialist inherits every default tool, so the deny is the only
+    // block; it also covers a list filtered down to empty.
+    let disallowed_tools: &[&str] = if specialist { &CLAUDE_SPAWN_TOOLS } else { &[] };
     let frontmatter = ClaudeAgentFrontmatter {
         name,
         description: &config.description,
         model: &model,
-        tools: claude.tools.as_deref(),
+        tools: tools.as_deref(),
         skills: &claude.skills,
         allowed_tools: &claude.allowed_tools,
+        disallowed_tools,
         hooks: hooks_to_yaml(&claude.hooks),
         mcp_servers: render_mcp_servers(&merged_mcp_servers),
     };
@@ -934,6 +954,70 @@ mod tests {
         );
     }
 
+    fn render_frontmatter(name: &str, tools: Option<Vec<&str>>) -> serde_yaml::Value {
+        let claude = ClaudeCliConfig {
+            tools: tools.map(|t| t.into_iter().map(String::from).collect()),
+            ..Default::default()
+        };
+        let agent = agent_with_claude(name, claude);
+        let rendered = render_agent_md(
+            name,
+            &agent.config,
+            agent.client_config.claude_cli.as_ref().unwrap(),
+            &[],
+            &[],
+            &HashSet::new(),
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        let frontmatter = rendered.splitn(3, "---\n").nth(1).unwrap();
+        serde_yaml::from_str(frontmatter).unwrap()
+    }
+
+    #[test]
+    fn render_agent_md_strips_spawn_tools_from_specialist() {
+        let parsed = render_frontmatter(
+            "k-example",
+            Some(vec![
+                "Read",
+                "Agent(k-developer, k-browser)",
+                "Task",
+                "Workflow",
+                "Skill",
+            ]),
+        );
+        assert_eq!(
+            parsed["tools"],
+            serde_yaml::from_str::<serde_yaml::Value>("[Read, Skill]").unwrap()
+        );
+        assert_eq!(
+            parsed["disallowedTools"],
+            serde_yaml::from_str::<serde_yaml::Value>("[Agent, Task, Workflow]").unwrap()
+        );
+    }
+
+    #[test]
+    fn render_agent_md_denies_spawn_tools_for_specialist_without_tools_list() {
+        let parsed = render_frontmatter("k-example", None);
+        assert!(parsed.get("tools").is_none());
+        assert_eq!(
+            parsed["disallowedTools"],
+            serde_yaml::from_str::<serde_yaml::Value>("[Agent, Task, Workflow]").unwrap()
+        );
+    }
+
+    #[test]
+    fn render_agent_md_keeps_spawn_tools_for_orchestrator() {
+        let parsed = render_frontmatter("konductor", Some(vec!["Workflow", "Agent(k-developer)"]));
+        assert_eq!(
+            parsed["tools"],
+            serde_yaml::from_str::<serde_yaml::Value>("[Workflow, Agent(k-developer)]").unwrap()
+        );
+        assert!(render_frontmatter("konductor", None)
+            .get("disallowedTools")
+            .is_none());
+    }
+
     /// Regression guard: an agent whose `claudeCli` sets
     /// `allowedTools`/`hooks`/`mcpServers` must render all three as
     /// their own frontmatter keys, grounded against the real Claude Code
@@ -1031,7 +1115,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(!rendered.contains("allowedTools:"), "got: {rendered}");
+        assert!(!rendered.contains("\nallowedTools:"), "got: {rendered}");
         assert!(!rendered.contains("hooks:"), "got: {rendered}");
         assert!(!rendered.contains("mcpServers:"), "got: {rendered}");
     }
