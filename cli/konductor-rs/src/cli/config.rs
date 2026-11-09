@@ -168,6 +168,13 @@ struct RawConfig {
     fail_on_severity_at_or_above: Option<String>,
 }
 
+/// `<home>/.konductor/config.yml`, the user layer. The gate loader,
+/// `orchestration_mode` and `verify_run::config_source` all resolve it here
+/// so they cannot disagree.
+pub(crate) fn user_config_path(home: &Path) -> PathBuf {
+    home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME)
+}
+
 /// All the ways loading/validating a config can fail. Every variant is a
 /// USAGE ERROR from the CLI's perspective (see module docstring) -- never
 /// map any of these to exit code 2.
@@ -384,7 +391,7 @@ pub(crate) fn load_config_with_home(
 
     let merged = match home_dir {
         Some(home) => {
-            let user_config_path = home.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME);
+            let user_config_path = user_config_path(home);
             if user_config_path.is_file() {
                 let raw_user = load_raw_config(&user_config_path)?;
                 super::trace::trace(
@@ -1044,10 +1051,10 @@ mod tests {
         // rather than mutating the `HOME` env var, which is unsafe to do
         // from parallel `cargo test` threads.
         let fake_home = scratch_dir("three-tier-home");
-        let user_konductor_dir = fake_home.join(KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&user_konductor_dir).unwrap();
+        let user_config = user_config_path(&fake_home);
+        fs::create_dir_all(user_config.parent().unwrap()).unwrap();
         fs::write(
-            user_konductor_dir.join(CONFIG_FILE_NAME),
+            &user_config,
             "version: 1\ndefault_severity: LOW\nfail_on_severity_at_or_above: HIGH\n",
         )
         .unwrap();
