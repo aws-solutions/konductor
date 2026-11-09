@@ -82,7 +82,7 @@ When given requirements or specifications:
 
 ## Output Format
 
-If step 2 found 10 or more operations, the model will pass 500 lines, or other services share its types, open `references/file-organization.md` (relative to this file) before writing files and split the model the way it shows. Otherwise write one file in this shape:
+If step 2 found 10 or more operations, the model will pass 500 lines, or other services share its types, open `references/file-organization.md` (relative to this file) before writing files and split the model the way it shows. Otherwise write one file in this shape. `aws.protocols#restJson1` comes from the `software.amazon.smithy:smithy-aws-traits` package, so the model needs a `smithy-build.json` that lists it (see Deliverables) or `smithy validate` can't resolve the trait:
 
 ```smithy
 $version: "2"
@@ -381,7 +381,7 @@ When asked to review or fix a model, check it against the Quality Gate below, fi
 Provide:
 
 1. **Complete Smithy Model** with all shapes defined
-2. **Build Configuration** (smithy-build.json) if code generation is needed; for a split model, list every file under `sources` as `references/file-organization.md` shows
+2. **Build Configuration** (smithy-build.json) whenever the model uses an `aws.*` trait such as `aws.protocols#restJson1` or code generation is needed. List `software.amazon.smithy:smithy-aws-traits` under `maven.dependencies` for `aws.*` traits. For a split model, list every file under `sources` as `references/file-organization.md` shows
 3. **Validation Metadata** for linting and quality checks
 4. **Documentation** explaining design decisions
 5. **Example Usage** showing how to use generated code
