@@ -16,20 +16,19 @@ const ELLIPSIS: &str = "...";
 const HEADING: &str = "## Your skills";
 
 const USE_RULE: &str = "Before a non-trivial task, check whether one of the skills listed below \
-covers it. If one matches, load at most one or two and follow their steps and output format. \
+covers it. If some match, load the ones the task needs, usually one or two, and follow their steps and output format. \
 Skip this for trivial tasks such as a quick question, a one-line edit, or a lookup. \
 Workspace skills named `ws-*` also count; read them from `.kiro/skills/<name>/SKILL.md`.";
 
 // A skill whose "MUST USE" sentence starts with this marker (constraints)
-// claims every task, which contradicts the one-or-two rule above, so it is
+// claims every task, which contradicts the load-what-the-task-needs rule above, so it is
 // left out of the index. A "MUST USE for <task>" skill stays.
 const EVERY_TASK_MARKER: &str = "MUST USE for every ";
 /// The one every-task skill synth expects; any other match gets a warning.
 const EXPECTED_EVERY_TASK_SKILL: &str = "constraints";
 
-const ORCHESTRATOR_RULE: &str = "You orchestrate. When a task matches a skill a specialist \
-owns, such as a code review, a threat model, or user stories, route it to that specialist \
-instead of doing it yourself. Load a skill from this list only for your own orchestration work.";
+const ORCHESTRATOR_RULE: &str = "Your loaded orchestration rules decide which of these you load \
+and apply yourself and which tasks go to the specialist that owns a skill.";
 
 struct Trigger {
     text: String,
@@ -373,6 +372,18 @@ mod tests {
         let spec = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
         assert!(orch.contains(ORCHESTRATOR_RULE));
         assert!(!spec.contains(ORCHESTRATOR_RULE));
+        assert!(!orch.contains("route it to that specialist"));
+        assert!(!orch.contains("only for your own orchestration work"));
+    }
+
+    #[test]
+    fn orchestrator_rule_defers_to_the_loaded_rules() {
+        let skills = vec![skill("a", "Use for a.")];
+        let orch = kiro_skill_block("konductor", &["a"], &skills).unwrap();
+        assert!(
+            orch.contains("Your loaded orchestration rules decide"),
+            "{orch}"
+        );
     }
 
     #[test]
@@ -394,13 +405,14 @@ mod tests {
     }
 
     #[test]
-    fn use_rule_keeps_one_or_two_budget() {
+    fn use_rule_asks_for_the_skills_the_task_needs() {
         let skills = vec![skill("a", "Use for a.")];
         let block = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
         assert!(
-            block.contains("If one matches, load at most one or two and follow"),
+            block.contains("load the ones the task needs, usually one or two"),
             "{block}"
         );
+        assert!(!block.contains("load at most one or two"), "{block}");
     }
 
     #[test]

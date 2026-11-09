@@ -86,6 +86,7 @@ After this step, `credentials_file` is either a valid path or empty.
 **Constraints:**
 
 - MUST NOT log or display the password value in any output
+- The orchestrator's brief for this step says the user supplied `credentials_file` as an SOP parameter (core rule 12).
 - If the file is missing or malformed, surface the error and stop
 - **On any early exit after this step:** if `agent_created_credentials_file=true`, delete the temp file and unset the flag before stopping: `rm -f "$credentials_file" && unset agent_created_credentials_file` (this step still runs in the same `k-developer` shell that set them, so the shell variables are valid here)
 
@@ -110,7 +111,7 @@ Delegate to `k-browser`.
 
 **ON FAILURE:** If navigation fails or authentication is rejected (wrong credentials, MFA wall, CAPTCHA, unreachable app), `k-browser` surfaces the error and stops; do not proceed to Step 3. If `{agent_created_credentials_file}` is `true`, delegate cleanup to `k-developer`, which runs `rm -f "{credentials_file}"` (not `k-browser` itself). Reference the literal values, not shell variables, the same way Step 5 does.
 
-**CONTEXT:** `url={url}`, `credentials_file={credentials_file}` (always set after Step 1; empty means public app).
+**CONTEXT:** `url={url}`, `credentials_file={credentials_file}` (always set after Step 1; empty means public app). `credentials_file` comes from the user through this SOP (supplied as its parameter, or built in Step 1 from the user's own username and password); core rule 12 treats it as user-named. Read only `test_url`, `user_name` and `password`; never echo the values.
 
 ### Step 3: Confirm Discovery Scope
 
@@ -265,7 +266,7 @@ Load and follow `skills/playwright-test-implementation/SKILL.md` for the selecto
 
 ### Step 5: Validate Generated Tests
 
-Delegate to `k-developer`. Pass `{credentials_file}` and `{agent_created_credentials_file}` into this delegated step as literals — Step 5 runs in a separate agent from Step 1, which set them, so the delegate has no shell state to inherit; `k-developer` is the actor that runs the cleanup below using the literal values it was given.
+Delegate to `k-developer`. Pass `{credentials_file}` and `{agent_created_credentials_file}` into this delegated step as literals — Step 5 runs in a separate agent from Step 1, which set them, so the delegate has no shell state to inherit; `k-developer` is the actor that runs the cleanup below using the literal values it was given. The file counts as user-named under core rule 12; the scan below prints file names only, never the password.
 
 **REQUIRED TOOLS:** shell
 
