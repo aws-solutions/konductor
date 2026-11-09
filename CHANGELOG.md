@@ -83,7 +83,9 @@ not per individual commit.
   you with its invocation command. When an SOP needs independent parts, an
   orchestrator running it spawns them; a specialist run without one says independence will not
   hold and runs them only when asked. Run directly with no orchestrator, the caller is the user:
-  the specialist returns the split or note to them. No specialist is resumed mid-SOP.
+  the specialist returns the split or note to them. No specialist is resumed mid-SOP. A
+  specialist whose brief names an SOP it declares reads that SOP's installed file and follows
+  its steps.
 - `k-adversarial-pull-request-review` is coordinated by the orchestrator, which spawns the four
   generator passes and a fresh `k-architect` checker; `k-architect` no longer declares the SOP
   or offers it in its welcome message, and the orchestrators' SOP trigger table gains a row for it.
