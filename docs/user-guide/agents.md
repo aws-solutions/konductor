@@ -206,8 +206,8 @@ flowchart LR
 | Agent | Kiro CLI can spawn | Claude Code can spawn |
 | --- | --- | --- |
 | `konductor` | the 8 specialists (an explicit allowlist, not "anything") | the same 8, via `Agent(...)`, plus `SendMessage` |
-| `konductor-mux-orchestrator` | **nothing**: no `subagent` tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts | dispatches via shell |
-| `konductor-cmux-orchestrator` | **nothing**: no `subagent` tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts | dispatches via shell |
+| `konductor-mux-orchestrator` | no `subagent` tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts | dispatches via shell |
+| `konductor-cmux-orchestrator` | no `subagent` tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts | dispatches via shell |
 | every `k-*` specialist | **nothing** | **nothing** |
 
 Run directly with no orchestrator, the caller is you and the note or split comes back to you.

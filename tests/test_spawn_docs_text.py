@@ -62,14 +62,20 @@ def test_docs_say_only_konductor_holds_subagent_on_kiro_v2():
 
 
 def test_mux_rows_say_the_v2_list_matches_a_specialist():
+    """The mux rows scope their claim to v2: on Kiro CLI v3 synth leaves their `@builtin`
+    (and its `run_workflow`) in place, so the specialist row's unscoped "**nothing**" would
+    overclaim there."""
     agents = _flat(_read("docs/user-guide/agents.md"))
     cell = "no `subagent` tool (on v2, the same explicit built-in list as a specialist)"
     for name in ("konductor-mux-orchestrator", "konductor-cmux-orchestrator"):
-        assert f"| `{name}` | **nothing**: {cell}" in agents, name
+        assert f"| `{name}` | {cell}" in agents, name
+        assert f"| `{name}` | **nothing**" not in agents, name
+    assert "| every `k-*` specialist | **nothing** | **nothing** |" in agents
     assert "on Kiro CLI v2 synth replaces that `@builtin`" in agents
     for rel in ("docs/site/user-guide.html", "docs/index.html"):
         page = _read(rel)
         assert "no subagent tool (on v2, the same explicit built-in list as a specialist)" in page, rel
+        assert "nothing: no subagent tool" not in page, rel
         assert "synth replaces that @builtin with the same explicit built-in list" in page, rel
 
 

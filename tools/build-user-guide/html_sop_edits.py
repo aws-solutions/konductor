@@ -1281,7 +1281,7 @@ SOP_EDITS += [
      '{ k: "Cross-agent delegation", v: "only konductor holds subagent on Kiro CLI v2; the mux orchestrators dispatch through shell and get the same explicit built-in list as specialists \u00b7 only konductor" }'),
     ("delegation: mux and cmux row",
      '{ k: "konductor-mux-orchestrator \u00b7 konductor-cmux-orchestrator", v: "no subagent tool \u2014 dispatches via shell scripts \u00b7 dispatches via shell" }',
-     '{ k: "konductor-mux-orchestrator \u00b7 konductor-cmux-orchestrator", v: "nothing: no subagent tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts \u00b7 dispatches via shell" }'),
+     '{ k: "konductor-mux-orchestrator \u00b7 konductor-cmux-orchestrator", v: "no subagent tool (on v2, the same explicit built-in list as a specialist); dispatches via shell scripts \u00b7 dispatches via shell" }'),
     ("agents: mux section declares @builtin, synth strips it on v2",
      'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their Kiro CLI tools are [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"], and shell is how they work:',
      'paras: ["konductor-mux-orchestrator and konductor-cmux-orchestrator have no subagent tool and no Agent(...) tool. Their specs declare [\\"@builtin\\", \\"read\\", \\"shell\\", \\"todo\\"] for Kiro CLI; on Kiro CLI v2 synth replaces that @builtin with the same explicit built-in list a specialist gets, so only konductor holds subagent on Kiro CLI v2. Shell is how they work:'),
