@@ -106,9 +106,6 @@ not per individual commit.
   example review only when writing a report.
 - `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
   `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
-- `cost-estimation` keeps only the context-gathering steps of a new estimate in `SKILL.md`. The
-  pricing research, scenarios, growth modeling, optimization and report steps moved to
-  `references/create-analysis.md`, which the skill opens once the context is confirmed.
 - `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
   gathering and clarifying questions are in `references/create-context.md`, which the skill opens
   when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
