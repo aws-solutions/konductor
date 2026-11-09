@@ -231,8 +231,8 @@ via its own `KiroCliV3InstallStrategy`.
 
 After a `kiro-cli-v2` install the summary is followed by one line naming the kiro-cli
 versions the agents' explicit v2 tool lists were checked against (2.36.0 and 3.0.0) and
-the `/tools` command that re-checks them on another version; it informs only and gates
-nothing.
+the `/tools` command that re-checks them on another version against the installed
+`<target>/.kiro/agents/k-developer.json`; it informs only and gates nothing.
 
 ### `--version <v>` and `--force`: content-version tracking
 
