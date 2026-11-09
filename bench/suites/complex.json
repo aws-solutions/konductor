@@ -4,7 +4,8 @@
   ],
   "tasks": [
     "cx-design-then-implement",
-    "cx-multifile-refactor"
+    "cx-multifile-refactor",
+    "cx-feature-across-layers"
   ],
   "arms": [
     "vanilla",
