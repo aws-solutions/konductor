@@ -101,9 +101,9 @@ not per individual commit.
   Smithy rejects.
 - `iam-policy-design` and `policy-validation` now share one set of GDPR, HIPAA, PCI-DSS and SOC 2
   checklists in `skills/iam-policy-design/references/compliance-checklists.md`, loaded only when
-  the user or the design under review names a compliance framework. Audit-control findings now cite HIPAA §164.312(b), and
-  the GDPR checklist no longer claims a fixed 3-year log retention. `smithy-validation` loads its
-  example review only when writing a report.
+  the user or the design under review names a compliance framework. Audit-control findings now
+  cite HIPAA §164.312(b), and the GDPR checklist no longer claims a fixed 3-year log retention.
+  `smithy-validation` loads its example review only when writing a report.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
