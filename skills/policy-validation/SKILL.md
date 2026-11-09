@@ -761,7 +761,7 @@ Generate output in this format:
 **Estimated Effort**: [hours]
 **Regulatory Citations**: [Citation (requirement)]
 
-[Repeat for each framework in scope. A filled example is in `compliance-checklists.md`.]
+[Repeat for each framework in scope. A filled example is in `iam-policy-design/references/compliance-checklists.md`.]
 
 ## Iteration Progress (if applicable)
 
