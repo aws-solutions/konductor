@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "gain": {
+    "statistic": "mean per-scenario rubric score, treatment arm minus vanilla, paired by scenario",
+    "interval": "95 percent bootstrap interval over scenarios",
+    "lowerBoundMustExceed": 0
+  },
+  "secondBatch": {
+    "statistic": "the same difference on a second, independent batch of runs",
+    "meanMustExceed": 0
+  },
+  "qualityLoss": {
+    "statistic": "quality pack score, treatment arm minus vanilla, on a 0 to 1 scale",
+    "noiseMargin": 0.05,
+    "maxLossBeyondMargin": 0,
+    "note": "Passes when the treatment arm scores no lower than vanilla minus noiseMargin. The default 0.05 is a provisional value; replace it with the spread measured between repeated runs of the same arm before the freeze."
+  },
+  "reportOnly": [
+    "expert check: whether the owner agrees the surviving rules are worth following",
+    "layout swap: whether the gain survives swapping the order and layout of the answers shown to the judges"
+  ]
+}
