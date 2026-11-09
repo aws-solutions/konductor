@@ -238,8 +238,9 @@ fn render_agent_file<'a>(
 /// `toolsSettings.subagent.availableAgents` does not remove the tool (an
 /// empty list allows every agent; a non-matching list still lists
 /// `subagent`), so every agent except `konductor` gets this explicit list
-/// in place of `@builtin`. The name keeps "specialist" because the docs
-/// pin test reads the constant by name.
+/// in place of `@builtin`. The name keeps "specialist" to match its sibling
+/// `SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH`, which the docs pin test reads
+/// by name.
 const SPECIALIST_BUILTIN_TOOLS: [&str; 13] = [
     "fs_read",
     "fs_write",
