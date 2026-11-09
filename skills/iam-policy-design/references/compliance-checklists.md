@@ -1,6 +1,6 @@
 # Compliance Checklists
 
-Read this when the user names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2). `iam-policy-design` uses the checklists to design controls; `policy-validation` uses them, plus the checks and severity rules, to find gaps.
+Read this when the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2). `iam-policy-design` uses the checklists to design controls; `policy-validation` uses them, plus the checks and severity rules, to find gaps.
 
 Each framework lists the controls to have in place, what a reviewer checks, and the citations to put on a finding.
 
