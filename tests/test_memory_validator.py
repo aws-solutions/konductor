@@ -65,13 +65,17 @@ def _isolate_git_root(tmp_path):
 
 
 def run_validator(
-    proposed: str, target: Path, cwd: Path, env: dict | None = None
+    proposed: str,
+    target: Path,
+    cwd: Path,
+    env: dict | None = None,
+    flags: tuple[str, ...] = (),
 ) -> subprocess.CompletedProcess:
     full_env = dict(os.environ)
     if env:
         full_env.update(env)
     return subprocess.run(
-        ["bash", str(VALIDATOR), str(target)],
+        ["bash", str(VALIDATOR), *flags, str(target)],
         input=proposed,
         capture_output=True,
         text=True,
@@ -888,6 +892,40 @@ def test_plain_write_from_the_root_lands_at_the_canonical_path(tmp_path):
     assert result.returncode == 0, result.stderr
     canonical = tmp_path.resolve() / ".konductor" / "memory" / "MEMORY.md"
     assert canonical.read_text() == ENTRY.rstrip("\n")
+
+
+def _seed_memory(repo: Path) -> Path:
+    _commit_initial(repo)
+    memory = repo / ".konductor" / "memory" / "MEMORY.md"
+    memory.parent.mkdir(parents=True)
+    memory.write_text(ENTRY)
+    return memory
+
+
+def test_empty_input_over_existing_entries_is_refused(tmp_path):
+    """An unset `$PROPOSED_CONTENT` pipes nothing in; that must not wipe the file."""
+    memory = _seed_memory(tmp_path)
+
+    result = run_validator("", Path(_relative_memory_target()), cwd=tmp_path)
+    assert result.returncode == 1, result.stderr
+    assert "pass --clear" in result.stderr
+    assert memory.read_text() == ENTRY
+
+
+def test_empty_input_with_clear_empties_the_file(tmp_path):
+    memory = _seed_memory(tmp_path)
+
+    result = run_validator("", Path(_relative_memory_target()), cwd=tmp_path, flags=("--clear",))
+    assert result.returncode == 0, result.stderr
+    assert memory.read_text() == ""
+
+
+def test_empty_input_to_a_missing_target_is_allowed(tmp_path):
+    _commit_initial(tmp_path)
+
+    result = run_validator("", Path(_relative_memory_target()), cwd=tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / ".konductor" / "memory" / "MEMORY.md").read_text() == ""
 
 
 def test_symlinked_konductor_dir_is_refused(tmp_path):

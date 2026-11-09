@@ -5,12 +5,18 @@ set -euo pipefail
 # --check-path runs only the path checks below, for reads: exit 0 and print the
 # canonical path to load when the target is a path the validator would write, 1 with a
 # REJECT line otherwise. It reads no stdin and creates nothing.
+# --clear lets an empty stdin replace a target that still has entries; without it
+# that write is refused, so an unset shell variable cannot wipe the file.
 CHECK_PATH_ONLY=0
-if [[ "${1:-}" == "--check-path" ]]; then
-  CHECK_PATH_ONLY=1
-  shift
-fi
-TARGET="${1:?Usage: memory-validator.sh [--check-path] <target-file>}"
+CLEAR=0
+while :; do
+  case "${1:-}" in
+    --check-path) CHECK_PATH_ONLY=1; shift ;;
+    --clear) CLEAR=1; shift ;;
+    *) break ;;
+  esac
+done
+TARGET="${1:?Usage: memory-validator.sh [--check-path] [--clear] <target-file>}"
 
 # Config: read from .konductor/memory-config.json relative to git root.
 # Only path consulted, no fallback.
@@ -30,7 +36,7 @@ GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
 CONFIG_FILE="${GIT_ROOT}/.konductor/memory-config.json"
 
 # Anchor a relative TARGET to the repo root too, mirroring CONFIG_FILE
-# above -- the skill's real invocation always passes the relative literal
+# above -- the skill's real invocation passes a relative literal such as
 # ".konductor/memory/MEMORY.md", so without this a write from a package
 # subdirectory (e.g. src/SomePackage/) lands at
 # src/SomePackage/.konductor/memory/MEMORY.md instead of the canonical,
@@ -75,6 +81,14 @@ if [[ "$CHECK_PATH_ONLY" == 1 ]]; then
   exit 0
 fi
 PROPOSED="$(cat)"
+# Empty input over a file with entries is almost always an unset variable, not a
+# decision to clear the file. Refuse before anything is created or replaced.
+if [[ "$CLEAR" == 0 && -f "$TARGET" ]] &&
+   ! printf '%s\n' "$PROPOSED" | grep -q '[^[:space:]]' &&
+   grep -q '[^[:space:]]' "$TARGET"; then
+  echo "REJECT: proposed content is empty but $TARGET has entries; pass --clear to empty it deliberately" >&2
+  exit 1
+fi
 mkdir -p "$TARGET_DIR"
 
 # _parse_config <path>: parses a JSON config file and, on success (exit 0),

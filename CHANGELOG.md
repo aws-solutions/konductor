@@ -59,7 +59,9 @@ not per individual commit.
   without a shell reads only checked paths. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
   instruction-like text after the date and origin tag, reads the text of a leading `[label]`
-  or `[label](url)` as entry text, and matches a leading keyword as a whole word. Upgrade note: if your repository commits `.konductor/memory/`,
+  or `[label](url)` as entry text, and matches a leading keyword as a whole word. It refuses an
+  empty write over existing entries unless `--clear` is passed, the skill's write line takes its
+  target from a variable, and the `.gitignore` bootstrap never glues onto an existing line. Upgrade note: if your repository commits `.konductor/memory/`,
   review its untagged lines before upgrading and tag agent-written ones `[origin:agent]`; they are
   followed as project instructions from this version.
   Orchestrators never bypass denials or read unnamed secrets.

@@ -75,5 +75,5 @@ def test_gitignore_append_skips_a_symlinked_gitignore():
     """An append through a tracked `.gitignore` symlink writes outside the
     project."""
     text = SKILL_MD.read_text()
-    assert '[ -L "$ROOT/.gitignore" ] ||' in text
+    assert 'if ! [ -L "$ROOT/.gitignore" ] &&' in text
     assert ">> \"$ROOT/.gitignore\"" in text
