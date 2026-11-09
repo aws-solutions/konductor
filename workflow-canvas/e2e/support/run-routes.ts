@@ -87,7 +87,7 @@ export async function answerRunsInTurn(
 export async function refuseRunsWith(
   page: Page,
   status: number,
-  body: { error: string; code: string },
+  body: { error: string; code: string; fix?: string },
 ): Promise<void> {
   await page.route('**/api/run', (route) =>
     route.fulfill({ status, json: body }),

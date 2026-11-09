@@ -188,6 +188,28 @@ test('shows the error of the API in one alert when the run does not start', asyn
   await expect(canvas.runButton).toBeEnabled();
 });
 
+test('keeps the trust dialog closed after a switch to the Designer tab and back', async ({
+  canvas,
+}) => {
+  await refuseRunsWith(canvas.page, 409, {
+    error: 'The workflow is not trusted yet.',
+    code: 'trust_required',
+    fix: 'Run `konductor flow trust hello` in a terminal, then try again.',
+  });
+  const command = canvas.page.getByTestId('trust-command');
+  await canvas.runButton.click();
+  await expect(command).toBeVisible();
+
+  await canvas.page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(command).toBeHidden();
+  await canvas.selectTab('Design');
+  await canvas.selectTab('Run');
+  await canvas.expectTabLoaded('Run');
+
+  await expect(command).toBeHidden();
+  await expect(canvas.runError).toContainText('The run did not start');
+});
+
 test('follows the run that is already active when the server answers 409 with its id', async ({
   canvas,
 }) => {

@@ -32,6 +32,8 @@ export interface ExecutionController {
   state: ExecutionState;
   /** Starts a run with the goal; does nothing while a run is in flight. */
   start(goal: string): void;
+  /** Records that the dialog of this trust refusal was closed. */
+  closeTrust(refusal: number): void;
 }
 
 /**
@@ -125,5 +127,10 @@ export function useExecution(
     [runs, scheduler, emit, track],
   );
 
-  return { state, start };
+  const closeTrust = useCallback(
+    (refusal: number) => dispatch({ type: 'trust-closed', refusal }),
+    [],
+  );
+
+  return { state, start, closeTrust };
 }
