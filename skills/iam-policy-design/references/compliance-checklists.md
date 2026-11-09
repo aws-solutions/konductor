@@ -1,6 +1,6 @@
 # Compliance Checklists
 
-Read this when the user names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2). `iam-policy-design` uses the checklists to design controls; `policy-validation` uses them, plus the checks and severity rules, to find gaps.
+Read this when the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2). `iam-policy-design` uses the checklists to design controls; `policy-validation` uses them, plus the checks and severity rules, to find gaps.
 
 Each framework lists the controls to have in place, what a reviewer checks, and the citations to put on a finding.
 
@@ -73,10 +73,10 @@ One filled framework block for the `policy-validation` report. Mark each control
 ```markdown
 ### HIPAA Compliance
 
-- PHI encryption with KMS
-- PHI found in CloudWatch Logs (violation)
-- BAA signed with AWS
-- Missing audit log retention policy
+- PHI encryption: compliant (KMS customer managed key)
+- PHI in logs: violated - PHI found in CloudWatch Logs
+- BAA: compliant (signed with AWS)
+- Audit log retention: partial - no 6-year retention set
 
 **Remediation Priority**: Critical
 **Estimated Effort**: 4-8 hours

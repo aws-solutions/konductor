@@ -13,6 +13,8 @@ Interactive sprint planning. Organizes work into hierarchies, estimates with sto
 
 Open `references/asana.md` (relative to this file) when the team uses Asana, before Session Start. It covers the Asana MCP check, the Asana tool calls, how the hierarchy and story points map onto Asana, and the Asana rollover procedure. Where it differs from a rule below, follow the reference. It needs an Asana MCP server; see `docs/guides/asana-integration.md`.
 
+If `references/asana.md` cannot be opened, tell the user and stop before any Asana write. Do not fall back to the generic rules below.
+
 ## Usage
 
 When users need to:

@@ -101,14 +101,11 @@ not per individual commit.
   Smithy rejects.
 - `iam-policy-design` and `policy-validation` now share one set of GDPR, HIPAA, PCI-DSS and SOC 2
   checklists in `skills/iam-policy-design/references/compliance-checklists.md`, loaded only when
-  the user names a compliance framework. Audit-control findings now cite HIPAA §164.312(b), and
-  the GDPR checklist no longer claims a fixed 3-year log retention. `smithy-validation` loads its
-  example review only when writing a report.
+  the user or the design under review names a compliance framework. Audit-control findings now
+  cite HIPAA §164.312(b), and the GDPR checklist no longer claims a fixed 3-year log retention.
+  `smithy-validation` loads its example review only when writing a report.
 - `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
   `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
-- `cost-estimation` keeps only the context-gathering steps of a new estimate in `SKILL.md`. The
-  pricing research, scenarios, growth modeling, optimization and report steps moved to
-  `references/create-analysis.md`, which the skill opens once the context is confirmed.
 - `cost-estimation` moved its CREATE workflow out of `SKILL.md`. The setup reply, context
   gathering and clarifying questions are in `references/create-context.md`, which the skill opens
   when the user picks CREATE. The pricing research, scenarios, growth modeling, optimization and
@@ -122,6 +119,7 @@ not per individual commit.
 - `architecture-diagram-generation` now targets plain draw.io (diagrams.net) XML and drops the
   rules that served one draw.io-based tool. It places S3 with the regional services, since each
   bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
+  A Lambda function with VPC config is drawn in its subnets.
 - Three skills are renamed and their old names are removed: `asdlc-aspect-review` is now
   `k-aspect-review`, `asdlc-code-simplifier` is now `k-code-simplifier`, and `document-formats`
   is now `docx-conversion`, whose description names `.docx`. Custom agent specs must use the
@@ -210,7 +208,8 @@ not per individual commit.
   `system-design-patterns` descriptions now name the tasks they cover, so they load on
   ordinary task prompts: reviewing a folder or repository, adding measurable targets to a
   requirements or design document, listing a plan's risks, and writing a system design.
-  `code-review` gains a step for reviewing a source tree with no diff, and
+  `code-review` gains a step for reviewing a source tree with no diff, which asks the user to
+  narrow the scope of a tree too large to read and lists the files it did not read, and
   `system-design-patterns` gains a no-questions mode that works from documents the user
   already gave.
 - The `kiro-requirements-generation`, `kiro-design-generation` and `kiro-task-generation`
@@ -225,7 +224,11 @@ not per individual commit.
   "MUST USE" with a concrete trigger, and `adversarial-design-review`, `design-quality-check`,
   `dom-inspection` and `socratic-elicitation`, which had none, gain one. `git-merge` now says
   the default branch instead of `mainline`, and long descriptions such as
-  `historical-issues-registry` and `legacy-to-agentic-estimate` are shorter.
+  `historical-issues-registry` and `legacy-to-agentic-estimate` are shorter. `adr-generator`
+  and `adversarial-code-review` also shorten theirs to fit, and a test now checks every skill.
+- `k-product-manager`, `k-tpm` and `k-quality-assurance` prompts drop their hand-written
+  skill lists, whose old triggers contradicted the new descriptions. Each skill's description is
+  now the one place that says when to use it.
 - `about-konductor` and `design-doc-guidelines` load less up front. CLI, install-check, and model
   detail, and the rules for multi-document designs and renames, now live under each skill's
   `references/` and load only when the task needs them. `design-doc-guidelines` uses generic
@@ -234,7 +237,9 @@ not per individual commit.
   set of instructions each, without a pasted prompt and its separate role. Repeated rules are
   stated once. `system-design-patterns` lists its real five interview phases and four
   documents, adds a non-functional requirements section to the design document, and points
-  follow-up work at konductor skills instead of prompts that don't exist.
+  follow-up work at konductor skills instead of prompts that don't exist. Its S3
+  Intelligent-Tiering advice now targets data with unknown or changing access patterns, not
+  infrequently accessed data.
 - Fact-checking starts at `doc-accuracy-analyzer`. It routes AWS feature, limit, pricing and
   Region claims to `aws-service-validator`, rates findings CRITICAL, IMPORTANT or SUGGESTION,
   and states when a document passes. When checking an artifact, `decision-research` now adds only
