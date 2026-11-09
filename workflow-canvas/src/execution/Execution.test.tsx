@@ -806,6 +806,30 @@ describe('the live regions', () => {
     expect(statusLive().textContent).toBe('');
   });
 
+  it('say a name in backticks as plain text, while the alert shows it as code', async () => {
+    const runs: RunPort = {
+      start: vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            'The server no longer knows this session. Start `flow view` again and open the address it prints.',
+          ),
+        ),
+      get: vi.fn(),
+    };
+    await openExecution(runs);
+
+    await press(runButton());
+
+    expect(alertLive().textContent).toBe(
+      'The run did not start. The server no longer knows this session. Start flow view again and open the address it prints.',
+    );
+    expect(alertLive().textContent).not.toContain('`');
+    expect(
+      screen.getByTestId('run-error').querySelector('code')?.textContent,
+    ).toBe('flow view');
+  });
+
   it('say that the run ended, while the Designer tab is open', async () => {
     const runs = serverShowing(helloRun(0), helloRun(1), helloRun(2));
     const scheduler = await openExecution(runs);

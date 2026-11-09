@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import type { RunView, WorkflowView } from '../api/types';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { LoadResult } from '../workflow/load-workflow';
+import { MessageText } from '../workflow/MessageText';
 import { WorkflowGate, type DrawableWorkflow } from '../workflow/WorkflowGate';
 import {
   blockedStageOf,
@@ -95,7 +96,7 @@ function RunError({ state }: { state: ExecutionState }) {
   if (!error) return null;
   return (
     <Alert type="error" header={error.header} data-testid="run-error">
-      {error.message}
+      <MessageText text={error.message} />
       {error.note && <div>{error.note}</div>}
     </Alert>
   );

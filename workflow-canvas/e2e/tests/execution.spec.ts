@@ -415,7 +415,7 @@ test('drops the session when the run start is answered 401, so a reload does not
   await expect(canvas.runError).toContainText(
     'The server no longer knows this session',
   );
-  await expect(canvas.runError).toContainText('fresh launch address');
+  await expect(canvas.runError).toContainText('Start flow view again');
   expect(await canvas.page.evaluate(() => window.sessionStorage.length)).toBe(
     0,
   );

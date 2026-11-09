@@ -161,7 +161,7 @@ describe('loadWorkflow', () => {
   });
 
   const LOST_SESSION =
-    'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server. An address works once.';
+    'The server no longer knows this session. It may have been started again. Start `flow view` again and open the address it prints. An address works once.';
   const CHANGES_LOST =
     'The changes you made on this page are lost when you open a fresh address; copy them first.';
 
@@ -257,7 +257,7 @@ describe('loadWorkflow', () => {
     const lost = result.workflow.edits.save('text', HELLO_HASH);
 
     await expect(lost).rejects.toThrow(
-      'The server answered 502. If it stopped, start it again and get a fresh launch address from the server.',
+      'The server answered 502. If it stopped, start `flow view` again and open the address it prints.',
     );
   });
 
@@ -362,6 +362,9 @@ describe('loadWorkflow', () => {
 
     expect(result).toMatchObject({ ok: false });
     expect(result.ok === false && result.message).toContain('launch code');
+    expect(result.ok === false && result.message).toContain(
+      'Start `flow view` again and open the address it prints',
+    );
     expect(result.ok === false && result.message).toContain('works once');
     expect(api.createSession).not.toHaveBeenCalled();
   });
@@ -572,7 +575,7 @@ describe('loadWorkflow with a kept session', () => {
     expect(memory.recall()).toBeUndefined();
     expect(result).toMatchObject({ ok: false });
     expect(result.ok === false && result.message).toMatch(
-      /server no longer knows this session.*launch address/s,
+      /server no longer knows this session.*Start `flow view` again/s,
     );
   });
 
@@ -588,7 +591,7 @@ describe('loadWorkflow with a kept session', () => {
     expect(result).toEqual({
       ok: false,
       message:
-        'Not reached. If it stopped, start it again and get a fresh launch address from the server.',
+        'Not reached. If it stopped, start `flow view` again and open the address it prints.',
     });
   });
 
@@ -1182,7 +1185,7 @@ describe('a 401 on a call after the load', () => {
       );
 
       await expect(call(runs)).rejects.toThrow(
-        /server no longer knows this session.*fresh launch address/s,
+        /server no longer knows this session.*Start `flow view` again/s,
       );
       expect(memory.recall()).toBeUndefined();
     },

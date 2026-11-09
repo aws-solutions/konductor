@@ -108,7 +108,7 @@ test('never writes the launch code to the storage of the page', async ({
   expect(stored).not.toContain(STUB_LAUNCH_CODE);
 });
 
-test('asks for a fresh launch address when the server no longer knows the session', async ({
+test('tells to start flow view again when the server no longer knows the session', async ({
   canvas,
   page,
 }) => {
@@ -127,7 +127,7 @@ test('asks for a fresh launch address when the server no longer knows the sessio
 
   await expect(
     page.getByText(/server no longer knows this session/),
-  ).toBeVisible();
+  ).toContainText('Start flow view again');
   expect(await page.evaluate(() => window.sessionStorage.length)).toBe(0);
 
   await page.unroute('**/api/workflow');
