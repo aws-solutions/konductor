@@ -327,7 +327,9 @@ konductor/
 ├── skills/                       81 skills (<name>/SKILL.md, plus optional helper files)
 ├── context/                      Loaded at agent startup
 │   ├── k-core-rules.md
-│   └── k-orchestrator-routing-rules.md
+│   ├── k-direct-work.md
+│   ├── k-orchestrator-routing-rules.md
+│   └── k-orchestrator-shared.md
 ├── cli/                          The Konductor CLI
 │   ├── README.md                 CLI-specific docs
 │   └── gate-config/              Declarative policy; the CLI embeds config.yml only
@@ -369,7 +371,7 @@ JSON or Markdown you can read and change — see
 | `dist/` | `konductor synth` | **Yes** |
 | `~/.konductor/logs/konductor.log` | Every CLI invocation | Outside the repo |
 | `~/.konductor/config.yml` | You, by hand | Outside the repo |
-| `.konductor/handoff/<name>.md` | The `k-context-gathering` SOP, for large findings | No |
+| `.konductor/handoff/<name>.md` | The `k-context-gathering` and `k-comprehensive-search` SOPs, and subagents under the `delegation-protocol` handoff pattern | By `.konductor/.gitignore` when `konductor init` created it; otherwise by the `.konductor/handoff/.gitignore` the writer creates first |
 | `.agents/scratchpad/critique-NNN.md` | The `k-pre-cr-critique` SOP | No |
 | `.kiro/specs/<feature>/` | The `kiro-spec-workflow` SOP | No |
 
@@ -382,10 +384,10 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 
 | Agent | Model | SOPs declared | Skills | MCP registry |
 | --- | --- | --- | --- | --- |
-| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 13 | — |
-| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | `aws-mcp` |
+| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-adversarial-pull-request-review`, `about-konductor` | 24 | — |
+| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` | 10 | — |
+| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `k-adversarial-pull-request-review`, `about-konductor` | 10 | — |
+| `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review` | 38 | `aws-mcp` |
 | `k-developer` | `claude-sonnet-5.5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | `aws-mcp` |
 | `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 12 | — |
 | `k-product-manager` | `claude-sonnet-5.5` | — | 15 | — |
@@ -405,8 +407,9 @@ The list differs from `dependencies.skills.skillNames` in two places. `konductor
 `humanize-writing` in `skillNames` only, so no runtime preloads it for them. Every skill is catalogued in the
 [Skills catalog](skills.md).
 
-Every agent declares `context/k-core-rules.md`. Only the three orchestrators also declare
-`context/k-orchestrator-routing-rules.md`.
+Every agent declares `context/k-core-rules.md`. The three orchestrators also declare
+`context/k-orchestrator-shared.md`. Only the mux and cmux orchestrators also declare
+`context/k-orchestrator-routing-rules.md`; `konductor` declares `context/k-direct-work.md`.
 
 ### MCP registry entries
 
@@ -434,7 +437,7 @@ All 19, with owning agent and required parameters. Detail and flowcharts:
 | `kiro-spec-workflow` | orchestrators | `feature_name`, `feature_scope_path`, `user_stories_path`, `design_artifacts_path` |
 | `k-design-doc-creation` | `k-architect` | `topic` |
 | `k-existing-design-review` | `k-architect` | `design_dir` |
-| `k-adversarial-pull-request-review` | `k-architect` | `diff_input` (always; `pr_url` is context-only) |
+| `k-adversarial-pull-request-review` | orchestrators (`k-architect` is the checker) | `diff_input` (always; `pr_url` is context-only) |
 | `k-code-review-workflow` | `k-developer` | `source_dir` |
 | `k-code-cleanup` | `k-developer` | `source_dir` |
 | `k-pre-cr-critique` | `k-developer` | none — all parameters have defaults |
