@@ -538,9 +538,12 @@ function main() {
   const seen = new Map();
   const rootsOf = new Map();
   const sources = [{ dir: TASKS_DIR, files: taskFiles, roots: DEFAULT_ROOTS }];
+  // Text-only tasks written by bench/skilleval/skilleval.js: no checks, scored by rubric, so the fixture proofs below do not apply.
+  const skillevalDirs = new Set();
   for (const dir of extraDirs) {
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) { err('--extra-tasks', `directory not found: ${dir}`); continue; }
     sources.push({ dir, files: fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('_')).sort(), roots: extraRoots(dir) });
+    if (fs.existsSync(path.join(dir, '.skilleval'))) skillevalDirs.add(dir);
   }
   for (const src of sources) {
     R = src.roots;
@@ -590,6 +593,12 @@ function main() {
     R = rootsOf.get(t);
     if (t.class === 'real' && manifest && Array.isArray(t.checks)) { realReport.push(validateRealTask(t, manifest)); continue; }
     if (t.class === 'trigger') continue;
+    if (skillevalDirs.has(R.dir)) {
+      if (t.checks.length) err(t.id, 'skilleval tasks are text-only and carry no checks');
+      if (!t.prompt.endsWith(NO_QUESTIONS)) err(t.id, 'prompt must end with the no-questions sentence');
+      if (!Array.isArray(t.rubric) || t.rubric.length < 4 || t.rubric.length > 6) err(t.id, 'skilleval rubric needs 4 to 6 items');
+      continue;
+    }
     if (!isStr(t.fixture) || !fs.existsSync(fixtureDir(t.fixture)) || !Array.isArray(t.checks)) continue;
     const where = t.id;
     const hiddenDir = t.hidden ? path.join(R.hidden, t.hidden) : null;

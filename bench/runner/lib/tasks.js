@@ -33,6 +33,12 @@ const SUITE_DEFAULTS = {
 };
 const SUITE_NAMES = Object.keys(SUITE_DEFAULTS);
 
+// bench/skilleval/skilleval.js emit writes one suite file per skill, named skilleval-<skill>; it needs no entry above.
+const SKILLEVAL_SUITE = /^skilleval-[a-z0-9][a-z0-9-]*$/;
+const SKILLEVAL_DEFAULTS = { arms: ['vanilla', 'main'], replicates: 1, parallel: 1 };
+const defaultsFor = (name) => SUITE_DEFAULTS[name] ?? (SKILLEVAL_SUITE.test(name) ? SKILLEVAL_DEFAULTS : null);
+const isSuiteName = (name, benchDir = BENCH_DIR) => SUITE_NAMES.includes(name) || (SKILLEVAL_SUITE.test(name) && fs.existsSync(path.join(benchDir, 'suites', `${name}.json`)));
+
 // Reads every task file of one directory into `tasks`. Fixtures come from `fixtureRoots` (first hit wins) and
 // hidden test directories from `hiddenRoot`.
 function readTaskDir({ dir, tasks, schema, benchDir, fixtureRoots, hiddenRoot, allowReal, extra }) {
@@ -85,7 +91,8 @@ function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR) {
-  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, complex, references-read, constraints-probe or canary-layers)`);
+  const defaults = defaultsFor(name);
+  if (!defaults) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, complex, references-read, constraints-probe or canary-layers)`);
   const file = path.join(benchDir, 'suites', `${name}.json`);
   const fromFile = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks
@@ -93,9 +100,9 @@ function loadSuite(name, tasks, benchDir = BENCH_DIR) {
   return {
     name,
     taskIds,
-    arms: fromFile.arms || SUITE_DEFAULTS[name].arms,
-    replicates: fromFile.replicates || SUITE_DEFAULTS[name].replicates,
-    parallel: fromFile.parallel || SUITE_DEFAULTS[name].parallel,
+    arms: fromFile.arms || defaults.arms,
+    replicates: fromFile.replicates || defaults.replicates,
+    parallel: fromFile.parallel || defaults.parallel,
     judges: fromFile.judges || [],
   };
 }
@@ -111,4 +118,4 @@ function suiteExtraDirs(name, benchDir = BENCH_DIR) {
 // The suite's own extra directories followed by the caller's, each once.
 const mergeExtraDirs = (suiteDirs, flagDirs = []) => [...new Set([...suiteDirs, ...flagDirs.map((d) => path.resolve(d))])];
 
-module.exports = { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };
+module.exports = { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };

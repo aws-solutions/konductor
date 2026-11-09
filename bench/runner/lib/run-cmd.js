@@ -14,7 +14,7 @@ const { STOP_ON } = require('./stop-watch.js');
 const { harnessFor, opencode: oc, claudeCode: cc } = require('./harness/index.js');
 const { AGENT_ENGINES, DEFAULT_ENGINE, isUsdRuntime } = require('./harness/runtime.js');
 const { readProfile } = require('./harness/opencode-creds.js');
-const { loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
+const { isSuiteName, loadTasks, loadSuite, suiteExtraDirs, mergeExtraDirs, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
 const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, budgetNote, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
@@ -130,8 +130,8 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, agentEngine, log }) {
 const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || DEFAULT_REPO);
 
 async function cmdRun(opts) {
-  if (!SUITE_NAMES.includes(opts.suite)) throw new Error(`--suite ${SUITE_NAMES.join('|')} is required`);
   const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
+  if (!isSuiteName(opts.suite, benchDir)) throw new Error(`--suite ${SUITE_NAMES.join('|')}|skilleval-SKILL is required`);
   const extraDirs = mergeExtraDirs(suiteExtraDirs(opts.suite, benchDir), list(opts['extra-tasks']));
   const tasksAll = loadTasks(benchDir, { extraDirs });
   const suite = loadSuite(opts.suite, tasksAll, benchDir);
