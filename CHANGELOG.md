@@ -126,8 +126,7 @@ not per individual commit.
   `k-aspect-review`, `asdlc-code-simplifier` is now `k-code-simplifier`, and `document-formats`
   is now `docx-conversion`, whose description names `.docx`. Custom agent specs must use the
   new names: `konductor synth` rejects a spec that still declares an old one.
-- The user-guide HTML sync tool's verify-run exit-code edits now carry their final text, so the
-  tool can write the bundles again.
+- The published HTML guide's FAQ now gives the current skill count (81) instead of 75.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
