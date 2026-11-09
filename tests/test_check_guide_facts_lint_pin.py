@@ -284,3 +284,11 @@ def test_v2_core_rules_clause_in_the_guide_fails_the_guide_check(repo_copy):
         page.write_text(original, encoding="utf-8")
     assert result.returncode != 0
     assert "the core rules forbid it in Kiro CLI v2" in result.stdout
+
+
+def test_notes_describe_the_existence_check_the_code_runs():
+    """A visible command missing from cli/README.md fails the check; the guide
+    must not say that any command in cli.rs, hidden or not, passes."""
+    notes = (REPO_ROOT / "docs" / "user-guide" / "notes.md").read_text(encoding="utf-8")
+    assert "hidden with `#[command(hide = true)]`" in notes
+    assert "hidden or not" not in notes

@@ -206,7 +206,7 @@ flowchart LR
 | `konductor` | the 8 specialists (an explicit allowlist, not "anything") | the same 8, via `Agent(...)`, plus `SendMessage` |
 | `konductor-mux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
 | `konductor-cmux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
-| every `k-*` specialist | **nothing** | **nothing** |
+| every `k-*` specialist | **nothing** in Kiro CLI v3 (v2: the core rules only, see the bullet above) | **nothing** |
 
 Run directly with no orchestrator, the caller is you and the note or split comes back to you.
 The adversarial review is the exception: only the orchestrators declare

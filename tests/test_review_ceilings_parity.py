@@ -18,6 +18,9 @@ OWN_OUTPUT_WORDING = "in the task's own output"
 OPEN_WORDING = "still open"
 NOT_IN_FIX_BRIEF_WORDING = "not put in the fix brief"
 FIX_CAUSED_QUALIFIER_WORDING = "code the task did not add or change, and the fix did not cause, is listed"
+STOP_SCOPE_WORDING = "stop work on that artifact"
+STOP_SCOPE_CHANGELOG_WORDING = "stops work on that artifact"
+PASS_WORDING = "Pass: no CRITICAL or IMPORTANT in the task's own output"
 UNSCOPED_OPEN_WORDING = "Any first-review CRITICAL or IMPORTANT finding still open"
 OLD_FIRST_REVIEW_WORDING = "the first review did not report"
 RE_REVIEW_SCOPE_WORDING = "every CRITICAL or IMPORTANT finding from the first review"
@@ -91,6 +94,8 @@ def test_mirrors_carry_the_four_pinned_clauses():
     for wording in (STOP_WORDING, PREEXISTING_WORDING, PREDATES_WORDING, OWN_OUTPUT_WORDING, OPEN_WORDING):
         assert wording in unreleased, wording
     assert NOT_IN_FIX_BRIEF_WORDING in unreleased
+    assert FIX_CAUSED_QUALIFIER_WORDING in unreleased
+    assert STOP_SCOPE_CHANGELOG_WORDING in unreleased
 
 
 def test_pre_existing_is_never_keyed_to_the_first_review_report():
@@ -196,6 +201,21 @@ def test_re_review_finding_in_the_tasks_own_output_blocks_done():
         "the fix in what depends on it, blocks done"
     ) in item
     assert "any such finding" not in item
+
+
+def test_pass_clause_is_scoped_to_the_tasks_own_output_or_the_fix():
+    item = _item_6("konductor")
+    assert PASS_WORDING + " or caused by the fix." in item
+    assert "Pass: no CRITICAL or IMPORTANT. " not in item
+
+
+def test_stop_is_scoped_to_the_artifact_and_what_depends_on_it():
+    item = _item_6("konductor")
+    assert (
+        "blocks done: " + STOP_SCOPE_WORDING + " and on what depends on it, finish or report "
+        "the independent artifacts, and report the finding to the user as unresolved."
+    ) in item
+    assert "instead of proceeding" not in item
 
 
 def test_pre_existing_means_code_the_task_did_not_touch():
