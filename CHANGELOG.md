@@ -197,7 +197,9 @@ not per individual commit.
   set of instructions each, without a pasted prompt and its separate role. Repeated rules are
   stated once. `system-design-patterns` lists its real five interview phases and four
   documents, adds a non-functional requirements section to the design document, and points
-  follow-up work at konductor skills instead of prompts that don't exist.
+  follow-up work at konductor skills instead of prompts that don't exist. Its S3
+  Intelligent-Tiering advice now targets data with unknown or changing access patterns, not
+  infrequently accessed data.
 
 ### Fixed
 
