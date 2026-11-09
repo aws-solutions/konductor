@@ -1,6 +1,6 @@
 ---
 name: aws-service-validator
-description: 'Validates AWS service and feature claims in a design document against AWS documentation. Catches incorrect or hallucinated AWS assertions. Use when a design doc makes AWS feature, limit, pricing or Region claims, when doc-accuracy-analyzer hands over its AWS claims, or when someone asks to fact-check them. Trigger phrases: "validate my AWS claims", "fact-check my AWS assertions", "check whether this DynamoDB feature is accurate", "verify regional availability for X".'
+description: 'Validates AWS service and feature claims in a design document against AWS documentation. Catches incorrect or hallucinated AWS assertions. Use when a design doc makes AWS feature, limit, pricing or Region claims, when doc-accuracy-analyzer passes it AWS claims, or when asked to fact-check them. Trigger phrases: "validate my AWS claims", "fact-check my AWS assertions", "check whether this DynamoDB feature is accurate", "verify regional availability for X".'
 version: 1.1.0
 tags: [skill, aws, validation, fact-checking, design, accuracy]
 ---
