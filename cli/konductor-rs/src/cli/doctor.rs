@@ -1931,12 +1931,19 @@ fn wiring_findings(
             Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
         )
     });
+    let path_var = std::env::var_os("PATH");
     hooks
         .into_iter()
         .flat_map(|(exe, command)| {
             let label = format!("{strategy}: hook wired in {file}");
             [
-                Some(binary_finding(&label, &exe, missing_status)),
+                Some(binary_finding(
+                    &label,
+                    &exe,
+                    missing_status,
+                    path_var.as_deref(),
+                    std::env::consts::EXE_SUFFIX,
+                )),
                 install_root_finding(command, destination, missing_status),
             ]
         })
@@ -1945,8 +1952,26 @@ fn wiring_findings(
         .collect()
 }
 
-fn binary_finding(label: &str, exe: &str, missing_status: CheckStatus) -> OrchestrationFinding {
-    match hook_binary(exe) {
+/// Konductor writes an absolute exe, so a bare name is a hand-edited or
+/// foreign entry: it resolves on this shell's `PATH`, but a harness
+/// launched from a GUI may search another one.
+fn binary_finding(
+    label: &str,
+    exe: &str,
+    missing_status: CheckStatus,
+    path_var: Option<&std::ffi::OsStr>,
+    exe_suffix: &str,
+) -> OrchestrationFinding {
+    match hook_binary(exe, path_var, exe_suffix) {
+        Some(path) if Path::new(exe).components().count() == 1 => OrchestrationFinding::new(
+            CheckStatus::Warn,
+            format!(
+                "the hook names a bare `{exe}`, found on this shell's PATH at {}; the harness \
+                 may use another PATH; run `konductor update` to write an absolute path",
+                path.display()
+            ),
+            Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+        ),
         Some(path) => {
             let mut finding = OrchestrationFinding::new(CheckStatus::Ok, String::new(), None);
             finding
@@ -1995,19 +2020,15 @@ fn install_root_finding(
 }
 
 /// The executable a hook's exe names: itself when it has a directory
-/// part, else the first match on `PATH`, as the shell would find it.
-fn hook_binary(exe: &str) -> Option<PathBuf> {
+/// part, else the first match on `path_var`, as the shell would find it.
+fn hook_binary(exe: &str, path_var: Option<&std::ffi::OsStr>, exe_suffix: &str) -> Option<PathBuf> {
     let path = Path::new(exe);
     if path.components().count() > 1 {
         return is_executable_file(path)
             .unwrap_or(false)
             .then(|| path.to_path_buf());
     }
-    hook_binary_on_path(
-        exe,
-        std::env::var_os("PATH").as_deref(),
-        std::env::consts::EXE_SUFFIX,
-    )
+    hook_binary_on_path(exe, path_var, exe_suffix)
 }
 
 /// A bare `konductor` resolves as `konductor.exe` on Windows, so try
@@ -6209,6 +6230,42 @@ mod tests {
         );
         assert_eq!(hook_binary_on_path("konductor", Some(&path_var), ""), None);
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn binary_finding_warns_on_a_bare_exe_found_on_path_and_accepts_an_absolute_one() {
+        let exe = fake_konductor_binary("orch-bare-exe");
+        let path_var = std::env::join_paths([exe.parent().unwrap()]).unwrap();
+        let label = "kiro-cli-v3: hook wired in .kiro/hooks/orchestration.json";
+
+        let bare = binary_finding(label, "konductor", CheckStatus::Failed, Some(&path_var), "");
+        assert_eq!(bare.status, CheckStatus::Warn);
+        assert_eq!(
+            bare.summary,
+            format!(
+                "the hook names a bare `konductor`, found on this shell's PATH at {}; the \
+                 harness may use another PATH; run `konductor update` to write an absolute path",
+                exe.display()
+            )
+        );
+        assert_eq!(
+            bare.remediation.as_deref(),
+            Some(ORCHESTRATION_UPDATE_REMEDIATION)
+        );
+
+        let absolute = binary_finding(
+            label,
+            exe.to_str().unwrap(),
+            CheckStatus::Failed,
+            Some(&path_var),
+            "",
+        );
+        assert_eq!(absolute.status, CheckStatus::Ok);
+        assert_eq!(
+            absolute.detail,
+            vec![format!("{label}, binary {}", exe.display())]
+        );
+        fs::remove_dir_all(exe.parent().unwrap()).ok();
     }
 
     #[cfg(unix)]

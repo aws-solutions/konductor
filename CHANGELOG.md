@@ -51,7 +51,8 @@ not per individual commit.
   orchestration hook is the Claude Code install's.
 - The telemetry hook's Kiro CLI v3 session lookup follows `$KIRO_HOME` when set.
 - `konductor doctor` reports the orchestration mode, whether its hook is wired, and whether the
-  config value is valid; a hand-edited hook entry is reported as warn, not as missing.
+  config value is valid; a hand-edited hook entry, or one naming a bare `konductor` found only on
+  this shell's PATH, is reported as warn, not as missing.
 
 ### Changed
 
