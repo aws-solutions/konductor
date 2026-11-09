@@ -11,18 +11,19 @@ const path = require('node:path');
 const { readJson } = require('./lib/util.js');
 const { makeCachedModel, DEFAULT_BUDGET_USD } = require('./lib/model.js');
 const { loadSkill, skillDir, buildStoplist } = require('./lib/skill.js');
-const { runExtract, DEFAULT_RULES } = require('./lib/extract.js');
+const { runExtract, DEFAULT_RULES, DEFAULT_CHUNK_CHARS } = require('./lib/extract.js');
 const { runVote, DEFAULT_PANEL } = require('./lib/vote.js');
 const { runScenarios, DEFAULT_MAX } = require('./lib/scenarios.js');
 const { runRubrics } = require('./lib/rubric.js');
 const { freeze, verify, assertNotFrozen } = require('./lib/freeze.js');
 const { emit } = require('./lib/emit.js');
+const { checkConsistency } = require('./lib/consistency.js');
 const { writeJson } = require('./lib/util.js');
 
 const DEFAULT_MODEL = 'glm-5';
 const DEFAULT_DOMAIN = 'software engineering';
-const COMMANDS = ['extract', 'vote', 'scenarios', 'freeze', 'verify', 'emit'];
-const VALUE_FLAGS = ['skill', 'ref', 'repo', 'skill-file', 'domain', 'max', 'count', 'model', 'extract-model', 'scenario-model', 'rubric-model', 'judges', 'decisions',
+const COMMANDS = ['extract', 'vote', 'scenarios', 'check', 'freeze', 'verify', 'emit'];
+const VALUE_FLAGS = ['skill', 'ref', 'repo', 'skill-file', 'domain', 'max', 'count', 'chunk-chars', 'model', 'extract-model', 'scenario-model', 'rubric-model', 'judges', 'decisions',
   'noise-margin', 'budget-usd', 'concurrency', 'opencode-bin', 'aws-creds-file', 'aws-profile', 'aws-region', 'timeout-sec'];
 
 function parseArgs(argv) {
@@ -89,6 +90,20 @@ async function main(argv, { caller, log = console.log } = {}) {
     log(v.ok ? `${opts.skill}: freeze verified` : `${opts.skill}: freeze check FAILED\n- ${v.problems.join('\n- ')}`);
     return v.ok ? 0 : 1;
   }
+  if (cmd === 'check') {
+    const scenarios = need(path.join(dir, 'scenarios.json'), 'run scenarios first').scenarios;
+    const rules = need(path.join(dir, 'survivors.json'), 'run vote first').rules;
+    let errors = 0;
+    for (const r of need(path.join(dir, 'rubric.json'), 'run scenarios first').rubrics) {
+      const s = scenarios.find((x) => x.id === r.scenarioId);
+      const res = checkConsistency({ items: r.items, prompt: s.prompt, rules: s.type === 'near-miss' ? [] : rules });
+      for (const e of res.errors) log(`error   ${r.scenarioId} ${r.rubric[e.index].id}: ${e.detail}`);
+      for (const w of res.warnings) log(`warning ${r.scenarioId} ${r.rubric[w.index].id}: ${w.detail}`);
+      errors += res.errors.length;
+    }
+    log(`${opts.skill}: ${errors} rubric errors`);
+    return errors ? 1 : 0;
+  }
   if (cmd === 'emit') {
     const r = emit({ skill: opts.skill, dir });
     log(`${opts.skill}: ${r.emitted.length} tasks written to ${path.relative(process.cwd(), r.tasksDir)}, suite ${path.relative(process.cwd(), r.suiteFile)}`);
@@ -110,9 +125,9 @@ async function main(argv, { caller, log = console.log } = {}) {
 
   if (cmd === 'extract') {
     const out = await runExtract({
-      skill: ctx.skill, ask: ctx.ask, modelName: opts['extract-model'] ?? opts.model ?? DEFAULT_MODEL, count: intFlag(opts, 'count', DEFAULT_RULES), outDir: dir,
+      skill: ctx.skill, ask: ctx.ask, modelName: opts['extract-model'] ?? opts.model ?? DEFAULT_MODEL, count: intFlag(opts, 'count', DEFAULT_RULES), outDir: dir, chunkChars: intFlag(opts, 'chunk-chars', DEFAULT_CHUNK_CHARS),
     });
-    log(`${opts.skill}: ${out.rules.length} rules kept, ${out.rejected.length} rejected (${out.rejected.map((r) => r.reasons.join('/')).join('; ') || 'none'})`);
+    log(`${opts.skill}: ${out.parts > 1 ? `read in ${out.parts} parts, ` : ''}${out.rules.length} rules kept, ${out.rejected.length} rejected (${out.rejected.map((r) => r.reasons.join('/')).join('; ') || 'none'})`);
     report();
     return 0;
   }
@@ -144,6 +159,8 @@ async function main(argv, { caller, log = console.log } = {}) {
     writeJson(path.join(dir, 'scenarios.json'), final);
     const by = (t) => final.scenarios.filter((s) => s.type === t).length;
     log(`${opts.skill}: ${final.count} scenarios (rule ${by('rule')}, blind ${by('blind')}, near-miss ${by('near-miss')}), ${final.rejected.length} rejected`);
+    const warned = rub.rubrics.reduce((n, r) => n + r.warnings.length, 0);
+    log(`${opts.skill}: rubric repairs ${rub.rubrics.filter((r) => r.repaired.length).length}, rubric warnings ${warned} in ${rub.rubrics.filter((r) => r.warnings.length).length} scenarios (see rubric.json)`);
     report();
     return 0;
   }

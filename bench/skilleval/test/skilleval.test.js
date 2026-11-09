@@ -13,7 +13,9 @@ const { screenRules } = require('../lib/extract.js');
 const { decide, flagReasons, loadDecisions, runVote, votePrompt } = require('../lib/vote.js');
 const { buildStoplist, stoplistHits } = require('../lib/skill.js');
 const { validateScenario, findDuplicate, quotas, runScenarios } = require('../lib/scenarios.js');
-const { validateRubric, runRubrics, toTaskRubric } = require('../lib/rubric.js');
+const { validateRubric, runRubrics, toTaskRubric, rubricPrompt } = require('../lib/rubric.js');
+const { checkConsistency, numbersIn } = require('../lib/consistency.js');
+const { splitDocument, runExtract } = require('../lib/extract.js');
 const { freeze, verify, assertNotFrozen } = require('../lib/freeze.js');
 const { emit, checkTask } = require('../lib/emit.js');
 const { loadTasks, loadSuite, isSuiteName } = require('../../runner/lib/tasks.js');
@@ -306,4 +308,159 @@ test('runScenarios and runRubrics drop invalid items and tolerate fewer scenario
   const rub = await runRubrics({ scenarios: [{ id: 'r01', type: 'rule', ruleIds: ['R01'], prompt: 'p' }], survivors: [], ask: makeCachedModel({ caller: async () => ({ text: '{"items":[]}', usd: 0 }), cacheDir: tmp() }), model: 'glm-5' });
   assert.equal(rub.rubrics.length, 0);
   assert.match(rub.failed[0].reason, /4 to 6/);
+});
+
+const AUTH_PROMPT = 'How many tests do we have for login? Our suite has these files: auth.unit.test.js with testLogin, testLogout, testReset, testRefresh, testExpiry, testBadCredentials, testLockout; auth.integration.test.js with testLoginAPI, testLogoutAPI, testOAuthFlow, test2FASetup, test2FAVerification; auth.e2e.test.js with testFullLoginFlow, testPasswordRecoveryFlow. Give totals by type.';
+const crit = (...c) => c.map((criterion) => ({ bucket: 'value', criterion }));
+
+test('consistency check flags a count that contradicts the lists in the request', () => {
+  const bad = checkConsistency({ items: crit('Reports 16 tests (7 unit, 5 integration, and 4 e2e), not the file count of 3.'), prompt: AUTH_PROMPT });
+  assert.deepEqual(bad.errors.map((e) => e.index), [0, 0]);
+  assert.ok(bad.errors.some((e) => /"4 e2e" conflicts/.test(e.detail) && e.detail.includes('gives 2')));
+  assert.ok(bad.errors.some((e) => /"16 tests" conflicts/.test(e.detail) && e.detail.includes('total 14')));
+  const good = checkConsistency({ items: crit('Reports 14 tests in total (7 unit, 5 integration, and 2 e2e).'), prompt: AUTH_PROMPT });
+  assert.deepEqual(good.errors, []);
+  assert.ok(good.warnings.some((w) => /14 is not in the request \(derivable/.test(w.detail)));
+});
+
+test('consistency check compares stated percentages and ignores numbers about a recommended model', () => {
+  const prompt = 'Our split is 45% unit, 25% integration and 30% e2e across the suite.';
+  assert.equal(checkConsistency({ items: crit('Notes that 54% unit tests is below the target.'), prompt }).errors.length, 0);
+  assert.equal(checkConsistency({ items: crit('Reports the split as 54% unit, 25% integration and 21% e2e.'), prompt }).errors.length, 2);
+  assert.equal(checkConsistency({ items: crit('Says the recommended pyramid has 70% unit tests.'), prompt }).errors.length, 0);
+});
+
+test('consistency check flags a total that is not the sum of its parts and a rule id in the text', () => {
+  const r = checkConsistency({ items: crit('Reports 20 items (7 unit, 5 integration, 2 e2e).', 'Applies R03 to the split.'), prompt: 'No numbers here at all.' });
+  assert.ok(r.errors.some((e) => e.index === 0 && /not the sum/.test(e.detail)));
+  assert.ok(r.errors.some((e) => e.index === 1 && /rule id/.test(e.detail)));
+});
+
+test('consistency check warns on numbers and names the request does not contain, and passes those from the rules', () => {
+  const rules = [{ id: 'R03', text: 'Report Aligned within 10% and Misaligned beyond 25%, using the pyramid.' }];
+  const r = checkConsistency({
+    items: crit('Rates it Aligned when within 10%, and mentions Cypress and the `loginSession` helper at 95% load.'),
+    prompt: 'Our login tests are slow.', rules,
+  });
+  assert.deepEqual(r.errors, []);
+  const details = r.warnings.map((w) => w.detail);
+  assert.ok(details.some((d) => d.startsWith('95% is not in the request')));
+  assert.ok(details.some((d) => d.includes('"Cypress"')));
+  assert.ok(details.some((d) => d.includes('"loginSession"')));
+  assert.ok(!details.some((d) => d.includes('10')) && !details.some((d) => d.includes('Aligned')));
+});
+
+test('numbers inside identifiers are not numbers and thousands separators are folded', () => {
+  assert.deepEqual(numbersIn('test2FASetup runs in 1,200 ms on e2e hosts').map((n) => n.value), [1200]);
+});
+
+test('rubric prompt keeps layout rules apart and validation ties them to the format bucket', () => {
+  const rules = [{ id: 'R01', text: 'Name the model.', bucket: 'value' }, { id: 'R09', text: 'List critical issues first.', bucket: 'format' }];
+  const p = rubricPrompt({ scenario: { type: 'rule', prompt: 'x', ruleIds: ['R01'] }, rules });
+  assert.match(p, /- R01: Name the model\./);
+  assert.match(p, /Layout behaviours[^\n]*\n- R09: List critical issues first\./);
+  assert.ok(p.indexOf('- R01:') < p.indexOf('Layout behaviours'));
+  const item = (bucket, ruleId, n) => ({ bucket, ruleId, criterion: `distinct point number ${n} about ${'z'.repeat(n)}` });
+  const items = [item('value', 'R01', 1), item('value', '', 2), item('guard', '', 3), item('value', 'R09', 4)];
+  assert.ok(validateRubric(items, { type: 'rule', ruleIds: ['R01'] }, rules).some((r) => r.includes('R09 is a layout behaviour')));
+  items[3] = item('format', 'R09', 4);
+  assert.deepEqual(validateRubric(items, { type: 'rule', ruleIds: ['R01'] }, rules), []);
+});
+
+test('a conflicting rubric item is sent back once and only that item is replaced', async () => {
+  const draft = [
+    { bucket: 'value', criterion: 'Reports 16 tests (7 unit, 5 integration, and 4 e2e).', ruleId: 'R02' },
+    { bucket: 'value', criterion: 'Counts test cases and not test files.' },
+    { bucket: 'guard', criterion: 'Does not claim the suite was executed.' },
+    { bucket: 'format', criterion: 'Gives the totals as a short table.' },
+  ];
+  const seen = [];
+  const caller = async ({ prompt }) => {
+    seen.push(prompt);
+    if (prompt.includes('must be fixed')) return { text: JSON.stringify({ fixes: [{ index: 0, criterion: 'Reports 14 tests (7 unit, 5 integration, and 2 e2e).' }] }), usd: 0.001 };
+    return { text: JSON.stringify({ items: draft }), usd: 0.001 };
+  };
+  const ask = makeCachedModel({ caller, cacheDir: tmp() });
+  const scenario = { id: 'r01', type: 'rule', ruleIds: ['R02'], prompt: AUTH_PROMPT };
+  const rub = await runRubrics({ scenarios: [scenario], survivors: [{ id: 'R02', text: 'Count cases.', bucket: 'value' }], ask, model: 'glm-5' });
+  assert.deepEqual(rub.failed, []);
+  const r = rub.rubrics[0];
+  assert.equal(seen.length, 2);
+  assert.match(seen[1], /item 0: "4 e2e" conflicts/);
+  assert.deepEqual(r.repaired, ['value-1']);
+  assert.equal(r.items[0].criterion, 'Reports 14 tests (7 unit, 5 integration, and 2 e2e).');
+  assert.deepEqual(r.items.slice(1).map((i) => i.criterion), draft.slice(1).map((i) => i.criterion));
+  assert.ok(r.warnings.every((w) => w.item && w.kind));
+});
+
+test('a rubric that is still inconsistent after the repair round is dropped with the reason', async () => {
+  const draft = [
+    { bucket: 'value', criterion: 'Reports 16 tests (7 unit, 5 integration, and 4 e2e).' },
+    { bucket: 'value', criterion: 'Counts test cases and not test files.' },
+    { bucket: 'guard', criterion: 'Does not claim the suite was executed.' },
+    { bucket: 'format', criterion: 'Gives the totals as a short table.' },
+  ];
+  const caller = async ({ prompt }) => (prompt.includes('must be fixed')
+    ? { text: JSON.stringify({ fixes: [{ index: 0, criterion: 'Reports 16 tests (7 unit, 5 integration, and 4 e2e) again.' }] }), usd: 0 }
+    : { text: JSON.stringify({ items: draft }), usd: 0 });
+  const ask = makeCachedModel({ caller, cacheDir: tmp() });
+  const rub = await runRubrics({ scenarios: [{ id: 'r01', type: 'rule', ruleIds: [], prompt: AUTH_PROMPT }], survivors: [], ask, model: 'glm-5' });
+  assert.equal(rub.rubrics.length, 0);
+  assert.match(rub.failed[0].reason, /still inconsistent after repair/);
+});
+
+test('owner decisions take a bucket, survivors carry it and the rule table shows it', async () => {
+  const dir = tmp();
+  const rules = [1, 2, 3].map((n) => ({ id: `R0${n}`, text: `rule ${n}`, tag: 'useful', requestType: 'x', quote: 'q', line: n }));
+  const caller = async () => ({ text: JSON.stringify({ worth: true, style_only: false, reason: 'r' }), usd: 0 });
+  const ask = makeCachedModel({ caller, cacheDir: path.join(dir, 'cache') });
+  const decisionsFile = path.join(dir, 'owner-decisions.json');
+  fs.writeFileSync(decisionsFile, JSON.stringify({ R02: { decision: 'keep', bucket: 'format' }, R03: 'drop' }));
+  const out = await runVote({ rulesDoc: { skill: 's', source: {}, rules }, ask, outDir: dir, decisionsFile });
+  assert.deepEqual(out.survivors.map((r) => [r.id, r.bucket]), [['R01', 'value'], ['R02', 'format']]);
+  const table = fs.readFileSync(path.join(dir, 'rule-table.md'), 'utf8');
+  assert.match(table, /\| R02 \| format \| kept \(owner\) \|/);
+  assert.match(table, /\| R03 \| - \| dropped \(owner\) \|/);
+  fs.writeFileSync(decisionsFile, JSON.stringify({ R01: { decision: 'keep', bucket: 'guard' } }));
+  assert.throws(() => loadDecisions(decisionsFile, ['R01']), /bucket must be "value" or "format"/);
+  fs.writeFileSync(decisionsFile, JSON.stringify({ R01: { decision: 'drop', bucket: 'format' } }));
+  assert.throws(() => loadDecisions(decisionsFile, ['R01']), /takes no bucket/);
+});
+
+test('a layout rule gets no rule scenario of its own', async () => {
+  const survivors = [{ id: 'R01', text: 'Name the model.', tag: 'useful', requestType: 'a', bucket: 'value' }, { id: 'R02', text: 'Order findings.', tag: 'useful', requestType: 'b', bucket: 'format' }];
+  const prompts = [];
+  const caller = async ({ prompt }) => {
+    prompts.push(prompt);
+    return { text: JSON.stringify({ scenarios: [{ ruleId: 'R01', title: 'Plan the checks', prompt: 'Our nightly job fails about once a week and nobody knows why. What should we look at first?' }] }), usd: 0 };
+  };
+  const ask = makeCachedModel({ caller, cacheDir: tmp() });
+  const doc = await runScenarios({ skill: { skill: 'widget-audit', description: 'd' }, survivors, ask, model: 'glm-5', max: 2, stoplist: [], domain: 'ops', repairRounds: 0 });
+  const rulePrompts = prompts.filter((p) => p.includes('For each rule below'));
+  assert.ok(rulePrompts.length > 0 && rulePrompts.every((p) => p.includes('R01:') && !p.includes('R02:')));
+  assert.deepEqual(doc.scenarios.filter((s) => s.type === 'rule').map((s) => s.ruleIds[0]), ['R01']);
+});
+
+test('a long document is read in parts split at headings and the rules are merged by source line', async () => {
+  const body = (n) => Array.from({ length: 6 }, (_, i) => `Rule sentence number ${n}-${i} says to always check the widget ledger.`).join('\n');
+  const text = ['# One', body(1), '## Two', body(2), '## Three', body(3)].join('\n');
+  const parts = splitDocument(text, 300);
+  assert.ok(parts.length >= 2 && parts.every((p) => p.length <= 400));
+  assert.equal(parts.join('\n'), text);
+  assert.ok(parts.slice(1).every((p) => p.startsWith('#')));
+  assert.deepEqual(splitDocument('short', 300), ['short']);
+  const seen = [];
+  const caller = async ({ prompt }) => {
+    seen.push(prompt);
+    const n = prompt.match(/part (\d+) of/)[1];
+    return { text: JSON.stringify({ rules: [0, 1].map((i) => ({ text: `check the ledger ${n}-${i}`, quote: `Rule sentence number ${n}-${i} says to always check the widget ledger.`, tag: 'useful', requestType: 'auditing a ledger' })) }), usd: 0 };
+  };
+  const ask = makeCachedModel({ caller, cacheDir: tmp() });
+  const outDir = tmp();
+  const out = await runExtract({ skill: { skill: 'widget-audit', text, source: {} }, ask, modelName: 'glm-5', count: 4, outDir, chunkChars: 300 });
+  assert.equal(out.parts, seen.length);
+  assert.ok(seen.every((p) => p.includes('Use only this part')));
+  assert.equal(out.rules.length, 4);
+  assert.deepEqual(out.rules.map((r) => r.id), ['R01', 'R02', 'R03', 'R04']);
+  assert.deepEqual(out.rules.map((r) => r.line), [...out.rules.map((r) => r.line)].sort((a, b) => a - b));
 });
