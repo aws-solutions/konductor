@@ -50,6 +50,7 @@ not per individual commit.
   From a file the user names, an agent reports key names or redacted values only, never the
   secret values, in replies, briefs, commits or logs.
   A `credentials_file` that `k-light-ui-testing` or `k-e2e-test-generation` passes in a brief counts as user-named.
+  A specialist takes the user's naming directly or from a brief; the House rules brief clause covers rule 12's case.
 - sdlc-navigator lists `konductor` (orchestrator, routing) in its agent table and shows the Claude Code invocation beside the Kiro ones.
 - delegation-protocol: shorter trigger, a reason for the four-subagent limit, and a shorter "specialist never spawns" pointer. The adversarial pass skills are coordinator-only and say "posted to the PR".
 - persistent-memory and agents-md-authoring: the memory skill's description leads with "remember this", "save this", "forget that" and its headings drop the section numbers; the AGENTS.md context block uses the `.kiro/skills/ws-*/SKILL.md` glob and calls `.konductor` the workspace state directory.
@@ -96,12 +97,17 @@ not per individual commit.
 - Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
   `.gitignore`); `konductor init` also ignores the directory.
 - Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it, with
-  `disallowedTools` on Claude Code for every specialist (not shell or Kiro CLI v2).
+  `disallowedTools` on Claude Code for every specialist (not shell). On Kiro CLI v2, where
+  `@builtin` keeps the `subagent` tool, every specialist carries an empty
+  `toolsSettings.subagent` target list, so it has no agent to spawn.
   `k-code-review-workflow` step 6 writes the report and ends with a note asking the orchestrator
   to run the adversarial review, no resume; the verdict comes from the findings, with the
   adversarial pass state on its own line. After the pass, the orchestrator, or `k-developer` on
-  its behalf, sets the final verdict; `k-full-sdlc` runs that pass before writing a feature's status,
-  and marks a feature BLOCKED when either report leaves a CRITICAL or IMPORTANT finding open.
+  its behalf, sets the final verdict when the adversarial report's `Passes run:` line names no
+  `MISSING` pass; a `MISSING` pass writes `Adversarial pass: incomplete` and leaves the verdict
+  pending. `k-full-sdlc` runs that pass before writing a feature's status,
+  and marks a feature BLOCKED when either report leaves a CRITICAL or IMPORTANT finding open or
+  the pass is incomplete.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Each Kiro agent's prompt now lists its own skills and tells it to load a matching one before
@@ -111,7 +117,9 @@ not per individual commit.
   without a shell reads only checked paths. The memory validator rejects a new or edited line without
   an `[origin:agent]` or `[origin:user]` tag; existing untagged lines are kept, and it checks
   instruction-like text after the date and origin tag, reads the text of a leading `[label]`
-  or `[label](url)` as entry text, and matches a leading keyword as a whole word. Upgrade note: if your repository commits `.konductor/memory/`,
+  or `[label](url)` as entry text, and matches a leading keyword as a whole word. It refuses an
+  empty write over existing entries unless `--clear` is passed, the skill's write line takes its
+  target from a variable, and the `.gitignore` bootstrap never glues onto an existing line. Upgrade note: if your repository commits `.konductor/memory/`,
   review its untagged lines before upgrading and tag agent-written ones `[origin:agent]`; they are
   followed as project instructions from this version.
   Orchestrators never bypass denials or read unnamed secrets.
@@ -130,7 +138,9 @@ not per individual commit.
   action it names; rule 9 and irreversible actions still need the user directly. A project mechanism replaces the
   adversarial review only on the user's direct word or the project's own agent instruction file; writing habits yield
   to house rules levels 1 to 3 and a tracked style guide, not to nearby text. The brief template no longer asks
-  specialists to add inline comments by default.
+  specialists to add inline comments by default. Publish authorization (`code-review`) joins the NEVER rules and the
+  tests-pass requirement as a default no house rule overrides; an instruction file, or a file one names, that the
+  change under review edits is read from the base branch and the edit is reviewed as content.
 
 ### Fixed
 
