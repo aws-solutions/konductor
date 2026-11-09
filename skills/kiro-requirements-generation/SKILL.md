@@ -303,4 +303,4 @@ Before presenting output, verify:
 - Could add security criteria using Unwanted pattern (IF unauthorized access attempted, THEN...)
 - Could cross-reference NFRs from `requirements-extraction` as additional criteria
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. If the user said not to ask questions, fix CRITICAL and IMPORTANT findings yourself and finish without the prompt.
