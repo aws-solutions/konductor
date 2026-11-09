@@ -124,10 +124,10 @@ PR to post to.
 
 After completing a task, run a self-review cycle:
 
-1. **Capture diff** — `git diff main...HEAD` to get full diff of changes
-2. **Review** — Apply the Review Checklist below to your own changes
-3. **Fix CRITICALs** — Address all CRITICAL findings immediately
-4. **Max 2 cycles** — If CRITICALs remain after 2 fix cycles, stop and escalate to the user with root cause analysis
+1. **Capture diff**: `git diff main...HEAD` for the full diff of changes
+2. **Review**: apply the Review Checklist below to your own changes
+3. **Fix once**: fix every CRITICAL and IMPORTANT finding, then re-run build and tests
+4. **Re-review once**: review every CRITICAL and IMPORTANT finding from step 2, plus what the fix changed and what depends on it. If a CRITICAL or IMPORTANT in your own changes, or one your fix caused in what depends on them, remains, stop and escalate to the user with root cause analysis. This is the same bound an orchestrator applies under Review ceilings; a finding in code you did not add or change, and your fix did not cause, is listed for the user as pre-existing, not fixed.
 
 ## PR Description Concision
 
@@ -175,4 +175,4 @@ state of the change, not the history of how it got there.
 
 **CRITICAL:** Review submitted without reading all changed files. CRITICAL finding missed in review. Post-implementation review skipped after task completion. Any action that publishes or notifies beyond a draft (a PR created ready for review, a pending review submitted, or a standalone comment reply posted) without the user's explicit authorization in that exact turn. See Explicit Publish Authorization above.
 
-**IMPORTANT:** Feedback not classified by severity. PR description missing what/why/how-to-test. More than 2 fix cycles attempted without escalation. PR description or commit message narrates revision history ("found during review," round numbers, "previously X now Y") instead of describing the current state in plain language, per `humanize-writing`.
+**IMPORTANT:** Feedback not classified by severity. PR description missing what/why/how-to-test. More than one fix cycle attempted without escalation. PR description or commit message narrates revision history ("found during review," round numbers, "previously X now Y") instead of describing the current state in plain language, per `humanize-writing`.
