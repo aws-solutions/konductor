@@ -122,11 +122,10 @@ not per individual commit.
 - `architecture-diagram-generation` now targets plain draw.io (diagrams.net) XML and drops the
   rules that served one draw.io-based tool. It places S3 with the regional services, since each
   bucket lives in one region, and treats AWS WAF as global only for CloudFront-scoped web ACLs.
-- Two review skills swap a legacy prefix for `k-` and are now `k-aspect-review` and
-  `k-code-simplifier`. `document-formats` only ever handled Word files, so it is now
-  `docx-conversion` and its description names `.docx`. A stub under each old name says
-  which skill to load instead; the stubs are removed in the next release (84
-  skills, 3 of them stubs).
+- Three skills are renamed and their old names are removed: `asdlc-aspect-review` is now
+  `k-aspect-review`, `asdlc-code-simplifier` is now `k-code-simplifier`, and `document-formats`
+  is now `docx-conversion`, whose description names `.docx`. Custom agent specs must use the
+  new names: `konductor synth` rejects a spec that still declares an old one.
 - The user-guide HTML sync tool's verify-run exit-code edits now carry their final text, so the
   tool can write the bundles again.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,

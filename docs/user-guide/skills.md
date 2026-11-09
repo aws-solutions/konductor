@@ -4,8 +4,7 @@
 
 [← Back to guide index](README.md)
 
-All **84 skills** the package ships, grouped by what they are for. Three are rename stubs, listed
-under [Renamed skills](#renamed-skills). Each entry gives what the
+All **81 skills** the package ships, grouped by what they are for. Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -14,8 +13,8 @@ what you want and the agent loads what it needs. Naming one explicitly is still 
 know exactly which lens you want applied.
 
 > **A skill is only available in a session with an agent that declares it.** The "Declared by"
-> column is therefore the practical one — it tells you who to talk to. Every skill except the three
-> rename stubs is declared by at least one agent; see [Coverage](#coverage).
+> column is therefore the practical one — it tells you who to talk to. Every skill is declared by
+> at least one agent; see [Coverage](#coverage).
 
 ---
 
@@ -32,7 +31,6 @@ know exactly which lens you want applied.
 - [Testing and browser automation](#testing-and-browser-automation) — 7
 - [Kiro spec generation](#kiro-spec-generation) — 3
 - [Research](#research) — 1
-- [Renamed skills](#renamed-skills) — 3
 - [Coverage](#coverage)
 - [Which agent has the most skills?](#which-agent-has-the-most-skills)
 
@@ -226,24 +224,11 @@ Looking things up outside the repository.
 
 ---
 
-## Renamed skills
-
-Each stub keeps an old name loadable for one release and is removed in the next. Its body only
-points to the new name.
-
-| Old name | Load instead |
-| --- | --- |
-| `asdlc-aspect-review` | `k-aspect-review` |
-| `asdlc-code-simplifier` | `k-code-simplifier` |
-| `document-formats` | `docx-conversion` |
-
----
-
 ## Coverage
 
-**All 81 working skills are declared by at least one agent.** The three rename stubs are not.
-That matters because a skill no agent declares cannot be loaded by anything — which bites
-hardest when a SOP instructs an agent to use it. Contributors adding a skill should see
+**All 81 skills are declared by at least one agent.** That matters because a skill no agent
+declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
+it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
 
 > **Recently fixed.** Four skills used to be declared by no agent: the three
