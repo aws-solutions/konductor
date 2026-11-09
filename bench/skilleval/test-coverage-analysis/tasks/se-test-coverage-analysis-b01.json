@@ -9,27 +9,27 @@
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer must identify and categorize missing test scenarios such as account lockout, expired passwords, or concurrent sessions as Critical, Warning, or Manual Testing Required per R04.",
+      "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model before analyzing coverage.",
       "weight": 3
     },
     {
       "id": "value-2",
-      "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model like the pyramid or trophy model per R01.",
+      "criterion": "The answer must categorize each identified missing test scenario as Critical, Warning, or Manual Testing Required.",
       "weight": 3
     },
     {
       "id": "value-3",
-      "criterion": "The answer must map security-related non-functional requirements to appropriate test types such as security tests or penetration testing per R05.",
+      "criterion": "The answer must map relevant non-functional requirements like security and performance to appropriate test types such as security tests and load tests.",
       "weight": 3
     },
     {
       "id": "guard-1",
-      "criterion": "The answer must not report test distribution alignment status using percentages because the user has not provided test case counts from a running test suite per R02 and R03.",
+      "criterion": "The answer must not claim the test suite is release ready without applying coverage thresholds and reporting a status of Ready, At Risk, or Not Ready.",
       "weight": 2
     },
     {
       "id": "format-1",
-      "criterion": "The answer must organize its findings in order with critical issues first, then important issues, and then suggestions per R09.",
+      "criterion": "The answer must organize its findings in order with Critical issues first, then Important issues, then Suggestions.",
       "weight": 1
     }
   ],

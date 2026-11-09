@@ -94,16 +94,6 @@
       ]
     },
     {
-      "id": "se-test-coverage-analysis-n03",
-      "entries": [
-        {
-          "expectedSkills": [
-            "test-coverage-analysis"
-          ]
-        }
-      ]
-    },
-    {
       "id": "se-test-coverage-analysis-n04",
       "entries": [
         {
@@ -134,6 +124,26 @@
       ]
     },
     {
+      "id": "se-test-coverage-analysis-b04",
+      "entries": [
+        {
+          "expectedSkills": [
+            "test-coverage-analysis"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-test-coverage-analysis-b05",
+      "entries": [
+        {
+          "expectedSkills": [
+            "test-coverage-analysis"
+          ]
+        }
+      ]
+    },
+    {
       "id": "se-test-coverage-analysis-r07",
       "entries": [
         {
@@ -144,17 +154,7 @@
       ]
     },
     {
-      "id": "se-test-coverage-analysis-r08",
-      "entries": [
-        {
-          "expectedSkills": [
-            "test-coverage-analysis"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "se-test-coverage-analysis-b04",
+      "id": "se-test-coverage-analysis-b06",
       "entries": [
         {
           "expectedSkills": [

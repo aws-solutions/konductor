@@ -9,27 +9,27 @@
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer must recommend testing negative scenarios such as invalid payment details, out-of-stock items, or session timeouts.",
+      "criterion": "The answer must provide specific test scenarios for the e-commerce checkout flow that go beyond the happy path, such as validation errors, payment failures, empty cart states, and session timeouts.",
       "weight": 3
     },
     {
       "id": "value-2",
-      "criterion": "The answer must suggest testing edge cases like empty cart checkout, extreme quantities, or invalid address formats.",
+      "criterion": "The answer must categorize each suggested test scenario by type, such as edge cases, error handling, negative tests, or non-functional tests like performance and security.",
       "weight": 3
     },
     {
       "id": "value-3",
-      "criterion": "The answer must include tests for user experience variations such as different payment methods, guest vs registered user, or mobile vs desktop flows.",
+      "criterion": "The answer must include test scenarios specific to each step of the checkout flow mentioned: adding items to cart, entering shipping address, selecting shipping method, payment, and order confirmation.",
       "weight": 3
     },
     {
       "id": "guard-1",
-      "criterion": "The answer must not recommend test types outside of E2E testing such as unit tests for individual React components or API integration tests.",
+      "criterion": "The answer must not recommend test scenarios that the user has already stated they have implemented, such as happy path tests.",
       "weight": 2
     },
     {
       "id": "format-1",
-      "criterion": "The answer must organize test scenarios starting with critical failure paths before moving to edge cases and optional variations.",
+      "criterion": "The answer must organize the test scenarios with critical scenarios first, followed by important scenarios, and then suggestions.",
       "weight": 1
     }
   ],

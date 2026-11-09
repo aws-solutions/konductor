@@ -9,4 +9,4 @@ Panel: gpt-5.6-luna, deepseek-3.2, glm-5. Votes are worth/style per judge (Y or 
 | R09 | style | gpt-5.6-luna: Y/Y; deepseek-3.2: Y/n; glm-5: Y/n | keep | style (1 vote), extractor tagged style | When presenting findings, the answer must organize them in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs. |
 | R10 | style | gpt-5.6-luna: Y/Y; deepseek-3.2: Y/n; glm-5: Y/Y | drop | style (2 votes), extractor tagged style | When reporting coverage status, the answer must use visual indicators consistently: ✅ for Covered/Pass, ❌ for Missing/Fail, ⚠️ for Partial/Warning, and 🔍 for Manual Required. |
 
-Record a decision in owner-decisions.json as {"R03": "keep", "R07": "drop"} and run vote again (cached, no cost).
+Record a decision in owner-decisions.json as {"R03": "keep", "R07": "drop", "R09": {"decision": "keep", "bucket": "format"}} and run vote again (cached, no cost).

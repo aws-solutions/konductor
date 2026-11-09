@@ -1,0 +1,44 @@
+{
+  "id": "se-test-coverage-analysis-b06",
+  "class": "simple",
+  "target": null,
+  "prompt": "We're preparing to ship version 2.3 of our payment processing service next week. I want to make sure we haven't missed any important test cases. The codebase has about 45 endpoints handling transactions, refunds, and account balances. We wrote unit tests for the core calculation logic and integration tests for the database operations, plus some end-to-end tests for the happy path flows. Can you review what we have and point out any scenarios that aren't covered?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must identify the application as a backend service and recommend an appropriate testing model such as the test pyramid.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must identify gaps in non-functional testing and map them to appropriate test types such as security tests or load tests.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must identify missing test scenarios for the 45 endpoints such as error handling, edge cases, or authorization checks.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not report test distribution percentages or alignment status because the user did not provide test case counts.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not claim the service is ready for release without first identifying and evaluating the missing test scenarios.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must present findings starting with critical issues, then important issues, and finally suggestions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

@@ -12,13 +12,13 @@
     "se-test-coverage-analysis-b03",
     "se-test-coverage-analysis-n01",
     "se-test-coverage-analysis-n02",
-    "se-test-coverage-analysis-n03",
     "se-test-coverage-analysis-n04",
     "se-test-coverage-analysis-r05",
     "se-test-coverage-analysis-r06",
+    "se-test-coverage-analysis-b04",
+    "se-test-coverage-analysis-b05",
     "se-test-coverage-analysis-r07",
-    "se-test-coverage-analysis-r08",
-    "se-test-coverage-analysis-b04"
+    "se-test-coverage-analysis-b06"
   ],
   "arms": [
     "vanilla",

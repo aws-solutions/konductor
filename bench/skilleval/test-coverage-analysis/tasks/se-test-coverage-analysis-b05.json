@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-b05",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm reviewing our login and registration system and I'm worried we don't have enough test coverage. Here's what we test: valid login, invalid password, locked account, password reset email, new user registration, and duplicate email rejection. We run these as unit tests and a few as E2E tests. I keep thinking there are edge cases we're missing but I can't put my finger on them. What other scenarios should we be testing?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must identify and categorize specific missing test scenarios for a login and registration system, such as SQL injection, session expiration, or rate limiting, as Critical, Warning, or Manual Testing Required.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must map non-functional requirements like security and performance to appropriate test types such as security tests and load tests.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model like the pyramid or trophy model.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not claim to report test distribution alignment status or release readiness status because the user did not provide test case counts or coverage thresholds.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must organize its findings with Critical issues first, then Important issues, and finally Suggestions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

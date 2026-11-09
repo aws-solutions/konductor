@@ -9,17 +9,22 @@
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer must determine the application architecture type (frontend, backend, serverless, microservices, or full-stack) and recommend an appropriate testing model (pyramid, trophy, hybrid, or microservices).",
+      "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model before analyzing coverage.",
       "weight": 3
     },
     {
       "id": "value-2",
-      "criterion": "The answer must map each non-functional requirement category to the appropriate test type (e.g., Performance NFRs to load tests, Security NFRs to security tests).",
+      "criterion": "The answer must map each non-functional requirement category to the appropriate test type, such as Performance NFRs to load tests or Security NFRs to security tests.",
       "weight": 3
     },
     {
       "id": "value-3",
       "criterion": "The answer must report the release readiness status as Ready, At Risk, or Not Ready based on coverage thresholds and gate checks.",
+      "weight": 3
+    },
+    {
+      "id": "value-4",
+      "criterion": "The answer must identify test gaps and categorize each gap as Critical, Warning, or Manual Testing Required.",
       "weight": 3
     },
     {
@@ -29,7 +34,7 @@
     },
     {
       "id": "format-1",
-      "criterion": "The answer must organize findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+      "criterion": "The answer must organize findings in order with CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
       "weight": 1
     }
   ],

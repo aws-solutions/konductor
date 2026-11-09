@@ -2,40 +2,35 @@
   "id": "se-test-coverage-analysis-r07",
   "class": "simple",
   "target": null,
-  "prompt": "We're planning to release our React-based customer portal to production tomorrow. Our test results show: 85% unit test coverage, 70% integration test coverage, critical user flows (login, search, checkout) have 95% end-to-end test coverage, and all smoke tests pass. We follow the testing trophy model for frontend applications. Should we proceed with the release or do we need to address any gaps?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "prompt": "I'm managing a React web app and we're thinking about pushing our shopping cart feature to production next week. Our team follows the Frontend Trophy approach where we focus heavily on integration tests for the main user journeys. Right now our test results show: checkout flow has 100% integration test coverage, add-to-cart flow has 85% integration test coverage, and the cart summary page has 70% integration test coverage. All unit tests are passing. Can you tell me if we're ready to release based on these numbers?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
   "fixture": "skilleval-empty",
   "timeoutSec": 300,
   "checks": [],
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer must identify the application as a frontend system and confirm the testing trophy model is appropriate before analyzing the coverage metrics.",
+      "criterion": "The answer must identify the application as a frontend architecture and confirm the Frontend Trophy model is appropriate before evaluating the coverage numbers.",
       "weight": 3
     },
     {
       "id": "value-2",
-      "criterion": "The answer must flag the 95% end-to-end test coverage for critical user flows as a critical gap because the testing trophy model requires 100% coverage for these flows.",
+      "criterion": "The answer must state that the checkout flow is not ready for release because it does not meet the 100% integration test coverage threshold required by the Frontend Trophy model for critical user flows.",
       "weight": 3
     },
     {
       "id": "value-3",
-      "criterion": "The answer must categorize the identified test gaps using the required severity levels: Critical, Warning, or Manual Testing Required.",
+      "criterion": "The answer must categorize the gaps in the add-to-cart and cart summary page coverage as Warning or Manual Testing Required rather than Critical.",
       "weight": 3
     },
     {
       "id": "guard-1",
-      "criterion": "The answer must not claim the test distribution is aligned without comparing the current coverage percentages against the testing trophy model's recommended distribution.",
+      "criterion": "The answer must not claim the application is ready for release since the checkout flow coverage is only 85% and not the required 100%.",
       "weight": 2
     },
     {
       "id": "format-1",
-      "criterion": "The answer must present the findings in the specific order of CRITICAL issues first, then IMPORTANT issues, and finally SUGGESTIONs.",
+      "criterion": "The answer must present findings in order with critical issues first, followed by important issues, and then suggestions.",
       "weight": 1
-    },
-    {
-      "id": "value-4",
-      "criterion": "The answer must report the release readiness status as At Risk due to the critical gap in end-to-end test coverage for critical user flows.",
-      "weight": 3
     }
   ],
   "tiers": [

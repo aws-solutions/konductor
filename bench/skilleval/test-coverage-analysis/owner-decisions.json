@@ -1,0 +1,6 @@
+{
+  "R01": "keep",
+  "R05": "keep",
+  "R09": { "decision": "keep", "bucket": "format" },
+  "R10": "drop"
+}

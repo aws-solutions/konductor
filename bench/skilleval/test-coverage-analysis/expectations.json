@@ -55,11 +55,6 @@
       "skill": "not loaded",
       "ruleIds": []
     },
-    "se-test-coverage-analysis-n03": {
-      "type": "nearmiss",
-      "skill": "not loaded",
-      "ruleIds": []
-    },
     "se-test-coverage-analysis-n04": {
       "type": "nearmiss",
       "skill": "not loaded",
@@ -79,6 +74,16 @@
         "R05"
       ]
     },
+    "se-test-coverage-analysis-b04": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-test-coverage-analysis-b05": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
     "se-test-coverage-analysis-r07": {
       "type": "rule",
       "skill": "loaded",
@@ -86,14 +91,7 @@
         "R06"
       ]
     },
-    "se-test-coverage-analysis-r08": {
-      "type": "rule",
-      "skill": "loaded",
-      "ruleIds": [
-        "R09"
-      ]
-    },
-    "se-test-coverage-analysis-b04": {
+    "se-test-coverage-analysis-b06": {
       "type": "blind",
       "skill": "loaded",
       "ruleIds": []

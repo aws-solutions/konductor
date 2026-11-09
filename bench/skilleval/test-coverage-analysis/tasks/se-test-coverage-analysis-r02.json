@@ -9,27 +9,27 @@
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer must determine the application architecture type before recommending a testing model, as required by R01.",
+      "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model before analyzing the distribution.",
       "weight": 3
     },
     {
       "id": "value-2",
-      "criterion": "The answer must compare the current test distribution (45% unit, 25% integration, 30% E2E) against the recommended model and report alignment status as Aligned, Misaligned, or Severely Misaligned.",
-      "weight": 3
-    },
-    {
-      "id": "value-3",
-      "criterion": "The answer must identify test gaps and categorize each gap as Critical, Warning, or Manual Testing Required.",
+      "criterion": "The answer must compare the current distribution of 45% unit, 25% integration, and 30% end-to-end tests against the recommended model and report the alignment status.",
       "weight": 3
     },
     {
       "id": "guard-1",
-      "criterion": "The answer must not claim the distribution follows the testing pyramid best practices, since 30% end-to-end tests is a significant inversion of the pyramid model.",
+      "criterion": "The answer must not claim the distribution follows best practices for the testing pyramid, as 30% end-to-end tests is a top-heavy distribution.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must use the provided test case counts of 45, 25, and 30 rather than file counts or other metrics.",
       "weight": 2
     },
     {
       "id": "format-1",
-      "criterion": "The answer must organize findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+      "criterion": "The answer must present findings in order with critical issues first, then important issues, and then suggestions.",
       "weight": 1
     }
   ],

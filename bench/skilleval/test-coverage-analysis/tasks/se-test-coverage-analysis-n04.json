@@ -9,27 +9,27 @@
   "rubric": [
     {
       "id": "guard-1",
-      "criterion": "The reply directly addresses the timeout discrepancy between local and CI environments without suggesting that a specialized analysis procedure be applied.",
+      "criterion": "The reply addresses the discrepancy between local and CI environments for the test suite.",
       "weight": 2
     },
     {
       "id": "guard-2",
-      "criterion": "The reply stays in scope by focusing on the specific timeout issue and does not introduce unrelated topics or tangential advice.",
+      "criterion": "The reply considers the 50 tests and their 2-second duration in its analysis.",
       "weight": 2
     },
     {
       "id": "guard-3",
-      "criterion": "The reply provides a concise explanation or actionable suggestions without generating a long report, scoring scheme, or formal deliverable.",
+      "criterion": "The reply accounts for the 60-second CI timeout in its explanation.",
       "weight": 2
     },
     {
       "id": "guard-4",
-      "criterion": "The reply answers the user's actual question about what could cause the discrepancy rather than pivoting to a different problem or solution.",
+      "criterion": "The reply stays in scope and does not introduce unrequested reports or scoring schemes.",
       "weight": 2
     },
     {
       "id": "guard-5",
-      "criterion": "The reply avoids unrequested ceremony such as executive summaries, structured frameworks, or multi-section formatted outputs.",
+      "criterion": "The reply provides a direct answer without unnecessary ceremony or deliverables.",
       "weight": 2
     }
   ],

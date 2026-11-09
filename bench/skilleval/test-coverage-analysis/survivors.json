@@ -11,7 +11,8 @@
       "quote": "This stage establishes the foundation for all subsequent analysis. The testing model determines what \"good coverage\" means.",
       "line": 222,
       "tag": "useful",
-      "requestType": "asking whether the tests for a payments module cover its requirements"
+      "requestType": "asking whether the tests for a payments module cover its requirements",
+      "bucket": "value"
     },
     {
       "id": "R02",
@@ -19,7 +20,8 @@
       "quote": "IMPORTANT: Test FILES ≠ Test CASES - A single test file may contain 10-50 test cases - Always use test case count from test runner, not file count",
       "line": 522,
       "tag": "useful",
-      "requestType": "asking how many tests exist for a feature"
+      "requestType": "asking how many tests exist for a feature",
+      "bucket": "value"
     },
     {
       "id": "R03",
@@ -27,7 +29,8 @@
       "quote": "Alignment Status: - ✅ Aligned: All deltas within ±10% - ⚠️ Misaligned: One or more deltas between ±10% and ±25% - ❌ Severely Misaligned: One or more deltas > ±25%",
       "line": 666,
       "tag": "useful",
-      "requestType": "asking whether the test distribution follows best practices"
+      "requestType": "asking whether the test distribution follows best practices",
+      "bucket": "value"
     },
     {
       "id": "R04",
@@ -35,7 +38,8 @@
       "quote": "Critical Gaps (Must Fix): - Acceptance criteria with no tests (priority: high) - Test plans with no implementation - Core functionality untested (authentication, data persistence, critical workflows)",
       "line": 1249,
       "tag": "useful",
-      "requestType": "asking what tests are missing for a feature"
+      "requestType": "asking what tests are missing for a feature",
+      "bucket": "value"
     },
     {
       "id": "R05",
@@ -43,7 +47,8 @@
       "quote": "Map NFR Categories to Required Test Types: **Performance NFRs → Load/Performance Tests:** - Response time requirements → Latency validation tests - Throughput requirements → Load tests with concurrent users",
       "line": 771,
       "tag": "useful",
-      "requestType": "asking whether performance and security requirements have test coverage"
+      "requestType": "asking whether performance and security requirements have test coverage",
+      "bucket": "value"
     },
     {
       "id": "R06",
@@ -51,7 +56,8 @@
       "quote": "Apply thresholds based on testing philosophy: **For Frontend (Trophy Model):** - Critical user flows: 100% integration test coverage required - High priority features: 90% integration test coverage required",
       "line": 1505,
       "tag": "useful",
-      "requestType": "asking if the application is ready for production release"
+      "requestType": "asking if the application is ready for production release",
+      "bucket": "value"
     },
     {
       "id": "R07",
@@ -59,7 +65,8 @@
       "quote": "Anti-Patterns Detected: - ❌ Tests testing implementation details (especially in frontend) - ❌ Flaky tests (timing dependencies) - ❌ Overly complex tests (>50 lines)",
       "line": 1427,
       "tag": "useful",
-      "requestType": "asking about the quality of existing tests"
+      "requestType": "asking about the quality of existing tests",
+      "bucket": "value"
     },
     {
       "id": "R09",
@@ -67,7 +74,8 @@
       "quote": "Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: \"Fix these issues? [y/n]\"",
       "line": 2064,
       "tag": "style",
-      "requestType": "asking for a summary of test coverage issues"
+      "requestType": "asking for a summary of test coverage issues",
+      "bucket": "format"
     },
     {
       "id": "R11",
@@ -75,7 +83,8 @@
       "quote": "Readiness Status: - ✅ Ready: All gates passed, coverage meets thresholds - ⚠️ At Risk: Minor gaps, coverage slightly below threshold, quality concerns - ❌ Not Ready: Critical gaps, failing tests, coverage significantly below threshold",
       "line": 1539,
       "tag": "useful",
-      "requestType": "asking whether the code is ready to deploy to production"
+      "requestType": "asking whether the code is ready to deploy to production",
+      "bucket": "value"
     }
   ]
 }

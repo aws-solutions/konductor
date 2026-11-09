@@ -2,34 +2,39 @@
   "id": "se-test-coverage-analysis-b04",
   "class": "simple",
   "target": null,
-  "prompt": "I just finished implementing a user authentication module with login, logout, password reset, and session timeout features. My team wrote tests for the happy paths but I'm worried about edge cases. We have unit tests for valid credentials, integration tests for database connections, and one E2E test for the login flow. What test scenarios should we add to feel confident about edge cases and error handling?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "prompt": "I just finished building a payment processing module with these components: card validation, transaction processing, refund handling, and receipt generation. I wrote unit tests for the validation logic and integration tests for transaction processing, but I'm not sure if I've covered everything important. Can you look at what I've tested and tell me what scenarios I might have missed before I ship this to production?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
   "fixture": "skilleval-empty",
   "timeoutSec": 300,
   "checks": [],
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer must determine the application architecture type (backend) and recommend an appropriate testing model (e.g., pyramid or hybrid) before suggesting specific test scenarios.",
+      "criterion": "The answer must identify the application as a backend system and recommend an appropriate testing model, such as the testing pyramid.",
       "weight": 3
     },
     {
       "id": "value-2",
-      "criterion": "The answer must categorize each identified test gap (e.g., invalid credentials, expired sessions) as Critical, Warning, or Manual Testing Required.",
+      "criterion": "The answer must identify specific test gaps for the refund handling and receipt generation components, categorizing them as Critical, Warning, or Manual Testing Required.",
       "weight": 3
     },
     {
       "id": "value-3",
-      "criterion": "The answer must map security non-functional requirements to specific security test types, such as suggesting SQL injection or brute force tests for the login feature.",
+      "criterion": "The answer must map security non-functional requirements to security tests, such as PCI-DSS compliance checks for the card validation component.",
       "weight": 3
     },
     {
       "id": "guard-1",
-      "criterion": "The answer must not claim to report test distribution alignment status (Aligned/Misaligned/Severely Misaligned) because the user did not provide the necessary test case counts.",
+      "criterion": "The answer must not claim the system is release ready without first identifying critical test gaps for a payment processing module.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not report test distribution percentages or alignment status because the user did not provide test case counts.",
       "weight": 2
     },
     {
       "id": "format-1",
-      "criterion": "The answer must organize its findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+      "criterion": "The answer must present findings in order, listing Critical issues first, then Important issues, and finally Suggestions.",
       "weight": 1
     }
   ],

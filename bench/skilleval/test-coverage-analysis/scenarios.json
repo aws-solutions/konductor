@@ -43,8 +43,8 @@
       "ruleIds": [
         "R07"
       ],
-      "title": "Reviewing test quality for anti-patterns",
-      "prompt": "I wrote this test for my React component and want to know if it's good quality:\n\ntest('button click works', () => {\n  const wrapper = shallow(<MyButton />);\n  wrapper.find('button').simulate('click');\n  expect(wrapper.find('button').prop('disabled')).toBe(true);\n});\n\nThe button should disable itself after clicking. Is this a well-written test?"
+      "title": "Reviewing test quality issues",
+      "prompt": "Can you review these React component tests and tell me if there are any quality issues? Here's one of our test files:\n\ntest('handleSubmit calls api with correct params', () => {\n  const wrapper = shallow(<LoginForm />);\n  wrapper.instance().state.username = 'testuser';\n  wrapper.instance().state.password = 'testpass';\n  wrapper.instance().handleSubmit();\n  expect(wrapper.instance().apiService.post).toHaveBeenCalledWith('/login', { username: 'testuser', password: 'testpass' });\n});\n\nWe want to make sure our tests are following best practices."
     },
     {
       "id": "b01",
@@ -82,13 +82,6 @@
       "prompt": "This unit test keeps failing and I can't figure out why. Here's the test: expect(calculateDiscount(100, 'PREMIUM')).toBe(20). The function should return 20 for a premium customer with 100 dollar purchase, but it returns 0. Here's the function: function calculateDiscount(amount, tier) { if (tier === 'premium') return amount * 0.2; return 0; }. What's wrong?"
     },
     {
-      "id": "n03",
-      "type": "near-miss",
-      "ruleIds": [],
-      "title": "Compare testing approaches",
-      "prompt": "Our team is debating whether to focus more on unit tests or integration tests for our microservices. We have limited time and resources. What are the trade-offs between these two testing levels? I need arguments for both sides so we can make an informed decision."
-    },
-    {
       "id": "n04",
       "type": "near-miss",
       "ruleIds": [],
@@ -101,8 +94,8 @@
       "ruleIds": [
         "R01"
       ],
-      "title": "Payments module test coverage assessment",
-      "prompt": "I'm working on a payments processing module for our e-commerce platform. The module handles payment gateway integration, transaction processing, and payment confirmation callbacks. We have unit tests for the transaction logic, some integration tests for the gateway API calls, and a few end-to-end tests for the complete checkout flow. The requirements include supporting multiple payment methods (credit cards, PayPal, digital wallets), handling payment failures gracefully, and ensuring transaction idempotency. Can you review whether our current test approach adequately covers these requirements?"
+      "title": "Payments module test coverage check",
+      "prompt": "I'm working on a payments processing module for our e-commerce site. The module handles credit card transactions, processes refunds, and manages payment status updates. We have unit tests for the transaction logic and some integration tests for the API endpoints. Here are the requirements: validate card details, process payments within 5 seconds, handle payment gateway timeouts, log all transactions, and send confirmation emails. Do our current tests cover everything we need?"
     },
     {
       "id": "r06",
@@ -111,7 +104,21 @@
         "R05"
       ],
       "title": "Performance and security test coverage",
-      "prompt": "Our application requirements specify that the API must handle 5000 concurrent users with response times under 200ms, all endpoints must be protected against SQL injection and XSS attacks, and the system must maintain 99.9% uptime with automatic failover. We currently have unit tests for business logic and some integration tests for API endpoints. We're not sure if we need additional tests. Can you help us understand if our testing covers these requirements properly?"
+      "prompt": "Our team built a customer portal that handles user logins and displays account information. The product requirements say the login page must load in under 2 seconds, handle 500 concurrent users, protect against SQL injection, and encrypt passwords. We have tests that check if users can log in successfully and see their data. Are we missing any important tests before we ship this?"
+    },
+    {
+      "id": "b04",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Checking test coverage for payment feature",
+      "prompt": "I just finished building a payment processing module with these components: card validation, transaction processing, refund handling, and receipt generation. I wrote unit tests for the validation logic and integration tests for transaction processing, but I'm not sure if I've covered everything important. Can you look at what I've tested and tell me what scenarios I might have missed before I ship this to production?"
+    },
+    {
+      "id": "b05",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Finding missing tests in authentication flow",
+      "prompt": "I'm reviewing our login and registration system and I'm worried we don't have enough test coverage. Here's what we test: valid login, invalid password, locked account, password reset email, new user registration, and duplicate email rejection. We run these as unit tests and a few as E2E tests. I keep thinking there are edge cases we're missing but I can't put my finger on them. What other scenarios should we be testing?"
     },
     {
       "id": "r07",
@@ -119,24 +126,15 @@
       "ruleIds": [
         "R06"
       ],
-      "title": "Production release readiness check",
-      "prompt": "We're planning to release our React-based customer portal to production tomorrow. Our test results show: 85% unit test coverage, 70% integration test coverage, critical user flows (login, search, checkout) have 95% end-to-end test coverage, and all smoke tests pass. We follow the testing trophy model for frontend applications. Should we proceed with the release or do we need to address any gaps?"
+      "title": "Checking if app ready for release",
+      "prompt": "I'm managing a React web app and we're thinking about pushing our shopping cart feature to production next week. Our team follows the Frontend Trophy approach where we focus heavily on integration tests for the main user journeys. Right now our test results show: checkout flow has 100% integration test coverage, add-to-cart flow has 85% integration test coverage, and the cart summary page has 70% integration test coverage. All unit tests are passing. Can you tell me if we're ready to release based on these numbers?"
     },
     {
-      "id": "r08",
-      "type": "rule",
-      "ruleIds": [
-        "R09"
-      ],
-      "title": "Test coverage issues summary",
-      "prompt": "I just ran a coverage analysis on our authentication service and found several issues: some error handling paths have no tests, the password reset flow only has happy path tests, two API endpoints are missing integration tests entirely, test naming could be more descriptive, and the OAuth callback handler has no tests. Can you summarize these findings for my team?"
-    },
-    {
-      "id": "b04",
+      "id": "b06",
       "type": "blind",
       "ruleIds": [],
-      "title": "Finding untested edge cases",
-      "prompt": "I just finished implementing a user authentication module with login, logout, password reset, and session timeout features. My team wrote tests for the happy paths but I'm worried about edge cases. We have unit tests for valid credentials, integration tests for database connections, and one E2E test for the login flow. What test scenarios should we add to feel confident about edge cases and error handling?"
+      "title": "Checking test completeness before launch",
+      "prompt": "We're preparing to ship version 2.3 of our payment processing service next week. I want to make sure we haven't missed any important test cases. The codebase has about 45 endpoints handling transactions, refunds, and account balances. We wrote unit tests for the core calculation logic and integration tests for the database operations, plus some end-to-end tests for the happy path flows. Can you review what we have and point out any scenarios that aren't covered?"
     }
   ],
   "rejected": [
@@ -169,23 +167,11 @@
       "ruleIds": [
         "R06"
       ],
-      "title": "Evaluating release readiness with coverage thresholds",
-      "prompt": "I'm working on a frontend application and we follow the Frontend Trophy testing model. Our test coverage report shows: Login flow has 85% integration test coverage, Checkout flow has 92% integration test coverage, and Search flow has 100% integration test coverage. All unit tests are passing. Can you tell me if we're ready to release to production?",
+      "title": "Evaluating frontend release readiness",
+      "prompt": "I'm managing a React e-commerce app and we're following the Frontend Trophy testing philosophy. Our test results show: unit tests at 85% coverage, integration tests covering 95% of critical user flows (checkout, cart, payment), and E2E tests covering the main purchase journey. We have no failing tests. Given this philosophy, is our application ready for production release?",
       "round": 0,
       "reasons": [
-        "skill vocabulary: coverage thresholds"
-      ]
-    },
-    {
-      "type": "rule",
-      "ruleIds": [
-        "R09"
-      ],
-      "title": "Summarizing test coverage issues",
-      "prompt": "Here's our test coverage report. Can you summarize the issues?\n\n- Login page: 45% coverage (missing error handling tests)\n- Dashboard: 78% coverage (missing edge case tests)\n- Payment flow: 0% coverage (no tests written)\n- Settings page: 92% coverage (minor gaps in validation)\n- User profile: 65% coverage (missing accessibility tests)",
-      "round": 0,
-      "reasons": [
-        "skill vocabulary: accessibility tests"
+        "skill vocabulary: testing philosophy"
       ]
     },
     {
@@ -193,11 +179,11 @@
       "ruleIds": [
         "R11"
       ],
-      "title": "Assessing deployment readiness status",
-      "prompt": "We're planning to deploy our e-commerce application to production tomorrow. Here's our current status: All unit tests pass (342/342), 2 integration tests are failing (checkout payment processing and order confirmation email), code coverage is at 87%, and our performance tests show response times within acceptable limits. Should we proceed with the deployment?",
+      "title": "Production deployment readiness check",
+      "prompt": "I need to know if we can deploy our payment service to production. Here's our current status: 92% unit test coverage (threshold is 80%), all integration tests passing, 2 known minor bugs in non-critical features (UI alignment issues), performance tests show 200ms average response time (SLA is 300ms), and security scan passed with no critical vulnerabilities. Is this ready to deploy?",
       "round": 0,
       "reasons": [
-        "skill vocabulary: performance tests, readiness status",
+        "skill vocabulary: performance tests",
         "asks for a side effect"
       ]
     },
@@ -234,35 +220,57 @@
     {
       "type": "rule",
       "ruleIds": [
+        "R06"
+      ],
+      "title": "Production release readiness check",
+      "prompt": "We're getting ready to push our React dashboard to production. It's a single-page app that displays sales data and lets users filter reports. We have unit tests for the data formatting functions and end-to-end tests for the main user flows: logging in, viewing the dashboard, and exporting reports. The critical user flow is the login-to-dashboard path. Is this enough to release?",
+      "round": 1,
+      "reasons": [
+        "asks for a side effect"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
         "R11"
       ],
-      "title": "Production deployment readiness",
-      "prompt": "Our CI/CD pipeline just finished running all tests for the user service microservice. Here are the results: 92% unit test coverage (threshold is 80%), 75% integration test coverage (threshold is 70%), all 15 critical user journey tests pass, 2 out of 8 performance tests fail (showing 20% slower response times than required), and the security scan found 1 medium vulnerability in a dependency. We're supposed to deploy this to production today. Is this service ready for deployment?",
-      "round": 1,
-      "reasons": [
-        "skill vocabulary: performance tests",
-        "asks for a side effect"
-      ]
-    },
-    {
-      "type": "blind",
-      "ruleIds": [],
-      "title": "Pre-release coverage gap analysis",
-      "prompt": "We're getting ready to ship version 2.4 of our payment processing service next week. I want to make sure we haven't missed any important test cases. We have 47 unit tests covering the core calculation logic, 12 integration tests for the API endpoints, and 5 E2E tests for the main user flows. Can you analyze this and tell me what scenarios we might be missing before we release?",
-      "round": 1,
-      "reasons": [
-        "skill vocabulary: gap analysis"
-      ]
-    },
-    {
-      "type": "blind",
-      "ruleIds": [],
       "title": "Deployment readiness assessment",
-      "prompt": "Our e-commerce checkout feature has been in development for three months and management wants to deploy it to production on Friday. We've got decent test coverage: 89 unit tests, 23 integration tests, and 8 E2E tests covering cart management, payment processing, and order confirmation. Before we sign off on the deployment, can you review our testing approach and identify any critical gaps or scenarios we should address?",
+      "prompt": "I need to decide if we can deploy our user registration service to production tomorrow. Here's our current status: 95% of unit tests pass (5 failing tests are in non-critical password validation), integration tests for the happy path all pass, we have no tests for error handling scenarios, and the load test showed the system handles 200 users but we need 300. Can we go live?",
       "round": 1,
       "reasons": [
-        "skill vocabulary: critical gaps",
         "asks for a side effect"
+      ]
+    },
+    {
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Preparing for major release deployment",
+      "prompt": "Our team is about to push version 2.0 live next week and I want to make sure we're not going to regret it. We have a test suite with 47 unit tests, 23 integration tests, and 8 end-to-end tests covering user authentication, dashboard, reporting, and settings modules. The product owner is asking if we're ready to deploy. Can you help me understand if our testing is sufficient for a release this size?",
+      "round": 1,
+      "reasons": [
+        "asks for a side effect"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R11"
+      ],
+      "title": "Production deployment readiness check",
+      "prompt": "My team wants to deploy our payment processing service to production tomorrow and I need to make a go/no-go decision. Here's our current status: 98% of our automated tests pass (we have 2 flaky tests out of 500), code review is complete for all changes, our staging environment tests passed, but we haven't run our load tests yet due to infrastructure issues. The security scan came back clean. Should we proceed with the deployment?",
+      "round": 2,
+      "reasons": [
+        "asks for a side effect"
+      ]
+    },
+    {
+      "id": "n03",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Compare testing approaches",
+      "prompt": "Our team is debating whether to focus more on unit tests or integration tests for our microservices. We have limited time and resources. What are the trade-offs between these two testing levels? I need arguments for both sides so we can make an informed decision.",
+      "reasons": [
+        "rubric: model glm-5: no valid JSON after 2 tries (two items repeat each other)"
       ]
     }
   ],

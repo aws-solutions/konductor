@@ -2,34 +2,34 @@
   "id": "se-test-coverage-analysis-r04",
   "class": "simple",
   "target": null,
-  "prompt": "I wrote this test for my React component and want to know if it's good quality:\n\ntest('button click works', () => {\n  const wrapper = shallow(<MyButton />);\n  wrapper.find('button').simulate('click');\n  expect(wrapper.find('button').prop('disabled')).toBe(true);\n});\n\nThe button should disable itself after clicking. Is this a well-written test?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "prompt": "Can you review these React component tests and tell me if there are any quality issues? Here's one of our test files:\n\ntest('handleSubmit calls api with correct params', () => {\n  const wrapper = shallow(<LoginForm />);\n  wrapper.instance().state.username = 'testuser';\n  wrapper.instance().state.password = 'testpass';\n  wrapper.instance().handleSubmit();\n  expect(wrapper.instance().apiService.post).toHaveBeenCalledWith('/login', { username: 'testuser', password: 'testpass' });\n});\n\nWe want to make sure our tests are following best practices.\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
   "fixture": "skilleval-empty",
   "timeoutSec": 300,
   "checks": [],
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer identifies that the test tests implementation details (the disabled prop) instead of user-facing behavior (what the user sees or experiences).",
+      "criterion": "The answer must identify that directly manipulating component state (wrapper.instance().state.username = 'testuser') is an anti-pattern that tests implementation details rather than user behavior.",
       "weight": 3
     },
     {
       "id": "value-2",
-      "criterion": "The answer determines this is a frontend application and recommends the appropriate testing model (Trophy model for frontend).",
+      "criterion": "The answer must recommend testing the component by simulating user interactions (like typing into inputs and clicking the submit button) instead of calling class methods directly.",
       "weight": 3
     },
     {
       "id": "value-3",
-      "criterion": "The answer suggests using a testing library that focuses on user behavior (like React Testing Library) instead of Enzyme's shallow rendering.",
+      "criterion": "The answer must explain that testing internal methods like handleSubmit() makes the test brittle and likely to break during refactoring, even if the user-facing behavior remains unchanged.",
       "weight": 3
     },
     {
       "id": "guard-1",
-      "criterion": "The answer must not claim the test is well-written or high quality since it tests implementation details rather than behavior.",
+      "criterion": "The answer must not claim that the test is acceptable or following best practices without noting the significant issues with testing implementation details.",
       "weight": 2
     },
     {
       "id": "format-1",
-      "criterion": "The answer organizes findings with CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONS.",
+      "criterion": "The answer must present findings in order with critical issues first, such as the anti-pattern of testing implementation details, before moving to suggestions.",
       "weight": 1
     }
   ],

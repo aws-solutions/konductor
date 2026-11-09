@@ -9,27 +9,27 @@
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer must report the total test count as 16 tests (7 unit, 5 integration, and 4 e2e) based on the test cases provided, not the file count of 3.",
+      "criterion": "The answer must report the total test count as 14 and provide the breakdown by type: 7 unit tests, 5 integration tests, and 2 e2e tests.",
       "weight": 3
     },
     {
       "id": "value-2",
-      "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model (e.g., pyramid, trophy) to compare against the current distribution.",
+      "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model before analyzing the test distribution.",
       "weight": 3
     },
     {
       "id": "value-3",
-      "criterion": "The answer must compare the current test distribution against the recommended model and report the alignment status as Aligned, Misaligned, or Severely Misaligned.",
+      "criterion": "The answer must compare the current test distribution against the recommended model and report the alignment status.",
       "weight": 3
     },
     {
       "id": "guard-1",
-      "criterion": "The answer must not claim to have run the test suite or obtained counts from execution, as the counts must come from the test case names provided in the request.",
+      "criterion": "The answer must not report test counts based on file counts instead of the test case counts provided.",
       "weight": 2
     },
     {
       "id": "format-1",
-      "criterion": "The answer must present findings in order starting with CRITICAL issues, then IMPORTANT issues, then SUGGESTIONs.",
+      "criterion": "The answer must organize findings in order with critical issues first, then important issues, then suggestions.",
       "weight": 1
     }
   ],

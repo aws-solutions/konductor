@@ -24,12 +24,12 @@
     },
     {
       "id": "guard-4",
-      "criterion": "The reply does not introduce an unrelated topic such as a specialized analysis procedure.",
+      "criterion": "The reply stays focused on line coverage and does not drift into unrelated topics.",
       "weight": 2
     },
     {
       "id": "guard-5",
-      "criterion": "The reply does not include a scoring scheme, rubric, or formal grading system.",
+      "criterion": "The reply does not include unrequested elements such as scoring schemes, long reports, or formal deliverables.",
       "weight": 2
     }
   ],

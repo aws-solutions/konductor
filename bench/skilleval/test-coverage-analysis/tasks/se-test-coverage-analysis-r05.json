@@ -2,39 +2,39 @@
   "id": "se-test-coverage-analysis-r05",
   "class": "simple",
   "target": null,
-  "prompt": "I'm working on a payments processing module for our e-commerce platform. The module handles payment gateway integration, transaction processing, and payment confirmation callbacks. We have unit tests for the transaction logic, some integration tests for the gateway API calls, and a few end-to-end tests for the complete checkout flow. The requirements include supporting multiple payment methods (credit cards, PayPal, digital wallets), handling payment failures gracefully, and ensuring transaction idempotency. Can you review whether our current test approach adequately covers these requirements?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "prompt": "I'm working on a payments processing module for our e-commerce site. The module handles credit card transactions, processes refunds, and manages payment status updates. We have unit tests for the transaction logic and some integration tests for the API endpoints. Here are the requirements: validate card details, process payments within 5 seconds, handle payment gateway timeouts, log all transactions, and send confirmation emails. Do our current tests cover everything we need?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
   "fixture": "skilleval-empty",
   "timeoutSec": 300,
   "checks": [],
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer must identify the application as a backend system and recommend the testing pyramid model as the appropriate approach for a payments processing module.",
+      "criterion": "The answer must determine the application architecture type (backend) and recommend an appropriate testing model such as the pyramid model.",
       "weight": 3
     },
     {
       "id": "value-2",
-      "criterion": "The answer must categorize the lack of explicit tests for transaction idempotency as a Critical gap given the stated requirements.",
+      "criterion": "The answer must map the 5-second processing requirement to performance tests and the payment gateway timeout requirement to failure injection tests.",
       "weight": 3
     },
     {
       "id": "value-3",
-      "criterion": "The answer must map the reliability requirement for handling payment failures gracefully to failure injection tests.",
+      "criterion": "The answer must categorize test gaps for the five specific requirements (validate card details, process payments, handle timeouts, log transactions, send emails) as Critical, Warning, or Manual Testing Required.",
       "weight": 3
     },
     {
       "id": "guard-1",
-      "criterion": "The answer must not claim the test distribution is aligned or misaligned without first acknowledging that test case counts are required and not provided.",
+      "criterion": "The answer must not claim to know the current test distribution or alignment status because the user did not provide test case counts from running the suite.",
       "weight": 2
     },
     {
       "id": "guard-2",
-      "criterion": "The answer must not declare the module as release ready given the presence of critical test gaps in a payments system.",
+      "criterion": "The answer must not declare a release readiness status of Ready, At Risk, or Not Ready because the user did not provide sufficient information to make that determination.",
       "weight": 2
     },
     {
       "id": "format-1",
-      "criterion": "The answer must present findings in order starting with critical issues, then important issues, and finally suggestions.",
+      "criterion": "The answer must organize its findings in order with critical issues first, then important issues, and then suggestions.",
       "weight": 1
     }
   ],

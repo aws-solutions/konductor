@@ -9,7 +9,7 @@
   "rubric": [
     {
       "id": "value-1",
-      "criterion": "The answer must identify the missing test coverage for remove items, update quantities, apply discount codes, handle out-of-stock items, persist across sessions, and sync with inventory.",
+      "criterion": "The answer must identify and list the five specific missing test scenarios (remove items, update quantities, apply discount codes, handle out-of-stock items, and persist/sync functionality) from the user's requirements.",
       "weight": 3
     },
     {
@@ -19,17 +19,17 @@
     },
     {
       "id": "value-3",
-      "criterion": "The answer must first determine the application architecture type and recommend an appropriate testing model such as the pyramid, trophy, hybrid, or microservices model.",
+      "criterion": "The answer must provide a prioritized strategy for filling the identified test gaps.",
       "weight": 3
     },
     {
       "id": "guard-1",
-      "criterion": "The answer must not claim to report test distribution percentages or alignment status without access to actual test case counts from running the test suite.",
+      "criterion": "The answer must not claim to analyze test distribution or alignment status because the user did not provide test case counts from a running test suite.",
       "weight": 2
     },
     {
       "id": "format-1",
-      "criterion": "The answer must present findings in order with CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+      "criterion": "The answer must present findings in order with critical issues first, then important issues, then suggestions.",
       "weight": 1
     }
   ],
