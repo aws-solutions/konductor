@@ -80,7 +80,7 @@ When the calling SOP also maintains its own paired human-readable file (a checkl
 
 Apply the following operations exactly as described. A calling SOP invokes them by name from its own step instructions — this skill does not prescribe which agent performs the actual file I/O, only the algorithm and the resulting content.
 
-Open `references/operations.md` (relative to this file) when implementing a specific operation: Compute Identity Signature, Resume Discovery, Mint Session, Read/Write a Phase Entry, Register a Feature, Read/Increment a Counter (with its concurrency scope and stale-lock recovery rules), Read/Write Opaque Data, or Finalize Run.
+Before performing any of these operations, open `references/operations.md` (relative to this file): Compute Identity Signature, Resume Discovery, Mint Session, Read/Write a Phase Entry, Register a Feature, Read/Increment a Counter (with its concurrency scope and stale-lock recovery rules), Read/Write Opaque Data, or Finalize Run.
 
 ## Pitfalls
 

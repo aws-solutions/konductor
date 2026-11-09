@@ -10,7 +10,7 @@ problem statement into a document meant to survive principal-engineer review. A 
 [`k-existing-design-review`](../sop-workflows/design.md#k-existing-design-review), evaluates design
 artifacts that already exist. A third, [`k-principal-engineer-design-review`](../sop-workflows/design.md#k-principal-engineer-design-review),
 gates a finished document before a human reviewer sees it. All three are owned by
-**`k-architect`**, which carries 38 of the package's 82 skills — the largest share of any agent.
+**`k-architect`**, which carries 38 of the package's 81 skills — the largest share of any agent.
 
 **Read this before you pick one.** `k-existing-design-review` is explicitly deprecated for authoring;
 its own header says so:
@@ -106,14 +106,13 @@ fixed and the pass re-run before Phase 3. This can loop a few times without aski
 
 ### Phase 3 — Quality gates *(no pause, by design)*
 
-Three automated passes, with no user interaction permitted:
+Two automated passes, with no user interaction permitted:
 
-- **`doc-accuracy-analyzer`** checks every technical claim against primary sources and routes AWS
-  claims to `aws-service-validator`. INCORRECT and UNVERIFIED findings get inline `> ⚠️` callouts
-  but do not stop the phase. Phase 5 corrects the INCORRECT ones.
-- **`aws-service-validator`** checks every AWS service and feature claim against live AWS
-  documentation, classifying each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
-  `docs/design/pennywise-aws-validation.md`.
+- **`doc-accuracy-analyzer`** checks every technical claim against primary sources. It routes AWS
+  service and feature claims to `aws-service-validator`, which checks them against live AWS
+  documentation, classifies each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
+  `docs/design/pennywise-aws-validation.md`. INCORRECT, OVERSTATED, and UNVERIFIED findings get
+  inline `> ⚠️` callouts but do not stop the phase. Phase 5 corrects the INCORRECT ones.
 - **`trade-off-evaluator`** scores every multi-option decision 1–5 across cost, latency,
   complexity, scalability, and operability, embeds the table in the relevant ADR, and writes
   `docs/design/pennywise-tradeoffs.md`.
@@ -155,7 +154,7 @@ document into the chat.
 The SOP will not claim the doc is ready for principal-engineer review unless **all four** hold:
 
 - [ ] `design-doc-guidelines` maker-checker: **0 CRITICAL**
-- [ ] `doc-accuracy-analyzer`: **0 INCORRECT**, each corrected in the text (UNVERIFIED is acceptable with callouts)
+- [ ] `doc-accuracy-analyzer`: **0 INCORRECT**, each corrected in the text, and every OVERSTATED finding corrected or flagged (UNVERIFIED is acceptable with callouts)
 - [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR**
 - [ ] `design-evaluation` confidence score: **≥ 3.0 average**
 
