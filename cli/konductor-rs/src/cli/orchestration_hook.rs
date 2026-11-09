@@ -19,6 +19,7 @@ use std::path::{Component, Path, PathBuf};
 
 use super::install::index::env_home_dir;
 use super::install::manifest::read_manifest;
+use super::install::resource_rewrite::{hook_command_install_root, orchestration_hook_wiring};
 use super::install::{claude, kiro_cli, kiro_cli_v3};
 use super::orchestration_mode::{resolve_user_mode, FallbackReason, Mode, ModeResolution};
 use super::telemetry_hook::{
@@ -68,12 +69,30 @@ pub(crate) enum HookOutput {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum PersonaError {
-    NotInstalled { install_root: PathBuf },
-    RulesUnreadable { path: PathBuf },
-    DigestUnreadable { path: PathBuf },
-    DigestTooLarge { path: PathBuf },
-    PathTooLong { install_root: PathBuf },
-    OutsideTrustedLocations { install_root: PathBuf },
+    NotInstalled {
+        install_root: PathBuf,
+    },
+    RulesUnreadable {
+        path: PathBuf,
+    },
+    DigestUnreadable {
+        path: PathBuf,
+    },
+    DigestTooLarge {
+        path: PathBuf,
+    },
+    PathTooLong {
+        install_root: PathBuf,
+    },
+    OutsideTrustedLocations {
+        install_root: PathBuf,
+    },
+    /// A nearer install owns `konductor` but has no working hook of its
+    /// own for this harness, so nothing would print the persona.
+    OwnerHookNotWired {
+        install_root: PathBuf,
+        harness: Option<String>,
+    },
 }
 
 /// `SessionStart` (Kiro CLI v3, Claude Code) and `agentSpawn` (Kiro CLI
@@ -200,6 +219,20 @@ fn persona_reason(error: &PersonaError) -> String {
              home directory or the project root",
             display_path(install_root, home.as_deref())
         ),
+        PersonaError::OwnerHookNotWired {
+            install_root,
+            harness,
+        } => {
+            let owner = display_path(install_root, home.as_deref());
+            let for_harness = harness
+                .as_deref()
+                .map(|name| format!(" for {name}"))
+                .unwrap_or_default();
+            format!(
+                "the install at {owner} owns the konductor session but its session-start hook \
+                 is not wired{for_harness}; run konductor update in {owner}"
+            )
+        }
     }
 }
 
@@ -395,11 +428,35 @@ fn with_trailing_newline(mut text: String) -> String {
     text
 }
 
+/// Whether the install at `owning_root` has its own session-start hook
+/// for `harness` (any hook strategy when the harness is unknown) that
+/// reads `owning_root`. A hook command without `--install-root` counts:
+/// it prints for the nearest install, which is this one.
+fn owner_hook_is_wired(owning_root: &Path, harness: Option<&str>) -> bool {
+    let Ok(Some(manifest)) = read_manifest(owning_root) else {
+        return false;
+    };
+    manifest
+        .strategies
+        .iter()
+        .filter(|slot| harness.is_none_or(|name| slot.strategy == name))
+        .filter_map(|slot| orchestration_hook_wiring(owning_root, slot))
+        .filter_map(|wiring| wiring.commands.ok())
+        .flatten()
+        .any(|command| {
+            hook_command_install_root(&command)
+                .is_none_or(|root| same_dir(Path::new(&root), owning_root))
+        })
+}
+
 /// Event, identity and ownership are checked before the config file is
 /// opened, so other agents' sessions cost no YAML parse. `own_install` is
 /// the install that wired this hook; only the nearest install that owns
 /// `konductor` for the firing `harness` prints, so two installs never
 /// inject twice and an install for another harness never silences this one.
+/// A shadowed hook stays silent only while the owner's own hook is wired;
+/// otherwise it prints a fallback line naming the owner, so the mode is
+/// never dropped without a trace.
 pub(crate) fn dispatch_orchestration_hook(
     cwd: &Path,
     agent_arg: Option<&str>,
@@ -435,12 +492,19 @@ pub(crate) fn dispatch_orchestration_hook(
     let Some(owning_root) = owning_root else {
         return;
     };
-    if own_install.is_some_and(|own| !same_dir(own, owning_root)) {
+    let shadowed = own_install.is_some_and(|own| !same_dir(own, owning_root));
+    if shadowed && owner_hook_is_wired(owning_root, harness) {
         return;
     }
     let persona_root = logical_root(owning_root, home.as_deref());
     let restate_auto = is_resume_or_compact(&payload);
     let output = decide(&resolve_user_mode(home.as_deref()), restate_auto, || {
+        if shadowed {
+            return Err(PersonaError::OwnerHookNotWired {
+                install_root: persona_root.clone(),
+                harness: harness.map(str::to_string),
+            });
+        }
         if !is_trusted_location(owning_root, home.as_deref(), cwd) {
             return Err(PersonaError::OutsideTrustedLocations {
                 install_root: persona_root.clone(),
@@ -770,6 +834,24 @@ mod tests {
             })),
             "Orchestration: auto (fallback: orchestration.mode is \"strict\"; expected auto or \
              coordinator)"
+        );
+        assert_eq!(
+            fallback_line(&persona_reason(&PersonaError::OwnerHookNotWired {
+                install_root: PathBuf::from("/srv/project"),
+                harness: Some("claude".to_string()),
+            })),
+            "Orchestration: auto (fallback: the install at /srv/project owns the konductor \
+             session but its session-start hook is not wired for claude; run konductor update \
+             in /srv/project)"
+        );
+        assert_eq!(
+            fallback_line(&persona_reason(&PersonaError::OwnerHookNotWired {
+                install_root: PathBuf::from("/srv/project"),
+                harness: None,
+            })),
+            "Orchestration: auto (fallback: the install at /srv/project owns the konductor \
+             session but its session-start hook is not wired; run konductor update in \
+             /srv/project)"
         );
     }
 
