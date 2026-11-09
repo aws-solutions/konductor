@@ -11,7 +11,8 @@ export interface RunPort {
   /**
    * Starts a run with the goal and resolves to its id. When a run is already
    * active it rejects with `RunAlreadyActive`, so the caller can follow that run.
-   * When it cannot tell whether the run started it rejects with `RunStartUnsure`.
+   * When it cannot tell whether the run started it rejects with `RunStartUnsure`,
+   * and when the workflow must be trusted first, with `RunNeedsTrust`.
    */
   start(goal: string, signal: AbortSignal): Promise<string>;
   /**
@@ -40,6 +41,21 @@ export class RunStartUnsure extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'RunStartUnsure';
+  }
+}
+
+/**
+ * The workflow is not trusted, so the run did not start. `fix` is the
+ * sentence that names the command that trusts it, which the person runs in a
+ * terminal: the page never grants trust.
+ */
+export class RunNeedsTrust extends Error {
+  readonly fix: string;
+
+  constructor(message: string, fix: string) {
+    super(message);
+    this.name = 'RunNeedsTrust';
+    this.fix = fix;
   }
 }
 

@@ -53,6 +53,8 @@ export class ApiError extends Error {
   readonly diagnostics: readonly DiagnosticView[];
   /** The `current_hash` of a 409 body: the hash of the file as it is now. */
   readonly currentHash?: string;
+  /** The `fix` of the error body: what to do about it, when there was one. */
+  readonly fix?: string;
 
   constructor(
     message: string,
@@ -61,6 +63,7 @@ export class ApiError extends Error {
     runId?: string,
     diagnostics: readonly DiagnosticView[] = [],
     currentHash?: string,
+    fix?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -69,6 +72,7 @@ export class ApiError extends Error {
     this.runId = runId;
     this.diagnostics = diagnostics;
     this.currentHash = currentHash;
+    this.fix = fix;
   }
 }
 
