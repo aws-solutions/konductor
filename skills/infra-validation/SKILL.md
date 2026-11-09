@@ -27,7 +27,7 @@ Reviews against AWS Well-Architected Framework pillars: security (encryption, IA
 
 ## Step 0: Confirm Scope
 
-Before reading any files, get three things: the infrastructure type, where the code is (a path such as `lib/`, `cdk.out/`, or `cloudformation/`, or pasted code), and the environment. A wrong environment changes which findings are critical (deletion protection, PITR), and a guessed type or path validates the wrong code. If the caller passes the type, path, and environment (or `scope_confirmed`), skip the questions.
+Before reading any files, get three things: the infrastructure type, where the code is (a path such as `lib/`, `cdk.out/`, or `cloudformation/`, or pasted code), and the environment. The environment decides only whether missing deletion protection or a destroy-on-delete removal policy is CRITICAL; PITR and backups stay IMPORTANT everywhere. A guessed type or path validates the wrong code. If the caller passes the type, path, and environment (or `scope_confirmed`), skip the questions. When `scope_confirmed` gives no environment, assume Production and record that assumption in the report.
 
 Until you have them, don't read or analyze any infrastructure file, and don't assume CDK or CloudFormation. You may list the top-level directories so the questions can name what is there (for example "I see a CDK stack in `lib/` and a template in `cfn/`; which should I validate?"). Ask only what the listing can't answer, using this template:
 
@@ -392,6 +392,7 @@ Check EVERY IAM policy statement for:
 2. **Wildcard Actions** - Flag as CRITICAL
    - Search for: `"Action": "*"` or `actions: ["*"]`
    - Search for: `"Action": "service:*"` on a data or credential service, for example `"s3:*"`
+   - `service:*` on any other service is CRITICAL when it can change code or permissions (`lambda:*`, which includes `lambda:UpdateFunctionCode`, `iam:*`, `sts:*`), and IMPORTANT otherwise (for example `ec2:*` or `cloudwatch:*`)
 
 3. **Overly Permissive Actions** - Flag as IMPORTANT
    - A list of named actions broader than the code needs, with no wildcard. For example, a read-only Lambda granted `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject`
@@ -1161,14 +1162,15 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 - S3 buckets with public access enabled
 - RDS or EBS without encryption at rest, or S3 and DynamoDB data that requires SSE-KMS left on the default keys
 - Security groups with `0.0.0.0/0` ingress on non-HTTP ports
-- No deletion protection on stateful resources (RDS, DynamoDB)
+- No deletion protection, or a destroy-on-delete removal policy, on stateful resources (RDS, DynamoDB) in production
 - Hardcoded passwords, keys or tokens in code or environment variables
-- IAM statements with wildcard actions (`*`, or `service:*` on a data or credential service such as `s3:*`) or wildcard resources
+- IAM statements with wildcard actions (`*`, or `service:*` on a data or credential service such as `s3:*`, or on a service that can change code or permissions such as `lambda:*`, `iam:*` or `sts:*`) or wildcard resources
 
 **IMPORTANT (should fix):**
 
 - CloudWatch alarms not defined for key metrics
 - No backup configuration for stateful resources
+- IAM `service:*` on a service that holds no data and can't change code or permissions, such as `ec2:*`
 - Lambda functions without reserved concurrency limits, DLQ or tracing
 - Low-cardinality partition keys that create hot partitions
 
