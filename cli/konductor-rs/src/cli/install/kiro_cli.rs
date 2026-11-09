@@ -1374,7 +1374,7 @@ mod tests {
         seed_synthed_agent(&repo_root, "k-example", b"{}\n");
         let sops_dir = repo_root.join("dist/kiro-cli-v2/sops");
         fs::create_dir_all(&sops_dir).unwrap();
-        fs::write(sops_dir.join("asdlc-plan.sop.md"), b"# Plan\n").unwrap();
+        fs::write(sops_dir.join("k-plan.sop.md"), b"# Plan\n").unwrap();
 
         KiroCliInstallStrategy
             .install_from_local(
@@ -1388,7 +1388,7 @@ mod tests {
         // SOPs are Konductor tooling shared across runtimes, not a
         // Kiro CLI concept (mirrors `.konductor/skills/`, `.konductor/bin/`).
         assert!(!target_dir.join(".kiro/sops").exists());
-        let installed = target_dir.join(".konductor/sops/asdlc-plan.sop.md");
+        let installed = target_dir.join(".konductor/sops/k-plan.sop.md");
         assert!(
             installed.exists(),
             "expected the staged SOP to be copied verbatim to .konductor/sops/"
@@ -1401,7 +1401,7 @@ mod tests {
         assert!(manifest.strategies[0]
             .files
             .iter()
-            .any(|f| f.path == ".konductor/sops/asdlc-plan.sop.md"));
+            .any(|f| f.path == ".konductor/sops/k-plan.sop.md"));
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();

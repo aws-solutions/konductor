@@ -55,13 +55,13 @@ test('claudeModelId converts Kiro IDs and auto, and passes other values through'
 
 test('renderFrontmatter emits name, description, model, tools, and skills', () => {
   const spec = {
-    name: 'asdlc-example',
+    name: 'k-example',
     config: { description: 'An example agent.', model: 'claude-sonnet-5' },
     clientConfig: { claudeCli: { tools: ['Read', 'mcp__aws-mcp__*'], skills: ['constraints', 'git-workflow'] } },
   };
   const fm = gen.renderFrontmatter(spec);
   assert.match(fm, /^---\n/);
-  assert.match(fm, /name: asdlc-example/);
+  assert.match(fm, /name: k-example/);
   assert.match(fm, /description: "An example agent\."/);
   assert.match(fm, /model: claude-sonnet-5/);
   // `tools:` MUST be the inline comma-separated scalar Claude Code's
@@ -78,7 +78,7 @@ test('renderFrontmatter emits name, description, model, tools, and skills', () =
 });
 
 test('buildInlinedBlock inlines a real skill and includes the BEGIN/END markers', () => {
-  const { blockText, report } = gen.buildInlinedBlock('asdlc-example', ['git-workflow'], 40000);
+  const { blockText, report } = gen.buildInlinedBlock('k-example', ['git-workflow'], 40000);
   assert.match(blockText, new RegExp(gen.BEGIN_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(blockText, new RegExp(gen.END_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(blockText, /## Skill: git-workflow/);
@@ -90,7 +90,7 @@ test('buildInlinedBlock inlines a real skill and includes the BEGIN/END markers'
 });
 
 test('buildInlinedBlock records an unresolved skill without throwing', () => {
-  const { blockText, report } = gen.buildInlinedBlock('asdlc-example', ['this-skill-does-not-exist'], 40000);
+  const { blockText, report } = gen.buildInlinedBlock('k-example', ['this-skill-does-not-exist'], 40000);
   assert.deepEqual(report.inlined, []);
   assert.deepEqual(report.unresolved, ['this-skill-does-not-exist']);
   assert.match(blockText, /UNRESOLVED/);
@@ -100,7 +100,7 @@ test('buildInlinedBlock skips a skill that does not fit the budget without throw
   // A budget too small to fit even the first skill's content -- every
   // skill lands on skippedBudget (this alone can't distinguish sticky vs.
   // per-skill budget checks; see the next test for that).
-  const { report } = gen.buildInlinedBlock('asdlc-example', ['git-workflow', 'code-review'], 10);
+  const { report } = gen.buildInlinedBlock('k-example', ['git-workflow', 'code-review'], 10);
   assert.deepEqual(report.inlined, []);
   assert.deepEqual(report.skippedBudget, ['git-workflow', 'code-review']);
 });
@@ -125,7 +125,7 @@ test('buildInlinedBlock applies the budget check per-skill, not as a sticky one-
   const budget = gitWorkflowBlockLen + documentFormatsBlockLen + 10;
 
   const { report } = gen.buildInlinedBlock(
-    'asdlc-example',
+    'k-example',
     ['git-workflow', 'code-review', 'document-formats'],
     budget,
   );
@@ -135,7 +135,7 @@ test('buildInlinedBlock applies the budget check per-skill, not as a sticky one-
 
 test('renderAgentFile produces a full agent .md with frontmatter, body, and inlined skills', () => {
   const spec = {
-    name: 'asdlc-example',
+    name: 'k-example',
     config: { description: 'An example agent.', model: 'claude-sonnet-5', systemPrompt: '# Example Agent\n\nDo the thing.' },
     clientConfig: { claudeCli: { tools: ['Read'], skills: ['git-workflow'] } },
   };
@@ -148,7 +148,7 @@ test('renderAgentFile produces a full agent .md with frontmatter, body, and inli
 });
 
 test('generateAgents renders every *.agent-spec.json to disk and returns a report per agent', () => {
-  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'asdlc-gen-test-'));
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'konductor-gen-test-'));
   try {
     const result = gen.generateAgents({ outDir });
     assert.ok(result.reports.length >= 10, `expected at least 10 rendered agents, got ${result.reports.length}`);
@@ -169,7 +169,7 @@ test('generateAgents renders every *.agent-spec.json to disk and returns a repor
 });
 
 test('generateAgents with --agent renders exactly one file', () => {
-  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'asdlc-gen-test-single-'));
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'konductor-gen-test-single-'));
   try {
     const result = gen.generateAgents({ outDir, agent: 'k-quality-assurance' });
     assert.equal(result.reports.length, 1);
@@ -181,11 +181,11 @@ test('generateAgents with --agent renders exactly one file', () => {
 });
 
 test('generateAgents throws a clear error for an unknown agent name', () => {
-  assert.throws(() => gen.generateAgents({ agent: 'asdlc-does-not-exist' }), /No agent-spec found/);
+  assert.throws(() => gen.generateAgents({ agent: 'k-does-not-exist' }), /No agent-spec found/);
 });
 
 test('generateAgents is deterministic modulo the "Resolved <timestamp>" comment', () => {
-  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'asdlc-gen-test-idempotent-'));
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'konductor-gen-test-idempotent-'));
   try {
     gen.generateAgents({ outDir, agent: 'k-quality-assurance' });
     const first = fs.readFileSync(path.join(outDir, 'k-quality-assurance.md'), 'utf-8');
@@ -199,8 +199,8 @@ test('generateAgents is deterministic modulo the "Resolved <timestamp>" comment'
 });
 
 test('generateAgents with install=true also writes a copy into installDir', () => {
-  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'asdlc-gen-test-outdir-'));
-  const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'asdlc-gen-test-installdir-'));
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'konductor-gen-test-outdir-'));
+  const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'konductor-gen-test-installdir-'));
   try {
     gen.generateAgents({ outDir, installDir, install: true, agent: 'k-quality-assurance' });
     assert.ok(fs.existsSync(path.join(installDir, 'k-quality-assurance.md')));

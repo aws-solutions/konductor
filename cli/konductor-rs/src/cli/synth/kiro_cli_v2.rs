@@ -701,7 +701,7 @@ mod tests {
             welcome_message: Some("Ready to help.".to_string()),
             ..Default::default()
         };
-        let agent = agent_with_kiro("asdlc-example", kiro);
+        let agent = agent_with_kiro("k-example", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
             render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
@@ -714,7 +714,7 @@ mod tests {
     #[test]
     fn render_agent_file_omits_welcome_message_key_when_absent() {
         let kiro = KiroCliConfig::default();
-        let agent = agent_with_kiro("asdlc-example", kiro);
+        let agent = agent_with_kiro("k-example", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
             render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();

@@ -60,6 +60,11 @@ not per individual commit.
   check in `sdlc-summary.md`. Steps 4 and 9 now stop on any open CRITICAL or IMPORTANT finding.
   The engineer can resolve or override a finding, recorded as `gate_<phase>_override`; an
   unattended run stops and reports, and a later attended resume can resolve or override.
+- `k-adversarial-pull-request-review` now says "in Konductor" or "for Konductor" where it
+  scopes the `pr_url` and historical-filtering limits, including the report's
+  `Historical filtering:` line.
+- `cmux-dispatch` exports `KONDUCTOR_DONE_KEY` to the dispatched pane, and
+  `cmux-completion-hook.sh` reads it. The hook still falls back to `CMUX_WORKSPACE_ID`.
 
 ### Fixed
 
