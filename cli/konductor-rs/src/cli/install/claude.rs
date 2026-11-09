@@ -1665,7 +1665,7 @@ mod tests {
     /// -- exactly the shape that broke the pre-fix parser, since a
     /// nested bullet's text is not a valid identifier and would have
     /// invalidated the whole array.
-    const ADVERSARIAL_PR_REVIEW_EXCERPT: &str = "# Adversarial CR Review\n\n## Overview\n\nRuns an adversarial review of code changes. Not a replacement for standard code review.\n\n## Parameters\n\n- **diff_input** (required on ASDLC): The changes to review. Accepts:\n  - Git diff output (`git diff` or `git diff HEAD~N`)\n  - File paths to read directly\n  - Raw pull request diff content\n- **pr_url** (optional, context only on ASDLC): Pull request URL. **Diff auto-fetch from `pr_url` is unsupported on ASDLC**.\n- **output_file** (optional, default: `adversarial-review-report.md`): Path to write the findings report\n\n**Constraints for parameter acquisition:**\n\n- You MUST have `diff_input`\n";
+    const ADVERSARIAL_PR_REVIEW_EXCERPT: &str = "# Adversarial CR Review\n\n## Overview\n\nRuns an adversarial review of code changes. Not a replacement for standard code review.\n\n## Parameters\n\n- **diff_input** (required in Konductor): The changes to review. Accepts:\n  - Git diff output (`git diff` or `git diff HEAD~N`)\n  - File paths to read directly\n  - Raw pull request diff content\n- **pr_url** (optional, context only in Konductor): Pull request URL. **Diff auto-fetch from `pr_url` is unsupported in Konductor**.\n- **output_file** (optional, default: `adversarial-review-report.md`): Path to write the findings report\n\n**Constraints for parameter acquisition:**\n\n- You MUST have `diff_input`\n";
 
     /// Excerpt of `k-e2e-test-generation.sop.md`: the table-shaped
     /// `## Parameters` convention, header row + separator row + data

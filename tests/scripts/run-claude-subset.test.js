@@ -30,7 +30,7 @@ test('loadRegistryEntry finds a known public subset with its requiredMcpServer',
 });
 
 test('loadRegistryEntry returns null for an unregistered subset', () => {
-  assert.equal(runSubsetModule.loadRegistryEntry('asdlc-does-not-exist'), null);
+  assert.equal(runSubsetModule.loadRegistryEntry('k-does-not-exist'), null);
 });
 
 // The regression this pins: the agent identifier and the scenario directory
