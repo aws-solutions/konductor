@@ -1272,3 +1272,25 @@ SOP_EDITS += [
      "A task needing implementation causes a <strong style=\"color:var(--tx);font-weight:600\">specialist to spawn</strong>, visible in your session.",
      "A task needing implementation has konductor edit files itself and spawn a <strong style=\"color:var(--tx);font-weight:600\">k-* reviewer</strong> when the phase closes, visible in your session."),
 ]
+
+SOP_EDITS += [
+    # ---- design SOP: OVERSTATED doc-accuracy findings are flagged and gate readiness ----
+    ("design use case: checklist gates OVERSTATED",
+     "0 INCORRECT</strong>, each corrected in the text (UNVERIFIED is acceptable with callouts)",
+     "0 INCORRECT</strong>, each corrected in the text, and every OVERSTATED finding corrected or flagged "
+     "(UNVERIFIED is acceptable with callouts)"),
+    ("design SOP: gate row gates OVERSTATED",
+     "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts)\" },",
+     "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text, and every OVERSTATED "
+     "finding corrected or flagged (UNVERIFIED is acceptable with callouts)\" },"),
+    ("design use case: Phase 3 flags OVERSTATED",
+     "INCORRECT and UNVERIFIED findings get inline callouts but do not stop the phase;",
+     "INCORRECT, OVERSTATED, and UNVERIFIED findings get inline callouts but do not stop the phase;"),
+    ("design SOP: Phase 3 node flags OVERSTATED",
+     "flagging INCORRECT / UNVERIFIED inline.",
+     "flagging INCORRECT / OVERSTATED / UNVERIFIED inline."),
+    ("design SOP: OVERSTATED blocks until corrected or flagged",
+     "mark UNVERIFIED claims with a callout and proceed. Only INCORRECT findings are treated as blocking.",
+     "mark UNVERIFIED claims with a callout and proceed. INCORRECT findings block until the text is corrected, "
+     "and OVERSTATED findings block until they are corrected or flagged."),
+]

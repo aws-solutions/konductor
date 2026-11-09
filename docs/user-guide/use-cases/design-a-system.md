@@ -109,8 +109,8 @@ fixed and the pass re-run before Phase 3. This can loop a few times without aski
 Three automated passes, with no user interaction permitted:
 
 - **`doc-accuracy-analyzer`** checks every technical claim against primary sources and routes AWS
-  claims to `aws-service-validator`. INCORRECT and UNVERIFIED findings get inline `> ⚠️` callouts
-  but do not stop the phase. Phase 5 corrects the INCORRECT ones.
+  claims to `aws-service-validator`. INCORRECT, OVERSTATED, and UNVERIFIED findings get inline `> ⚠️`
+  callouts but do not stop the phase. Phase 5 corrects the INCORRECT ones.
 - **`aws-service-validator`** checks every AWS service and feature claim against live AWS
   documentation, classifying each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
   `docs/design/pennywise-aws-validation.md`.
@@ -155,7 +155,7 @@ document into the chat.
 The SOP will not claim the doc is ready for principal-engineer review unless **all four** hold:
 
 - [ ] `design-doc-guidelines` maker-checker: **0 CRITICAL**
-- [ ] `doc-accuracy-analyzer`: **0 INCORRECT**, each corrected in the text (UNVERIFIED is acceptable with callouts)
+- [ ] `doc-accuracy-analyzer`: **0 INCORRECT**, each corrected in the text, and every OVERSTATED finding corrected or flagged (UNVERIFIED is acceptable with callouts)
 - [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 MINOR**
 - [ ] `design-evaluation` confidence score: **≥ 3.0 average**
 
