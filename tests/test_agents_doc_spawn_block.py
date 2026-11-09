@@ -23,9 +23,7 @@ def test_claude_code_bullet_is_claude_only():
     assert "kiro-cli" not in claude
 
 
-def test_specialist_row_qualifies_kiro_v2_until_the_strip():
+def test_specialist_row_is_plain_once_the_v2_strip_lands():
     row = next(line for line in AGENTS_MD.splitlines() if line.startswith("| every `k-*` specialist |"))
-    assert row == (
-        "| every `k-*` specialist | **nothing** in Kiro CLI v3 "
-        "(v2: the core rules only, see the bullet above) | **nothing** |"
-    )
+    assert row == "| every `k-*` specialist | **nothing** | **nothing** |"
+    assert "v2: the core rules only" not in AGENTS_MD
