@@ -76,13 +76,16 @@ Before pushing, `git log --oneline -3` should show the merge commit on top.
 
 ### If the push is rejected or the PR falls behind
 
-Someone pushed first. Merge their work in the same way, re-check, then push again:
+Merge the newer work in the same way, re-check, then push again. Which ref to merge depends on what happened:
+
+- **Push rejected:** someone pushed to the same branch first, so merge `origin/<current_branch>`.
+- **PR behind:** the default branch moved on, so merge `origin/<default-branch>`.
 
 ```bash
 git fetch origin
-git merge --no-ff --no-commit origin/<default-branch>
+git merge --no-ff --no-commit origin/<ref>   # <current_branch> or <default-branch>, as above
 # pre-commit checks again
-git commit -m "Merging origin/<default-branch> into <current_branch>"
+git commit -m "Merging origin/<ref> into <current_branch>"
 git push origin <current_branch>
 ```
 
