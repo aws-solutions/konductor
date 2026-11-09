@@ -999,6 +999,75 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    /// V3 twin of `kiro_cli.rs`'s
+    /// `install_from_local_no_telemetry_skips_claude_hook_wiring_but_keeps_permission_grant`:
+    /// on a dual-marker target, `--no-telemetry` keeps the V3 `mcp`
+    /// permission rule and the Claude `permissions.allow` grant but
+    /// writes no hook block and no `.claude/settings.local.json`.
+    #[test]
+    fn install_from_local_no_telemetry_skips_claude_hook_wiring_but_keeps_permission_grant() {
+        let target_dir = scratch_dir("no-telemetry-skips-hooks-target");
+        fs::create_dir_all(target_dir.join(".kiro")).unwrap();
+        fs::create_dir_all(target_dir.join(".claude")).unwrap();
+        let repo_root = scratch_dir("no-telemetry-skips-hooks-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            br#"{"name":"k-example","resources":["skill://skills/constraints/SKILL.md"],"permissions":{"rules":[]}}"#,
+        );
+        seed_synthed_skill(&repo_root, "constraints", b"body\n", &[]);
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"fake binary");
+
+        KiroCliV3InstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                true,
+            )
+            .expect("install must succeed with --no-telemetry");
+
+        let installed_json: serde_json::Value = serde_json::from_slice(
+            &fs::read(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
+        )
+        .unwrap();
+        assert!(installed_json["mcpServers"]["konductor-skills"]["command"].is_string());
+        assert_eq!(
+            installed_json["permissions"]["rules"][0]["capability"],
+            serde_json::json!("mcp"),
+            "--no-telemetry must not affect the V3 mcp permission rule"
+        );
+
+        let claude_settings: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".claude/settings.json")).expect(
+                ".claude/settings.json must still be written for the permission grant even \
+                 with --no-telemetry -- only the hook wiring is a telemetry side effect",
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            claude_settings["permissions"]["allow"],
+            serde_json::json!([
+                "mcp__konductor-skills__find_skills",
+                "mcp__konductor-skills__get_skill",
+                "mcp__konductor-skills__reload_skills"
+            ]),
+            "--no-telemetry must not affect the unrelated MCP permission grant"
+        );
+        assert!(
+            claude_settings.get("hooks").is_none(),
+            "--no-telemetry must suppress the Claude hook wiring entirely; got: \
+             {claude_settings:?}"
+        );
+        assert!(
+            !target_dir.join(".claude/settings.local.json").exists(),
+            "a kiro-v3 --no-telemetry install must not create .claude/settings.local.json"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     /// A current server gets `--install-info` whether or not the target
     /// opted out; one whose `--help` lacks it gets `--telemetry off` only
     /// when opted out.
