@@ -1,7 +1,7 @@
 ---
 name: deliberation-panel
 description: 'Use for a high-stakes decision between several options, once the user agrees to the cost (about 2-3 minutes and several subagent calls). Pass consent_confirmed=true only after presenting the derived axes. Derives decision-specific axes from the tradeoff, argues each independently, cross-examines the arguments anonymously, and returns a scored recommendation. Not a substitute for eliciting information from a person; use `socratic-elicitation` for that.'
-version: 1.0.0
+version: 1.1.0
 tags:
   [skill, deliberation, tradeoff, decision, design, research, viability, panel]
 ---
@@ -150,7 +150,7 @@ The arbiter's synthesis is the panel's final output — a scorecard, not a six-p
 
 ## Offering the Panel from a Host Skill
 
-A host skill (`socratic-elicitation`, `k-aspect-review`) offers the panel when a decision has 2+ viable options with non-trivial trade-offs, or a significant ambiguity, and no clear winner. It never runs the panel without the user's explicit opt-in. Present the options and the cost:
+A host skill (`socratic-elicitation`, `k-aspect-review`) offers the panel when a decision has 2+ viable options with non-trivial trade-offs, or a significant ambiguity, and no clear winner. It stops its own questions and never runs the panel without the user's explicit opt-in. State only the options and trade-offs the user has raised, in their terms. Don't add options of your own or lean toward either side. Present the options and the panel's time cost:
 
 ```
 I've found a decision with no clear winner:
@@ -169,7 +169,7 @@ How would you like to proceed?
 
 - **Decides directly:** fold the user's answer into the host's work and continue.
 - **Opts in:** pause the host's flow, invoke this skill with the host's `decision_domain`, `stance=evaluative`, and `consent_confirmed=true` (the opt-in is the consent, so the panel doesn't ask again), and pass the specific tradeoff as the subject. Present the scorecard, let the user decide, then resume the host with that decision.
-- **Once per session per topic:** a later tradeoff on the same topic gets a lighter prompt, "I found another decision point. Same treatment?", without repeating the cost note.
+- **Once per session per topic:** a later tradeoff on the same topic gets a lighter prompt. Name the new options in a line each and ask only "I found another decision point. Same treatment, or do you want to decide directly?", without the numbered menu or the time estimate.
 
 ---
 

@@ -105,27 +105,9 @@ This skill stops as soon as ANY of these is true:
 
 ## Escalation to Deliberation Panel
 
-When an answer leaves 2+ viable paths with non-trivial trade-offs and the user's stated preference picks no winner, stop asking new questions and OFFER (never auto-run) a deliberation panel. State only the options and trade-offs the user has raised, in their terms. Don't add options, costs, or a lean toward either side.
+When an answer leaves 2+ viable paths with non-trivial trade-offs and the user's stated preference picks no winner, stop asking new questions and offer a deliberation panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain` inferred from context (default `general-tradeoff`), then resume elicitation with the user's decision in the requirements summary. If `deliberation-panel` isn't available, offer to reason through the tradeoff together or decide directly.
 
-```
-I've identified a significant tradeoff:
-
-  [Option A]: <description> (favors <dimension>)
-  [Option B]: <description> (favors <dimension>)
-
-How would you like to proceed?
-
-  1. Answer directly (tell me your preference and we'll keep going)
-  2. Convene a deliberation panel (~2-3 minutes): independent
-     perspectives argue this tradeoff's own axes, then an arbiter
-     returns a confidence-scored recommendation
-```
-
-If `deliberation-panel` isn't available, replace option 2 with "reason through it together".
-
-**When the user opts in:** pause the question sequence and invoke `deliberation-panel` with `decision_domain` inferred from context (default `general-tradeoff`), `stance=evaluative`, and `consent_confirmed=true` (the opt-in is the consent, so the panel doesn't ask again). Pass the tradeoff as the subject, present the recommendation, and resume elicitation with the user's decision in the requirements summary.
-
-**Later tradeoffs in the same session:** make the full offer once. After that, name the new options in a line each and ask only "I found another tradeoff. Same treatment, or do you want to decide directly?" Leave out the numbered menu and the time estimate.
+---
 
 ## Output
 
