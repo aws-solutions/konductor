@@ -150,9 +150,10 @@ proposed parallel split. The orchestrator routes that note.
 
 This is enforced in config, not just in the prompt:
 
-- Kiro CLI: no specialist spec grants the `subagent` tool or `toolsSettings.subagent`. For
-  Kiro CLI v3, synth also writes `excludedTools: ["invoke_sub_agent", "run_workflow"]` into every
-  specialist, because `@builtin` carries `run_workflow`, which can start any agent. This was
+- Kiro CLI: no specialist spec grants the `subagent` tool, and its `toolsSettings.subagent`
+  names no agent. For Kiro CLI v3, synth also writes
+  `excludedTools: ["invoke_sub_agent", "run_workflow"]` into every specialist, because
+  `@builtin` carries `run_workflow`, which can start any agent. This was
   tested with kiro-cli 2.35.0; an older client that rejects unknown agent-file fields
   may fail to load the specialists. After an upgrade, open a specialist and run `/tools` to
   confirm no new spawn-capable built-in appears.
@@ -228,7 +229,8 @@ Step 6 has `k-developer` write the report, then end with a note asking the orche
 problem is never hidden behind a pending pass. Under `konductor`, the orchestrator runs the
 adversarial review from the note, records its verdict and report path next to the report's
 own verdict, and replaces a `PENDING ADVERSARIAL PASS` verdict with the final one: `READY FOR
-CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding. The
+CR`, or `NEEDS FIXES` when the adversarial report lists a CRITICAL or IMPORTANT finding, unless
+a pass is MISSING, which keeps the report pending (`Adversarial pass: incomplete`). The
 report's two lines are written by the orchestrator, or by `k-developer` on its behalf when the
 orchestrator does not write files. When `k-developer` is started directly, the note comes back
 to you: ask `konductor` to run the adversarial review.

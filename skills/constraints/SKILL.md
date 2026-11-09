@@ -72,7 +72,7 @@ See Engineering practices in the core rules: for an unverified claim that matter
 
 ### Review findings
 
-A CRITICAL or IMPORTANT review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it. A first-review finding in the task's own output still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done until the user decides. A finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief. (Orchestrators: Review ceilings, Verification Protocol item 6.) When you made the artifact, a CRITICAL or IMPORTANT finding you would reject in triage also blocks done until the user rules on it.
+A CRITICAL or IMPORTANT review finding gets one fix, a fresh build and test run for code, and one re-review of every first-review CRITICAL or IMPORTANT finding plus the fix and what depends on it. A first-review finding in the task's own output still open, or any CRITICAL or IMPORTANT finding the re-review reports in the task's own output, carried over or new, or caused by the fix, blocks done until the user decides. A finding in code the task did not add or change, and the fix did not cause, is listed as pre-existing, not put in the fix brief. (Orchestrators: Review ceilings, Verification Protocol item 6.) When you made the artifact or merged a parallel writer's part into it, a CRITICAL or IMPORTANT finding you would reject in triage also blocks done until the user rules on it.
 
 ### House rules and review findings
 

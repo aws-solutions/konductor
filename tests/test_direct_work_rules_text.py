@@ -129,13 +129,49 @@ def test_posture_bearing_documents_always_get_the_gate_review():
     assert "always gets the gate review" in _direct_work()
 
 
-def test_spawned_writer_worktrees_are_merged_before_the_gate():
+UNCOMMITTED_MERGE = "uncommitted (for example `git merge --squash --no-commit` from each worktree branch), leaving HEAD unchanged so the user decides what to commit"
+AGREED_SPLIT = "so commits from the parallel work land on their branch only with their agreement"
+
+
+def test_parallel_parts_reach_the_user_branch_only_by_agreement_or_uncommitted():
     direct = _direct_work()
     assert "integrated tree" in direct
-    assert "commit its part on its worktree branch" in direct
+    assert "may commit its part on its own worktree branch" in direct
+    assert "propose the split to the user first, " + AGREED_SPLIT in direct
+    assert "merge the parts in " + UNCOMMITTED_MERGE in direct
+    assert "part of the parallel work the user agreed to" not in direct
+    assert "Commit only when the user asks" in direct
     protocol = (ROOT / "skills" / "delegation-protocol" / "SKILL.md").read_text(encoding="utf-8")
     assert "integration tree" in protocol
-    assert "commits its part on its worktree branch" in protocol
+    assert "may commit its part on its own worktree branch" in protocol
+    assert "the split was proposed to the user first, " + AGREED_SPLIT in protocol
+    assert "merged in " + UNCOMMITTED_MERGE in protocol
+    assert "part of the parallel work the user agreed to" not in protocol
+
+
+EXEMPT_CATEGORIES = (
+    "In Verification Protocol item 2, auth means authentication and authorization code, "
+    "secrets means credentials and the files that hold them, "
+    "data means stored data, its schema, migrations and input validation, "
+    "and infrastructure means deploy and runtime configuration."
+)
+
+
+def test_exemption_categories_are_defined_once():
+    assert EXEMPT_CATEGORIES in _direct_work()
+    for name in ORCHESTRATORS:
+        assert "data means stored data" not in _spec(name)["config"]["systemPrompt"], name
+
+
+MERGED_PART_CLAUSE = "When you made the artifact or merged a parallel writer's part into it, any CRITICAL or IMPORTANT finding you would reject goes to the user first"
+
+
+def test_rejected_finding_on_a_merged_part_blocks_done_for_konductor_only():
+    assert MERGED_PART_CLAUSE in _spec("konductor")["config"]["systemPrompt"]
+    for name in ORCHESTRATORS[1:]:
+        assert "made the artifact" not in _spec(name)["config"]["systemPrompt"], name
+    for rel in ("skills/constraints/SKILL.md", "docs/user-guide/concepts.md", "CHANGELOG.md"):
+        assert "merged a parallel writer's part into it" in (ROOT / rel).read_text(encoding="utf-8"), rel
 
 
 def test_an_undeclared_sop_runs_in_the_specialist_that_declares_it():
