@@ -74,11 +74,11 @@ integration layer: you carry the requirements to the design conversation, the de
 implementation conversation, and you remember to ask for tests. Nothing checks anyone's work
 but you.
 
-Konductor replaces that manual relay. You talk to one agent — **`konductor`**, a multi-agent
-orchestrator — and it
-routes each piece of work to the specialist that owns it, verifies what comes back against
-stated criteria, and re-delegates when a check fails. The routing rules and the verification
-gates are plain files, so the behaviour is inspectable and editable rather than implicit in a prompt.
+Konductor replaces that manual relay. You talk to one agent, **`konductor`**, a multi-agent
+orchestrator, and it does the work itself, spawns a specialist when a step needs a tool, skill or
+SOP it lacks, and has a fresh specialist review each phase against stated criteria. In `coordinator` mode it hands every change to a specialist. The direct-work
+rules and the verification gates are plain files, so the behaviour is inspectable and editable
+rather than implicit in a prompt.
 
 ### Key benefits
 

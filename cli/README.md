@@ -720,6 +720,7 @@ rather than re-implementing any validation.
 | `config`            | `.konductor/config.yml` loads and validates, via `config`'s own loader.                                                                                                    |
 | `container_runtime` | Probes `docker`/`podman`/`nerdctl`/`finch` on PATH, in that order - informational only.                                                                                    |
 | `index_status`      | Compares `~/.konductor/installs`'s cached status for the target against that target's real manifest status - catches an install/update interrupted between the two writes. |
+| `orchestration`     | `orchestration.mode` in `~/.konductor/config.yml` is `auto`, `coordinator` or unset; a project-file value is reported as ignored (`warn` when it differs from the mode sessions run, `info` when it matches). Per installed harness, the session-start hook is wired, its `konductor` binary is executable, and its `--install-root` is this target; under `coordinator`, the persona files are installed. A missing piece is `failed` under `coordinator` and `warn` otherwise. A hook entry not in the form `install` writes is `warn` with its command shown. |
 | `cli_version`       | Machine-wide, runs exactly once even under `--all`. Compares the running `konductor` binary's own version against the latest published GitHub release. `warn` severity only when stale - never `failed`, never affects `doctor`'s own exit code. |
 | `content_version`   | Per-target, runs once per tracked target under `--all`. Compares that target's recorded content version (`agent_version` in `install-info.json`) against the latest published release. Fully independent of `cli_version` - no shared check name, summary line, or comparison logic. |
 
@@ -991,6 +992,68 @@ kiro-cli chat --agent konductor                      # start a session
 Skill bodies load lazily via the `fs_read` tool: an interactive session prompts for
 approval the first time an agent reads a skill, and a `--no-interactive` run needs
 `--trust-tools=fs_read` (or `--trust-all-tools`) to read skills without prompting.
+
+### Orchestration mode
+
+`orchestration.mode` picks how `konductor` works: `auto` (the default, single-writer) or
+`coordinator` (read-only, every change goes to a specialist). Set it by hand in the user layer:
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+- Only `~/.konductor/config.yml` is read. A project `.konductor/config.yml` value is ignored, and
+  the `doctor` `orchestration` check reports it: `warn` when it differs from the mode in effect,
+  `info` when it matches.
+- `config set` does not set this key. It writes the project layer, and it keeps an existing
+  `orchestration:` section in that file intact.
+- The value is exactly `auto` or `coordinator`. A change applies from the next session, with no
+  reinstall; `install` and `update` never rewrite it.
+- `install` wires a session-start hook for `konductor` on every harness, also under
+  `--no-telemetry`: a standalone document `.kiro/hooks/konductor-orchestration-hooks.json` on
+  Kiro CLI v3, a `SessionStart` block in the Claude Code hooks settings file, and an `agentSpawn`
+  entry in `.kiro/agents/konductor.json` on Kiro CLI v2. `uninstall` removes them.
+- Under `coordinator` the hook prints `Orchestration: coordinator`, a line telling `konductor` to
+  read the installed `k-orchestrator-routing-rules.md` in full, and the short coordinator digest
+  (under 2,500 bytes in total). Only the mode line and the Step 1 pointer are trusted; the summary
+  lines are a preview of the file. Under `auto`, or with no setting, it prints nothing, except that on a Claude Code resume or
+  compact it prints `Orchestration: auto`, so a session that changed mode sees the change.
+- The hook acts only for the install that wired it: it looks for the nearest install that owns
+  `konductor` for the harness that fired it from the working directory upward and in your home directory, and prints nothing
+  unless that install is the one named by its own `--install-root`. `konductor` follows the rules
+  file the hook names only when the install is under your home directory, or its root is the
+  project root: the working directory itself or a git checkout root that contains it. For an
+  install anywhere else the hook prints a fallback line (below) and the session runs as `auto`.
+  Install under your home directory or the project root for coordinator mode.
+- When it recognises a `konductor` session but cannot apply `coordinator` (unset `HOME` on Claude
+  Code or Kiro CLI v2, an unreadable or unparsable config file, an unknown value, a missing rules
+  file, or an install outside the locations above), it prints one line,
+  `Orchestration: auto (fallback: <reason>)`, and the session runs as `auto`.
+- The first reply of every `konductor` session states the mode: the hook's line, or
+  `Orchestration: auto (default)` when no line arrived. `Orchestration: auto (default)` with
+  `coordinator` set means the hook output did not reach the session; run `konductor doctor`.
+
+Kiro CLI v3 and Claude Code installed with `konductor install` are supported. The Claude Code plugin does not wire the hook, so coordinator mode is not available there. Claude Code is wired to run the hook again on `/clear`,
+`/compact` and resume (tested on resume only); Kiro CLI v3 may not after `/compact`, so start a new
+session if a `coordinator` session starts writing files itself. Kiro CLI v2 is not supported: the hook is wired as above, but its
+delivery is untested, and when it does not arrive the session runs as `auto` and the first reply
+says `Orchestration: auto (default)`.
+
+Alternatives considered: a separate coordinator agent that loads the routing rules as a static
+resource (as the mux and cmux orchestrators do) needs no hook, no output budget and no trust
+carve-out, but adds a fourth orchestrator to keep in parity and gives up switching by config under
+one agent name. An install-time profile (install or update writes the agent with the routing rules
+or the direct-work file as its static resource) keeps the single name and the config key but needs
+`konductor update` after each change. The hook keeps the single name and switches at the next
+session; the cost is the output budget, the digest and the rule 11 carve-out bounded to two context
+directories.
+
+The hook runs the hidden command `konductor __orchestration-hook`. Like `__telemetry-hook`, it is
+not part of the command surface: it reads the harness payload on stdin, acts only for a
+`konductor` session, exits 0 on every payload, and writes nothing to stderr. A bad flag exits 64
+like any other usage error.
 
 ---
 
