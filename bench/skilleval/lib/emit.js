@@ -6,6 +6,7 @@ const path = require('node:path');
 const { readJson, writeJson } = require('./util.js');
 const { isFrozen, verify } = require('./freeze.js');
 const { PROMPT_BANNED } = require('./scenarios.js');
+const { checkConsistency } = require('./consistency.js');
 
 const BENCH = path.resolve(__dirname, '..', '..');
 const FIXTURE = 'skilleval-empty';
@@ -58,6 +59,8 @@ function emit({ skill, dir, benchDir = BENCH }) {
   }
   const scenarios = readJson(path.join(dir, 'scenarios.json')).scenarios;
   const rubrics = new Map(readJson(path.join(dir, 'rubric.json')).rubrics.map((r) => [r.scenarioId, r]));
+  const survivorsFile = path.join(dir, 'survivors.json');
+  const rules = fs.existsSync(survivorsFile) ? readJson(survivorsFile).rules : [];
   const tasksDir = path.join(dir, 'tasks');
   fs.rmSync(tasksDir, { recursive: true, force: true });
   fs.mkdirSync(tasksDir, { recursive: true });
@@ -70,6 +73,8 @@ function emit({ skill, dir, benchDir = BENCH }) {
   for (const s of scenarios) {
     const r = rubrics.get(s.id);
     if (!r) { skipped.push({ id: s.id, reason: 'no rubric' }); continue; }
+    const conflicts = checkConsistency({ items: r.items, prompt: s.prompt, rules }).errors;
+    if (conflicts.length) { skipped.push({ id: s.id, reason: `rubric conflicts with the request: ${conflicts.map((c) => c.detail).join('; ')}` }); continue; }
     const task = taskOf(skill, s, r);
     const problems = checkTask(task);
     if (problems.length) { skipped.push({ id: s.id, reason: problems.join('; ') }); continue; }
