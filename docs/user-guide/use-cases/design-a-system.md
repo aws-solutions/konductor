@@ -10,7 +10,7 @@ problem statement into a document meant to survive principal-engineer review. A 
 [`k-existing-design-review`](../sop-workflows/design.md#k-existing-design-review), evaluates design
 artifacts that already exist. A third, [`k-principal-engineer-design-review`](../sop-workflows/design.md#k-principal-engineer-design-review),
 gates a finished document before a human reviewer sees it. All three are owned by
-**`k-architect`**, which carries 38 of the package's 82 skills — the largest share of any agent.
+**`k-architect`**, which carries 38 of the package's 81 skills — the largest share of any agent.
 
 **Read this before you pick one.** `k-existing-design-review` is explicitly deprecated for authoring;
 its own header says so:
@@ -106,14 +106,13 @@ fixed and the pass re-run before Phase 3. This can loop a few times without aski
 
 ### Phase 3 — Quality gates *(no pause, by design)*
 
-Three automated passes, with no user interaction permitted:
+Two automated passes, with no user interaction permitted:
 
-- **`doc-accuracy-analyzer`** checks every technical claim against primary sources and routes AWS
-  claims to `aws-service-validator`. INCORRECT and UNVERIFIED findings get inline `> ⚠️` callouts
-  but do not stop the phase. Phase 5 corrects the INCORRECT ones.
-- **`aws-service-validator`** checks every AWS service and feature claim against live AWS
-  documentation, classifying each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
-  `docs/design/pennywise-aws-validation.md`.
+- **`doc-accuracy-analyzer`** checks every technical claim against primary sources. It routes AWS
+  service and feature claims to `aws-service-validator`, which checks them against live AWS
+  documentation, classifies each CONFIRMED / UNVERIFIED / INCORRECT, and writes the full report to
+  `docs/design/pennywise-aws-validation.md`. INCORRECT, OVERSTATED, and UNVERIFIED findings get
+  inline `> ⚠️` callouts but do not stop the phase. Phase 5 corrects the INCORRECT ones.
 - **`trade-off-evaluator`** scores every multi-option decision 1–5 across cost, latency,
   complexity, scalability, and operability, embeds the table in the relevant ADR, and writes
   `docs/design/pennywise-tradeoffs.md`.
@@ -136,7 +135,7 @@ silently dropped — each is either fixed or recorded as an engineer override.
 ### Phase 5 — Final output
 
 The architect applies every correction from Phases 3 and 4, runs `design-evaluation` for a
-confidence score (the average of 10 dimension scores, 1–5 each; anything below 3 is flagged),
+confidence score (the average of its 8 scored dimensions, 1 to 5 each; anything below 3 is flagged),
 writes the final file, and reports the path, the score, and any open issues — without pasting the
 document into the chat.
 
@@ -155,7 +154,7 @@ document into the chat.
 The SOP will not claim the doc is ready for principal-engineer review unless **all four** hold:
 
 - [ ] `design-doc-guidelines` maker-checker: **0 CRITICAL**
-- [ ] `doc-accuracy-analyzer`: **0 INCORRECT**, each corrected in the text (UNVERIFIED is acceptable with callouts)
+- [ ] `doc-accuracy-analyzer`: **0 INCORRECT**, each corrected in the text, and every OVERSTATED finding corrected or flagged (UNVERIFIED is acceptable with callouts)
 - [ ] Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION**
 - [ ] `design-evaluation` confidence score: **≥ 3.0 average**
 
@@ -179,9 +178,10 @@ Review the design package in design/pennywise/.
    hard pause; it will not continue without an answer.
 3. **Read all artifacts** — in order: system design → threat model → API specs → data models →
    security policies → diagrams.
-4. **Run `design-evaluation`**: scores all 10 dimensions 1 to 5: template adherence, high-level
-   assessment, scalability (including cost), performance, security, maintainability, resilience,
-   code quality, testability, and actionable recommendations. Below 3 is flagged for revision.
+4. **Run `design-evaluation`**: scores 8 dimensions 1 to 5: template adherence, scalability
+   (including cost), performance, security, maintainability, resilience, code quality, and
+   testability. Below 3 is flagged for revision. A high-level assessment and actionable
+   recommendations are written as unscored report sections.
 5. **Generate report** — writes `design-review-report.md` (or your `output_file`) with dimension
    scores and Critical / Important / Suggestion findings.
 6. **Present recommendation** — **READY FOR IMPLEMENTATION** or **NOT READY**, plus the blockers if

@@ -29,7 +29,7 @@ Be aggressive. "Already built" and "requires only configuration" are the highest
 
 ### Step 2: Route AWS Claims to `aws-service-validator`
 
-Send every AWS feature, limit or quota, pricing, Region availability, and GA/preview claim to `aws-service-validator` as a list of `{service, feature, region, assertion}`. It checks them with the AWS documentation tools and returns CONFIRMED, UNVERIFIED, or INCORRECT for each. Carry its rows into Step 4 unchanged.
+Send every AWS feature, limit or quota, pricing, Region availability, and GA/preview claim to `aws-service-validator` as a list of `{service, feature, region, assertion}`, with the report path your caller gave, if any. It checks them with the AWS documentation tools and returns CONFIRMED, UNVERIFIED, or INCORRECT for each. Carry its rows into Step 4 unchanged.
 
 If `aws-service-validator` or its `aws-mcp` tools are not available, check the AWS claims yourself in Step 3 against docs.aws.amazon.com, and Region claims against the [AWS Services by Region](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/) list, and say so in the report.
 
@@ -106,7 +106,7 @@ The document passes when:
 - Every OVERSTATED (IMPORTANT) finding is corrected or flagged with a callout.
 - Every UNVERIFIED finding carries a `> ⚠️ UNVERIFIED: <what was searched>` callout. It is rated SUGGESTION, because new services and internal facts often have no public source.
 
-SUGGESTION findings never block.
+SUGGESTION findings never block once each UNVERIFIED one carries its callout.
 
 ## Guidelines
 

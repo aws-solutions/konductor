@@ -234,14 +234,14 @@ SOP_EDITS += [
 # directly with no prompt of any kind.
 SOP_EDITS += [
     ("update task: sample output",
-     "Updating Konductor\n  agents          11 updated\n  skills          81 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes.",
-     "Updating Konductor\n  agents          11 updated\n  skills          84 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes."),
+     "Updating Konductor\n  agents          11 updated\n  skills          82 updated\n  SOPs            19 updated\n  context files    1 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes.",
+     "Updating Konductor\n  agents          11 updated\n  skills          81 updated\n  SOPs            19 updated\n  context files    2 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes."),
     ("update task: locally-modified row",
      "Your files are kept. The release version is not applied to them.",
      "OVERWRITTEN. The count of clobbered files is reported afterwards; run --dry-run first to see which."),
     ("uninstall task: sample output",
-     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          81\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place.",
-     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          84\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place."),
+     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          82\n  SOPs            19\n  context files    1\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place.",
+     "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          81\n  SOPs            19\n  context files    2\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place."),
     ("uninstall task: prompt prose",
      'Answer <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">y</span> and it reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> Exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. Answering anything else cancels and changes nothing. To skip the prompt in a script:',
      'That was <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">--dry-run</span>, which touches the filesystem in no way at all and flags each path whose content has diverged from the manifest. <strong style="color:var(--tx);font-weight:600">A real run has no confirmation prompt</strong> \u2014 it proceeds directly and reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">Removed. Project files under .konductor/ were left in place.</span> with exit code <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">0</span>. To remove it for real:'),
@@ -276,14 +276,14 @@ SOP_EDITS += [
 # command with no --harness.
 SOP_EDITS += [
     ("hero tile: skills",
-     '>81</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>',
-     '>84</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>'),
+     '>75</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>',
+     '>81</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SKILLS</span>'),
     ("hero tile: SOPs",
      '>13</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>',
      '>19</span>\n            <span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:.16em;color:var(--mu2)">SOPS</span>'),
     ('hero snippet: banner',
-     'harness: {{ harnessFlag }}<br>agents 11 · skills 81 · SOPs 19 · context 4',
-     'harness: {{ harnessFlag }}<br>agents 11 · skills 84 · SOPs 19 · context 4'),
+     'harness: {{ harnessFlag }}<br>agents 11 · skills 82 · SOPs 19 · context 2',
+     'harness: {{ harnessFlag }}<br>agents 11 · skills 81 · SOPs 19 · context 4'),
     ("runtime binding: harnessFlag",
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",',
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",\n      harnessFlag: kiro ? "kiro-cli-v2" : "claude",'),
@@ -397,14 +397,14 @@ SOP_EDITS += [
      "the Kiro CLI allowedTools enumerates 13 specific browser tools: snapshot, screenshot, console messages, network requests, tabs, navigate, navigate back, wait for, click, type, select option, press key, close."),
     # counts
     ("concepts tree: skills/sops counts",
-     "skills/ \u2014 81 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures",
-     "skills/ \u2014 84 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures"),
+     "skills/ \u2014 75 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 13 procedures",
+     "skills/ \u2014 81 modules</span>\n                      <span style=\"font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mu)\">agent-sops/ \u2014 19 procedures"),
     ("concepts grid: skills count",
-     ">81 modules</span>",
-     ">84 modules</span>"),
+     ">75 modules</span>",
+     ">81 modules</span>"),
     ("home: on-demand modules",
-     "<div>11 agents with scoped tools and 81 on-demand knowledge modules.</div>",
-     "<div>11 agents with scoped tools and 84 on-demand knowledge modules.</div>"),
+     "<div>11 agents with scoped tools and 75 on-demand knowledge modules.</div>",
+     "<div>11 agents with scoped tools and 81 on-demand knowledge modules.</div>"),
     # pr_url is context-only (agent-sops/k-adversarial-pull-request-review.sop.md:15)
     ("pr_url: flow gate",
      'node("00", "diff_input OR pr_url given?", "If neither, the SOP asks for one and waits. It will not ask for output_file.", "gate")',
@@ -758,11 +758,11 @@ SOP_EDITS += [
 # the essentials table instead of being dropped.
 SOP_EDITS += [
     ("concepts: drop the verify-it-yourself panel",
-     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 81 skills</strong> — 81 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 81 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>",
-     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 84 skills</strong> — 84 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. Three are one-release stubs for renamed skills. All 84 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>"),
+     "<div style=\"border:1px solid rgba(61,220,151,.35);border-radius:12px;background:rgba(61,220,151,.05);padding:18px 20px\">\n              <div style=\"font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--sig);margin-bottom:10px\">COUNT · VERIFY IT YOURSELF</div>\n              <p style=\"margin:0 0 12px;font-size:14.5px;line-height:1.6;color:var(--mu)\">The package ships 82 skills — 82 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>.</p>\n              <pre style=\"margin:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--tx)\">ls skills | wc -l</pre>\n            </div>\n          </section>",
+     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><strong style=\"color:var(--tx);font-weight:600\">The package ships 81 skills</strong> — 81 directories under <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">skills/</span>, each with a <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">SKILL.md</span>. All 81 are catalogued, grouped, with a when-to-use note each, in the <a href=\"#/skills\">Skills catalog</a>.</p>\n          </section>"),
     ("skills: coverage section drops check-it-yourself",
-     "{\"paras\":[\"All 81 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],",
-     "{\"paras\":[\"All 81 working skills are declared by at least one agent. The three rename stubs are not. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],"),
+     "{\"paras\":[\"All 82 skills are declared by at least one agent. Check it yourself with ls skills | wc -l, then compare that against the union of every spec's declared skills — if the two ever diverge, a skill exists that no agent can load, which matters most when a SOP instructs an agent to use it.\"],\"code\":\"ls skills | wc -l\",",
+     "{\"paras\":[\"All 81 skills are declared by at least one agent. That matters because a skill no agent declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use it. Contributors adding a skill should see Contributing → check skill coverage.\"],"),
     ("prerequisites: drop the what-you-do-not-need section",
      "\n\n          <section id=\"p-not\" style=\"padding-bottom:44px;border-top:1px solid var(--bd);padding-top:40px\">\n            <h2 style=\"margin:0 0 16px;font-size:30px;letter-spacing:-.025em;font-weight:600\">What you do <em>not</em> need</h2>\n            <p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\">Worth stating, because it is unusual:</p>\n            <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px\">\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No servers or infrastructure</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Agents are configuration files your runtime executes.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No database</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Nothing persists except plain files you can read.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No build toolchain</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">There is no published binary yet, so you build the CLI from a clone with make build. A Rust toolchain is required.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No network access at run time for the CLI</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\"><span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">init</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config</span>, and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">synth</span> touch only the local filesystem — and so do <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">update</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">doctor</span> and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">metrics</span>. The single remote path is <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">install</span> with --from omitted, which tries a GitHub Release. Every documented workflow here passes --from, so in practice nothing reaches the network.</div>\n              </div>\n            </div>\n          </section>\n\n          ",
      "\n\n          "),
@@ -1271,4 +1271,38 @@ SOP_EDITS += [
     ("install-claude-code: success signal is edit then review",
      "A task needing implementation causes a <strong style=\"color:var(--tx);font-weight:600\">specialist to spawn</strong>, visible in your session.",
      "A task needing implementation has konductor edit files itself and spawn a <strong style=\"color:var(--tx);font-weight:600\">k-* reviewer</strong> when the phase closes, visible in your session."),
+]
+
+SOP_EDITS += [
+    # ---- design SOP: OVERSTATED doc-accuracy findings are flagged and gate readiness ----
+    ("design use case: checklist gates OVERSTATED",
+     "0 INCORRECT</strong>, each corrected in the text (UNVERIFIED is acceptable with callouts)",
+     "0 INCORRECT</strong>, each corrected in the text, and every OVERSTATED finding corrected or flagged "
+     "(UNVERIFIED is acceptable with callouts)"),
+    ("design SOP: gate row gates OVERSTATED",
+     "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts)\" },",
+     "{ k: \"doc-accuracy-analyzer\", v: \"0 INCORRECT findings, each corrected in the text, and every OVERSTATED "
+     "finding corrected or flagged (UNVERIFIED is acceptable with callouts)\" },"),
+    ("design use case: Phase 3 is two passes and flags OVERSTATED",
+     "Three automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
+     "claim against primary sources and routes AWS claims to aws-service-validator. INCORRECT and UNVERIFIED "
+     "findings get inline callouts but do not stop the phase; Phase 5 corrects the INCORRECT ones. "
+     "aws-service-validator checks every AWS service and feature claim against live AWS documentation, "
+     "classifying each CONFIRMED / UNVERIFIED / INCORRECT.",
+     "Two automated passes, with no user interaction permitted. doc-accuracy-analyzer checks every technical "
+     "claim against primary sources and routes AWS service and feature claims to aws-service-validator, which "
+     "checks them against live AWS documentation and classifies each CONFIRMED / UNVERIFIED / INCORRECT. "
+     "INCORRECT, OVERSTATED, and UNVERIFIED findings get inline callouts but do not stop the phase; Phase 5 "
+     "corrects the INCORRECT ones."),
+    ("design SOP: Phase 3 node routes AWS claims and flags OVERSTATED",
+     "doc-accuracy-analyzer verifies claims against the codebase, flagging INCORRECT / UNVERIFIED inline. "
+     "aws-service-validator checks every AWS claim via aws-mcp (CONFIRMED / UNVERIFIED / INCORRECT) and writes "
+     "the validation report.",
+     "doc-accuracy-analyzer verifies claims against primary sources, flagging INCORRECT / OVERSTATED / UNVERIFIED "
+     "inline, and routes AWS claims to aws-service-validator, which checks them via aws-mcp (CONFIRMED / "
+     "UNVERIFIED / INCORRECT) and writes the validation report."),
+    ("design SOP: OVERSTATED blocks until corrected or flagged",
+     "mark UNVERIFIED claims with a callout and proceed. Only INCORRECT findings are treated as blocking.",
+     "mark UNVERIFIED claims with a callout and proceed. INCORRECT findings block until the text is corrected, "
+     "and OVERSTATED findings block until they are corrected or flagged."),
 ]

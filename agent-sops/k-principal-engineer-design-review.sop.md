@@ -63,10 +63,10 @@ Run the `design-evaluation` skill across 10 production readiness dimensions.
 
 **Constraints:**
 
-- You MUST apply the `design-evaluation` skill
+- You MUST apply the `design-evaluation` skill with package scope `single-document`
 - You MUST evaluate all 10 dimensions defined in `design-evaluation` Step 1
 - You MUST classify each finding as CRITICAL, IMPORTANT, or SUGGESTION using the same severity definitions as the adversarial review
-- You MUST compute a confidence score per section: average of the dimension scores (1–5 each)
+- You MUST compute a confidence score per section: average of the 8 scored dimensions (1 to 5 each). High-level assessment (#2) and actionable recommendations (#10) are unscored report sections and stay out of the average
 - Sections with average score < 3 are flagged for adversarial focus in Step 3
 
 **Expected Output:** Dimension scores, per-section confidence scores, classified findings list
@@ -121,7 +121,7 @@ Produce the review report and present the verdict.
   ## Adversarial Review History
 
   | Round | CRITICAL | IMPORTANT | SUGGESTION | Corrections Applied |
-  | ----- | -------- | --------- | ----- | ------------------- |
+  | ----- | -------- | --------- | ---------- | ------------------- |
 
   ## Remaining Findings
 
@@ -129,7 +129,7 @@ Produce the review report and present the verdict.
 
   ### Important
 
-  ### Minor
+  ### Suggestion
 
   ## Verdict
 
