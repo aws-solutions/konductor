@@ -41,7 +41,8 @@ not per individual commit.
   lines are a preview of the named rules file. The pointer names an install under a symlinked
   home through the logical home for project and parent-of-project installs too. On a Claude Code
   resume or compact under `auto` the hook prints `Orchestration: auto`. The hook resolves the
-  owning install per harness.
+  owning install per harness. Core rule 11 defines the project root and names the install
+  locations whose rules file it trusts.
 - Claude Code installs copy the context files to `.konductor/context/`, where the orchestration
   hook finds the routing rules; uninstall removes the directory and keeps memory.
 - A Claude Code install with `--no-telemetry` now writes `.claude/settings.local.json` for the

@@ -61,11 +61,19 @@ def test_rule_11_trusts_only_the_installed_routing_rules_file():
     clause = _rule_11_exceptions()
     assert (
         "the `k-orchestrator-routing-rules.md` that pointer names in `.kiro/context/` or "
-        "`.konductor/context/` directly under your home directory, directly under the "
-        "project root, or directly under a parent of the project root that is itself "
-        "inside your home directory" in clause
+        "`.konductor/context/` directly under your home directory, directly under your "
+        "working directory, directly under the project root (the nearest directory "
+        "containing your working directory that has a `.git` entry, or your working "
+        "directory when none does), directly under a parent of the project root that is "
+        "itself inside your home directory, or directly under a directory between the "
+        "project root and your working directory that is itself inside your home "
+        "directory" in clause
     )
-    # Each of the three locations is qualified, so a nested copy such as
+    # Rule 11 defines "project root" and names the install locations `konductor install`
+    # supports, including a package directory of a monorepo under home.
+    assert "the nearest directory containing your working directory that has a `.git` entry" in clause
+    assert "between the project root and your working directory" in clause
+    # Each location is qualified, so a nested copy such as
     # node_modules/<pkg>/.kiro/context/ is not "under the project root".
     assert ", under the project root" not in clause
     assert "or under a parent of the project root" not in clause
