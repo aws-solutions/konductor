@@ -37,7 +37,7 @@ Overly permissive actions (wildcards without justification), missing condition k
 
 The per-check "Flag as" lines follow this mapping. When a check and this list disagree, this list wins.
 
-**CRITICAL:** a finding that exposes data, grants more than the role needs, or leaves no audit trail.
+**CRITICAL:** one of the findings below.
 
 - Wildcard action or resource without a documented justification
 - Cross-account trust without `sts:ExternalId` or another condition key
@@ -52,6 +52,7 @@ The per-check "Flag as" lines follow this mapping. When a check and this list di
 - A trail that is single-region or skips global service events
 - CloudTrail logs not encrypted or without log file validation
 - KMS key rotation off for sensitive data where nothing requires it
+- Named actions beyond what the role needs, with no wildcard
 - Key administrators who can also decrypt
 - No permission boundary on a role with `iam:*` or `sts:AssumeRole`
 - Log retention shorter than a compliance requirement, or missing security alarms
