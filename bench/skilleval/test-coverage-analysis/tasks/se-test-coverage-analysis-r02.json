@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-r02",
+  "class": "simple",
+  "target": null,
+  "prompt": "Our team has been following the testing pyramid model. We just ran our test suite and got: 45 unit tests, 25 integration tests, and 30 end-to-end tests. The total is 100 tests. Does this distribution follow best practices for the testing pyramid, or should we adjust our approach?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must determine the application architecture type before recommending a testing model, as required by R01.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must compare the current test distribution (45% unit, 25% integration, 30% E2E) against the recommended model and report alignment status as Aligned, Misaligned, or Severely Misaligned.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must identify test gaps and categorize each gap as Critical, Warning, or Manual Testing Required.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not claim the distribution follows the testing pyramid best practices, since 30% end-to-end tests is a significant inversion of the pyramid model.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must organize findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

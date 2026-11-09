@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-r06",
+  "class": "simple",
+  "target": null,
+  "prompt": "Our application requirements specify that the API must handle 5000 concurrent users with response times under 200ms, all endpoints must be protected against SQL injection and XSS attacks, and the system must maintain 99.9% uptime with automatic failover. We currently have unit tests for business logic and some integration tests for API endpoints. We're not sure if we need additional tests. Can you help us understand if our testing covers these requirements properly?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must map the performance requirement (5000 concurrent users, 200ms response) to load testing, the security requirements (SQL injection, XSS) to security testing, and the reliability requirement (99.9% uptime, failover) to failure injection testing.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must identify the lack of performance, security, and reliability tests as Critical gaps given the specific non-functional requirements stated.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must determine the application is a backend system and recommend a testing model such as the pyramid or hybrid model.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not claim the current testing covers the requirements properly since the user explicitly stated they lack tests for the stated non-functional requirements.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must present findings in order starting with Critical issues (the missing non-functional tests), then Important issues, then Suggestions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

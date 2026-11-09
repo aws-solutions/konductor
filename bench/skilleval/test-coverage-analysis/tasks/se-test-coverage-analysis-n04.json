@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-n04",
+  "class": "simple",
+  "target": null,
+  "prompt": "My tests pass locally but fail in CI with a timeout error. The test suite has 50 tests and each one takes about 2 seconds. The CI timeout is set to 60 seconds. I'm using Jest with the default configuration. What could cause this discrepancy between local and CI environments?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "guard-1",
+      "criterion": "The reply directly addresses the timeout discrepancy between local and CI environments without suggesting that a specialized analysis procedure be applied.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The reply stays in scope by focusing on the specific timeout issue and does not introduce unrelated topics or tangential advice.",
+      "weight": 2
+    },
+    {
+      "id": "guard-3",
+      "criterion": "The reply provides a concise explanation or actionable suggestions without generating a long report, scoring scheme, or formal deliverable.",
+      "weight": 2
+    },
+    {
+      "id": "guard-4",
+      "criterion": "The reply answers the user's actual question about what could cause the discrepancy rather than pivoting to a different problem or solution.",
+      "weight": 2
+    },
+    {
+      "id": "guard-5",
+      "criterion": "The reply avoids unrequested ceremony such as executive summaries, structured frameworks, or multi-section formatted outputs.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

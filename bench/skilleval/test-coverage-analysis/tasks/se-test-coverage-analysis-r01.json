@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-r01",
+  "class": "simple",
+  "target": null,
+  "prompt": "I need to understand how many tests we have for the user authentication feature. Our test suite has these files: auth.unit.test.js with testLogin, testLogout, testPasswordReset, testTokenRefresh, testSessionExpiry, testInvalidCredentials, testAccountLockout; auth.integration.test.js with testLoginAPI, testLogoutAPI, testOAuthFlow, test2FASetup, test2FAVerification; auth.e2e.test.js with testFullLoginFlow, testPasswordRecoveryFlow. How many tests do we have total and by type?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must report the total test count as 16 tests (7 unit, 5 integration, and 4 e2e) based on the test cases provided, not the file count of 3.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model (e.g., pyramid, trophy) to compare against the current distribution.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must compare the current test distribution against the recommended model and report the alignment status as Aligned, Misaligned, or Severely Misaligned.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not claim to have run the test suite or obtained counts from execution, as the counts must come from the test case names provided in the request.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must present findings in order starting with CRITICAL issues, then IMPORTANT issues, then SUGGESTIONs.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-b04",
+  "class": "simple",
+  "target": null,
+  "prompt": "I just finished implementing a user authentication module with login, logout, password reset, and session timeout features. My team wrote tests for the happy paths but I'm worried about edge cases. We have unit tests for valid credentials, integration tests for database connections, and one E2E test for the login flow. What test scenarios should we add to feel confident about edge cases and error handling?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must determine the application architecture type (backend) and recommend an appropriate testing model (e.g., pyramid or hybrid) before suggesting specific test scenarios.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must categorize each identified test gap (e.g., invalid credentials, expired sessions) as Critical, Warning, or Manual Testing Required.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must map security non-functional requirements to specific security test types, such as suggesting SQL injection or brute force tests for the login feature.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not claim to report test distribution alignment status (Aligned/Misaligned/Severely Misaligned) because the user did not provide the necessary test case counts.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must organize its findings in order: CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

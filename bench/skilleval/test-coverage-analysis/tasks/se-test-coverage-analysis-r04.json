@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-r04",
+  "class": "simple",
+  "target": null,
+  "prompt": "I wrote this test for my React component and want to know if it's good quality:\n\ntest('button click works', () => {\n  const wrapper = shallow(<MyButton />);\n  wrapper.find('button').simulate('click');\n  expect(wrapper.find('button').prop('disabled')).toBe(true);\n});\n\nThe button should disable itself after clicking. Is this a well-written test?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer identifies that the test tests implementation details (the disabled prop) instead of user-facing behavior (what the user sees or experiences).",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer determines this is a frontend application and recommends the appropriate testing model (Trophy model for frontend).",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer suggests using a testing library that focuses on user behavior (like React Testing Library) instead of Enzyme's shallow rendering.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not claim the test is well-written or high quality since it tests implementation details rather than behavior.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer organizes findings with CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONS.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

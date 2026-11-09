@@ -1,0 +1,34 @@
+{
+  "id": "se-test-coverage-analysis-n02",
+  "class": "simple",
+  "target": null,
+  "prompt": "This unit test keeps failing and I can't figure out why. Here's the test: expect(calculateDiscount(100, 'PREMIUM')).toBe(20). The function should return 20 for a premium customer with 100 dollar purchase, but it returns 0. Here's the function: function calculateDiscount(amount, tier) { if (tier === 'premium') return amount * 0.2; return 0; }. What's wrong?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "guard-1",
+      "criterion": "The reply identifies the case sensitivity issue causing the test failure.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The reply explains the solution without introducing unnecessary complexity or ceremony.",
+      "weight": 2
+    },
+    {
+      "id": "guard-3",
+      "criterion": "The reply stays focused on the specific bug and does not provide unrelated debugging reports or scoring schemes.",
+      "weight": 2
+    },
+    {
+      "id": "guard-4",
+      "criterion": "The reply directly addresses the user's question about what is wrong with the function.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

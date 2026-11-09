@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-b02",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm building an e-commerce checkout flow and need to figure out what end-to-end tests to write. The flow includes: adding items to cart, entering shipping address, selecting shipping method, payment, and order confirmation. I already have happy path tests. What other E2E scenarios should I consider testing?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend testing negative scenarios such as invalid payment details, out-of-stock items, or session timeouts.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must suggest testing edge cases like empty cart checkout, extreme quantities, or invalid address formats.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must include tests for user experience variations such as different payment methods, guest vs registered user, or mobile vs desktop flows.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not recommend test types outside of E2E testing such as unit tests for individual React components or API integration tests.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must organize test scenarios starting with critical failure paths before moving to edge cases and optional variations.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

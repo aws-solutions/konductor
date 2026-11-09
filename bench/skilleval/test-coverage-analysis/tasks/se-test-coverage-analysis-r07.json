@@ -1,0 +1,44 @@
+{
+  "id": "se-test-coverage-analysis-r07",
+  "class": "simple",
+  "target": null,
+  "prompt": "We're planning to release our React-based customer portal to production tomorrow. Our test results show: 85% unit test coverage, 70% integration test coverage, critical user flows (login, search, checkout) have 95% end-to-end test coverage, and all smoke tests pass. We follow the testing trophy model for frontend applications. Should we proceed with the release or do we need to address any gaps?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must identify the application as a frontend system and confirm the testing trophy model is appropriate before analyzing the coverage metrics.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must flag the 95% end-to-end test coverage for critical user flows as a critical gap because the testing trophy model requires 100% coverage for these flows.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must categorize the identified test gaps using the required severity levels: Critical, Warning, or Manual Testing Required.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not claim the test distribution is aligned without comparing the current coverage percentages against the testing trophy model's recommended distribution.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must present the findings in the specific order of CRITICAL issues first, then IMPORTANT issues, and finally SUGGESTIONs.",
+      "weight": 1
+    },
+    {
+      "id": "value-4",
+      "criterion": "The answer must report the release readiness status as At Risk due to the critical gap in end-to-end test coverage for critical user flows.",
+      "weight": 3
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

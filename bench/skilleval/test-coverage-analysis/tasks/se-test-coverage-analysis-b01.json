@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-b01",
+  "class": "simple",
+  "target": null,
+  "prompt": "I just finished implementing a user authentication module with login, logout, and password reset features. I wrote unit tests for the login flow but I'm not sure if I've covered all the important edge cases. Can you review what I have and tell me what scenarios I might be missing? Here are my test cases: valid credentials, invalid username, invalid password, empty fields, and SQL injection attempt.\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must identify and categorize missing test scenarios such as account lockout, expired passwords, or concurrent sessions as Critical, Warning, or Manual Testing Required per R04.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must determine the application architecture type and recommend an appropriate testing model like the pyramid or trophy model per R01.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must map security-related non-functional requirements to appropriate test types such as security tests or penetration testing per R05.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not report test distribution alignment status using percentages because the user has not provided test case counts from a running test suite per R02 and R03.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must organize its findings in order with critical issues first, then important issues, and then suggestions per R09.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

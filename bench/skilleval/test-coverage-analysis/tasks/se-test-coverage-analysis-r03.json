@@ -1,0 +1,39 @@
+{
+  "id": "se-test-coverage-analysis-r03",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm worried we have gaps in our shopping cart testing. The cart should: add/remove items, update quantities, calculate totals with tax, apply discount codes, handle out-of-stock items, persist across sessions, and sync with inventory. We test adding items and calculating totals. What tests are we missing and how should we prioritize filling those gaps?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must identify the missing test coverage for remove items, update quantities, apply discount codes, handle out-of-stock items, persist across sessions, and sync with inventory.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must categorize each identified test gap as Critical, Warning, or Manual Testing Required.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must first determine the application architecture type and recommend an appropriate testing model such as the pyramid, trophy, hybrid, or microservices model.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not claim to report test distribution percentages or alignment status without access to actual test case counts from running the test suite.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must present findings in order with CRITICAL issues first, then IMPORTANT issues, then SUGGESTIONs.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}
