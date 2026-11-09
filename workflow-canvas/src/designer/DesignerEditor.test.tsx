@@ -1006,7 +1006,7 @@ describe('a check that the server refuses for a lost session', () => {
     const edits = acceptingEdits();
     edits.check.mockRejectedValue(
       new SessionLost(
-        'The session is not valid. Get a fresh launch address from the server. The changes you made on this page are lost when you do; copy them first.',
+        'The session is not valid. Start `flow view` again and open the address it prints. The changes you made on this page are lost when you do; copy them first.',
       ),
     );
     const { scheduler } = await openDesigner(edits);
@@ -1016,6 +1016,7 @@ describe('a check that the server refuses for a lost session', () => {
 
     expect(await screen.findByText('The session is lost')).toBeTruthy();
     expect(screen.getByText(/copy them first/)).toBeTruthy();
+    expect(screen.getByText('flow view').tagName).toBe('CODE');
     expect(screen.queryByText('The workflow was not saved')).toBeNull();
   });
 });
