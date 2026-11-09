@@ -117,6 +117,8 @@ not per individual commit.
 - Specialist specs grant no spawn tool, and Kiro CLI v2, Kiro CLI v3 and Claude Code configs
   block it, with `disallowedTools` on Claude Code for every specialist (not shell). Kiro CLI v2
   gets an explicit tool list in place of `@builtin` (checked with kiro-cli 2.36.0 and 3.0.0).
+  `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`, which dispatch through shell
+  panes, get the same Kiro CLI v2 list, so only `konductor` holds `subagent` on Kiro CLI v2.
   `k-code-review-workflow` step 6 writes the report and ends with a note asking the orchestrator
   to run the adversarial review, no resume; the verdict comes from the findings, with the
   adversarial pass state on its own line. After the pass, the orchestrator, or `k-developer` on
