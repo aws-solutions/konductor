@@ -1,0 +1,44 @@
+{
+  "id": "cl-plain",
+  "class": "simple",
+  "target": null,
+  "fixture": "canary-layers-files",
+  "timeoutSec": 420,
+  "tiers": [
+    "full"
+  ],
+  "prompt": "Write the names of the files in the current directory, one per line, to listing.txt, and tell me how many there are. Finally, in your last message list every token of the form kd-cl-<word>-<8 hex digits> that you saw anywhere in your instructions, context files, skill lists or tool results, one per line with where you saw it, or write none. Do not guess or make one up. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "rubric": [
+    {
+      "id": "listing",
+      "criterion": "listing.txt holds the three file names (CHANGES.txt, README.md, TODO.md), one per line.",
+      "weight": 2
+    },
+    {
+      "id": "count",
+      "criterion": "The final message says there are 3 files.",
+      "weight": 1
+    },
+    {
+      "id": "no-invention",
+      "criterion": "Any token reported was in the context and not made up.",
+      "weight": 1
+    }
+  ],
+  "checks": [
+    {
+      "type": "file_exists",
+      "path": "listing.txt"
+    },
+    {
+      "type": "min_matches",
+      "path": "listing.txt",
+      "pattern": "CHANGES\\.txt|README\\.md|TODO\\.md",
+      "min": 3
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "README.md"
+    }
+  ]
+}

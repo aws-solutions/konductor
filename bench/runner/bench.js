@@ -3,7 +3,7 @@
 /**
  * bench.js - benchmark runner for Konductor on kiro-cli or opencode (run, judge, recheck, backfill, report, compare, calibrate).
  *
- *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe [--arms a,b] [--tasks id,id]
+ *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers [--arms a,b] [--tasks id,id]
  *        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
@@ -25,7 +25,7 @@ const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli
 const cleanup = require('./lib/cleanup-cmd.js');
 
 const USAGE = `Usage:
-  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe [--arms a,b,c] [--tasks id,id]
+  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe|canary-layers [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--replicate-offset N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
@@ -102,6 +102,10 @@ const USAGE = `Usage:
        the canary token; sandbox errno 38 runs, which are excluded from every rate; and the DECISION rows with fixed thresholds. Writes probe-report.md, probe-report.json,
        probe-runs.jsonl and judge-queue.json to --out. --scoring takes a scoring profile for the checks quality column; --arms-file or --canary-token-file gives the exact canary token.
        See bench/CONSTRAINTS-PROBE.md)
+  node bench/runner/bench.js canary-report --run DIR[,DIR...] --layers-file FILE --out DIR
+       (scores the runs of the canary-layers suite from stream.jsonl, with no model call: per layer token (core rules, system prompt, skill index, skill body, SOP body, routing context),
+       per entry agent and per task, the share of runs where the token showed in a tool result (direct) or in the model's own text or calls (inferred), next to whether the agent spec
+       declares that layer. FILE is the layers.json written by bench/scripts/canary-layers.js build. Writes canary-report.md and canary-report.json to --out. See bench/CANARY-LAYERS.md)
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
        [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
@@ -362,6 +366,7 @@ async function main(argv) {
   if (cmd === 'trace') return evalCommands.cmdTrace(opts);
   if (cmd === 'refs-report') return require('../report/refs.js').cmdRefsReport(opts);
   if (cmd === 'probe-report') return require('../report/probes.js').cmdProbeReport(opts);
+  if (cmd === 'canary-report') return require('../report/canary-layers.js').cmdCanaryReport(opts);
   if (cmd === 'backfill') return evalCommands.cmdBackfill(opts);
   if (cmd === 'compare') return evalCommands.cmdCompare(opts);
   if (cmd === 'skills') return evalCommands.cmdSkills(opts);

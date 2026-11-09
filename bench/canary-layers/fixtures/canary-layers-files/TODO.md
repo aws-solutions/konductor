@@ -1,0 +1,4 @@
+- Migrate the user table to the new schema
+- Update the API clients to use the new fields
+- Backfill historical rows
+- Remove the old columns once nothing reads them

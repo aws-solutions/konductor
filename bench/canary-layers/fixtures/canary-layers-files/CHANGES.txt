@@ -1,0 +1,5 @@
+- Fixed crash on empty config (issue 41)
+- Added --dry-run flag to the export command
+- Export is now 3x faster for files over 100 MB
+- Removed the deprecated --legacy-format option
+- Updated the French and German translations

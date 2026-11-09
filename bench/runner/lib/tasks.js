@@ -27,6 +27,7 @@ const SUITE_DEFAULTS = {
   'references-read': { arms: ['main'], replicates: 3, parallel: 1 },
   // Does the `constraints` skill's guidance reach Kiro agents and change what they do? Tasks come from bench/probes; the arms are built by the study driver.
   'constraints-probe': { arms: ['main'], replicates: 5, parallel: 1 },
+  'canary-layers': { arms: ['main'], replicates: 3, parallel: 1 },
 };
 const SUITE_NAMES = Object.keys(SUITE_DEFAULTS);
 
@@ -82,7 +83,7 @@ function benchMask(benchDir = BENCH_DIR, extraDirs = []) {
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR) {
-  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, references-read or constraints-probe)`);
+  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy, pilot, cap, requirements, rootcause, references-read, constraints-probe or canary-layers)`);
   const file = path.join(benchDir, 'suites', `${name}.json`);
   const fromFile = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks
