@@ -31,6 +31,7 @@ use std::path::Path;
 use super::manifest::ManifestFile;
 
 mod claude_settings;
+mod hook_locator;
 mod mcp_server;
 mod telemetry_hook_pass;
 
@@ -38,23 +39,27 @@ pub(super) use claude_settings::apply_claude_settings_grant_and_hooks;
 pub(super) use claude_settings::apply_claude_settings_hooks_only;
 pub(crate) use claude_settings::CLAUDE_SETTINGS_RELATIVE_PATH;
 pub(crate) use claude_settings::{
-    claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_telemetry_hooks,
+    claude_hooks_settings_relative_path, hook_command_exe, hook_command_install_root,
+    is_claude_settings_path, remove_claude_konductor_hooks, ORCHESTRATION_HOOK_MARKER,
 };
+pub(crate) use hook_locator::{orchestration_hook_wiring, HookWiring};
 pub(super) use mcp_server::{
     installed_server_supports_install_info, McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME,
 };
 
 use mcp_server::McpServerPassV3;
-use telemetry_hook_pass::TelemetryHookPass;
+use telemetry_hook_pass::{OrchestrationHookPass, TelemetryHookPass};
 
 pub(super) use telemetry_hook_pass::{
-    apply_v3_standalone_telemetry_hook, remove_v3_standalone_telemetry_hook,
+    apply_v3_orchestration_hook, apply_v3_standalone_telemetry_hook,
+    remove_v3_standalone_telemetry_hook,
 };
 // `pub(crate)`, not `pub(super)`: `uninstall.rs` (a sibling of `install`,
 // not a descendant) also needs both names to clean up the untracked
 // lock file alongside the manifest-tracked hook document -- see
 // `V3_STANDALONE_HOOK_LOCK_FILE_NAME`'s own doc comment.
 pub(crate) use telemetry_hook_pass::{
+    V3_ORCHESTRATION_HOOKS_RELATIVE_PATH, V3_ORCHESTRATION_HOOK_LOCK_FILE_NAME,
     V3_STANDALONE_HOOKS_RELATIVE_PATH, V3_STANDALONE_HOOK_LOCK_FILE_NAME,
 };
 
@@ -230,6 +235,7 @@ pub(super) fn standard_passes(no_telemetry: bool) -> Vec<Box<dyn ResourceRewrite
     if !no_telemetry {
         passes.push(Box::new(TelemetryHookPass));
     }
+    passes.push(Box::new(OrchestrationHookPass));
     passes
 }
 
@@ -787,23 +793,23 @@ mod tests {
     }
 
     #[test]
-    fn standard_passes_returns_three_passes_when_no_telemetry() {
+    fn standard_passes_returns_four_passes_when_no_telemetry() {
         // Not a type-level assertion (trait objects erase concrete
         // type), but pins the count so a future duplicate-push or
         // drop is caught immediately.
-        assert_eq!(standard_passes(true).len(), 3);
+        assert_eq!(standard_passes(true).len(), 4);
     }
 
     #[test]
     fn standard_passes_includes_telemetry_hook_pass_unless_no_telemetry() {
         assert_eq!(
             standard_passes(false).len(),
-            4,
+            5,
             "TelemetryHookPass must be appended when telemetry is enabled"
         );
         assert_eq!(
             standard_passes(true).len(),
-            3,
+            4,
             "TelemetryHookPass must be omitted entirely when --no-telemetry is set"
         );
     }
