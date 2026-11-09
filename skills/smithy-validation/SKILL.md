@@ -377,7 +377,7 @@ Before approving a model:
 - Inconsistent naming conventions across shapes
 - Missing error documentation
 - List operations without pagination support
-- Generated code for a target language does not compile
+- Generated code for a target language does not compile (CRITICAL if the design requires that target)
 
 **SUGGESTION:**
 
