@@ -12,7 +12,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const SKILLS_HEADING: &str = "## Your skills";
-const ORCHESTRATOR_MARKER: &str = "You orchestrate.";
+const ORCHESTRATOR_MARKER: &str = "Your loaded orchestration rules decide";
+const ROUTING_PHRASE: &str = "route it to that specialist instead of doing it yourself";
+const ONE_OR_TWO: &str = "load at most one or two";
 // Skills whose description starts "MUST USE for every "; synth leaves
 // them out of the index.
 const EVERY_TASK_SKILLS: &[&str] = &["constraints"];
@@ -118,6 +120,21 @@ fn kiro_prompt(root: &Path, harness: &str, agent: &str) -> String {
     parsed["prompt"].as_str().unwrap().to_string()
 }
 
+/// Skills `context/k-direct-work.md` names in backticks that exist under `skills/`.
+fn direct_work_skill_names(root: &Path) -> Vec<String> {
+    let text = std::fs::read_to_string(root.join("context/k-direct-work.md")).unwrap();
+    let mut names: Vec<String> = text
+        .split('`')
+        .skip(1)
+        .step_by(2)
+        .filter(|n| root.join("skills").join(n).is_dir())
+        .map(str::to_string)
+        .collect();
+    names.sort();
+    names.dedup();
+    names
+}
+
 fn listed_names(block: &str) -> Vec<String> {
     block
         .lines()
@@ -162,6 +179,20 @@ fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
                 );
             }
             assert!(block.contains("`get_skill`") && block.contains("`tool_load`"));
+            assert!(
+                !prompt.contains(ROUTING_PHRASE),
+                "{harness}/{name}: the index must not route a listed skill away"
+            );
+            assert!(!prompt.contains(ONE_OR_TWO), "{harness}/{name}");
+            if name == "konductor" {
+                let listed = listed_names(block);
+                for skill in direct_work_skill_names(&root) {
+                    assert!(
+                        listed.contains(&skill),
+                        "{harness}/{name}: k-direct-work.md names {skill}, absent from the index"
+                    );
+                }
+            }
             assert_eq!(
                 block.contains(ORCHESTRATOR_MARKER),
                 name.starts_with("konductor"),
