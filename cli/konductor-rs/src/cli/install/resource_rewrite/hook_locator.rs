@@ -268,7 +268,13 @@ mod tests {
     fn claude_writer_output_reads_back() {
         for exe in [PLAIN_EXE, EXE_WITH_SPACE] {
             let destination = scratch_dir("claude");
-            claude_settings::apply_claude_settings_hooks_with_exe(&destination, true, exe).unwrap();
+            claude_settings::apply_claude_settings_hooks_with_exe(
+                &destination,
+                claude_settings::KONDUCTOR_HOOK_ENTRIES,
+                true,
+                exe,
+            )
+            .unwrap();
             let slot = slot(claude::STRATEGY_NAME, &destination, &[]);
             assert_reads_back(&destination, &slot, exe);
             fs::remove_dir_all(&destination).ok();

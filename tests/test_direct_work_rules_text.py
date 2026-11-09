@@ -86,6 +86,21 @@ def test_konductor_commits_only_when_the_user_asks():
     for rel in ("docs/user-guide/agents.md", "tools/build-user-guide/html_sop_edits.py"):
         body = (ROOT / rel).read_text(encoding="utf-8")
         assert "it commits when you ask" in body, rel
+    teams = (ROOT / "skills" / "claude-teams-behavior" / "SKILL.md").read_text(encoding="utf-8")
+    assert "commit when the user asks" in teams
+    assert "commit yourself" not in teams
+    for rel in _konductor_loaded_files():
+        body = (ROOT / rel).read_text(encoding="utf-8")
+        assert "commit yourself" not in body, rel
+        assert "commits itself" not in body, rel
+
+
+def _konductor_loaded_files():
+    spec = _spec("konductor")
+    files = [f"context/{name}" for name in spec["dependencies"]["context"]["contextNames"]]
+    files += [f"skills/{name}/SKILL.md" for name in spec["dependencies"]["skills"]["skillNames"]]
+    files += [f"agent-sops/{name}.sop.md" for name in spec["dependencies"]["agentSops"]["agentSopNames"]]
+    return files
 
 
 def test_bundle_reference_block_counts_konductor_skills_as_24():
@@ -115,9 +130,24 @@ def test_posture_bearing_documents_always_get_the_gate_review():
 
 
 def test_spawned_writer_worktrees_are_merged_before_the_gate():
-    assert "integrated tree" in _direct_work()
+    direct = _direct_work()
+    assert "integrated tree" in direct
+    assert "commit its part on its worktree branch" in direct
     protocol = (ROOT / "skills" / "delegation-protocol" / "SKILL.md").read_text(encoding="utf-8")
     assert "integration tree" in protocol
+    assert "commits its part on its worktree branch" in protocol
+
+
+def test_an_undeclared_sop_runs_in_the_specialist_that_declares_it():
+    direct = _direct_work()
+    spawn_sentence = next(s for s in direct.split(". ") if "spawn a specialist in two cases only" in s)
+    assert "an SOP you do not declare" in spawn_sentence
+    assert "do not read its installed copy" in spawn_sentence
+    assert "the `k-architect` design check your 2-Strike Circuit Breaker names" in spawn_sentence
+    assert "k-code-review-workflow" not in direct
+    spec = _spec("konductor")
+    assert "k-code-review-workflow" not in spec["dependencies"]["agentSops"]["agentSopNames"]
+    assert "spawn `k-architect` once" in spec["config"]["systemPrompt"]
 
 
 ROUTING_SENTENCE = "route it to that specialist instead of doing it yourself"
