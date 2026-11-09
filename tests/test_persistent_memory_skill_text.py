@@ -88,7 +88,15 @@ def test_write_fence_takes_its_target_from_a_variable():
     writing_text = " ".join(writing.split())
     assert "in one shell call" in writing_text, writing_text
     assert "`--clear`" in writing_text, writing_text
+    assert "`--clear <target>`" not in writing_text, writing_text
     assert "replaces the file with an empty one and exits 0" not in writing_text
+
+
+def test_removing_the_last_entry_names_the_clear_flag():
+    """Deleting the only entry pipes empty content, which the validator
+    refuses without `--clear`; the Remove an entry step should say so."""
+    remove = RAW.split("### Remove an entry")[1].split("### ")[0]
+    assert "`--clear`" in remove, remove
 
 
 def test_gitignore_bootstrap_targets_the_git_root():

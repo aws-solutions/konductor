@@ -83,8 +83,11 @@ fi
 PROPOSED="$(cat)"
 # Empty input over a file with entries is almost always an unset variable, not a
 # decision to clear the file. Refuse before anything is created or replaced.
+# The emptiness test stays in-process: piping $PROPOSED into grep -q under
+# pipefail kills printf with SIGPIPE once the content outgrows the pipe buffer,
+# and the negated pipeline then calls a valid write empty.
 if [[ "$CLEAR" == 0 && -f "$TARGET" ]] &&
-   ! printf '%s\n' "$PROPOSED" | grep -q '[^[:space:]]' &&
+   ! [[ "$PROPOSED" =~ [^[:space:]] ]] &&
    grep -q '[^[:space:]]' "$TARGET"; then
   echo "REJECT: proposed content is empty but $TARGET has entries; pass --clear to empty it deliberately" >&2
   exit 1

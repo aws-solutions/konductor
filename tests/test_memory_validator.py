@@ -920,6 +920,28 @@ def test_empty_input_with_clear_empties_the_file(tmp_path):
     assert memory.read_text() == ""
 
 
+def test_large_multi_line_content_over_existing_entries_is_written(tmp_path):
+    """The emptiness test must not pipe the content into `grep -q`: once the
+    content outgrows the pipe buffer, grep exits on the first line, printf
+    dies with SIGPIPE under pipefail, and the negated pipeline refuses a
+    valid write as empty."""
+    memory = _seed_memory(tmp_path)
+    _write_raw_config(
+        tmp_path / ".konductor" / "memory-config.json",
+        json.dumps({"limits": {"memory_max_chars": 200_000}}),
+    )
+    padding = "x" * 440
+    proposed = ENTRY + "".join(
+        f"- [2026-10-30] [origin:agent] Fact {n} about the project {padding}\n" for n in range(140)
+    )
+    assert len(proposed.encode()) > 65_536
+
+    result = run_validator(proposed, Path(_relative_memory_target()), cwd=tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert "proposed content is empty" not in result.stderr
+    assert memory.read_text() == proposed.rstrip("\n")
+
+
 def test_empty_input_to_a_missing_target_is_allowed(tmp_path):
     _commit_initial(tmp_path)
 

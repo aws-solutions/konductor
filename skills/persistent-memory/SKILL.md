@@ -78,7 +78,7 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 
    A repo is searched only if it has `.konductor/manifest` or a `.claude-plugin/marketplace.json` that names `konductor`.
 
-   The validator writes only to `<root>/.konductor/memory/MEMORY.md` or `USER.md` as a regular file. It exits 1 if `.konductor`, `.konductor/memory`, or the target is a symlink, if the target exists but is not a regular file, or if the target resolves anywhere else. `--check-path <target>` runs only those checks, for reads: it reads no stdin and creates nothing. It also exits 1 when the proposed content is empty and the target still has entries, unless `--clear <target>` is passed to empty the file deliberately. Do not work around that; report it.
+   The validator writes only to `<root>/.konductor/memory/MEMORY.md` or `USER.md` as a regular file. It exits 1 if `.konductor`, `.konductor/memory`, or the target is a symlink, if the target exists but is not a regular file, or if the target resolves anywhere else. `--check-path <target>` runs only those checks, for reads: it reads no stdin and creates nothing. It also exits 1 when the proposed content is empty and the target still has entries, unless `--clear` is passed before the target to empty the file deliberately. Do not work around that; report it.
 
 4. **Exit 0** → write succeeded (validator performs atomic write).
 5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable.
@@ -95,7 +95,7 @@ Checked re-read (step 1) → replace the matching bullet line in place → pipe 
 
 ### Remove an entry
 
-Checked re-read (step 1) → delete the matching bullet line → pipe full content through validator.
+Checked re-read (step 1) → delete the matching bullet line → pipe full content through validator. Deleting the last entry leaves the content empty, so that write needs `--clear`.
 
 ### First-session bootstrap
 
