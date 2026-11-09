@@ -1,6 +1,6 @@
 # CREATE workflow: Steps 4-10
 
-Read this when a new estimate's context is gathered and confirmed (CREATE Step 3 in `references/create-context.md`). It runs from the first pricing calls through the final report. Steps 1-3 are in `references/create-context.md`; the REVIEW workflow is in `references/review-workflow.md`; the Quality Gate is in `SKILL.md`.
+Read this when a new estimate's context is gathered and confirmed (CREATE Step 3 in `references/create-context.md`). It runs from the first pricing calls through the final report. Steps 1-3 are in `references/create-context.md`; the REVIEW workflow is in `references/review-workflow.md`; after Step 10, apply the Quality Gate in `SKILL.md`.
 
 ## Step 4: AWS Pricing Research (FIRST MCP calls)
 
