@@ -367,7 +367,7 @@ konductor doctor
 ```
 
 - The value must be exactly `auto` or `coordinator`, in `~/.konductor/config.yml`. A project
-  `.konductor/config.yml` value is ignored; `doctor` reports it as `info`.
+  `.konductor/config.yml` value is ignored; `doctor` reports it.
 - Installed as the Claude Code plugin? The plugin does not wire the hook, so coordinator mode is not available there. `konductor doctor` and `konductor update` apply to CLI installs only.
 - A missing hook or rules file: run `konductor update`.
 - `doctor` passes but the line still does not arrive: check that the session runs the `konductor`

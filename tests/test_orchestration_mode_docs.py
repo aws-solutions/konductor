@@ -2,11 +2,13 @@
 """Docs qualify 'konductor edits files itself' by orchestration mode and state
 the hook-location rule in one place (cli/README.md)."""
 
+import importlib.util
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GUIDE = ROOT / "docs" / "user-guide"
+BUNDLES = [ROOT / "docs" / "index.html", ROOT / "docs" / "site" / "user-guide.html"]
 CLAUSE = "In `coordinator` mode it hands every change to a specialist"
 OWNER_SENTENCE = (
     "The hook acts only for the install that wired it: it looks for the nearest install that owns"
@@ -139,3 +141,25 @@ def test_owner_bullet_describes_out_of_trust_install_as_fallback():
     assert "treated as content" not in text
     assert "an install outside the locations above" in text
     assert "the working directory itself or a git checkout root that contains it" in text
+
+
+def _html_edit_results():
+    script = ROOT / "tools" / "build-user-guide" / "sync-html-content.py"
+    spec = importlib.util.spec_from_file_location("sync_html_content", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return [new for _, _, new in module.EDITS + module.ROSTER + module.SOP_EDITS]
+
+
+def test_doctor_reports_the_ignored_project_value_by_status_not_always_info():
+    """doctor reports an ignored project mode value as warn when it differs
+    from the mode in effect and info when it matches; no doc says always info."""
+    readme = _flat(ROOT / "cli" / "README.md")
+    assert "reports it: `warn` when it differs from the mode in effect, `info` when it matches" in readme
+    assert "reports it as `info`" not in readme
+    troubleshooting = _flat(GUIDE / "troubleshooting.md")
+    assert "value is ignored; `doctor` reports it." in troubleshooting
+    assert "reports it as `info`" not in troubleshooting
+    assert [new for new in _html_edit_results() if "doctor reports it as info" in new] == []
+    for bundle in BUNDLES:
+        assert "doctor reports it as info" not in bundle.read_text(), bundle.name

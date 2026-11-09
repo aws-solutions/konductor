@@ -1005,7 +1005,8 @@ orchestration:
 ```
 
 - Only `~/.konductor/config.yml` is read. A project `.konductor/config.yml` value is ignored, and
-  the `doctor` `orchestration` check reports it as `info`.
+  the `doctor` `orchestration` check reports it: `warn` when it differs from the mode in effect,
+  `info` when it matches.
 - `config set` does not set this key. It writes the project layer, and it keeps an existing
   `orchestration:` section in that file intact.
 - The value is exactly `auto` or `coordinator`. A change applies from the next session, with no
