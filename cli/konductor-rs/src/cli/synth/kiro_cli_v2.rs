@@ -258,8 +258,8 @@ const SPECIALIST_BUILTIN_TOOLS: [&str; 13] = [
 
 /// kiro-cli versions whose v2 engine listed exactly `SPECIALIST_BUILTIN_TOOLS`
 /// plus `subagent` under `/tools`. Re-probe on a release that changes the
-/// built-ins; the docs quote this list (tests/test_spawn_docs_text.py).
-#[allow(dead_code)] // read by the docs pin test, not by synth
+/// built-ins; the docs quote this list (tests/test_spawn_docs_text.py) and
+/// the Kiro CLI v2 install summary prints it (`install::checked_kiro_versions_line`).
 pub(crate) const SPECIALIST_BUILTIN_TOOLS_CHECKED_WITH: [&str; 2] = ["2.36.0", "3.0.0"];
 
 /// Drops every spawn-tool alias and expands `@builtin` to
