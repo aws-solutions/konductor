@@ -53,7 +53,7 @@ Optional answers sharpen the review: compliance requirements (SOC 2, HIPAA, PCI-
 
 Validate infrastructure code across these 10 categories:
 
-### CATEGORY 1: SECURITY CONFIGURATION (CRITICAL)
+### CATEGORY 1: SECURITY CONFIGURATION
 
 Check for:
 
@@ -79,7 +79,7 @@ Check for:
 9. Validate CloudTrail is enabled for audit logging
 10. Verify VPC endpoints used for AWS service access where appropriate
 
-### CATEGORY 2: COST OPTIMIZATION (SUGGESTION)
+### CATEGORY 2: COST OPTIMIZATION
 
 Check for:
 
@@ -104,7 +104,7 @@ Check for:
 9. Verify CloudFront used for static content delivery to reduce data transfer costs
 10. Identify opportunities for S3 Intelligent-Tiering for unpredictable access patterns
 
-### CATEGORY 3: OPERATIONAL EXCELLENCE (IMPORTANT)
+### CATEGORY 3: OPERATIONAL EXCELLENCE
 
 Check for:
 
@@ -130,7 +130,7 @@ Check for:
 9. Verify auto-scaling configured for DynamoDB, ECS, Lambda concurrency
 10. Check resource tagging includes Environment, Application, Owner, CostCenter
 
-### CATEGORY 4: RELIABILITY & RESILIENCE (IMPORTANT)
+### CATEGORY 4: RELIABILITY & RESILIENCE
 
 Check for:
 
@@ -155,7 +155,7 @@ Check for:
 9. Verify SQS queues have dead letter queues configured
 10. Check for single points of failure (single NAT Gateway, single database)
 
-### CATEGORY 5: PERFORMANCE OPTIMIZATION (SUGGESTION)
+### CATEGORY 5: PERFORMANCE OPTIMIZATION
 
 Check for:
 
@@ -179,7 +179,7 @@ Check for:
 9. Verify CloudFront compression enabled for text-based content
 10. Check Lambda functions use ARM64 (Graviton) for cost and performance benefits
 
-### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES (SUGGESTION)
+### CATEGORY 6: CDK/CLOUDFORMATION BEST PRACTICES
 
 Check for:
 
@@ -205,7 +205,7 @@ Check for:
 9. Validate license headers present in all source files
 10. Verify unit tests exist for custom constructs
 
-### CATEGORY 7: COMPLIANCE & GOVERNANCE (CRITICAL)
+### CATEGORY 7: COMPLIANCE & GOVERNANCE
 
 Check for:
 
@@ -230,7 +230,7 @@ Check for:
 9. Validate backup retention meets compliance requirements
 10. Verify encryption algorithms meet organizational standards
 
-### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS (IMPORTANT)
+### CATEGORY 8: INFRASTRUCTURE ANTI-PATTERNS
 
 Check for:
 
@@ -256,7 +256,7 @@ Check for:
 9. Detect missing retry logic for external service calls
 10. Identify missing dead letter queues for asynchronous processing
 
-### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION (IMPORTANT)
+### CATEGORY 9: RESOURCE-SPECIFIC VALIDATION
 
 #### Lambda Functions
 
@@ -299,7 +299,7 @@ Check for:
 - **Request Validation**: Request validation enabled
 - **WAF Integration**: WAF attached for security
 
-### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT (SUGGESTION)
+### CATEGORY 10: DEPLOYMENT & LIFECYCLE MANAGEMENT
 
 Check for:
 
@@ -391,10 +391,10 @@ Check EVERY IAM policy statement for:
 
 2. **Wildcard Actions** - Flag as CRITICAL
    - Search for: `"Action": "*"` or `actions: ["*"]`
-   - Search for: `"Action": "service:*"` (e.g., `"s3:*"`)
+   - Search for: `"Action": "service:*"` on a data or credential service, for example `"s3:*"`
 
 3. **Overly Permissive Actions** - Flag as IMPORTANT
-   - `dynamodb:*`, `s3:*`, `lambda:*`, `cognito-idp:*`
+   - A list of named actions broader than the code needs, with no wildcard. For example, a read-only Lambda granted `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject`
    - Should specify exact actions needed
 
 4. **Cross-Account Access** - Flag as IMPORTANT
@@ -768,16 +768,16 @@ AWS::CloudWatch::Alarm          |   10  | ✓ Coverage Check
 
 Before finalizing report, verify you checked:
 
-**Security (CRITICAL)**:
+**Security**:
 
 - [ ] ALL IAM policies for wildcard resources (`"Resource": "*"`)
-- [ ] ALL IAM policies for wildcard actions (`"Action": "*"`)
+- [ ] ALL IAM policies for wildcard actions (`"Action": "*"` or `"service:*"`)
 - [ ] ALL RDS and EBS resources for encryption at rest, and S3 and DynamoDB for SSE-KMS where the data requires it
 - [ ] ALL S3 buckets for public access block
 - [ ] ALL network resources for TLS/SSL configuration
 - [ ] ALL resources for hardcoded secrets
 
-**Operational (IMPORTANT)**:
+**Operational**:
 
 - [ ] ALL Lambda functions for DLQ configuration
 - [ ] ALL Lambda functions for CloudWatch alarms
@@ -787,14 +787,14 @@ Before finalizing report, verify you checked:
 - [ ] ALL S3 buckets for access logging
 - [ ] ALL CloudFront distributions for logging
 
-**Cost (SUGGESTION)**:
+**Cost**:
 
 - [ ] ALL Lambda functions for memory/timeout optimization
 - [ ] ALL DynamoDB tables for GSI optimization
 - [ ] ALL S3 buckets for lifecycle policies
 - [ ] ALL resources for appropriate billing modes
 
-**Reliability (IMPORTANT)**:
+**Reliability**:
 
 - [ ] ALL stateful resources for backup configuration
 - [ ] ALL Lambda functions for retry configuration
@@ -1163,7 +1163,7 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 - Security groups with `0.0.0.0/0` ingress on non-HTTP ports
 - No deletion protection on stateful resources (RDS, DynamoDB)
 - Hardcoded passwords, keys or tokens in code or environment variables
-- IAM statements with wildcard actions or resources
+- IAM statements with wildcard actions (`*`, or `service:*` on a data or credential service such as `s3:*`) or wildcard resources
 
 **IMPORTANT (should fix):**
 
