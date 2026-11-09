@@ -10,6 +10,7 @@ const path = require('node:path');
 const { planRuns, existingResults } = require('../lib/orchestrate.js');
 const { replicateOffsetOpt } = require('../lib/run-cmd.js');
 const { parseArgs } = require('../bench.js');
+const { checkArgs } = require('../lib/cli-flags.js');
 const { mkScratch } = require('./scratch.js');
 
 const tasks = [{ id: 't1' }, { id: 't2' }];
@@ -55,4 +56,9 @@ test('existingResults counts only planned cells that already hold a result.json'
   assert.equal(existingResults(planRuns(tasks, arms, 2, 1), out).length, 2);
   assert.equal(existingResults(planRuns(tasks, arms, 2, 1, 2), out).length, 1);
   assert.equal(existingResults(planRuns(tasks, arms, 2, 1, 10), out).length, 0);
+});
+
+test('run accepts --replicate-offset with a value and still rejects an unknown flag', () => {
+  assert.equal(checkArgs('run', parseArgs(['--replicate-offset', '2'])), null);
+  assert.match(checkArgs('run', parseArgs(['--replicate-offsets', '2'])), /unknown flag --replicate-offsets/);
 });
