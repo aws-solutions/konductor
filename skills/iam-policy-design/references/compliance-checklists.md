@@ -73,10 +73,10 @@ One filled framework block for the `policy-validation` report. Mark each control
 ```markdown
 ### HIPAA Compliance
 
-- PHI encryption with KMS
-- PHI found in CloudWatch Logs (violation)
-- BAA signed with AWS
-- Missing audit log retention policy
+- PHI encryption: compliant (KMS customer managed key)
+- PHI in logs: violated - PHI found in CloudWatch Logs
+- BAA: compliant (signed with AWS)
+- Audit log retention: partial - no 6-year retention set
 
 **Remediation Priority**: Critical
 **Estimated Effort**: 4-8 hours
