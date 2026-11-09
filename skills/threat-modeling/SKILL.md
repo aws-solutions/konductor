@@ -49,7 +49,7 @@ When the request covers a change to an existing design, model only what the chan
 
 ## Context Management
 
-The design documents and reference models can be large. Summarize each document as you read it and work from the summaries.
+The design documents and reference models can be large. Process at most 2-3 large documents per batch, reference models included. Summarize each document as you read it and work from the summaries. Build the final document section by section. If context runs short, continue with the information you have and list what was left out.
 
 ## Required Parameters
 
@@ -94,14 +94,12 @@ Define clear scope boundaries with user:
 
 ### Step 2: Gather and Analyze Design Documents
 
-Process design documents in batches:
+Process design documents in batches, following Context Management above:
 
 **Document Processing**:
 
 - Categorize documents by type (architecture, API specs, security reviews)
-- Process in batches of 2-3 documents maximum
 - Extract scope-relevant information
-- Summarize each document as you read it and work from the summaries
 - Identify gaps and inconsistencies between documents
 - Ask clarifying questions for ambiguous information
 - Consolidate summaries into unified architecture view
@@ -123,7 +121,7 @@ Collect essential service information within defined scope:
 Use the Threat Model Template below unless the user gave a `template_url`:
 
 - Extract required sections and structure from the template
-- Process reference models in batches (max 2 per batch), summarizing each as you read it
+- Process reference models in batches, following Context Management above
 - Identify applicable patterns and approaches
 - Consolidate template guidance for threat model generation
 
@@ -246,10 +244,6 @@ Default sections for the final document:
 **Threat Identification**: Review STRIDE methodology, consider components separately, reference similar service models
 
 **Mitigation Mapping**: Start with highest priority threats, use AWS standard controls, look for patterns in reference models
-
-## Context Limits
-
-Process at most 2-3 large documents per batch and build the final document section by section. If context runs short, continue with the information you have and list what was left out.
 
 ## Quality Gate
 

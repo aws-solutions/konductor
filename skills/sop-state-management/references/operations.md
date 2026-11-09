@@ -1,6 +1,6 @@
 # Operations
 
-Read this when implementing a specific operation. The Overview, Session Object, Identity Signature, Write Safety and Quality Gate sections it points to are in `SKILL.md`.
+Read this before performing any operation below. The Overview, Session Object, Identity Signature, Write Safety and Quality Gate sections it points to are in `SKILL.md`.
 
 ### Operation: Compute Identity Signature
 

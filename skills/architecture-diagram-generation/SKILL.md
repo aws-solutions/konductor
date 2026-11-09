@@ -42,13 +42,15 @@ The XML must be a valid draw.io `mxGraphModel`, so the file opens without errors
 
 **Regional Services** (inside region, outside VPC):
 
-- S3, DynamoDB, Lambda, API Gateway, Cognito, WAF web ACLs with regional scope (for example on an ALB or API Gateway)
+- S3, DynamoDB, Lambda (without VPC config), API Gateway, Cognito, WAF web ACLs with regional scope (for example on an ALB or API Gateway)
 
 S3 bucket names are global, but each bucket lives in one region, so draw it in that region.
 
 **VPC Services** (inside VPC):
 
 - EC2, RDS, ECS, ALB, NAT Gateway
+
+A Lambda function with VPC config (`VpcConfig` subnets) goes in its subnets. Other Lambda functions stay regional.
 
 ### 3. Connection and Data Flow Standards
 
@@ -142,7 +144,7 @@ Open `references/drawio-templates.md` (relative to this file) now, before writin
 - [ ] All AWS services use official icons
 - [ ] Service scope is correctly represented (global/regional/VPC)
 - [ ] Global services (IAM, CloudFront, Route 53, CloudFront-scoped WAF) are inside the account but outside any region and VPC
-- [ ] Regional services (S3, DynamoDB, Lambda, API Gateway) are inside their region but outside VPC
+- [ ] Regional services (S3, DynamoDB, non-VPC Lambda, API Gateway) are inside their region but outside VPC
 - [ ] VPC services (EC2, RDS, ECS) are properly contained within VPC boundaries
 - [ ] Data flow arrows show correct direction
 - [ ] Return traffic is indicated with dashed/intermittent arrows
@@ -162,7 +164,7 @@ Open `references/drawio-templates.md` (relative to this file) now, before writin
 
 ### 1. Common Mistakes to Avoid
 
-- Placing global or regional services (such as CloudFront, S3 or DynamoDB) inside VPC boundaries
+- Placing services that cannot attach to a VPC (such as CloudFront, Route 53, S3 or DynamoDB) inside VPC boundaries
 - Incorrect arrow directions for data flow
 - Missing return traffic indicators
 - Overcomplicated connection lines

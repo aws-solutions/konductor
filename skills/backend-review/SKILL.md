@@ -89,13 +89,13 @@ Rank by impact on users and data, not by which checklist section a finding came 
 **CRITICAL (blocks approval):**
 
 - Injection, or a missing auth check that lets an unauthenticated caller change data
+- Direct database call that bypasses a repository layer the codebase already uses
 - Race condition risk (non-atomic multi-item update without transaction)
 - Missing null check before non-null assertion that will throw at runtime
 - Test passes only due to test order dependency
 
 **IMPORTANT (should fix):**
 
-- Direct database call that bypasses a repository layer the codebase already uses
 - Code that contradicts a documented business rule (unless it corrupts data, then CRITICAL)
 - `any` type in production code
 - Extra query when write return value could be used

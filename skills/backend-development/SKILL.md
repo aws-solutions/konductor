@@ -95,6 +95,7 @@ End with a final message that covers each changed file:
 
 **CRITICAL (must fix before done):**
 
+- Direct database call that bypasses a repository layer the codebase already uses
 - TypeScript compilation fails
 - Tests fail
 - Breaking change introduced without migration path
@@ -102,7 +103,6 @@ End with a final message that covers each changed file:
 
 **IMPORTANT (should fix):**
 
-- Direct database call that bypasses a repository layer the codebase already uses
 - `any` type used in production code
 - Missing null check before non-null assertion
 - Extra query when return value from write operation could be used

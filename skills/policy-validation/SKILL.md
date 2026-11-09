@@ -283,7 +283,7 @@ Check for:
 - Missing compliance validation checklists
 - Insufficient compliance evidence
 
-When the user names a compliance framework, open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory. If it is not there, use these minimums and say in the report that the full checklist was unavailable:
+When the user or the design under review names a compliance framework, open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory. If it is not there, use these minimums and say in the report that the full checklist was unavailable:
 
 - **GDPR**: encryption at rest and in transit (Article 32), deletion through lifecycle rules or TTL (Article 17), EU-region residency
 - **HIPAA**: PHI encrypted with customer-managed KMS keys (§164.312(a)(2)(iv)), audit controls (§164.308(a)(1)(ii)(D)), MFA for PHI access, no PHI in logs, a signed BAA
@@ -693,7 +693,7 @@ Generate output in this format:
 **Estimated Effort**: [hours]
 **Regulatory Citations**: [Citation (requirement)]
 
-[Repeat for each framework in scope. A filled example is in `compliance-checklists.md`.]
+[Repeat for each framework in scope. A filled example is in `iam-policy-design/references/compliance-checklists.md`.]
 
 ## Iteration Progress (if applicable)
 
@@ -807,18 +807,18 @@ Generate output in this format:
 
 ### Iteration Priority Matrix
 
-| Finding ID | Priority   | Effort | Points | ROI (Points/Hour) | Recommended Iteration |
-| ---------- | ---------- | ------ | ------ | ----------------- | --------------------- |
-| [ID]       | CRITICAL   | [X]h   | +[Y]   | [Z]               | Iteration 1           |
-| [ID]       | IMPORTANT  | [X]h   | +[Y]   | [Z]               | Iteration 1           |
-| [ID]       | SUGGESTION | [X]h   | +[Y]   | [Z]               | Iteration 2 or later  |
+| Finding ID | Priority   | Effort | Points | ROI (Points/Hour) | Recommended Iteration        |
+| ---------- | ---------- | ------ | ------ | ----------------- | ---------------------------- |
+| [ID]       | CRITICAL   | [X]h   | +[Y]   | [Z]               | Iteration 1                  |
+| [ID]       | IMPORTANT  | [X]h   | +[Y]   | [Z]               | Iteration 1 (ROI > 2.0) or 2 |
+| [ID]       | SUGGESTION | [X]h   | +[Y]   | [Z]               | Iteration 2 or later         |
 
 **ROI Calculation**: Points gained ÷ Hours of effort = Points per hour
 
 **Iteration Strategy**:
 
 - **Iteration 1** (Before Production): Fix all CRITICAL findings, and IMPORTANT findings with ROI > 2.0
-- **Iteration 2** (Post-Launch): Fix SUGGESTION findings with ROI > 1.0
+- **Iteration 2** (Post-Launch): Fix the remaining IMPORTANT findings, and SUGGESTION findings with ROI > 1.0
 - **Optional**: Fix the remaining SUGGESTION findings when time permits
 ```
 

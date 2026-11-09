@@ -84,6 +84,10 @@ Use either a `///` doc comment or a `@documentation` trait on a shape, not both:
 `operations.smithy` holds operations and their HTTP traits:
 
 ```smithy
+$version: "2"
+
+namespace com.example.todo
+
 /// Retrieves a specific todo item
 @http(method: "GET", uri: "/todos/{todoId}")
 @readonly

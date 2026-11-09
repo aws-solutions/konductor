@@ -1,6 +1,6 @@
 ---
 name: design-evaluation
-description: Evaluates complete design packages for production readiness across 10 dimensions. Use as the final quality gate before a design goes to implementation, or when a design SOP asks for 10-dimension scores. Lists missing artifacts (system design, threat model, API specs, data models, diagrams, IAM policies) before scoring.
+description: Evaluates complete design packages for production readiness across 10 dimensions, 8 of them scored. Use as the final quality gate before a design goes to implementation, or when a design SOP asks for design-evaluation scores. Lists missing artifacts (system design, threat model, API specs, data models, diagrams, IAM policies) before scoring.
 version: 1.0.0
 tags:
   [
@@ -17,7 +17,7 @@ tags:
 
 ## Overview
 
-Acts as a senior design reviewer to evaluate technical designs across the ten dimensions in Step 1 below: template adherence, high-level assessment, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, testability & automation readiness (including CI/CD readiness), and actionable recommendations. Produces scope-tailored feedback (small/medium/large projects).
+Acts as a senior design reviewer to evaluate technical designs across the ten dimensions in Step 1 below. Eight are scored: template adherence, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, and testability & automation readiness (including CI/CD readiness). The other two, high-level assessment and actionable recommendations, are report sections. Produces scope-tailored feedback (small/medium/large projects).
 
 ## Usage
 
@@ -31,7 +31,7 @@ Use this skill when:
 
 ### 10 Evaluation Dimensions
 
-Template adherence, high-level assessment, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, testability & automation readiness (including CI/CD readiness), and actionable recommendations. These are the ten numbered items in Step 1 below, each scored 1 to 5.
+Template adherence, high-level assessment, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, testability & automation readiness (including CI/CD readiness), and actionable recommendations. These are the ten numbered items in Step 1 below. Eight are scored 1 to 5. High-level assessment (#2) and actionable recommendations (#10) are unscored report sections.
 
 ### Scope-Tailored Feedback
 
@@ -42,21 +42,24 @@ Small projects (1-2 services) get focused feedback on core patterns. Medium proj
 ### Inputs
 
 - **Design package**: the documents to evaluate. Load every artifact you are given.
+- **Package scope** (optional): `full-package` (default) or `single-document`. Use `single-document` when the design doc is the whole input, as in a pre-review of one doc.
 - **Project scope**: small, medium or large. If the caller doesn't say, infer it from the service count in Scope-Tailored Feedback and state the inference.
 - **Templates** (optional): design templates to compare against. Without one, use the section structure in `design-doc-guidelines`. Treat templates as references, not strict requirements.
 
 ### Step 0: Check the package
 
-List which of these artifacts are missing: system design, threat model, API specs, data models, architecture diagrams, IAM policies. Then:
+With `single-document`, skip this step. The doc is the package, and each dimension is scored on what the doc itself says.
+
+With `full-package`, list which of these artifacts are missing: system design, threat model, API specs, data models, architecture diagrams, IAM policies. Then:
 
 - When invoked standalone, show the list and ask whether to score what is present or wait for the rest. Don't score until the user answers.
 - When invoked from a SOP, or `scope_confirmed` is true, don't ask. Mark each missing artifact "not provided" in the report and score what is present.
 
-A dimension that depends on a missing artifact (security without a threat model, for example) gets its score capped at 3, with the gap named as a finding.
+A dimension that depends on a missing artifact (security without a threat model, for example) gets its score capped at 3. Report missing artifacts in a separate "Not provided" list, not as findings. They carry no CRITICAL, IMPORTANT or SUGGESTION severity and don't count toward any finding gate, because revising the design can't supply them.
 
-### Step 1: Score the 10 dimensions
+### Step 1: Evaluate the 10 dimensions
 
-Score each dimension from 1 to 5 and list its findings. Tailor the depth to the project scope:
+Score each dimension from 1 to 5 and list its findings, except #2 and #10. Those two are report sections: write them, but give them no score. Any average of design-evaluation scores, such as a SOP's confidence score, covers only the eight scored dimensions. Tailor the depth to the project scope:
 
 - **Small:** prioritize simplicity and maintainability, and flag over-engineering.
 - **Medium:** balance scalability, security and performance while keeping services modular.
@@ -65,7 +68,7 @@ Score each dimension from 1 to 5 and list its findings. Tailor the depth to the 
 Evaluate only what applies to this design. When a section is absent, say whether the omission is reasonable for the scope. When a template asks for a feature this scope doesn't need, say why, and note when it might be needed later.
 
 1. **Template adherence:** does the design follow the relevant template sections? Justify each deviation against the scope, and flag a missing section only if this project needs it.
-2. **High-level assessment:** summarize strengths and weaknesses and judge overall technical soundness.
+2. **High-level assessment** (report section, not scored): summarize strengths and weaknesses and judge overall technical soundness.
 3. **Scalability** (if relevant): can the system handle growth in traffic and data, and what does it cost at target load? Name bottlenecks and the patterns that fix them (load balancing, caching, sharding).
 4. **Performance** (if relevant): latency issues, inefficient queries, resource limits, and access patterns the data model can't serve. Suggest optimizations such as indexing, caching or async processing.
 5. **Security** (if relevant): vulnerabilities in APIs and data protection, and threats left unmitigated. Recommend controls such as authentication, encryption and rate limiting.
@@ -73,7 +76,7 @@ Evaluate only what applies to this design. When a section is absent, say whether
 7. **Failure handling and resilience** (if relevant): fault tolerance, redundancy, recovery, runbooks, high availability and disaster recovery.
 8. **Code and implementation quality:** architectural anti-patterns and inefficiencies, with fixes.
 9. **Testability and automation readiness:** ease of unit, integration and end-to-end testing; obstacles to mocking, stubbing and fault injection; CI/CD readiness; structured logging, metrics, traces and monitoring.
-10. **Actionable recommendations:** concrete steps to improve the design, aligned with published industry practice, with architecture patterns and examples where they help.
+10. **Actionable recommendations** (report section, not scored): concrete steps to improve the design, aligned with published industry practice, with architecture patterns and examples where they help.
 
 ### Step 2: Report
 

@@ -104,6 +104,7 @@ Two epics in the expected structure:
 - Multiple locale selections are supported
 - Filter state is maintained when navigating away and back
 - Clear filter option is available
+- If the locale list fails to load, the dropdown shows an error and a retry option
 </acceptance_criteria>
 </story>
 <story>
@@ -115,7 +116,19 @@ Two epics in the expected structure:
 - Multiple status selections are supported
 - Assets with any matching status are displayed
 - Filter state is maintained when navigating away and back
-- Clear filter option is available
+- A filter combination with no matching assets shows an empty-state message instead of a blank grid
+</acceptance_criteria>
+</story>
+<story>
+<title>Shared Saved Filters</title>
+<description>As a content manager, I want to save a filter combination and share it with my team so that everyone reviews the same set of assets.</description>
+<acceptance_criteria>
+- The current filter combination can be saved under a name
+- Saved filters appear in a list for the user and the team members it was shared with
+- Applying a saved filter sets every filter it contains
+- The owner can rename or delete a saved filter
+- Saving a filter under a name that already exists asks the user to rename it or overwrite the old one
+- A shared filter that refers to a locale that no longer exists applies the remaining filters and says which one was skipped
 </acceptance_criteria>
 </story>
 </stories>
@@ -142,7 +155,7 @@ Two epics in the expected structure:
 - Asset metadata is displayed
 - Current position in queue is indicated (e.g., "3 of 10")
 - Navigation controls allow moving forward/backward in the queue
-- Loading states are handled gracefully
+- An asset that fails to load shows an error in its place, and the reviewer can skip to the next one
 </acceptance_criteria>
 </story>
 <story>
@@ -154,6 +167,18 @@ Two epics in the expected structure:
 - Status changes are saved immediately
 - Status updates are reflected in the main asset list
 - Confirmation for status changes is provided
+- If a status change fails to save, the previous status is restored and an error message says the change was not saved
+</acceptance_criteria>
+</story>
+<story>
+<title>Review Notes Capture</title>
+<description>As a quality analyst, I want to add notes to an asset during review so that the content team knows why it was rejected.</description>
+<acceptance_criteria>
+- A notes field is available in the review modal for the current asset
+- Saved notes appear in the asset details with the author and a timestamp
+- Rejecting an asset requires a note
+- A note over 2,000 characters is blocked with a message that states the limit
+- Leaving an asset with an unsaved note asks for confirmation first
 </acceptance_criteria>
 </story>
 </stories>

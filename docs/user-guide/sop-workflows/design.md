@@ -84,11 +84,10 @@ flowchart TD
 
     subgraph P3["Phase 3 — Quality gates (no user interaction)"]
         direction TB
-        Q1["doc-accuracy-analyzer<br/>verify claims vs primary sources<br/>route AWS claims to aws-service-validator<br/>flag INCORRECT / UNVERIFIED inline"]
-        Q2["aws-service-validator<br/>check every AWS claim via aws-mcp<br/>CONFIRMED / UNVERIFIED / INCORRECT<br/>report → docs/design/&lt;name&gt;-aws-validation.md"]
-        Q3["trade-off-evaluator<br/>score 1–5: cost, latency, complexity,<br/>scalability, operability<br/>report → docs/design/&lt;name&gt;-tradeoffs.md"]
-        Q4["adr-generator<br/>verify Phase 2 ADRs are embedded<br/>enrich only — do not regenerate"]
-        Q1 --> Q2 --> Q3 --> Q4
+        Q1["doc-accuracy-analyzer<br/>verify claims vs primary sources<br/>route AWS claims to aws-service-validator (aws-mcp)<br/>flag INCORRECT / OVERSTATED / UNVERIFIED inline<br/>AWS report → docs/design/&lt;name&gt;-aws-validation.md"]
+        Q2["trade-off-evaluator<br/>score 1–5: cost, latency, complexity,<br/>scalability, operability<br/>report → docs/design/&lt;name&gt;-tradeoffs.md"]
+        Q3["adr-generator<br/>verify Phase 2 ADRs are embedded<br/>enrich only — do not regenerate"]
+        Q1 --> Q2 --> Q3
     end
 
     P3 --> P4Start{"Adversarial-review<br/>subagent available?"}
@@ -108,7 +107,7 @@ flowchart TD
     Halt --> P5
     Manual --> P5
 
-    P5["Phase 5 — Final output<br/>apply all Phase 3+4 corrections<br/>design-evaluation confidence score<br/>= average of 10 dimensions (1–5 each)<br/>write to output_path<br/>reference the path, never inline the doc"]
+    P5["Phase 5 — Final output<br/>apply all Phase 3+4 corrections<br/>design-evaluation confidence score<br/>= average of the 8 scored dimensions (1 to 5 each)<br/>write to output_path<br/>reference the path, never inline the doc"]
 
     class Ask gate
     class Halt stop
@@ -130,7 +129,7 @@ hold:
 | Check | Threshold |
 | --- | --- |
 | `design-doc-guidelines` maker-checker | 0 CRITICAL findings |
-| `doc-accuracy-analyzer` | 0 INCORRECT findings, each corrected in the text (UNVERIFIED is acceptable with callouts) |
+| `doc-accuracy-analyzer` | 0 INCORRECT findings, each corrected in the text, and every OVERSTATED finding corrected or flagged (UNVERIFIED is acceptable with callouts) |
 | Adversarial review | 0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION |
 | `design-evaluation` confidence score | ≥ 3.0 average across all sections |
 
@@ -152,8 +151,8 @@ and a one-line note on remaining open issues.
 
 - **Phase 3 never asks you anything.** It is fully automated by design.
 - **Unverified claims do not block.** Both `doc-accuracy-analyzer` and `aws-service-validator`
-  mark UNVERIFIED claims with a `> ⚠️` callout and proceed. Only INCORRECT findings are treated
-  as blocking.
+  mark UNVERIFIED claims with a `> ⚠️` callout and proceed. INCORRECT findings block until the
+  text is corrected, and OVERSTATED findings block until they are corrected or flagged.
 - **Findings are never silently dropped.** Every Phase 4 finding must either be fixed or
   explicitly recorded as "engineer override".
 - **Diagrams come before prose.** Phase 2 requires generating the Mermaid diagram for each major
@@ -216,7 +215,7 @@ flowchart TD
     G1 -->|No| Halt["Do not proceed"]
     G1 -->|Yes| S3["3. Read all artifacts<br/>order: system design → threat model →<br/>API specs → data models →<br/>security policies → diagrams<br/>missing optional ones noted as 'not provided'"]
 
-    S3 --> S4["4. Run design-evaluation skill<br/>score all 10 dimensions 1–5<br/>flag any dimension below 3<br/>classify CRITICAL / IMPORTANT / SUGGESTION"]
+    S3 --> S4["4. Run design-evaluation skill<br/>score the 8 scored dimensions 1 to 5<br/>flag any dimension below 3<br/>classify CRITICAL / IMPORTANT / SUGGESTION"]
     S4 --> S5["5. Write report to output_file<br/>never print its contents inline"]
     S5 --> S6["6. Present recommendation<br/>READY FOR IMPLEMENTATION / NOT READY"]
 
@@ -248,11 +247,11 @@ flowchart TD
 
 ### The 10 dimensions
 
-The SOP scores the 10 dimensions defined in `design-evaluation` Step 1, each 1 to 5: template
-adherence, high-level assessment, scalability (including cost), performance, security,
-maintainability and extensibility, failure handling and resilience, code and implementation
-quality, testability and automation readiness, and actionable recommendations. Anything below 3
-is flagged for revision.
+The SOP evaluates the 10 dimensions defined in `design-evaluation` Step 1. Eight are scored 1 to
+5: template adherence, scalability (including cost), performance, security, maintainability and
+extensibility, failure handling and resilience, code and implementation quality, and testability
+and automation readiness. Anything below 3 is flagged for revision. The other two, high-level
+assessment and actionable recommendations, are report sections with no score.
 
 ### What you get
 

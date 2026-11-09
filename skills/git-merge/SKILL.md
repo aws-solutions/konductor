@@ -52,8 +52,11 @@ git pull
 git merge --no-ff --no-commit <feature_branch>
 # Fix any merge conflicts, verify build
 git commit -m "Merging <feature_branch> into <default-branch>"
-git push
+git log --oneline -3
+git diff --stat origin/<default-branch>..HEAD
 ```
+
+Show the user the log and diff summary and ask them to confirm the push to `<default-branch>`. Run `git push` only after they confirm. If they do not confirm, or it is unclear whether the repo merges locally, open a PR instead.
 
 ### Before every commit and push
 
@@ -130,6 +133,7 @@ git push -d origin <feature_branch>   # delete remote
 - Merging into `<default-branch>` without pulling latest first: risks overwriting others' changes
 - Skipping Phase 1 (merging `<default-branch>` into feature branch first): conflicts should be resolved on the feature branch, not `<default-branch>`
 - Force pushing to `<default-branch>`, or rebasing a branch others have pulled
+- Pushing to `<default-branch>` without explicit user confirmation
 
 **IMPORTANT (fix before proceeding):**
 
