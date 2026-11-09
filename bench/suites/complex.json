@@ -5,7 +5,8 @@
   "tasks": [
     "cx-design-then-implement",
     "cx-multifile-refactor",
-    "cx-feature-across-layers"
+    "cx-feature-across-layers",
+    "cx-review-then-fix"
   ],
   "arms": [
     "vanilla",

@@ -1,0 +1,99 @@
+{
+  "id": "cx-review-then-fix",
+  "class": "complex",
+  "target": null,
+  "prompt": "This repository (ledger-kit) is a set of small account-service helpers; the README describes how each module is meant to behave. First review src/ and write review.md with each finding's severity (Critical, Important or Minor), file and line, why it matters, and a concrete fix, ordered by severity. Only report problems you can point to in the code. Then fix the real problems you found, and only those: leave code that is correct as it is. Add a regression test for each fix in a new file under test/ without editing the existing tests or package.json, and make sure `node --test` passes. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "cx-ledger",
+  "hidden": "cx-review-then-fix",
+  "timeoutSec": 1800,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 14
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js 2>/dev/null | wc -l)\" -ge 4 ] && node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/ledger.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/exports.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/rates.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/ids.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "src/config.js"
+    },
+    {
+      "type": "file_exists",
+      "path": "review.md"
+    },
+    {
+      "type": "labelled_findings",
+      "path": "review.md",
+      "min": 3
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e '(function refsCheck(c) { const fs = require(\"fs\"); let text = \"\"; try { text = fs.readFileSync(c.file, \"utf8\"); } catch (e) { process.exit(1); } const files = []; const walk = (d) => { let es = []; try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; } for (const e of es) { if (e.name === \"node_modules\" || e.name === \".git\") continue; const p = d === \".\" ? e.name : d + \"/\" + e.name; if (e.isDirectory()) walk(p); else files.push(p); } }; walk(\".\"); const re = /([A-Za-z0-9_\\/.-]+\\.js)[`)*\\]]*(?::|#L|,?\\s*\\(?lines?\\s*)(\\d+)(?:\\s*[-\\u2013]\\s*L?(\\d+))?/gi; const seen = new Set(); const refs = []; const found = [...text.matchAll(re)].map((m) => ({ name: m[1], a: m[2], b: m[3] })); if (c.defaultFile) { for (const m of text.matchAll(/\\blines?\\s+(\\d+)(?:\\s*[-\\u2013]\\s*(\\d+))?/gi)) found.push({ name: c.defaultFile, a: m[1], b: m[2] }); } for (const m of found) { const f = files.find((x) => x === m.name.replace(/^\\.\\//, \"\") || x.endsWith(\"/\" + m.name.replace(/^\\.\\//, \"\"))); if (!f) continue; const a = Number(m.a); const b = m.b ? Number(m.b) : a; const lines = fs.readFileSync(f, \"utf8\").split(\"\\n\"); if (a < 1 || a > lines.length) continue; if (c.lineRe && !new RegExp(c.lineRe, \"i\").test(lines[a - 1])) continue; if (seen.has(f + \":\" + a)) continue; seen.add(f + \":\" + a); refs.push({ f, a, b }); } let hits = 0; for (const s of c.seeds || []) { if (refs.some((r) => r.f.endsWith(s.f) && [r.a, r.b].some((n) => n >= s.lo - 2 && n <= s.hi + 2))) hits++; } process.exit(refs.length >= c.min && hits >= (c.minSeeds || 0) ? 0 : 1); })({\"file\":\"review.md\",\"min\":3,\"seeds\":[{\"f\":\"src/exports.js\",\"lo\":8,\"hi\":9},{\"f\":\"src/ledger.js\",\"lo\":19,\"hi\":20},{\"f\":\"src/rates.js\",\"lo\":8,\"hi\":13}],\"minSeeds\":3})'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "c=0; for p in 'traversal|\\.\\./|outside|escape|contain|absolute' 'debit|rollback|atomic|vanish|lost|unknown (account|destination)|before (it )?(check|look|validat)|money' 'swallow|stale|fresh|silent|ignored|catch|updatedAt|propagat'; do cat review.md 2>/dev/null | grep -qiE \"$p\" && c=$((c+1)); done; [ \"$c\" -ge 3 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c '[^[:space:]]' review.md 2>/dev/null)\" -ge 15 ]",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "review-quality",
+      "criterion": "Each finding in review.md has a severity, a file and line that point at the code, why it matters and a concrete fix, the findings are ordered by severity, and the three real problems (the file read outside the export directory, the debit before the destination check, the failed refresh counted as fresh) are described accurately.",
+      "weight": 3
+    },
+    {
+      "id": "not-over-fixing",
+      "criterion": "Only the real problems were changed. The correlation id generator and the startup config read, which are correct and say why in their comments, are untouched, and no unrelated code was refactored. If the review mentions them, it says they are not defects.",
+      "weight": 3
+    },
+    {
+      "id": "root-cause-fixes",
+      "criterion": "Each fix addresses the cause: the export path is checked after resolving it against the directory (absolute names and sibling directories with the same prefix are covered), both accounts are checked before any balance is written, and freshness is recorded only after a successful fetch with the error passed on.",
+      "weight": 2
+    },
+    {
+      "id": "regression-tests",
+      "criterion": "The agent added a regression test for each fix in a new file, and each test would fail on the original code and pass after the fix.",
+      "weight": 1
+    },
+    {
+      "id": "verified-and-honest",
+      "criterion": "The final message reports that the test suite was run and its result, and states what was reviewed and left alone and why.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}
