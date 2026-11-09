@@ -56,7 +56,7 @@ agent loads adjacent context via its own file-read tools:
 Before starting work, load available project context:
 
 - You MUST read `.kiro/steering/**/*.md` if present — workspace steering rules.
-- You MUST load `<workspace>/memory/MEMORY.md` and `<workspace>/memory/USER.md` only through the `persistent-memory` skill's Reading Memory steps (its `--check-path` check first); never read that directory with a glob or an import. If that skill or a shell is not available to you, skip memory and say so.
+- You MUST load `<workspace>/memory/MEMORY.md` and `<workspace>/memory/USER.md` only through the `persistent-memory` skill's Reading Memory steps (its `--check-path` check first); never read that directory with a glob or an import. If that skill is not available to you, skip memory and say so; without a shell, load only the paths your brief's `MEMORY:` line reports, as Reading Memory says.
 - Workspace-specific skills may exist at `.kiro/skills/ws-*/SKILL.md` — be aware and load when relevant.
 
 If a path does not exist, skip it silently and continue.
