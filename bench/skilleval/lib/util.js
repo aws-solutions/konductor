@@ -43,4 +43,7 @@ function parseJsonReply(text) {
 const REQUEST_SIDE_EFFECT = /\b(?:(?:save|saves|write|writes|store|stores|export|exports)\b[^.\n]{0,40}\b(?:files?|disk|path|directory|folder)\b|creat(?:e|es)\s+(?:a |an |the |new )*(?:\w+ )?files?|(?:run|runs|execute|executes|invoke)\s+(?:the |a |an |my |these |those )?(?:\w+ )?(?:commands?|tests?|scripts?|builds?|linter|suite)|commit|push|install|deploy|(?:modify|edit|update)\s+(?:the |my )?(?:\w+ )?files?)\b/i;
 const ITEM_SIDE_EFFECT = /\b(?:(?:saved|wrote|written|stored|exported)\b[^.\n]{0,40}\b(?:files?|disk|path|directory|folder)\b|(?:file|files|report|document)\s+(?:is|are|was|were|has been|have been)\s+(?:created|written|saved|present|on disk)|created\s+(?:a |an |the |new )*(?:\w+ )?files?|(?:ran|executed|invoked)\s+(?:the |a |an )?(?:\w+ )?(?:commands?|tests?|scripts?|builds?|linter|suite)|committed|pushed|installed|deployed|(?:modified|edited|updated)\s+(?:the )?(?:\w+ )?files?)\b/i;
 
-module.exports = { sha256, readJson, writeJson, tokens, jaccard, parseJsonReply, REQUEST_SIDE_EFFECT, ITEM_SIDE_EFFECT };
+// Stored text uses straight quotes and plain hyphens so committed outputs stay free of typographic characters.
+const plain = (text) => String(text ?? '').replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').replace(/\s*[\u2013\u2014]\s*/g, ' - ');
+
+module.exports = { plain, sha256, readJson, writeJson, tokens, jaccard, parseJsonReply, REQUEST_SIDE_EFFECT, ITEM_SIDE_EFFECT };

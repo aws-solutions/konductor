@@ -478,3 +478,8 @@ test('a repair round tells the model which terms got earlier drafts rejected', a
   assert.deepEqual(doc.scenarios.filter((s) => s.type === 'rule').map((s) => s.ruleIds[0]), ['R01']);
   assert.ok(prompts.some((p) => p.includes('rejected for using these terms: widget audit')));
 });
+
+test('stored rule text and judge reasons use straight quotes and plain hyphens', () => {
+  const { plain } = require('../lib/util.js');
+  assert.equal(plain('\u201Call\u201D rules \u2014 not custom\u2013hooks, it\u2019s fine'), '"all" rules - not custom - hooks, it\'s fine');
+});

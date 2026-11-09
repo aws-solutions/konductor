@@ -3,7 +3,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { readJson, writeJson } = require('./util.js');
+const { readJson, writeJson, plain } = require('./util.js');
 
 const DEFAULT_PANEL = ['gpt-5.6-luna', 'deepseek-3.2', 'glm-5'];
 const MIN_WORTH = 2;
@@ -99,7 +99,7 @@ async function runVote({ rulesDoc, ask, panel = DEFAULT_PANEL, decisionsFile, ou
         const v = await ask.askJson(judge, votePrompt({ rule }), (x) => {
           if (typeof x?.worth !== 'boolean' || typeof x?.style_only !== 'boolean') throw new Error('worth and style_only must be booleans');
         });
-        done.set(`${rule.id}|${judge}`, { judge, worth: v.worth, styleOnly: v.style_only, reason: String(v.reason ?? '').slice(0, 200) });
+        done.set(`${rule.id}|${judge}`, { judge, worth: v.worth, styleOnly: v.style_only, reason: plain(v.reason).slice(0, 200) });
       } catch (e) {
         if (e.constructor.name === 'BudgetExceeded') throw e;
         done.set(`${rule.id}|${judge}`, { judge, error: e.message.slice(0, 200) });

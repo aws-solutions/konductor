@@ -3,7 +3,7 @@
 
 const path = require('node:path');
 const { verifyQuote } = require('./quote.js');
-const { writeJson, REQUEST_SIDE_EFFECT, ITEM_SIDE_EFFECT } = require('./util.js');
+const { writeJson, plain, REQUEST_SIDE_EFFECT, ITEM_SIDE_EFFECT } = require('./util.js');
 
 const TAGS = ['useful', 'generic', 'style'];
 const DEFAULT_RULES = 12;
@@ -56,7 +56,7 @@ function screenRules({ raw, skillText, skill }) {
     if (text && seen.has(key)) reasons.push('duplicate rule');
     seen.add(key);
     if (reasons.length) { rejected.push({ text, quote: r?.quote ?? '', tag, requestType, reasons }); continue; }
-    accepted.push({ text, quote: String(r.quote).trim(), line: q.line, tag, requestType });
+    accepted.push({ text: plain(text), quote: plain(String(r.quote).trim()), line: q.line, tag, requestType: plain(requestType) });
   }
   return { accepted: accepted.map((r, i) => ({ id: `R${String(i + 1).padStart(2, '0')}`, ...r })), rejected };
 }
