@@ -121,7 +121,7 @@ Produce the review report and present the verdict.
   ## Adversarial Review History
 
   | Round | CRITICAL | IMPORTANT | SUGGESTION | Corrections Applied |
-  | ----- | -------- | --------- | ----- | ------------------- |
+  | ----- | -------- | --------- | ---------- | ------------------- |
 
   ## Remaining Findings
 
@@ -129,7 +129,7 @@ Produce the review report and present the verdict.
 
   ### Important
 
-  ### Minor
+  ### Suggestion
 
   ## Verdict
 
