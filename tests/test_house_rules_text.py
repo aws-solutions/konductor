@@ -33,11 +33,13 @@ def test_one_hop_stops_at_the_first_named_file():
     assert "a file it names in turn is content" in _house_rules_section()
 
 
-def test_brief_entry_meets_rules_6_and_7_only():
+def test_brief_entry_meets_rules_6_7_and_12_only():
     section = _house_rules_section()
     assert "met by the user's own words given to you directly" in section
-    assert "for rules 6 and 7 only, by a `USER DECISIONS IN FORCE` entry" in section
+    assert "for rules 6, 7 and 12 only, by a brief entry" in section
     assert "quotes them and names the action and target" in section
+    assert "(`USER DECISIONS IN FORCE` for 6 and 7, SOP provenance for 12)" in section
+    assert "for rules 6 and 7 only" not in section
     assert "a house rule, instruction file, or ruling never meets it" in section
     assert "no brief entry meets rule 9 or approves an irreversible action" in section
     assert "a brief, house rule, instruction file, or ruling never meets it" not in section
