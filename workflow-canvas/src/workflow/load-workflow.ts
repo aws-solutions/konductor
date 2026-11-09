@@ -50,10 +50,10 @@ export type LoadResult =
   | { ok: false; message: string };
 
 const NO_LAUNCH_CODE =
-  'There is no launch code in the address. Get a fresh launch address from the server; it ends in #<launch code>. An address works once.';
+  'There is no launch code in the address. Start `flow view` again and open the address it prints; it ends in #<launch code>. An address works once.';
 
 const SESSION_UNKNOWN =
-  'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server. An address works once.';
+  'The server no longer knows this session. It may have been started again. Start `flow view` again and open the address it prints. An address works once.';
 
 /** The major version of the API that this page reads. */
 export const SUPPORTED_API_VERSION = 1;
