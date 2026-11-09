@@ -58,17 +58,19 @@ EDITS = [
     # drop, and the replacement paragraph carries the count in its own markup.
     # Section 13's package-total check still covers that number in every
     # rendering, so nothing is unguarded by the removal.
-    ("skills count (sidebar)", "Browse all 81 skills", "Browse all 84 skills"),
-    ("skills count (summary)", 'skills: "All 81 skills grouped across 8 capability areas',
-     'skills: "All 84 skills: 81 grouped across 8 capability areas, plus 3 rename stubs'),
-    ("skills count (catalog intro)", "intro: \"All 81 skills the package ships",
-     "intro: \"All 84 skills the package ships"),
-    ("skills coverage", "All 81 skills are declared by at least one agent.",
-     "All 81 working skills are declared by at least one agent. The three rename stubs are not."),
-    ("install summary", "Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules",
-     "Registers the 11 agents, 84 skills, 19 SOPs, the core rules, and the orchestrator routing rules"),
-    ("reference count row", '{ k: "Count", v: "81 skills · 19 SOPs" }',
-     '{ k: "Count", v: "84 skills · 19 SOPs" }'),
+    ("skills count (sidebar)", "Browse all 75 skills", "Browse all 81 skills"),
+    ("skills count (summary)", 'skills: "All 75 skills grouped across 8 capability areas',
+     'skills: "All 81 skills grouped across 8 capability areas'),
+    ("skills count (catalog intro)", "intro: \"All 75 skills the package ships",
+     "intro: \"All 81 skills the package ships"),
+    ("skills coverage", "All 75 skills are declared by at least one agent.",
+     "All 81 skills are declared by at least one agent."),
+    ("install summary", "Registers the 11 agents, 82 skills, 19 SOPs, and the orchestrator routing rules",
+     "Registers the 11 agents, 81 skills, 19 SOPs, the core rules, and the orchestrator routing rules"),
+    ("reference count row", '{ k: "Count", v: "75 skills · 13 SOPs" }',
+     '{ k: "Count", v: "81 skills · 19 SOPs" }'),
+    ("faq: skills row", '{ k: "Skills — 75", v: "On-demand knowledge modules" }',
+     '{ k: "Skills — 81", v: "On-demand knowledge modules" }'),
     ("concepts SOP blurb", "<div>13 SOPs that encode multi-step procedures",
      "<div>19 SOPs that encode multi-step procedures"),
     ("SOP count (concepts)",
@@ -84,8 +86,8 @@ EDITS = [
     # ---- repository layout tree ---------------------------------------------
     ("layout tree SOPs", "├── agent-sops/                   13 SOPs (*.sop.md)",
      "├── agent-sops/                   19 SOPs (*.sop.md)"),
-    ("layout tree skills", "├── skills/                       81 skills (<name>/SKILL.md",
-     "├── skills/                       84 skills (<name>/SKILL.md"),
+    ("layout tree skills", "├── skills/                       75 skills (<name>/SKILL.md",
+     "├── skills/                       81 skills (<name>/SKILL.md"),
     # ---- aws-mcp launches a pinned version, not a floating @latest ----------
     ("reference MCP registry note: pinned aws-mcp",
      'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args '
@@ -254,11 +256,15 @@ EDITS = [
      "REACH FOR IT: You never invoke it. Claude Code preloads it only into subagents; otherwise it loads on demand."),
     # ---- k-architect is no longer on a different model ----------------------
     ("architect model prose",
-     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 38 of the package's 81 skills — close to half, and by far the largest share of any agent.",
-     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 38 of the package's 84 skills — close to half, and by far the largest share of any agent."),
+     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 37 of the package's 82 skills — close to half, and by far the largest share of any agent.",
+     "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 38 of the package's 81 skills — close to half, and by far the largest share of any agent."),
     ("reference roster note",
      "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",
      "Every agent runs claude-sonnet-5.5 on Kiro CLI and claude-sonnet-5-5 on Claude Code. Skill counts are from each spec's clientConfig.claudeCli.skills array. Claude Code preloads that list only when the agent runs as a subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand. The list differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames only, so no runtime preloads it for them.",),
+    # ---- git-merge targets the default branch and defers to PRs -------------
+    ("skills catalog: git-merge row",
+     '"k":"git-merge","v":"Branch merges — feature into mainline, dev into mainline, release merges. — REACH FOR IT: Merging anything.',
+     '"k":"git-merge","v":"Branch merges into the default branch, release merges, merge conflicts. — REACH FOR IT: Merging locally; use code-review when merges go through PRs.'),
     # ---- humanize-writing is declared by every agent, preloaded by four -----
     ("skills catalog: humanize-writing row",
      '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. — REACH FOR IT: Writing or editing prose, or a draft reads machine-written. · DECLARED BY: architect, developer, product-manager, tpm preload it; every other agent loads it on demand"',
@@ -471,34 +477,6 @@ EDITS = [
     ("usecases: adversarial review agent card",
      "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">k-architect</div>",
      "Adversarial security review</div><div style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--lav)\">konductor</div>"),
-    # ---- skill renames, with one-release stubs under the old names ----------
-    # Done here, not in naming.py: the stubs keep the old names shipped, and the
-    # catalog must still list them.
-    ("skills catalog: k-code-simplifier row",
-     '{"k":"asdlc-code-simplifier","v":"Simplifies code',
-     '{"k":"k-code-simplifier","v":"Simplifies code'),
-    ("skills catalog: k-aspect-review row",
-     '{"k":"asdlc-aspect-review","v":"Parallel n-aspect review',
-     '{"k":"k-aspect-review","v":"Parallel n-aspect review'),
-    ("skills catalog: docx-conversion row",
-     '{"k":"document-formats","v":"Reads and writes .docx via pandoc. —',
-     '{"k":"docx-conversion","v":"Converts .docx files to and from Markdown with pandoc. —'),
-    ("agents card: developer skills",
-     "git-workflow, asdlc-code-simplifier, design-impact-review",
-     "git-workflow, k-code-simplifier, design-impact-review"),
-    ("agents card: researcher skills",
-     "sdlc-navigator, document-formats, deliberation-panel",
-     "sdlc-navigator, docx-conversion, deliberation-panel"),
-    ("faq: skills row",
-     '{ k: "Skills — 75", v: "On-demand knowledge modules" }',
-     '{ k: "Skills — 84", v: "On-demand knowledge modules (3 are rename stubs)" }'),
-    ("skills catalog: renamed skills section",
-     'sec("sk-coverage", "Coverage", "Coverage", {',
-     'sec("sk-renamed", "Renamed skills — 3", "Renamed skills — 3", {"paras":["Each stub keeps an old '
-     'name loadable for one release and is removed in the next. Its body only points to the new name."],'
-     '"h1":"OLD NAME","h2":"LOAD INSTEAD","rows":[{"k":"asdlc-aspect-review","v":"k-aspect-review"},'
-     '{"k":"asdlc-code-simplifier","v":"k-code-simplifier"},{"k":"document-formats","v":"docx-conversion"}]}),\n'
-     '      sec("sk-coverage", "Coverage", "Coverage", {'),
     # ---- design reviews grade CRITICAL / IMPORTANT / SUGGESTION ------------
     # agent-sops/k-design-doc-creation.sop.md,
     # agent-sops/k-principal-engineer-design-review.sop.md and
@@ -668,6 +646,9 @@ ROSTER = [
     ('uninstall: hook and context rows',
      '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n',
      '  { where: "Runtime agent directories", by: "konductor install", gone: "konductor uninstall" },\n  { where: "Session-start hook: .kiro/hooks/konductor-orchestration-hooks.json (Kiro CLI v3), the agentSpawn entry in .kiro/agents/konductor.json (Kiro CLI v2), the SessionStart block in the Claude Code hooks settings file", by: "konductor install", gone: "konductor uninstall" },\n  { where: ".konductor/context/ under the install target (Claude Code installs only; .konductor/memory/ is kept)", by: "konductor install", gone: "konductor uninstall" },\n'),
+    ("skills catalog: system-design-patterns outputs",
+     "Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description.",
+     "Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff."),
 ]
 
 

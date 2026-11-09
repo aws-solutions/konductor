@@ -63,7 +63,7 @@ Run automated quality gates against the draft. This phase requires no user inter
 
 **Constraints:**
 
-- You MUST run the `doc-accuracy-analyzer` skill to verify all technical claims against primary sources. It routes AWS feature, limit, pricing, and Region claims to `aws-service-validator`. Flag any INCORRECT or UNVERIFIED findings in the draft with inline `> ⚠️` callouts.
+- You MUST run the `doc-accuracy-analyzer` skill to verify all technical claims against primary sources. It routes AWS feature, limit, pricing, and Region claims to `aws-service-validator`. Flag any INCORRECT, OVERSTATED, or UNVERIFIED findings in the draft with inline `> ⚠️` callouts.
 - You MUST NOT block doc creation on UNVERIFIED claims — mark them and proceed.
 - You MUST make sure every AWS service and feature claim in the draft goes through `aws-service-validator`, via that routing or a direct run. Flag INCORRECT claims with `> ⚠️ INCORRECT: <correction>` callouts and UNVERIFIED claims with `> ⚠️ UNVERIFIED: <what was searched>` callouts. Write the full validation report to `validation_output_dir/<name>-aws-validation.md`.
 - You MUST NOT block doc creation on UNVERIFIED AWS claims — mark them and proceed.
@@ -108,7 +108,7 @@ Produce the final artifact and present it to the engineer.
 The document is ready for principal engineer review when all of the following are true:
 
 - `design-doc-guidelines` maker-checker: **0 CRITICAL findings**
-- `doc-accuracy-analyzer`: **0 INCORRECT findings**, each corrected in the text (UNVERIFIED is acceptable with callouts)
+- `doc-accuracy-analyzer`: **0 INCORRECT findings**, each corrected in the text, and every OVERSTATED finding corrected or flagged (UNVERIFIED is acceptable with callouts)
 - Adversarial review: **0 CRITICAL, 0 IMPORTANT, fewer than 3 SUGGESTION findings**
 - `design-evaluation` confidence score: **≥ 3.0 average** across all sections
 

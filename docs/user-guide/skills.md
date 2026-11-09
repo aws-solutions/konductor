@@ -4,8 +4,7 @@
 
 [← Back to guide index](README.md)
 
-All **84 skills** the package ships, grouped by what they are for. Three are rename stubs, listed
-under [Renamed skills](#renamed-skills). Each entry gives what the
+All **81 skills** the package ships, grouped by what they are for. Each entry gives what the
 skill does, when it makes sense to reach for it, and which agents declare it.
 
 A **skill** is a module of knowledge an agent loads on demand — see
@@ -14,8 +13,8 @@ what you want and the agent loads what it needs. Naming one explicitly is still 
 know exactly which lens you want applied.
 
 > **A skill is only available in a session with an agent that declares it.** The "Declared by"
-> column is therefore the practical one — it tells you who to talk to. Every skill except the three
-> rename stubs is declared by at least one agent; see [Coverage](#coverage).
+> column is therefore the practical one — it tells you who to talk to. Every skill is declared by
+> at least one agent; see [Coverage](#coverage).
 
 ---
 
@@ -32,7 +31,6 @@ know exactly which lens you want applied.
 - [Testing and browser automation](#testing-and-browser-automation) — 7
 - [Kiro spec generation](#kiro-spec-generation) — 3
 - [Research](#research) — 1
-- [Renamed skills](#renamed-skills) — 3
 - [Coverage](#coverage)
 - [Which agent has the most skills?](#which-agent-has-the-most-skills)
 
@@ -101,7 +99,7 @@ Producing the design itself.
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `system-design-patterns` | Guides system architecture design through a structured interview. Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description. | Starting a new service or feature that needs a design document. | `k-architect` |
+| `system-design-patterns` | Guides system architecture design through a structured interview. Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff. | Starting a new service or feature that needs a design document. | `k-architect` |
 | `architecture-advisor` | Quick recommendation mode — concise opinions with trade-off analysis instead of a full artifact. | You want a sanity check or an opinion, not a document. | `k-architect` |
 | `design-doc-guidelines` | Rules for writing and reviewing design docs: outside-in structure, plain writing, AI-slop detection, diagram accuracy, technical accuracy. | Writing or reviewing any design doc. It is also the maker-checker rubric `k-design-doc-creation` runs against. | `k-architect`, `konductor` |
 | `non-functional-requirements` | Extracts measurable NFRs across performance, availability, security, scalability, and observability. | The design exists and "it should be fast" needs to become a number. | `k-architect` |
@@ -178,7 +176,7 @@ Writing and reviewing code.
 | `k-code-simplifier` | Simplifies code for clarity and consistency without changing behaviour. | Recently modified code is correct but hard to read. | `k-developer` |
 | `k-aspect-review` | Parallel n-aspect review of an artifact using subagents. | You want several independent review lenses on the same thing at once. | `k-developer` |
 | `git-workflow` | Atomic commits, branch management, history operations. | Committing, branching, or searching history. | `k-developer` |
-| `git-merge` | Branch merges — feature into mainline, dev into mainline, release merges. | Merging anything. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
+| `git-merge` | Branch merges into the default branch, release merges, merge conflicts. | Merging locally; use `code-review` when merges go through PRs. Declared only by the two multiplexer orchestrators. | `konductor-cmux-orchestrator`, `konductor-mux-orchestrator` |
 | `find-aws-skills` | Discovers additional AWS skills from the AWS MCP server for tasks the bundled skills do not cover. | Your task involves an AWS service and nothing bundled matches. | `k-developer` |
 | `agents-md-authoring` | Creates and maintains AGENTS.md files that bootstrap agent context. Covers the agents.md standard, the context-loading block, and the CLAUDE.md bridge. | Onboarding a repo for agents, or your conventions have drifted from what agents are told. | `k-developer`, `konductor` |
 
@@ -226,24 +224,11 @@ Looking things up outside the repository.
 
 ---
 
-## Renamed skills
-
-Each stub keeps an old name loadable for one release and is removed in the next. Its body only
-points to the new name.
-
-| Old name | Load instead |
-| --- | --- |
-| `asdlc-aspect-review` | `k-aspect-review` |
-| `asdlc-code-simplifier` | `k-code-simplifier` |
-| `document-formats` | `docx-conversion` |
-
----
-
 ## Coverage
 
-**All 81 working skills are declared by at least one agent.** The three rename stubs are not.
-That matters because a skill no agent declares cannot be loaded by anything — which bites
-hardest when a SOP instructs an agent to use it. Contributors adding a skill should see
+**All 81 skills are declared by at least one agent.** That matters because a skill no agent
+declares cannot be loaded by anything — which bites hardest when a SOP instructs an agent to use
+it. Contributors adding a skill should see
 [Contributing → check skill coverage](appendix/contributing.md#check-skill-coverage).
 
 > **Recently fixed.** Four skills used to be declared by no agent: the three
