@@ -307,12 +307,13 @@ node bench/runner/bench.js calibrate export --run $OUT --n 25 --seed 1   # then:
 node --test "bench/runner/test/*.test.js"                           # unit tests
 node bench/tasks/validate-tasks.js                                  # tasks vs reference solutions
 ```
-Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--budget-credits X`,
+Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--replicate-offset N`, `--parallel N`, `--budget-credits X`,
 `--model ID` (default claude-sonnet-5.5), `--effort LEVEL` (default high), `--agent-engine v2|v3` (default v2), `--seed N`,
 `--isolate auto|unshare|sandbox-exec|none`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
 `--hide PATH,..`, `--no-default-hide`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
 `--suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe` (`cap` is the fallback the `cap` commands use; they name their arms).
+Replicates are numbered from 1. To add replicates to an out dir that already holds 1 to N, pass `--replicate-offset N` (a non-negative integer, default 0): the new ones are N+1 to N+`--replicates`. A run overwrites any `result.json` already at a planned path and prints a warning with the count of cells it will overwrite.
 No credit cap is the default: every run is a line in `credit-ledger.jsonl` in the results directory and `run` prints the running total. `--budget-credits X` is an optional guard
 that stops new runs at 90% of X; a run that carries the command past 100% ends it with exit code 3. `run` prints the worst-case wall clock first. See "Profiles, credit ledger and platform verdict".
 The unit tests for the real-task track run a fake project's pytest suite. Without `python3 -m pytest`

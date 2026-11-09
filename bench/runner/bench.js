@@ -26,7 +26,7 @@ const cleanup = require('./lib/cleanup-cmd.js');
 
 const USAGE = `Usage:
   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot|cap|requirements|rootcause|references-read|constraints-probe [--arms a,b,c] [--tasks id,id]
-       [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
+       [--replicates N] [--replicate-offset N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--agent-engine v2|v3] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate auto|unshare|sandbox-exec|none] [--allow-unisolated] [--gate-strict] [--allow-partial] [--censored-floor X] [--hide DIR,DIR] [--no-default-hide]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
@@ -38,6 +38,8 @@ const USAGE = `Usage:
        adds an A/A arm (the first konductor arm repeated at its exact commit), judges with the graded mode as well, and writes calibration-sample.json and .md
        to the results directory. Without --profile the suite defaults apply and no arm is added. Credits are tracked per run in credit-ledger.jsonl; with no
        --budget-credits nothing stops a run, with it new runs stop at 90% of the budget)
+       (--replicate-offset N numbers the replicates N+1 to N+replicates, to add runs to an out dir that already holds replicates 1 to N. The default 0 numbers them from 1.
+       A run writes over any result.json already at a planned path and prints a warning with the count of cells it will overwrite)
        (--agent-engine is the kiro-cli engine, default v2; v3 installs each arm for the kiro-v3 harness)
        (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
        (--extra-tasks loads tasks from DIR/<id>.json with DIR/fixtures and DIR/hidden; DIR is hidden from the agent like tasks/hidden)
