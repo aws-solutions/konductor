@@ -7,7 +7,7 @@ const { rubricScore } = require('../judge/score.js');
 const { taskRevision } = require('../judge/revision.js');
 const { MIN_RECALL } = require('../runner/lib/contamination.js');
 
-const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'real', 'autonomy'];
+const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy'];
 const MIN_REPLICATES = 3;
 
 const EFFICIENCY = {

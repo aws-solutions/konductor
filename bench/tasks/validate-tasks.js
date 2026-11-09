@@ -29,6 +29,8 @@
 // the reference solution must pass every hidden test twice with the same counts and in under 60 s, the
 // untouched fixture must fail at least 30 percent of them, and at least two partial solutions under
 // tasks/partials/<id>/<name>/ must each score strictly between 0 and 100 percent, with different counts.
+// Complex tasks (class "complex", directory bench/complex) get the same hidden-test and partial-solution proofs as hard
+// tasks, with a timeout up to 1800 s and no minimum fixture size.
 // Check semantics live in runner/lib/check-matcher.js, shared with the runner.
 // Suite judges are validated with the family rules from judge/config.js.
 // Files starting with "_" in bench/tasks (for example the runner smoke task)
@@ -67,7 +69,7 @@ const extraRoots = (dir) => ({
 });
 let R = DEFAULT_ROOTS;
 
-const CLASSES = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'real', 'autonomy', 'trigger'];
+const CLASSES = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'complex', 'real', 'autonomy', 'trigger'];
 const TIERS = ['lite', 'full', 'hard', 'real', 'autonomy', 'requirements', 'pilot', 'cap'];
 const REAL_RUBRIC_SIZE = 3;
 const REAL_MIN_TASKS = 6;
@@ -83,6 +85,7 @@ const MAX_HARD_FIXTURE_FILES = 40;
 const MAX_AUTONOMY_FIXTURE_FILES = 30;
 const HARD_MIN_TIMEOUT = 900;
 const HARD_MAX_TIMEOUT = 1500;
+const COMPLEX_MAX_TIMEOUT = 1800;
 const HARD_MAX_FIXTURE_PASS = 0.7;
 const HIDDEN_MAX_SECONDS = 60;
 const MIN_PARTIALS = 2;
@@ -123,6 +126,11 @@ const FIXTURE_BASELINE = {
   'auto-league': { cmd: 'node --test', exit: 0 },
   'auto-units': { cmd: 'node --test', exit: 0 },
   'auto-storage': { cmd: 'node --test', exit: 0 },
+  // Complex-suite fixtures: the visible tests pass before and after the work.
+  'cx-holds': { cmd: 'node --test', exit: 0 },
+  'cx-shipping': { cmd: 'node --test', exit: 0 },
+  'cx-notes': { cmd: 'node --test', exit: 0 },
+  'cx-ledger': { cmd: 'node --test', exit: 0 },
   // Requirements-suite fixtures: a copy of the inventory service and one request document; the tests pass before and after.
   'req-inventory': { cmd: 'node --test', exit: 0 },
   'plan-inventory': { cmd: 'node --test', exit: 0 },
@@ -230,6 +238,7 @@ function validateShape(file, t) {
   if (real) need(Array.isArray(t.rubric) && t.rubric.length === REAL_RUBRIC_SIZE, `real tasks need exactly ${REAL_RUBRIC_SIZE} rubric criteria`);
   need(Array.isArray(t.tiers) && t.tiers.length > 0 && t.tiers.every((x) => TIERS.includes(x)), `tiers must be a non-empty subset of ${TIERS.join('|')}`);
   const hard = t.class === 'hard';
+  const complex = t.class === 'complex';
   const autonomy = t.class === 'autonomy' || t.autonomy !== undefined;
   // "pilot" is added on top of a task's own tier; the rules below look at the tiers without it.
   const ownTiers = Array.isArray(t.tiers) ? t.tiers.filter((x) => x !== 'pilot') : [];
@@ -247,6 +256,13 @@ function validateShape(file, t) {
     need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'tests'), 'hard tasks need at least one tests check');
     need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'fixture_unchanged'), 'hard tasks need a fixture_unchanged check on the existing tests');
     need(!HARD_PROMPT_BANNED.test(t.prompt || ''), 'hard prompt mentions grading, hidden tests, agents, skills or reviewers');
+  } else if (complex) {
+    need(R.extra, 'complex tasks live in an --extra-tasks directory (bench/complex), not in bench/tasks');
+    need(isInt(t.timeoutSec) && t.timeoutSec >= HARD_MIN_TIMEOUT && t.timeoutSec <= COMPLEX_MAX_TIMEOUT, `complex tasks need timeoutSec from ${HARD_MIN_TIMEOUT} to ${COMPLEX_MAX_TIMEOUT}`);
+    need(isStr(t.hidden) && fs.existsSync(path.join(R.hidden, t.hidden || '?')), 'complex tasks need hidden: a directory under hidden/');
+    need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'tests'), 'complex tasks need at least one tests check');
+    need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'fixture_unchanged'), 'complex tasks need a fixture_unchanged check on the existing tests');
+    need(!HARD_PROMPT_BANNED.test(t.prompt || ''), 'complex prompt mentions grading, hidden tests, agents, skills or reviewers');
   } else if (real) {
     need(isInt(t.timeoutSec) && t.timeoutSec >= HARD_MIN_TIMEOUT && t.timeoutSec <= HARD_MAX_TIMEOUT, `real tasks need timeoutSec from ${HARD_MIN_TIMEOUT} to ${HARD_MAX_TIMEOUT}`);
     need(isStr(t.real), 'real tasks need real: the id of a manifest entry');
@@ -260,7 +276,7 @@ function validateShape(file, t) {
     need(isStr(t.hidden) && fs.existsSync(path.join(R.hidden, t.hidden || '?')), 'autonomy tasks need hidden: a directory under tasks/hidden/');
     autonomyRules.shapeProblems(t, { hiddenRoot: R.hidden }).forEach((p) => err(where, p));
   } else {
-    need(t.hidden === undefined && t.real === undefined, 'only hard, real and autonomy tasks may name a hidden directory or a real reference');
+    need(t.hidden === undefined && t.real === undefined, 'only hard, complex, real and autonomy tasks may name a hidden directory or a real reference');
   }
   if (Array.isArray(t.tiers) && t.tiers.includes('lite') && isInt(t.timeoutSec)) {
     need(t.timeoutSec <= LITE_MAX_TIMEOUT, `lite tasks need timeoutSec <= ${LITE_MAX_TIMEOUT}`);
@@ -604,7 +620,7 @@ function main() {
     for (const rel of controls.deletionGaps(t, overlay, () => copyFixture(t.fixture, overlay), (d, c) => evalCheck(d, c, fixtureDir(t.fixture), hiddenDir).pass)) {
       warn(where, `every check still passes with ${rel} deleted`);
     }
-    if (t.class === 'hard') hardReport.push(validateHard(t, overlay, hiddenDir));
+    if (t.class === 'hard' || t.class === 'complex') hardReport.push(validateHard(t, overlay, hiddenDir));
     if (t.class === 'autonomy') autonomyReport.push(validateAutonomyEvidence(t, overlay, hiddenDir));
 
     const spec = loadCases(R.negatives, t.id);

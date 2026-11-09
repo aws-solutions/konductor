@@ -1,0 +1,13 @@
+{
+  "name": "notes-cli",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Tiny notes command line tool",
+  "main": "src/cli.js",
+  "bin": {
+    "notes": "src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

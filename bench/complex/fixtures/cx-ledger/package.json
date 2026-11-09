@@ -1,0 +1,10 @@
+{
+  "name": "ledger-kit",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Account ledger helpers",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "id": "cx-feature-across-layers",
+  "class": "complex",
+  "target": null,
+  "prompt": "This repository (notes-cli) is a small notes tool. docs/tags-request.md describes tags for notes. Implement it end to end, exactly as the request describes: the storage layer, the service logic, the command line and the input validation. Add tests for the new behaviour in new files under test/, without editing the existing tests or package.json and without adding dependencies, and make sure `node --test` passes. Then add a short Tags section to README.md for people who use the tool, with examples in the same style as the existing ones, and bring the rest of the README up to date with the change. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "cx-notes",
+  "hidden": "cx-feature-across-layers",
+  "timeoutSec": 1800,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 15
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js 2>/dev/null | wc -l)\" -ge 3 ] && node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/store.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/cli.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -il tag test/*.test.js 2>/dev/null | grep -v -e store.test -e cli.test | wc -l)\" -ge 1 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "f=$(mktemp -u); NOTES_FILE=$f node src/cli.js add x --tag \"bad tag\" >/dev/null 2>&1; [ $? -eq 2 ] && NOTES_FILE=$f node src/cli.js add y --tag good >/dev/null && NOTES_FILE=$f node src/cli.js list | grep -q \"#good\"",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "export NOTES_FILE=$(mktemp -u); node src/cli.js add y --tag good >/dev/null 2>&1; node src/cli.js untag 1 other >/dev/null 2>&1; [ $? -eq 3 ] && { node src/cli.js tag 9 a >/dev/null 2>&1; [ $? -eq 3 ]; }",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "f=$(mktemp -u); printf '{\"version\":1,\"nextId\":2,\"notes\":[{\"id\":1,\"text\":\"old\",\"createdAt\":\"t\"}]}' > $f; NOTES_FILE=$f node src/cli.js list | grep -q old && NOTES_FILE=$f node src/cli.js tag 1 x | grep -q \"tagged 1 #x\"",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "^##\\s+.*\\btags?\\b"
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "version\\W{0,4}2"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\"),os=require(\"os\"),path=require(\"path\"),cp=require(\"child_process\"); let md;try{md=fs.readFileSync(\"README.md\",\"utf8\")}catch(e){process.exit(1)} const m=md.match(/^##\\s+[^\\n]*tags?[^\\n]*\\n([\\s\\S]*?)(?=^##\\s|(?![\\s\\S]))/im); if(!m)process.exit(1); const blocks=[...m[1].matchAll(/^```[^\\n]*\\n([\\s\\S]*?)^```/gm)].map((x)=>x[1]); const steps=[]; for(const b of blocks){let cur=null;for(const line of b.split(\"\\n\")){if(/^\\$\\s/.test(line)){cur={cmd:line.replace(/^\\$\\s+/,\"\"),out:[]};steps.push(cur)}else if(cur&&line.trim())cur.out.push(line)}} if(steps.length<3)process.exit(1); const file=path.join(fs.mkdtempSync(path.join(os.tmpdir(),\"rd-\")),\"n.json\"); const norm=(s)=>s.replace(/\\s+/g,\" \").trim(); let bad=0; for(const s of steps){  if(!/^(node\\s+src\\/cli\\.js|notes)\\b/.test(s.cmd)){bad++;continue}  const cmd=s.cmd.replace(/^notes\\b/,\"node src/cli.js\");  const r=cp.spawnSync(\"sh\",[\"-c\",cmd],{env:Object.assign({},process.env,{NOTES_FILE:file}),encoding:\"utf8\"});  if(s.out.length){if(norm(r.stdout+r.stderr)!==norm(s.out.join(\" \")))bad++}  else if(r.status!==0)bad++; } process.exit(bad?1:0)'",
+      "expectExit": 0
+    }
+  ],
+  "rubric": [
+    {
+      "id": "readme-accuracy",
+      "criterion": "The Tags section of README.md is correct against the tool as built: every command shown runs, the output shown is what it prints, and the rules it states (tag format, the limit of 5, exit codes) match the behaviour. The Storage section reflects the new file version.",
+      "weight": 3
+    },
+    {
+      "id": "plain-language",
+      "criterion": "The README text is plain and short enough for someone who has not seen the code: it says what tags are for, shows one realistic example and states each rule once, without internal terms such as function or module names.",
+      "weight": 2
+    },
+    {
+      "id": "test-quality",
+      "criterion": "The tests the agent added exercise the new behaviour and its failure cases (an invalid tag, the limit, an unknown id, an old-format file), assert on results and exit codes and not only that nothing threw, and live in new files.",
+      "weight": 2
+    },
+    {
+      "id": "layering",
+      "criterion": "Each concern is handled in the layer that owns it: tag rules in validate.js, the file version upgrade in store.js, tag operations in service.js, argument parsing and output in cli.js, with no rule duplicated across layers and validation done before anything is written.",
+      "weight": 2
+    },
+    {
+      "id": "verified-and-scoped",
+      "criterion": "The final message reports that the test suite was run and its result, lists assumptions, and the existing tests and package.json are unchanged with no dependency added.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

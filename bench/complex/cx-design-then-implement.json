@@ -1,0 +1,97 @@
+{
+  "id": "cx-design-then-implement",
+  "class": "complex",
+  "target": null,
+  "prompt": "This repository (stockd) is a small stock service. docs/requirements.md describes the temporary stock holds checkout wants. First write a design document at docs/design.md: problem statement, proposed architecture, design details, data model, API, and the alternatives you considered with the decision and its consequences, with at least one sequence or component diagram in a fenced mermaid block. Then implement the feature in src/ so that it follows your design: `createHoldService({ stock, clock })` exported from `src/index.js`, and the routes served by the existing `createServer({ stock, clock })`, exactly as the requirements describe. Do not edit the existing tests or package.json and add no dependencies. Add tests for the new service in a new file under test/, make sure `node --test` passes, and add a short Holds section to README.md. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "cx-holds",
+  "hidden": "cx-design-then-implement",
+  "timeoutSec": 1800,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test hidden/*.test.js",
+      "min": 12
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js 2>/dev/null | wc -l)\" -ge 3 ] && node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/stock.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test/http.test.js"
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "package.json"
+    },
+    {
+      "type": "file_exists",
+      "path": "docs/design.md"
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(grep -c . docs/design.md)\" -ge 50 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");let md;try{md=fs.readFileSync(\"docs/design.md\",\"utf8\")}catch(e){process.exit(1)} const heads=md.split(\"\\n\").filter((l)=>/^#{1,4}\\s/.test(l)).map((l)=>l.toLowerCase()); const want=[/problem|background|context|goals?/,/architecture|overview|approach|components?/,/design details?|detailed design|details|internals|behaviou?r|concurrency|expiry|state/,/data model|schema|data structures?/,/\\bapi\\b|interface|endpoints?|routes/,/alternatives?|options considered/,/decision|consequences|trade-?offs?/]; process.exit(want.every((r)=>heads.some((h)=>r.test(h)))?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "docs/design.md",
+      "pattern": "^```mermaid[\\s\\S]*?(sequenceDiagram|flowchart|graph\\s|stateDiagram|classDiagram|erDiagram|C4Component)"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");let md;try{md=fs.readFileSync(\"docs/design.md\",\"utf8\")}catch(e){process.exit(1)} const lines=md.split(\"\\n\");const i=lines.findIndex((l)=>/^#{1,4}\\s.*(alternatives?|options considered)/i.test(l));if(i<0)process.exit(1); const lvl=lines[i].match(/^#+/)[0].length;let j=i+1; while(j<lines.length&&!(/^#{1,4}\\s/.test(lines[j])&&lines[j].match(/^#+/)[0].length<=lvl))j++; const sec=lines.slice(i+1,j); const items=sec.filter((l)=>(/^\\s*([-*]|\\d+\\.)\\s+\\S/.test(l)||/^#{1,6}\\s+\\S/.test(l)||/^\\|.*\\|/.test(l))&&!/^\\|[\\s:|-]+\\|?\\s*$/.test(l)&&!/decision|consequence|chosen/i.test(l)); const rows=items.filter((l)=>/^\\|/.test(l)).length;const n=items.length-(rows>0?1:0); const ok=n>=2&&/(decision|chosen|we (choose|chose|pick|picked|select|selected|go with)|decided)/i.test(md)&&/(consequences?|trade-?offs?|downsides?|cost of)/i.test(md); process.exit(ok?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "cmd",
+      "cmd": "node -e 'const fs=require(\"fs\");let md;try{md=fs.readFileSync(\"docs/design.md\",\"utf8\")}catch(e){process.exit(1)} let src=\"\";const walk=(d)=>{for(const f of fs.readdirSync(d,{withFileTypes:true})){const p=d+\"/\"+f.name;if(f.isDirectory())walk(p);else if(/\\.js$/.test(f.name))src+=fs.readFileSync(p,\"utf8\")+\"\\n\"}};walk(\"src\"); const eps=[...new Set([...md.matchAll(/\\b(?:GET|POST|PUT|PATCH|DELETE)\\s+`?(\\/[A-Za-z0-9_\\/:{}.-]*)/g)].map((m)=>m[1]))]; const seg=(p)=>p.split(\"/\").filter((s)=>s&&!/^[:{]/.test(s)); const epOk=eps.length>=3&&eps.every((p)=>seg(p).every((s)=>src.includes(s))); const lines=md.split(\"\\n\");const i=lines.findIndex((l)=>/^#{1,4}\\s.*(data model|schema|data structures?)/i.test(l));if(i<0)process.exit(1); const lvl=lines[i].match(/^#+/)[0].length;let j=i+1; while(j<lines.length&&!(/^#{1,4}\\s/.test(lines[j])&&lines[j].match(/^#+/)[0].length<=lvl))j++; const ids=[...new Set([...lines.slice(i+1,j).join(\"\\n\").matchAll(/`([a-z][A-Za-z0-9]{2,})`/g)].map((m)=>m[1]))]; const fieldOk=ids.length>=4&&ids.filter((f)=>src.includes(f)).length/ids.length>=0.75; process.exit(epOk&&fieldOk?0:1)'",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "holds"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "design-code-consistency",
+      "criterion": "The implementation follows docs/design.md: the state transitions, the way expired holds are handled and the order of the stock call and the status change described in the design are what the code does, and any change made to the design while coding is written back into it.",
+      "weight": 3
+    },
+    {
+      "id": "alternatives-adr",
+      "criterion": "The design names at least two real alternatives to the chosen approach, says why each was not chosen, states the decision in one place and lists consequences that include a cost the chosen approach accepts.",
+      "weight": 2
+    },
+    {
+      "id": "diagram-fit",
+      "criterion": "At least one mermaid diagram matches the text: its participants or components and its arrows use the names the design and the code use, and it shows something the prose alone makes hard to follow (the call order across the service and the stock store, or the hold states).",
+      "weight": 2
+    },
+    {
+      "id": "concurrency-handled",
+      "criterion": "The design states how overlapping calls are kept correct and the code does it (units are handed back once and the last unit goes to one buyer), and the tests the agent added exercise an overlapping case.",
+      "weight": 2
+    },
+    {
+      "id": "verified-and-scoped",
+      "criterion": "The final message reports that the test suite was run and its result, lists assumptions, and the existing tests and package.json are unchanged with no dependency added.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "full"
+  ]
+}

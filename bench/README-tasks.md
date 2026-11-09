@@ -6,7 +6,7 @@ This document covers the task suite: tasks, fixtures, checks, rubrics, answer ke
 
 - `tasks/<id>.json`: one task. A prompt, the fixture it runs on, deterministic checks and a judge rubric.
 - `fixtures/<name>/`: a small synthetic project. The runner copies it into a scratch directory, and the agent works there.
-- `suites/lite.json`, `suites/full.json`, `suites/hard.json`, `suites/requirements.json`: which tasks run, on which arms, with how many replicates, and which judges.
+- `suites/lite.json`, `suites/full.json`, `suites/hard.json`, `suites/complex.json`, `suites/requirements.json`: which tasks run, on which arms, with how many replicates, and which judges.
 - `tasks/solutions/<id>/`: a reference solution, as files overlaid on the fixture. Only the validator and unit tests use it.
 - `tasks/stubs/<id>/`: a keyword-only imitation of the report, overlaid on the solution (see Mutation proof).
 - `tasks/validate-tasks.js`: offline validator. Run `node bench/tasks/validate-tasks.js`.
@@ -151,6 +151,23 @@ never names hidden tests, grading, agents, skills or reviewers.
 - Add one: write the fixture (answer key included), `tasks/<id>.json` with a `tests` check, a `fixture_unchanged` check
   per existing test file and 3 process-quality rubric criteria, `hidden/<id>/hidden/*.test.js`, `solutions/<id>/`, two
   partials, then list the id in `suites/hard.json` and run the validator.
+
+## Complex tasks
+
+Class `complex`, tier `full` (they are not in the `full` suite), `timeoutSec` 1800, suite `suites/complex.json` (also `--suite complex`; 3 arms, 1 replicate, `--parallel 1`, the usual judge panel). The suite file declares the extra directory `bench/complex/`, which holds `cx-*.json` beside `fixtures/`, `solutions/`, `stubs/`, `partials/` and `hidden/`, and the agent never sees it (it is masked like the other bench directories). Where a hard task is one contract with hidden defects, a complex task asks for several steps in order, so one run shows whether the work holds together: a design and then the code that follows it, a refactor across many files, a feature through every layer plus its docs, a review and then only the fixes it justifies.
+
+The rules are those of hard tasks, checked by the same validator: hidden tests (a `tests` check with `min`), a `fixture_unchanged` check on the existing tests, a reference solution that passes every check, at least two partial solutions that score strictly between 0 and 100 percent with counts that differ, an untouched fixture that fails at least 30 percent of the hidden tests, and a stub that fails a `cmd` or `min_matches` check. Differences: the timeout may go up to 1800 s, a fixture needs no minimum size (at most 15 files, answer key excluded), the tasks must live in an extra directory, and a task has 3 to 6 rubric items as usual. Validate with `node bench/tasks/validate-tasks.js --only-extra --extra-tasks bench/complex` (about 10 s, no model call, no runner). `bench/runner/test/complex-suite.test.js` checks suite membership and the shape of each task.
+
+| task | fixture (visible files) | asks for | hidden tests | checks | rubric |
+| --- | --- | --- | --- | --- | --- |
+| `cx-design-then-implement` | `cx-holds` (11) | `docs/design.md` (problem, architecture, details, data model, API, alternatives with decision and consequences, a mermaid diagram), then the stock hold service in `src/` | 12, two on concurrency | 12: design sections, mermaid fence, alternatives with a decision, design endpoints and data model fields found in `src/`, existing tests unchanged | design and code agree, alternatives and consequences, diagram fit, concurrency, verification |
+| `cx-multifile-refactor` | `cx-shipping` (11) | copied helpers moved to `src/util.js` and `calcBase` renamed to `baseRate` across code and docs, public API and quotes unchanged | 15: nine lock behaviour (they pass on the untouched fixture), six check the new shape | 11: no leftover name, one copy of each helper, exact public exports, changelog entry | diff minimality, complete rename, changelog and docs, evidence, API and tests untouched |
+| `cx-feature-across-layers` | `cx-notes` (10) | tags through storage (file version 2 with upgrade of old files), service, validation and CLI, plus a README Tags section | 15, through the command line and the JSON file | 12: error codes 2 and 3, an old-format file, the README examples run against `./src` and their output compared | README accuracy, plain language, test quality, layering, verification |
+| `cx-review-then-fix` | `cx-ledger` (11) | `review.md` (severity, file and line, fix), then fixes for the real defects only | 14: six fail before the fixes, eight guard nearby behaviour and the two decoys | 13: labelled findings, file and line references near the three seeded defects, the decoy files byte for byte unchanged | review quality, not over-fixing, root-cause fixes, regression tests |
+
+Notes for each fixture are in its `.bench-answer-key.md`. The reference solutions and stubs are in `bench/complex/solutions/` and `bench/complex/stubs/`. A stub keeps the right headings or docs and leaves the code unfixed, so only a content check catches it.
+
+Cost: not measured. Observed credits for one pass (table in `README.md`) are 3.3 per hard task for vanilla (hard-A, 6 tasks, 20.06) and about 3.4 times that for a skill-loading arm on the lite suite (6.78 against 23.31 and 31.01). These tasks have several steps and a longer transcript, so plan on roughly 7 to 10 credits per task for vanilla and 20 to 35 for v1.2.0 and main, about 110 to 190 for the four tasks on three arms with one replicate, plus judging. Run one task first with `--tasks` and `--budget-credits` to get a real figure before the suite.
 
 ## Real tasks
 
