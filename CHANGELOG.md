@@ -259,6 +259,8 @@ not per individual commit.
   exist. The design review skills and their SOPs call the lowest finding tier SUGGESTION, as the
   other checkers do. `design-evaluation` lists missing artifacts before it scores and its gate
   items map to its 10 dimensions, which both design review SOPs and the user guide now use.
+  Eight of them are scored. The high-level assessment and the recommendations are unscored
+  report sections, so a SOP's confidence score averages only the eight.
   `plan-review` has a SHIP IT template and star rules that don't overlap, and
   `trade-off-evaluator` writes to the caller's output directory or reports inline. The
   `external-research` AWS example states a checked fact instead of a wrong one.

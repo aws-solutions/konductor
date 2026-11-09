@@ -108,7 +108,7 @@ flowchart TD
     Halt --> P5
     Manual --> P5
 
-    P5["Phase 5 — Final output<br/>apply all Phase 3+4 corrections<br/>design-evaluation confidence score<br/>= average of 10 dimensions (1–5 each)<br/>write to output_path<br/>reference the path, never inline the doc"]
+    P5["Phase 5 — Final output<br/>apply all Phase 3+4 corrections<br/>design-evaluation confidence score<br/>= average of the 8 scored dimensions (1 to 5 each)<br/>write to output_path<br/>reference the path, never inline the doc"]
 
     class Ask gate
     class Halt stop
@@ -216,7 +216,7 @@ flowchart TD
     G1 -->|No| Halt["Do not proceed"]
     G1 -->|Yes| S3["3. Read all artifacts<br/>order: system design → threat model →<br/>API specs → data models →<br/>security policies → diagrams<br/>missing optional ones noted as 'not provided'"]
 
-    S3 --> S4["4. Run design-evaluation skill<br/>score all 10 dimensions 1–5<br/>flag any dimension below 3<br/>classify CRITICAL / IMPORTANT / SUGGESTION"]
+    S3 --> S4["4. Run design-evaluation skill<br/>score the 8 scored dimensions 1 to 5<br/>flag any dimension below 3<br/>classify CRITICAL / IMPORTANT / SUGGESTION"]
     S4 --> S5["5. Write report to output_file<br/>never print its contents inline"]
     S5 --> S6["6. Present recommendation<br/>READY FOR IMPLEMENTATION / NOT READY"]
 
@@ -248,11 +248,11 @@ flowchart TD
 
 ### The 10 dimensions
 
-The SOP scores the 10 dimensions defined in `design-evaluation` Step 1, each 1 to 5: template
-adherence, high-level assessment, scalability (including cost), performance, security,
-maintainability and extensibility, failure handling and resilience, code and implementation
-quality, testability and automation readiness, and actionable recommendations. Anything below 3
-is flagged for revision.
+The SOP evaluates the 10 dimensions defined in `design-evaluation` Step 1. Eight are scored 1 to
+5: template adherence, scalability (including cost), performance, security, maintainability and
+extensibility, failure handling and resilience, code and implementation quality, and testability
+and automation readiness. Anything below 3 is flagged for revision. The other two, high-level
+assessment and actionable recommendations, are report sections with no score.
 
 ### What you get
 

@@ -96,7 +96,7 @@ Produce the final artifact and present it to the engineer.
 **Constraints:**
 
 - You MUST apply all corrections from Phases 3 and 4 before writing the final file.
-- You MUST run the `design-evaluation` skill to compute a confidence score: average of the 10 design-evaluation dimension scores (1–5 each). A section scoring below 3 MUST be flagged for revision.
+- You MUST run the `design-evaluation` skill to compute a confidence score: average of the 8 scored design-evaluation dimensions (1 to 5 each). High-level assessment (#2) and actionable recommendations (#10) are unscored report sections and stay out of the average. A section scoring below 3 MUST be flagged for revision.
 - You MUST write the final document to `output_path`.
 - You MUST present to the engineer: the output path, the confidence score (overall average + any sections below 3), and a one-line summary of any remaining open issues from Phase 4.
 - You MUST NOT present the full document inline — reference the file path.

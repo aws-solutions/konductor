@@ -535,21 +535,32 @@ EDITS = [
     ("skills catalog: adversarial-design-review tiers",
      "classifying CRITICAL / IMPORTANT / MINOR. Path B fallback",
      "classifying CRITICAL / IMPORTANT / SUGGESTION. Path B fallback"),
-    # ---- design-evaluation's 10 dimensions, as numbered in its Step 1 -------
+    # ---- design-evaluation: 8 scored dimensions, #2 and #10 are unscored ----
     ("design review use case: step 04 dimensions",
-     "Scores all 10 dimensions 1–5: template adherence, scalability, security and threat coverage, "
-     "maintainability, resilience, testability, operational readiness, cost, API quality, data model "
-     "quality. Below 3 is flagged for revision.",
      "Scores all 10 dimensions 1 to 5: template adherence, high-level assessment, scalability "
      "(including cost), performance, security, maintainability, resilience, code quality, testability, "
-     "and actionable recommendations. Below 3 is flagged for revision."),
+     "and actionable recommendations. Below 3 is flagged for revision.",
+     "Scores 8 dimensions 1 to 5: template adherence, scalability (including cost), performance, "
+     "security, maintainability, resilience, code quality, and testability. Below 3 is flagged for "
+     "revision. A high-level assessment and actionable recommendations are written as unscored "
+     "report sections."),
     ("design review row: the 10 dimensions",
-     '{ k: "The 10 dimensions", v: "Template adherence and completeness · scalability and performance · '
-     'security and threat coverage · maintainability and code quality · resilience and fault tolerance · '
-     'testability · operational readiness · cost optimization · API design quality · data model quality" }',
      '{ k: "The 10 dimensions", v: "Template adherence · high-level assessment · scalability (including cost) · '
      'performance · security · maintainability and extensibility · failure handling and resilience · '
-     'code and implementation quality · testability and automation readiness · actionable recommendations" }'),
+     'code and implementation quality · testability and automation readiness · actionable recommendations" }',
+     '{ k: "The 10 dimensions", v: "Scored 1 to 5: template adherence · scalability (including cost) · '
+     'performance · security · maintainability and extensibility · failure handling and resilience · '
+     'code and implementation quality · testability and automation readiness. Unscored report '
+     'sections: high-level assessment · actionable recommendations" }'),
+    ("design review flow: step 06 scoring",
+     "Scores all 10 dimensions 1–5, flags any dimension below 3,",
+     "Scores the 8 scored dimensions 1 to 5, flags any dimension below 3,"),
+    ("design-doc-creation phase 5: confidence score",
+     "confidence score (the average of 10 dimension scores, 1–5 each; anything below 3 is flagged)",
+     "confidence score (the average of its 8 scored dimensions, 1 to 5 each; anything below 3 is flagged)"),
+    ("design-doc-creation flow: phase 5 confidence score",
+     "confidence score (the average of 10 dimensions, 1–5 each)",
+     "confidence score (the average of the 8 scored dimensions, 1 to 5 each)"),
     ("design review row: missing threat model",
      "but degrades rather than blocks (the security and threat coverage dimension is limited)",
      "but degrades rather than blocks (the Security dimension is capped at 3)"),

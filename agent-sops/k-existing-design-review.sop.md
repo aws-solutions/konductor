@@ -78,12 +78,12 @@ Apply the design-evaluation skill to evaluate all artifacts across 10 dimensions
 
 - You MUST use the `design-evaluation` skill for this step
 - You MUST evaluate all 10 dimensions defined in `design-evaluation` Step 1
-- You MUST assign a numeric score of 1-5 for each dimension; a dimension scoring below 3 MUST be flagged for revision
+- You MUST assign a numeric score of 1-5 for each of the 8 scored dimensions; a dimension scoring below 3 MUST be flagged for revision. High-level assessment (#2) and actionable recommendations (#10) are unscored report sections
 - You MUST identify CRITICAL issues (block implementation) vs IMPORTANT issues (should fix) vs SUGGESTIONS
 
 **Expected Output:**
 
-- Scores for all 10 dimensions
+- Scores for the 8 scored dimensions, plus the high-level assessment and actionable recommendations
 - List of CRITICAL, IMPORTANT, and SUGGESTION findings
 
 ### 5. Generate Review Report
