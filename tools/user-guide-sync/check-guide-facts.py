@@ -79,10 +79,16 @@ STALE_VERSION_CLAIMS = ("last v2 release", "2.36.0 or later")
 KIRO_V2_SYNTH = Path("cli") / "konductor-rs" / "src" / "cli" / "synth" / "kiro_cli_v2.rs"
 
 
+def _flat(text: str) -> str:
+    """Collapse line wraps and indentation so a phrase split across Markdown or
+    doc-comment lines still matches."""
+    return " ".join(text.split())
+
+
 def stale_delegation_phrases(text: str) -> list[str]:
     """Stale phrases in `text`, matched with inline-code backticks stripped so the
     Markdown sources are checked by the same rule as the published bundle."""
-    plain = KONDUCTOR_SPAWN_CELL.sub("", _INLINE_CODE.sub(r"\1", text))
+    plain = _flat(KONDUCTOR_SPAWN_CELL.sub("", _INLINE_CODE.sub(r"\1", text)))
     return [phrase for phrase in STALE_DELEGATION_PHRASES if phrase in plain]
 
 
@@ -524,12 +530,13 @@ def main() -> int:
                     f"`allowedTools` only pre-approves it"
                 )
     version_sources = dict(sources)
-    version_sources[KIRO_V2_SYNTH] = read(root / KIRO_V2_SYNTH).replace("///", " ")
+    version_sources[KIRO_V2_SYNTH] = read(root / KIRO_V2_SYNTH)
     for rel, text in version_sources.items():
         if rel.name == "notes.md":
             continue
+        flat = _flat(text.replace("///", " "))
         for phrase in STALE_VERSION_CLAIMS:
-            if phrase in text:
+            if phrase in flat:
                 perm_fails.append(
                     f"{rel}: says {phrase!r}: state the checked kiro-cli versions, "
                     f"not a last release or a minimum"

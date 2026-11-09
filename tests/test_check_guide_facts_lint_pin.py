@@ -286,6 +286,26 @@ def test_v2_core_rules_clause_in_the_guide_fails_the_guide_check(repo_copy):
     assert "the core rules forbid it in Kiro CLI v2" in result.stdout
 
 
+def test_stale_delegation_phrase_wrapped_across_markdown_lines_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "docs/user-guide/faq.md",
+        "\nNo specialist holds a spawn tool, and the core rules\nforbid it in Kiro CLI v2.\n",
+    )
+    assert result.returncode != 0
+    assert "the core rules forbid it in Kiro CLI v2" in result.stdout
+
+
+def test_version_claim_wrapped_across_doc_comment_lines_fails_the_guide_check(repo_copy):
+    result = _guide_check_with_appended(
+        repo_copy,
+        "cli/konductor-rs/src/cli/synth/kiro_cli_v2.rs",
+        "\n/// Needs kiro-cli 2.36.0\n/// or later.\n",
+    )
+    assert result.returncode != 0
+    assert "kiro_cli_v2.rs: says '2.36.0 or later'" in result.stdout
+
+
 def test_notes_describe_the_existence_check_the_code_runs():
     """A visible command missing from cli/README.md fails the check; the guide
     must not say that any command in cli.rs, hidden or not, passes."""
