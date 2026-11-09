@@ -162,7 +162,8 @@ not per individual commit.
   `system-design-patterns` descriptions now name the tasks they cover, so they load on
   ordinary task prompts: reviewing a folder or repository, adding measurable targets to a
   requirements or design document, listing a plan's risks, and writing a system design.
-  `code-review` gains a step for reviewing a source tree with no diff, and
+  `code-review` gains a step for reviewing a source tree with no diff, which asks the user to
+  narrow the scope of a tree too large to read and lists the files it did not read, and
   `system-design-patterns` gains a no-questions mode that works from documents the user
   already gave.
 - The `kiro-requirements-generation`, `kiro-design-generation` and `kiro-task-generation`
@@ -177,7 +178,11 @@ not per individual commit.
   "MUST USE" with a concrete trigger, and `adversarial-design-review`, `design-quality-check`,
   `dom-inspection` and `socratic-elicitation`, which had none, gain one. `git-merge` now says
   the default branch instead of `mainline`, and long descriptions such as
-  `historical-issues-registry` and `legacy-to-agentic-estimate` are shorter.
+  `historical-issues-registry` and `legacy-to-agentic-estimate` are shorter. `adr-generator`
+  and `adversarial-code-review` also shorten theirs to fit, and a test now checks every skill.
+- `k-product-manager`, `k-tpm` and `k-quality-assurance` prompts drop their hand-written
+  skill lists, whose old triggers contradicted the new descriptions. Each skill's description is
+  now the one place that says when to use it.
 
 ### Fixed
 
