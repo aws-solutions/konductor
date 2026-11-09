@@ -28,6 +28,8 @@ Use this skill when:
 - Spawned by the orchestrator as the checker in a maker-checker cycle
 - Reviewing a change before submission when the change touches auth, data writes, or external API boundaries
 
+The full adversarial pull request review (`k-adversarial-pull-request-review`: four `k-developer` generator passes, then this skill's Validator Mode in a fresh `k-architect` session) is coordinated by the orchestrator, which alone declares that SOP. Asked for it directly, say to run it through `konductor` instead of running the passes yourself.
+
 ## Modes
 
 This skill operates in two modes. The invoker selects the mode; the two modes must not be mixed in one pass.
