@@ -158,7 +158,8 @@ not per individual commit.
   `system-design-patterns` descriptions now name the tasks they cover, so they load on
   ordinary task prompts: reviewing a folder or repository, adding measurable targets to a
   requirements or design document, listing a plan's risks, and writing a system design.
-  `code-review` gains a step for reviewing a source tree with no diff, and
+  `code-review` gains a step for reviewing a source tree with no diff, which asks the user to
+  narrow the scope of a tree too large to read and lists the files it did not read, and
   `system-design-patterns` gains a no-questions mode that works from documents the user
   already gave.
 - The `kiro-requirements-generation`, `kiro-design-generation` and `kiro-task-generation`
