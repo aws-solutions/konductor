@@ -58,7 +58,7 @@ function readSpend(run) {
 }
 
 /** Everything a run report needs, without writing a file. */
-function analyze({ run, tasks, baseline, scoringFile, qualityPack = null, quoteRule = null }) {
+function analyze({ run, tasks, baseline, scoringFile, qualityPack = null, quoteRule = null, allowStalePack = false }) {
   const base = baseline ?? defaultBaseline(run);
   const weights = loadScoring(scoringFile, { allowPack: Boolean(qualityPack) });
   // The scoring file's evidence-quote rule (lenient unless it says strict) picks the view of the judgments everything below reads.
@@ -66,14 +66,15 @@ function analyze({ run, tasks, baseline, scoringFile, qualityPack = null, quoteR
   const quote = applyQuoteRule(run, tasks, quoteRule ?? quoteRuleOf(weights));
   const built = buildReport({ run, tasks, baseline: base });
   // Only a scoring file that weights the pack reads the pack judgments; otherwise rows and scores are exactly as before.
-  const ctx = { ...built.ctx, scoring: weights, ...(weights.pack > 0 ? { packScoreOf: require('./packscore.js').packScores({ run, tasks, pack: qualityPack }).scoreOf } : {}) };
+  const packed = weights.pack > 0 ? require('./packscore.js').packScores({ run, tasks, pack: qualityPack, allowStale: allowStalePack }) : null;
+  const ctx = { ...built.ctx, scoring: weights, ...(packed ? { packScoreOf: packed.scoreOf } : {}) };
   const rows = buildRows(run, tasks, ctx);
   const scores = computeScores({ rows, baseline: base, weights, unit: built.report.costUnit === 'usd' ? 'USD' : 'credits', harness: run.harness ?? null });
   const skipped = skippedCount(run);
   const facts = collectFacts({ run, tasks, rows, ctx: built.ctx, report: built.report, skipped, baseline: scores.baseline, weights, calibration: readCalibration(run) });
   const card = scorecard(facts);
   run.spend = readSpend(run);
-  return { ...built, base: scores.baseline, rows, scores, facts, card, weights, quote };
+  return { ...built, base: scores.baseline, rows, scores, facts, card, weights, quote, packStale: packed?.stale ?? [] };
 }
 
 /** Points `run` at the quote view the scoring file asks for, for commands that read the judgments before `analyze` does. */
@@ -85,9 +86,9 @@ function useScoringQuoteRule(run, tasks, scoringFile) {
  * The same analysis under the other quote rule, compared with `primary` (the analyze() result of the rule in use). The run is left
  * pointing at the primary view. Nothing is written.
  */
-function quoteSensitivity({ run, tasks, baseline, scoringFile, qualityPack = null, primary }) {
+function quoteSensitivity({ run, tasks, baseline, scoringFile, qualityPack = null, primary, allowStalePack = false }) {
   if (!(run.judgmentsStored ?? run.judgments)) return { available: false, rule: primary.quote.requested, other: otherRule(primary.quote.requested), reason: 'not judged' };
-  const secondary = analyze({ run, tasks, baseline: primary.base ?? baseline, scoringFile, qualityPack, quoteRule: otherRule(primary.quote.requested) });
+  const secondary = analyze({ run, tasks, baseline: primary.base ?? baseline, scoringFile, qualityPack, quoteRule: otherRule(primary.quote.requested), allowStalePack });
   applyQuoteRule(run, tasks, primary.quote.requested);
   return compareViews(primary, secondary);
 }
@@ -114,13 +115,15 @@ function writeOutputs({ dir, name, blocks, charts, title, format, json }) {
   return written;
 }
 
-function generateRunReport({ run, tasks, baseline, out, detail, format, scoringFile, defaultDir, profile = null, phases = null, qualityPack = null }) {
+function generateRunReport({ run, tasks, baseline, out, detail, format, scoringFile, defaultDir, profile = null, phases = null, qualityPack = null, allowStalePack = false }) {
   enrichOrch(run);
-  const a = analyze({ run, tasks, baseline, scoringFile, qualityPack });
-  const sens = quoteSensitivity({ run, tasks, baseline, scoringFile, qualityPack, primary: a });
+  const a = analyze({ run, tasks, baseline, scoringFile, qualityPack, allowStalePack });
+  const sens = quoteSensitivity({ run, tasks, baseline, scoringFile, qualityPack, primary: a, allowStalePack });
   const d = detailOf(detail);
   const check = profile ? profileCheck(profile, { facts: a.facts, judgments: run.judgments }) : null;
   const doc = buildRunDocument({ run, tasks, report: a.report, rows: a.rows, scores: a.scores, card: a.card, facts: a.facts, ctx: a.ctx, weights: a.weights, detail: d, profile: profile ? { profile, check } : null, docPhases: phases, quote: a.quote, sens });
+  const staleNote = require('./packscore.js').staleNote(a.packStale, qualityPack);
+  if (staleNote) doc.blocks.unshift(require('./doc.js').note(staleNote));
   let quality = null;
   if (qualityPack) {
     // Opt-in: without --criteria-pack nothing below runs and the outputs are unchanged.
@@ -129,7 +132,7 @@ function generateRunReport({ run, tasks, baseline, out, detail, format, scoringF
     quality = summarizeQuality({ groups: armIds.map((id) => ({ id, label: id, run, arm: id })), tasks, pack: qualityPack, scoredWeight: a.weights.pack ?? null });
     doc.blocks.push(...qualityBlocks(quality));
   }
-  const json = { ...a.report, detail: d, quoteRule: a.quote, quoteSensitivity: sens, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), ...(quality ? { qualityDimensions: quality } : {}), scores: a.scores, orchestration: summarizeOrch(run, { phases }), diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
+  const json = { ...a.report, detail: d, quoteRule: a.quote, quoteSensitivity: sens, ...(profile ? { profile: { name: profile.name, met: check.met, items: check.items } } : {}), ...(quality ? { qualityDimensions: quality } : {}), ...(a.packStale.length ? { packStale: a.packStale } : {}), scores: a.scores, orchestration: summarizeOrch(run, { phases }), diligence: { rating: a.card.rating, counts: a.card.counts, blockers: a.card.blockers, criteria: a.card.criteria, thresholds: a.card.thresholds } };
   const { dir, name } = outPaths(out, defaultDir);
   const { renderMarkdown } = require('./render.js');
   const written = writeOutputs({ dir, name, blocks: doc.blocks, charts: doc.charts, title: doc.title, format: formatOf(format), json });

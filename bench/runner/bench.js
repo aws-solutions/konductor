@@ -105,6 +105,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js report --run DIR[,DIR...] [--baseline vanilla|ARM] [--out report.md|DIR] [--detail quick|full] [--format md|html|both]
        [--scoring FILE] [--bench-dir DIR] [--extra-tasks DIR,DIR]
        [--profile quick|detailed] [--verdict platform|orchestrator-pass] [--phases ID,ID|all] [--test-arms ARM,ARM] [--changed-skills NAME,NAME] [--criteria-pack quality]
+       [--allow-stale-pack]
        (--criteria-pack quality adds a Quality dimensions table from judgments-quality.json; it is indicative and not part of quality /100.
        --scoring profiles/scoring-fractional.json scores the checks component as passed / total instead of 1 only when every check passed; the default is unchanged.
        The evidence-quote rule is lenient (tightened) unless the scoring file says "quotes": "strict" (profiles/scoring-strict-quotes.json, which reproduces the numbers of earlier reports).
@@ -113,6 +114,8 @@ const USAGE = `Usage:
        --verdict platform writes verdict.md, verdict.html and verdict.json: one page with keep, discard or not enough evidence for each arm against the baseline,
        from one or more run directories (several need --out); it replaces the normal report for that call.
        With --criteria-pack quality and a --scoring file that weights the pack, either verdict scores every run with the pack included; every run then needs a current pack judgment.
+       The plain report is the same: it stops when a run has no current pack judgment. --allow-stale-pack (plain report only, not the verdicts) scores a run from judgments made against
+       another pack or task revision instead, and a note at the top of the report and a packStale list in report.json label each such run "stale pack revision <rev>".
        --verdict orchestrator-pass writes orchestrator-pass.md, .html and .json: per (harness, model) cell, a PASS, FAIL or NOT ENOUGH EVIDENCE for each test arm
        against the baseline (default vanilla): cost at most 2.0x the baseline per run and per successful run, quality not below it by more than the spread of one
        baseline run, an A/A repeat required and its drift compared with the effect, and a skill-only change must have loaded. A GPT cell is shown beside the Claude
