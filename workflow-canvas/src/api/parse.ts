@@ -281,6 +281,13 @@ export function errorCurrentHashOf(body: unknown): string | undefined {
     : undefined;
 }
 
+/** The `fix` of an `Error` body, or `undefined` when it has none. */
+export function errorFixOf(body: unknown): string | undefined {
+  return isObject(body) && typeof body.fix === 'string' && body.fix !== ''
+    ? body.fix
+    : undefined;
+}
+
 /** The `code` of an `Error` body, or `undefined` when it has none. */
 export function errorCodeOf(body: unknown): string | undefined {
   return isObject(body) && typeof body.code === 'string'

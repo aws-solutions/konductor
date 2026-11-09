@@ -90,3 +90,33 @@ test('Execution tab has no axe violations with a goal that cannot be run', async
 
   await expectNoAccessibilityViolations(canvas.page);
 });
+
+// Opens the trust dialog: the Run is refused with `trust_required`.
+async function openTrustDialog(canvas: WorkflowCanvasPage) {
+  await refuseRunsWith(canvas.page, 409, {
+    error: 'The workflow is not trusted yet.',
+    code: 'trust_required',
+    fix: 'Run `konductor flow trust hello` in a terminal, then try again.',
+  });
+  await canvas.selectTab('Execution');
+  await canvas.expectTabLoaded('Execution');
+  await canvas.runButton.click();
+  await canvas.page.getByTestId('trust-command').waitFor();
+}
+
+test('Execution tab has no axe violations with the trust dialog open', async ({
+  canvas,
+}) => {
+  await openTrustDialog(canvas);
+
+  await expectNoAccessibilityViolations(canvas.page);
+});
+
+test('Execution tab has no axe violations with the trust dialog open in the dark mode', async ({
+  canvas,
+}) => {
+  await canvas.switchTheme();
+  await openTrustDialog(canvas);
+
+  await expectNoAccessibilityViolations(canvas.page);
+});

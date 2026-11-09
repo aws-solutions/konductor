@@ -1,10 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { RunView } from '../../api/types';
 
+/**
+ * A start refused because the workflow is not trusted: the `fix` of the
+ * server, and the goal of that start, so the same run can be asked for again.
+ */
+export interface TrustNeeded {
+  fix: string;
+  goal: string;
+}
+
+/**
+ * A trust refusal as the state holds it. `refusal` counts the refusals in a
+ * row, from 1, so each new refusal has a number of its own while a state
+ * rebuilt with the same content keeps it. The dialog keys its closed state on
+ * it.
+ */
+export interface TrustRefusal extends TrustNeeded {
+  refusal: number;
+}
+
 /** Where the Execution tab is in the life of a run. */
 export type ExecutionState =
   | { phase: 'idle' }
-  | { phase: 'starting' }
+  | {
+      phase: 'starting';
+      /** The trust refusals in a row before this start, when there were any. */
+      trustRefusals?: number;
+    }
   | {
       phase: 'following';
       runId: string;
@@ -26,6 +49,8 @@ export type ExecutionState =
       maybeStarted?: true;
       /** The run that was being followed, when the failure came after it began. */
       runId?: string;
+      /** Set when the start was refused because the workflow is not trusted. */
+      trust?: TrustRefusal;
     };
 
 /** Something that happened to the run, in the order it can. */
@@ -40,6 +65,8 @@ export type ExecutionEvent =
       runId?: string;
       /** The start got no clear answer, so the run may have started. */
       maybeStarted?: true;
+      /** The start was refused because the workflow is not trusted. */
+      trust?: TrustNeeded;
     };
 
 /** The state before any run has been started. */
@@ -62,8 +89,13 @@ export function runOf(state: ExecutionState): RunView | undefined {
     : undefined;
 }
 
+// A start after a trust refusal carries the count on, so the next refusal
+// gets the next number.
 function startOf(state: ExecutionState): ExecutionState {
-  return isInFlight(state) ? state : { phase: 'starting' };
+  if (isInFlight(state)) return state;
+  return state.phase === 'error' && state.trust
+    ? { phase: 'starting', trustRefusals: state.trust.refusal }
+    : { phase: 'starting' };
 }
 
 function startedOf(
@@ -96,9 +128,23 @@ function snapshotOf(state: ExecutionState, run: RunView): ExecutionState {
 // the caller runs one loop at a time.
 function failedOf(
   state: ExecutionState,
-  { message, runId, maybeStarted }: Extract<ExecutionEvent, { type: 'failed' }>,
+  {
+    message,
+    runId,
+    maybeStarted,
+    trust,
+  }: Extract<ExecutionEvent, { type: 'failed' }>,
 ): ExecutionState {
   if (state.phase === 'starting' && runId === undefined) {
+    if (trust) {
+      const refusal = (state.trustRefusals ?? 0) + 1;
+      return {
+        phase: 'error',
+        message,
+        started: false,
+        trust: { ...trust, refusal },
+      };
+    }
     return maybeStarted
       ? { phase: 'error', message, started: false, maybeStarted: true }
       : { phase: 'error', message, started: false };

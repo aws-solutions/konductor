@@ -36,6 +36,7 @@ import {
 } from './core';
 import './execution.css';
 import { runErrorOf } from './run-error';
+import { TrustDialog } from './TrustDialog';
 import type { ExecutionController } from './use-execution';
 
 // Safari reports the Enter that commits a composition after it has ended, with
@@ -131,10 +132,12 @@ const NO_GOAL_OF_JOINED_RUN =
   'This run was already going, so its goal is not known here.';
 
 function RunPanel({
+  workflowName,
   goal,
   onGoalChange,
   execution,
 }: {
+  workflowName: string;
   goal: string;
   onGoalChange: (goal: string) => void;
   execution: ExecutionController;
@@ -179,6 +182,11 @@ function RunPanel({
         <RunStatusLine state={execution.state} />
         <BlockedStage state={execution.state} />
         <RunError state={execution.state} />
+        <TrustDialog
+          state={execution.state}
+          workflowName={workflowName}
+          onRunAgain={execution.start}
+        />
       </SpaceBetween>
     </Container>
   );
@@ -216,6 +224,7 @@ function ExecutionView({
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
         <RunPanel
+          workflowName={view.name}
           goal={goal}
           onGoalChange={onGoalChange}
           execution={execution}

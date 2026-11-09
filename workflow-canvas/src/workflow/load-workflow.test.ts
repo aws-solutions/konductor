@@ -313,6 +313,38 @@ describe('loadWorkflow', () => {
       await expect(runs.start('g', signal)).rejects.toBe(error);
     });
 
+    it('tell that the workflow must be trusted, with the fix of the server', async () => {
+      const fix =
+        'Run `konductor flow trust hello` in a terminal, then try again.';
+      const error = new ApiError(
+        `Not trusted. ${fix}`,
+        409,
+        'trust_required',
+        undefined,
+        [],
+        undefined,
+        fix,
+      );
+      const runs = await portFor(
+        fakeApi({ startRun: vi.fn().mockRejectedValue(error) }),
+      );
+
+      await expect(runs.start('g', signal)).rejects.toMatchObject({
+        name: 'RunNeedsTrust',
+        message: error.message,
+        fix,
+      });
+    });
+
+    it('leave a trust_required with no fix as the error it is', async () => {
+      const error = new ApiError('Not trusted.', 409, 'trust_required');
+      const runs = await portFor(
+        fakeApi({ startRun: vi.fn().mockRejectedValue(error) }),
+      );
+
+      await expect(runs.start('g', signal)).rejects.toBe(error);
+    });
+
     it.each([
       ['no answer', new ApiError('No answer.', 0)],
       ['an accepted run in an unreadable reply', new ApiError('Odd.', 202)],

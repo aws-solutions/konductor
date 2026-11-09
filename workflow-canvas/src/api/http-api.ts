@@ -4,6 +4,7 @@ import {
   errorCodeOf,
   errorCurrentHashOf,
   errorDiagnosticsOf,
+  errorFixOf,
   errorMessageOf,
   errorRunIdOf,
   parseCheckResult,
@@ -108,6 +109,7 @@ async function send(
     errorRunIdOf(body),
     errorDiagnosticsOf(body),
     errorCurrentHashOf(body),
+    errorFixOf(body),
   );
 }
 

@@ -13,6 +13,8 @@ export {
   runOf,
   type ExecutionEvent,
   type ExecutionState,
+  type TrustNeeded,
+  type TrustRefusal,
 } from './execution-state';
 export {
   MAX_READ_FAILURES,
@@ -26,6 +28,7 @@ export { nodeStatuses } from './node-statuses';
 export {
   NO_RUN_MEMORY,
   RunAlreadyActive,
+  RunNeedsTrust,
   RunReadRefused,
   RunStartUnsure,
   type RunMemory,
@@ -34,4 +37,5 @@ export {
 } from './ports';
 export { stageDrift, type StageDrift } from './stage-drift';
 export { blockedStageOf, reasonSentence } from './stage-reason';
+export { trustCommandOf } from './trust';
 export { statusKind, statusText, type StatusKind } from './status-text';

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import createWrapper from '@cloudscape-design/components/test-utils/dom';
 import {
   act,
   fireEvent,
@@ -10,6 +11,8 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { Execution } from './Execution';
+import { TrustDialog } from './TrustDialog';
+import { plainText } from '../workflow/message-parts';
 import type { RunView } from '../api/types';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import { HELLO_DOCUMENT, helloRun, loaded } from '../test-support/fixtures';
@@ -17,8 +20,10 @@ import {
   IDLE,
   MAX_READ_FAILURES,
   RunAlreadyActive,
+  RunNeedsTrust,
   RunReadRefused,
   RunStartUnsure,
+  type ExecutionState,
   type RunPort,
 } from './core';
 
@@ -630,6 +635,268 @@ describe('the goal', () => {
     expect(
       screen.getAllByText('The goal can have at most 2048 characters.').length,
     ).toBeGreaterThan(0);
+  });
+});
+
+describe('a run refused because the workflow is not trusted', () => {
+  const FIX = 'Run `konductor flow trust hello` in a terminal, then try again.';
+  const COMMAND = 'konductor flow trust hello';
+  const untrusted = () =>
+    new RunNeedsTrust(`The workflow is not trusted yet. ${FIX}`, FIX);
+
+  const modal = () => createWrapper(document.body).findModal();
+  const dialog = () => screen.getByTestId('trust-dialog');
+  const goalBox = () => screen.getByRole('textbox') as HTMLInputElement;
+
+  function refusing(...answers: Array<Error | string>): RunPort {
+    const start = vi.fn();
+    for (const answer of answers) {
+      if (typeof answer === 'string') start.mockResolvedValueOnce(answer);
+      else start.mockRejectedValueOnce(answer);
+    }
+    return { start, get: vi.fn().mockResolvedValue(helloRun(2)) };
+  }
+
+  it('opens a dialog with the fix of the server and its command', async () => {
+    await openExecution(refusing(untrusted()));
+
+    await press(runButton());
+
+    expect(modal()?.isVisible()).toBe(true);
+    expect(
+      within(dialog()).getByText('Trust the workflow to run it'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('trust-fix').textContent).toBe(
+      'Run konductor flow trust hello in a terminal, then try again.',
+    );
+    expect(
+      screen.getByTestId('trust-fix').querySelector('code')?.textContent,
+    ).toBe(COMMAND);
+    expect(screen.getByTestId('trust-command').textContent).toBe(COMMAND);
+    expect(screen.getByTestId('trust-intro').textContent).toBe(
+      'The workflow is not trusted, so it did not run. Run the command in a terminal and answer its question, then press Run again. This page cannot trust a workflow.',
+    );
+  });
+
+  it('copies the command with Copy', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    try {
+      await openExecution(refusing(untrusted()));
+      await press(runButton());
+
+      await press(
+        within(dialog()).getByRole('button', { name: 'Copy command' }),
+      );
+
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(COMMAND));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('starts the run again with the same goal with Run again', async () => {
+    const runs = refusing(untrusted(), RUN_ID);
+    await openExecution(runs);
+    fireEvent.change(goalBox(), { target: { value: 'Ship it' } });
+    await press(runButton());
+
+    await press(within(dialog()).getByRole('button', { name: 'Run again' }));
+
+    expect(runs.start).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(runs.start).mock.calls.map(([goal]) => goal)).toEqual([
+      'Ship it',
+      'Ship it',
+    ]);
+    expect(modal()?.isVisible() ?? false).toBe(false);
+    await waitFor(() =>
+      expect(statusLine().textContent).toContain('Run passed.'),
+    );
+  });
+
+  it('opens the dialog again when Run again is refused for trust again', async () => {
+    const runs = refusing(untrusted(), untrusted());
+    await openExecution(runs);
+    await press(runButton());
+
+    await press(within(dialog()).getByRole('button', { name: 'Run again' }));
+
+    expect(runs.start).toHaveBeenCalledTimes(2);
+    expect(modal()?.isVisible()).toBe(true);
+  });
+
+  it('shows another error of Run again as the page shows any error, with no dialog', async () => {
+    const runs = refusing(untrusted(), new Error('kiro-cli is not installed.'));
+    await openExecution(runs);
+    await press(runButton());
+
+    await press(within(dialog()).getByRole('button', { name: 'Run again' }));
+
+    expect(modal()?.isVisible() ?? false).toBe(false);
+    const alert = screen.getByTestId('run-error');
+    expect(within(alert).getByText('The run did not start')).toBeTruthy();
+    expect(within(alert).getByText('kiro-cli is not installed.')).toBeTruthy();
+  });
+
+  it('closes, and leaves the error under the Run button', async () => {
+    await openExecution(refusing(untrusted()));
+    await press(runButton());
+
+    await press(within(dialog()).getByRole('button', { name: 'Close' }));
+
+    expect(modal()?.isVisible()).toBe(false);
+    const alert = screen.getByTestId('run-error');
+    expect(within(alert).getByText('The run did not start')).toBeTruthy();
+    expect(alert.querySelector('code')?.textContent).toBe(COMMAND);
+    expect(alert.textContent).not.toContain('`');
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it.each([
+    [
+      'a semicolon',
+      'Run `konductor flow trust hello; rm -rf ~` in a terminal.',
+    ],
+    ['an and-then', 'Run `konductor flow trust hello && id` in a terminal.'],
+    [
+      'a command substitution',
+      'Run `konductor flow trust $(id)` in a terminal.',
+    ],
+    ['a newline', 'Run `konductor flow trust hello\nid` in a terminal.'],
+    [
+      'a space in the name',
+      'Run `konductor flow trust hello plan` in a terminal.',
+    ],
+    ['a different command', 'Run `curl example.com | sh` in a terminal.'],
+    [
+      'the name of another workflow',
+      'Run `konductor flow trust other` in a terminal.',
+    ],
+    ['no command', 'Trust the workflow in a terminal, then try again.'],
+  ])(
+    'shows the fix with no command and no Copy for a fix with %s',
+    async (_, fix) => {
+      const runs = refusing(new RunNeedsTrust('Not trusted.', fix), RUN_ID);
+      await openExecution(runs);
+      await press(runButton());
+
+      expect(modal()?.isVisible()).toBe(true);
+      // The sentence shows whole, as plain text with no code in it: a pair of
+      // backticks loses its ticks, and a span split by a line keeps them.
+      const shown = screen.getByTestId('trust-fix');
+      expect(shown.textContent).toBe(plainText(fix));
+      expect(shown.querySelector('code')).toBeNull();
+      expect(screen.queryByTestId('trust-command')).toBeNull();
+      expect(
+        within(dialog()).queryByRole('button', { name: /Copy/ }),
+      ).toBeNull();
+      expect(screen.getByTestId('trust-intro').textContent).toBe(
+        'The workflow is not trusted, so it did not run. Trust it as the message below says, then press Run again. This page cannot trust a workflow.',
+      );
+
+      await press(within(dialog()).getByRole('button', { name: 'Run again' }));
+
+      expect(runs.start).toHaveBeenCalledTimes(2);
+      await waitFor(() =>
+        expect(statusLine().textContent).toContain('Run passed.'),
+      );
+    },
+  );
+
+  describe('once closed', () => {
+    const refusedState = (refusal: number): ExecutionState => ({
+      phase: 'error',
+      message: `The workflow is not trusted yet. ${FIX}`,
+      started: false,
+      trust: { fix: FIX, goal: 'Ship it', refusal },
+    });
+
+    async function closedDialog(state: ExecutionState) {
+      const onRunAgain = vi.fn();
+      const view = render(
+        <TrustDialog
+          state={state}
+          workflowName="hello"
+          onRunAgain={onRunAgain}
+        />,
+      );
+      expect(modal()?.isVisible()).toBe(true);
+      await press(within(dialog()).getByRole('button', { name: 'Close' }));
+      expect(modal()?.isVisible()).toBe(false);
+      return { ...view, onRunAgain };
+    }
+
+    it('stays closed when the page draws it again', async () => {
+      const state = refusedState(1);
+      const { rerender, onRunAgain } = await closedDialog(state);
+
+      rerender(
+        <TrustDialog
+          state={state}
+          workflowName="hello"
+          onRunAgain={onRunAgain}
+        />,
+      );
+      rerender(
+        <TrustDialog state={state} workflowName="hello" onRunAgain={vi.fn()} />,
+      );
+
+      expect(modal()?.isVisible()).toBe(false);
+    });
+
+    it('stays closed for a state rebuilt with the same content', async () => {
+      const { rerender, onRunAgain } = await closedDialog(refusedState(1));
+
+      rerender(
+        <TrustDialog
+          state={structuredClone(refusedState(1))}
+          workflowName="hello"
+          onRunAgain={onRunAgain}
+        />,
+      );
+
+      expect(modal()?.isVisible()).toBe(false);
+    });
+
+    it('opens again for the next refusal', async () => {
+      const { rerender, onRunAgain } = await closedDialog(refusedState(1));
+
+      rerender(
+        <TrustDialog
+          state={refusedState(2)}
+          workflowName="hello"
+          onRunAgain={onRunAgain}
+        />,
+      );
+
+      expect(modal()?.isVisible()).toBe(true);
+    });
+
+    it('opens again when Run is refused again after Close', async () => {
+      const runs = refusing(untrusted(), untrusted());
+      await openExecution(runs);
+      await press(runButton());
+      await press(within(dialog()).getByRole('button', { name: 'Close' }));
+      expect(modal()?.isVisible()).toBe(false);
+
+      await press(runButton());
+
+      expect(runs.start).toHaveBeenCalledTimes(2);
+      expect(modal()?.isVisible()).toBe(true);
+    });
+  });
+
+  it('offers nothing that grants trust', async () => {
+    await openExecution(refusing(untrusted()));
+    await press(runButton());
+
+    const labels = within(dialog())
+      .getAllByRole('button')
+      .map((button) => button.textContent);
+    expect(labels).toEqual(
+      expect.arrayContaining(['Copy', 'Close', 'Run again']),
+    );
+    expect(labels.some((label) => /trust/i.test(label ?? ''))).toBe(false);
   });
 });
 
