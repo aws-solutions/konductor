@@ -101,7 +101,7 @@ Apply the security-test-generation skill to create security test coverage.
 - If `design_file` is provided, you MUST use it for threat context
 - You MUST cover all 7 security domains: authentication, input validation, API security, data protection, session management, error handling, infrastructure
 - You MUST organize tests by layer: frontend, backend, infrastructure
-- The skill writes its own output under `output_dir` — `tasks.md` for Kiro callers, or per-category files plus `security-test-overview.md` and `best-practices-reference.md` for non-Kiro callers (see `skills/security-test-generation/SKILL.md`'s Output section) — you MUST NOT expect a separate `security-test-plan.md` file
+- The skill writes its own output under `output_dir` — `tasks.md` for Kiro callers, or per-category files plus `security-test-overview.md` and `best-practices-reference.md` for non-Kiro callers (see `skills/security-test-generation/references/output-generic.md`) — you MUST NOT expect a separate `security-test-plan.md` file
 - You MUST count the CRITICAL and IMPORTANT findings the skill reports from its own Quality Gate and carry those counts into Step 6's report — a CRITICAL security finding is a coverage gap and MUST reach the same gate as the other CRITICAL gaps this SOP surfaces.
 - If the skill ran in Kiro stub mode — `tasks.md` written with no `security-test-overview.md`, `best-practices-reference.md`, or `[domain]-[layer].md` file alongside it — there is no real findings count to carry forward: real test content is deferred to a human clicking "Start task" in the Kiro IDE. You MUST record Critical and Important findings in Step 6's report as NOT EVALUATED, not as 0, so the report does not misrepresent an unevaluated pass as a clean one.
 
