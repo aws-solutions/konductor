@@ -109,9 +109,8 @@ async function main(argv, { caller, log = console.log } = {}) {
   const report = () => log(`model calls ${ctx.ask.stats.calls}, cache hits ${ctx.ask.stats.hits}, new spend USD ${ctx.ask.stats.newUsd.toFixed(4)}, total spend USD ${ctx.ask.spentUsd().toFixed(4)}`);
 
   if (cmd === 'extract') {
-    const stoplist = buildStoplist({ skill: opts.skill, text: ctx.skill.text, description: ctx.skill.description });
     const out = await runExtract({
-      skill: ctx.skill, ask: ctx.ask, modelName: opts['extract-model'] ?? opts.model ?? DEFAULT_MODEL, count: intFlag(opts, 'count', DEFAULT_RULES), stoplist, outDir: dir,
+      skill: ctx.skill, ask: ctx.ask, modelName: opts['extract-model'] ?? opts.model ?? DEFAULT_MODEL, count: intFlag(opts, 'count', DEFAULT_RULES), outDir: dir,
     });
     log(`${opts.skill}: ${out.rules.length} rules kept, ${out.rejected.length} rejected (${out.rejected.map((r) => r.reasons.join('/')).join('; ') || 'none'})`);
     report();

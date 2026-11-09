@@ -220,7 +220,7 @@ function validateTriggerShape(file, t) {
   }
 }
 
-function validateShape(file, t) {
+function validateShape(file, t, textOnly = false) {
   if (t.class === 'trigger') return validateTriggerShape(file, t);
   const where = path.basename(file);
   const need = (cond, msg) => { if (!cond) err(where, msg); };
@@ -233,7 +233,7 @@ function validateShape(file, t) {
   if (real) need(t.fixture === undefined, 'real tasks have no fixture; the base tree comes from the real-repository cache');
   else need(isStr(t.fixture), 'fixture must be a non-empty string');
   need(isInt(t.timeoutSec) && t.timeoutSec > 0, 'timeoutSec must be a positive integer');
-  need(Array.isArray(t.checks) && t.checks.length > 0, 'checks must be a non-empty array');
+  need(Array.isArray(t.checks) && (textOnly || t.checks.length > 0), 'checks must be a non-empty array');
   need(Array.isArray(t.rubric) && t.rubric.length >= 3 && t.rubric.length <= 6, 'rubric must have 3 to 6 entries');
   if (real) need(Array.isArray(t.rubric) && t.rubric.length === REAL_RUBRIC_SIZE, `real tasks need exactly ${REAL_RUBRIC_SIZE} rubric criteria`);
   need(Array.isArray(t.tiers) && t.tiers.length > 0 && t.tiers.every((x) => TIERS.includes(x)), `tiers must be a non-empty subset of ${TIERS.join('|')}`);
@@ -550,7 +550,7 @@ function main() {
     for (const f of src.files) {
       const t = readJson(path.join(src.dir, f), src.roots.extra ? `${path.basename(src.dir)}/${f}` : f);
       if (!t) continue;
-      validateShape(f, t);
+      validateShape(f, t, skillevalDirs.has(src.dir));
       if (seen.has(t.id)) err(f, `duplicate id "${t.id}" (also ${seen.get(t.id)})`);
       seen.set(t.id, f);
       tasks.push(t);

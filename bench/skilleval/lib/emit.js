@@ -64,6 +64,7 @@ function emit({ skill, dir, benchDir = BENCH }) {
   fs.writeFileSync(path.join(tasksDir, '.skilleval'), 'Tasks emitted by bench/skilleval/skilleval.js. Text-only; scored by rubric.\n');
   fs.mkdirSync(path.join(tasksDir, 'fixtures', FIXTURE), { recursive: true });
   fs.writeFileSync(path.join(tasksDir, 'fixtures', FIXTURE, 'README.md'), 'Empty workspace. The task is answered in the reply.\n');
+  fs.writeFileSync(path.join(tasksDir, 'fixtures', FIXTURE, '.bench-answer-key.md'), 'No answer key. Grade the reply against the rubric only.\n');
   const emitted = [];
   const skipped = [];
   for (const s of scenarios) {

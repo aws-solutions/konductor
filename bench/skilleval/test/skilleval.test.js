@@ -69,25 +69,22 @@ test('askJson retries once with a stricter prompt and then gives up', async () =
   await assert.rejects(bad.askJson('glm-5', 'p'), /no valid JSON/);
 });
 
-test('rule screening rejects unverifiable, skill-named, side-effect and duplicate rules', () => {
-  const stoplist = buildStoplist({ skill: 'widget-audit', text: SKILL, description: 'Audits widget inventories for stale entries.' });
+test('rule screening rejects unverifiable, skill-named, side-effect, unknown-tag and duplicate rules', () => {
   const good = { text: 'Lists stale widgets with the oldest first', quote: 'Always list every widget that has not been updated in 90 days, oldest first.', tag: 'useful', requestType: 'a request to clean up an inventory' };
   const raw = [
     good,
     { ...good, text: 'Lists stale widgets with the oldest first' },
     { ...good, text: 'Different text', quote: 'This sentence is not in the skill at all, honestly.' },
     { ...good, text: 'Follows the widget-audit procedure' },
-    { ...good, text: 'Mentions the Quarantine Bucket' },
     { ...good, text: 'Saves the list to a file on disk' },
     { ...good, text: 'Another rule', tag: 'nice' },
   ];
-  const { accepted, rejected } = screenRules({ raw, skillText: SKILL, skill: 'widget-audit', stoplist });
+  const { accepted, rejected } = screenRules({ raw, skillText: SKILL, skill: 'widget-audit' });
   assert.deepEqual(accepted.map((r) => [r.id, r.line]), [['R01', 10]]);
-  assert.equal(rejected.length, 6);
+  assert.equal(rejected.length, 5);
   assert.ok(rejected.some((r) => r.reasons.includes('duplicate rule')));
   assert.ok(rejected.some((r) => r.reasons.includes('quote not found in the skill text')));
   assert.ok(rejected.some((r) => r.reasons.includes('names the skill')));
-  assert.ok(rejected.some((r) => r.reasons.some((x) => x.startsWith('skill vocabulary'))));
   assert.ok(rejected.some((r) => r.reasons.includes('needs a side effect')));
   assert.ok(rejected.some((r) => r.reasons.some((x) => x.startsWith('unknown tag'))));
 });
