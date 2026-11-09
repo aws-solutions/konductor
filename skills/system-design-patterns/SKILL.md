@@ -1,6 +1,6 @@
 ---
 name: system-design-patterns
-description: Guides system architecture design through a structured interview. Use when writing a system design document for a new service or feature (components, data model, API, error handling, testing). Works from existing requirements without an interview when the user asks for no questions. Produces system design, non-functional requirements, threat model inputs, and architecture diagram description.
+description: Guides system architecture design through a structured interview. Use when writing a system design document for a new service or feature (components, data model, API, error handling, testing). Works from existing requirements without an interview when the user asks for no questions. Produces four documents, a system design (with NFRs), threat model input, an architecture diagram description, and a design review handoff.
 version: 1.0.0
 tags: [skill, system-design, architecture, interview, requirements]
 ---
@@ -240,7 +240,7 @@ After completing the interview, generate:
 - **Retry Strategy**: [How retries work]
 - **Circuit Breakers**: [When to stop trying]
 - **Dead Letter Queues**: [Failed message handling]
-- **Disaster Recovery**: [RTO/RPO and backup strategy]
+- **Disaster Recovery**: [Backup and restore strategy; RTO/RPO go under Availability]
 
 ### Cost Optimization
 
@@ -253,6 +253,7 @@ After completing the interview, generate:
 - **Performance**: [Latency targets per operation, e.g. <500ms p99 for reads; throughput]
 - **Availability**: [Uptime target as a percentage, RTO, RPO]
 - **Scale**: [Demo scale vs. production scale; scale-out triggers]
+- **Observability**: [Required metrics, log retention period, trace sampling rate]
 - **Security & Compliance**: [Standards that apply and how the design meets them]
 - **Cost**: [Monthly budget or cost-per-transaction target]
 

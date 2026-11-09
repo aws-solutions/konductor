@@ -304,7 +304,6 @@ The three files are the inputs for the `system-design-patterns` interview.
 
 **SUGGESTION:**
 
-- Could add explicit integration points for each AWS service mentioned
 - Could flag ambiguous requirements for architect clarification
 
 Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
