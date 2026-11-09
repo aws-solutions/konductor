@@ -63,8 +63,10 @@ not per individual commit.
 - `k-adversarial-pull-request-review` now says "in Konductor" or "for Konductor" where it
   scopes the `pr_url` and historical-filtering limits, including the report's
   `Historical filtering:` line.
-- `cmux-dispatch` exports `KONDUCTOR_DONE_KEY` to the dispatched pane, and
-  `cmux-completion-hook.sh` reads it. The hook still falls back to `CMUX_WORKSPACE_ID`.
+- `cmux-dispatch` renames the done-key variable it exports to the dispatched pane to
+  `KONDUCTOR_DONE_KEY`, and `cmux-completion-hook.sh` reads the new name. A custom completion
+  hook must read `KONDUCTOR_DONE_KEY` too; the bundled hook still falls back to
+  `CMUX_WORKSPACE_ID`.
 
 ### Fixed
 
