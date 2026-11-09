@@ -3,6 +3,7 @@
 carve-out together define which `Orchestration:` text konductor follows.
 The coordinator digest is what the session-start hook prints."""
 
+import json
 import re
 from pathlib import Path
 
@@ -107,6 +108,32 @@ def test_newest_block_sets_the_mode():
     # A resume or compact under `auto` prints `Orchestration: auto`; the
     # agent must take that as a mode change, not as two installs disagreeing.
     assert "The newest session-start block sets the mode" in _section_body()
+
+
+FIRST_REPLY_BULLET = (
+    "- Your first reply states your orchestration mode once, as the core rules say."
+)
+
+
+def _system_prompt(agent):
+    spec = ROOT / "agents" / f"{agent}.agent-spec.json"
+    return json.loads(spec.read_text())["config"]["systemPrompt"]
+
+
+def test_konductor_prompt_restates_the_first_reply_rule():
+    # The core rules sentence alone was missed in 4 of 4 bench samples; the
+    # prompt restates it under Communication Style. Mode-neutral, so it fits.
+    prompt = _system_prompt("konductor")
+    assert prompt.count(FIRST_REPLY_BULLET) == 1
+    style = prompt[prompt.index("## Communication Style") :]
+    assert FIRST_REPLY_BULLET in style.split("\n## ")[0]
+    assert "states its mode once, in its first reply" in _section_body()
+
+
+def test_mux_prompts_have_no_first_reply_bullet():
+    # The mux and cmux orchestrators have no modes.
+    for agent in ["konductor-mux-orchestrator", "konductor-cmux-orchestrator"]:
+        assert FIRST_REPLY_BULLET not in _system_prompt(agent)
 
 
 # Measured from cli/konductor-rs/src/cli/orchestration_hook.rs: HEADER is 228
