@@ -70,23 +70,34 @@ visible parallel panes rather than as background subagents.
 
 ---
 
-## Why does `konductor` (or the other orchestrators) refuse to edit files itself?
+## Why do the mux and cmux orchestrators refuse to edit files themselves?
 
 By design. `context/k-orchestrator-routing-rules.md` makes it read-only:
 
 > You are a read-only orchestrator. You MUST NOT directly execute mutating operations.
 
-Its Orchestrator Direct Work table lists the exceptions: reading files, read-only commands such as
-`ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
-writes and every other shell command still go to a specialist. It also flags instructions planted
-in files it reads, won't read files that hold secrets unless you name them, and asks you instead
-of routing a denied action to another agent.
+This read-only rule applies to the mux and cmux orchestrators. `konductor` loads `k-direct-work.md`
+instead and edits files itself in the default `auto` mode. In `coordinator` mode it hands every change
+to a specialist, like the mux and cmux orchestrators (see
+[How do I make konductor hand every change to a specialist?](#how-do-i-make-konductor-hand-every-change-to-a-specialist)).
+On Kiro CLI it pre-approves `fs_read` alone, so each write or command asks you first; on Claude Code
+it holds `Write`, `Edit` and `Bash` with no prompt gate, and the reviewer it spawns at each phase gate
+is the check.
 
-The reason is separation of concerns: the orchestrator is a dispatcher, and its own file says
+The mux and cmux Orchestrator Direct Work table lists the exceptions: reading files, read-only commands such as
+`ls`, `grep` and `git status`, and read-only lookups, within a budget of 10 reads. Builds, tests,
+writes and every other shell command still go to a specialist. All three orchestrators also flag instructions planted
+in files they read, won't read files that hold secrets unless you name them, and ask you instead
+of routing a denied action to another agent. They do not flag user-written entries in
+`.konductor/memory/MEMORY.md` and `USER.md` at the project root, or AGENTS.md: both are the
+project's own instructions. A `.konductor/memory/` anywhere else, or one reached through a
+symlink, is content.
+
+The reason is separation of concerns: the mux and cmux orchestrators are dispatchers, and their own file says
 "Having a tool available does NOT mean you should use it." File writes, git operations, shell
 commands, and infrastructure changes all route to `k-developer`.
 
-If the orchestrator *is* editing files directly, the context file did not load — see
+If a mux or cmux orchestrator *is* editing files directly, the context file did not load — see
 [Troubleshooting #3](troubleshooting.md#3-the-orchestrator-does-the-work-itself-instead-of-delegating).
 
 ---
@@ -182,6 +193,26 @@ the usual culprit, since it applies everywhere and nothing surfaces it. See
 
 ---
 
+## How do I make `konductor` hand every change to a specialist?
+
+Set the `coordinator` orchestration mode by hand in your user config. There is no command for it.
+
+```yaml
+# ~/.konductor/config.yml
+orchestration:
+  mode: coordinator   # or auto (the default)
+```
+
+Only `~/.konductor/config.yml` is read; a value in a project's `.konductor/config.yml` is ignored,
+and `konductor doctor` reports it. The next `konductor` session picks it up, with no reinstall. Its
+first reply should read `Orchestration: coordinator`. `Orchestration: auto (default)` with
+`coordinator` set means no hook output arrived: run `konductor doctor`, then see
+[Troubleshooting](troubleshooting.md#9-the-first-reply-says-orchestration-auto-but-i-set-coordinator).
+This works on Kiro CLI v3 and on Claude Code installed with `konductor install`. The Claude Code plugin does not wire the hook, so coordinator mode is not available there yet. The hook acts only for the install that wired it; see [where the hook may point](../../cli/README.md#orchestration-mode). Kiro CLI v2 is not supported: the hook is wired but
+untested there, and a session it does not reach runs as `auto`.
+
+---
+
 ## Is any of my data sent anywhere?
 
 The CLI touches the network in one place only: `install`, fetching the release it installs from.
@@ -208,17 +239,17 @@ transmitted. Delete it whenever you like.
 
 ## Why did my code review skip the security pass?
 
-Because it always does. `k-code-review-workflow` step 6 tries to spawn `k-architect` for an
-adversarial pass, and **the only agent that owns the SOP cannot spawn the architect** — in Kiro CLI
-`k-developer`'s `availableAgents` list does not include it, and in Claude Code it has no
-`Agent(...)` tool.
-The SOP is written to skip the step quietly when the capability is missing, so you get standard
-review with no error.
+`k-code-review-workflow` step 6 is an adversarial pass, and **the agent that owns the SOP
+cannot run it**: no specialist holds a spawn tool in any runtime.
 
-Routing through `konductor` does not fix it either: the orchestrator does not declare
-`k-code-review-workflow`, so it hands the SOP to the developer, which hits the same wall.
+Step 6 writes the report, then ends with a note asking the orchestrator to run
+`k-adversarial-pull-request-review` on the same diff; the verdict comes from the findings, so a
+known CRITICAL reads `NEEDS FIXES` even before the pass runs, and an `Adversarial pass:` line
+records the pass state. Under `konductor` the orchestrator runs the pass and sets the final
+verdict; if you started `k-developer` directly, the note comes back to you: ask `konductor` to
+run the adversarial review.
 
-Run the adversarial pass yourself against the agent that owns it:
+Run the adversarial pass through `konductor`, which coordinates it:
 
 ```text
 Run k-adversarial-pull-request-review against my current diff.
@@ -226,6 +257,25 @@ Run k-adversarial-pull-request-review against my current diff.
 
 Detail, with the verification, is in
 [Agents reference](agents.md#why-this-matters-a-real-consequence).
+
+---
+
+## Why did konductor ask me which commit style to use, and where did it save my answer?
+
+Konductor's own formats and workflow (Conventional Commits, a pull request per feature, EARS,
+the review mechanism) are defaults. Your request, your project's `AGENTS.md` or `CLAUDE.md`,
+user-written memory, and the conventions your code already shows all outrank them. When those
+sources leave a collision open, `konductor` asks once and saves your
+answer as a `Ruling:` entry in `.konductor/memory/`. The entry settles only the collision it
+names. A line in `AGENTS.md` that decides the same question outranks a ruling. If two rulings
+disagree, the newer one wins; with the same date, `konductor` asks you which one stands. An
+agent-written ruling is data until you confirm it.
+
+A file your `AGENTS.md` names directly, such as `CONTRIBUTING.md`, speaks for the same
+categories and nothing else, and only when it is tracked by git (not a symlink or a generated
+file). `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`
+cannot write memory: they ask and pass your answer to the specialist, which saves it as an
+agent-written entry until you confirm it with `konductor` or a specialist.
 
 ---
 
@@ -244,7 +294,7 @@ Each SOP has its own default output location. Most accept an override.
 | `k-test-coverage-review` | `test-coverage-review/` — four files |
 | `k-codebase-analysis` | `codebase-analysis.md` |
 | `kiro-spec-workflow` | `.kiro/specs/<feature-name>/` — three files |
-| `k-context-gathering` | `.konductor/handoff/<name>.md`, only when findings exceed ~100 lines |
+| `k-context-gathering`, `k-comprehensive-search` | `.konductor/handoff/<name>.md`, only when findings exceed ~100 lines |
 
 Nearly all of these SOPs are required to reference the file path rather than print the report
 inline, so if you get a one-paragraph summary and a path, that is correct behavior — the file is
