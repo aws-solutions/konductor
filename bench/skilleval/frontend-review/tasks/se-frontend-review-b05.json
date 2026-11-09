@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-b05",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm implementing a complex registration form with conditional fields that appear based on user type selection. I'm using React Hook Form's watch to track the user type and conditionally render additional fields. The form has about 15 total fields with various validation rules including password strength, email format, and phone number patterns. Is using watch the right approach here, or should I consider a different pattern?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend using Zod for validation instead of manual validation approaches.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must recommend explicit types on the useForm() call rather than implicit typing.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must recommend using imperative array building for conditional fields instead of ternary chains.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using inline styles in the frontend code.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must recommend React Hook Form for form state management rather than custom state hooks.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

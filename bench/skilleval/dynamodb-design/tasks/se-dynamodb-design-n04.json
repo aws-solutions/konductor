@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-n04",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm building a simple product catalog for an e-commerce site. Each product has a name, price, category, and description. I'm trying to decide between DynamoDB and MongoDB. What are the main differences I should consider for this use case? The catalog won't change much after initial setup.\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "guard-1",
+      "criterion": "The response compares DynamoDB and MongoDB for the product catalog use case.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The response addresses the relevant factors mentioned: name, price, category, and description fields.",
+      "weight": 2
+    },
+    {
+      "id": "guard-3",
+      "criterion": "The response considers the stated characteristic that the catalog will not change much after initial setup.",
+      "weight": 2
+    },
+    {
+      "id": "guard-4",
+      "criterion": "The response stays focused on the comparison request without introducing unrelated topics.",
+      "weight": 2
+    },
+    {
+      "id": "guard-5",
+      "criterion": "The response provides actionable guidance without unnecessary formatting, scoring schemes, or ceremonial elements.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

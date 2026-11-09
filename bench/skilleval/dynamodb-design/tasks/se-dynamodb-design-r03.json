@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-r03",
+  "class": "simple",
+  "target": null,
+  "prompt": "My DynamoDB table suddenly started rejecting all write requests with a ProvisionedThroughputExceededException error. The table has provisioned capacity and was working fine before. I have a GSI on the table for querying by a status attribute. My read and write capacity on the main table look fine - we're well under the provisioned limits. What could be causing this?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must explain that GSI throttling blocks all writes to the base table, which is the likely cause of the ProvisionedThroughputExceededException.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must advise checking the consumed capacity on the Global Secondary Index separately from the main table.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest that the main table's provisioned capacity is the issue when the user has already confirmed it is sufficient.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not recommend switching to a different database service without first addressing the GSI throttling issue.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must directly address the ProvisionedThroughputExceededException error in the first paragraph before providing additional context.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

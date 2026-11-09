@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-r10",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm building a system to track user activity logs on AWS DynamoDB. I expect about 5 million users with each having roughly 100 activity records. My main access pattern is querying all activities for a specific user within a date range. I'm using the user ID as the main identifier and the timestamp for ordering. Can you review this setup and tell me what kind of response times I should expect? I need to know if this will handle my load properly.\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must explain why the user ID is a suitable partition key given its distribution and alignment with the primary access pattern.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must state that performance estimates are theoretical and require validation through load testing with production-like data volumes.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must explain why the timestamp is a suitable sort key for supporting the required date range queries.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not provide definitive response times without a disclaimer that performance and cost estimates need validation through load testing and production monitoring.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not recommend using Local Secondary Indexes (LSI) over Global Secondary Indexes (GSI) for this use case.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

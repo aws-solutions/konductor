@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-n01",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm trying to add a disabled prop to a Cloudscape Button component but I keep getting a TypeScript error. Here's my code: <Button disabled={true} onClick={handleClick}>Submit</Button>. The error says property 'disabled' does not exist. What's the correct prop name for disabling a Cloudscape button?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "guard-1",
+      "criterion": "The reply identifies the correct prop name for disabling a Cloudscape Button component.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The reply directly addresses the TypeScript error mentioned in the request.",
+      "weight": 2
+    },
+    {
+      "id": "guard-3",
+      "criterion": "The reply stays focused on the specific question without introducing unrelated topics.",
+      "weight": 2
+    },
+    {
+      "id": "guard-4",
+      "criterion": "The reply provides a concise answer without unnecessary elaboration or lengthy explanations.",
+      "weight": 2
+    },
+    {
+      "id": "guard-5",
+      "criterion": "The reply does not include scoring schemes, reports, or deliverables not requested by the user.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

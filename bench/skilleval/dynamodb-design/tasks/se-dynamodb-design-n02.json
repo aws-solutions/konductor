@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-n02",
+  "class": "simple",
+  "target": null,
+  "prompt": "I have a DynamoDB table with userId as the partition key and timestamp as the range key. When I query for a specific user, the results come back sorted by time which is what I want. But can you explain why this happens? Does DynamoDB always sort by the second key automatically?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "guard-1",
+      "criterion": "The reply explains why the query results are sorted by the range key.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The reply answers whether DynamoDB always sorts by the sort key automatically.",
+      "weight": 2
+    },
+    {
+      "id": "guard-3",
+      "criterion": "The reply stays in scope and does not provide unrequested code examples or implementation details.",
+      "weight": 2
+    },
+    {
+      "id": "guard-4",
+      "criterion": "The reply does not include a scoring scheme, rubric, or formal evaluation structure.",
+      "weight": 2
+    },
+    {
+      "id": "guard-5",
+      "criterion": "The reply addresses the user's specific key schema of userId and timestamp.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

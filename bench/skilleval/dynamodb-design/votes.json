@@ -1,0 +1,398 @@
+{
+  "skill": "dynamodb-design",
+  "panel": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "thresholds": {
+    "minWorth": 2,
+    "maxStyle": 1
+  },
+  "results": [
+    {
+      "id": "R01",
+      "text": "The answer must recommend using Amazon OpenSearch or CloudSearch instead of DynamoDB for full-text search requirements.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It prevents unsuitable DynamoDB designs by directing full-text search workloads to purpose-built AWS search services."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "DynamoDB lacks native full-text search; recommending OpenSearch/CloudSearch is substantive guidance."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Recommending a different service is substantive, not stylistic."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R02",
+      "text": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It provides important production guidance, steering users toward efficient data modeling and alternatives instead of costly, unbounded scans."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Advising against Scan is crucial for performance and cost."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Scan operations cause performance issues; avoiding them is critical guidance."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R03",
+      "text": "The answer must recommend storing large binary files such as images, videos, and PDFs in S3 instead of DynamoDB.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "This prevents DynamoDB size-limit and cost problems by directing large binary objects to the appropriate S3 storage."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Best practice for large files is S3, not DynamoDB."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Storing large files in DynamoDB is a common mistake with significant performance and cost implications."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R04",
+      "text": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Explicit validation guidance prevents treating capacity and cost estimates as guarantees and encourages load testing and production monitoring."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Adds important caution about estimates."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Estimates are speculative; disclaimer prevents user overconfidence in unvalidated numbers."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R05",
+      "text": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It requires substantive justification of partition-key distribution and access-pattern fit, improving schema quality beyond merely changing presentation."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Explicit partition key justification is often omitted but crucial for good design."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Explaining partition key choice is critical for performance and not done by default."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R06",
+      "text": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It adds substantive justification about query patterns and hierarchy, often omitted from otherwise technically valid DynamoDB schema recommendations."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Explaining rationale is substantive and improves answer quality."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Sort key choice is critical for query performance and requires explicit justification."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R07",
+      "text": "The answer must state that performance estimates are theoretical and require validation through load testing with production-like data volumes.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It adds an important validation requirement and cautions that theoretical performance estimates are not sufficient."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Adds crucial caution about theoretical estimates vs. real-world validation."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Performance claims without validation disclaimers can mislead users about real-world behavior."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R08",
+      "text": "The answer must warn that cost estimates are theoretical and may vary significantly, recommending the use of AWS Cost Explorer and billing alarms.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It adds important uncertainty context and actionable verification safeguards beyond merely presenting a theoretical estimate."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Cost warnings are crucial and not always given."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "DynamoDB costs are complex and variable; warnings prevent user surprises."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R09",
+      "text": "The answer must explain that GSI throttling blocks all writes to the base table.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It conveys an important causal troubleshooting fact, not merely presentation, though \"all\" may need qualification for sparse indexes."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Clarifies a critical, non-obvious cause of write failures."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "This is a non-obvious technical fact that is crucial for troubleshooting."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R10",
+      "text": "The answer must flag any use of Scan operations in production code as a critical red flag.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Production scans often cause severe cost and latency issues, so explicitly flagging them materially improves DynamoDB reviews."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Scans are costly; flagging them prevents performance issues."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Scans are a critical performance issue that must be flagged."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R11",
+      "text": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Access patterns drive DynamoDB schema design, so stating them first materially improves correctness and practical guidance."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Identifies key DynamoDB best practice not always obvious to beginners."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Access patterns are essential to DynamoDB schema design and often overlooked."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R12",
+      "text": "The answer must recommend defaulting to Global Secondary Indexes (GSI) over Local Secondary Indexes (LSI) for most use cases.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "A GSI-first default is substantively useful because LSIs impose key, size, creation-time, and capacity constraints in many ordinary designs."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "GSI is more flexible; LSI has strict limitations on creation and capacity."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "LSIs have strict limits and reduce flexibility; GSIs are safer defaults."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    }
+  ]
+}

@@ -1,0 +1,1172 @@
+{
+  "model": "glm-5",
+  "weights": {
+    "value": 3,
+    "guard": 2,
+    "format": 1
+  },
+  "rubrics": [
+    {
+      "scenarioId": "r01",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using CSS modules, styled-components, or another proper styling solution instead of inline styles.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer provides a complete code example showing the button with blue background, white text, rounded corners, and padding.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer does not suggest using the style prop or inline styles to apply the visual styling.",
+          "ruleId": null
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer explains the styling approach before or alongside the code example.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends using CSS modules, styled-components, or another proper styling solution instead of inline styles.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer provides a complete code example showing the button with blue background, white text, rounded corners, and padding.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer does not suggest using the style prop or inline styles to apply the visual styling.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer explains the styling approach before or alongside the code example.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": [
+        {
+          "item": "value-1",
+          "kind": "name",
+          "detail": "\"CSS\" is not in the request"
+        }
+      ]
+    },
+    {
+      "scenarioId": "r02",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using React Hook Form for managing the form state instead of multiple useState hooks.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using Zod for form validation instead of manual validation approaches.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using explicit types on the useForm() hook call.",
+          "ruleId": "R08"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using the any type in the provided code examples.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using inline styles in the form component code.",
+          "ruleId": "R02"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends using React Hook Form for managing the form state instead of multiple useState hooks.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer recommends using Zod for form validation instead of manual validation approaches.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer recommends using explicit types on the useForm() hook call.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using the any type in the provided code examples.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not suggest using inline styles in the form component code.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r03",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using Zod for schema-based validation instead of manual validation functions.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends React Hook Form for managing form state and validation.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using the any type in the provided TypeScript code examples.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using inline styles in any frontend code examples.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using Box and SpaceBetween components for layout instead of div or span elements.",
+          "ruleId": "R05"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends using Zod for schema-based validation instead of manual validation functions.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer recommends React Hook Form for managing form state and validation.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using the any type in the provided TypeScript code examples.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not suggest using inline styles in any frontend code examples.",
+          "weight": 2
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer recommends using Box and SpaceBetween components for layout instead of div or span elements.",
+          "weight": 3
+        }
+      ],
+      "repaired": [],
+      "warnings": [
+        {
+          "item": "guard-1",
+          "kind": "name",
+          "detail": "\"TypeScript\" is not in the request"
+        }
+      ]
+    },
+    {
+      "scenarioId": "r04",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using Box components instead of div elements for the layout structure.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using SpaceBetween for spacing between the header, sidebar, and main content elements.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using inline styles for the layout.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer provides a code example showing the recommended component structure for the dashboard layout.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends using Box components instead of div elements for the layout structure.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer recommends using SpaceBetween for spacing between the header, sidebar, and main content elements.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using inline styles for the layout.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer provides a code example showing the recommended component structure for the dashboard layout.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r05",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using the SpaceBetween component to handle spacing between the form title, four input fields, and submit button.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using Box components instead of div or span elements for the form structure.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using React Hook Form for form state management and Zod for validation.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using inline styles or margin-bottom CSS classes for spacing.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer provides a code example showing the complete form structure with proper spacing.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends using the SpaceBetween component to handle spacing between the form title, four input fields, and submit button.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer recommends using Box components instead of div or span elements for the form structure.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer recommends using React Hook Form for form state management and Zod for validation.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using inline styles or margin-bottom CSS classes for spacing.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer provides a code example showing the complete form structure with proper spacing.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r06",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer defines a User interface or type with id, name, and email fields matching the API response.",
+          "ruleId": null
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer shows how to properly type the response.json() call using generics or type assertion.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using the any type for the data or users variables.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim that TypeScript will automatically infer the correct types from the API response.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer defines a User interface or type with id, name, and email fields matching the API response.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer shows how to properly type the response.json() call using generics or type assertion.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using the any type for the data or users variables.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not claim that TypeScript will automatically infer the correct types from the API response.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": [
+        {
+          "item": "guard-2",
+          "kind": "name",
+          "detail": "\"TypeScript\" is not in the request"
+        }
+      ]
+    },
+    {
+      "scenarioId": "r07",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using Zod to define a schema for validating the username, email, password, confirmPassword, and terms fields.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must show the useForm hook call with an explicit type parameter based on the Zod schema type.",
+          "ruleId": "R08"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using the any type for the form data or validation schema.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend using custom state hooks like useState for managing form state.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must provide a complete code example showing the useForm hook setup with the resolver configuration.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend using Zod to define a schema for validating the username, email, password, confirmPassword, and terms fields.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must show the useForm hook call with an explicit type parameter based on the Zod schema type.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using the any type for the form data or validation schema.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not recommend using custom state hooks like useState for managing form state.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must provide a complete code example showing the useForm hook setup with the resolver configuration.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": [
+        {
+          "item": "guard-2",
+          "kind": "name",
+          "detail": "\"useState\" is not in the request"
+        }
+      ]
+    },
+    {
+      "scenarioId": "r08",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using imperative array building with filter to handle the six conditional navigation items instead of ternary chains.",
+          "ruleId": "R10"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer correctly identifies that Home, Dashboard, Admin Panel, Profile, Login, and Logout are the six navigation items to handle.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using inline styles for the navigation bar implementation.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using the any type for user role or authentication status.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer provides a code example showing the imperative array building approach.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends using imperative array building with filter to handle the six conditional navigation items instead of ternary chains.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer correctly identifies that Home, Dashboard, Admin Panel, Profile, Login, and Logout are the six navigation items to handle.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using inline styles for the navigation bar implementation.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not suggest using the any type for user role or authentication status.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer provides a code example showing the imperative array building approach.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r09",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends checking specific property values like name and email instead of just checking that properties exist.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer explains why checking actual values provides better test coverage than existence checks alone.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer does not suggest using the any type when discussing TypeScript types for the test.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer addresses the user's specific test code without suggesting unrelated testing concepts.",
+          "ruleId": null
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer provides a clear recommendation first, then follows with explanation.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends checking specific property values like name and email instead of just checking that properties exist.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer explains why checking actual values provides better test coverage than existence checks alone.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer does not suggest using the any type when discussing TypeScript types for the test.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer addresses the user's specific test code without suggesting unrelated testing concepts.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer provides a clear recommendation first, then follows with explanation.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": [
+        {
+          "item": "guard-1",
+          "kind": "name",
+          "detail": "\"TypeScript\" is not in the request"
+        }
+      ]
+    },
+    {
+      "scenarioId": "b01",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using Zod for form validation instead of manual validation approaches.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends adding explicit types to the useForm() call.",
+          "ruleId": "R08"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using Box and SpaceBetween components instead of div or span elements.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer does not suggest using inline styles in the frontend code.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer does not suggest using the any type in production code.",
+          "ruleId": "R07"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends using Zod for form validation instead of manual validation approaches.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer recommends adding explicit types to the useForm() call.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer recommends using Box and SpaceBetween components instead of div or span elements.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer does not suggest using inline styles in the frontend code.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer does not suggest using the any type in production code.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b02",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using Box instead of div or span elements for the modal container.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using SpaceBetween for spacing between elements in the modal.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using the any type in production code.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must confirm that the isOpen, onClose, and title prop types in the interface are correctly defined.",
+          "ruleId": null
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must provide a clear assessment of the interface before suggesting additional strict typing improvements.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend using Box instead of div or span elements for the modal container.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must recommend using SpaceBetween for spacing between elements in the modal.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using the any type in production code.",
+          "weight": 2
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must confirm that the isOpen, onClose, and title prop types in the interface are correctly defined.",
+          "weight": 3
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must provide a clear assessment of the interface before suggesting additional strict typing improvements.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b03",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using Zod for validation instead of manual validation approaches.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend explicit types on the useForm() call for the form fields.",
+          "ruleId": "R08"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using Box and SpaceBetween components instead of div or span elements for the layout.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using inline styles in the Cloudscape component implementation.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must recommend that unit test assertions check actual values rather than just existence.",
+          "ruleId": "R11"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend using Zod for validation instead of manual validation approaches.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must recommend explicit types on the useForm() call for the form fields.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must recommend using Box and SpaceBetween components instead of div or span elements for the layout.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using inline styles in the Cloudscape component implementation.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must recommend that unit test assertions check actual values rather than just existence.",
+          "weight": 2
+        }
+      ],
+      "repaired": [
+        "value-2"
+      ],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b04",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend adding tests for search functionality, such as filtering results, handling no matches, and clearing search input.",
+          "ruleId": null
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend adding tests for keyboard navigation, such as arrow key movement, enter key selection, and escape key closing.",
+          "ruleId": null
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend testing assertions that verify actual values like selected item counts or specific selected items, not just checking that elements exist.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using the any type in test code examples.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must provide a clear list or checklist of recommended additional test cases.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend adding tests for search functionality, such as filtering results, handling no matches, and clearing search input.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must recommend adding tests for keyboard navigation, such as arrow key movement, enter key selection, and escape key closing.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must recommend testing assertions that verify actual values like selected item counts or specific selected items, not just checking that elements exist.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using the any type in test code examples.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must provide a clear list or checklist of recommended additional test cases.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b05",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using Zod for validation instead of manual validation approaches.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend explicit types on the useForm() call rather than implicit typing.",
+          "ruleId": "R08"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using imperative array building for conditional fields instead of ternary chains.",
+          "ruleId": "R10"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using inline styles in the frontend code.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must recommend React Hook Form for form state management rather than custom state hooks.",
+          "ruleId": "R03"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend using Zod for validation instead of manual validation approaches.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must recommend explicit types on the useForm() call rather than implicit typing.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must recommend using imperative array building for conditional fields instead of ternary chains.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using inline styles in the frontend code.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must recommend React Hook Form for form state management rather than custom state hooks.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b06",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using React Hook Form for form state management if the modal contains form inputs.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using Zod for validation if the modal contains form inputs.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using imperative array building for 3 or more conditional items, not ternary chains.",
+          "ruleId": "R10"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using inline styles in the React implementation.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest using the any type in production code.",
+          "ruleId": "R07"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend using React Hook Form for form state management if the modal contains form inputs.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must recommend using Zod for validation if the modal contains form inputs.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must recommend using imperative array building for 3 or more conditional items, not ternary chains.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest using inline styles in the React implementation.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not suggest using the any type in production code.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "n01",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply identifies the correct prop name for disabling a Cloudscape Button component.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply directly addresses the TypeScript error mentioned in the request.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays focused on the specific question without introducing unrelated topics.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply provides a concise answer without unnecessary elaboration or lengthy explanations.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply does not include scoring schemes, reports, or deliverables not requested by the user.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply identifies the correct prop name for disabling a Cloudscape Button component.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply directly addresses the TypeScript error mentioned in the request.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply stays focused on the specific question without introducing unrelated topics.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply provides a concise answer without unnecessary elaboration or lengthy explanations.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply does not include scoring schemes, reports, or deliverables not requested by the user.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "n02",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains what the register function does in React Hook Form.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains how register connects to form validation.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply addresses the example of passing validation rules directly to register like register('name', { required: true }).",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply compares inline validation rules with using a validation schema like zod.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays focused on React Hook Form validation without introducing unrelated topics or frameworks.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply explains what the register function does in React Hook Form.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply explains how register connects to form validation.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply addresses the example of passing validation rules directly to register like register('name', { required: true }).",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply compares inline validation rules with using a validation schema like zod.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply stays focused on React Hook Form validation without introducing unrelated topics or frameworks.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "n03",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains what the <T> syntax means in the context of the provided type definition.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains why a generic type is useful instead of defining separate types for each response.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply provides a simple example demonstrating the usefulness of the generic type.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays focused on the user's question without introducing unrelated topics.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply avoids unnecessary scoring schemes, long reports, or unrequested deliverables.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply explains what the <T> syntax means in the context of the provided type definition.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply explains why a generic type is useful instead of defining separate types for each response.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply provides a simple example demonstrating the usefulness of the generic type.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply stays focused on the user's question without introducing unrelated topics.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply avoids unnecessary scoring schemes, long reports, or unrequested deliverables.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "n04",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains the hooks equivalent for componentDidMount.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains the hooks equivalent for componentDidUpdate.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays focused on converting lifecycle methods to hooks without introducing unrelated topics.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply does not include scoring schemes, grading rubrics, or evaluation metrics.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply does not present a long report format with executive summaries or formal deliverable sections.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply explains the hooks equivalent for componentDidMount.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply explains the hooks equivalent for componentDidUpdate.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply stays focused on converting lifecycle methods to hooks without introducing unrelated topics.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply does not include scoring schemes, grading rubrics, or evaluation metrics.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply does not present a long report format with executive summaries or formal deliverable sections.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    }
+  ],
+  "failed": []
+}

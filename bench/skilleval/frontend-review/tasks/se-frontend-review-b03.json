@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-b03",
+  "class": "simple",
+  "target": null,
+  "prompt": "I made several updates to the user settings page including adding form validation, updating the layout to use Cloudscape components, and writing unit tests. The changes include a new form with 5 fields, validation rules for each, and I'm using React Hook Form for state management. I want to make sure everything follows proper patterns and the tests are comprehensive enough. Can you review the implementation approach and point out any potential issues?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend using Zod for validation instead of manual validation approaches.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must recommend explicit types on the useForm() call for the form fields.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must recommend using Box and SpaceBetween components instead of div or span elements for the layout.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using inline styles in the Cloudscape component implementation.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must recommend that unit test assertions check actual values rather than just existence.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

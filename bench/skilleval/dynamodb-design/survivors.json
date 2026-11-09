@@ -1,0 +1,117 @@
+{
+  "skill": "dynamodb-design",
+  "source": {
+    "ref": "ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c",
+    "sha256": "1dd1d8a01afae100a813ca3dcc1debace03198b0c693d4abb0776d0cfb125392"
+  },
+  "rules": [
+    {
+      "id": "R01",
+      "text": "The answer must recommend using Amazon OpenSearch or CloudSearch instead of DynamoDB for full-text search requirements.",
+      "quote": "**Full-Text Search:**\n- DynamoDB doesn't support full-text search\n- Use Amazon OpenSearch or CloudSearch instead\n- Store document IDs in DynamoDB, full text in search service",
+      "line": 989,
+      "tag": "useful",
+      "requestType": "asking how to implement full-text search in DynamoDB",
+      "bucket": "value"
+    },
+    {
+      "id": "R02",
+      "text": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+      "quote": "**CRITICAL:** Scan is an anti-pattern in DynamoDB and should be avoided in production code. Scan reads every item in the table, consuming massive capacity and causing slow, expensive queries.",
+      "line": 1024,
+      "tag": "useful",
+      "requestType": "asking how to list all items or query data without specific access patterns in DynamoDB",
+      "bucket": "value"
+    },
+    {
+      "id": "R03",
+      "text": "The answer must recommend storing large binary files such as images, videos, and PDFs in S3 instead of DynamoDB.",
+      "quote": "**Large Binary Files:**\n- Images, videos, PDFs → Store in S3\n- Keep S3 object key in DynamoDB\n- Use S3 presigned URLs for access",
+      "line": 1076,
+      "tag": "useful",
+      "requestType": "asking how to store large files or binary data in DynamoDB",
+      "bucket": "value"
+    },
+    {
+      "id": "R04",
+      "text": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+      "quote": "**IMPORTANT DISCLAIMER:** This design document contains performance and cost estimates based on AWS documentation, industry benchmarks, and theoretical calculations. All estimates must be validated through load testing and production monitoring before making capacity or budget commitments.",
+      "line": 1112,
+      "tag": "useful",
+      "requestType": "requesting a DynamoDB table design with capacity and cost estimates",
+      "bucket": "value"
+    },
+    {
+      "id": "R05",
+      "text": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+      "quote": "**Partition Key:**\n- Attribute: `[attributeName]` (Type: [S/N/B])\n- Cardinality: [High/Medium/Low] ([estimated unique values])\n- Justification: [Why this attribute was chosen - explain distribution and access pattern alignment]",
+      "line": 1118,
+      "tag": "useful",
+      "requestType": "requesting a DynamoDB table schema design",
+      "bucket": "value"
+    },
+    {
+      "id": "R06",
+      "text": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+      "quote": "**Sort Key:** [if applicable]\n- Attribute: `[attributeName]` (Type: [S/N/B])\n- Pattern: [e.g., \"timestamp\", \"status#timestamp\", \"TYPE#id\"]\n- Justification: [Why this pattern - explain range query support and hierarchical data needs]",
+      "line": 1124,
+      "tag": "useful",
+      "requestType": "requesting a DynamoDB table schema design with a sort key",
+      "bucket": "value"
+    },
+    {
+      "id": "R07",
+      "text": "The answer must state that performance estimates are theoretical and require validation through load testing with production-like data volumes.",
+      "quote": "**CRITICAL:** These are estimates, not measurements. Actual performance must be validated through load testing with production-like data volumes.",
+      "line": 1195,
+      "tag": "useful",
+      "requestType": "asking for a DynamoDB design review",
+      "bucket": "value"
+    },
+    {
+      "id": "R08",
+      "text": "The answer must warn that cost estimates are theoretical and may vary significantly, recommending the use of AWS Cost Explorer and billing alarms.",
+      "quote": "**IMPORTANT:** These are theoretical cost estimates based on assumed traffic patterns. Actual costs may vary by ±50% or more. Enable AWS Cost Explorer and set up billing alarms to track actual spending.",
+      "line": 1574,
+      "tag": "useful",
+      "requestType": "estimating the monthly cost of a DynamoDB table",
+      "bucket": "value"
+    },
+    {
+      "id": "R09",
+      "text": "The answer must explain that GSI throttling blocks all writes to the base table.",
+      "quote": "Why: GSI throttling blocks all base table writes",
+      "line": 1677,
+      "tag": "useful",
+      "requestType": "troubleshooting a DynamoDB table that is rejecting writes",
+      "bucket": "value"
+    },
+    {
+      "id": "R10",
+      "text": "The answer must flag any use of Scan operations in production code as a critical red flag.",
+      "quote": "**CRITICAL:** Scan operations in production code (frequency > 1% of operations)",
+      "line": 2008,
+      "tag": "useful",
+      "requestType": "reviewing a DynamoDB query implementation",
+      "bucket": "value"
+    },
+    {
+      "id": "R11",
+      "text": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+      "quote": "Don't design tables based on entities (that's SQL thinking)",
+      "line": 2120,
+      "tag": "useful",
+      "requestType": "asking how to start designing a DynamoDB schema",
+      "bucket": "value"
+    },
+    {
+      "id": "R12",
+      "text": "The answer must recommend defaulting to Global Secondary Indexes (GSI) over Local Secondary Indexes (LSI) for most use cases.",
+      "quote": "Default to GSI, Rarely Use LSI",
+      "line": 2126,
+      "tag": "useful",
+      "requestType": "choosing between index types for a DynamoDB table",
+      "bucket": "value"
+    }
+  ]
+}

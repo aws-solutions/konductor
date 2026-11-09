@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-b04",
+  "class": "simple",
+  "target": null,
+  "prompt": "We're collecting temperature readings from sensors installed in 200 buildings. Each sensor sends a reading every 5 minutes. I need to query all readings for a specific sensor within a date range, and also find all sensors in a building that reported temperatures above 30 degrees in the last hour. The data retention policy is 90 days. Can you recommend a table design and estimate the capacity we'd need?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend listing the two access patterns (querying readings by sensor and date range, and finding sensors in a building with high temperatures) before defining the table schema.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must explain the choice of partition key (e.g., SensorID or BuildingID) based on the access patterns and data distribution across the 200 buildings.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must explain the choice of sort key (e.g., Timestamp) to support the range query requirement for readings within a date range.",
+      "weight": 3
+    },
+    {
+      "id": "value-4",
+      "criterion": "The answer must include a disclaimer that the performance and cost estimates are theoretical and require validation through load testing and production monitoring.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not recommend using a Scan operation to find sensors in a building with temperatures above 30 degrees, and must flag this as an anti-pattern.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

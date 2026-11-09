@@ -1,0 +1,167 @@
+{
+  "skill": "frontend-review",
+  "model": "glm-5",
+  "max": 20,
+  "quota": {
+    "rule": 10,
+    "blind": 6,
+    "near-miss": 4
+  },
+  "domain": "frontend development and code review",
+  "count": 19,
+  "scenarios": [
+    {
+      "id": "r01",
+      "type": "rule",
+      "ruleIds": [
+        "R02"
+      ],
+      "title": "Styling a React button component",
+      "prompt": "I have a simple React button component and I want to make it look better. The button should have a blue background, white text, rounded corners, and some padding. Here's my current component:\n\nfunction MyButton({ children, onClick }) {\n  return <button onClick={onClick}>{children}</button>;\n}\n\nHow should I style this button properly?"
+    },
+    {
+      "id": "r02",
+      "type": "rule",
+      "ruleIds": [
+        "R03"
+      ],
+      "title": "Managing form state in React",
+      "prompt": "I'm building a user registration form with fields for name, email, password, and confirm password. I need to track all the input values and handle form submission. Right now I'm considering using multiple useState hooks for each field. The form should also show a loading state while submitting. What's the best approach for managing all this form state?"
+    },
+    {
+      "id": "r03",
+      "type": "rule",
+      "ruleIds": [
+        "R04"
+      ],
+      "title": "Form validation implementation approach",
+      "prompt": "I need to add validation to my signup form. The requirements are: email must be valid, password must be at least 8 characters with one uppercase and one number, and both password fields must match. I was thinking of writing validation functions that check each field and show error messages. Is there a better way to handle all these validation rules?"
+    },
+    {
+      "id": "r04",
+      "type": "rule",
+      "ruleIds": [
+        "R05"
+      ],
+      "title": "Creating layout containers for dashboard",
+      "prompt": "I'm building a dashboard page with a header, a sidebar on the left, and main content area. I was going to use div elements with CSS classes to create the layout structure. Here's what I have:\n\nfunction Dashboard() {\n  return (\n    <div className=\"dashboard-container\">\n      <div className=\"header\">...</div>\n      <div className=\"content-wrapper\">\n        <div className=\"sidebar\">...</div>\n        <div className=\"main\">...</div>\n      </div>\n    </div>\n  );\n}\n\nWhat's the recommended way to structure this layout?"
+    },
+    {
+      "id": "r05",
+      "type": "rule",
+      "ruleIds": [
+        "R06"
+      ],
+      "title": "Spacing between form elements",
+      "prompt": "I have a form with several input fields stacked vertically. I want consistent spacing between each input. Currently I'm adding margin-bottom to each input through CSS classes. The form has a title, four input fields, and a submit button. What's the best way to handle the spacing between all these elements?"
+    },
+    {
+      "id": "r06",
+      "type": "rule",
+      "ruleIds": [
+        "R07"
+      ],
+      "title": "Typing API response in TypeScript",
+      "prompt": "I'm fetching data from an API and I'm not sure how to type the response properly. Here's my code:\n\nconst response = await fetch('/api/users');\nconst data = await response.json();\nconst users = data.map(u => u.name);\n\nThe API returns an array of user objects with id, name, and email fields. What's the best way to type this?"
+    },
+    {
+      "id": "r07",
+      "type": "rule",
+      "ruleIds": [
+        "R08"
+      ],
+      "title": "Setting up React Hook Form",
+      "prompt": "I'm trying to create a registration form using React Hook Form with fields for username, email, password, and confirmPassword. I also want to track whether the user has accepted terms. How should I set up the useForm hook for this?"
+    },
+    {
+      "id": "r08",
+      "type": "rule",
+      "ruleIds": [
+        "R10"
+      ],
+      "title": "Conditionally rendering multiple nav items",
+      "prompt": "I have a navigation bar where I need to show different items based on user role and authentication status. I need to show: Home (always), Dashboard (if logged in), Admin Panel (if admin), Profile (if logged in), Login (if not logged in), and Logout (if logged in). Right now I have a mess of ternaries. What's a cleaner approach?"
+    },
+    {
+      "id": "r09",
+      "type": "rule",
+      "ruleIds": [
+        "R11"
+      ],
+      "title": "Writing assertions for user creation",
+      "prompt": "I'm writing a test for a function that creates a new user. I want to verify the user was created correctly. Here's what I have:\n\nconst result = await createUser({name: 'John', email: 'john@test.com'});\nexpect(result).toBeDefined();\nexpect(result.id).toBeDefined();\n\nIs this a good way to test this, or should I be checking something more specific?"
+    },
+    {
+      "id": "b01",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Quick check on login form component",
+      "prompt": "I just finished building this login form component and want to make sure I'm following best practices before submitting for review. Here's the code:\n\nconst LoginForm = () => {\n  const { register, handleSubmit, errors } = useForm();\n  return (\n    <form onSubmit={handleSubmit(onSubmit)}>\n      <Input {...register('email', { required: true })} />\n      <Button type=\"submit\">Login</Button>\n    </form>\n  );\n};\n\nCan you review this for any issues?"
+    },
+    {
+      "id": "b02",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "TypeScript types review for modal",
+      "prompt": "I'm getting some TypeScript errors in my modal component and I'm not sure if my type definitions are correct. The component takes in an isOpen boolean, an onClose function, and a title string. I defined the props interface like this: interface ModalProps { isOpen: boolean; onClose: () => void; title: string; }. Does this look right or should I add more strict typing?"
+    },
+    {
+      "id": "b03",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Full review of settings page changes",
+      "prompt": "I made several updates to the user settings page including adding form validation, updating the layout to use Cloudscape components, and writing unit tests. The changes include a new form with 5 fields, validation rules for each, and I'm using React Hook Form for state management. I want to make sure everything follows proper patterns and the tests are comprehensive enough. Can you review the implementation approach and point out any potential issues?"
+    },
+    {
+      "id": "b04",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Test coverage check for dropdown",
+      "prompt": "I wrote tests for my custom dropdown component but I'm not confident they cover all the edge cases. The dropdown has search functionality, keyboard navigation, and multi-select support. I have tests for basic rendering, selecting items, and clearing selections. Should I add more tests for the search and keyboard interactions, or is this sufficient?"
+    },
+    {
+      "id": "b05",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Form validation patterns review",
+      "prompt": "I'm implementing a complex registration form with conditional fields that appear based on user type selection. I'm using React Hook Form's watch to track the user type and conditionally render additional fields. The form has about 15 total fields with various validation rules including password strength, email format, and phone number patterns. Is using watch the right approach here, or should I consider a different pattern?"
+    },
+    {
+      "id": "b06",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Component refactor compliance check",
+      "prompt": "I refactored an old jQuery-based modal to use React and Cloudscape components. The modal now uses Button, Box, and SpaceBetween components from Cloudscape, and I added proper TypeScript types for all props. I also converted the inline styles to use Cloudscape tokens. Before I mark this as ready for code review, can you check if there are any remaining issues with the implementation?"
+    },
+    {
+      "id": "n01",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Quick Cloudscape prop syntax question",
+      "prompt": "I'm trying to add a disabled prop to a Cloudscape Button component but I keep getting a TypeScript error. Here's my code: <Button disabled={true} onClick={handleClick}>Submit</Button>. The error says property 'disabled' does not exist. What's the correct prop name for disabling a Cloudscape button?"
+    },
+    {
+      "id": "n02",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Explaining React Hook Form validation",
+      "prompt": "I'm new to React Hook Form and trying to understand how the validation works. Can you explain what the 'register' function does and how it connects to form validation? I've seen examples where people pass validation rules to register like register('name', { required: true }). How does this compare to using a validation schema with zod?"
+    },
+    {
+      "id": "n03",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "TypeScript generic type explanation",
+      "prompt": "I keep seeing this pattern in our codebase: type ApiResponse<T> = { data: T; loading: boolean; error: string | null }. What does the <T> mean here and why would I use a generic type instead of just defining separate types for each API response? Can you give me a simple example of when this is useful?"
+    },
+    {
+      "id": "n04",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Converting class component to hooks",
+      "prompt": "I have an old React class component that uses local state and lifecycle methods. I want to understand how to convert it to use hooks instead. The component has a componentDidMount that fetches data and a componentDidUpdate that checks if props have changed. Can you explain the hooks equivalent for these lifecycle methods?"
+    }
+  ],
+  "rejected": [],
+  "stoplistSize": 7
+}

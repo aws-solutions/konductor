@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-r02",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm building a user registration form with fields for name, email, password, and confirm password. I need to track all the input values and handle form submission. Right now I'm considering using multiple useState hooks for each field. The form should also show a loading state while submitting. What's the best approach for managing all this form state?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer recommends using React Hook Form for managing the form state instead of multiple useState hooks.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer recommends using Zod for form validation instead of manual validation approaches.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer recommends using explicit types on the useForm() hook call.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using the any type in the provided code examples.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not suggest using inline styles in the form component code.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

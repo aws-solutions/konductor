@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-n02",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm new to React Hook Form and trying to understand how the validation works. Can you explain what the 'register' function does and how it connects to form validation? I've seen examples where people pass validation rules to register like register('name', { required: true }). How does this compare to using a validation schema with zod?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "guard-1",
+      "criterion": "The reply explains what the register function does in React Hook Form.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The reply explains how register connects to form validation.",
+      "weight": 2
+    },
+    {
+      "id": "guard-3",
+      "criterion": "The reply addresses the example of passing validation rules directly to register like register('name', { required: true }).",
+      "weight": 2
+    },
+    {
+      "id": "guard-4",
+      "criterion": "The reply compares inline validation rules with using a validation schema like zod.",
+      "weight": 2
+    },
+    {
+      "id": "guard-5",
+      "criterion": "The reply stays focused on React Hook Form validation without introducing unrelated topics or frameworks.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "id": "se-frontend-review-r04",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm building a dashboard page with a header, a sidebar on the left, and main content area. I was going to use div elements with CSS classes to create the layout structure. Here's what I have:\n\nfunction Dashboard() {\n  return (\n    <div className=\"dashboard-container\">\n      <div className=\"header\">...</div>\n      <div className=\"content-wrapper\">\n        <div className=\"sidebar\">...</div>\n        <div className=\"main\">...</div>\n      </div>\n    </div>\n  );\n}\n\nWhat's the recommended way to structure this layout?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer recommends using Box components instead of div elements for the layout structure.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer recommends using SpaceBetween for spacing between the header, sidebar, and main content elements.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using inline styles for the layout.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer provides a code example showing the recommended component structure for the dashboard layout.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

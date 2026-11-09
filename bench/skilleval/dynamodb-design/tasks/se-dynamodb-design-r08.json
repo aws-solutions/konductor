@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-r08",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm building an app that tracks user activity logs. I expect about 500,000 new records per day, each around 1.5 KB in size. I'll need to keep the data for 90 days before deleting it. Most of the traffic will be writing new logs, with maybe 50,000 reads per day to look up a user's history. Can you help me estimate what this will cost per month on AWS?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must calculate the monthly storage cost based on the 500,000 daily records, 1.5 KB size, and 90-day retention period.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must include a disclaimer stating that cost estimates are theoretical and may vary significantly, recommending the use of AWS Cost Explorer and billing alarms.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not recommend using Scan operations to fulfill the 50,000 daily read requests.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must present a clear breakdown of costs for storage, writes, and reads.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

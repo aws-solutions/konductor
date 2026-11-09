@@ -1,0 +1,34 @@
+{
+  "id": "se-dynamodb-design-r07",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm building a commenting system where users can reply to other comments, creating nested threads. Each comment has a commentId, postId, parentId, createdAt timestamp, and the content. I need to efficiently retrieve all comments for a post in chronological order, and also get all replies under a specific parent comment. How should I structure the key for this table?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer recommends a partition key of postId and explains that this choice aligns with the access pattern of retrieving all comments for a specific post.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer recommends a sort key pattern that supports hierarchical data, such as using a delimiter to store the parent comment ID, and explains how this enables range queries for replies.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer advises starting the design process by listing all access patterns, such as retrieving all comments for a post and retrieving replies for a parent, before defining the table schema.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not recommend using a Scan operation to retrieve comments for a post, as this is an anti-pattern that does not efficiently use the postId or parentId attributes.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

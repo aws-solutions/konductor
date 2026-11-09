@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "suite": "skilleval-dynamodb-design",
+  "purpose": "Oracle arm: put the skill body in front of every prompt. For near-miss tasks this measures the cost of applying the skill where it should not apply.",
+  "tasks": [
+    {
+      "id": "se-dynamodb-design-r01",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-r02",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-r03",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-b01",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-b02",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-b03",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-b04",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-b05",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-n01",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-r04",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-r05",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-r06",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-r07",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-r08",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-r09",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-b06",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-n02",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-n03",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-n04",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-dynamodb-design-r10",
+      "entries": [
+        {
+          "expectedSkills": [
+            "dynamodb-design"
+          ]
+        }
+      ]
+    }
+  ]
+}

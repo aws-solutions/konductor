@@ -1,0 +1,111 @@
+{
+  "skill": "frontend-review",
+  "source": {
+    "ref": "ed3a5968143b5e1bbb6a98ea462a5d73bcb6501c",
+    "sha256": "cc3cc89a6fafd0ba8c88e939f1080ff945713d5c7aad6061fa2940561bebb48f"
+  },
+  "model": "glm-5",
+  "requested": 12,
+  "parts": 1,
+  "rules": [
+    {
+      "id": "R01",
+      "text": "The answer must not suggest using native HTML elements like <div>, <span>, <input>, <button>, or <a> in frontend code.",
+      "quote": "No native HTML elements (`<div>`, `<span>`, `<input>`, `<button>`, `<a>`)",
+      "line": 40,
+      "tag": "useful",
+      "requestType": "asking for help implementing a UI component"
+    },
+    {
+      "id": "R02",
+      "text": "The answer must not suggest using inline styles in frontend code.",
+      "quote": "No inline styles (`style={{}}`)",
+      "line": 41,
+      "tag": "useful",
+      "requestType": "asking how to style a component"
+    },
+    {
+      "id": "R03",
+      "text": "The answer must recommend React Hook Form for form state management, not custom state hooks.",
+      "quote": "React Hook Form used - not custom state hooks",
+      "line": 33,
+      "tag": "useful",
+      "requestType": "asking how to manage form state in React"
+    },
+    {
+      "id": "R04",
+      "text": "The answer must recommend Zod for validation, not manual validation approaches.",
+      "quote": "Zod validation used - not manual validation",
+      "line": 34,
+      "tag": "useful",
+      "requestType": "asking how to implement form validation"
+    },
+    {
+      "id": "R05",
+      "text": "The answer must recommend using Box instead of div or span elements.",
+      "quote": "`Box` used instead of `<div>` or `<span>`",
+      "line": 42,
+      "tag": "useful",
+      "requestType": "asking how to create layout containers"
+    },
+    {
+      "id": "R06",
+      "text": "The answer must recommend using SpaceBetween for spacing between elements.",
+      "quote": "`SpaceBetween` for spacing",
+      "line": 44,
+      "tag": "useful",
+      "requestType": "asking how to add spacing between components"
+    },
+    {
+      "id": "R07",
+      "text": "The answer must not suggest using the any type in production code.",
+      "quote": "No `any` types in production code",
+      "line": 50,
+      "tag": "useful",
+      "requestType": "asking how to type a variable or function in TypeScript"
+    },
+    {
+      "id": "R08",
+      "text": "The answer must recommend explicit types on useForm() calls.",
+      "quote": "Explicit types on `useForm<FormType>()` calls",
+      "line": 51,
+      "tag": "useful",
+      "requestType": "asking how to set up a form with React Hook Form"
+    },
+    {
+      "id": "R09",
+      "text": "The answer must recommend memoizing event handlers with useCallback.",
+      "quote": "Event handlers memoized with `useCallback`",
+      "line": 59,
+      "tag": "useful",
+      "requestType": "asking how to define event handlers in React components"
+    },
+    {
+      "id": "R10",
+      "text": "The answer must recommend using imperative array building for 3 or more conditional items, not ternary chains.",
+      "quote": "Imperative array building for 3+ conditional items (not ternary chains)",
+      "line": 60,
+      "tag": "useful",
+      "requestType": "asking how to conditionally render multiple items"
+    },
+    {
+      "id": "R11",
+      "text": "The answer must recommend that test assertions check actual values, not just existence.",
+      "quote": "Test assertions check actual values (not just existence)",
+      "line": 67,
+      "tag": "useful",
+      "requestType": "asking how to write test assertions"
+    }
+  ],
+  "rejected": [
+    {
+      "text": "The answer must recommend testing error states in addition to happy paths.",
+      "quote": "Error states tested",
+      "tag": "useful",
+      "requestType": "asking what to test in a component or form",
+      "reasons": [
+        "quote shorter than 20 characters"
+      ]
+    }
+  ]
+}

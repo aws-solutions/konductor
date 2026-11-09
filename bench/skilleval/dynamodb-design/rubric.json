@@ -1,0 +1,1250 @@
+{
+  "model": "glm-5",
+  "weights": {
+    "value": 3,
+    "guard": 2,
+    "format": 1
+  },
+  "rubrics": [
+    {
+      "scenarioId": "r01",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must advise against using Scan operations and explain that it is an anti-pattern for this use case.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend an alternative approach such as using pagination with Query operations on an index or Amazon DynamoDB Streams to process the 500,000 items efficiently.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend a full table Scan as a production-ready solution for retrieving all 500,000 items.",
+          "ruleId": "R10"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must flag the use of Scan operations in production code as a critical red flag.",
+          "ruleId": "R10"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "ruleId": "R04"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must advise against using Scan operations and explain that it is an anti-pattern for this use case.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must recommend an alternative approach such as using pagination with Query operations on an index or Amazon DynamoDB Streams to process the 500,000 items efficiently.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not recommend a full table Scan as a production-ready solution for retrieving all 500,000 items.",
+          "weight": 2
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must flag the use of Scan operations in production code as a critical red flag.",
+          "weight": 3
+        },
+        {
+          "id": "value-4",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "weight": 3
+        }
+      ],
+      "repaired": [],
+      "warnings": [
+        {
+          "item": "value-2",
+          "kind": "name",
+          "detail": "\"Amazon Dynamo\" is not in the request"
+        }
+      ]
+    },
+    {
+      "scenarioId": "r02",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend storing the 2-5 MB profile photos in Amazon S3 instead of DynamoDB.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain that DynamoDB has a 400 KB item size limit which prevents storing base64 encoded 2-5 MB images.",
+          "ruleId": "R03"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not agree that storing base64 encoded images in DynamoDB is a good approach.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not claim that DynamoDB is suitable for storing large binary files like profile photos.",
+          "ruleId": null
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must clearly state the recommendation to use S3 before explaining the technical reasons.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend storing the 2-5 MB profile photos in Amazon S3 instead of DynamoDB.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must explain that DynamoDB has a 400 KB item size limit which prevents storing base64 encoded 2-5 MB images.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not agree that storing base64 encoded images in DynamoDB is a good approach.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not claim that DynamoDB is suitable for storing large binary files like profile photos.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must clearly state the recommendation to use S3 before explaining the technical reasons.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": [
+        {
+          "item": "value-2",
+          "kind": "number",
+          "detail": "400 is not in the request"
+        },
+        {
+          "item": "value-2",
+          "kind": "name",
+          "detail": "\"KB\" is not in the request"
+        }
+      ]
+    },
+    {
+      "scenarioId": "r03",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain that GSI throttling blocks all writes to the base table, which is the likely cause of the ProvisionedThroughputExceededException.",
+          "ruleId": "R09"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must advise checking the consumed capacity on the Global Secondary Index separately from the main table.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not suggest that the main table's provisioned capacity is the issue when the user has already confirmed it is sufficient.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend switching to a different database service without first addressing the GSI throttling issue.",
+          "ruleId": null
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must directly address the ProvisionedThroughputExceededException error in the first paragraph before providing additional context.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must explain that GSI throttling blocks all writes to the base table, which is the likely cause of the ProvisionedThroughputExceededException.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must advise checking the consumed capacity on the Global Secondary Index separately from the main table.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not suggest that the main table's provisioned capacity is the issue when the user has already confirmed it is sufficient.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not recommend switching to a different database service without first addressing the GSI throttling issue.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must directly address the ProvisionedThroughputExceededException error in the first paragraph before providing additional context.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b01",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend defaulting to Global Secondary Indexes (GSI) over Local Secondary Indexes (LSI) for most use cases.",
+          "ruleId": "R12"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+          "ruleId": "R02"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+          "weight": 3
+        },
+        {
+          "id": "value-4",
+          "criterion": "The answer must recommend defaulting to Global Secondary Indexes (GSI) over Local Secondary Indexes (LSI) for most use cases.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b02",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend starting the design process by listing the three specific access patterns mentioned in the request before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "ruleId": "R04"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend starting the design process by listing the three specific access patterns mentioned in the request before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+          "weight": 3
+        },
+        {
+          "id": "value-4",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b03",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend listing all access patterns, such as retrieving a player's personal best and querying the global top 100, before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain the choice of partition key, such as using a player ID for its even distribution and alignment with single-player access patterns.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain the choice of sort key pattern, such as using a score timestamp to support range queries for daily and weekly leaderboards.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern for retrieving leaderboard data.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "ruleId": "R04"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend listing all access patterns, such as retrieving a player's personal best and querying the global top 100, before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must explain the choice of partition key, such as using a player ID for its even distribution and alignment with single-player access patterns.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must explain the choice of sort key pattern, such as using a score timestamp to support range queries for daily and weekly leaderboards.",
+          "weight": 3
+        },
+        {
+          "id": "value-4",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern for retrieving leaderboard data.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b04",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend listing the two access patterns (querying readings by sensor and date range, and finding sensors in a building with high temperatures) before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain the choice of partition key (e.g., SensorID or BuildingID) based on the access patterns and data distribution across the 200 buildings.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain the choice of sort key (e.g., Timestamp) to support the range query requirement for readings within a date range.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must include a disclaimer that the performance and cost estimates are theoretical and require validation through load testing and production monitoring.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend using a Scan operation to find sensors in a building with temperatures above 30 degrees, and must flag this as an anti-pattern.",
+          "ruleId": "R10"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend listing the two access patterns (querying readings by sensor and date range, and finding sensors in a building with high temperatures) before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must explain the choice of partition key (e.g., SensorID or BuildingID) based on the access patterns and data distribution across the 200 buildings.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must explain the choice of sort key (e.g., Timestamp) to support the range query requirement for readings within a date range.",
+          "weight": 3
+        },
+        {
+          "id": "value-4",
+          "criterion": "The answer must include a disclaimer that the performance and cost estimates are theoretical and require validation through load testing and production monitoring.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not recommend using a Scan operation to find sensors in a building with temperatures above 30 degrees, and must flag this as an anti-pattern.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": [
+        {
+          "item": "value-2",
+          "kind": "name",
+          "detail": "\"SensorID\" is not in the request"
+        },
+        {
+          "item": "value-2",
+          "kind": "name",
+          "detail": "\"BuildingID\" is not in the request"
+        },
+        {
+          "item": "value-3",
+          "kind": "name",
+          "detail": "\"Timestamp\" is not in the request"
+        }
+      ]
+    },
+    {
+      "scenarioId": "b05",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must warn that GSI throttling blocks all writes to the base table.",
+          "ruleId": "R09"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "ruleId": "R04"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must warn that GSI throttling blocks all writes to the base table.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "n01",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply addresses the three requested comparison areas: data modeling flexibility, query capabilities, and operational overhead.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply provides information relevant to the stated use case of storing user profiles and activity logs for approximately 50,000 users with heavy read patterns.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply considers the existing AWS infrastructure context mentioned in the request.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays focused on the comparison request without introducing unrequested elements such as scoring schemes, formal reports, or structured deliverables.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply provides a direct answer without excessive length or unnecessary ceremony that would distract from the core comparison.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply addresses the three requested comparison areas: data modeling flexibility, query capabilities, and operational overhead.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply provides information relevant to the stated use case of storing user profiles and activity logs for approximately 50,000 users with heavy read patterns.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply considers the existing AWS infrastructure context mentioned in the request.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply stays focused on the comparison request without introducing unrequested elements such as scoring schemes, formal reports, or structured deliverables.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply provides a direct answer without excessive length or unnecessary ceremony that would distract from the core comparison.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r04",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend using Amazon OpenSearch or CloudSearch instead of DynamoDB for full-text search requirements.",
+          "ruleId": "R01"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend DynamoDB as a suitable solution for the user's full-text search requirement without explaining its limitations.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend using Amazon OpenSearch or CloudSearch instead of DynamoDB for full-text search requirements.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not recommend DynamoDB as a suitable solution for the user's full-text search requirement without explaining its limitations.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r05",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must calculate the required write capacity units as approximately 24 and read capacity units as approximately 10 based on the 2 million writes and 500,000 reads per day.",
+          "ruleId": null
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why a specific attribute like user_id was chosen as the partition key, including its distribution and access pattern alignment.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend using Scan operations for the user lookup access pattern and must warn that it is an anti-pattern.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must warn that cost estimates are theoretical and may vary significantly, recommending the use of AWS Cost Explorer and billing alarms.",
+          "ruleId": "R08"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must calculate the required write capacity units as approximately 24 and read capacity units as approximately 10 based on the 2 million writes and 500,000 reads per day.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must explain why a specific attribute like user_id was chosen as the partition key, including its distribution and access pattern alignment.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not recommend using Scan operations for the user lookup access pattern and must warn that it is an anti-pattern.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must warn that cost estimates are theoretical and may vary significantly, recommending the use of AWS Cost Explorer and billing alarms.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": [
+        {
+          "item": "value-1",
+          "kind": "number",
+          "detail": "24 is not in the request"
+        },
+        {
+          "item": "value-1",
+          "kind": "number",
+          "detail": "10 is not in the request"
+        },
+        {
+          "item": "value-3",
+          "kind": "name",
+          "detail": "\"user_id\" is not in the request"
+        }
+      ]
+    },
+    {
+      "scenarioId": "r06",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using customerId as the partition key and explains that this choice aligns with the access pattern of retrieving all orders for a specific customer.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends using orderId as the sort key and explains that this pattern supports the access pattern of looking up individual orders by their ID.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends listing all access patterns before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer does not recommend using orderId alone as the partition key without explaining how to support the customer-specific query pattern.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends using customerId as the partition key and explains that this choice aligns with the access pattern of retrieving all orders for a specific customer.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer recommends using orderId as the sort key and explains that this pattern supports the access pattern of looking up individual orders by their ID.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer recommends listing all access patterns before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer does not recommend using orderId alone as the partition key without explaining how to support the customer-specific query pattern.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r07",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends a partition key of postId and explains that this choice aligns with the access pattern of retrieving all comments for a specific post.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends a sort key pattern that supports hierarchical data, such as using a delimiter to store the parent comment ID, and explains how this enables range queries for replies.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer advises starting the design process by listing all access patterns, such as retrieving all comments for a post and retrieving replies for a parent, before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend using a Scan operation to retrieve comments for a post, as this is an anti-pattern that does not efficiently use the postId or parentId attributes.",
+          "ruleId": "R02"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer recommends a partition key of postId and explains that this choice aligns with the access pattern of retrieving all comments for a specific post.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer recommends a sort key pattern that supports hierarchical data, such as using a delimiter to store the parent comment ID, and explains how this enables range queries for replies.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer advises starting the design process by listing all access patterns, such as retrieving all comments for a post and retrieving replies for a parent, before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not recommend using a Scan operation to retrieve comments for a post, as this is an anti-pattern that does not efficiently use the postId or parentId attributes.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r08",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must calculate the monthly storage cost based on the 500,000 daily records, 1.5 KB size, and 90-day retention period.",
+          "ruleId": null
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must include a disclaimer stating that cost estimates are theoretical and may vary significantly, recommending the use of AWS Cost Explorer and billing alarms.",
+          "ruleId": "R08"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend using Scan operations to fulfill the 50,000 daily read requests.",
+          "ruleId": "R10"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must present a clear breakdown of costs for storage, writes, and reads.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must calculate the monthly storage cost based on the 500,000 daily records, 1.5 KB size, and 90-day retention period.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must include a disclaimer stating that cost estimates are theoretical and may vary significantly, recommending the use of AWS Cost Explorer and billing alarms.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not recommend using Scan operations to fulfill the 50,000 daily read requests.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must present a clear breakdown of costs for storage, writes, and reads.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r09",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer flags the use of a Scan operation on a 2 million record table as a critical red flag and explains why it is an anti-pattern for production code.",
+          "ruleId": "R10"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer recommends an alternative approach using a Global Secondary Index (GSI) with a composite key to support querying by status and date.",
+          "ruleId": "R12"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer explains the choice of partition key and sort key based on the access pattern of finding pending orders from the last 7 days.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not approve the code as written without warning about the performance and cost implications of scanning 2 million records.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer flags the use of a Scan operation on a 2 million record table as a critical red flag and explains why it is an anti-pattern for production code.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer recommends an alternative approach using a Global Secondary Index (GSI) with a composite key to support querying by status and date.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer explains the choice of partition key and sort key based on the access pattern of finding pending orders from the last 7 days.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not approve the code as written without warning about the performance and cost implications of scanning 2 million records.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "b06",
+      "type": "blind",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "ruleId": "R11"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must recommend defaulting to Global Secondary Indexes (GSI) over Local Secondary Indexes (LSI) for most use cases.",
+          "ruleId": "R12"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+          "ruleId": "R02"
+        },
+        {
+          "bucket": "format",
+          "criterion": "The answer must provide CDK code to create the DynamoDB table structure.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+          "weight": 3
+        },
+        {
+          "id": "value-4",
+          "criterion": "The answer must recommend defaulting to Global Secondary Indexes (GSI) over Local Secondary Indexes (LSI) for most use cases.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern.",
+          "weight": 2
+        },
+        {
+          "id": "format-1",
+          "criterion": "The answer must provide CDK code to create the DynamoDB table structure.",
+          "weight": 1
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "n02",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply explains why the query results are sorted by the range key.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply answers whether DynamoDB always sorts by the sort key automatically.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays in scope and does not provide unrequested code examples or implementation details.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply does not include a scoring scheme, rubric, or formal evaluation structure.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply addresses the user's specific key schema of userId and timestamp.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply explains why the query results are sorted by the range key.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The reply answers whether DynamoDB always sorts by the sort key automatically.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply stays in scope and does not provide unrequested code examples or implementation details.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply does not include a scoring scheme, rubric, or formal evaluation structure.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply addresses the user's specific key schema of userId and timestamp.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "n03",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The reply provides a monthly cost estimate for the DynamoDB usage described in the request.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The estimate correctly accounts for both read and write operations at the specified hourly rates.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply uses the 2KB item size mentioned in the request in its calculations.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply stays focused on the cost estimate and does not provide unrequested recommendations or analysis.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The reply is concise and does not include lengthy reports or excessive detail beyond what was requested.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The reply provides a monthly cost estimate for the DynamoDB usage described in the request.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The estimate correctly accounts for both read and write operations at the specified hourly rates.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The reply uses the 2KB item size mentioned in the request in its calculations.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The reply stays focused on the cost estimate and does not provide unrequested recommendations or analysis.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The reply is concise and does not include lengthy reports or excessive detail beyond what was requested.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "n04",
+      "type": "near-miss",
+      "expectation": "skill not loaded",
+      "items": [
+        {
+          "bucket": "guard",
+          "criterion": "The response compares DynamoDB and MongoDB for the product catalog use case.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The response addresses the relevant factors mentioned: name, price, category, and description fields.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The response considers the stated characteristic that the catalog will not change much after initial setup.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The response stays focused on the comparison request without introducing unrelated topics.",
+          "ruleId": null
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The response provides actionable guidance without unnecessary formatting, scoring schemes, or ceremonial elements.",
+          "ruleId": null
+        }
+      ],
+      "rubric": [
+        {
+          "id": "guard-1",
+          "criterion": "The response compares DynamoDB and MongoDB for the product catalog use case.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The response addresses the relevant factors mentioned: name, price, category, and description fields.",
+          "weight": 2
+        },
+        {
+          "id": "guard-3",
+          "criterion": "The response considers the stated characteristic that the catalog will not change much after initial setup.",
+          "weight": 2
+        },
+        {
+          "id": "guard-4",
+          "criterion": "The response stays focused on the comparison request without introducing unrelated topics.",
+          "weight": 2
+        },
+        {
+          "id": "guard-5",
+          "criterion": "The response provides actionable guidance without unnecessary formatting, scoring schemes, or ceremonial elements.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    },
+    {
+      "scenarioId": "r10",
+      "type": "rule",
+      "expectation": null,
+      "items": [
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why the user ID is a suitable partition key given its distribution and alignment with the primary access pattern.",
+          "ruleId": "R05"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must state that performance estimates are theoretical and require validation through load testing with production-like data volumes.",
+          "ruleId": "R07"
+        },
+        {
+          "bucket": "value",
+          "criterion": "The answer must explain why the timestamp is a suitable sort key for supporting the required date range queries.",
+          "ruleId": "R06"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not provide definitive response times without a disclaimer that performance and cost estimates need validation through load testing and production monitoring.",
+          "ruleId": "R04"
+        },
+        {
+          "bucket": "guard",
+          "criterion": "The answer must not recommend using Local Secondary Indexes (LSI) over Global Secondary Indexes (GSI) for this use case.",
+          "ruleId": "R12"
+        }
+      ],
+      "rubric": [
+        {
+          "id": "value-1",
+          "criterion": "The answer must explain why the user ID is a suitable partition key given its distribution and alignment with the primary access pattern.",
+          "weight": 3
+        },
+        {
+          "id": "value-2",
+          "criterion": "The answer must state that performance estimates are theoretical and require validation through load testing with production-like data volumes.",
+          "weight": 3
+        },
+        {
+          "id": "value-3",
+          "criterion": "The answer must explain why the timestamp is a suitable sort key for supporting the required date range queries.",
+          "weight": 3
+        },
+        {
+          "id": "guard-1",
+          "criterion": "The answer must not provide definitive response times without a disclaimer that performance and cost estimates need validation through load testing and production monitoring.",
+          "weight": 2
+        },
+        {
+          "id": "guard-2",
+          "criterion": "The answer must not recommend using Local Secondary Indexes (LSI) over Global Secondary Indexes (GSI) for this use case.",
+          "weight": 2
+        }
+      ],
+      "repaired": [],
+      "warnings": []
+    }
+  ],
+  "failed": []
+}

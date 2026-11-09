@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-b03",
+  "class": "simple",
+  "target": null,
+  "prompt": "I need to store player scores for a mobile game. Players should be able to see their personal best scores and compare against the global top 100. We also want daily and weekly leaderboards that reset. A player might submit 10-20 scores per session, and we have around 10,000 daily active users. How should I set up the keys and indexes to make these queries fast without scanning the whole table?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend listing all access patterns, such as retrieving a player's personal best and querying the global top 100, before defining the table schema.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must explain the choice of partition key, such as using a player ID for its even distribution and alignment with single-player access patterns.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must explain the choice of sort key pattern, such as using a score timestamp to support range queries for daily and weekly leaderboards.",
+      "weight": 3
+    },
+    {
+      "id": "value-4",
+      "criterion": "The answer must advise against using Scan operations in production code and explain that it is an anti-pattern for retrieving leaderboard data.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

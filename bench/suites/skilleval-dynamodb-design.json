@@ -1,0 +1,38 @@
+{
+  "extraTasks": [
+    "skilleval/dynamodb-design/tasks"
+  ],
+  "tasks": [
+    "se-dynamodb-design-r01",
+    "se-dynamodb-design-r02",
+    "se-dynamodb-design-r03",
+    "se-dynamodb-design-b01",
+    "se-dynamodb-design-b02",
+    "se-dynamodb-design-b03",
+    "se-dynamodb-design-b04",
+    "se-dynamodb-design-b05",
+    "se-dynamodb-design-n01",
+    "se-dynamodb-design-r04",
+    "se-dynamodb-design-r05",
+    "se-dynamodb-design-r06",
+    "se-dynamodb-design-r07",
+    "se-dynamodb-design-r08",
+    "se-dynamodb-design-r09",
+    "se-dynamodb-design-b06",
+    "se-dynamodb-design-n02",
+    "se-dynamodb-design-n03",
+    "se-dynamodb-design-n04",
+    "se-dynamodb-design-r10"
+  ],
+  "arms": [
+    "vanilla",
+    "main"
+  ],
+  "replicates": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "parallel": 1
+}

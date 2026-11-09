@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "suite": "skilleval-frontend-review",
+  "purpose": "Oracle arm: put the skill body in front of every prompt. For near-miss tasks this measures the cost of applying the skill where it should not apply.",
+  "tasks": [
+    {
+      "id": "se-frontend-review-r01",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-r02",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-r03",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-r04",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-r05",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-r06",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-r07",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-r08",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-r09",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-b01",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-b02",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-b03",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-b04",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-b05",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-b06",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-n01",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-n02",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-n03",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-frontend-review-n04",
+      "entries": [
+        {
+          "expectedSkills": [
+            "frontend-review"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-b01",
+  "class": "simple",
+  "target": null,
+  "prompt": "I just finished building this login form component and want to make sure I'm following best practices before submitting for review. Here's the code:\n\nconst LoginForm = () => {\n  const { register, handleSubmit, errors } = useForm();\n  return (\n    <form onSubmit={handleSubmit(onSubmit)}>\n      <Input {...register('email', { required: true })} />\n      <Button type=\"submit\">Login</Button>\n    </form>\n  );\n};\n\nCan you review this for any issues?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer recommends using Zod for form validation instead of manual validation approaches.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer recommends adding explicit types to the useForm() call.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer recommends using Box and SpaceBetween components instead of div or span elements.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer does not suggest using inline styles in the frontend code.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer does not suggest using the any type in production code.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

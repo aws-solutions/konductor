@@ -1,0 +1,376 @@
+{
+  "skill": "frontend-review",
+  "panel": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "thresholds": {
+    "minWorth": 2,
+    "maxStyle": 1
+  },
+  "results": [
+    {
+      "id": "R01",
+      "text": "The answer must not suggest using native HTML elements like <div>, <span>, <input>, <button>, or <a> in frontend code.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Native HTML elements are usually appropriate, accessible, and standard for UI implementation; banning them would often worsen answers."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Modern frontend frameworks rely on semantic HTML elements."
+        },
+        {
+          "judge": "glm-5",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Native HTML elements are standard and appropriate for UI components."
+        }
+      ],
+      "worthCount": 0,
+      "styleCount": 0,
+      "keep": false,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": false
+    },
+    {
+      "id": "R02",
+      "text": "The answer must not suggest using inline styles in frontend code.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Avoiding inline styles improves maintainability and separation of concerns; this constrains technical recommendations, not merely presentation."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Inline styles are generally discouraged in modern frontend development."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Inline styles are a bad practice that assistants might suggest without this rule."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R03",
+      "text": "The answer must recommend React Hook Form for form state management, not custom state hooks.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It materially changes the recommended technical solution, and competent assistants may otherwise suggest controlled state or other libraries."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It overrides common alternatives like useState, changing technical recommendation."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Recommending a specific library provides better guidance than generic custom hook advice."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R04",
+      "text": "The answer must recommend Zod for validation, not manual validation approaches.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It materially guides the technical solution toward Zod rather than manual validation, and competent assistants may not default to it."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Zod is a specific library; rule enforces a particular technical recommendation."
+        },
+        {
+          "judge": "glm-5",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Zod is one valid option among many; manual validation can be appropriate."
+        }
+      ],
+      "worthCount": 2,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [
+        "split on worth (2 of 3)"
+      ],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R05",
+      "text": "The answer must recommend using Box instead of div or span elements.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It materially changes the recommended implementation by favoring Box components over generic div or span containers."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Box provides semantic and accessibility benefits over generic div/span."
+        },
+        {
+          "judge": "glm-5",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Context-dependent; Box is not always the appropriate container element."
+        }
+      ],
+      "worthCount": 2,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [
+        "split on worth (2 of 3)"
+      ],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R06",
+      "text": "The answer must recommend using SpaceBetween for spacing between elements.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "It provides specific, useful implementation guidance for spacing components rather than merely changing wording or formatting."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Specific component recommendation improves answer quality over generic advice."
+        },
+        {
+          "judge": "glm-5",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Multiple valid approaches exist for spacing; SpaceBetween is not universally best."
+        }
+      ],
+      "worthCount": 2,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [
+        "split on worth (2 of 3)"
+      ],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R07",
+      "text": "The answer must not suggest using the any type in production code.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Avoiding any promotes type safety and meaningfully improves TypeScript guidance in common production scenarios."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "any type is a common but discouraged TypeScript practice"
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Using 'any' defeats TypeScript's purpose and is a common beginner mistake."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R08",
+      "text": "The answer must recommend explicit types on useForm() calls.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Explicit useForm types improve type safety and inference in ordinary React Hook Form setups; this is substantive guidance, not formatting."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Explicit typing improves type safety and developer experience in TypeScript projects."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Explicit types improve type safety and autocomplete in TypeScript projects."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R09",
+      "text": "The answer must recommend memoizing event handlers with useCallback.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Blanket useCallback is unnecessary in ordinary React handlers and can add complexity; memoization depends on specific performance or dependency needs."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "useCallback prevents unnecessary re-renders, improving performance."
+        },
+        {
+          "judge": "glm-5",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "useCallback is an optimization, not a requirement for defining handlers."
+        }
+      ],
+      "worthCount": 1,
+      "styleCount": 0,
+      "keep": false,
+      "flags": [
+        "split on worth (1 of 3)"
+      ],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": false
+    },
+    {
+      "id": "R10",
+      "text": "The answer must recommend using imperative array building for 3 or more conditional items, not ternary chains.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": false,
+          "styleOnly": false,
+          "reason": "Imperative array building is substantive but not consistently better; independent && conditions, filtering, or component extraction may be clearer."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Ternary chains become unreadable with many items; imperative building is clearer."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Ternary chains become unreadable with 3+ items; array building is objectively clearer."
+        }
+      ],
+      "worthCount": 2,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [
+        "split on worth (2 of 3)"
+      ],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    },
+    {
+      "id": "R11",
+      "text": "The answer must recommend that test assertions check actual values, not just existence.",
+      "tag": "useful",
+      "votes": [
+        {
+          "judge": "gpt-5.6-luna",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Checking expected values verifies behavior, whereas existence-only assertions can pass despite incorrect results."
+        },
+        {
+          "judge": "deepseek-3.2",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Checking actual values prevents false positives, improves test quality."
+        },
+        {
+          "judge": "glm-5",
+          "worth": true,
+          "styleOnly": false,
+          "reason": "Prevents weak tests that pass even when values are wrong."
+        }
+      ],
+      "worthCount": 3,
+      "styleCount": 0,
+      "keep": true,
+      "flags": [],
+      "ownerDecision": null,
+      "bucket": "value",
+      "survives": true
+    }
+  ]
+}

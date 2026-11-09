@@ -1,0 +1,34 @@
+{
+  "id": "se-frontend-review-r06",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm fetching data from an API and I'm not sure how to type the response properly. Here's my code:\n\nconst response = await fetch('/api/users');\nconst data = await response.json();\nconst users = data.map(u => u.name);\n\nThe API returns an array of user objects with id, name, and email fields. What's the best way to type this?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer defines a User interface or type with id, name, and email fields matching the API response.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer shows how to properly type the response.json() call using generics or type assertion.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using the any type for the data or users variables.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not claim that TypeScript will automatically infer the correct types from the API response.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

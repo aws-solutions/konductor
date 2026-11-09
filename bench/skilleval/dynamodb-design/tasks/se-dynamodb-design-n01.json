@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-n01",
+  "class": "simple",
+  "target": null,
+  "prompt": "My team is debating between DynamoDB and MongoDB for our new application. We need to store user profiles and activity logs, with about 50,000 users and heavy read patterns. What are the main differences in terms of data modeling flexibility, query capabilities, and operational overhead? We're already using AWS for everything else.\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "guard-1",
+      "criterion": "The reply addresses the three requested comparison areas: data modeling flexibility, query capabilities, and operational overhead.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The reply provides information relevant to the stated use case of storing user profiles and activity logs for approximately 50,000 users with heavy read patterns.",
+      "weight": 2
+    },
+    {
+      "id": "guard-3",
+      "criterion": "The reply considers the existing AWS infrastructure context mentioned in the request.",
+      "weight": 2
+    },
+    {
+      "id": "guard-4",
+      "criterion": "The reply stays focused on the comparison request without introducing unrequested elements such as scoring schemes, formal reports, or structured deliverables.",
+      "weight": 2
+    },
+    {
+      "id": "guard-5",
+      "criterion": "The reply provides a direct answer without excessive length or unnecessary ceremony that would distract from the core comparison.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

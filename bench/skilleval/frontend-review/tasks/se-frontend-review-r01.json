@@ -1,0 +1,34 @@
+{
+  "id": "se-frontend-review-r01",
+  "class": "simple",
+  "target": null,
+  "prompt": "I have a simple React button component and I want to make it look better. The button should have a blue background, white text, rounded corners, and some padding. Here's my current component:\n\nfunction MyButton({ children, onClick }) {\n  return <button onClick={onClick}>{children}</button>;\n}\n\nHow should I style this button properly?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer recommends using CSS modules, styled-components, or another proper styling solution instead of inline styles.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer provides a complete code example showing the button with blue background, white text, rounded corners, and padding.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer does not suggest using the style prop or inline styles to apply the visual styling.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer explains the styling approach before or alongside the code example.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

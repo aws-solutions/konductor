@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-r03",
+  "class": "simple",
+  "target": null,
+  "prompt": "I need to add validation to my signup form. The requirements are: email must be valid, password must be at least 8 characters with one uppercase and one number, and both password fields must match. I was thinking of writing validation functions that check each field and show error messages. Is there a better way to handle all these validation rules?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer recommends using Zod for schema-based validation instead of manual validation functions.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer recommends React Hook Form for managing form state and validation.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using the any type in the provided TypeScript code examples.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not suggest using inline styles in any frontend code examples.",
+      "weight": 2
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer recommends using Box and SpaceBetween components for layout instead of div or span elements.",
+      "weight": 3
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

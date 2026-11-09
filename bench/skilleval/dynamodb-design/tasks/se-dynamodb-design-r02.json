@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-r02",
+  "class": "simple",
+  "target": null,
+  "prompt": "My application allows users to upload profile photos and I want to store everything in DynamoDB for simplicity. Each photo is around 2-5 MB. I was thinking of base64 encoding the images and storing them as a string attribute in my Users table alongside other profile data like name and email. Is this a good approach?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend storing the 2-5 MB profile photos in Amazon S3 instead of DynamoDB.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must explain that DynamoDB has a 400 KB item size limit which prevents storing base64 encoded 2-5 MB images.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not agree that storing base64 encoded images in DynamoDB is a good approach.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not claim that DynamoDB is suitable for storing large binary files like profile photos.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must clearly state the recommendation to use S3 before explaining the technical reasons.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

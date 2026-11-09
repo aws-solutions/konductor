@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-b02",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm getting some TypeScript errors in my modal component and I'm not sure if my type definitions are correct. The component takes in an isOpen boolean, an onClose function, and a title string. I defined the props interface like this: interface ModalProps { isOpen: boolean; onClose: () => void; title: string; }. Does this look right or should I add more strict typing?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend using Box instead of div or span elements for the modal container.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must recommend using SpaceBetween for spacing between elements in the modal.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using the any type in production code.",
+      "weight": 2
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must confirm that the isOpen, onClose, and title prop types in the interface are correctly defined.",
+      "weight": 3
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must provide a clear assessment of the interface before suggesting additional strict typing improvements.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

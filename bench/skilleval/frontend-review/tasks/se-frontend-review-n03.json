@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-n03",
+  "class": "simple",
+  "target": null,
+  "prompt": "I keep seeing this pattern in our codebase: type ApiResponse<T> = { data: T; loading: boolean; error: string | null }. What does the <T> mean here and why would I use a generic type instead of just defining separate types for each API response? Can you give me a simple example of when this is useful?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "guard-1",
+      "criterion": "The reply explains what the <T> syntax means in the context of the provided type definition.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The reply explains why a generic type is useful instead of defining separate types for each response.",
+      "weight": 2
+    },
+    {
+      "id": "guard-3",
+      "criterion": "The reply provides a simple example demonstrating the usefulness of the generic type.",
+      "weight": 2
+    },
+    {
+      "id": "guard-4",
+      "criterion": "The reply stays focused on the user's question without introducing unrelated topics.",
+      "weight": 2
+    },
+    {
+      "id": "guard-5",
+      "criterion": "The reply avoids unnecessary scoring schemes, long reports, or unrequested deliverables.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

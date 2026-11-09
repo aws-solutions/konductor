@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-r09",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm writing a test for a function that creates a new user. I want to verify the user was created correctly. Here's what I have:\n\nconst result = await createUser({name: 'John', email: 'john@test.com'});\nexpect(result).toBeDefined();\nexpect(result.id).toBeDefined();\n\nIs this a good way to test this, or should I be checking something more specific?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer recommends checking specific property values like name and email instead of just checking that properties exist.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer explains why checking actual values provides better test coverage than existence checks alone.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer does not suggest using the any type when discussing TypeScript types for the test.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer addresses the user's specific test code without suggesting unrelated testing concepts.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer provides a clear recommendation first, then follows with explanation.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-r07",
+  "class": "simple",
+  "target": null,
+  "prompt": "I'm trying to create a registration form using React Hook Form with fields for username, email, password, and confirmPassword. I also want to track whether the user has accepted terms. How should I set up the useForm hook for this?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend using Zod to define a schema for validating the username, email, password, confirmPassword, and terms fields.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must show the useForm hook call with an explicit type parameter based on the Zod schema type.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using the any type for the form data or validation schema.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not recommend using custom state hooks like useState for managing form state.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must provide a complete code example showing the useForm hook setup with the resolver configuration.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

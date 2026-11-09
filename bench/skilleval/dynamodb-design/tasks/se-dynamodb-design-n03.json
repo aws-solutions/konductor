@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-n03",
+  "class": "simple",
+  "target": null,
+  "prompt": "My application does about 5000 reads and 2000 writes per hour on my DynamoDB table. If each item is roughly 2KB, how much would this cost me per month with pay-per-request pricing? Just give me a rough estimate, I don't need an exact number.\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "guard-1",
+      "criterion": "The reply provides a monthly cost estimate for the DynamoDB usage described in the request.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The estimate correctly accounts for both read and write operations at the specified hourly rates.",
+      "weight": 2
+    },
+    {
+      "id": "guard-3",
+      "criterion": "The reply uses the 2KB item size mentioned in the request in its calculations.",
+      "weight": 2
+    },
+    {
+      "id": "guard-4",
+      "criterion": "The reply stays focused on the cost estimate and does not provide unrequested recommendations or analysis.",
+      "weight": 2
+    },
+    {
+      "id": "guard-5",
+      "criterion": "The reply is concise and does not include lengthy reports or excessive detail beyond what was requested.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

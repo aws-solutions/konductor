@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-b04",
+  "class": "simple",
+  "target": null,
+  "prompt": "I wrote tests for my custom dropdown component but I'm not confident they cover all the edge cases. The dropdown has search functionality, keyboard navigation, and multi-select support. I have tests for basic rendering, selecting items, and clearing selections. Should I add more tests for the search and keyboard interactions, or is this sufficient?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend adding tests for search functionality, such as filtering results, handling no matches, and clearing search input.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must recommend adding tests for keyboard navigation, such as arrow key movement, enter key selection, and escape key closing.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must recommend testing assertions that verify actual values like selected item counts or specific selected items, not just checking that elements exist.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using the any type in test code examples.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer must provide a clear list or checklist of recommended additional test cases.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "se-dynamodb-design-b05",
+  "class": "simple",
+  "target": null,
+  "prompt": "My app lets users book seats for events like concerts and workshops. Each event has multiple time slots, and each slot has a fixed number of seats. I need to check seat availability in real-time when someone tries to book, list all events by category (music, theater, workshop), and show a user their upcoming bookings. We're worried about concurrent bookings for the same seat. How should I model this to handle the concurrency safely?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend starting the design process by listing all access patterns before defining the table schema.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must explain why a specific attribute was chosen as the partition key, including its distribution and access pattern alignment.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must explain why a specific sort key pattern was chosen, including its range query support and hierarchical data needs.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must warn that GSI throttling blocks all writes to the base table.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must include a disclaimer stating that performance and cost estimates need validation through load testing and production monitoring.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-b06",
+  "class": "simple",
+  "target": null,
+  "prompt": "I refactored an old jQuery-based modal to use React and Cloudscape components. The modal now uses Button, Box, and SpaceBetween components from Cloudscape, and I added proper TypeScript types for all props. I also converted the inline styles to use Cloudscape tokens. Before I mark this as ready for code review, can you check if there are any remaining issues with the implementation?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer must recommend using React Hook Form for form state management if the modal contains form inputs.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer must recommend using Zod for validation if the modal contains form inputs.",
+      "weight": 3
+    },
+    {
+      "id": "value-3",
+      "criterion": "The answer must recommend using imperative array building for 3 or more conditional items, not ternary chains.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using inline styles in the React implementation.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not suggest using the any type in production code.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "extraTasks": [
+    "skilleval/frontend-review/tasks"
+  ],
+  "tasks": [
+    "se-frontend-review-r01",
+    "se-frontend-review-r02",
+    "se-frontend-review-r03",
+    "se-frontend-review-r04",
+    "se-frontend-review-r05",
+    "se-frontend-review-r06",
+    "se-frontend-review-r07",
+    "se-frontend-review-r08",
+    "se-frontend-review-r09",
+    "se-frontend-review-b01",
+    "se-frontend-review-b02",
+    "se-frontend-review-b03",
+    "se-frontend-review-b04",
+    "se-frontend-review-b05",
+    "se-frontend-review-b06",
+    "se-frontend-review-n01",
+    "se-frontend-review-n02",
+    "se-frontend-review-n03",
+    "se-frontend-review-n04"
+  ],
+  "arms": [
+    "vanilla",
+    "main"
+  ],
+  "replicates": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "parallel": 1
+}

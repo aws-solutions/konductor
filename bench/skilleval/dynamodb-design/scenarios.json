@@ -1,0 +1,313 @@
+{
+  "skill": "dynamodb-design",
+  "model": "glm-5",
+  "max": 20,
+  "quota": {
+    "rule": 10,
+    "blind": 6,
+    "near-miss": 4
+  },
+  "domain": "database design and data modeling on DynamoDB",
+  "count": 20,
+  "scenarios": [
+    {
+      "id": "r01",
+      "type": "rule",
+      "ruleIds": [
+        "R02"
+      ],
+      "title": "Listing all items in table",
+      "prompt": "I have a DynamoDB table called Users with about 500,000 items storing user profiles. I need to write a Lambda function that runs daily and retrieves all users to check their subscription status and send reminder emails. What's the best way to fetch all items from the table efficiently?"
+    },
+    {
+      "id": "r02",
+      "type": "rule",
+      "ruleIds": [
+        "R03"
+      ],
+      "title": "Storing images in DynamoDB",
+      "prompt": "My application allows users to upload profile photos and I want to store everything in DynamoDB for simplicity. Each photo is around 2-5 MB. I was thinking of base64 encoding the images and storing them as a string attribute in my Users table alongside other profile data like name and email. Is this a good approach?"
+    },
+    {
+      "id": "r03",
+      "type": "rule",
+      "ruleIds": [
+        "R09"
+      ],
+      "title": "DynamoDB table rejecting all writes",
+      "prompt": "My DynamoDB table suddenly started rejecting all write requests with a ProvisionedThroughputExceededException error. The table has provisioned capacity and was working fine before. I have a GSI on the table for querying by a status attribute. My read and write capacity on the main table look fine - we're well under the provisioned limits. What could be causing this?"
+    },
+    {
+      "id": "b01",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "E-commerce order tracking system",
+      "prompt": "I'm building an order management system for an online store. Customers need to look up their orders by order ID, and also list all their orders from the past year. Support agents need to find orders by customer email and filter by status like 'pending', 'shipped', or 'delivered'. Can you help me design the table structure and suggest any secondary indexes I might need?"
+    },
+    {
+      "id": "b02",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Multi-tenant SaaS application design",
+      "prompt": "Our startup is creating a project management tool where each customer gets their own workspace. Within a workspace, users create projects and tasks. The main queries are: list all projects for a workspace, get all tasks in a project, and find tasks assigned to a specific user across all their workspaces. We expect about 50 workspaces initially, each with 20-50 projects and hundreds of tasks. What's the best way to structure this?"
+    },
+    {
+      "id": "b03",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Gaming leaderboard with time ranges",
+      "prompt": "I need to store player scores for a mobile game. Players should be able to see their personal best scores and compare against the global top 100. We also want daily and weekly leaderboards that reset. A player might submit 10-20 scores per session, and we have around 10,000 daily active users. How should I set up the keys and indexes to make these queries fast without scanning the whole table?"
+    },
+    {
+      "id": "b04",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "IoT sensor data storage",
+      "prompt": "We're collecting temperature readings from sensors installed in 200 buildings. Each sensor sends a reading every 5 minutes. I need to query all readings for a specific sensor within a date range, and also find all sensors in a building that reported temperatures above 30 degrees in the last hour. The data retention policy is 90 days. Can you recommend a table design and estimate the capacity we'd need?"
+    },
+    {
+      "id": "b05",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Event booking with availability checks",
+      "prompt": "My app lets users book seats for events like concerts and workshops. Each event has multiple time slots, and each slot has a fixed number of seats. I need to check seat availability in real-time when someone tries to book, list all events by category (music, theater, workshop), and show a user their upcoming bookings. We're worried about concurrent bookings for the same seat. How should I model this to handle the concurrency safely?"
+    },
+    {
+      "id": "n01",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Comparing DynamoDB to MongoDB",
+      "prompt": "My team is debating between DynamoDB and MongoDB for our new application. We need to store user profiles and activity logs, with about 50,000 users and heavy read patterns. What are the main differences in terms of data modeling flexibility, query capabilities, and operational overhead? We're already using AWS for everything else."
+    },
+    {
+      "id": "r04",
+      "type": "rule",
+      "ruleIds": [
+        "R01"
+      ],
+      "title": "Searching product descriptions for keywords",
+      "prompt": "I'm building an e-commerce app and need to let users search for products by typing keywords that might appear anywhere in the product name or description. For example, someone might type 'wireless bluetooth' and I need to show all products matching those words. I was planning to store products in a DynamoDB table. How should I set this up so the search is fast and returns relevant results?"
+    },
+    {
+      "id": "r05",
+      "type": "rule",
+      "ruleIds": [
+        "R04"
+      ],
+      "title": "Estimating costs for user activity logging",
+      "prompt": "I need to store user activity logs for my web application. I expect about 2 million writes per day and around 500,000 reads per day where we look up recent activity for a specific user. Each record will be around 500 bytes. I want to use provisioned capacity to keep costs predictable. Can you help me estimate the read/write capacity units I need and what the monthly cost would be?"
+    },
+    {
+      "id": "r06",
+      "type": "rule",
+      "ruleIds": [
+        "R05"
+      ],
+      "title": "Storing orders by customer",
+      "prompt": "I'm setting up a table to store customer orders for my online store. Each order has an orderId, customerId, orderDate, and total amount. I need to quickly retrieve all orders for a specific customer, and I'll also frequently look up individual orders by their ID. What should I use as my main key for this table?"
+    },
+    {
+      "id": "r07",
+      "type": "rule",
+      "ruleIds": [
+        "R06"
+      ],
+      "title": "Organizing comments by date and thread",
+      "prompt": "I'm building a commenting system where users can reply to other comments, creating nested threads. Each comment has a commentId, postId, parentId, createdAt timestamp, and the content. I need to efficiently retrieve all comments for a post in chronological order, and also get all replies under a specific parent comment. How should I structure the key for this table?"
+    },
+    {
+      "id": "r08",
+      "type": "rule",
+      "ruleIds": [
+        "R08"
+      ],
+      "title": "Estimating monthly DynamoDB costs",
+      "prompt": "I'm building an app that tracks user activity logs. I expect about 500,000 new records per day, each around 1.5 KB in size. I'll need to keep the data for 90 days before deleting it. Most of the traffic will be writing new logs, with maybe 50,000 reads per day to look up a user's history. Can you help me estimate what this will cost per month on AWS?"
+    },
+    {
+      "id": "r09",
+      "type": "rule",
+      "ruleIds": [
+        "R10"
+      ],
+      "title": "Reviewing a DynamoDB query implementation",
+      "prompt": "I wrote some code to find all orders from the last 7 days that have a status of 'pending'. Here's my implementation:\n\nconst params = {\n  TableName: 'Orders',\n  FilterExpression: '#status = :status AND OrderDate >= :date',\n  ExpressionAttributeNames: { '#status': 'Status' },\n  ExpressionAttributeValues: { ':status': 'pending', ':date': '2026-11-02' }\n};\nconst result = await docClient.scan(params).promise();\n\nDoes this look correct? The table has about 2 million orders total."
+    },
+    {
+      "id": "b06",
+      "type": "blind",
+      "ruleIds": [],
+      "title": "E-commerce order history design",
+      "prompt": "I'm building an e-commerce platform and need to figure out how to store customer orders in DynamoDB. Customers need to view their order history sorted by date, and support agents need to quickly pull up orders by order ID. Each order has items, total amount, status, and timestamps. Can you help me design the table structure and show me the CDK code to create it?"
+    },
+    {
+      "id": "n02",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Explaining existing table behavior",
+      "prompt": "I have a DynamoDB table with userId as the partition key and timestamp as the range key. When I query for a specific user, the results come back sorted by time which is what I want. But can you explain why this happens? Does DynamoDB always sort by the second key automatically?"
+    },
+    {
+      "id": "n03",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Quick capacity calculation question",
+      "prompt": "My application does about 5000 reads and 2000 writes per hour on my DynamoDB table. If each item is roughly 2KB, how much would this cost me per month with pay-per-request pricing? Just give me a rough estimate, I don't need an exact number."
+    },
+    {
+      "id": "n04",
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Comparing DynamoDB with another database",
+      "prompt": "I'm building a simple product catalog for an e-commerce site. Each product has a name, price, category, and description. I'm trying to decide between DynamoDB and MongoDB. What are the main differences I should consider for this use case? The catalog won't change much after initial setup."
+    },
+    {
+      "id": "r10",
+      "type": "rule",
+      "ruleIds": [
+        "R07"
+      ],
+      "title": "Review DynamoDB setup for performance",
+      "prompt": "I'm building a system to track user activity logs on AWS DynamoDB. I expect about 5 million users with each having roughly 100 activity records. My main access pattern is querying all activities for a specific user within a date range. I'm using the user ID as the main identifier and the timestamp for ordering. Can you review this setup and tell me what kind of response times I should expect? I need to know if this will handle my load properly."
+    }
+  ],
+  "rejected": [
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R01"
+      ],
+      "title": "Full-text search implementation request",
+      "prompt": "I'm building a product catalog on DynamoDB and need to let users search for products by name and description. For example, if someone types 'wireless headphones', I want to return all products containing those words in any order within their title or description fields. How should I structure my table and queries to support this kind of search functionality?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: full-text search"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R04"
+      ],
+      "title": "Capacity planning with estimates",
+      "prompt": "I'm designing a DynamoDB table for an e-commerce order system. I expect about 10,000 orders per day, each order item is roughly 2 KB, and I need to support 50 reads per second during peak hours. Can you design the table schema and provide RCUs/WCUs calculations along with estimated monthly costs? I want to make sure I provision enough capacity.",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: table schema"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R05"
+      ],
+      "title": "Partition key selection guidance",
+      "prompt": "I'm building a task management app and need help designing the DynamoDB table. Each task belongs to a user and has properties like taskId, title, dueDate, status, and priority. My main access patterns are: (1) get all tasks for a specific user, (2) get a specific task by its ID. Should I use userId or taskId as the partition key, and why?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: partition key selection"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R06"
+      ],
+      "title": "Designing sort key for orders",
+      "prompt": "I'm building a DynamoDB table for an e-commerce application to store customer orders. I need to be able to query all orders for a specific customer, and also filter orders by date range (like all orders from the last 30 days). Sometimes I also need to get orders by status (pending, shipped, delivered) within a date range. My partition key will be CustomerID. What should my sort key be and how should I structure it?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: sort key"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R07"
+      ],
+      "title": "Reviewing DynamoDB design performance",
+      "prompt": "I designed a DynamoDB table for a social media feed application. The table has PK as UserID and SK as Timestamp#PostID. Users can query their feed with limit 50, and I'm expecting about 100,000 users with each user having around 500 posts on average. Can you review this design and tell me if the query performance will be acceptable for a production app?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: dynamodb design"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R08"
+      ],
+      "title": "Estimating monthly DynamoDB costs",
+      "prompt": "I'm planning a DynamoDB table for a gaming leaderboard. I expect 50,000 players, each updating their score about 10 times per day on average. Each item is about 200 bytes. I'll use on-demand capacity mode. What would my approximate monthly cost be? I need to include this in my budget proposal.",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: on-demand"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R10"
+      ],
+      "title": "Reviewing query implementation code",
+      "prompt": "Here's my Node.js code for finding users by email in my DynamoDB table. The table has UserID as partition key and no sort key. Is this implementation correct?\n\nconst findUserByEmail = async (email) => {\n  const params = {\n    TableName: 'Users',\n    FilterExpression: 'email = :email',\n    ExpressionAttributeValues: { ':email': email }\n  };\n  const result = await dynamodb.scan(params).promise();\n  return result.Items[0];\n};",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: sort key"
+      ]
+    },
+    {
+      "type": "blind",
+      "ruleIds": [],
+      "title": "Blog platform with comments",
+      "prompt": "I'm designing the backend for a blogging platform. Posts belong to authors and have tags. Readers need to: view a single post with all its comments, browse posts by a specific author, and search posts by tag. Comments are threaded (replies to comments) and we need to display them in chronological order. There's also an admin view showing all posts pending review. What partition key and sort key combination would work best?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: sort key"
+      ]
+    },
+    {
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Explaining DynamoDB read consistency",
+      "prompt": "Can someone explain the difference between eventually consistent and strongly consistent reads in DynamoDB? I understand eventually consistent might return stale data, but I'm not clear on when I should pay extra for strong consistency. What are the actual trade-offs in terms of cost and availability?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: trade-offs"
+      ]
+    },
+    {
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Fixing a DynamoDB query error",
+      "prompt": "I'm getting this error when querying my DynamoDB table: 'Query condition missed key attribute: userId'. Here's my query: aws dynamodb query --table-name Orders --key-condition-expression 'orderId = :id' --expression-attribute-values '{\":id\":{\"S\":\"ORD-123\"}}'. The table has both userId (partition key) and orderId (sort key). What am I doing wrong?",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: sort key"
+      ]
+    },
+    {
+      "type": "near-miss",
+      "ruleIds": [],
+      "title": "Understanding DynamoDB pricing calculation",
+      "prompt": "I'm trying to estimate costs for a DynamoDB table. We expect 2 million reads per day and 500,000 writes per day, with average item size of 4KB. Using on-demand pricing in us-east-1, roughly how much would this cost per month? I just need a ballpark figure to present to my manager for budget planning.",
+      "round": 0,
+      "reasons": [
+        "skill vocabulary: on-demand"
+      ]
+    },
+    {
+      "type": "rule",
+      "ruleIds": [
+        "R07"
+      ],
+      "title": "Reviewing game leaderboard design",
+      "prompt": "I designed a table for a mobile game leaderboard where players are ranked by score. The key is gameId (partition) and score#playerId (sort key) so I can get the top 100 players quickly. I expect 50,000 concurrent players and scores update frequently. Does this design look solid for handling that load, or are there potential bottlenecks I should worry about?",
+      "round": 1,
+      "reasons": [
+        "skill vocabulary: sort key"
+      ]
+    }
+  ],
+  "stoplistSize": 232
+}

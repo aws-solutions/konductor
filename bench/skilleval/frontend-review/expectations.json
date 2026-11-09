@@ -1,0 +1,119 @@
+{
+  "skill": "frontend-review",
+  "suite": "skilleval-frontend-review",
+  "natural": {
+    "se-frontend-review-r01": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R02"
+      ]
+    },
+    "se-frontend-review-r02": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R03"
+      ]
+    },
+    "se-frontend-review-r03": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R04"
+      ]
+    },
+    "se-frontend-review-r04": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R05"
+      ]
+    },
+    "se-frontend-review-r05": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R06"
+      ]
+    },
+    "se-frontend-review-r06": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R07"
+      ]
+    },
+    "se-frontend-review-r07": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R08"
+      ]
+    },
+    "se-frontend-review-r08": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R10"
+      ]
+    },
+    "se-frontend-review-r09": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R11"
+      ]
+    },
+    "se-frontend-review-b01": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-frontend-review-b02": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-frontend-review-b03": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-frontend-review-b04": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-frontend-review-b05": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-frontend-review-b06": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-frontend-review-n01": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-frontend-review-n02": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-frontend-review-n03": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-frontend-review-n04": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    }
+  }
+}

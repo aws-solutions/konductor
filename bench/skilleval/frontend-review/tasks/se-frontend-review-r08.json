@@ -1,0 +1,39 @@
+{
+  "id": "se-frontend-review-r08",
+  "class": "simple",
+  "target": null,
+  "prompt": "I have a navigation bar where I need to show different items based on user role and authentication status. I need to show: Home (always), Dashboard (if logged in), Admin Panel (if admin), Profile (if logged in), Login (if not logged in), and Logout (if logged in). Right now I have a mess of ternaries. What's a cleaner approach?\n\nGive your whole answer in your reply; do not create or change any files. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "fixture": "skilleval-empty",
+  "timeoutSec": 300,
+  "checks": [],
+  "rubric": [
+    {
+      "id": "value-1",
+      "criterion": "The answer recommends using imperative array building with filter to handle the six conditional navigation items instead of ternary chains.",
+      "weight": 3
+    },
+    {
+      "id": "value-2",
+      "criterion": "The answer correctly identifies that Home, Dashboard, Admin Panel, Profile, Login, and Logout are the six navigation items to handle.",
+      "weight": 3
+    },
+    {
+      "id": "guard-1",
+      "criterion": "The answer must not suggest using inline styles for the navigation bar implementation.",
+      "weight": 2
+    },
+    {
+      "id": "guard-2",
+      "criterion": "The answer must not suggest using the any type for user role or authentication status.",
+      "weight": 2
+    },
+    {
+      "id": "format-1",
+      "criterion": "The answer provides a code example showing the imperative array building approach.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "cap"
+  ]
+}

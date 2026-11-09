@@ -1,0 +1,126 @@
+{
+  "skill": "dynamodb-design",
+  "suite": "skilleval-dynamodb-design",
+  "natural": {
+    "se-dynamodb-design-r01": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R02"
+      ]
+    },
+    "se-dynamodb-design-r02": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R03"
+      ]
+    },
+    "se-dynamodb-design-r03": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R09"
+      ]
+    },
+    "se-dynamodb-design-b01": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-b02": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-b03": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-b04": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-b05": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-n01": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-r04": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R01"
+      ]
+    },
+    "se-dynamodb-design-r05": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R04"
+      ]
+    },
+    "se-dynamodb-design-r06": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R05"
+      ]
+    },
+    "se-dynamodb-design-r07": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R06"
+      ]
+    },
+    "se-dynamodb-design-r08": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R08"
+      ]
+    },
+    "se-dynamodb-design-r09": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R10"
+      ]
+    },
+    "se-dynamodb-design-b06": {
+      "type": "blind",
+      "skill": "loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-n02": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-n03": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-n04": {
+      "type": "nearmiss",
+      "skill": "not loaded",
+      "ruleIds": []
+    },
+    "se-dynamodb-design-r10": {
+      "type": "rule",
+      "skill": "loaded",
+      "ruleIds": [
+        "R07"
+      ]
+    }
+  }
+}
