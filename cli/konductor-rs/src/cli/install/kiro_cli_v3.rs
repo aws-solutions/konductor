@@ -223,11 +223,10 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // Must run after the bin plan is folded in: it checks `plan`
         // for the MCP binary's planned path to predict whether the
         // Claude/V3 settings grant applies. The hooks settings file is
-        // planned whenever the grant is: the orchestration hook is wired
-        // even under `--no-telemetry`.
+        // planned only when the grant is and telemetry is on.
         let claude_plan =
             plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
-        let wires_claude_hooks = !claude_plan.is_empty();
+        let wires_claude_hooks = !no_telemetry && !claude_plan.is_empty();
         plan.extend(claude_plan);
         if wires_claude_hooks {
             plan_claude_hooks_file(&mut plan, target_dir, prior_manifest.as_ref());

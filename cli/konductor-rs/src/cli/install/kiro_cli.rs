@@ -193,11 +193,10 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // Must run after the bin plan is folded in, since it checks
         // `plan` for the MCP binary's planned path to predict whether
         // the Claude grant applies. The hooks settings file is planned
-        // whenever the grant is: the orchestration hook is wired even
-        // under `--no-telemetry`.
+        // only when the grant is and telemetry is on.
         let claude_plan =
             plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
-        let wires_claude_hooks = !claude_plan.is_empty();
+        let wires_claude_hooks = !no_telemetry && !claude_plan.is_empty();
         plan.extend(claude_plan);
         if wires_claude_hooks {
             plan_claude_hooks_file(&mut plan, target_dir, prior_manifest.as_ref());
@@ -3229,11 +3228,9 @@ mod tests {
             serde_json::json!([{
                 "matcher": "startup|clear",
                 "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
-            }, {
-                "matcher": "startup|clear|resume|compact",
-                "hooks": [{"type": "command", "command": format!("{exe} __orchestration-hook{root} --harness claude")}]
             }]),
-            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
+            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation; \
+             the orchestration hook is the Claude strategy's, never a Kiro install's"
         );
         assert_eq!(
             claude_settings["hooks"]["SubagentStart"],
@@ -3280,11 +3277,12 @@ mod tests {
     /// `--no-telemetry` on a dual-marker install (`.kiro` and `.claude`
     /// both already present) run end to end: the V2 Kiro `mcpServers`
     /// injection and the V3/Claude `permissions.allow` grant must still
-    /// land (neither is a telemetry side effect), but no telemetry-hook
-    /// block or `.claude/settings.local.json` may be written.
+    /// land (neither is a telemetry side effect), but no hook block and no
+    /// `.claude/settings.local.json` may be written: a Kiro install wires
+    /// only the telemetry hooks into Claude settings, and `--no-telemetry`
+    /// turns those off.
     #[test]
-    fn install_from_local_no_telemetry_wires_only_the_orchestration_hook_and_keeps_permission_grant(
-    ) {
+    fn install_from_local_no_telemetry_skips_claude_hook_wiring_but_keeps_permission_grant() {
         let target_dir = scratch_dir("no-telemetry-skips-hooks-target");
         fs::create_dir_all(target_dir.join(".kiro")).unwrap();
         fs::create_dir_all(target_dir.join(".claude")).unwrap();
@@ -3331,28 +3329,25 @@ mod tests {
             "--no-telemetry must not affect the unrelated MCP permission grant"
         );
 
-        // No telemetry hook anywhere; the orchestration hook alone lands
-        // in the personal settings file, never the shared one.
+        // The hook wiring must be completely absent: no `hooks` key in
+        // the shared file, and no personal settings file at all.
         assert!(
             claude_settings.get("hooks").is_none(),
-            "the shared settings.json must carry no hooks; got: {claude_settings:?}"
+            "--no-telemetry must suppress the Claude hook wiring entirely; got: \
+             {claude_settings:?}"
         );
-        let local: serde_json::Value = serde_json::from_str(
-            &fs::read_to_string(target_dir.join(".claude/settings.local.json")).unwrap(),
-        )
-        .unwrap();
-        let hooks = local["hooks"].to_string();
-        assert!(hooks.contains("__orchestration-hook"), "{hooks}");
-        assert!(!hooks.contains("__telemetry-hook"), "{hooks}");
+        assert!(
+            !target_dir.join(".claude/settings.local.json").exists(),
+            "a Kiro --no-telemetry install must not create .claude/settings.local.json"
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 
     /// A `--no-telemetry` reinstall over a dual-marker target strips the
-    /// telemetry hooks a prior install wired, from the current
-    /// `settings.local.json` and from an earlier release's shared
-    /// `settings.json`, and keeps the orchestration hook.
+    /// hooks a prior install wired, from the current `settings.local.json`
+    /// and from an earlier release's shared `settings.json`.
     #[test]
     fn no_telemetry_reinstall_strips_prior_claude_hooks_on_dual_marker_target() {
         let target_dir = scratch_dir("no-telemetry-reinstall-strips-hooks-target");
@@ -3389,10 +3384,10 @@ mod tests {
 
         install(true);
 
-        assert!(read(".claude/settings.json").get("hooks").is_none());
-        let local = read(".claude/settings.local.json")["hooks"].to_string();
-        assert!(!local.contains("__telemetry-hook"), "{local}");
-        assert!(local.contains("__orchestration-hook"), "{local}");
+        for relative in [".claude/settings.json", ".claude/settings.local.json"] {
+            let settings = read(relative);
+            assert!(settings.get("hooks").is_none(), "{relative}: {settings}");
+        }
         assert!(read(".claude/settings.json")["permissions"]["allow"].is_array());
 
         fs::remove_dir_all(&target_dir).ok();

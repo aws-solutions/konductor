@@ -46,7 +46,9 @@ not per individual commit.
 - Claude Code installs copy the context files to `.konductor/context/`, where the orchestration
   hook finds the routing rules; uninstall removes the directory and keeps memory.
 - A Claude Code install with `--no-telemetry` now writes `.claude/settings.local.json` for the
-  orchestration hook alone.
+  orchestration hook alone. A Kiro install into a target that also has a `.claude` marker wires
+  only the telemetry hooks there, so it writes no Claude hooks file under `--no-telemetry`; the
+  orchestration hook is the Claude Code install's.
 - The telemetry hook's Kiro CLI v3 session lookup follows `$KIRO_HOME` when set.
 
 ### Changed

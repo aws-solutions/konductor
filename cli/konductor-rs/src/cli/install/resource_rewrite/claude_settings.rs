@@ -495,30 +495,45 @@ enum HookMatcher {
     InstalledAgents,
 }
 
+const AGENT_INVOCATION_HOOK: KonductorHookEntry = KonductorHookEntry {
+    event: "SessionStart",
+    // A genuine session start or a `/clear` both count as a fresh
+    // `agent_invocation`.
+    matcher: HookMatcher::Fixed("startup|clear"),
+    id: HookId::Telemetry(crate::cli::telemetry_hook::AGENT_INVOCATION),
+    always: false,
+};
+
+const SUBAGENT_INVOCATION_HOOK: KonductorHookEntry = KonductorHookEntry {
+    event: "SubagentStart",
+    matcher: HookMatcher::InstalledAgents,
+    id: HookId::Telemetry(crate::cli::telemetry_hook::SUBAGENT_INVOCATION),
+    always: false,
+};
+
+const ORCHESTRATION_MODE_HOOK: KonductorHookEntry = KonductorHookEntry {
+    event: "SessionStart",
+    // Its own block: the persona must come back after `/clear`,
+    // `/compact` and resume, which telemetry must not count.
+    matcher: HookMatcher::Fixed("startup|clear|resume|compact"),
+    id: HookId::OrchestrationMode,
+    always: true,
+};
+
+/// Every hook Konductor wires: what a Claude Code install writes and
+/// what `uninstall` removes.
 const KONDUCTOR_HOOK_ENTRIES: &[KonductorHookEntry] = &[
-    KonductorHookEntry {
-        event: "SessionStart",
-        // A genuine session start or a `/clear` both count as a fresh
-        // `agent_invocation`.
-        matcher: HookMatcher::Fixed("startup|clear"),
-        id: HookId::Telemetry(crate::cli::telemetry_hook::AGENT_INVOCATION),
-        always: false,
-    },
-    KonductorHookEntry {
-        event: "SubagentStart",
-        matcher: HookMatcher::InstalledAgents,
-        id: HookId::Telemetry(crate::cli::telemetry_hook::SUBAGENT_INVOCATION),
-        always: false,
-    },
-    KonductorHookEntry {
-        event: "SessionStart",
-        // Its own block: the persona must come back after `/clear`,
-        // `/compact` and resume, which telemetry must not count.
-        matcher: HookMatcher::Fixed("startup|clear|resume|compact"),
-        id: HookId::OrchestrationMode,
-        always: true,
-    },
+    AGENT_INVOCATION_HOOK,
+    SUBAGENT_INVOCATION_HOOK,
+    ORCHESTRATION_MODE_HOOK,
 ];
+
+/// What a Kiro install writes into a dual-marker target's Claude settings.
+/// The orchestration hook is the Claude strategy's alone: the hook
+/// resolves its owner per harness, so an entry a Kiro install wrote
+/// would never print.
+const TELEMETRY_HOOK_ENTRIES: &[KonductorHookEntry] =
+    &[AGENT_INVOCATION_HOOK, SUBAGENT_INVOCATION_HOOK];
 
 /// `^(a|b)$` over `agent_names`, sorted and deduplicated; `None` when there
 /// are no names. Claude evaluates a matcher containing `^` as an
@@ -901,12 +916,13 @@ fn merge_claude_settings_hooks_with_exe(
     write_settings_file(&settings_path, &claude_dir, &root, original_mode)
 }
 
-/// Wires the Konductor hooks (only the `always` ones under
+/// Wires the hooks in `entries` (only the `always` ones under
 /// `no_telemetry`) into `target_dir`'s hooks settings file
 /// (`claude_hooks_settings_relative_path`) and returns that file's
 /// manifest path and content hash.
 fn apply_claude_settings_hooks(
     target_dir: &Path,
+    entries: &[KonductorHookEntry],
     no_telemetry: bool,
 ) -> Result<(String, String), ClaudeGrantError> {
     let relative = claude_hooks_settings_relative_path(target_dir);
@@ -914,7 +930,7 @@ fn apply_claude_settings_hooks(
     let bytes = merge_claude_settings_hooks_with_exe(
         target_dir,
         relative,
-        KONDUCTOR_HOOK_ENTRIES,
+        entries,
         no_telemetry,
         &resolve_konductor_exe_path(),
         &agent_names,
@@ -1166,7 +1182,7 @@ pub(in crate::cli::install) fn apply_claude_settings_hooks_only(
     no_telemetry: bool,
 ) -> Option<ManifestFile> {
     strip_hooks_not_owned_this_run(target_dir, no_telemetry);
-    match apply_claude_settings_hooks(target_dir, no_telemetry) {
+    match apply_claude_settings_hooks(target_dir, KONDUCTOR_HOOK_ENTRIES, no_telemetry) {
         Ok((path, sha256)) => Some(ManifestFile {
             path,
             sha256: Some(sha256),
@@ -1183,11 +1199,11 @@ pub(in crate::cli::install) fn apply_claude_settings_hooks_only(
 }
 
 /// Performs the `.claude`-marker-gated `permissions.allow` grant
-/// (`apply_claude_settings_grant`) plus the Konductor hook wiring (the
-/// orchestration hook alone under `no_telemetry`), for a whole install run. Returns one
-/// `ManifestFile` per settings file written: `settings.json` for the
-/// grant, and the hooks file when it differs (a project install). Empty
-/// when the grant is skipped.
+/// (`apply_claude_settings_grant`) plus, unless `no_telemetry`, the
+/// telemetry-hook wiring (`TELEMETRY_HOOK_ENTRIES`), for a whole Kiro
+/// install run. Returns one `ManifestFile` per settings file written:
+/// `settings.json` for the grant, and the hooks file when it differs (a
+/// project install). Empty when the grant is skipped.
 ///
 /// Shared by `AgentInstallPhase::run` (`phases.rs`) and
 /// `KiroCliV3InstallStrategy::install_from_local` (`kiro_cli_v3.rs`), which
@@ -1210,18 +1226,21 @@ pub(in crate::cli::install) fn apply_claude_settings_grant_and_hooks(
     match apply_claude_settings_grant(target_dir) {
         Ok(grant) => {
             written.push(grant);
-            match apply_claude_settings_hooks(target_dir, no_telemetry) {
-                Ok((hooks_path, hooks_sha256)) => {
-                    // A `$HOME` install shares one file, so the hooks
-                    // write supersedes the grant's hash.
-                    written.retain(|(path, _)| *path != hooks_path);
-                    written.push((hooks_path, hooks_sha256));
-                }
-                Err(message) => {
-                    eprintln!(
-                        "warning: Claude Code hook wiring skipped ({message}) -- the \
-                         {strategy_label} portion of this install is unaffected"
-                    );
+            if !no_telemetry {
+                match apply_claude_settings_hooks(target_dir, TELEMETRY_HOOK_ENTRIES, no_telemetry)
+                {
+                    Ok((hooks_path, hooks_sha256)) => {
+                        // A `$HOME` install shares one file, so the hooks
+                        // write supersedes the grant's hash.
+                        written.retain(|(path, _)| *path != hooks_path);
+                        written.push((hooks_path, hooks_sha256));
+                    }
+                    Err(message) => {
+                        eprintln!(
+                            "warning: Claude Code telemetry hook wiring skipped ({message}) -- \
+                             the {strategy_label} portion of this install is unaffected"
+                        );
+                    }
                 }
             }
         }
@@ -1721,8 +1740,8 @@ mod tests {
         let dir = scratch_dir("claude-hooks-project-local");
         fs::create_dir_all(dir.join(".claude")).unwrap();
 
-        let (path, sha256) =
-            apply_claude_settings_hooks(&dir, false).expect("hook wiring must succeed");
+        let (path, sha256) = apply_claude_settings_hooks(&dir, KONDUCTOR_HOOK_ENTRIES, false)
+            .expect("hook wiring must succeed");
 
         assert_eq!(path, LOCAL);
         assert_eq!(sha256.len(), 64);
@@ -2111,7 +2130,7 @@ mod tests {
         let dir = scratch_dir("claude-hooks-non-object-hooks-key");
         fs::create_dir_all(dir.join(".claude")).unwrap();
         fs::write(dir.join(LOCAL), r#"{"hooks": "not-an-object"}"#).unwrap();
-        let err = apply_claude_settings_hooks(&dir, false)
+        let err = apply_claude_settings_hooks(&dir, KONDUCTOR_HOOK_ENTRIES, false)
             .expect_err("a non-object \"hooks\" key must be rejected, not overwritten");
         assert!(err.contains("\"hooks\""));
         fs::remove_dir_all(&dir).ok();
@@ -2126,7 +2145,7 @@ mod tests {
             r#"{"hooks": {"SessionStart": "not-an-array"}}"#,
         )
         .unwrap();
-        let err = apply_claude_settings_hooks(&dir, false)
+        let err = apply_claude_settings_hooks(&dir, KONDUCTOR_HOOK_ENTRIES, false)
             .expect_err("a non-array \"hooks.SessionStart\" key must be rejected");
         assert!(err.contains("hooks.SessionStart"));
         fs::remove_dir_all(&dir).ok();
@@ -2139,7 +2158,7 @@ mod tests {
         let real_elsewhere = scratch_dir("claude-hooks-symlink-dir-target");
         std::os::unix::fs::symlink(&real_elsewhere, dir.join(".claude")).unwrap();
 
-        let err = apply_claude_settings_hooks(&dir, false)
+        let err = apply_claude_settings_hooks(&dir, KONDUCTOR_HOOK_ENTRIES, false)
             .expect_err("a symlinked .claude directory must be rejected, never written through");
         assert!(err.contains("symlink"));
         assert!(!real_elsewhere.join("settings.local.json").exists());
@@ -2293,15 +2312,33 @@ mod tests {
 
         let files = apply_claude_settings_grant_and_hooks(&dir, true, "Kiro CLI");
 
+        // Only the grant is tracked: a Kiro run writes no hooks file, and
+        // the orchestration hook a Claude install wired stays in place.
         let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
-        assert_eq!(paths, [CLAUDE_SETTINGS_RELATIVE_PATH, LOCAL]);
+        assert_eq!(paths, [CLAUDE_SETTINGS_RELATIVE_PATH]);
         let shared = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
         assert!(shared.get("hooks").is_none(), "got: {shared}");
         assert!(shared["permissions"]["allow"].is_array());
-        let quoted_exe = shell_quote_for_hook_command(&resolve_konductor_exe_path());
         assert_eq!(
             read_json(&dir.join(LOCAL))["hooks"],
-            serde_json::json!({"SessionStart": [orchestration_block(&dir, &quoted_exe)]})
+            serde_json::json!({"SessionStart": [orchestration_block(&dir, "/opt/konductor")]})
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn grant_and_hooks_wires_only_the_telemetry_hooks() {
+        let dir = scratch_dir("claude-grant-and-hooks-telemetry-only");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        fs::write(dir.join(CLAUDE_SETTINGS_RELATIVE_PATH), "{}").unwrap();
+
+        apply_claude_settings_grant_and_hooks(&dir, false, "Kiro CLI");
+
+        let local = read_json(&dir.join(LOCAL))["hooks"].to_string();
+        assert!(local.contains("__telemetry-hook"), "{local}");
+        assert!(
+            !local.contains("__orchestration-hook"),
+            "a Kiro install must not wire the orchestration hook; got: {local}"
         );
         fs::remove_dir_all(&dir).ok();
     }
