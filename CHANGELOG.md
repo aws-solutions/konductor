@@ -101,9 +101,11 @@ not per individual commit.
   Smithy rejects.
 - `iam-policy-design` and `policy-validation` now share one set of GDPR, HIPAA, PCI-DSS and SOC 2
   checklists in `skills/iam-policy-design/references/compliance-checklists.md`, loaded only when
-  the user or the design under review names a compliance framework. Audit-control findings now
-  cite HIPAA §164.312(b), and the GDPR checklist no longer claims a fixed 3-year log retention.
-  `smithy-validation` loads its example review only when writing a report.
+  the user or the design under review names a compliance framework or the design handles
+  regulated data. Audit-control findings now cite HIPAA §164.312(b), and the GDPR checklist no
+  longer claims a fixed 3-year log retention. `policy-validation` now also checks SOC 2, and its
+  report uses one per-framework template. `smithy-validation` loads its example review only when
+  writing a report.
 - `cost-estimation` moved its REVIEW workflow (checking an existing estimate) into
   `references/review-workflow.md`. The skill opens it only when the user picks REVIEW.
 - `cost-estimation` keeps only the context-gathering steps of a new estimate in `SKILL.md`. The
@@ -219,11 +221,12 @@ not per individual commit.
   examples for technical accuracy and threat models.
 - `requirements-extraction`, `user-story-writing`, and `system-design-patterns` now read as one
   set of instructions each, without a pasted prompt and its separate role. Repeated rules are
-  stated once. `system-design-patterns` lists its real five interview phases and four
-  documents, adds a non-functional requirements section to the design document, and points
-  follow-up work at konductor skills instead of prompts that don't exist. Its S3
-  Intelligent-Tiering advice now targets data with unknown or changing access patterns, not
-  infrequently accessed data.
+  stated once. `requirements-extraction` folds its checklist into the Quality Gate, so a missing
+  output file is CRITICAL and missing integration points are IMPORTANT. `system-design-patterns`
+  lists its real five interview phases and four documents, adds a non-functional requirements
+  section to the design document, and points follow-up work at konductor skills instead of
+  prompts that don't exist. Its S3 Intelligent-Tiering advice now targets data with unknown or
+  changing access patterns, not infrequently accessed data.
 
 ### Fixed
 

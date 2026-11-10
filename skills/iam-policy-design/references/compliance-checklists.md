@@ -1,6 +1,6 @@
 # Compliance Checklists
 
-Read this when the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2). `iam-policy-design` uses the checklists to design controls; `policy-validation` uses them, plus the checks and severity rules, to find gaps.
+Read this when the user or the design under review names a compliance framework (GDPR, HIPAA, PCI-DSS, SOC 2), or the design handles regulated data (PHI, cardholder data, personal data of people in the EU). `iam-policy-design` uses the checklists to design controls; `policy-validation` uses them, plus the checks and severity rules, to find gaps.
 
 Each framework lists the controls to have in place, what a reviewer checks, and the citations to put on a finding.
 
@@ -12,26 +12,26 @@ Each framework lists the controls to have in place, what a reviewer checks, and 
 - **Access Controls:** RBAC with least privilege, IAM policies restrict access, MFA for privileged accounts, regular access reviews
 - **Audit Logging:** CloudTrail in all regions with log file validation, all access logged, logs encrypted, a retention period set and documented (GDPR sets no fixed period; storage limitation applies)
 - **Data Deletion:** S3 lifecycle policies, DynamoDB TTL, manual deletion procedures, deletion verified
-- **Data Residency:** EU regions only (eu-west-1, eu-central-1, and so on), SCPs restrict to EU regions, data transfers documented, SCCs for non-EU transfers
+- **Data Residency:** Personal data stored in the regions the design chooses; any transfer outside the EU/EEA is documented and covered by an adequacy decision or SCCs (Articles 44-46); SCPs enforce the chosen regions
 - **Data Portability:** Export APIs available, procedures documented, all personal data included
 - **Privacy by Design:** Data minimization, purpose limitation, storage limitation
 
-**Review checks:** Verify encryption at rest and in transit, least-privilege access with audit logging, deletion through S3 lifecycle policies or DynamoDB TTL, resources deployed only in EU regions, and CloudTrail and service logs as evidence. Flag as CRITICAL if any GDPR requirement is violated.
+**Review checks:** Verify encryption at rest and in transit, least-privilege access with audit logging, deletion through S3 lifecycle policies or DynamoDB TTL, resources deployed only in the regions the design permits, and CloudTrail and service logs as evidence. Check that non-EU transfers have a documented legal basis. Flag as CRITICAL if personal data is unencrypted, there is no deletion path, or a non-EU transfer is undocumented.
 
-**Citations:** Article 32 (security of processing, including encryption), Article 17 (right to erasure), Article 5(1)(e) (storage limitation).
+**Citations:** Article 32 (security of processing, including encryption), Article 17 (right to erasure), Article 5(1)(e) (storage limitation), Article 44-46 (transfers).
 
 ## HIPAA
 
 **Controls:**
 
-- **PHI Protection:** PHI encrypted with KMS customer managed keys, TLS 1.2+ in transit, HIPAA-eligible services only, access restricted
+- **PHI Protection:** PHI encrypted at rest with KMS (customer managed keys recommended when the design needs key-policy control or separation of duties), TLS 1.2+ in transit, HIPAA-eligible services only, access restricted
 - **Access Controls:** RBAC with least privilege, MFA for PHI access, unique user IDs, auto logoff, quarterly access reviews
 - **Audit Logging:** CloudTrail with log file validation, all PHI access logged, 6-year retention, logs encrypted, no PHI in CloudWatch Logs
 - **BAA:** AWS BAA signed, BAA covers all services in use, BAAs with third parties
 - **Data Backup:** Automated backups, backups encrypted, 6-year retention, DR procedures documented
 - **Breach Notification:** Procedures documented, detection mechanisms (GuardDuty, Security Hub), 60-day notification timeline defined
 
-**Review checks:** Verify PHI is encrypted with customer managed keys, MFA is enforced for PHI access, audit logging covers CloudTrail and service logs, and a BAA is signed with AWS. Check CloudWatch Logs for PHI. Flag as CRITICAL if PHI is unencrypted or found in logs.
+**Review checks:** Verify PHI is encrypted at rest and in transit, MFA is enforced for PHI access, audit logging covers CloudTrail and service logs, and a BAA is signed with AWS. Check CloudWatch Logs for PHI. Flag as CRITICAL if PHI is unencrypted or found in logs.
 
 **Citations:** Security Rule §164.312(a)(2)(iv) (encryption and decryption), §164.312(b) (audit controls), §164.308(a)(1)(ii)(D) (information system activity review).
 

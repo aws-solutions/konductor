@@ -128,8 +128,7 @@ Two epics in the expected structure:
 - Streamline the QA review process
 - Ensure consistent status management
 - Support detailed feedback capture
-- Handle special asset types appropriately
-- Enable efficient bulk reviews
+- Let reviewers work through a queue of assets in one session
 </key_objectives>
 <stories>
 <story>
