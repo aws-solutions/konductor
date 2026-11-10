@@ -106,6 +106,8 @@ Red Flags:
 
 Reject plans that have ANY of these issues:
 
+Any issue in this table makes the affected criterion a Fail.
+
 | Issue                   | Example                      | Why It's Blocking           |
 | ----------------------- | ---------------------------- | --------------------------- |
 | Vague tasks             | "Implement the feature"      | No guidance on HOW          |
@@ -139,11 +141,14 @@ Reject plans that have ANY of these issues:
 
 Each criterion scores as **Pass** (fully met), **Partial** (some items met, some gaps), or **Fail** (not met).
 
+Any Fail caps the rating at ⭐⭐ (BLOCKED); 0 Pass stays ⭐.
+
 - 4 Pass = ⭐⭐⭐⭐⭐
 - 3 Pass, 1 Partial = ⭐⭐⭐⭐
-- 3 Pass, 1 Fail, or exactly 2 Pass = ⭐⭐⭐
-- 1 Pass = ⭐⭐
+- 2 Pass, 2 Partial = ⭐⭐⭐
+- 1 Pass, the rest Partial = ⭐⭐
 - 0 Pass = ⭐
+- Any Fail = ⭐⭐ at most
 
 ## Verdict Format
 
