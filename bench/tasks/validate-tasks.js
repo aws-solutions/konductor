@@ -611,7 +611,7 @@ function main() {
       const outcomes = t.checks.map((c) => evalCheck(bare, c, fixtureDir(t.fixture)));
       fs.rmSync(bare, { recursive: true, force: true });
       outcomes.forEach((r, i) => { if (r.broken) err(where, `checks[${i}] is broken on the untouched fixture (${r.detail})`); });
-      if (outcomes.length && outcomes.every((r) => r.pass)) err(where, 'every check already passes on the untouched fixture');
+      if (outcomes.some((r, i) => t.checks[i].type !== 'fixture_unchanged') && outcomes.every((r) => r.pass)) err(where, 'every check already passes on the untouched fixture');
       continue;
     }
     const hiddenDir = t.hidden ? path.join(R.hidden, t.hidden) : null;
