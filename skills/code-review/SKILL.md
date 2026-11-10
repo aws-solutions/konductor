@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Use when reviewing code in a folder, repository, diff or PR for correctness, security and error handling, including a source tree with no git history. Also use when creating or submitting a pull request, addressing PR feedback, or running a post-implementation review of local changes. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
+description: Use when reviewing a folder, repo, diff or PR, creating or submitting a PR, addressing PR feedback, or reviewing your own changes after implementation. Checks correctness, security and error handling, including in a source tree with no git history. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
 version: 1.3.3
 tags: [skill, code-review, pr, git, workflow, humanize-writing]
 ---
