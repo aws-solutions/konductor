@@ -25,7 +25,7 @@ Use this skill when:
 
 ### Architectural Layers
 
-If the codebase layers handlers over a business facade, factory-built services and repository interfaces, keep that layering: handlers delegate to the facade, and no layer bypasses the one below it. If it doesn't, follow the structure it has.
+Keep whichever of these layers the codebase has: handlers delegate to a facade, services come from a factory, data access goes through repository interfaces. Do not add a layer it lacks.
 
 ### KISS/YAGNI/DRY
 
@@ -40,7 +40,6 @@ Prefer simple, minimal solutions. Only add abstractions or patterns (Strategy, O
 
 ### Handler Patterns
 
-- If the codebase uses a facade, factory or repository layer, keep it: no business logic in handlers, no direct service instantiation, no direct database calls
 - Use return values from store operations to avoid extra queries
 
 ### TypeScript Type Safety
