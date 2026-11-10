@@ -1,6 +1,6 @@
 ---
 name: non-functional-requirements
-description: Extracts measurable non-functional requirements from system design documents. Use when a requirements or design document needs measurable latency, throughput, availability, scalability, security or observability targets. Applies when writing or reviewing one, even if the request just says 'requirements' or 'design'.
+description: Extracts measurable non-functional requirements from system design documents. Use when a requirements or design document needs measurable latency, throughput, availability, scalability, security or observability targets. Not for EARS requirements.md files (use kiro-requirements-generation) or user stories (use user-story-writing).
 version: 1.1.0
 tags: [skill, nfr, requirements, performance, availability, security, architecture]
 ---
