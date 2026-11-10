@@ -24,6 +24,7 @@ Scan the document and extract all verifiable claims by category:
 - **Code claims**: "already implemented", "requires only configuration", "built on top of X"
 - **Infrastructure claims**: service features, regional availability, pricing, limits
 - **Approach claims**: "this is the standard pattern", "AWS recommends", "best practice"
+- **Landscape claims**: "no existing solution", "no team has built this", "customers need X"
 
 Be aggressive. "Already built" and "requires only configuration" are the highest-risk claim types.
 
@@ -41,6 +42,7 @@ For each other claim, identify the primary source that would confirm or deny it:
 - Measurements, dashboards, or load-test results for data claims
 - The AWS Pricing Calculator for a dollar cost estimate (the pricing model itself goes to Step 2)
 - Published guidance (for AWS, a docs.aws.amazon.com page) for approach claims
+- Prior-art search (`decision-research` Phases 2 and 3) for landscape claims. Only a concrete existing solution makes one INCORRECT
 
 Search the source. Do not accept the document's assertion as evidence.
 
