@@ -32,10 +32,10 @@ pub(crate) fn is_kiro_spawn_tool(id_or_tag: &str) -> bool {
             .is_some_and(|rest| rest.starts_with('/'))
 }
 
-/// True for `{"availableAgents": [], "trustedAgents": []}`: the v2 `subagent`
-/// tool stays in `@builtin`, and this setting leaves it no agent to spawn, so
-/// a specialist carries it as a block, not a grant. A missing list or any
-/// named agent is a grant.
+/// True for `{"availableAgents": [], "trustedAgents": []}`, the list every
+/// specialist carries. It is not a grant, and it is not a block on Kiro CLI
+/// v2 either: the v2 `subagent` tool stays in `@builtin`; #149 removes the
+/// tool. A missing list or any named agent is a grant.
 pub(crate) fn is_empty_subagent_target_list(settings: &serde_json::Value) -> bool {
     ["availableAgents", "trustedAgents"].iter().all(|key| {
         settings
