@@ -141,14 +141,13 @@ Any issue in this table makes the affected criterion a Fail.
 
 Each criterion scores as **Pass** (fully met), **Partial** (some items met, some gaps), or **Fail** (not met).
 
-Any Fail caps the rating at ⭐⭐ (BLOCKED); 0 Pass stays ⭐.
+Any Fail caps the rating at ⭐⭐ (BLOCKED), or ⭐ if no criterion passes. With no Fail, use this list:
 
 - 4 Pass = ⭐⭐⭐⭐⭐
 - 3 Pass, 1 Partial = ⭐⭐⭐⭐
 - 2 Pass, 2 Partial = ⭐⭐⭐
 - 1 Pass, the rest Partial = ⭐⭐
 - 0 Pass = ⭐
-- Any Fail = ⭐⭐ at most
 
 ## Verdict Format
 

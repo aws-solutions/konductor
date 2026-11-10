@@ -36,7 +36,8 @@ Prefer simple, minimal solutions. Only add abstractions or patterns (Strategy, O
 ### General
 
 - Read the complete file before changing it, and read a sibling file that already does it right (for example another handler) so the fix copies its pattern.
-- Fix only the issue you were given. Leave unrelated files and code alone.
+- Make minimal changes, only fix the specific issue. Leave unrelated files and code alone.
+- Follow established patterns in the codebase.
 - Keep changes backward compatible; a breaking change needs a migration path.
 - Keep observable behavior you weren't asked to change: response codes and bodies, log messages and their fields, error types callers already handle.
 

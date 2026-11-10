@@ -153,7 +153,7 @@ Use this skill when:
 **Check:**
 
 - Sensitive data marked with @sensitive
-- The service carries an auth scheme trait (for example `@httpBearerAuth`); operations inherit it unless they set `@auth`
+- When the requirements call for authentication, the service carries an auth scheme trait (for example `@httpBearerAuth`); operations inherit it unless they set `@auth`
 - Operations that must be authenticated are not marked `@optionalAuth` or `@auth([])`
 - Authorization patterns documented
 - Input validation prevents injection attacks
