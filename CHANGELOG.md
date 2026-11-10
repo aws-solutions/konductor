@@ -116,9 +116,10 @@ not per individual commit.
 - Handoff files live in a self-ignoring `.konductor/handoff/` (the writer creates its
   `.gitignore`); `konductor init` also ignores the directory.
 - Specialist specs grant no spawn tool, and Kiro CLI v3 and Claude Code configs block it, with
-  `disallowedTools` on Claude Code for every specialist (not shell). On Kiro CLI v2, where
-  `@builtin` keeps the `subagent` tool, every specialist carries an empty
-  `toolsSettings.subagent` target list, so it has no agent to spawn.
+  `disallowedTools` on Claude Code for every specialist (not shell). On Kiro CLI v2,
+  `@builtin` keeps the `subagent` tool and the empty `toolsSettings.subagent` target list
+  every specialist carries does not stop a spawn; v2 specialists lose the tool when #149
+  lands, and #124 merges together with #149.
   `k-code-review-workflow` step 6 writes the report and ends with a note asking the orchestrator
   to run the adversarial review, no resume; the verdict comes from the findings, with the
   adversarial pass state on its own line. After the pass, the orchestrator, or `k-developer` on
