@@ -323,6 +323,211 @@ fn sorted(models: HashMap<String, ModelUsage>) -> Vec<ModelUsage> {
     v
 }
 
+// ── Kiro CLI v2 ─────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct V2File {
+    session_id: Option<String>,
+    cwd: Option<String>,
+    created_at: Option<String>,
+    updated_at: Option<String>,
+    session_state: Option<V2State>,
+}
+
+#[derive(Deserialize)]
+struct V2State {
+    agent_name: Option<String>,
+    conversation_metadata: Option<V2Meta>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct V2Meta {
+    user_turn_metadatas: Vec<V2Turn>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct V2Turn {
+    model: Option<String>,
+    total_request_count: Option<u64>,
+    metering_usage: Vec<Metering>,
+}
+
+#[derive(Deserialize)]
+struct Metering {
+    value: f64,
+    unit: Option<String>,
+}
+
+/// `$KIRO_HOME/sessions/cli/<session>.json`. Child (delegated) sessions
+/// are separate files and count on their own `agent_name`.
+pub(crate) fn collect_kiro_v2(path: &Path, mtime: u64, size: u64) -> Record {
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let rec = Record::new(Harness::KiroCliV2, path, mtime, size, stem);
+    let Some(parsed) = File::open(path)
+        .ok()
+        .and_then(|f| serde_json::from_reader::<_, V2File>(BufReader::new(f)).ok())
+    else {
+        return rec.unparsed();
+    };
+    let mut rec = rec;
+    if let Some(id) = parsed.session_id {
+        rec.session_id = id;
+    }
+    rec.repo = parsed.cwd;
+    rec.touch_ts(parsed.created_at.as_deref().and_then(parse_iso_secs));
+    rec.touch_ts(parsed.updated_at.as_deref().and_then(parse_iso_secs));
+    let Some(state) = parsed.session_state else {
+        return rec;
+    };
+    rec.agent = state.agent_name;
+    let mut models: HashMap<String, ModelUsage> = HashMap::new();
+    for turn in state
+        .conversation_metadata
+        .unwrap_or_default()
+        .user_turn_metadatas
+    {
+        let model = turn.model.unwrap_or_else(|| "unknown".to_string());
+        let m = models.entry(model.clone()).or_insert_with(|| ModelUsage {
+            model,
+            ..Default::default()
+        });
+        m.requests += turn.total_request_count.unwrap_or(0);
+        let credits: f64 = turn
+            .metering_usage
+            .iter()
+            .filter(|u| u.unit.as_deref().is_none_or(|unit| unit == "credit"))
+            .map(|u| u.value)
+            .sum();
+        if !turn.metering_usage.is_empty() {
+            m.credits = Some(m.credits.unwrap_or(0.0) + credits);
+        }
+    }
+    rec.models = sorted(models);
+    rec
+}
+
+// ── Kiro v3 (KAS) ───────────────────────────────────────────────────────
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct V3SessionJson {
+    #[serde(rename = "modelId")]
+    model_id: Option<String>,
+    #[serde(rename = "workspacePaths")]
+    workspace_paths: Vec<String>,
+    #[serde(rename = "agentMode")]
+    agent_mode: Option<String>,
+    #[serde(rename = "schemaVersion")]
+    schema_version: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct V3Line {
+    timestamp: Option<String>,
+    payload: V3Payload,
+}
+
+// A flat struct, not a `#[serde(tag = "type")]` enum: tagged enums buffer
+// through serde's `Content`, which can't yield an f64 under this crate's
+// `arbitrary_precision` serde_json feature.
+#[derive(Deserialize)]
+struct V3Payload {
+    #[serde(rename = "type")]
+    kind: String,
+    #[serde(rename = "agentType")]
+    agent_type: Option<String>,
+    #[serde(rename = "promptTurnSummaries", default)]
+    prompt_turn_summaries: Vec<V3TurnSummary>,
+}
+
+#[derive(Deserialize)]
+struct V3TurnSummary {
+    usage: f64,
+    unit: Option<String>,
+}
+
+/// `$KIRO_HOME/sessions/<ws-hash>/<session>/messages.jsonl` plus its
+/// sibling `session.json`. Subagents aren't saved separately, so only
+/// their run count is recorded.
+pub(crate) fn collect_kiro_v3(path: &Path, mtime: u64, size: u64) -> Record {
+    let dir = path.parent().unwrap_or(path);
+    let session_id = dir
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let mut rec = Record::new(Harness::KiroV3, path, mtime, size, session_id);
+    let session: V3SessionJson = std::fs::read(dir.join("session.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default();
+    rec.repo = session.workspace_paths.into_iter().next();
+    rec.harness_version = session.schema_version;
+    let model = session.model_id.unwrap_or_else(|| "unknown".to_string());
+
+    let Ok(file) = File::open(path) else {
+        return rec.unparsed();
+    };
+    let (mut credits, mut saw_usage) = (0.0f64, false);
+    let (mut turns, mut subagents) = (0u64, 0u64);
+    let mut agent_type = None;
+    let (mut parsed, mut failed) = (0u64, 0u64);
+    for line in BufReader::new(file).lines() {
+        let Ok(line) = line else {
+            failed += 1;
+            continue;
+        };
+        rec.touch_ts(str_field(&line, "timestamp").and_then(parse_iso_secs));
+        let interesting = [
+            "\"session_start\"",
+            "\"usage_summary\"",
+            "\"sub_agent_start\"",
+            "\"turn_start\"",
+        ];
+        if !interesting.iter().any(|t| line.contains(t)) {
+            continue;
+        }
+        match serde_json::from_str::<V3Line>(&line) {
+            Ok(V3Line { payload, timestamp }) => {
+                parsed += 1;
+                rec.touch_ts(timestamp.as_deref().and_then(parse_iso_secs));
+                match payload.kind.as_str() {
+                    "session_start" => agent_type = agent_type.or(payload.agent_type),
+                    "usage_summary" => {
+                        saw_usage = true;
+                        credits += payload
+                            .prompt_turn_summaries
+                            .iter()
+                            .filter(|s| s.unit.as_deref().is_none_or(|u| u == "credit"))
+                            .map(|s| s.usage)
+                            .sum::<f64>();
+                    }
+                    "sub_agent_start" => subagents += 1,
+                    "turn_start" => turns += 1,
+                    _ => {}
+                }
+            }
+            Err(_) => failed += 1,
+        }
+    }
+    if parsed == 0 && failed > 0 {
+        return rec.unparsed();
+    }
+    rec.agent = agent_type.or(session.agent_mode);
+    rec.subagent_runs = Some(subagents);
+    rec.models = vec![ModelUsage {
+        model,
+        requests: turns,
+        credits: saw_usage.then_some(credits),
+        ..Default::default()
+    }];
+    rec
+}
+
 #[cfg(test)]
 pub(crate) mod tests_support {
     use super::*;
@@ -428,5 +633,69 @@ mod tests {
         assert_eq!(r.parent_session_id.as_deref(), Some("s1"));
         assert_eq!(r.models[0].input_tokens, Some(1));
         assert_eq!(r.models[0].output_tokens, None);
+    }
+
+    #[test]
+    fn kiro_v2_sums_credits_per_model_and_leaves_tokens_null() {
+        let d = tmp("v2");
+        let p = write(
+            &d,
+            "cli/abc.json",
+            r#"{"session_id":"abc","cwd":"/repo","created_at":"2026-11-01T10:00:00Z","updated_at":"2026-11-01T11:00:00Z",
+               "session_state":{"agent_name":"k-developer","conversation_metadata":{"user_turn_metadatas":[
+                 {"model":"claude-sonnet-5","total_request_count":2,"metering_usage":[{"value":0.5,"unit":"credit"},{"value":0.25,"unit":"credit"}]},
+                 {"model":"claude-sonnet-5","total_request_count":1,"metering_usage":[{"value":1.0,"unit":"credit"}]}]}}}"#,
+        );
+        let r = collect_kiro_v2(&p, 0, 0);
+        assert_eq!(r.agent.as_deref(), Some("k-developer"));
+        assert_eq!(r.models.len(), 1);
+        assert_eq!(r.models[0].requests, 3);
+        assert_eq!(r.models[0].credits, Some(1.75));
+        assert_eq!(r.models[0].input_tokens, None);
+        assert_eq!(r.last_ts.unwrap() - r.first_ts.unwrap(), 3600);
+    }
+
+    #[test]
+    fn kiro_v3_reads_agent_credits_and_subagent_runs() {
+        let d = tmp("v3");
+        write(
+            &d,
+            "ws/sess_1/session.json",
+            r#"{"modelId":"claude-opus-4.6","workspacePaths":["/repo"],"agentMode":"vibe"}"#,
+        );
+        let body = [
+            r#"{"id":"1","timestamp":"2026-11-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor","content":"..."}}"#,
+            r#"{"id":"2","timestamp":"2026-11-01T10:00:01Z","payload":{"type":"turn_start","executionId":"e"}}"#,
+            r#"{"id":"3","timestamp":"2026-11-01T10:00:02Z","payload":{"type":"sub_agent_start","subAgentName":"k-developer"}}"#,
+            r#"{"id":"4","timestamp":"2026-11-01T10:05:00Z","payload":{"type":"usage_summary","promptTurnSummaries":[{"unit":"credit","usage":0.5},{"unit":"credit","usage":0.25}]}}"#,
+        ]
+        .join("\n");
+        let p = write(&d, "ws/sess_1/messages.jsonl", &body);
+        let r = collect_kiro_v3(&p, 0, 0);
+        assert_eq!(r.agent.as_deref(), Some("konductor"));
+        assert_eq!(r.repo.as_deref(), Some("/repo"));
+        assert_eq!(r.subagent_runs, Some(1));
+        assert_eq!(r.models[0].credits, Some(0.75));
+        assert_eq!(r.models[0].requests, 1);
+    }
+
+    #[test]
+    fn kiro_v3_without_usage_summary_has_null_credits() {
+        let d = tmp("v3-old");
+        let p = write(
+            &d,
+            "ws/s/messages.jsonl",
+            r#"{"id":"1","timestamp":"2026-06-01T10:00:00Z","payload":{"type":"session_start","agentType":"konductor"}}"#,
+        );
+        assert_eq!(collect_kiro_v3(&p, 0, 0).models[0].credits, None);
+    }
+
+    #[test]
+    fn unreadable_shapes_are_unparsed_not_zero() {
+        let d = tmp("bad");
+        let p = write(&d, "cli/bad.json", "not json");
+        assert_eq!(collect_kiro_v2(&p, 0, 0).status, Status::Unparsed);
+        let p = write(&d, "proj/bad.jsonl", r#"{"type":"assistant","usage":"#);
+        assert_eq!(collect_claude(&p, 0, 0).status, Status::Unparsed);
     }
 }
