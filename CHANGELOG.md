@@ -83,6 +83,13 @@ not per individual commit.
   some runs need into `references/`: the multi-match precedence rule, the per-operation steps, and
   the report schema, test-oracle table, and Cloudscape notes. Each `SKILL.md` says when to open
   each file.
+- The `security-remediation`, `security-test-generation`, `threat-modeling` and
+  `ui-text-validation` skills read as one set of instructions, without a pasted second prompt
+  and role. `security-remediation` asks for the finding text or ticket instead of an unfilled
+  placeholder, and its plan now includes the effort estimates, verification steps and rollback
+  plan it promised. `threat-modeling` uses its built-in template by default and drops the
+  tool-check step. `ui-text-validation` reports inline unless the audit spans several pages or
+  the user asks for a file, and checks headings for sentence case.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
