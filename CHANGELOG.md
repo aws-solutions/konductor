@@ -187,6 +187,10 @@ not per individual commit.
 - `k-product-manager`, `k-tpm` and `k-quality-assurance` prompts drop their hand-written
   skill lists, whose old triggers contradicted the new descriptions. Each skill's description is
   now the one place that says when to use it.
+- `about-konductor` and `design-doc-guidelines` load less up front. CLI, install-check, and model
+  detail, and the rules for multi-document designs and renames, now live under each skill's
+  `references/` and load only when the task needs them. `design-doc-guidelines` uses generic
+  examples for technical accuracy and threat models.
 
 ### Fixed
 

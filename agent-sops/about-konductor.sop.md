@@ -29,7 +29,7 @@ real work.
 - You MUST frame the orchestrator as the entry point: the user describes work in plain language, and the orchestrator delegates to whichever specialist agent handles it. You MUST NOT imply the user should identify or invoke a specialist agent themselves.
 - If `question` is about installing, give the steps from `about-konductor`'s "1. Install the CLI" and "2. Install the agent content" sections, ending at "3. Start a session". `konductor install` targets both Kiro CLI and Claude Code, but `--harness <kiro-cli-v2|kiro-v3|claude>` is a REQUIRED flag — there is no runtime auto-detection at the target, so the user must say explicitly which one they mean (`kiro-cli-v2`, `kiro-v3`, or `claude`) — on Claude Code, the user starts the same orchestrator via the `claude` CLI's own `--agent` flag instead of `kiro-cli chat --agent`.
 - If `question` is about what to ask, give 2-3 example prompts from `about-konductor`'s "4. Give it real work" section, matched to the user's likely task if one is apparent.
-- If `question` is conceptual ("what's a SOP", "why isn't my skill showing up on this agent"), answer from `about-konductor`'s "5. The model, in one paragraph" section, or its fuller "agent / skill / SOP model" reference section for follow-up detail.
+- If `question` is conceptual ("what's a SOP", "why isn't my skill showing up on this agent"), answer from `about-konductor`'s "5. The model, in one paragraph" section, or `about-konductor`'s `references/cli-and-model.md` (agent / skill / SOP model section) for follow-up detail.
 - If omitted, give the one-paragraph orientation: talk to the orchestrator, describe the work, it delegates and verifies.
 
 **Expected Output:** A direct answer to `question` if provided, otherwise the general orientation.
@@ -55,7 +55,7 @@ real work.
   slash-invocable directly as `/<skill-name>`.
 - For CLI subcommands specifically → these ARE safe to name (they're
   compiled into the binary, not an installable content set); point to
-  `about-konductor`'s CLI table and tell the user to confirm with
+  the CLI table in `about-konductor`'s `references/cli-and-model.md` and tell the user to confirm with
   `konductor --help` / `konductor <subcommand> --help` on their own build.
 
 **Expected Output:** The correct discovery command or answer for the active runtime and question, sourced from the live install rather than a remembered list.
