@@ -94,6 +94,11 @@ not per individual commit.
   into `references/final-mode.md`, and `security-test-generation` moved its Kiro and other-tool
   output steps into `references/output-kiro.md` and `references/output-generic.md`. Each skill
   opens the file only when the mode or tool type needs it.
+- `smithy-modeling` and `smithy-validation` now share one Smithy file-organization guide in
+  `skills/smithy-modeling/references/file-organization.md`, loaded only when a model spans more
+  than one file. Its validator example now nests the selector under `configuration`, and its
+  service example no longer sets a doc comment and a `@documentation` trait together, which
+  Smithy rejects.
 - The always-loaded core rules now carry the engineering practices from the `constraints` skill,
   so agents get them without loading the skill. The `constraints` skill and the
   `k-architect`, `k-developer` and `k-product-manager` prompts point at the core rules for the
