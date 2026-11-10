@@ -50,6 +50,16 @@ def test_kiro_design_generation_trigger_names_the_system_design_input():
     assert "system design" in use_sentence("kiro-design-generation")
 
 
+def test_code_review_trigger_names_the_pr_lifecycle():
+    use = use_sentence("code-review")
+    assert "PR" in use
+    assert "creat" in use or "submit" in use
+
+
+def test_workspace_skills_trigger_names_the_unexpected_outcome_case():
+    assert "unexpected outcome" in use_sentence("workspace-skills")
+
+
 def test_pre_planning_analysis_trigger_leads_with_the_vague_request_case():
     raw = (ROOT / "skills" / "pre-planning-analysis" / "SKILL.md").read_text(encoding="utf-8")
     description = yaml.safe_load(raw.split("---")[1])["description"]
