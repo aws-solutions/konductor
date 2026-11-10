@@ -127,8 +127,6 @@ not per individual commit.
   is now `docx-conversion`, whose description names `.docx`. Custom agent specs must use the
   new names: `konductor synth` rejects a spec that still declares an old one.
 - The published HTML guide's FAQ now gives the current skill count (81) instead of 75.
-- The user-guide HTML sync tool's verify-run exit-code edits now carry their final text, so the
-  tool can write the bundles again.
 - `infra-validation` and `iam-policy-design` read as one instruction set each, without a pasted
   second prompt and role. `infra-validation` asks for scope once, and skips the questions when
   the caller passes the type, path and environment or `scope_confirmed`. It rates findings
