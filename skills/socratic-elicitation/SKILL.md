@@ -105,7 +105,25 @@ This skill stops as soon as ANY of these is true:
 
 ## Escalation to Deliberation Panel
 
-When an answer leaves 2+ viable paths with non-trivial trade-offs and the user's stated preference picks no winner, offer a deliberation panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain` inferred from context (default `general-tradeoff`), then resume elicitation with the user's decision in the requirements summary. If `deliberation-panel` isn't available, offer to reason through the tradeoff together or decide directly.
+When an answer leaves 2+ viable paths with non-trivial trade-offs and the user's stated preference picks no winner, offer (never auto-run) a deliberation panel. Name only the options the user raised:
+
+```
+I've found a decision with no clear winner:
+
+  [Option A]: <description> (favors <dimension>)
+  [Option B]: <description> (favors <dimension>)
+
+How would you like to proceed?
+
+  1. Answer directly (tell me your preference and we'll keep going)
+  2. Convene a deliberation panel (~2-3 minutes): it derives 3-6 axes
+     specific to this decision, argues each independently,
+     cross-examines the arguments, and returns a scored recommendation
+```
+
+**Once per session per topic:** a later tradeoff on the same topic gets a lighter prompt, "I found another decision point. Same treatment?", without repeating the cost note.
+
+If the user opts in, run the panel per the `deliberation-panel` skill's "Offering the Panel from a Host Skill" section, with `decision_domain` inferred from context (default `general-tradeoff`), then resume elicitation with the user's decision in the requirements summary. If `deliberation-panel` isn't available, offer to reason through the tradeoff together or decide directly.
 
 ---
 

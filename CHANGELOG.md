@@ -288,8 +288,9 @@ not per individual commit.
   `backend-review` keep a facade, factory or repository layering only when the codebase already
   uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
   TDD's RED phase to code changes, and `k-code-simplifier` runs the tests before and after
-  and reports each change with its reason. The deliberation panel offer is defined once, in
-  `deliberation-panel`, and repeated paragraphs and tables are cut from several skills.
+  and reports each change with its reason. The full deliberation panel run is defined once, in
+  `deliberation-panel`; `socratic-elicitation` keeps a short inline offer that points to it.
+  Repeated paragraphs and tables are cut from several skills.
 - `infra-validation` no longer flags an S3 bucket or DynamoDB table as unencrypted for lacking an
   encryption setting, since both encrypt at rest by default. It flags them only when the data
   needs SSE-KMS or a customer managed key. The Graviton example cites the published Lambda arm64
