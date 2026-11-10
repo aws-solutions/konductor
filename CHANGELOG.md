@@ -265,8 +265,9 @@ not per individual commit.
   `backend-review` keep a facade, factory or repository layering only when the codebase already
   uses one, and `backend-development` says it targets TypeScript/Node. `verification` scopes
   TDD's RED phase to code changes, and `k-code-simplifier` runs the tests before and after
-  and reports each change with its reason. The deliberation panel offer is defined once, in
-  `deliberation-panel`, and repeated paragraphs and tables are cut from several skills.
+  and reports each change with its reason. The full deliberation panel run is defined once, in
+  `deliberation-panel`; `socratic-elicitation` keeps a short inline offer that points to it.
+  Repeated paragraphs and tables are cut from several skills.
 - Agent files rendered by `scripts/generate-agent-files.js` use the Claude Code model ID
   (`claude-sonnet-5-5`), not Kiro's `claude-sonnet-5.5`, which Claude Code ignores.
 - Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
