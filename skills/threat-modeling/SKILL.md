@@ -240,11 +240,11 @@ Default sections for the final document:
 - STRIDE categories not fully covered for each component
 - Security testing strategy not included
 - A threat has no mitigation
-- Mitigations lack implementation status
 - Scope, assumptions, or limitations not documented
 
 **SUGGESTION:**
 
+- Mitigations lack implementation status
 - Could add threat likelihood and impact scoring
 - Could reference specific AWS security services for each mitigation
 
