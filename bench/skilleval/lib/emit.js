@@ -103,4 +103,4 @@ function emit({ skill, dir, benchDir = BENCH }) {
   return { emitted: ids, skipped, suiteFile, tasksDir };
 }
 
-module.exports = { emit, taskOf, checkTask, taskId, suiteName, NO_QUESTIONS, FIXTURE, TIMEOUT_SEC };
+module.exports = { emit, taskOf, checkTask, taskId, suiteName, NO_QUESTIONS, FIXTURE, TIMEOUT_SEC, JUDGES };

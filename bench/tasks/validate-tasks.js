@@ -199,6 +199,8 @@ function evalCheck(dir, check, pristine, hiddenDir = null) {
 // A trigger task is a query run to see which capability the agent reaches for. It has no checks, rubric or hidden tests,
 // is not a document task, and does not end with the no-questions sentence; its prompt may be short.
 const TRIGGER_PROMPT_MAX = 600;
+// Imported tasks keep every expectation of the source data as a rubric item, so they may exceed the 6 of a hand-written task.
+const IMPORT_RUBRIC_MAX = 16;
 function validateTriggerShape(file, t) {
   const where = path.basename(file);
   const need = (cond, msg) => { if (!cond) err(where, msg); };
@@ -220,7 +222,7 @@ function validateTriggerShape(file, t) {
   }
 }
 
-function validateShape(file, t, textOnly = false) {
+function validateShape(file, t, textOnly = false, rubricMax = 6) {
   if (t.class === 'trigger') return validateTriggerShape(file, t);
   const where = path.basename(file);
   const need = (cond, msg) => { if (!cond) err(where, msg); };
@@ -234,7 +236,7 @@ function validateShape(file, t, textOnly = false) {
   else need(isStr(t.fixture), 'fixture must be a non-empty string');
   need(isInt(t.timeoutSec) && t.timeoutSec > 0, 'timeoutSec must be a positive integer');
   need(Array.isArray(t.checks) && (textOnly || t.checks.length > 0), 'checks must be a non-empty array');
-  need(Array.isArray(t.rubric) && t.rubric.length >= 3 && t.rubric.length <= 6, 'rubric must have 3 to 6 entries');
+  need(Array.isArray(t.rubric) && t.rubric.length >= 3 && t.rubric.length <= rubricMax, `rubric must have 3 to ${rubricMax} entries`);
   if (real) need(Array.isArray(t.rubric) && t.rubric.length === REAL_RUBRIC_SIZE, `real tasks need exactly ${REAL_RUBRIC_SIZE} rubric criteria`);
   need(Array.isArray(t.tiers) && t.tiers.length > 0 && t.tiers.every((x) => TIERS.includes(x)), `tiers must be a non-empty subset of ${TIERS.join('|')}`);
   const hard = t.class === 'hard';
@@ -333,7 +335,7 @@ function validateShape(file, t, textOnly = false) {
   });
 }
 
-function validateFixtures(used, hardOnly, autonomyOnly = new Set(), root = FIXTURES_DIR) {
+function validateFixtures(used, hardOnly, autonomyOnly = new Set(), root = FIXTURES_DIR, imported = false) {
   for (const name of fs.readdirSync(root)) {
     const dir = path.join(root, name);
     if (!fs.statSync(dir).isDirectory() || name.startsWith('_')) continue;
@@ -341,7 +343,7 @@ function validateFixtures(used, hardOnly, autonomyOnly = new Set(), root = FIXTU
     const visible = files.filter((f) => path.basename(f) !== ANSWER_KEY);
     if (!files.includes(ANSWER_KEY)) err(`fixture ${name}`, `missing ${ANSWER_KEY}`);
     const limit = hardOnly.has(name) ? MAX_HARD_FIXTURE_FILES : autonomyOnly.has(name) ? MAX_AUTONOMY_FIXTURE_FILES : MAX_FIXTURE_FILES;
-    if (visible.length > limit) err(`fixture ${name}`, `${visible.length} files, limit ${limit}`);
+    if (visible.length > limit) (imported ? warn : err)(`fixture ${name}`, `${visible.length} files, limit ${limit}`);
     if (hardOnly.has(name) && visible.length < MAX_FIXTURE_FILES) err(`fixture ${name}`, `${visible.length} files, hard fixtures need at least ${MAX_FIXTURE_FILES}`);
     if (autonomyOnly.has(name) && visible.length < MAX_FIXTURE_FILES) err(`fixture ${name}`, `${visible.length} files, autonomy fixtures need at least ${MAX_FIXTURE_FILES}`);
     if (files.some((f) => f.split(path.sep).includes('.git') || f.split(path.sep).includes('node_modules'))) {
@@ -540,17 +542,20 @@ function main() {
   const sources = [{ dir: TASKS_DIR, files: taskFiles, roots: DEFAULT_ROOTS }];
   // Text-only tasks written by bench/skilleval/skilleval.js: no checks, scored by rubric, so the fixture proofs below do not apply.
   const skillevalDirs = new Set();
+  // Tasks written by bench/skilleval/import.js: fixtures and checks like a bench task, but no reference solution, so only the untouched-fixture proof applies.
+  const importDirs = new Set();
   for (const dir of extraDirs) {
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) { err('--extra-tasks', `directory not found: ${dir}`); continue; }
     sources.push({ dir, files: fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('_')).sort(), roots: extraRoots(dir) });
     if (fs.existsSync(path.join(dir, '.skilleval'))) skillevalDirs.add(dir);
+    if (fs.existsSync(path.join(dir, '.skilleval-import'))) importDirs.add(dir);
   }
   for (const src of sources) {
     R = src.roots;
     for (const f of src.files) {
       const t = readJson(path.join(src.dir, f), src.roots.extra ? `${path.basename(src.dir)}/${f}` : f);
       if (!t) continue;
-      validateShape(f, t, skillevalDirs.has(src.dir));
+      validateShape(f, t, skillevalDirs.has(src.dir) || importDirs.has(src.dir), importDirs.has(src.dir) ? IMPORT_RUBRIC_MAX : 6);
       if (seen.has(t.id)) err(f, `duplicate id "${t.id}" (also ${seen.get(t.id)})`);
       seen.set(t.id, f);
       tasks.push(t);
@@ -572,7 +577,7 @@ function main() {
     R = extraRoots(dir);
     const own = tasks.filter((t) => rootsOf.get(t).dir === dir);
     const usedHere = new Set(own.map((t) => t.fixture).filter(isStr));
-    validateFixtures(usedHere, new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'hard'))), new Set(), fx);
+    validateFixtures(usedHere, new Set([...usedHere].filter((f) => own.filter((t) => t.fixture === f).every((t) => t.class === 'hard'))), new Set(), fx, importDirs.has(dir));
   }
   R = DEFAULT_ROOTS;
 
@@ -601,6 +606,14 @@ function main() {
     }
     if (!isStr(t.fixture) || !fs.existsSync(fixtureDir(t.fixture)) || !Array.isArray(t.checks)) continue;
     const where = t.id;
+    if (importDirs.has(R.dir)) {
+      const bare = copyFixture(t.fixture);
+      const outcomes = t.checks.map((c) => evalCheck(bare, c, fixtureDir(t.fixture)));
+      fs.rmSync(bare, { recursive: true, force: true });
+      outcomes.forEach((r, i) => { if (r.broken) err(where, `checks[${i}] is broken on the untouched fixture (${r.detail})`); });
+      if (outcomes.length && outcomes.every((r) => r.pass)) err(where, 'every check already passes on the untouched fixture');
+      continue;
+    }
     const hiddenDir = t.hidden ? path.join(R.hidden, t.hidden) : null;
     const pristine = copyFixture(t.fixture);
     const results = t.checks.map((c) => ({ c, r: evalCheck(pristine, c, fixtureDir(t.fixture), hiddenDir) }));
