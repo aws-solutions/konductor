@@ -1646,9 +1646,10 @@ const ORCHESTRATION_UPDATE_REMEDIATION: &str = "run `konductor update`";
 /// The `orchestration` check: whether the session hook can give
 /// `konductor` the mode in `~/.konductor/config.yml`. Reports the
 /// value, any ignored project-layer value, the hook wiring and its
-/// binary per installed harness, and under `coordinator` the persona
-/// files. A missing piece is `failed` under `coordinator` (the user
-/// asked for a persona they will not get) and `warn` otherwise.
+/// binary per installed harness, and under `coordinator` whether the
+/// persona loads and the install root is trusted. A missing piece is
+/// `failed` under `coordinator` (the user asked for a persona they will
+/// not get) and `warn` otherwise.
 fn check_orchestration(
     destination: &Path,
     resolved_source: &Path,
@@ -1675,6 +1676,7 @@ fn check_orchestration(
     }
     findings.extend(orchestration_install_findings(
         destination,
+        home_dir,
         coordinator,
         missing_status,
     ));
@@ -1830,11 +1832,12 @@ fn ignored_project_finding(
     finding
 }
 
-/// Wiring, binary and (under `coordinator`) persona findings for the
-/// install at `destination`. Problems only; a healthy slot adds a
-/// detail-only `Ok` finding naming the hook's binary.
+/// Wiring, binary and (under `coordinator`) persona and trust findings
+/// for the install at `destination`. Problems only; a healthy slot adds
+/// a detail-only `Ok` finding naming the hook's binary.
 fn orchestration_install_findings(
     destination: &Path,
+    home_dir: Option<&Path>,
     coordinator: bool,
     missing_status: CheckStatus,
 ) -> Vec<OrchestrationFinding> {
@@ -1879,9 +1882,61 @@ fn orchestration_install_findings(
         ));
     }
     if coordinator {
-        findings.extend(persona_file_finding(&manifest, destination));
+        findings.extend(persona_findings(&manifest, destination, home_dir));
     }
     findings
+}
+
+/// What the session-start hook checks before it prints the persona: the
+/// persona files are installed and load within the hook's output budget,
+/// and the install root is one rule 11 trusts from the directories under
+/// it. Doctor does not know where a session will start, so the trust
+/// finding states the condition, not the outcome.
+fn persona_findings(
+    manifest: &manifest::Manifest,
+    destination: &Path,
+    home_dir: Option<&Path>,
+) -> Vec<OrchestrationFinding> {
+    let mut findings = Vec::new();
+    match persona_file_finding(manifest, destination) {
+        Some(finding) => findings.push(finding),
+        None => findings.extend(persona_load_finding(destination, home_dir)),
+    }
+    findings.extend(trusted_root_finding(destination, home_dir));
+    findings
+}
+
+fn persona_load_finding(
+    destination: &Path,
+    home_dir: Option<&Path>,
+) -> Option<OrchestrationFinding> {
+    use crate::cli::orchestration_hook::{load_persona, logical_root, persona_reason};
+
+    let error = load_persona(&logical_root(destination, home_dir)).err()?;
+    Some(OrchestrationFinding::new(
+        CheckStatus::Failed,
+        format!("{}; sessions start in auto", persona_reason(&error)),
+        Some(ORCHESTRATION_UPDATE_REMEDIATION.to_string()),
+    ))
+}
+
+fn trusted_root_finding(
+    destination: &Path,
+    home_dir: Option<&Path>,
+) -> Option<OrchestrationFinding> {
+    if crate::cli::orchestration_hook::is_home_or_git_root(destination, home_dir) {
+        return None;
+    }
+    Some(OrchestrationFinding::new(
+        CheckStatus::Warn,
+        format!(
+            "the install at {} is outside your home and is not a git checkout root; a \
+             `konductor` session started in any other directory under it falls back to auto \
+             (core rule 11)",
+            destination.display()
+        ),
+        Some("install under your home directory or at the project root".to_string()),
+    ))
 }
 
 fn wiring_findings(
@@ -5816,8 +5871,10 @@ mod tests {
     }
 
     /// Writes `files` under `destination` and a complete manifest slot
-    /// for `strategy` listing them.
+    /// for `strategy` listing them. The scratch dir is outside `$HOME`,
+    /// so a `.git` marker makes it a root rule 11 trusts.
     fn seed_orchestration_install(destination: &Path, strategy: &str, files: &[(&str, String)]) {
+        fs::create_dir_all(destination.join(".git")).unwrap();
         for (relative, contents) in files {
             let path = destination.join(relative);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -6320,6 +6377,89 @@ mod tests {
             &destination,
             &auto_home,
             &coordinator_home,
+            &exe.parent().unwrap().to_path_buf(),
+        ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    /// Both persona files exist, but the hook would still fall back: the
+    /// digest is over the session-start output budget.
+    #[test]
+    fn check_orchestration_fails_when_the_persona_does_not_load_under_coordinator() {
+        let exe = fake_konductor_binary("orch-digest-exe");
+        let destination = healthy_v3_target("orch-digest-dest", &exe);
+        fs::write(destination.join(DIGEST), "x".repeat(9_000)).unwrap();
+
+        let auto_home = home_with_mode("orch-digest-auto-home", None);
+        let result = check_orchestration(&destination, &destination, Some(&auto_home));
+        assert_eq!(result.status, CheckStatus::Ok, "{}", result.summary);
+
+        let coordinator_home = home_with_mode("orch-digest-coordinator-home", COORDINATOR);
+        let result = check_orchestration(&destination, &destination, Some(&coordinator_home));
+        assert_eq!(result.status, CheckStatus::Failed, "{}", result.summary);
+        assert!(
+            result
+                .summary
+                .contains("is larger than the session-start hook budget"),
+            "{}",
+            result.summary
+        );
+        assert!(
+            result.summary.ends_with("; sessions start in auto"),
+            "{}",
+            result.summary
+        );
+        assert_eq!(
+            result.remediation.as_deref(),
+            Some(ORCHESTRATION_UPDATE_REMEDIATION)
+        );
+        for dir in [
+            &destination,
+            &auto_home,
+            &coordinator_home,
+            &exe.parent().unwrap().to_path_buf(),
+        ] {
+            fs::remove_dir_all(dir).ok();
+        }
+    }
+
+    /// Outside `$HOME`, rule 11 trusts the install root from its
+    /// subdirectories only when it is a git checkout root; doctor says so
+    /// under `coordinator` and stays quiet once `.git` is present.
+    #[test]
+    fn check_orchestration_warns_on_an_untrusted_install_root_under_coordinator() {
+        let exe = fake_konductor_binary("orch-trust-exe");
+        let destination = healthy_v3_target("orch-trust-dest", &exe);
+        let home = home_with_mode("orch-trust-home", COORDINATOR);
+
+        let trusted = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(trusted.status, CheckStatus::Ok, "{}", trusted.summary);
+
+        fs::remove_dir(destination.join(".git")).unwrap();
+        let result = check_orchestration(&destination, &destination, Some(&home));
+        assert_eq!(result.status, CheckStatus::Warn, "{}", result.summary);
+        assert_eq!(
+            result.summary,
+            format!(
+                "the install at {} is outside your home and is not a git checkout root; a \
+                 `konductor` session started in any other directory under it falls back to auto \
+                 (core rule 11)",
+                destination.display()
+            )
+        );
+        assert_eq!(
+            result.remediation.as_deref(),
+            Some("install under your home directory or at the project root")
+        );
+
+        let auto_home = home_with_mode("orch-trust-auto-home", None);
+        let result = check_orchestration(&destination, &destination, Some(&auto_home));
+        assert_eq!(result.status, CheckStatus::Ok, "{}", result.summary);
+        for dir in [
+            &destination,
+            &home,
+            &auto_home,
             &exe.parent().unwrap().to_path_buf(),
         ] {
             fs::remove_dir_all(dir).ok();

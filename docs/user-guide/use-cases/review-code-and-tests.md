@@ -34,7 +34,7 @@ by standard review. It needs four review passes and a fresh `k-architect` checke
 **Through `konductor`, step 6 runs.** `k-developer` writes the report with the verdict from its
 findings and an `Adversarial pass: not run` line, then ends with a note; `konductor` runs
 `k-adversarial-pull-request-review` on the same diff, records its verdict and report path, and
-sets the final verdict. Detail in
+sets the final verdict, unless a pass is MISSING, which keeps the report pending. Detail in
 [Agents reference](../agents.md#why-this-matters-a-real-consequence).
 
 **Started directly, the note comes back to you.** Nothing runs it, so you get the report with
@@ -103,8 +103,8 @@ Run the k-code-review-workflow SOP against my current branch.
    is `frontend` only.
 7. **Generate report** — writes `code-review-report.md` with a verdict from the findings: **NEEDS
    FIXES** if any CRITICAL or IMPORTANT is open, otherwise **READY FOR CR** once the adversarial
-   pass is complete or skipped, or **PENDING ADVERSARIAL PASS** while it has not run. An
-   `Adversarial pass:` line records the pass state.
+   pass is complete or skipped, or **PENDING ADVERSARIAL PASS** while it has not run or a pass is
+   MISSING. An `Adversarial pass:` line records the pass state.
 
 **What you get:** `code-review-report.md` with a verdict, the adversarial pass state and `file:line`
 for every surviving finding.
