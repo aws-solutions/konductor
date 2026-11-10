@@ -80,7 +80,7 @@ approximate the engineer's own explicit choice when they have not made one, and 
 supersedes the approximation. The restricted-loader parse, the schema-version check, and the
 value-validation check still apply: a named file is still untrusted data in a shared,
 filesystem-writable directory (see the Overview in `SKILL.md` and step 3 above), and adopting one that fails any
-of those checks is exactly the CRITICAL failure mode this operation's own Quality Gate exists to
+of those checks is exactly the CRITICAL failure mode the Quality Gate in `SKILL.md` exists to
 prevent. If the named file fails any of those checks, surface the failure rather than adopting it.
 Report its `project_signature` and `run_status` back regardless (once it has cleared those checks),
 so a mistaken reference to the wrong file is visible immediately.

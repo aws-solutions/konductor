@@ -37,11 +37,11 @@ Read the README and any docs that state business rules (limits, invariants, boun
 
 ### Architectural Patterns
 
-If the codebase uses a facade, factory or repository layering, check the change keeps it. Otherwise check it follows the structure the codebase has.
+Check only the layers the codebase uses; otherwise check the change follows the structure it has.
 
-- [ ] Handlers delegate to the business facade, with no business logic in handlers
-- [ ] Services come from the factory, not direct instantiation
-- [ ] Data access goes through repository interfaces, not direct database calls
+- [ ] If there is a facade: handlers delegate to it, with no business logic in handlers
+- [ ] If there is a factory: services come from it, not direct instantiation
+- [ ] If there is a repository layer: data access goes through its interfaces, not direct database calls
 
 ### Dead Code
 

@@ -73,7 +73,7 @@ Output a markdown report in this format:
 **Summary:** N claims checked: N CONFIRMED, N UNVERIFIED, N INCORRECT.
 ```
 
-When `doc-accuracy-analyzer` called this skill, return the report to it so it can merge the rows into its own report.
+When run directly, write the report to the path the caller gives, or to `docs/design/<name>-aws-validation.md`. When `doc-accuracy-analyzer` calls this skill, return the rows so it can merge them into its own report, and write the file only if it passed a path.
 
 ## Pitfalls
 
@@ -97,4 +97,4 @@ The fact-check gate passes when:
 - **0 INCORRECT findings** remain: each one is corrected inline. A `> ⚠️ INCORRECT: <correction>` callout marks a fix still owed, not a pass
 - UNVERIFIED findings are flagged with `> ⚠️ UNVERIFIED: <what was searched>` callouts
 - Each callout sits under the claim it flags and carries the design fix, so reviewers see the remedy next to the text
-- The validation report is written to `docs/design/<name>-aws-validation.md`, or to the path the caller gives
+- When run directly, the report is written to the path the caller gives, or to `docs/design/<name>-aws-validation.md`. When `doc-accuracy-analyzer` calls it without a path, write no file and return the rows

@@ -56,7 +56,7 @@ git log --oneline -3
 git diff --stat origin/<default-branch>..HEAD
 ```
 
-Show the user the log and diff summary and ask them to confirm the push to `<default-branch>`. Run `git push` only after they confirm. If they do not confirm, or it is unclear whether the repo merges locally, open a PR instead.
+Show the user the log and diff summary and ask them to confirm the push to `<default-branch>`. Run `git push` only after they confirm. If they do not confirm, or it is unclear whether the repo merges locally, undo the local merge with `git reset --keep origin/<default-branch>`, open a PR from `<feature_branch>` (see `code-review`), and stop: skip Phases 3 and 4.
 
 ### Before every commit and push
 
@@ -96,12 +96,16 @@ Never force-push and never rebase a branch others have pulled; both rewrite hist
 
 ### Phase 3: Tag release (if applicable)
 
+Only after the Phase 2 push succeeded.
+
 ```bash
 git tag v<version>
 git push origin v<version>
 ```
 
 ### Phase 4: Clean up (optional)
+
+Only after the Phase 2 push succeeded.
 
 ```bash
 git branch -d <feature_branch>        # delete local
@@ -134,6 +138,7 @@ git push -d origin <feature_branch>   # delete remote
 - Skipping Phase 1 (merging `<default-branch>` into feature branch first): conflicts should be resolved on the feature branch, not `<default-branch>`
 - Force pushing to `<default-branch>`, or rebasing a branch others have pulled
 - Pushing to `<default-branch>` without explicit user confirmation
+- Tagging, or deleting the feature branch, before the merge is pushed to `<default-branch>`
 
 **IMPORTANT (fix before proceeding):**
 

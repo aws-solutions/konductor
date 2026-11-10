@@ -52,6 +52,8 @@ S3 bucket names are global, but each bucket lives in one region, so draw it in t
 
 A Lambda function with VPC config (`VpcConfig` subnets) goes in its subnets. Other Lambda functions stay regional.
 
+Route 53 Resolver endpoints go in their subnets. A private hosted zone stays outside the VPC, connected to each VPC it is associated with.
+
 ### 3. Connection and Data Flow Standards
 
 **Arrow Types and Colors**:
@@ -164,7 +166,7 @@ Open `references/drawio-templates.md` (relative to this file) now, before writin
 
 ### 1. Common Mistakes to Avoid
 
-- Placing services that cannot attach to a VPC (such as CloudFront, Route 53, S3 or DynamoDB) inside VPC boundaries
+- Placing services that cannot attach to a VPC (such as CloudFront, Route 53 public hosted zones, S3 or DynamoDB) inside VPC boundaries
 - Incorrect arrow directions for data flow
 - Missing return traffic indicators
 - Overcomplicated connection lines

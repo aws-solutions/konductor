@@ -260,11 +260,11 @@ Default sections for the final document:
 - STRIDE categories not fully covered for each component
 - Security testing strategy not included
 - A threat has no mitigation
-- Mitigations lack implementation status
 - Scope, assumptions, or limitations not documented
 
 **SUGGESTION:**
 
+- Mitigations lack implementation status
 - Could reference specific AWS security services for each mitigation
 
 Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]". Skip the question when `scope_confirmed` is true or the user asked for no questions. If both apply, `scope_confirmed` wins: the caller owns the fix step, so report the findings and leave fixing to the caller. Fix the findings yourself only in no-questions mode without `scope_confirmed`.

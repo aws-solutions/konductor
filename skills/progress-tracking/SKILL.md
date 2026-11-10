@@ -30,7 +30,6 @@ Use this skill when:
 - **mode**: `initial`, `progress`, or `final`. Stage 1 detects it from the request.
 - **plan_path** (optional): the feature plan's task breakdown. Defaults to `.kiro/specs/feature-implementation/tasks.md`. A caller that keeps its plan elsewhere passes its own path, and this skill reads that file instead.
 - **spec_dir** per feature: the directory holding that feature's requirements.md, design.md, and tasks.md. Taken from the plan's `_Spec: path_` reference, otherwise `.kiro/specs/{feature-name}/`, the same default the `kiro-*` skills use.
-- **history_dir** (optional): where saved validation history goes. Defaults to `.kiro/specs/validation-history/`, whatever `plan_path` is.
 
 ## Execution Flow
 
@@ -170,7 +169,7 @@ If ambiguous, ask: "Which validation mode? (initial/progress/final)" with descri
 **Gather Preferences:**
 
 1. Detail Level: "Detailed analysis?" (yes/no, default: no) → Yes: explanations, examples, paths | No: summary only
-2. Save History: "Save validation history?" (yes/no, default: no for initial, yes for progress/final) → Saves to `{history_dir}/[timestamp].json`
+2. Save History: "Save validation history?" (yes/no, default: no for initial, yes for progress/final) → Saves to `.kiro/specs/validation-history/[timestamp].json`
 
 **Output:** `✅ Configuration: Mode: [mode] | Plan: [path] | Detail: [level] | History: [yes/no]`
 
@@ -271,7 +270,7 @@ Store: validation_results.structure
 
 **Report:** Use standard template. Summary: overall %, task counts, feature counts, estimated remaining. Feature Progress: per-feature breakdown with progress bars, task lists, blockers. Blockers Analysis: critical and warning blockers with recommendations. Insights: strong progress, concerns, recommendations. Detailed mode: all tasks, dependency graphs, historical charts. Summary mode: stats, blocked tasks, critical issues.
 
-**Save History:** If enabled, save to `{history_dir}/progress-[timestamp].json` with: timestamp, mode, overall_percentage, features summary, blockers_count, estimated_remaining_days. Count each distinct blocker once (a dependency cycle is one blocker, however many tasks it holds up) so counts compare across weeks.
+**Save History:** If enabled, save to `.kiro/specs/validation-history/progress-[timestamp].json` with: timestamp, mode, overall_percentage, features summary, blockers_count, estimated_remaining_days. Count each distinct blocker once (a dependency cycle is one blocker, however many tasks it holds up) so counts compare across weeks.
 
 Store: validation_results.progress
 

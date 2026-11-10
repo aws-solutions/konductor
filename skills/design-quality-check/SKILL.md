@@ -17,7 +17,7 @@ Use this skill when:
 
 Do NOT use when:
 
-- Writing or restructuring the doc, or reviewing its outside-in structure and diagrams → use `design-doc-guidelines`
+- Writing or restructuring the doc, or a full checklist review including diagram accuracy → use `design-doc-guidelines`
 - Rewriting prose to remove AI writing patterns → use `humanize-writing`
 
 ## Steps
@@ -26,13 +26,15 @@ Do NOT use when:
 
 2. **Structural completeness check** - Verify the document contains all required outside-in sections:
    - Problem / Background
-   - Requirements
+   - Requirements (if the doc has requirements)
    - Solution Overview
+   - Decision Requested
    - How It Works (with at least one diagram reference)
-   - Implementation Details / Plan
-   - Architecture Decision Records (at least one ADR if decisions were made)
+   - Implementation Details
+   - Implementation Plan
+   - Architecture Decision Records (if the doc has decisions; at least one ADR)
 
-   Flag each missing required section as an issue of type `missing_section`.
+   The list follows `design-doc-guidelines` Structure (outside-in), plus the two conditional sections. Flag each missing required section as an issue of type `missing_section`, and a conditional one only when its condition holds.
 
 3. **Slop detection** - Scan every paragraph for the following issue types:
 
