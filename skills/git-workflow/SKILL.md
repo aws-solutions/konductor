@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Git workflow patterns for atomic commits, branch management, and history operations. Use when committing changes, managing branches, or searching git history.
+description: 'Git workflow patterns for atomic commits, branch management, and history operations. Use when writing a commit message, splitting work into commits, naming a branch, or finding which commit introduced a change (blame, bisect, log -S).'
 version: 1.0.0
 tags: [skill, git, workflow, commits, branches]
 ---
@@ -32,6 +32,8 @@ Each commit must contain exactly one logical change. Split work into separate co
 - Never mix formatting changes with logic changes
 
 ### Conventional Commit Messages
+
+Default format; the project's house rules take precedence (core rules, House rules).
 
 Format: `<type>(<scope>): <description>`
 

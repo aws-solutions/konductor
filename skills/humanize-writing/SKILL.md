@@ -1,6 +1,6 @@
 ---
 name: humanize-writing
-description: Rewrites text to remove AI-generated writing patterns (34 tell categories spanning content, language, style, and communication) while preserving meaning, coverage, and the author's voice. Use when writing or editing a design document, README, code comment or docstring, user guide, PR or CR description, commit message, user story, or business case, or when such text sounds like AI and needs to read like a real person wrote it.
+description: 'Rewrites text to remove AI-generated writing patterns while preserving meaning, coverage, and the author''s voice. Use when writing or editing a design doc, README, code comment, user guide, PR or commit message, user story or business case, or text that sounds like AI.'
 version: 1.0.0
 tags: [skill, writing, editing, prose, style, humanize, documentation, readme]
 ---

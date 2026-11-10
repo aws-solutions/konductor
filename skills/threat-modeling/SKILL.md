@@ -1,6 +1,6 @@
 ---
 name: threat-modeling
-description: Generates AWS service threat models using STRIDE methodology. Use after system design to identify security risks and mitigations. Produces a complete threat model with architecture analysis, threat identification, and security controls.
+description: 'Generates AWS service threat models using STRIDE methodology. Use when asked for a threat model or STRIDE analysis, the security risks of a design, or prep for a security review. Produces a complete threat model with architecture analysis, threat identification, and security controls.'
 version: 1.0.0
 tags: [skill, threat-modeling, security, stride, aws, architecture]
 ---

@@ -1,6 +1,6 @@
 ---
 name: program-decision-docs
-description: Creates program-level decision documents with options analysis, trade-offs, and recommendations. Use when a program decision needs formal documentation.
+description: 'Creates program-level decision documents with options analysis, trade-offs, and recommendations. Use when a program-level choice (vendor, scope cut, timeline trade, build vs buy) needs a decision doc with options, weighted scoring and a recommendation.'
 version: 1.0.0
 tags: [skill, tpm, decision, options-analysis, trade-offs]
 ---

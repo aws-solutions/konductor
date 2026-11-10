@@ -54,6 +54,17 @@ pub(in crate::cli::install) fn install_context(
     harness_dir: &Path,
     target_dir: &Path,
 ) -> Result<Vec<ManifestFile>, String> {
+    install_context_into(harness_dir, target_dir, KIRO_DESTINATION_ROOT)
+}
+
+/// `install_context` into `<target_dir>/<destination_root>/context/`.
+/// Claude Code uses `.konductor`, where the orchestration hook finds the
+/// routing rules file through the manifest.
+pub(in crate::cli::install) fn install_context_into(
+    harness_dir: &Path,
+    target_dir: &Path,
+    destination_root: &str,
+) -> Result<Vec<ManifestFile>, String> {
     let source_dir = harness_dir.join(CONTEXT_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
     if entries.is_empty() {
@@ -61,15 +72,14 @@ pub(in crate::cli::install) fn install_context(
     }
 
     let destination = target_dir
-        .join(KIRO_DESTINATION_ROOT)
+        .join(destination_root)
         .join(CONTEXT_CONTENT_TYPE_DIR);
     std::fs::create_dir_all(&destination)
         .map_err(|e| format!("failed to create {}: {e}", destination.display()))?;
 
     let mut files = copy_agent_files(&source_dir, &destination, entries)?;
     for file in &mut files {
-        file.path =
-            content_manifest_path(KIRO_DESTINATION_ROOT, CONTEXT_CONTENT_TYPE_DIR, &file.path);
+        file.path = content_manifest_path(destination_root, CONTEXT_CONTENT_TYPE_DIR, &file.path);
     }
     Ok(files)
 }
@@ -537,7 +547,10 @@ fn copy_agent_files_rewriting_resources(
         // without this clause an agent matching none of the other
         // conditions would take this fast path and never reach
         // `apply_all` when telemetry is enabled, silently skipping hook
-        // injection for exactly the agents that most need it.
+        // injection for exactly the agents that most need it. The
+        // `konductor` agent always takes the rewrite path for the same
+        // reason: `OrchestrationHookPass` wires it whatever the telemetry
+        // choice.
         let contents = String::from_utf8(original_bytes.clone())
             .map_err(|e| format!("{} is not valid UTF-8: {e}", src.display()))?;
         if ctx.no_telemetry
@@ -545,6 +558,7 @@ fn copy_agent_files_rewriting_resources(
             && !contents.contains(super::super::resource_rewrite::SKILL_RESOURCE_PREFIX)
             && !agent_has_sop_names
             && !agent_has_skill_names
+            && agent_name != crate::cli::orchestration_hook::MODE_AGENT
         {
             crate::cli::atomic_write::write_atomic(&dst, &original_bytes)
                 .map_err(|e| format!("failed to write {}: {e}", dst.display()))?;
