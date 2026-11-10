@@ -218,7 +218,7 @@ Extract and document:
 ### STEP 3: Integrated Design Process
 
 1. Validate extracted requirements (confirm understanding, ask clarifying questions, state assumptions)
-2. Proceed with security design (follow STEP 3 and STEP 4 from Standalone Mode)
+2. Proceed with security design (follow STEP 3 and STEP 4 from Standalone Mode). When the design has an access-pattern table, keep each role's actions and resources inside it. List a best practice that needs more, such as VPC networking or extra logs or KMS actions, as a recommendation with its reason instead of adding it to the role
 3. Reference source artifacts (indicate which requirements came from which artifacts)
 4. Go to [Final Step: Validate Compliance](#final-step-validate-compliance)
 
