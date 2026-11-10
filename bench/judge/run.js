@@ -6,7 +6,7 @@ const path = require('node:path');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
-const { checkJudgeModel, checkPanel, families, effectiveLimits } = require('./config.js');
+const { checkJudgeModel, checkPanel, families, effectiveLimits, maxPromptBytes: promptBytesFor } = require('./config.js');
 const { buildBundle } = require('./bundle.js');
 const { rubricPrompt, pairPrompt, gradedPrompt, retrySuffix } = require('./prompts.js');
 const { parseJsonStrict, validateRubricReply, validatePairReply, validateGradedReply } = require('./validate.js');
@@ -21,8 +21,6 @@ const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
 const { mergeRecords, addSpend } = require('./merge.js');
 const { loadObserved, estimateFromObserved } = require('./observed-cost.js');
 
-const MAX_PROMPT_BYTES = 120000; // one argv string is capped near 128 KiB on Linux; the opencode backend reads the prompt from stdin
-
 const runKey = (r) => `${r.armId}|${r.taskId}|${r.replicate}`;
 
 // Runs whose output is not a fair basis for scoring: setup or post-run infrastructure failed, or no workspace was kept.
@@ -33,7 +31,7 @@ function notJudgedReason(r) {
 }
 
 // One judged answer: call, validate, retry once with a short correction on a bad reply.
-async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = MAX_PROMPT_BYTES }) {
+async function judgeOnce({ caller, model, prompt, check, maxPromptBytes = promptBytesFor(DEFAULT_BACKEND) }) {
   const calls = [];
   let parseFailures = 0;
   let p = prompt;
@@ -180,7 +178,7 @@ function planJudging(o) {
   const { usdMode, run } = p;
   const salt = o.cacheSalt ?? (usdMode ? cacheSaltOf : null);
   const cacheDir = path.join(run.dir, 'judge', 'cache');
-  const maxPromptBytes = usdMode ? Infinity : MAX_PROMPT_BYTES;
+  const maxPromptBytes = promptBytesFor(p.backend);
   const byMode = { rubric: 0, pairwise: 0, graded: 0 };
   let cached = 0;
   let tooLarge = 0;
@@ -219,7 +217,7 @@ async function runJudging(o) {
   let spentUsd = 0;
   const spentByJudge = {};
   const spentUsdByJudge = {};
-  const maxPromptBytes = usdMode ? Infinity : MAX_PROMPT_BYTES;
+  const maxPromptBytes = promptBytesFor(backend);
   const worker = async (u) => {
     const { prompt, check } = specOf(u);
     const out = await judgeOnce({ caller, model: u.judge, prompt, maxPromptBytes, check });
@@ -336,4 +334,4 @@ function mergeAndWrite(run, { judges, modes, baseline, limits, spent, spentByJud
   return out;
 }
 
-module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, runKey, MAX_PROMPT_BYTES };
+module.exports = { runJudging, planJudging, estimateSpend, judgeOnce, notJudgedReason, runKey };

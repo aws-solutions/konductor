@@ -22,8 +22,8 @@ const { loadTasks } = require('../lib/tasks.js');
 // ---- judge bundle limits ----
 
 test('the default judge limits hold a design document of about 2,100 words', () => {
-  assert.equal(DEFAULTS.limits.maxFileChars, 16000);
-  assert.equal(DEFAULTS.limits.maxBundleChars, 48000);
+  assert.equal(DEFAULTS.limits.maxFileChars, 60000);
+  assert.equal(DEFAULTS.limits.maxBundleChars, 150000);
   const words2100 = 2100 * 7;
   assert.ok(words2100 < DEFAULTS.limits.maxFileChars, 'the longest document seen in the first paired experiment fits');
 });

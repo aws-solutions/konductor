@@ -9,14 +9,14 @@ const path = require('node:path');
 const { loadTasks } = require('../runner/lib/tasks.js');
 const { runPool } = require('../runner/lib/orchestrate.js');
 const { loadRun } = require('../report/load.js');
-const { checkJudgeModel, checkPanel, families, effectiveLimits } = require('./config.js');
+const { checkJudgeModel, checkPanel, families, effectiveLimits, maxPromptBytes: promptBytesFor } = require('./config.js');
 const { buildBundle } = require('./bundle.js');
 const { validateRubricReply, parseJsonStrict } = require('./validate.js');
 const { withCache, hasCachedReply } = require('./model.js');
 const { taskRevision, readAnswerKey } = require('./revision.js');
 const { openLedger } = require('../runner/lib/credit-ledger.js');
 const { BACKENDS, DEFAULT_BACKEND } = require('./backends.js');
-const { judgeOnce, notJudgedReason, runKey, MAX_PROMPT_BYTES, estimateSpend } = require('./run.js');
+const { judgeOnce, notJudgedReason, runKey, estimateSpend } = require('./run.js');
 const { cacheSaltOf } = require('./opencode.js');
 const { mergeRecords, addSpend } = require('./merge.js');
 const pack = require('./pack/index.js');
@@ -63,7 +63,7 @@ function describePackPlan(o) {
   const base = planPack(o);
   const salt = o.cacheSalt ?? (usdMode ? cacheSaltOf : null);
   const cacheDir = path.join(run.dir, 'judge', 'cache');
-  const maxPromptBytes = usdMode ? Infinity : MAX_PROMPT_BYTES;
+  const maxPromptBytes = promptBytesFor(backend);
   let cached = 0;
   let tooLarge = 0;
   const liveBy = new Map(judges.map((judge) => [judge, { judge, kind: 'pack', live: 0 }]));
@@ -111,7 +111,7 @@ async function runPackJudging(o) {
 
   const units = [];
   for (const judge of judges) for (const p of plan) units.push({ judge, p });
-  const maxPromptBytes = usdMode ? Infinity : MAX_PROMPT_BYTES;
+  const maxPromptBytes = promptBytesFor(backend);
   let spent = 0;
   let spentUsd = 0;
   const spentByJudge = {};

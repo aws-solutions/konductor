@@ -1022,7 +1022,9 @@ Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a g
   files, frontmatter keys, redundant When to Use sections and copied blocks. `capabilities/audit-baseline.json` lists tolerated findings by id: a new
   finding fails, and so does a listed one that no longer occurs. `cap audit --update-baseline` writes it (only removals once it exists; `--force`
   to add) and is never run for you. Registry `class: preference` marks a capability tested for fidelity, not lift; `cap plan --mode lift` refuses it.
-- Judge bundles keep up to 16000 characters per file and 48000 per bundle (was 6000 and 24000); a task can set `bundleLimits`. `cap plan` sizes
+- Judge bundles keep up to 60000 characters per file and 150000 per bundle (was 16000 and 48000, and before that 6000 and 24000); a cut keeps the head of a file, so
+  a long deliverable lost its later sections. A task can set `bundleLimits`. Prompts may reach 400000 bytes on the opencode backend (stdin) and stay at 120000 on
+  the kiro backend (argv). Records written under the old limits keep the limits they carry. `cap plan` sizes
   the budget as the largest of 1.5x the estimate, estimate plus the largest observed run, and a pass with one such run before the last cell.
 
 ## How to read results

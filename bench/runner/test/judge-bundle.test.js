@@ -8,7 +8,8 @@ const path = require('node:path');
 const { tmp, write, makeBench, makeRun } = require('./helpers.js');
 const { buildBundle } = require('../../judge/bundle.js');
 const { DEFAULT_REDACTIONS, compileRedactions, redact } = require('../../judge/redact.js');
-const { DEFAULTS } = require('../../judge/config.js');
+const { DEFAULTS, maxPromptBytes } = require('../../judge/config.js');
+const { withCache } = require('../../judge/model.js');
 
 function setup(spec, benchOpts) {
   const root = tmp();
@@ -125,5 +126,38 @@ test('a Claude Code run killed before its result line shows the last assistant t
   const { root, text } = claudeCodeBundle('sigterm');
   try {
     assert.match(text, /## Final assistant text\n/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('under the default limits a 40000-char file is whole and a 70000-char file is cut with the marker', () => {
+  const { root, build } = setup({ finalText: 'ok', files: { 'short.md': 'a'.repeat(40000), 'long.md': 'b'.repeat(70000) } });
+  try {
+    const { text, meta } = build();
+    assert.doesNotMatch(text, /### short\.md[\s\S]*\[truncated at \d+ chars; file has 40000\]/);
+    assert.ok(text.includes('a'.repeat(40000)));
+    assert.ok(text.includes('[truncated at 60000 chars; file has 70000]'));
+    assert.deepEqual(meta.truncatedFiles, ['long.md']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('maxPromptBytes is 400000 for opencode and 120000 for kiro or any other backend', () => {
+  assert.equal(maxPromptBytes('opencode'), 400000);
+  assert.equal(maxPromptBytes('kiro'), 120000);
+  assert.equal(maxPromptBytes('other'), 120000);
+});
+
+test('the judgment cache key follows the prompt, so different bundle limits do not share a reply', async () => {
+  const { root, build } = setup({ finalText: 'ok', files: { 'long.md': 'c'.repeat(40000) } });
+  try {
+    let calls = 0;
+    const caller = withCache(async () => { calls++; return { text: '{}', credits: 0 }; }, path.join(root, 'cache'));
+    const wide = build().text;
+    const narrow = build({ maxFileChars: 30000, maxBundleChars: 150000 }).text;
+    assert.notEqual(wide, narrow);
+    await caller({ model: 'm', prompt: wide });
+    await caller({ model: 'm', prompt: wide });
+    assert.equal(calls, 1, 'the same prompt is served from the cache');
+    await caller({ model: 'm', prompt: narrow });
+    assert.equal(calls, 2, 'a prompt built under other limits is a miss');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
