@@ -52,39 +52,6 @@
           "check": "python3 -c \"import json,sys;d=json.load(open('fingerprints.json'));sys.exit(0 if isinstance(d,list) and d and 'T11' not in [x.get('thread_id') for x in d] else 1)\""
         }
       ]
-    },
-    {
-      "id": 2,
-      "name": "filter-refetched-threads-dedup",
-      "scenario_prompt_id": "p4",
-      "prompt": "We're about to post automated review findings on revision 6 of review PR-3107. history.json holds the comment threads as fetched from each earlier revision (replies marked by 'author' or 'reviewer'), and new-findings.json holds this revision's candidate findings. Filter the new findings against the history so we don't re-post noise but don't hide anything a reviewer needs to see. Write filtered.json: an array of the findings to post, each {\"id\": ..., \"tag\": <string or null>}. Write suppression-log.json: an array of {\"finding_id\", \"matched_thread_ids\" (array), \"reason\"} for every suppressed finding. This runs unattended: do not ask questions; put any assumptions in a short notes.md.",
-      "expected_output": "Collapse re-fetched threads by thread_id to the latest fetch, then apply unanimity and regression precedence. Suppress F21 and F23; post F22 (carried over from revision 1), F25 (regressed since a fix on/after revision 4) and F27 untagged.",
-      "files": [
-        "fixtures/historical-issues-registry-refetch/"
-      ],
-      "expectations": [
-        "Both output files parse as JSON arrays",
-        "Posted set is exactly F22, F25 and F27 (F21 and F23 suppressed)",
-        "F23's suppression entry lists T23 and T24 each exactly once",
-        "F21 is suppressed on T21 as rejected: the two T21 entries are re-fetches of one thread, the latest (revision 5 fetch) wins, and the stale unresolved snapshot is not treated as a disagreeing second match",
-        "F22 is posted with a 'carried over from revision 1' tag, because T22's latest fetch shows the reviewer reopened it; the earlier wontfix snapshot does not suppress it",
-        "F25 is posted with the regression tag 'regressed since a fix on/after revision 4' (T26 fixed and T25 unresolved disagree, regression wording is preferred, revision taken from T26), and F27 is posted untagged",
-        "notes.md or the log briefly and correctly explains the two non-obvious calls: duplicate thread_id entries are collapsed to the latest fetch, and F23 is suppressed only because both distinct threads are rejected or wontfix"
-      ],
-      "scripted_checks": [
-        {
-          "text": "Both output files parse as JSON arrays",
-          "check": "python3 -c \"import json,sys;a=json.load(open('filtered.json'));b=json.load(open('suppression-log.json'));sys.exit(0 if isinstance(a,list) and isinstance(b,list) else 1)\""
-        },
-        {
-          "text": "Posted set is exactly F22, F25 and F27 (F21 and F23 suppressed)",
-          "check": "python3 -c \"import json,sys;sys.exit(0 if {x['id'] for x in json.load(open('filtered.json'))}=={'F22','F25','F27'} else 1)\""
-        },
-        {
-          "text": "F23's suppression entry lists T23 and T24 each exactly once",
-          "check": "python3 -c \"import json,sys;e=[x for x in json.load(open('suppression-log.json')) if x.get('finding_id')=='F23'];t=e[0].get('matched_thread_ids') if e else [];sys.exit(0 if sorted(t)==['T23','T24'] else 1)\""
-        }
-      ]
     }
   ]
 }

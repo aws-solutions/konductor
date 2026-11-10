@@ -14,7 +14,7 @@
         "design.md is next to requirements.md and has the six sections in order",
         "Kiro format per the skill: Exactly the six sections, each requirement 1-4 traced in Overview, at least one Mermaid diagram, typed TypeScript interfaces, <= 300 lines",
         "Hidden design work in Requirements 3 and 4: Consecutive-failure state is persisted (counter or last-3 RESULT# query) and pause disables the EventBridge Scheduler schedule; 10 s probe timeout designed",
-        "Reuses the platform design: Uses the given keys (ACCOUNT#/MONITOR#, GSI1 name uniqueness for the 409, RESULT# with 7-day TTL); AuthMiddleware referenced briefly; ownership check -> 403",
+        "Reuses the platform design: Uses the given keys (ACCOUNT#/MONITOR#, GSI1 name uniqueness for the 409, RESULT# with 7-day TTL); AuthMiddleware referenced briefly; ownership check returns 404 for not-owned ids",
         "Error handling and testing breadth: 400, 401/403, 404, 409, 429, 502/503 each with trigger/response/recovery; unit, integration and E2E with concrete cases"
       ],
       "scripted_checks": [

@@ -37,7 +37,7 @@
     {
      "id": "r2",
      "dimension": "process",
-     "criterion": "Uses the skill's severity scale: CRITICAL (architectural) and CRITICAL (factual) kept separate, then IMPORTANT, then the lowest tier, named MINOR or SUGGESTION (either name is correct; the newer skill text calls it SUGGESTION), presented in that order with a per-severity count summary",
+     "criterion": "Uses the skill's severity scale: CRITICAL (architectural) and CRITICAL (factual) kept separate, then IMPORTANT, then the lowest tier, named SUGGESTION, presented in that order with a per-severity count summary",
      "pass": "Four tiers used as defined, ordered, counts match the findings",
      "partial": "Tiers present but merged, misordered, or counts inconsistent",
      "fail": "Generic High/Medium/Low or no classification"
@@ -80,7 +80,7 @@
    "id": "p2",
    "prompt": "design-v2.md is my revision of the moderation pipeline design after last round's feedback (design.md is the old version, for context only). Our principal engineer review is next week and the rule on our team is that a doc only goes to that review once the adversarial pass is clean. Do an adversarial pass over design-v2.md and write gate.md: findings by severity, the counts, and a final line that is exactly 'VERDICT: READY' or 'VERDICT: NOT READY' followed by the reason. Do not ask questions; state assumptions instead. Review it yourself, no panel. Do not edit either design file.",
    "fixture": "fixtures/adversarial-design-review/",
-   "why_discriminating": "design-v2 fixes every CRITICAL, so a generic reviewer tends to call it ready with suggestions. The skill's exit condition is 0 CRITICAL + 0 IMPORTANT + fewer than 3 MINOR, and its checklist demands sourced load assumptions, failure modes per external dependency, and trade-offs across 3+ dimensions, which leaves two IMPORTANT findings and a NOT READY verdict.",
+   "why_discriminating": "design-v2 fixes every CRITICAL, so a generic reviewer tends to call it ready with suggestions. The skill's exit condition is 0 CRITICAL + 0 IMPORTANT + fewer than 3 SUGGESTION, and its checklist demands sourced load assumptions, failure modes per external dependency, and trade-offs across 3+ dimensions, which leaves two IMPORTANT findings and a NOT READY verdict.",
    "floor_checks": [
     {
      "id": "f1",
@@ -107,14 +107,14 @@
      "dimension": "issue",
      "criterion": "Flags the trade-off table as covering only two dimensions (cost, latency) with operability/complexity missing",
      "pass": "Found and classified IMPORTANT per the 3-dimension rule",
-     "partial": "Mentioned as MINOR or as a vague 'could expand'",
+     "partial": "Mentioned as SUGGESTION or as a vague 'could expand'",
      "fail": "Not found"
     },
     {
      "id": "r3",
      "dimension": "process",
      "criterion": "Verdict follows the skill's exit rule: NOT READY because IMPORTANT findings remain, even with zero CRITICAL",
-     "pass": "NOT READY, reason cites remaining IMPORTANT findings against the 0 CRITICAL + 0 IMPORTANT + <3 MINOR rule",
+     "pass": "NOT READY, reason cites remaining IMPORTANT findings against the 0 CRITICAL + 0 IMPORTANT + <3 SUGGESTION rule",
      "partial": "NOT READY but reason is a general impression",
      "fail": "READY, or READY with conditions"
     },
@@ -160,16 +160,16 @@
     {
      "id": "r2",
      "dimension": "process",
-     "criterion": "Classifies the fallacy IMPORTANT and uses the skill's tiers (MINOR, not SUGGESTION/low) for anything smaller, with a severity count summary",
+     "criterion": "Classifies the fallacy IMPORTANT and uses the skill's tiers (SUGGESTION, not MINOR/low) for anything smaller, with a severity count summary",
      "pass": "IMPORTANT for the fallacy, skill tiers throughout, counts given",
      "partial": "Right tier for the fallacy but other tiers off-scale",
-     "fail": "Fallacy rated CRITICAL or MINOR, or no classification"
+     "fail": "Fallacy rated CRITICAL or SUGGESTION, or no classification"
     },
     {
      "id": "r3",
      "dimension": "restraint",
      "criterion": "Does not inflate: no CRITICAL against a decision with three options, measured context, and a four-dimension trade-off table; says the ADR is otherwise sound",
-     "pass": "No CRITICAL, explicit acknowledgement of what is sound, at most a couple of MINOR items",
+     "pass": "No CRITICAL, explicit acknowledgement of what is sound, at most a couple of SUGGESTION items",
      "partial": "One unwarranted escalation or a long nitpick list",
      "fail": "CRITICAL findings or a pile of manufactured issues"
     },

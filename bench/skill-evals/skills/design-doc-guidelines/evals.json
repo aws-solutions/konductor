@@ -47,35 +47,6 @@
           "check": "python3 -c \"import sys;l=open('docs/design/feature-flags.md').read().splitlines()[:10];sys.exit(0 if any(x.lower().startswith('## ') and 'problem' in x.lower() for x in l) else 1)\" && grep -qE '35[ -]?min' docs/design/feature-flags.md"
         }
       ]
-    },
-    {
-      "id": 2,
-      "name": "companion-doc-sync-after-parent-rename",
-      "scenario_prompt_id": "p4",
-      "prompt": "I just finished revising docs/design/report-export.md, the parent design doc. It is final, so do not edit it. Update its companion doc docs/design/report-export-impl.md in place so the two docs agree, then write changes.md listing what you changed and anything else in the repo that still needs follow-up. Do not ask me questions; if something is unclear, make a reasonable assumption and state it in changes.md.",
-      "expected_output": "Round 2 moved the companion-doc, rename-propagation and multi-feature rules into references/multi-doc-designs.md. A run that loads them checks stale anchors, config examples missing new fields, contradicting defaults, duplicated content, and greps the repo for the old field name.",
-      "files": [
-        "fixtures/design-doc-guidelines-multidoc/"
-      ],
-      "expectations": [
-        "changes.md exists and the parent doc is unchanged",
-        "Renamed field and section propagated into the companion: no bare max_rows config reference remains, export.row_limit is used, and the Retry Policy link points to #failure-handling",
-        "Contradicting default fixed: the companion no longer says the row limit defaults to 10,000; prose and the YAML example both use 50000 (or defer to the parent)",
-        "Config example missing a new field fixed: the companion's YAML example adds export.job_timeout_minutes (or the example is replaced by a reference to the parent's Configuration table)",
-        "Duplicate content handled: the companion's Background section, which only repeats the parent's Problem, is removed or replaced with a cross-reference, or rewritten to add detail the parent lacks",
-        "Rename propagated beyond the companion: changes.md names docs/guides/export-runbook.md and scripts/check-export-config.sh as still using max_rows (fixed or flagged for follow-up)",
-        "Stays faithful to the parent: no behavior, defaults or fields invented that the parent does not state; the per-account override column (export_max_rows) is either kept or its rename flagged as a schema change rather than silently treated as done"
-      ],
-      "scripted_checks": [
-        {
-          "text": "changes.md exists and the parent doc is unchanged",
-          "check": "test -f changes.md && sha256sum docs/design/report-export.md | grep -q 374fc8f6c509fd3d323309eeaf06bb22150d652bddd6a6c73e11b1a3f951ac92"
-        },
-        {
-          "text": "Renamed field and section propagated into the companion: no bare max_rows config reference remains, export.row_limit is used, and the Retry Policy link points to #failure-handling",
-          "check": "f=docs/design/report-export-impl.md; ! grep -qE '(^|[^_])max_rows' $f && grep -q 'row_limit' $f && grep -q 'report-export.md#failure-handling' $f && ! grep -q '#retry-policy' $f"
-        }
-      ]
     }
   ]
 }

@@ -12,9 +12,9 @@ Layout: `skills/<name>/` holds `evals.json`, `queries.json`, `scenario.json` and
 | --- | --- |
 | Skills (`ALLOWLIST.txt`) | 81 |
 | Skills with `evals.json` | 66 (15 have none) |
-| Eval cases | 154 |
-| Graded expectations | 995 |
-| Scripted checks (`scripted_checks` in `evals.json`) | 263 |
+| Eval cases | 145 |
+| Graded expectations | 935 |
+| Scripted checks (`scripted_checks` in `evals.json`) | 245 |
 | Trigger queries (`queries.json`, about half near-miss negatives) | 1,618 |
 | Scenario prompts (`scenario.json`) | 246 |
 | Rubric items | 1,041 |
@@ -25,7 +25,7 @@ Layout: `skills/<name>/` holds `evals.json`, `queries.json`, `scenario.json` and
 Five scenarios are marked `limited`: they test only the offline path of the skill (`aws-service-validator`,
 `cmux-dispatch`, `external-research`, `find-aws-skills`, `mux-dispatch`).
 
-35 eval cases carry a `scenario_prompt_id` with no matching scenario prompt. They are eval-only cases.
+27 eval cases carry a `scenario_prompt_id` with no matching scenario prompt. They are eval-only cases.
 
 ## Listing budget
 

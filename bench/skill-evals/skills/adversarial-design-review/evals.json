@@ -14,7 +14,7 @@
         "review.md exists and is non-trivial",
         "The 60-minute Lambda claim is corrected to the 15-minute limit",
         "Finds the four CRITICAL problems in the KEY: 60-minute Lambda claim, single EC2 worker vs R2/R4, synchronous webhook vs async R1, PII with no encryption/access boundary: All four found, each with its impact against the stated requirement",
-        "Uses the skill's severity scale: CRITICAL (architectural) and CRITICAL (factual) kept separate, then IMPORTANT, then the lowest tier, named MINOR or SUGGESTION (either name is correct; the newer skill text calls it SUGGESTION), presented in that order with a per-severity count summary: Four tiers used as defined, ordered, counts match the findings",
+        "Uses the skill's severity scale: CRITICAL (architectural) and CRITICAL (factual) kept separate, then IMPORTANT, then the lowest tier, named SUGGESTION, presented in that order with a per-severity count summary: Four tiers used as defined, ordered, counts match the findings",
         "Names the logical fallacies in decision justifications: 3.1 false dichotomy, 3.2 circular reasoning, and flags the one-dimension (cost-only) trade-off table as incomplete: Both fallacies named and located, trade-off table flagged for <3 dimensions",
         "Each finding states a concrete rebuttal the author must add (what evidence, alternative, or design change would answer the challenge): Every finding has a specific rebuttal-needed line",
         "Stays within the document: no invented requirements, services, or numbers; does not pad with generic checklists: Every finding traces to text in design.md"
@@ -35,7 +35,7 @@
       "name": "gate-revised-design-v2",
       "scenario_prompt_id": "p2",
       "prompt": "design-v2.md is my revision of the moderation pipeline design after last round's feedback (design.md is the old version, for context only). Our principal engineer review is next week and the rule on our team is that a doc only goes to that review once the adversarial pass is clean. Do an adversarial pass over design-v2.md and write gate.md: findings by severity, the counts, and a final line that is exactly 'VERDICT: READY' or 'VERDICT: NOT READY' followed by the reason. Do not ask questions; state assumptions instead. Review it yourself, no panel. Do not edit either design file.",
-      "expected_output": "design-v2 fixes every CRITICAL, so a generic reviewer tends to call it ready with suggestions. The skill's exit condition is 0 CRITICAL + 0 IMPORTANT + fewer than 3 MINOR, and its checklist demands sourced load assumptions, failure modes per external dependency, and trade-offs across 3+ dimensions, which leaves two IMPORTANT findings and a NOT READY verdict.",
+      "expected_output": "design-v2 fixes every CRITICAL, so a generic reviewer tends to call it ready with suggestions. The skill's exit condition is 0 CRITICAL + 0 IMPORTANT + fewer than 3 SUGGESTION, and its checklist demands sourced load assumptions, failure modes per external dependency, and trade-offs across 3+ dimensions, which leaves two IMPORTANT findings and a NOT READY verdict.",
       "files": [
         "fixtures/adversarial-design-review/"
       ],
@@ -43,8 +43,8 @@
         "gate.md ends with a verdict line",
         "Verdict is NOT READY",
         "Flags 3.4's unstated, unsourced assumption that the hosted model endpoint 'will scale with our traffic', with no quota or failure mode, as a load-bearing gap for R2: Found, classified IMPORTANT, impact on the 5k rps NFR explained",
-        "Flags the trade-off table as covering only two dimensions (cost, latency) with operability/complexity missing: Found and classified IMPORTANT per the 3-dimension rule (rating it only MINOR/SUGGESTION fails)",
-        "Verdict follows the skill's exit rule: NOT READY because IMPORTANT findings remain, even with zero CRITICAL: the reason cites the remaining IMPORTANT findings against the 0 CRITICAL + 0 IMPORTANT + fewer than 3 lowest-tier (MINOR or SUGGESTION, either name) rule",
+        "Flags the trade-off table as covering only two dimensions (cost, latency) with operability/complexity missing: Found and classified IMPORTANT per the 3-dimension rule (rating it only SUGGESTION fails)",
+        "Verdict follows the skill's exit rule: NOT READY because IMPORTANT findings remain, even with zero CRITICAL: the reason cites the remaining IMPORTANT findings against the 0 CRITICAL + 0 IMPORTANT + fewer than 3 SUGGESTION rule",
         "Does not manufacture CRITICAL findings against v2 (the old CRITICALs are fixed: multi-AZ Fargate, queued webhook, KMS + key policy): No CRITICAL raised, or a CRITICAL only with a clear, document-grounded warrant"
       ],
       "scripted_checks": [

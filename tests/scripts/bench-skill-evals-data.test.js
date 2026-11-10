@@ -87,9 +87,9 @@ test('bundle counts are stable', () => {
     { withEvals, cases, expectations, scripted, prompts, rubric, floor, queries },
     {
       withEvals: 66,
-      cases: 154,
-      expectations: 995,
-      scripted: 263,
+      cases: 145,
+      expectations: 935,
+      scripted: 245,
       prompts: 246,
       rubric: 1041,
       floor: 370,

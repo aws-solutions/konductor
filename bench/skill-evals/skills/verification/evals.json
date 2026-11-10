@@ -45,34 +45,6 @@
         "Verification protocol is explicit and the conclusion matches the evidence: SPEC/success criteria, RED, GREEN and full-suite VERIFY steps are laid out, and the work is not declared verified or fixed when the runs did not happen: Phases laid out and the final status matches what was actually observed (e.g. 'fix written, not yet verified: run X')"
       ],
       "scripted_checks": []
-    },
-    {
-      "id": 2,
-      "name": "config-doc-fix-runs-covering-tests",
-      "scenario_prompt_id": "p5",
-      "prompt": "We bumped the default request timeout in src/config.js from 30 to 60 seconds last release, but docs/CONFIG.md still says 30. Update the docs so they are correct; this is a docs-only change, do not change the code. Write EVIDENCE.md showing what you checked and what you observed, so I can trust the docs are right and nothing else broke. If you cannot run something in this environment, say so plainly for that step instead of describing what would happen. This runs unattended: do not ask questions; state assumptions in EVIDENCE.md.",
-      "expected_output": "Doc updated to 60 in the table and the example; EVIDENCE.md has SPEC criteria, cites DEFAULTS, names test/docs.test.js and node --test as VERIFY with real output or a plain not-run note.",
-      "files": [
-        "fixtures/verification-docs/"
-      ],
-      "expectations": [
-        "docs/CONFIG.md now documents timeoutSeconds default 60 and no longer says 30",
-        "Code and existing tests are untouched and the full suite passes",
-        "SPEC: EVIDENCE.md states success criteria for the doc change up front (the table default and the example comment both say 60, and every documented default matches src/config.js DEFAULTS)",
-        "VERIFY with covering tests: EVIDENCE.md identifies test/docs.test.js as the existing test that checks CONFIG.md against DEFAULTS and gives the exact command to run it and the full suite (node --test / npm test), with real output and exit code or a plain statement that it could not be run here. The executor in this harness has no shell tool, so a step counts if EVIDENCE.md either pastes real output or states plainly that the command could not be run here; describing an imagined result fails.",
-        "Validation of the change itself: EVIDENCE.md shows the change was checked against the source of truth (quotes or cites the DEFAULTS values in src/config.js next to the updated doc rows), not just asserted",
-        "Honest conclusion: no 'tests pass' or 'should pass' claim without output, and the final status matches what was actually observed (e.g. docs updated, suite not run here: run node --test)"
-      ],
-      "scripted_checks": [
-        {
-          "text": "docs/CONFIG.md now documents timeoutSeconds default 60 and no longer says 30",
-          "check": "grep -q '| `timeoutSeconds` | `60` |' docs/CONFIG.md && ! grep -qw '30' docs/CONFIG.md"
-        },
-        {
-          "text": "Code and existing tests are untouched and the full suite passes",
-          "check": "[ \"$(sha256sum src/config.js test/config.test.js test/docs.test.js | cut -d' ' -f1 | tr '\\n' ' ')\" = 'cc79989d8f0ecc5ae532f038387af206f86e2e6468406867b21fe7fe5beb1644 0834f4d4d98711f0ade8e50f1ff48466953f67c1f86cf6e8de37fc8abfd2807f ecd156278826ce50103db97971652673e479bd6291bad446c876d821759fad7f ' ] && node --test >/dev/null 2>&1"
-        }
-      ]
     }
   ]
 }

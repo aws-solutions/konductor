@@ -33,7 +33,7 @@
           "id": "r2",
           "dimension": "process",
           "criterion": "Skill scoring and output format",
-          "pass": "Score 1/5 with the rule applied (3+ IMPORTANT and a missing section), 'Issues: N IMPORTANT, N MINOR' line, each issue with section, type, and suggestion; states it does not meet the >=3 gate",
+          "pass": "Score 1/5 with the rule applied (3+ IMPORTANT and a missing section), 'Issues: N IMPORTANT, N SUGGESTION' line, each issue with section, type, and suggestion; states it does not meet the >=3 gate",
           "partial": "Right score but format or gate statement missing",
           "fail": "Wrong score or no score"
         },
@@ -85,7 +85,7 @@
           "id": "r1",
           "dimension": "restraint",
           "criterion": "No manufactured issues",
-          "pass": "Zero or at most a couple of MINOR items, each real; the $310 claim recognized as sourced (billing report, March 2026)",
+          "pass": "Zero or at most a couple of SUGGESTION items, each real; the $310 claim recognized as sourced (billing report, March 2026)",
           "partial": "One debatable IMPORTANT item, or the sourced claim questioned",
           "fail": "Several invented issues or brevity penalized"
         },
@@ -119,7 +119,7 @@
       "id": "p3",
       "prompt": "Check docs/design/minor.md for filler language and anything else that should hold it back from design review. Write a scored result to quality-minor.md. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
       "fixture": "fixtures/design-quality-check/",
-      "why_discriminating": "Under the skill's rubric, more than three MINOR issues and no IMPORTANT issues scores 3/5, which still clears the >=3 gate. The doc has five filler/hedge phrases and a measured 41-second claim. Without the skill, reviewers tend to call the measured claim unsupported, or to block the doc over style issues.",
+      "why_discriminating": "Under the skill's rubric, more than three SUGGESTION issues and no IMPORTANT issues scores 3/5, which still clears the >=3 gate. The doc has five filler/hedge phrases and a measured 41-second claim. Without the skill, reviewers tend to call the measured claim unsupported, or to block the doc over style issues.",
       "floor_checks": [
         {
           "id": "f1",
@@ -132,7 +132,7 @@
           "id": "r1",
           "dimension": "issue",
           "criterion": "Filler and hedge phrases",
-          "pass": "Quotes at least four of: Needless to say, It should be noted that, As mentioned above, In order to, somewhat; typed filler_phrases/hedge_words as MINOR",
+          "pass": "Quotes at least four of: Needless to say, It should be noted that, As mentioned above, In order to, somewhat; typed filler_phrases/hedge_words as SUGGESTION",
           "partial": "Two or three found",
           "fail": "One or none"
         },

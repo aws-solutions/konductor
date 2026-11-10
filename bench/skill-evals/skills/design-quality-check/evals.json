@@ -13,7 +13,7 @@
       "expectations": [
         "Score line present and equals 1/5",
         "The IMPORTANT issues in the KEY: Finds all of: no ADR section despite Kafka/SPI/rules-engine decisions, YAGNI (transport SPI for SMS/push/fax, rules engine + DSL), circular Kafka justification, unsupported 20ms/45% claims",
-        "Skill scoring and output format: Score 1/5 with the rule applied (3+ IMPORTANT and a missing section), 'Issues: N IMPORTANT, N <low-severity>' count line (label MINOR or SUGGESTION), each issue with section, type, and suggestion; states it does not meet the >=3 gate",
+        "Skill scoring and output format: Score 1/5 with the rule applied (3+ IMPORTANT and a missing section), 'Issues: N IMPORTANT, N SUGGESTION' count line, each issue with section, type, and suggestion; states it does not meet the >=3 gate",
         "Respects the skill's pitfalls: Does not flag 'Lambda cold starts typically add 100-500ms' as a hedge; no invented issues",
         "Suggestions for IMPORTANT issues: Each IMPORTANT issue has a concrete fix (add ADR for Kafka vs existing stream, cut SPI/DSL to email-only, cite a measurement or remove the 20ms/45% figures)"
       ],
@@ -29,13 +29,13 @@
       "name": "minor-filler-score-3-advances",
       "scenario_prompt_id": "p3",
       "prompt": "Check docs/design/minor.md for filler language and anything else that should hold it back from design review. Write a scored result to quality-minor.md. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
-      "expected_output": "Under the skill's rubric, more than three MINOR issues and no IMPORTANT issues scores 3/5, which still clears the >=3 gate. The doc has five filler/hedge phrases and a measured 41-second claim. Without the skill, reviewers tend to call the measured claim unsupported, or to block the doc over style issues.",
+      "expected_output": "Under the skill's rubric, more than three SUGGESTION issues and no IMPORTANT issues scores 3/5, which still clears the >=3 gate. The doc has five filler/hedge phrases and a measured 41-second claim. Without the skill, reviewers tend to call the measured claim unsupported, or to block the doc over style issues.",
       "files": [
         "fixtures/design-quality-check/"
       ],
       "expectations": [
         "Score is 3/5",
-        "Filler and hedge phrases: Quotes at least four of: Needless to say, It should be noted that, As mentioned above, In order to, somewhat; typed filler_phrases/hedge_words at the low severity (MINOR or SUGGESTION), not IMPORTANT",
+        "Filler and hedge phrases: Quotes at least four of: Needless to say, It should be noted that, As mentioned above, In order to, somewhat; typed filler_phrases/hedge_words at the SUGGESTION severity, not IMPORTANT",
         "Measured claim treated correctly: The 41-second figure (measured on the March 2026 table) is not flagged as unsupported_claims; no IMPORTANT issues invented",
         "Gate decision: States the doc can advance (score 3 meets the >=3 gate) with revision notes",
         "Fixes are concrete: Each filler phrase has a rewrite or 'delete'"

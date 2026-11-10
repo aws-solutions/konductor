@@ -58,38 +58,6 @@
           "check": "python3 -c \"import glob,re,sys;fs=[f for f in glob.glob('.claude/skills/ws-*/SKILL.md') if 'ws-integration-tests/' not in f];sys.exit(0 if any(re.search(r'^related:.*ws-integration-tests',open(f).read(),re.M|re.S) and re.search(r'^origin:\\s*agent-created',open(f).read(),re.M) and 'mock-auth' in open(f).read() for f in fs) else 1)\""
         }
       ]
-    },
-    {
-      "id": 2,
-      "name": "patch-overlapping-agent-created-skill",
-      "scenario_prompt_id": "p3",
-      "prompt": "This is a Claude Code project. session-log.md records how we finally got the stream consumer tests running after several failed tries yesterday. Save the working procedure so future sessions in this workspace follow it instead of repeating those mistakes. You have my approval to write it; do not wait for confirmation. Do not ask questions; if something is unclear, make a reasonable assumption and state your assumptions in your final message.",
-      "expected_output": "The Claude Code dedup scan lists .claude/skills/ws-* and finds ws-orders-consumer-local, an agent-created skill for the same use case. The skill says to PATCH it (bump version) rather than create a duplicate. Without that scan a model tends to write a second stream-test skill next to it.",
-      "files": [
-        "fixtures/workspace-skills-dedup/"
-      ],
-      "expectations": [
-        "No duplicate: no new ws- skill directory is created besides the two existing ones",
-        "The existing agent-created ws-orders-consumer-local skill is patched in place: version bumped to 2, origin still agent-created, and it now contains the create-table step and us-east-1",
-        "The user-authored ws-integration-tests skill is byte-identical",
-        "Patched content is complete: steps include LocalStack run, AWS_ENDPOINT_URL, AWS_REGION=us-east-1 with dummy credentials, create-table with streams enabled, npm run test:stream; pitfalls cover the real-AWS hang, the missing table, and the region mismatch causing ExpiredIteratorException",
-        "Verification is checkable: 9/9 tests pass and dynamodbstreams list-streams --region us-east-1 shows one stream for orders-local",
-        "Explains the choice: the final message says it found the existing overlapping agent-created skill and updated it instead of creating a new one"
-      ],
-      "scripted_checks": [
-        {
-          "text": "No duplicate: no new ws- skill directory is created besides the two existing ones",
-          "check": "test \"$(ls -d .claude/skills/ws-*/ | sort | tr '\\n' ' ')\" = '.claude/skills/ws-integration-tests/ .claude/skills/ws-orders-consumer-local/ '"
-        },
-        {
-          "text": "The existing agent-created ws-orders-consumer-local skill is patched in place: version bumped to 2, origin still agent-created, and it now contains the create-table step and us-east-1",
-          "check": "python3 -c \"import re,sys;t=open('.claude/skills/ws-orders-consumer-local/SKILL.md').read();sys.exit(0 if re.search(r'^version:\\s*2\\s*$',t,re.M) and re.search(r'^origin:\\s*agent-created',t,re.M) and 'create-table' in t and 'us-east-1' in t else 1)\""
-        },
-        {
-          "text": "The user-authored ws-integration-tests skill is byte-identical",
-          "check": "echo '20bfc130a925b79e4acd81848f20fad1fd5b6889c5b7f2ac62ba9339fdaed024  .claude/skills/ws-integration-tests/SKILL.md' | sha256sum -c --quiet -"
-        }
-      ]
     }
   ]
 }

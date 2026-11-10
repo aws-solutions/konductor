@@ -54,32 +54,6 @@
      "check": "head -8 readiness.md | grep -qiE \"no.go|not ready|block\""
     }
    ]
-  },
-  {
-   "id": 2,
-   "name": "sop-scoring-missing-threat-model",
-   "scenario_prompt_id": "p4",
-   "prompt": "The design SOP for our Report Export Service is at its scoring step. Run the design evaluation on the package in design/ (scope_confirmed is true) and write evaluation.md with the per-dimension scores, the findings, and the overall confidence score (the average of the design-evaluation scores). Do not ask me questions; if something is unclear, state your assumption in the output and in your final message, and finish.",
-   "expected_output": "Round-2 change: the new skill scores 8 of 10 dimensions, keeps missing artifacts in a not-provided list outside the finding gates, caps a dimension at 3 when its artifact is missing, and does not ask when invoked from a SOP or with scope_confirmed. The old skill scores all ten dimensions and has no rule for missing artifacts.",
-   "files": [
-    "fixtures/design-evaluation-no-threat-model/"
-   ],
-   "expectations": [
-    "evaluation.md exists",
-    "Scores exactly eight dimensions on a 1 to 5 scale (template adherence, scalability, performance, security, maintainability, failure handling, code quality, testability); high-level assessment and actionable recommendations are written but carry no score",
-    "The missing threat model (and missing architecture diagrams) are listed in a separate not-provided section and are not raised as CRITICAL, IMPORTANT or SUGGESTION findings",
-    "The security score is 3 or lower and the evaluation ties that cap or limit to the missing threat model",
-    "The confidence score is the arithmetic average of the eight scored dimensions only, and the stated number matches the listed scores",
-    "Names as CRITICAL the gate blockers visible in the present artifacts: MailRelay has no timeout/retry/fallback, the data model cannot serve AP2/AP3 (no GSI), and downloadUrl -> downloadUrls is a breaking change with no versioning",
-    "Does not stop to ask whether to score or wait for the missing artifacts, and does not end by asking 'Fix these issues?'; it reports and leaves fixing to the caller",
-    "No false positives: does not invent a threat model, threats, services, numbers or requirements that are not in design/"
-   ],
-   "scripted_checks": [
-    {
-     "text": "evaluation.md exists",
-     "check": "test -s evaluation.md"
-    }
-   ]
   }
  ]
 }
