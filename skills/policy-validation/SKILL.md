@@ -31,12 +31,13 @@ Overly permissive actions (wildcards without justification), missing condition k
 - Tell a security gap from a design decision. If the design justifies a choice (for example, "AWS-managed keys sufficient for Internal/Confidential data classification"), say so in the finding and present your recommendation as an alternative. With no justification, it is a gap.
 - Report only what the design missed. If it already has a "Compliance Gaps Identified" table, a SOC 2 checklist, threat mitigation tables, or remediation steps under "Next Steps and Recommendations", reference them, check that they are accurate, and add only new gaps. Repeating them lengthens the report without telling the maker anything new.
 - Rate every finding CRITICAL, IMPORTANT, or SUGGESTION, the scale the Quality Gate uses.
+- A category header sets review order, not severity. A finding takes its severity from the check's Flag-as line; a check with no Flag-as line is IMPORTANT unless it is plainly hardening, which is SUGGESTION.
 
 ## Validation Framework
 
 Validate security designs across these categories:
 
-### CATEGORY 1: IAM POLICY DESIGN (CRITICAL)
+### CATEGORY 1: IAM POLICY DESIGN (review first)
 
 Check for:
 
@@ -80,7 +81,7 @@ Check for:
 
 Score the category with the IAM Policy Security Score in STEP 4.
 
-### CATEGORY 2: ENCRYPTION COVERAGE (CRITICAL)
+### CATEGORY 2: ENCRYPTION COVERAGE (review first)
 
 Check for:
 
@@ -129,7 +130,7 @@ Check for:
 - Flag as SUGGESTION if resources access AWS services over internet gateway instead of VPC endpoints
 - Recommend private connectivity through VPC endpoints for security and cost optimization
 
-### CATEGORY 3: AUDIT LOGGING (IMPORTANT)
+### CATEGORY 3: AUDIT LOGGING (review second)
 
 Check for:
 
@@ -182,7 +183,7 @@ Check for:
 - Flag as IMPORTANT if critical alarms are missing
 - Recommend SNS topic subscriptions for security team notifications
 
-### CATEGORY 4: THREAT MODEL COVERAGE (IMPORTANT)
+### CATEGORY 4: THREAT MODEL COVERAGE (review second)
 
 **Threat Model Integration Validation**:
 
@@ -242,7 +243,7 @@ Check for:
   - Security impact if not mitigated (CRITICAL/IMPORTANT/SUGGESTION)
   - Remediation code examples (IAM policies, encryption configs, etc.)
 
-### CATEGORY 5: COMPLIANCE GAPS (CRITICAL)
+### CATEGORY 5: COMPLIANCE GAPS (review first)
 
 Check for:
 
@@ -253,7 +254,7 @@ Check for:
 - Missing compliance validation checklists
 - Insufficient compliance evidence
 
-When the user or the design under review names a compliance framework, open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory.
+When the user or the design under review names a compliance framework, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open the `iam-policy-design` skill's `iam-policy-design/references/compliance-checklists.md` for the GDPR, HIPAA, PCI-DSS, and SOC 2 controls, the checks to run, when to flag CRITICAL, and the citations to give. Skills install side by side, so it sits next to this skill's directory.
 
 **Compliance Gap Report Generation**:
 
@@ -271,7 +272,7 @@ When the user or the design under review names a compliance framework, open the 
 - **IMPORTANT**: Violations that significantly increase compliance risk
 - **SUGGESTION**: Partial compliance with minor gaps, or optional improvements beyond minimum compliance requirements
 
-### CATEGORY 6: MONITORING AND ALERTING (IMPORTANT)
+### CATEGORY 6: MONITORING AND ALERTING (review second)
 
 Check for:
 
@@ -282,7 +283,7 @@ Check for:
 - Missing SNS notifications for critical alerts
 - Insufficient monitoring coverage
 
-### CATEGORY 7: NETWORK SECURITY (IMPORTANT)
+### CATEGORY 7: NETWORK SECURITY (review second)
 
 Check for:
 
@@ -293,7 +294,7 @@ Check for:
 - Insufficient network segmentation
 - Missing bastion hosts or Session Manager for SSH access
 
-### CATEGORY 8: SECRETS MANAGEMENT (IMPORTANT)
+### CATEGORY 8: SECRETS MANAGEMENT (review second)
 
 Check for:
 
@@ -304,7 +305,7 @@ Check for:
 - Missing automatic secret rotation
 - Secrets access not audited
 
-### CATEGORY 9: IDENTITY MANAGEMENT (IMPORTANT)
+### CATEGORY 9: IDENTITY MANAGEMENT (review second)
 
 Check for:
 
@@ -315,7 +316,7 @@ Check for:
 - Root account usage for daily operations
 - Missing IAM Access Analyzer usage
 
-### CATEGORY 10: SECURITY TESTING (SUGGESTION)
+### CATEGORY 10: SECURITY TESTING (review if time allows)
 
 Check for:
 

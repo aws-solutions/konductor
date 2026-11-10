@@ -153,4 +153,4 @@ Present only the analysis and remediation plan, with no preamble.
 - Could add automated scanning to CI pipeline to prevent recurrence
 - Could link to internal security guidance for the vulnerability type
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. End every response with exactly `Fix these issues? [y/n]`, not an offer to spawn a developer or any other question: the maker-checker caller parses that line.
+Present findings as: CRITICAL -> IMPORTANT -> SUGGESTION. Ask: "Fix these issues? [y/n]" unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking. End with that exact line, not an offer to spawn a developer or any other question.
