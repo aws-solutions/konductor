@@ -145,9 +145,8 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             };
             dispatch_config(&cwd, action, color)
         }
-        Commands::Metrics { since } => {
-            print_not_implemented("metrics", &[("--since", opt(&since))]);
-            0
+        Commands::Metrics { since, by } => {
+            crate::cli::metrics::dispatch_metrics(since, by, json, color)
         }
         Commands::DumpSchema => {
             println!("{}", crate::cli::schema::dump_schema_json());
@@ -442,13 +441,6 @@ fn list_fields(config: &config::Config) -> Vec<(&'static str, String)> {
 /// constant is private to that module; both must stay equal to 64.
 const EXIT_USAGE_ERROR: u8 = 64;
 
-fn opt(value: &Option<String>) -> String {
-    match value {
-        Some(v) => v.clone(),
-        None => "<none>".to_string(),
-    }
-}
-
 /// Gates `Commands::Config` dispatch while the subcommand is temporarily
 /// hidden (see cli.rs's `#[command(hide = true)]` on `Commands::Config`).
 /// The underlying dispatch logic is fully intact; this only decides
@@ -479,22 +471,6 @@ fn config_dispatch_allowed_for(value: Option<String>) -> bool {
 /// (permanent, until someone builds it).
 fn print_not_currently_available(command: &str) {
     eprintln!("konductor {command}: not currently available");
-}
-
-fn print_not_implemented(command: &str, args: &[(&str, String)]) {
-    print!("konductor {command}: not yet implemented");
-    if !args.is_empty() {
-        print!(" (");
-        print!(
-            "{}",
-            args.iter()
-                .map(|(k, v)| format!("{k}={v}"))
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-        print!(")");
-    }
-    println!();
 }
 
 #[cfg(test)]
