@@ -649,6 +649,9 @@ ROSTER = [
     ("skills catalog: system-design-patterns outputs",
      "Produces the system design, NFRs, threat-model inputs, and an architecture-diagram description.",
      "Produces four documents: the system design (with NFRs), threat-model input, an architecture-diagram description, and a design review handoff."),
+    ("skills catalog: design-evaluation row",
+     '"k":"design-evaluation","v":"Evaluates a complete design package for production readiness across 10 dimensions. — REACH FOR IT: The final gate before implementation. Wants all artifacts present — design, threat model, API specs, data models, diagrams, IAM.',
+     '"k":"design-evaluation","v":"Evaluates a design package, or a single design doc, for production readiness across 10 dimensions (8 scored, 2 report sections). — REACH FOR IT: The final gate before implementation. Lists any missing artifacts (system design, threat model, API specs, data models, diagrams, IAM) and scores what is present; use single-document scope for one doc.'),
 ]
 
 
