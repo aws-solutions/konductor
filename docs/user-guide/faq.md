@@ -241,7 +241,7 @@ transmitted. Delete it whenever you like.
 
 `k-code-review-workflow` step 6 is an adversarial pass, and **the agent that owns the SOP
 cannot run it**: no specialist holds a spawn tool in Kiro CLI v3 or Claude Code, and in Kiro
-CLI v2 its `subagent` target list is empty.
+CLI v2 the core rules forbid it until #149 removes the tool.
 
 Step 6 writes the report, then ends with a note asking the orchestrator to run
 `k-adversarial-pull-request-review` on the same diff; the verdict comes from the findings, so a
