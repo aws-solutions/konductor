@@ -587,6 +587,19 @@ node bench/runner/bench.js run --suite skilleval-$S --arms vanilla,natural=GITSH
 ```
 The oracle arm puts the skill body in front of every prompt, near-miss tasks included, which measures the cost of applying the skill where it should not apply; `expectations.json` records that the natural path should not load the skill for them. Tests: `node --test bench/skilleval/test/`.
 
+### Tasks from the committed skill eval data
+
+`bench/skilleval/import.js` builds tasks and trigger queries on demand from `bench/skill-evals/skills/<skill>/`, with no model call. The data is written by a model (skill-creator style, two cases per behavior), so treat results from it as supporting evidence. The skills themselves come from the git ref of each arm; a skill whose `skills/<name>/SKILL.md` is not in `--ref` is skipped.
+
+```bash
+node bench/skilleval/import.js tasks   --skill NAME[,NAME]|all --ref GITREF --out DIR [--include-limited] [--suites-dir DIR]
+node bench/skilleval/import.js queries --skill NAME --out FILE        # then: bench.js cap import --cap skill:NAME --from FILE
+node bench/skilleval/import.js report  --ref GITREF [--skill NAME[,NAME]]
+node bench/tasks/validate-tasks.js --only-extra --extra-tasks DIR/NAME/tasks
+```
+
+`tasks` writes `DIR/<skill>/tasks/*.json` with fixtures flattened to one name (`fx-<skill>-<sub>`) and `<fixture>.KEY.md` renamed to `.bench-answer-key.md`, the suite `skilleval-import-<skill>.json` (in `DIR/<skill>/suites/`, or `--suites-dir bench/suites` to register it), `oracle-manifest.json`, and `provenance.json` (source, skill, scenario and eval ids, tags, content hash; the task schema takes no extra fields). A scenario task takes its rubric from the criteria (value bucket, weight 3; restraint items and checks that cannot be machine-checked become guard items, weight 2; the pass anchor is kept only when short) and its checks from `floor_checks` plus the `scripted_checks` of an eval case that repeats the scenario. Eval cases that do not repeat a scenario get their own task, tagged `eval-only`. Shell checks become `file_exists`, `contains`, `not_contains` or `cmd` checks; a check that needs python3, git, a checksum tool or another non-POSIX tool becomes a rubric item. A prompt that forbids edits gets a `fixture_unchanged` guard. Tasks are skipped when the prompt names a konductor procedure, or when the fixture needs a `setup.sh` (the task schema has no setup command). The five `limited` skills are held back unless `--include-limited`. Tests: `node --test bench/skilleval/test/import.test.js`.
+
 ## Isolation, environment, safety
 - Each run gets a scratch HOME and a fresh cwd under `/tmp/w-<random>/`, with a copy of the auth
   database (kiro-cli's `~/Library/Application Support/kiro-cli` on macOS, `~/.local/share/kiro-cli`
