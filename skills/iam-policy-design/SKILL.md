@@ -634,7 +634,7 @@ Ensure every threat has at least one security control, verify mitigations are sp
 
 ## Compliance Validation
 
-Open `references/compliance-checklists.md` (relative to this file) when the user names a compliance framework. It holds the GDPR, HIPAA, PCI-DSS, and SOC 2 control checklists and the citations to use, shared with `policy-validation`.
+When the user or the design under review names a compliance framework, or the design handles regulated data (PHI, cardholder data, personal data of people in the EU), open `references/compliance-checklists.md` (relative to this file). It holds the GDPR, HIPAA, PCI-DSS, and SOC 2 control checklists and the citations to use, shared with `policy-validation`.
 
 ### Compliance Gap Workflow
 

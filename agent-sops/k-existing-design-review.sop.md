@@ -38,12 +38,12 @@ Scan the design directory and identify which artifacts are present.
   - `*.drawio.xml` or `architecture-diagram*` — architecture diagrams
 - You MUST report which artifacts were found and which are missing
 - You SHOULD warn if critical artifacts (system design, threat model) are missing
-- You MUST NOT proceed to evaluation if system-design.md is missing
+- You MUST NOT proceed to evaluation if system-design.md is missing. This differs from `design-evaluation`, which lists missing artifacts and scores what is present, because every dimension this SOP scores is judged against the system design
 
 **Expected Output:**
 
 - List of found artifacts with file paths
-- List of missing artifacts with severity (critical/optional)
+- List of missing artifacts (required/optional)
 
 ### 2. Confirm Scope with User
 
@@ -103,8 +103,14 @@ Write the consolidated review report to the output file.
   ## Executive Summary
   [2-3 sentences: overall readiness, critical blockers]
 
+  ## Not Provided
+  [Missing artifacts; not findings, no severity]
+
+  ## High-Level Assessment
+  [Strengths, weaknesses, overall soundness; unscored]
+
   ## Dimension Scores
-  [Table: dimension | score | key finding]
+  [Table of the 8 scored dimensions: dimension | score | key finding]
 
   ## Critical Issues (Must Fix Before Implementation)
   [Numbered list with specific file/section references]
@@ -114,6 +120,9 @@ Write the consolidated review report to the output file.
 
   ## Suggestions
   [Numbered list]
+
+  ## Actionable Recommendations
+  [Concrete steps; unscored]
 
   ## Recommendation
   [READY FOR IMPLEMENTATION / NOT READY — reason]
