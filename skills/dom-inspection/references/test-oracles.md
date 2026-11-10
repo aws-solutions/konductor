@@ -1,46 +1,6 @@
-# Report schema and test oracles
+# Test oracles
 
-Read this when writing `dom-inspection-report.json` or deriving test cases from an existing report.
-
-## Output Schema
-
-Produce a `dom-inspection-report.json` with this structure:
-
-```json
-{
-  "page_url": "<url>",
-  "ui_framework": "cloudscape | material-ui | plain-html | unknown",
-  "forms": [
-    {
-      "form_selector": "<selector>",
-      "validation_trigger": "submit | blur | change | unknown",
-      "fields": [
-        {
-          "selector": "<most reliable selector>",
-          "label": "<exact visible label text>",
-          "type": "text | email | number | date | select | checkbox | radio | textarea",
-          "required": true,
-          "pattern": "<regex string or null>",
-          "min": "<value or null>",
-          "max": "<value or null>",
-          "minlength": "<number or null>",
-          "maxlength": "<number or null>",
-          "error_message_selector": "<selector for error element or null>",
-          "error_message_text": "<exact error string rendered on violation or null>",
-          "initially_hidden": false,
-          "conditional_visibility": {
-            "trigger_field_selector": "<selector or null>",
-            "trigger_value": "<value that makes this field appear or null>"
-          },
-          "cross_field_rules": ["<human-readable description of observable constraint>"]
-        }
-      ]
-    }
-  ]
-}
-```
-
-## Test Oracle Derivation
+Read this when deriving test cases from an existing `dom-inspection-report.json`.
 
 From the inspection report, derive these test cases for each field:
 
